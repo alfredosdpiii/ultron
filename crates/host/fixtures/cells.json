@@ -9,7 +9,7 @@
 		"j = await bash(\"echo job; exit 2\", yield_after=5); (j.status, j.exit_code, j.ok, j.text, j.running, j.output_path)",
 		"j = await bash(\"sleep 0.6; echo done\", yield_after=0); r = j.running; await j.result(); (r, j.status, j.text, j.exit_code)",
 		"j = await bash(\"sleep 30\", yield_after=0); await j.cancel(); (j.status, j.cancelled, j.exit_code, j.ok)",
-		"j = await bash(\"true\", yield_after=0); (j.status, j.running, j.exit_code)",
+		"j = await bash(\"true\", yield_after=0); await j.result(); (j.status, j.running, j.exit_code)",
 		"j = await bash(\"sleep 5\", timeout=0.3, yield_after=5); (j.status, j.timed_out, j.error, j.exit_code)",
 		"j = await bash(\"printf abcdefgh\", yield_after=5); await j.read(cursor=2, max_bytes=3)",
 		"await j.read(cursor=100)",

@@ -197,6 +197,7 @@ fn harness_chat_submissions_cancels_only_a_wait_and_rejects_pending_waits_on_clo
             let submission = submission.clone();
             spawn(move || submission.wait(&bg()))
         };
+        // Settle only: a wait that starts after its signal was cancelled, or after the close, ends the same way.
         flush();
         controller.cancel(HarnessError::msg("stop waiting"));
         assert_eq!(cancelled.join().unwrap().err().unwrap().message(), "stop waiting");
@@ -258,7 +259,8 @@ fn harness_chat_submissions_enables_scheduling_when_a_caller_submits_or_waits() 
         let task = root
             .commit(|tx| Ok(tx.create_task(generation.definition(), json!({}), TaskOptions::default())?))
             .unwrap();
-        // A committed task alone does not start scheduling; waiting for it does.
+        // A committed task alone does not start scheduling; waiting for it does. (A settle: a slow machine can only
+        // let the check pass wrongly.)
         flush();
         assert_eq!(
             chat.get_task(task).unwrap().unwrap().state.status(),

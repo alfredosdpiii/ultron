@@ -255,6 +255,9 @@ pub fn start_server(options: &ServerOptions) -> io::Result<Arc<RunningServer>> {
     }
 }
 
+/// How often a generation registers again when the coordinator it leased exited before accepting it.
+const COORDINATOR_REGISTRATION_ATTEMPTS: u32 = 5;
+
 /// A hard-killed server leaves its endpoint socket behind: remove this ID's endpoints that refuse connections.
 fn remove_dead_endpoints(directory: &Path, server_id: &str) {
     let prefix = format!("server-{server_id}-");
@@ -280,7 +283,7 @@ fn start_generation(
     let nonce: String = paths::uuid_v4().replace('-', "")[..12].to_string();
     let endpoint_path = sockets_dir.join(format!("server-{server_id}-{nonce}.sock"));
     remove_dead_endpoints(&sockets_dir, server_id);
-    let lease = coord_client::ensure_coordinator(&socket_path, &control_path).map_err(Err)?;
+    let mut lease = coord_client::ensure_coordinator(&socket_path, &control_path).map_err(Err)?;
     let lifetime = Lifetime::new(options.keep_alive);
     let workers_lifetime = lifetime.clone();
     let manager = Manager::new(
@@ -296,19 +299,47 @@ fn start_generation(
         error_log_path(&options.directory, server_id),
         Box::new(move |count| connections_lifetime.set_connections(count)),
     );
+    let log_path = error_log_path(&options.directory, server_id);
+    manager.set_logger(Box::new(move |label, message| record_error(&log_path, label, message)));
     let listener = sockets::listen(&endpoint_path).map_err(Err)?;
     hub.serve(listener);
-    let events = manager.clone();
-    let coordinator = match CoordinatorConnection::connect(
-        &control_path,
-        &endpoint_path,
-        Box::new(move |event| events.handle_event(event)),
-    ) {
-        Ok(coordinator) => coordinator,
-        Err(error) => {
-            hub.close();
-            let _ = sockets::cleanup_socket(&endpoint_path);
-            return Err(error);
+    // The lease connects before the coordinator has accepted (and counted) it, so a coordinator whose empty
+    // shutdown fires just then still exits: its control socket is gone (registration finds no socket, or is closed
+    // unanswered). That coordinator is not another release's; start or find a live one and register again.
+    let mut attempts = 0;
+    let coordinator = loop {
+        let events = manager.clone();
+        let result = CoordinatorConnection::connect(
+            &control_path,
+            &endpoint_path,
+            Box::new(move |event| events.handle_event(event)),
+        );
+        let exited = match &result {
+            Err(Err(error)) => matches!(error.kind(), io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused),
+            Err(Ok(_)) => !sockets::is_live(&control_path),
+            Ok(_) => false,
+        };
+        attempts += 1;
+        if exited && attempts < COORDINATOR_REGISTRATION_ATTEMPTS {
+            match coord_client::ensure_coordinator(&socket_path, &control_path) {
+                Ok(next) => {
+                    lease = next;
+                    continue;
+                }
+                Err(error) => {
+                    hub.close();
+                    let _ = sockets::cleanup_socket(&endpoint_path);
+                    return Err(Err(error));
+                }
+            }
+        }
+        match result {
+            Ok(coordinator) => break coordinator,
+            Err(error) => {
+                hub.close();
+                let _ = sockets::cleanup_socket(&endpoint_path);
+                return Err(error);
+            }
         }
     };
     manager.set_coordinator(coordinator.clone());
@@ -485,6 +516,12 @@ pub fn run_server_process(args: &[String]) -> Result<(), String> {
         root: std::env::var_os("__ULTRON_SERVER_ROOT").map(PathBuf::from),
     })
     .map_err(|e| e.to_string())?;
+    // A signal closes the generation (busy workers keep running detached) and removes its endpoint.
+    let signalled = server.clone();
+    crate::signals::set_handler(Arc::new(move |_| {
+        signalled.close();
+        std::process::exit(0);
+    }));
     server.wait_closed();
     Ok(())
 }

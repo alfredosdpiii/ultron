@@ -99,7 +99,8 @@ fn root(collect: CollectMode, max_lanes: usize, continuity: bool) -> Root {
         }),
         handlers: Arc::new(move |lane, signal, park| Arc::new(host.cell_handler(lane, signal, park))),
         max_lanes,
-        cancel_grace: Duration::from_secs(5),
+        // No test step can outlast it, so "ended without the grace period" holds however slow the machine.
+        cancel_grace: HANG_GUARD,
     })
     .unwrap();
     lanes.open("main").unwrap();
@@ -111,7 +112,11 @@ fn root(collect: CollectMode, max_lanes: usize, continuity: bool) -> Root {
     }
 }
 
-const BUDGET: Duration = Duration::from_secs(20);
+/// A hang guard, never a timing expectation: a loaded machine must slow a test down, never fail it.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
+/// A cell budget no ordinary cell outlasts, however slow the machine (it is an input: a cell past it is detached).
+const BUDGET: Duration = HANG_GUARD;
 
 fn ok(lanes: &Lanes, lane: &str, code: &str) -> ExecutionResult {
     let result = match lanes.run(lane, code, BUDGET).unwrap() {
@@ -214,7 +219,7 @@ fn delegation_rlm_cell_wrappers_list_and_cancel_a_parked_cell() {
         "{'cancelled': True, 'status': 'error'}"
     );
     assert!(
-        started.elapsed() < Duration::from_secs(5),
+        started.elapsed() < HANG_GUARD,
         "a parked cell ends without the grace period"
     );
     assert_eq!(
@@ -232,7 +237,7 @@ fn delegation_rlm_cell_wrappers_list_and_cancel_a_parked_cell() {
     );
     assert_eq!(value(&r.lanes, "main", "x"), "7");
     r.gates.open(0);
-    r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    r.events.recv_timeout(HANG_GUARD).unwrap();
     r.lanes.close();
 }
 
@@ -246,7 +251,7 @@ fn delegation_rlm_results_never_waits_and_host_collect_raises_naming_running_chi
     );
     let (a, b) = (value(&r.lanes, "main", "ha.id"), value(&r.lanes, "main", "hb.id"));
     let (a, b) = (a.trim_matches('\''), b.trim_matches('\''));
-    let started = Instant::now();
+    // Neither call waits: each returns within the budget (`value` refuses a detached cell) while the children run.
     assert_eq!(
         value(&r.lanes, "main", "await rlm.results()"),
         format!("{{'results': [], 'running': ['{a}', '{b}']}}")
@@ -266,9 +271,8 @@ fn delegation_rlm_results_never_waits_and_host_collect_raises_naming_running_chi
             "RuntimeError: rlm.collect: 2 subagent(s) still running ({a}, {b}). The host waits for them, not this cell: do other work, or end your turn; each end arrives as a child_done event, then collect again."
         )
     );
-    assert!(started.elapsed() < Duration::from_secs(5), "neither call waits");
     r.gates.open(0);
-    let end = r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    let end = r.events.recv_timeout(HANG_GUARD).unwrap();
     assert_eq!(end.task["id"], a);
     assert_eq!(
         value(
@@ -294,7 +298,7 @@ fn delegation_rlm_results_never_waits_and_host_collect_raises_naming_running_chi
         )
     );
     r.gates.open(1);
-    r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    r.events.recv_timeout(HANG_GUARD).unwrap();
     assert_eq!(
         value(&r.lanes, "main", "[x['result']['value'] for x in await rlm.collect()]"),
         "['reply-0', 'reply-1']"
@@ -309,9 +313,9 @@ fn kill(pid: u32) {
 }
 
 fn wait_until(mut ready: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + HANG_GUARD;
     while !ready() {
-        assert!(Instant::now() < deadline, "condition not reached in 10 s");
+        assert!(Instant::now() < deadline, "condition not reached in {HANG_GUARD:?}");
         std::thread::sleep(Duration::from_millis(10));
     }
 }

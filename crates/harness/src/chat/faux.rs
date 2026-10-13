@@ -125,6 +125,7 @@ pub fn message(content: Vec<AssistantContent>, stop_reason: StopReason) -> Assis
         error_message: None,
         raw_stop_reason: None,
         end_turn: None,
+        provider_metadata: None,
         timestamp: DEFAULT_TIMESTAMP,
     }
 }

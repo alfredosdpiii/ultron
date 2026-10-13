@@ -734,7 +734,8 @@ fn durable_session_documents_settle_admitted_commits_before_close_and_reject_lat
             let session = t.session.clone();
             std::thread::spawn(move || session.snapshot_member(&member, Owner::Session, "absent"))
         };
-        settle();
+        // Both are admitted to the line, behind the held commit, before the close begins.
+        eventually(|| t.session.line_len() >= 3);
         let closing = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let began = closing.clone();
         t.session

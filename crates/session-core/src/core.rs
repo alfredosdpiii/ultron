@@ -9,12 +9,16 @@
 //! them ([`crate::journal`], [`crate::compaction_op`]); reads see the session as Pi entries ([`crate::pi_view`]).
 
 use crate::compaction_op::CompactionOp;
+
+#[path = "navigate.rs"]
+mod navigate;
 use crate::compose::{Runtime, Services};
+use crate::durable_store::{SharedSession, lock as lock_session};
 use crate::journal::RunJournal;
 use crate::lane::{self, Lane, Provider, api_supported, now_ms};
 use crate::view::{self, message_text};
 use crate::{ModelFlags, RunEnv, naming, pi_view};
-use agent::{AgentContext, AgentEvent, AgentLoopConfig, StreamFn, agent_loop};
+use agent::{AgentEvent, StreamFn};
 use ai::{AbortSignal, AssistantMessage, Message, Model, SimpleStreamOptions, StreamOptions};
 use kernel::HostHandler;
 use serde_json::{Map, Value, json};
@@ -140,6 +144,45 @@ pub enum Op {
     Describe,
     /// Sessions of this working directory, newest first (`{path, id, name, modified, messageCount, firstMessage}`).
     ListSessions,
+    /// Continue what a dead worker left (crate::recovery): the first queued message runs, else an interrupted run
+    /// continues. Answers `{resumed, runId, reason, recovered}`; nothing starts while a run is in progress.
+    Recover,
+    /// The subagents of the root lane (`rlm.list_subagents` as the root sees them: `{subagents: [...]}`), for the
+    /// TUI's agent hub.
+    Agents,
+    /// Move `main`'s tip to `target_id` (`None`: the root), optionally summarizing the branch left (`/tree`).
+    Navigate {
+        target_id: Option<String>,
+        summarize: bool,
+        instructions: Option<String>,
+    },
+    /// Label a tree entry (`None` removes the label).
+    SetLabel {
+        entry_id: String,
+        label: Option<String>,
+    },
+    /// Cancel a subagent and its unfinished descendants (the agent hub's kill).
+    KillAgent {
+        id: String,
+    },
+    /// `/goal <args>`: the session goal's command (set, pause, resume, clear, check); answers its text.
+    Goal {
+        args: String,
+    },
+    /// Start another root conversation in the session's durable runtime with `message` (Pi Durable's ownerless
+    /// conversations: each runs, survives restarts and resumes on its own); answers `{conversationId}`.
+    StartConversation {
+        message: String,
+    },
+    /// Give conversation `id` another input (queued while it runs).
+    ConversationInput {
+        id: u64,
+        message: String,
+    },
+    /// Conversation `id`: `{id, busy, messages: [{role, text}]}`; without an id, every root conversation's.
+    Conversations {
+        id: Option<u64>,
+    },
 }
 
 impl Op {
@@ -212,6 +255,31 @@ impl Op {
             },
             "describe" => Op::Describe,
             "listSessions" => Op::ListSessions,
+            "recover" => Op::Recover,
+            "agents" => Op::Agents,
+            "setLabel" => Op::SetLabel {
+                entry_id: need("entryId")?,
+                label: text("label"),
+            },
+            "navigate" => Op::Navigate {
+                target_id: text("targetId"),
+                summarize: value["summarize"] == true,
+                instructions: text("customInstructions"),
+            },
+            "killAgent" => Op::KillAgent { id: need("id")? },
+            "goal" => Op::Goal {
+                args: text("args").unwrap_or_default(),
+            },
+            "startConversation" => Op::StartConversation {
+                message: need("message")?,
+            },
+            "conversationInput" => Op::ConversationInput {
+                id: value["id"].as_u64().ok_or("id must be a conversation id")?,
+                message: need("message")?,
+            },
+            "conversations" => Op::Conversations {
+                id: value["id"].as_u64(),
+            },
             other => return Err(format!("Unknown session operation: {other}")),
         })
     }
@@ -262,6 +330,21 @@ impl Op {
             Op::Forked { target } => json!({"op": "forked", "target": target}),
             Op::Describe => json!({"op": "describe"}),
             Op::ListSessions => json!({"op": "listSessions"}),
+            Op::Recover => json!({"op": "recover"}),
+            Op::Agents => json!({"op": "agents"}),
+            Op::SetLabel { entry_id, label } => json!({"op": "setLabel", "entryId": entry_id, "label": label}),
+            Op::Navigate {
+                target_id,
+                summarize,
+                instructions,
+            } => {
+                json!({"op": "navigate", "targetId": target_id, "summarize": summarize, "customInstructions": instructions})
+            }
+            Op::KillAgent { id } => json!({"op": "killAgent", "id": id}),
+            Op::Goal { args } => json!({"op": "goal", "args": args}),
+            Op::StartConversation { message } => json!({"op": "startConversation", "message": message}),
+            Op::ConversationInput { id, message } => json!({"op": "conversationInput", "id": id, "message": message}),
+            Op::Conversations { id } => json!({"op": "conversations", "id": id}),
         }
     }
 }
@@ -281,6 +364,12 @@ pub enum Input {
     },
     /// Stop the lane; the sender is told when done.
     Close(std::sync::mpsc::Sender<()>),
+    /// The durable runtime running the turn (crate::turns).
+    Turn(crate::turns::Request),
+    /// The durable runtime has no work for the root conversation.
+    HarnessIdle,
+    /// Completions of work the turn started that outlived it (empty: nothing is running).
+    RuntimeMessages(Vec<Message>),
 }
 
 /// Where lane-watch events go.
@@ -292,6 +381,10 @@ struct Queued {
     message: Value,
     /// The pending entry (`pi.pending.entry`) the message waits as; it becomes the message's entry id.
     entry_id: String,
+    /// The run's turn the loop took it for (`turn_start`s it had emitted, plus one); 0 while queued.
+    turn: u64,
+    /// The durable runtime's submission it waits as (none while no run is in progress).
+    submission: Option<durable::SubmissionId>,
 }
 
 /// The steering and follow-up queues, drained by the running loop. `delivered` holds drained messages until their
@@ -307,29 +400,6 @@ impl Queues {
     fn visible(&self) -> Vec<&Queued> {
         self.delivered.iter().chain(&self.items).collect()
     }
-
-    /// Take the queued messages of `kind` the queue mode releases (all, or the first).
-    fn drain(&mut self, kind: QueueKind) -> Vec<Message> {
-        let all = match kind {
-            QueueKind::Steer => self.steering_all,
-            QueueKind::FollowUp => self.follow_up_all,
-        };
-        let mut taken = Vec::new();
-        let mut index = 0;
-        while index < self.items.len() {
-            if self.items[index].kind == kind && (all || taken.is_empty()) {
-                taken.push(self.items.remove(index));
-            } else {
-                index += 1;
-            }
-        }
-        let messages = taken
-            .iter()
-            .flat_map(|q| lane::to_llm(std::slice::from_ref(&q.message)))
-            .collect();
-        self.delivered.extend(taken);
-        messages
-    }
 }
 
 fn lock<T>(shared: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -339,10 +409,15 @@ fn lock<T>(shared: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 struct Running {
     id: String,
     signal: AbortSignal,
-    thread: JoinHandle<()>,
     journal: RunJournal,
+    /// The run's prompt (its transcript message), announced when the first generation starts.
+    prompt: Value,
+    /// The durable runtime's submission of the prompt.
+    submission: Option<durable::SubmissionId>,
     /// The run's own prompt has not reached `message_end` yet (later user messages are steering or follow-ups).
     prompt_pending: bool,
+    /// The `turn_start`s the actor has processed; the loop counts its own in `Queues::turns`.
+    turns: u64,
     started_tip: Value,
     /// The last assistant message's error, if the run ended on one.
     error: Option<String>,
@@ -376,7 +451,7 @@ pub struct Core {
     model: Model,
     models: Vec<Model>,
     thinking: String,
-    session: Session,
+    session: SharedSession,
     lane: Lane,
     tx: Sender<Input>,
     sink: EventSink,
@@ -395,7 +470,15 @@ pub struct Core {
     taken: Vec<String>,
     run_ids: session_file::Uuidv7,
     auto_name: bool,
+    /// What opening the session settled (crate::recovery), until [`Op::Recover`] acts on it.
+    recovered: Option<crate::recovery::Recovered>,
+    /// The durable runtime that runs every turn (crate::turns).
+    durable: durable_turns::Durable,
+    /// The run reopened from a dead worker's journal and resumed in the durable runtime.
+    resumed: Option<String>,
 }
+
+mod durable_turns;
 
 /// A user message with text and images, as the transcript stores it.
 pub fn user_message(text: String, images: Vec<Value>) -> Value {
@@ -491,17 +574,75 @@ impl Core {
         } = options;
         let repo = SessionRepo::new(&session_root, SystemClock::shared());
         let mut session = repo.open(&metadata)?;
+        // A worker that died left its run open. A run of the durable runtime resumes there; one journaled without
+        // it (an older build, the TypeScript product) is settled before anything reads the lane.
+        let open_operation = session
+            .value(LANE_STATE, LANE)
+            .and_then(|state| state["currentOperationId"].as_str().map(str::to_string));
+        let durable_records = crate::durable_store::has_records(&session);
+        let recovered = match &open_operation {
+            Some(_) if !durable_records => crate::recovery::settle(&mut session)?,
+            _ => crate::recovery::Recovered {
+                queued: crate::recovery::inbox(&session),
+                ..Default::default()
+            },
+        };
+        let resume = open_operation.filter(|_| durable_records);
         let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
         let sessions_dir = session_root.join(lane::session_directory_name(&metadata.cwd));
         let runtime = Runtime::new(&env, &mode, sessions_dir, services)?;
         let api_key = lane::api_key(&flags, &env, &model.provider);
-        let lane = Lane::open(&runtime, &model, api_key, session.id())?;
         let announced = session.state().entries().len();
         let announced_usage = session.state().usage_rows().len();
-        Ok(Core {
+        let session_id = session.id().to_string();
+        let session: SharedSession = Arc::new(Mutex::new(session));
+        // Subagents run as child conversations of the durable runtime; their task journal is in the session.
+        let children = crate::subagents::DurableChildren::new();
+        let unfinished = crate::subagents::unfinished(&session);
+        let lane = Lane::open_with(
+            &runtime,
+            &model,
+            api_key,
+            &session_id,
+            Some(children.host(session.clone())),
+        )?;
+        let provider = Arc::new(Provider::with_idle_timeout(ai::http::http_idle_timeout(
+            runtime.config.settings.get("httpIdleTimeoutMs"),
+        )));
+        let queues = Arc::new(Mutex::new(Queues {
+            items: recovered
+                .queued
+                .iter()
+                .filter_map(|q| {
+                    Some(Queued {
+                        kind: QueueKind::parse(&q.kind)?,
+                        message: q.message.clone(),
+                        entry_id: q.entry_id.clone(),
+                        turn: 0,
+                        submission: None,
+                    })
+                })
+                .collect(),
+            delivered: Vec::new(),
+            steering_all: true,
+            follow_up_all: true,
+        }));
+        let durable = durable_turns::open_durable(
+            &session,
+            &tx,
+            &lane,
+            provider.clone(),
+            &env,
+            &flags,
+            queues.clone(),
+            children.clone(),
+        )?;
+        children.attach(durable.chat.clone());
+        children.restore(&lane.stack.delegation, &unfinished)?;
+        let mut core = Core {
             thinking: config["thinkingLevel"].as_str().unwrap_or("medium").to_string(),
             models: lane::available_models(&env),
-            provider: Arc::new(Provider::new()),
+            provider,
             env,
             flags,
             repo,
@@ -513,12 +654,7 @@ impl Core {
             sink,
             run: None,
             hiding: false,
-            queues: Arc::new(Mutex::new(Queues {
-                items: Vec::new(),
-                delivered: Vec::new(),
-                steering_all: true,
-                follow_up_all: true,
-            })),
+            queues,
             auto_compaction: true,
             auto_retry: true,
             bash: None,
@@ -527,7 +663,16 @@ impl Core {
             taken: Vec::new(),
             run_ids: session_file::Uuidv7::default(),
             auto_name,
-        })
+            recovered: Some(recovered),
+            durable,
+            resumed: None,
+        };
+        if let Some(operation) = resume {
+            core.resumed = Some(core.reopen_run(&operation)?);
+        }
+        // Whatever else the runtime holds (subagents, background work) continues now.
+        core.durable.chat.resume().map_err(|e| e.to_string())?;
+        Ok(core)
     }
 
     pub fn model(&self) -> &Model {
@@ -538,8 +683,8 @@ impl Core {
         &self.thinking
     }
 
-    pub fn session(&self) -> &Session {
-        &self.session
+    pub fn session(&self) -> SharedSession {
+        self.session.clone()
     }
 
     pub fn runtime(&self) -> &Runtime {
@@ -548,15 +693,15 @@ impl Core {
 
     /// The lane snapshot transcript state starts from (`LaneSnapshot`): the branch's entries, configuration, usage.
     pub fn snapshot(&self) -> Value {
-        let entries = self.session.branch_entries(LANE).unwrap_or_default();
+        let entries = lock_session(&self.session).branch_entries(LANE).unwrap_or_default();
         let mut usage = session_journal::usage::empty_usage();
-        for row in self.session.state().usage_rows() {
+        for row in lock_session(&self.session).state().usage_rows() {
             usage = session_journal::usage::add_usage(&usage, &row["usage"]);
         }
         json!({
             "lane": LANE,
             "transcript": entries,
-            "tipId": self.session.branch_tip(LANE).flatten(),
+            "tipId": lock_session(&self.session).branch_tip(LANE).flatten(),
             "configuration": {"model": {"provider": self.model.provider, "modelId": self.model.id}, "thinkingLevel": self.thinking, "activeToolNames": ["rlm"]},
             "stats": {"messageCount": entries.iter().filter(|e| e["type"] == "message").count(), "usage": usage},
             "operation": null,
@@ -572,11 +717,14 @@ impl Core {
                 Input::Op(op, reply) => self.op(op, reply),
                 Input::Agent(event) => self.on_agent_event(*event),
                 Input::Title(response) => {
-                    if record_naming(&mut self.session, &response).is_ok() {
+                    if record_naming(&mut lock_session(&self.session), &response).is_ok() {
                         self.name_changed();
                     }
                 }
                 Input::RunEnd => self.run_end(),
+                Input::Turn(request) => self.on_turn(request),
+                Input::HarnessIdle => self.harness_idle(),
+                Input::RuntimeMessages(messages) => self.runtime_messages(messages),
                 Input::BashDone {
                     command,
                     exclude,
@@ -600,7 +748,7 @@ impl Core {
     /// The session's name now (`session_name`, a Rust-only event the worker serves as `ultron.session-ops` state,
     /// not on the transcript).
     fn name_changed(&mut self) {
-        let name = self.session.name();
+        let name = lock_session(&self.session).name();
         self.emit(json!({"type": "session_name", "lane": LANE, "name": name}));
     }
 
@@ -615,7 +763,7 @@ impl Core {
     /// Announce the entries and usage rows committed since the last announcement, as `entry_added` and `usage`
     /// events (a usage event carries the lane's totals after it).
     fn announce(&mut self) {
-        let entries: Vec<Value> = self.session.state().entries()[self.announced..].to_vec();
+        let entries: Vec<Value> = lock_session(&self.session).state().entries()[self.announced..].to_vec();
         self.announced += entries.len();
         for entry in entries {
             self.emit(event(vec![
@@ -624,7 +772,12 @@ impl Core {
                 ("entry", entry),
             ]));
         }
-        let rows: Vec<Value> = self.session.state().usage_rows().into_iter().cloned().collect();
+        let rows: Vec<Value> = lock_session(&self.session)
+            .state()
+            .usage_rows()
+            .into_iter()
+            .cloned()
+            .collect();
         for index in self.announced_usage..rows.len() {
             let totals = rows[..=index]
                 .iter()
@@ -642,12 +795,12 @@ impl Core {
     }
 
     fn tip(&self) -> Option<String> {
-        self.session.branch_tip(LANE).flatten()
+        lock_session(&self.session).branch_tip(LANE).flatten()
     }
 
     /// The lane's stored state (`pi.lane.state`), idle when none is stored.
     fn lane_state(&self) -> Value {
-        self.session
+        lock_session(&self.session)
             .value(LANE_STATE, LANE)
             .cloned()
             .unwrap_or_else(|| json!({"currentOperationId": null, "lastOperationId": null, "inbox": []}))
@@ -656,14 +809,14 @@ impl Core {
     /// Append a message to `main` outside a run (the lane's `appendMessage`: the entry, the new tip and the lane's
     /// state in one transaction) and announce the entry.
     fn append(&mut self, message: Value) -> Result<(), String> {
-        let id = session_journal::lock_clock(&self.session.clock()).next_id();
+        let id = session_journal::lock_clock(&lock_session(&self.session).clock()).next_id();
         let mut entry = Map::new();
         entry.insert("id".into(), id.clone().into());
         entry.insert("parentId".into(), self.tip().map_or(Value::Null, Value::from));
         entry.insert("type".into(), "message".into());
         entry.insert("message".into(), message);
         let lane_state = self.lane_state();
-        self.session.commit(&[
+        lock_session(&self.session).commit(&[
             Write::Entry(entry),
             Write::set(BRANCH_TIP, LANE, id.into()),
             Write::set(LANE_STATE, LANE, lane_state),
@@ -679,7 +832,7 @@ impl Core {
         entry.insert("parentId".into(), self.tip().map_or(Value::Null, Value::from));
         entry.insert("type".into(), "message".into());
         entry.insert("message".into(), message);
-        self.session.commit(&[
+        lock_session(&self.session).commit(&[
             Write::Entry(entry),
             Write::delete(PENDING_ENTRY, &queued.entry_id),
             Write::set(BRANCH_TIP, LANE, queued.entry_id.clone().into()),
@@ -702,15 +855,14 @@ impl Core {
 
     /// Store the model and thinking level as the lane's configuration (`pi.lane.config`).
     fn store_lane_config(&mut self) -> Result<(), String> {
-        let mut config = self
-            .session
+        let mut config = lock_session(&self.session)
             .value(LANE_CONFIG, LANE)
             .cloned()
             .unwrap_or_else(|| run::lane_config("", "", "", &["rlm"]));
         config["model"] = json!({"provider": self.model.provider, "modelId": self.model.id});
         config["thinkingLevel"] = json!(self.thinking);
-        if self.session.value(LANE_CONFIG, LANE) != Some(&config) {
-            self.session.commit(&[Write::set(LANE_CONFIG, LANE, config)])?;
+        if lock_session(&self.session).value(LANE_CONFIG, LANE) != Some(&config) {
+            lock_session(&self.session).commit(&[Write::set(LANE_CONFIG, LANE, config)])?;
         }
         Ok(())
     }
@@ -724,7 +876,7 @@ impl Core {
 
     fn journal(&mut self, event: &AgentEvent) {
         if let Some(run) = self.run.as_mut() {
-            run.journal.event(&mut self.session, event);
+            run.journal.event(&mut lock_session(&self.session), event);
         }
     }
 
@@ -821,13 +973,17 @@ impl Core {
                             Ok(())
                         }
                         Some(queued) => self.commit_queued(queued, value),
-                        None if !first => self.session.append_message(LANE, value).map(drop),
+                        None if !first => lock_session(&self.session).append_message(LANE, value).map(drop),
                         None => Ok(()),
                     };
                     if let Err(error) = committed {
                         self.fail_run(error);
                     }
                 } else {
+                    // The ledger counts the response before its entry commits, as the TypeScript drive does.
+                    if value["role"] == "assistant" {
+                        self.charge_turn(&value);
+                    }
                     self.journal(&agent_event);
                 }
                 self.announce();
@@ -896,15 +1052,22 @@ impl Core {
     /// A generation begins. The queued messages the loop took for it (drained before its `turn_start`) join the
     /// branch in the same transaction as `assistant.ready`, and the lane's inbox keeps the rest. A cancelled run
     /// starts no generation.
+    ///
+    /// Only messages taken for this turn or an earlier one: the actor processes `turn_start` after the loop emitted
+    /// it, and by then a fast loop may already have drained the next turn's follow-up. Taking every delivered message
+    /// committed that follow-up before this turn's assistant message (seen under load as `steer`, `follow-up`,
+    /// `assistant`, `assistant` instead of `steer`, `assistant`, `follow-up`, `assistant`).
     fn begin_generation(&mut self) {
-        let Some(run) = self.run.as_ref() else { return };
+        let Some(run) = self.run.as_mut() else { return };
+        run.turns += 1;
+        let turn = run.turns;
         if run.signal.aborted() {
             return;
         }
         let taken: Vec<Queued> = lock(&self.queues)
             .delivered
             .iter()
-            .filter(|q| !self.taken.contains(&q.entry_id))
+            .filter(|q| q.turn <= turn && !self.taken.contains(&q.entry_id))
             .cloned()
             .collect();
         let mut writes = Vec::new();
@@ -930,7 +1093,8 @@ impl Core {
         self.taken.extend(taken.iter().map(|q| q.entry_id.clone()));
         if let Some(run) = self.run.as_mut() {
             run.journal.set_inbox(inbox);
-            run.journal.begin_with(&mut self.session, writes, trigger);
+            run.journal
+                .begin_with(&mut lock_session(&self.session), writes, trigger);
         }
     }
 
@@ -943,14 +1107,20 @@ impl Core {
     }
 
     fn run_end(&mut self) {
-        let Some(run) = self.run.take() else { return };
-        let _ = run.thread.join();
+        if let Some(operation) = self.operation_id() {
+            self.lane.stack.agents.end_root_turn(&operation);
+        }
+        let Some(mut run) = self.run.take() else { return };
+        if !run.cancelled && run.error.is_none() {
+            run.error = self.unanswered(run.submission);
+        }
+        self.durable.bridge.set_user_abort(false);
         let aborted = run.cancelled;
         let finished = if aborted {
-            run.journal.finish_aborted(&mut self.session)
+            run.journal.finish_aborted(&mut lock_session(&self.session))
         } else {
             let failure = run.error.as_deref().map(|m| ("assistant_error", m));
-            run.journal.finish(Some(&mut self.session), failure)
+            run.journal.finish(Some(&mut lock_session(&self.session)), failure)
         };
         let mut error = if aborted { None } else { run.error.clone() };
         if let Err(write) = finished {
@@ -1044,6 +1214,9 @@ impl Core {
         if let Some(run) = &self.run {
             run.signal.abort();
         }
+        // The durable runtime stops without settling anything: a run in progress resumes when the session opens.
+        self.durable.stop.abort();
+        let _ = self.durable.chat.close();
         if let Some(signal) = &self.bash {
             signal.abort("closing");
         }
@@ -1055,11 +1228,11 @@ impl Core {
 
     /// The Pi view of the session the read operations use.
     fn pi(&self) -> SessionManager {
-        pi_view::pi_manager(&self.session)
+        pi_view::pi_manager(&lock_session(&self.session))
     }
 
     fn session_file(&self) -> String {
-        self.session.metadata().path.display().to_string()
+        lock_session(&self.session).metadata().path.display().to_string()
     }
 
     fn op(&mut self, op: Op, reply: Reply) {
@@ -1085,6 +1258,10 @@ impl Core {
                 }
             }
             bash @ Op::Bash { .. } => self.bash(bash, reply),
+            Op::Recover => {
+                let result = self.recover();
+                reply(result);
+            }
             other => {
                 let result = self.sync_op(other);
                 reply(result);
@@ -1094,7 +1271,9 @@ impl Core {
 
     fn sync_op(&mut self, op: Op) -> OpResult {
         match op {
-            Op::Prompt { .. } | Op::PromptAndWait { .. } | Op::Bash { .. } => unreachable!("answered later"),
+            Op::Prompt { .. } | Op::PromptAndWait { .. } | Op::Bash { .. } | Op::Recover => {
+                unreachable!("answered in op")
+            }
             Op::Enqueue {
                 kind,
                 message,
@@ -1115,7 +1294,8 @@ impl Core {
                 {
                     run.signal.abort();
                     run.cancelled = true;
-                    run.journal.request_cancel(&mut self.session, now_ms());
+                    run.journal.request_cancel(&mut lock_session(&self.session), now_ms());
+                    self.abort_turn();
                 }
                 Ok(None)
             }
@@ -1181,6 +1361,9 @@ impl Core {
             }
             Op::SetAutoRetry(enabled) => {
                 self.auto_retry = enabled;
+                self.durable
+                    .auto_retry
+                    .store(enabled, std::sync::atomic::Ordering::SeqCst);
                 Ok(None)
             }
             // No retry is ever scheduled in the Rust build, so there is nothing to abort.
@@ -1194,7 +1377,7 @@ impl Core {
             Op::Stats => Ok(Some(view::stats(
                 &self.pi(),
                 Some(&self.session_file()),
-                self.session.id(),
+                lock_session(&self.session).id(),
                 self.model.context_window,
             ))),
             Op::ForkMessages => Ok(Some(Value::Array(view::fork_messages(&self.pi())))),
@@ -1212,15 +1395,10 @@ impl Core {
                     json!({"entries": entries, "leafId": pi.leaf_id().cloned().unwrap_or(Value::Null)}),
                 ))
             }
-            Op::Tree => {
-                let pi = self.pi();
-                Ok(Some(
-                    json!({"tree": view::tree(&pi), "leafId": pi.leaf_id().cloned().unwrap_or(Value::Null)}),
-                ))
-            }
+            Op::Tree => Ok(Some(self.labeled_tree())),
             Op::LastAssistantText => Ok(Some(json!(view::last_assistant_text(&self.pi())))),
             Op::SetName { name } => {
-                names::set_user_name(&mut self.session, Some(&name))?;
+                names::set_user_name(&mut lock_session(&self.session), Some(&name))?;
                 self.name_changed();
                 Ok(None)
             }
@@ -1253,22 +1431,52 @@ impl Core {
                 Ok(None)
             }
             Op::Describe => Ok(Some(json!({
-                "sessionId": self.session.id(),
+                "sessionId": lock_session(&self.session).id(),
                 "sessionFile": self.session_file(),
-                "name": self.session.name(),
+                "name": lock_session(&self.session).name(),
                 "messages": view::messages(&self.pi()),
+                // The lane's own entries (compactions and branch summaries as entries), as the TUI draws them.
+                "entries": lock_session(&self.session).branch_entries(LANE).unwrap_or_default(),
                 "model": serde_json::to_value(&self.model).unwrap_or(Value::Null),
                 "thinkingLevel": self.thinking,
             }))),
+            Op::Navigate {
+                target_id,
+                summarize,
+                instructions,
+            } => self.navigate(target_id, summarize, instructions.as_deref()).map(Some),
+            Op::SetLabel { entry_id, label } => self.set_label(&entry_id, label.as_deref()).map(|()| None),
+            Op::Agents => self
+                .lane
+                .stack
+                .delegation
+                .handle("rlm.list_subagents", json!({}), LANE)
+                .map(Some),
+            Op::KillAgent { id } => self
+                .lane
+                .stack
+                .delegation
+                .cancel(&id, "Killed from the agent hub")
+                .map(Some),
+            Op::StartConversation { message } => self.start_conversation(&message).map(Some),
+            Op::ConversationInput { id, message } => self.conversation_input(id, &message).map(|()| None),
+            Op::Conversations { id } => self.conversations(id).map(Some),
+            Op::Goal { args } => self
+                .lane
+                .stack
+                .goal
+                .command(&args, &kernel::Signal::new())
+                .map(|text| Some(json!(text))),
             Op::ListSessions => {
-                let listed = names::list_sessions(Path::new(self.repo.root()), &self.session.metadata().cwd);
+                let listed =
+                    names::list_sessions(Path::new(self.repo.root()), &lock_session(&self.session).metadata().cwd);
                 Ok(Some(Value::Array(
                     listed
                         .into_iter()
                         .map(|s| {
                             json!({"path": s.metadata.path.display().to_string(), "id": s.metadata.id, "name": s.name,
                                 "modified": s.metadata.modified_at as i64, "messageCount": s.message_count,
-                                "firstMessage": s.first_message})
+                                "firstMessage": s.first_message, "cwd": s.metadata.cwd})
                         })
                         .collect(),
                 )))
@@ -1315,8 +1523,8 @@ impl Core {
         state.insert("steeringMode".into(), mode(queues.steering_all).into());
         state.insert("followUpMode".into(), mode(queues.follow_up_all).into());
         state.insert("sessionFile".into(), self.session_file().into());
-        state.insert("sessionId".into(), self.session.id().into());
-        if let Some(name) = self.session.name() {
+        state.insert("sessionId".into(), lock_session(&self.session).id().into());
+        if let Some(name) = lock_session(&self.session).name() {
             state.insert("sessionName".into(), name.into());
         }
         state.insert("autoCompactionEnabled".into(), self.auto_compaction.into());
@@ -1331,6 +1539,12 @@ impl Core {
     /// Start a run of `message`; `waiter` is answered when it ends. On failure the waiter comes back with the error.
     #[allow(clippy::result_large_err)]
     fn prompt(&mut self, message: String, images: Vec<Value>, waiter: Option<Reply>) -> Result<(), (String, Reply)> {
+        self.prompt_with(user_message(message, images), waiter)
+    }
+
+    /// Start a run of the user message `prompt` (see [`Core::prompt`]).
+    #[allow(clippy::result_large_err)]
+    fn prompt_with(&mut self, prompt: Value, waiter: Option<Reply>) -> Result<(), (String, Reply)> {
         let fail = |error: String, waiter: Option<Reply>| -> Result<(), (String, Reply)> {
             match waiter {
                 Some(waiter) => Err((error, waiter)),
@@ -1340,59 +1554,18 @@ impl Core {
         let Some(api_key) = self.api_key() else {
             return fail(format!("No API key found for {}", self.model.provider), waiter);
         };
-        let text = message.clone();
-        let prompt = user_message(message, images);
-        let mut history = match self.session.context_messages(LANE) {
-            Ok(history) => history,
-            Err(error) => return fail(error, waiter),
-        };
-        history.push(prompt.clone());
-        if lane::clock_enabled(&self.env)
-            && let Some(lined) = lane::with_clock_lines(&history)
-        {
-            history = lined;
-        }
-        history.pop();
-        let mut messages: Vec<Message> = self.lane.system_message(&self.runtime.system).into_iter().collect();
-        messages.extend(lane::to_llm(&history));
-        let context = AgentContext {
-            messages,
-            tools: self.lane.tools(),
-        };
-        let mut config = AgentLoopConfig::new(self.model.clone());
-        config.api_key = Some(api_key.clone());
-        config.reasoning = Some(self.thinking.clone()).filter(|l| l != "off");
-        let signal = AbortSignal::new();
-        let (steer_queue, steer_signal) = (self.queues.clone(), signal.clone());
-        config.get_steering_messages = Some(Box::new(move || {
-            if steer_signal.aborted() {
-                return Vec::new();
-            }
-            lock(&steer_queue).drain(QueueKind::Steer)
-        }));
-        let (follow_queue, follow_signal) = (self.queues.clone(), signal.clone());
-        let events = self.lane.events.clone();
-        config.get_follow_up_messages = Some(Box::new(move || {
-            if follow_signal.aborted() {
-                return Vec::new();
-            }
-            let queued = lock(&follow_queue).drain(QueueKind::FollowUp);
-            if !queued.is_empty() {
-                return queued;
-            }
-            // Work the run started that is still running (subagents, detached cells): the host waits for it
-            // here, between turns, and its completion continues the run.
-            events.next_message(&follow_signal)
-        }));
+        let text = message_text(&prompt);
+        let continuation = prompt.get(crate::recovery::RECOVERY_DEPTH).is_some();
         // Name a new conversation from its first prompt; the model's title may replace it before the run ends.
         let mut naming_request = None;
         // RPC clients see the session as TypeScript's RPC mode does: unnamed until they name it.
         let auto_name = self.auto_name
+            && !continuation
             && self.runtime.mode != "rpc"
             && !(self.env.var)("ULTRON_AUTO_NAME")
                 .is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
         let named = if auto_name {
-            names::apply_auto_name(&mut self.session, &text)
+            names::apply_auto_name(&mut lock_session(&self.session), &text)
         } else {
             Ok(None)
         };
@@ -1416,10 +1589,13 @@ impl Core {
         if let Err(error) = self.store_lane_config() {
             return fail(error, waiter);
         }
-        let lane_config = self.session.value(LANE_CONFIG, LANE).cloned().unwrap_or(Value::Null);
+        let lane_config = lock_session(&self.session)
+            .value(LANE_CONFIG, LANE)
+            .cloned()
+            .unwrap_or(Value::Null);
         let started_tip = self.tip().map_or(Value::Null, Value::from);
-        let journal = match RunJournal::admit(
-            Some(&mut self.session),
+        let mut journal = match RunJournal::admit(
+            Some(&mut lock_session(&self.session)),
             lane_config,
             prompt.clone(),
             (self.model.max_tokens, self.model.context_window),
@@ -1427,7 +1603,6 @@ impl Core {
             Ok(journal) => journal,
             Err(error) => return fail(error, waiter),
         };
-        let prompts = lane::to_llm(std::slice::from_ref(&prompt));
         // The title call runs beside the turn and is applied whenever it answers (while the name is automatic).
         if let Some((naming_model, key, text)) = naming_request {
             let (tx, provider) = (self.tx.clone(), self.provider.clone());
@@ -1444,29 +1619,32 @@ impl Core {
                 }
             });
         }
-        let tx = self.tx.clone();
-        let provider = self.provider.clone();
-        let run_signal = signal.clone();
-        let thread = std::thread::spawn(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build();
-            if let Ok(runtime) = runtime {
-                let events = tx.clone();
-                let mut emit = move |event: AgentEvent| {
-                    let _ = events.send(Input::Agent(Box::new(event)));
-                };
-                runtime.block_on(agent_loop(prompts, context, config, &mut emit, &run_signal, &*provider));
+        // Work the turn admits is charged to a usage root of its own; the ledger counts its responses.
+        journal.ledger_counts_turns();
+        if let Some(run) = journal.run() {
+            self.lane.stack.agents.begin_root_turn(run.operation_id());
+        }
+        // The turn runs in the durable runtime; its prompt is the entry the run just admitted.
+        let prompt_entry = self.tip().unwrap_or_default();
+        let submission = match self.start_turn(&prompt, &prompt_entry) {
+            Ok(submission) => submission,
+            Err(error) => {
+                let _ = journal.finish(Some(&mut lock_session(&self.session)), Some(("run_failed", &error)));
+                return fail(error, waiter);
             }
-            let _ = tx.send(Input::RunEnd);
-        });
+        };
+        let signal = AbortSignal::new();
         let mut random = [0u8; 16];
         let _ = getrandom_fill(&mut random);
         let id = self.run_ids.next(now_ms(), random);
         self.run = Some(Running {
             id: id.clone(),
             signal,
-            thread,
             journal,
+            prompt,
+            submission: Some(submission),
             prompt_pending: true,
+            turns: 0,
             started_tip,
             error: None,
             waiter,
@@ -1478,7 +1656,67 @@ impl Core {
             ("startedAt", json!(now_ms())),
             ("lane", json!(LANE)),
         ]));
+        self.spawn_waiter();
         Ok(())
+    }
+
+    /// [`Op::Recover`]: start what the dead worker left: the first queued message, else the interrupted run's
+    /// continuation (unless it was interrupted [`crate::recovery::MAX_RECOVERY_DEPTH`] times in a row, or
+    /// `ULTRON_RECOVERY_RESUME` is `off`).
+    fn recover(&mut self) -> OpResult {
+        let Some(recovered) = self.recovered.take() else {
+            return Ok(Some(json!({"resumed": false, "reason": "nothing to recover"})));
+        };
+        let summary = json!({
+            "operationId": recovered.operation_id, "status": recovered.status, "depth": recovered.depth,
+            "interruptedCalls": recovered.interrupted_calls, "queued": recovered.queued.len(),
+        });
+        let answer = |resumed: bool, run: Value, reason: &str| {
+            Ok(Some(
+                json!({"resumed": resumed, "runId": run, "reason": reason, "recovered": summary}),
+            ))
+        };
+        // A run of the durable runtime was resumed when the session opened.
+        if let Some(run) = self.resumed.take() {
+            return answer(true, json!(run), "durable run resumed");
+        }
+        if self.run.is_some() {
+            return answer(false, Value::Null, "a run is in progress");
+        }
+        let resume_off = (self.env.var)("ULTRON_RECOVERY_RESUME")
+            .is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
+        // The interrupted run continues first; queued messages stay queued and the loop delivers them as it would
+        // have (steering during the run, follow-ups when it would end). Without one, the first queued message runs.
+        let first = lock(&self.queues).items.first().cloned();
+        let prompt = match first {
+            _ if recovered.resume && !resume_off => {
+                let mut prompt = user_message(crate::recovery::CONTINUE_PROMPT.to_string(), Vec::new());
+                prompt[crate::recovery::RECOVERY_DEPTH] = json!(recovered.depth + 1);
+                Some((prompt, "interrupted run"))
+            }
+            // An aborted run's queue waits for the user, as it would have after a live abort.
+            Some(queued) if recovered.status.as_deref() != Some("aborted") => {
+                self.remove_queued(std::slice::from_ref(&queued.entry_id))?;
+                let mut prompt = queued.message;
+                prompt["timestamp"] = json!(now_ms());
+                Some((prompt, "queued message"))
+            }
+            _ => None,
+        };
+        let Some((prompt, reason)) = prompt else {
+            let reason = if recovered.operation_id.is_none() {
+                "nothing to recover"
+            } else if recovered.resume {
+                "resuming is off"
+            } else {
+                "the interrupted run is not resumed"
+            };
+            return answer(false, Value::Null, reason);
+        };
+        match self.prompt_with(prompt, None) {
+            Ok(()) => answer(true, self.run_id(), reason),
+            Err((error, _)) => Err(error),
+        }
     }
 
     fn enqueue(
@@ -1490,7 +1728,8 @@ impl Core {
     ) -> Result<String, String> {
         let message = user_message(message, images);
         // The message waits in the lane's inbox as a pending entry.
-        let entry_id = entry_id.unwrap_or_else(|| session_journal::lock_clock(&self.session.clock()).next_id());
+        let entry_id =
+            entry_id.unwrap_or_else(|| session_journal::lock_clock(&lock_session(&self.session).clock()).next_id());
         let mut lane_state = self.lane_state();
         if let Some(inbox) = lane_state["inbox"].as_array_mut() {
             inbox.push(json!({"entryId": entry_id, "kind": kind.name()}));
@@ -1498,7 +1737,7 @@ impl Core {
         if let Some(run) = self.run.as_mut() {
             run.journal.set_inbox(lane_state["inbox"].clone());
         }
-        self.session.commit(&[
+        lock_session(&self.session).commit(&[
             Write::set(PENDING_ENTRY, &entry_id, json!({"type": "message", "payload": message})),
             Write::set(LANE_STATE, LANE, lane_state),
         ])?;
@@ -1506,7 +1745,13 @@ impl Core {
             kind,
             message,
             entry_id: entry_id.clone(),
+            turn: 0,
+            submission: None,
         });
+        // During a run the message waits in the durable runtime's inbox for its boundary.
+        if self.run.is_some() {
+            self.submit_queued()?;
+        }
         self.queue_update();
         Ok(entry_id)
     }
@@ -1522,7 +1767,10 @@ impl Core {
         }
         let mut writes: Vec<Write> = ids.iter().map(|id| Write::delete(PENDING_ENTRY, id)).collect();
         writes.push(Write::set(LANE_STATE, LANE, lane_state));
-        self.session.commit(&writes)?;
+        lock_session(&self.session).commit(&writes)?;
+        if !ids.is_empty() {
+            self.withdraw_queued(ids);
+        }
         for id in ids {
             let mut queues = lock(&self.queues);
             if let Some(index) = queues.items.iter().position(|q| q.entry_id == *id) {
@@ -1679,9 +1927,14 @@ impl Core {
                 _ => session_journal::context::entry_context_messages(e),
             })
             .collect();
-        let op = CompactionOp::begin(&mut self.session, &preparation, &retained_tail, custom_instructions)?;
+        let op = CompactionOp::begin(
+            &mut lock_session(&self.session),
+            &preparation,
+            &retained_tail,
+            custom_instructions,
+        )?;
         let thinking = self.thinking.clone();
-        let session_id = self.session.id().to_string();
+        let session_id = lock_session(&self.session).id().to_string();
         let options = compaction::CompactOptions {
             model: &self.model,
             custom_instructions,
@@ -1698,12 +1951,12 @@ impl Core {
         })) {
             Ok(result) => result,
             Err(error) => {
-                op.fail(&mut self.session, &error)?;
+                op.fail(&mut lock_session(&self.session), &error)?;
                 return Err(error);
             }
         };
         let usage = serde_json::to_value(&result.usage).map_err(|e| e.to_string())?;
-        op.record_usage(&mut self.session, &usage)?;
+        op.record_usage(&mut lock_session(&self.session), &usage)?;
         let mut entry = Map::new();
         entry.insert("type".into(), "compaction".into());
         entry.insert("summary".into(), result.summary.clone().into());
@@ -1715,7 +1968,7 @@ impl Core {
         );
         entry.insert("usage".into(), usage);
         entry.insert("fromHook".into(), false.into());
-        op.complete(&mut self.session, entry)
+        op.complete(&mut lock_session(&self.session), entry)
     }
 }
 

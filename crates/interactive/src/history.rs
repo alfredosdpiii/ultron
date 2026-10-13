@@ -25,6 +25,18 @@ pub struct PromptHistoryStore {
     current: Vec<TimedPrompt>,
     others: Vec<TimedPrompt>,
     writer: Option<mpsc::Sender<String>>,
+    /// The writer thread: joined on drop, so every recorded prompt is on disk before the process exits.
+    writer_thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for PromptHistoryStore {
+    fn drop(&mut self) {
+        // Closing the channel ends the writer loop after the queued lines.
+        self.writer = None;
+        if let Some(thread) = self.writer_thread.take() {
+            let _ = thread.join();
+        }
+    }
 }
 
 /// The last `TAIL_BYTES` of the file, from its first whole line.
@@ -64,28 +76,31 @@ pub fn merge_prompt_history(groups: &[Vec<String>], limit: usize) -> Vec<String>
 impl PromptHistoryStore {
     /// `path` `None` keeps history in memory.
     pub fn new(path: Option<PathBuf>, cwd: &str) -> Self {
-        let writer = path.clone().map(|path| {
-            let (tx, rx) = mpsc::channel::<String>();
-            std::thread::spawn(move || {
-                for line in rx {
-                    if let Some(dir) = path.parent() {
-                        let _ = std::fs::create_dir_all(dir);
+        let (writer, writer_thread) = path
+            .clone()
+            .map(|path| {
+                let (tx, rx) = mpsc::channel::<String>();
+                let thread = std::thread::spawn(move || {
+                    for line in rx {
+                        if let Some(dir) = path.parent() {
+                            let _ = std::fs::create_dir_all(dir);
+                        }
+                        let separator = match std::fs::read(&path) {
+                            Ok(bytes) if !bytes.is_empty() && !bytes.ends_with(b"\n") => "\n",
+                            _ => "",
+                        };
+                        let mut options = std::fs::OpenOptions::new();
+                        options.create(true).append(true);
+                        #[cfg(unix)]
+                        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+                        if let Ok(mut file) = options.open(&path) {
+                            let _ = file.write_all(format!("{separator}{line}\n").as_bytes());
+                        }
                     }
-                    let separator = match std::fs::read(&path) {
-                        Ok(bytes) if !bytes.is_empty() && !bytes.ends_with(b"\n") => "\n",
-                        _ => "",
-                    };
-                    let mut options = std::fs::OpenOptions::new();
-                    options.create(true).append(true);
-                    #[cfg(unix)]
-                    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-                    if let Ok(mut file) = options.open(&path) {
-                        let _ = file.write_all(format!("{separator}{line}\n").as_bytes());
-                    }
-                }
-            });
-            tx
-        });
+                });
+                (tx, thread)
+            })
+            .unzip();
         PromptHistoryStore {
             path,
             cwd: cwd.to_string(),
@@ -94,6 +109,7 @@ impl PromptHistoryStore {
             current: Vec::new(),
             others: Vec::new(),
             writer,
+            writer_thread,
         }
     }
 

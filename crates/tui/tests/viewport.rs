@@ -9,6 +9,7 @@ use std::rc::Rc;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
+use support::latch::HANG_GUARD;
 use support::vterm::VTerm;
 use tui::components::{Component, Text};
 use tui::renderer::CURSOR_MARKER;
@@ -236,7 +237,7 @@ fn tui_viewport_transcript_retires_finished_head_in_order() {
 /// live blocks and writes only the changed live row: the same work and bytes as a 10-message transcript.
 #[test]
 fn tui_viewport_ten_thousand_messages_keep_frame_work_bounded_by_live_area() {
-    fn run(messages: usize) -> (usize, Vec<String>, usize, Duration) {
+    fn run(messages: usize) -> (usize, Vec<String>, usize) {
         let renders = Rc::new(Cell::new(0));
         let released = Rc::new(Cell::new(0));
         let mut t = Transcript::new();
@@ -258,7 +259,6 @@ fn tui_viewport_ten_thousand_messages_keep_frame_work_bounded_by_live_area() {
         let renders_before = t.renders;
         let rows_before = r.rows_written;
         let mut frames = Vec::new();
-        let start = Instant::now();
         for tick in 1..=100 {
             let block = t.block_mut(live).unwrap();
             *block = counted(&format!("streaming {tick}"), &renders, &released);
@@ -266,16 +266,10 @@ fn tui_viewport_ten_thousand_messages_keep_frame_work_bounded_by_live_area() {
             assert!(p.history.is_none());
             frames.push(r.render(&p, 40, 10).bytes);
         }
-        let elapsed = start.elapsed();
-        (
-            t.renders - renders_before,
-            frames,
-            r.rows_written - rows_before,
-            elapsed,
-        )
+        (t.renders - renders_before, frames, r.rows_written - rows_before)
     }
-    let (small_renders, small_frames, small_rows, _) = run(10);
-    let (big_renders, big_frames, big_rows, big_time) = run(10_000);
+    let (small_renders, small_frames, small_rows) = run(10);
+    let (big_renders, big_frames, big_rows) = run(10_000);
     assert_eq!(big_renders, 100, "one live block render per frame");
     assert_eq!(big_renders, small_renders);
     assert_eq!(big_rows, 100, "one changed row written per frame");
@@ -288,7 +282,6 @@ fn tui_viewport_ten_thousand_messages_keep_frame_work_bounded_by_live_area() {
         big_frames[0],
         format!("\x1b[?2026h\x1b[2A\r\x1b[2Kstreaming 1{R}\x1b[?25l\x1b[?2026l")
     );
-    assert!(big_time < Duration::from_secs(2), "100 frames took {big_time:?}");
 }
 
 #[test]
@@ -378,7 +371,7 @@ fn tui_viewport_skips_stale_frames_while_the_writer_is_backlogged() {
     };
     let now = Instant::now();
     assert!(paint(&mut transcript, &mut gate, &writer, now));
-    assert!(writer.flush_sync(Duration::from_secs(2)));
+    assert!(writer.flush_sync(HANG_GUARD));
     term.1.lock().unwrap().clear();
 
     // Stall the terminal behind a 1 MiB backlog.
@@ -393,11 +386,11 @@ fn tui_viewport_skips_stale_frames_while_the_writer_is_backlogged() {
 
     *term.0.0.lock().unwrap() = true;
     term.0.1.notify_all();
-    assert!(writer.flush_sync(Duration::from_secs(5)));
+    assert!(writer.flush_sync(HANG_GUARD));
     assert!(paint(&mut transcript, &mut gate, &writer, now));
-    assert!(writer.flush_sync(Duration::from_secs(2)));
+    assert!(writer.flush_sync(HANG_GUARD));
     let out = String::from_utf8(term.1.lock().unwrap().clone()).unwrap();
     assert!(out.contains("frame-B"));
     assert!(!out.contains("frame-A"));
-    writer.stop(Duration::from_secs(1));
+    writer.stop(HANG_GUARD);
 }

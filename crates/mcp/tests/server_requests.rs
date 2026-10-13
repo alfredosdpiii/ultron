@@ -39,7 +39,8 @@ impl Transport for Fake {
 fn ask(fake: &Fake, request: Value, expected_id: &Value) -> Value {
     let sink = fake.sink.lock().unwrap().clone().unwrap();
     sink(Incoming::Message(request));
-    for _ in 0..200 {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    while std::time::Instant::now() < deadline {
         if let Some(reply) = fake.sent.lock().unwrap().iter().find(|m| &m["id"] == expected_id) {
             return reply.clone();
         }

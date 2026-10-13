@@ -31,7 +31,7 @@ const SESSIONS = [
 			{ op: "callTool", name: "nope" },
 			{ op: "callTool", name: "garbage" },
 			{ op: "callTool", name: "roots" },
-			{ op: "callTool", name: "progress", args: { n: 1 }, timeoutMs: 450, progress: true },
+			{ op: "callTool", name: "progress", args: { n: 1 }, timeoutMs: 5000, progress: true },
 			{ op: "ping" },
 			{ op: "request", method: "bogus/method", params: { a: [1, "x", null] } },
 			{ op: "callTool", name: "hang", abort: "stop" },

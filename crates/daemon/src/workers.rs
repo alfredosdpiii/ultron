@@ -19,6 +19,34 @@ const WORKER_SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(10_000);
 const WORKER_DISCOVERY_TIMEOUT: Duration = Duration::from_millis(5_000);
 const WORKER_DEMAND_TIMEOUT: Duration = Duration::from_millis(5_000);
 
+/// The server's heartbeat to its workers (`ULTRON_WORKER_HEARTBEAT_MS`); a worker silent for
+/// [`HEARTBEAT_MISSES`] periods is hung and is killed (and restarted when it had work).
+pub const HEARTBEAT_ENV: &str = "ULTRON_WORKER_HEARTBEAT_MS";
+const DEFAULT_HEARTBEAT: Duration = Duration::from_millis(5_000);
+const HEARTBEAT_MISSES: u32 = 6;
+/// Restarts of a crashed worker back off from [`RESTART_BASE`] doubling to [`RESTART_MAX_DELAY`]; after
+/// [`MAX_RESTARTS`] crashes without [`RESTART_STABLE`] of uptime in between, the session is left for the user.
+pub const RESTART_BASE: Duration = Duration::from_millis(250);
+pub const RESTART_MAX_DELAY: Duration = Duration::from_secs(8);
+pub const MAX_RESTARTS: u32 = 5;
+pub const RESTART_STABLE: Duration = Duration::from_secs(60);
+/// The code of an operation whose worker died under it (the worker is restarting).
+pub const WORKER_LOST_CODE: &str = "session_worker_lost";
+
+/// The delay before restart `attempt` (1-based).
+pub fn restart_delay(attempt: u32) -> Duration {
+    let factor = 1u32 << attempt.saturating_sub(1).min(16);
+    (RESTART_BASE * factor).min(RESTART_MAX_DELAY)
+}
+
+fn heartbeat_period() -> Duration {
+    std::env::var(HEARTBEAT_ENV)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|ms| *ms > 0)
+        .map_or(DEFAULT_HEARTBEAT, Duration::from_millis)
+}
+
 /// What new workers are started with (the server's model selection).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct WorkerModel {
@@ -90,13 +118,26 @@ struct Worker {
     retiring: bool,
     stopping: bool,
     terminated: Arc<Terminated>,
+    /// A run is in progress (the worker's last status).
+    busy: bool,
+    /// The worker reported its run stuck (logged once per episode).
+    stuck: bool,
+    /// When the worker last answered (any message from it).
+    last_seen: Instant,
+    started: Instant,
 }
 
 struct Pending {
     peer: String,
     token: String,
     pid: u32,
-    outcome: Option<Result<String, String>>,
+    outcome: Option<Result<String, ServiceError>>,
+}
+
+/// A crashed worker's restart: attempts since it last ran stably, and whether one is under way.
+struct Restart {
+    attempts: u32,
+    pending: bool,
 }
 
 type Done = Box<dyn FnOnce(ServiceResult) + Send>;
@@ -113,6 +154,7 @@ struct Inner {
     foreign: HashMap<PathBuf, (String, u32)>,
     discovery: Option<HashSet<String>>,
     exited: HashMap<String, Worker>,
+    restarts: HashMap<PathBuf, Restart>,
     detached: bool,
     shutting_down: bool,
     releasing: bool,
@@ -123,8 +165,11 @@ struct Inner {
 pub struct Handle {
     peer: String,
     pub session_id: String,
+    pub path: PathBuf,
     pub terminated: Arc<Terminated>,
 }
+
+type Logger = Box<dyn Fn(&str, &str) + Send + Sync>;
 
 pub struct Manager {
     me: std::sync::Weak<Manager>,
@@ -134,6 +179,7 @@ pub struct Manager {
     inner: Mutex<Inner>,
     changed: Condvar,
     on_count: Box<dyn Fn(usize) + Send + Sync>,
+    logger: OnceLock<Logger>,
 }
 
 fn scoped(scope: &Value, subscription: &str) -> String {
@@ -154,11 +200,163 @@ impl Manager {
             inner: Mutex::new(Inner::default()),
             changed: Condvar::new(),
             on_count,
+            logger: OnceLock::new(),
         })
     }
 
     pub fn set_coordinator(&self, coordinator: Arc<CoordinatorConnection>) {
         let _ = self.coordinator.set(coordinator);
+        self.start_heartbeat();
+    }
+
+    /// Where restarts, hung workers and stuck runs are reported (the server log).
+    pub fn set_logger(&self, logger: Logger) {
+        let _ = self.logger.set(logger);
+    }
+
+    fn log(&self, label: &str, message: &str) {
+        if let Some(logger) = self.logger.get() {
+            logger(label, message);
+        }
+    }
+
+    /// Ping every worker each period; one silent for [`HEARTBEAT_MISSES`] periods is hung: killed, and restarted
+    /// like any crashed worker that had work.
+    fn start_heartbeat(&self) {
+        let period = heartbeat_period();
+        let this = self.me.clone();
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(period);
+                let Some(this) = this.upgrade() else { return };
+                let (live, hung): (Vec<String>, Vec<(u32, String, Duration)>) = {
+                    let inner = this.lock();
+                    if inner.detached || inner.shutting_down {
+                        return;
+                    }
+                    let active = inner.workers.values().filter(|w| !w.stopping && !w.expected_stop);
+                    let (hung, live): (Vec<&Worker>, Vec<&Worker>) =
+                        active.partition(|w| w.last_seen.elapsed() > period * HEARTBEAT_MISSES);
+                    (
+                        live.iter().map(|w| w.peer.clone()).collect(),
+                        hung.iter()
+                            .map(|w| (w.pid, w.meta.id.clone(), w.last_seen.elapsed()))
+                            .collect(),
+                    )
+                };
+                for (pid, id, silent) in hung {
+                    this.log(
+                        "[ultron server warning]",
+                        &format!(
+                            "Session worker {id} (pid {pid}) did not answer heartbeats for {} ms; killing it",
+                            silent.as_millis()
+                        ),
+                    );
+                    process::kill(pid, rustix::process::Signal::KILL);
+                }
+                for peer in live {
+                    let _ = this.send(&peer, json!({"type": "ping", "nonce": uuid_v4()}));
+                }
+            }
+        });
+    }
+
+    /// A restart of `path`'s crashed worker is under way.
+    pub fn restart_pending(&self, path: &PathBuf) -> bool {
+        self.lock().restarts.get(path).is_some_and(|r| r.pending)
+    }
+
+    /// Wait for `path`'s restart to finish; the restarted worker's handle, if it came back.
+    pub fn wait_restart(&self, path: &PathBuf, timeout: Duration) -> Option<Handle> {
+        let (inner, _) = self.wait_until(timeout, |i| {
+            i.detached || i.shutting_down || !i.restarts.get(path).is_some_and(|r| r.pending)
+        });
+        let peer = inner.by_session.get(path)?;
+        Some(self.handle(&inner.workers[peer]))
+    }
+
+    /// Whether a worker that ended unexpectedly is restarted: it had a run in progress or clients attached, and
+    /// the server is not going away.
+    fn should_restart(inner: &Inner, worker: &Worker) -> bool {
+        !inner.detached
+            && !inner.shutting_down
+            && !inner.releasing
+            && !worker.expected_stop
+            && !worker.retiring
+            && (worker.busy || !worker.attachments.is_empty())
+    }
+
+    /// Restart `meta`'s worker after a backoff, retrying launch failures; gives up after [`MAX_RESTARTS`].
+    fn schedule_restart(&self, meta: Meta, uptime: Duration, reason: &str) {
+        let attempt = {
+            let mut inner = self.lock();
+            let restart = inner.restarts.entry(meta.path.clone()).or_insert(Restart {
+                attempts: 0,
+                pending: false,
+            });
+            if uptime >= RESTART_STABLE {
+                restart.attempts = 0;
+            }
+            if restart.attempts >= MAX_RESTARTS {
+                inner.restarts.remove(&meta.path);
+                drop(inner);
+                self.changed.notify_all();
+                self.log(
+                    "[ultron server error]",
+                    &format!(
+                        "Session worker {} crashed {MAX_RESTARTS} times in a row; not restarting it ({reason}). Its session is saved: attach to it again (`ultron --session-id {}`) once the cause is fixed",
+                        meta.id, meta.id
+                    ),
+                );
+                return;
+            }
+            restart.attempts += 1;
+            restart.pending = true;
+            restart.attempts
+        };
+        self.log(
+            "[ultron server warning]",
+            &format!(
+                "{reason}; restarting it in {} ms (attempt {attempt} of {MAX_RESTARTS})",
+                restart_delay(attempt).as_millis()
+            ),
+        );
+        let this = self.me.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(restart_delay(attempt));
+            let Some(this) = this.upgrade() else { return };
+            let launched = {
+                let inner = this.lock();
+                if inner.detached || inner.shutting_down || inner.releasing {
+                    None
+                } else if inner.by_session.contains_key(&meta.path) || inner.pending.contains_key(&meta.path) {
+                    // A client's attach launched it already.
+                    Some(Ok(()))
+                } else {
+                    drop(inner);
+                    Some(this.launch(&meta).map(drop))
+                }
+            };
+            match launched {
+                Some(Err(error)) => {
+                    if let Some(restart) = this.lock().restarts.get_mut(&meta.path) {
+                        restart.pending = false;
+                    }
+                    let reason = format!("Session worker {} failed to restart: {}", meta.id, error.message);
+                    this.schedule_restart(meta, Duration::ZERO, &reason);
+                }
+                Some(Ok(())) => {
+                    if let Some(restart) = this.lock().restarts.get_mut(&meta.path) {
+                        restart.pending = false;
+                    }
+                    this.log("[ultron server info]", &format!("Session worker {} restarted", meta.id));
+                }
+                None => {
+                    this.lock().restarts.remove(&meta.path);
+                }
+            }
+            this.changed.notify_all();
+        });
     }
 
     fn coordinator(&self) -> &Arc<CoordinatorConnection> {
@@ -263,13 +461,10 @@ impl Manager {
         {
             return Err(ServiceError::coded(
                 "service_invalid_value",
-                format!(
-                    "Session {} is open in another Ultron process (worker pid {pid}); close it there, or wait for its work to finish, then resume it",
-                    meta.id
-                ),
+                crate::worker::session_in_use(&meta.id, Some(pid)),
             ));
         }
-        self.launch(meta).map_err(ServiceError::internal)
+        self.launch(meta)
     }
 
     fn existing(&self, meta: &Meta) -> Option<Result<Handle, ServiceError>> {
@@ -279,13 +474,14 @@ impl Manager {
         }
         let pending = inner.pending.get(&meta.path)?.peer.clone();
         drop(inner);
-        Some(self.await_launch(&meta.path, &pending).map_err(ServiceError::internal))
+        Some(self.await_launch(&meta.path, &pending))
     }
 
     fn handle(&self, worker: &Worker) -> Handle {
         Handle {
             peer: worker.peer.clone(),
             session_id: worker.meta.id.clone(),
+            path: worker.meta.path.clone(),
             terminated: worker.terminated.clone(),
         }
     }
@@ -313,7 +509,7 @@ impl Manager {
         options
     }
 
-    fn launch(&self, meta: &Meta) -> Result<Handle, String> {
+    fn launch(&self, meta: &Meta) -> Result<Handle, ServiceError> {
         let peer = format!("worker-{}", uuid_v4());
         let token = uuid_v4();
         let key = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(meta.path.display().to_string());
@@ -335,7 +531,7 @@ impl Manager {
             env.push((crate::worker::API_KEY_ENV.to_string(), api_key.clone()));
         }
         let child = process::spawn(Role::SessionWorker, &[self.worker_options(meta).to_string()], &env)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ServiceError::internal(e.to_string()))?;
         let pid = child.id();
         {
             let mut inner = self.lock();
@@ -366,7 +562,7 @@ impl Manager {
         Some(self.me.clone())
     }
 
-    fn await_launch(&self, path: &PathBuf, peer: &str) -> Result<Handle, String> {
+    fn await_launch(&self, path: &PathBuf, peer: &str) -> Result<Handle, ServiceError> {
         let (mut inner, ready) = self.wait_until(WORKER_STARTUP_TIMEOUT, |i| {
             i.pending
                 .get(path)
@@ -374,7 +570,7 @@ impl Manager {
         });
         if !ready {
             drop(inner);
-            self.fail_pending(path, "Session worker startup timed out".into());
+            self.fail_pending(path, ServiceError::internal("Session worker startup timed out"));
             inner = self.lock();
         }
         match inner.pending.get(path) {
@@ -386,18 +582,18 @@ impl Manager {
                         .workers
                         .get(&peer)
                         .map(|w| self.handle(w))
-                        .ok_or_else(|| "Session worker disconnected during startup".into()),
+                        .ok_or_else(|| ServiceError::internal("Session worker disconnected during startup")),
                     Err(error) => Err(error),
                 }
             }
             _ => match inner.by_session.get(path) {
                 Some(peer) => Ok(self.handle(&inner.workers[peer])),
-                None => Err("Session worker startup failed".into()),
+                None => Err(ServiceError::internal("Session worker startup failed")),
             },
         }
     }
 
-    fn fail_pending(&self, path: &PathBuf, error: String) {
+    fn fail_pending(&self, path: &PathBuf, error: ServiceError) {
         let mut inner = self.lock();
         if let Some(pending) = inner.pending.get_mut(path)
             && pending.outcome.is_none()
@@ -695,7 +891,7 @@ impl Manager {
         for pending in inner.pending.values_mut() {
             pending
                 .outcome
-                .get_or_insert(Err("Ultron server lost its coordinator".into()));
+                .get_or_insert(Err(ServiceError::internal("Ultron server lost its coordinator")));
         }
         drop(inner);
         self.detach_state();
@@ -726,6 +922,10 @@ impl Manager {
     }
 
     fn reject_worker_operations(&self, peer: &str, message: &str) {
+        self.reject_worker_operations_with(peer, ServiceError::internal(message));
+    }
+
+    fn reject_worker_operations_with(&self, peer: &str, error: ServiceError) {
         let rejected: Vec<Done> = {
             let mut inner = self.lock();
             let ids: Vec<String> = inner
@@ -740,7 +940,7 @@ impl Manager {
                 .collect()
         };
         for done in rejected {
-            done(Err(ServiceError::internal(message)));
+            done(Err(error.clone()));
         }
     }
 
@@ -749,13 +949,24 @@ impl Manager {
     }
 
     fn forget_and_resolve(&self, peer: &str, error: Option<String>) {
-        if let Some(worker) = self.forget(peer) {
-            worker.terminated.resolve(error);
+        if let Some(worker) = self.forget(peer, error.as_deref()) {
+            self.resolve_lost(worker, error);
         }
     }
 
-    /// Drop a worker from routing and fail its in-flight work.
-    fn forget(&self, peer: &str) -> Option<Worker> {
+    /// Resolve a forgotten worker's termination; an unexpected end of a worker with work restarts it first (so
+    /// the router sees the restart under way and keeps its clients).
+    fn resolve_lost(&self, worker: Worker, error: Option<String>) {
+        if let Some(reason) = &error
+            && Self::should_restart(&self.lock(), &worker)
+        {
+            self.schedule_restart(worker.meta.clone(), worker.started.elapsed(), reason);
+        }
+        worker.terminated.resolve(error);
+    }
+
+    /// Drop a worker from routing and fail its in-flight work (`lost`: it ended unexpectedly, with this reason).
+    fn forget(&self, peer: &str, lost: Option<&str>) -> Option<Worker> {
         let mut inner = self.lock();
         let worker = inner.workers.remove(peer)?;
         inner.by_session.remove(&worker.meta.path);
@@ -768,7 +979,13 @@ impl Manager {
         self.notify_count(&inner);
         drop(inner);
         self.changed.notify_all();
-        self.reject_worker_operations(peer, "Session worker disconnected during an operation");
+        match lost {
+            Some(reason) => self.reject_worker_operations_with(
+                peer,
+                ServiceError::coded(WORKER_LOST_CODE, format!("{reason} during an operation")),
+            ),
+            None => self.reject_worker_operations(peer, "Session worker disconnected during an operation"),
+        }
         Some(worker)
     }
 
@@ -787,7 +1004,10 @@ impl Manager {
             .get(path)
             .is_some_and(|p| p.peer == peer && p.outcome.is_none());
         if pending_here {
-            self.fail_pending(path, format!("Session worker exited before readiness ({describe})"));
+            self.fail_pending(
+                path,
+                ServiceError::internal(format!("Session worker exited before readiness ({describe})")),
+            );
             return;
         }
         let inner = self.lock();
@@ -803,7 +1023,7 @@ impl Manager {
         }
         // A clean exit may be a retirement whose announcement is still in flight through the coordinator: forget
         // the worker now and judge the exit once its disconnect arrives.
-        if let Some(worker) = self.forget(peer) {
+        if let Some(worker) = self.forget(peer, None) {
             let terminated = worker.terminated.clone();
             self.lock().exited.insert(peer.to_string(), worker);
             let this = self.self_arc();
@@ -823,7 +1043,7 @@ impl Manager {
         if let Some(worker) = worker {
             let error = (!(worker.expected_stop || worker.retiring))
                 .then(|| format!("Session worker {} exited unexpectedly (0)", worker.meta.id));
-            worker.terminated.resolve(error);
+            self.resolve_lost(worker, error);
         }
     }
 
@@ -855,7 +1075,10 @@ impl Manager {
                     self.remove_worker(&peer, error);
                 }
                 if let Some(path) = pending {
-                    self.fail_pending(&path, "Session worker disconnected during startup".into());
+                    self.fail_pending(
+                        &path,
+                        ServiceError::internal("Session worker disconnected during startup"),
+                    );
                 }
             }
             Event::Message { from, payload } => self.handle_message(&from, &payload),
@@ -866,6 +1089,9 @@ impl Manager {
         let key = |m: &Value| PathBuf::from(m["sessionKey"].as_str().unwrap_or_default());
         let token = message["token"].as_str().unwrap_or_default();
         let mut inner = self.lock();
+        if let Some(worker) = inner.workers.get_mut(from) {
+            worker.last_seen = Instant::now();
+        }
         let owns = |inner: &Inner, path: &PathBuf| {
             inner
                 .workers
@@ -889,7 +1115,11 @@ impl Manager {
                 {
                     drop(inner);
                     let text = message["message"].as_str().unwrap_or_default();
-                    self.fail_pending(&path, format!("Session worker failed: {text}"));
+                    let error = match message["code"].as_str() {
+                        Some(code) => ServiceError::coded(code, text),
+                        None => ServiceError::internal(format!("Session worker failed: {text}")),
+                    };
+                    self.fail_pending(&path, error);
                     return;
                 }
             }
@@ -982,6 +1212,33 @@ impl Manager {
                 self.record_ready(from, message);
                 return;
             }
+            Some("worker_status") => {
+                let path = key(message);
+                if !owns(&inner, &path) {
+                    return;
+                }
+                let health = &message["health"];
+                let stuck = health["stuck"] == true;
+                let Some(worker) = inner.workers.get_mut(from) else {
+                    return;
+                };
+                worker.busy = message["busy"] == true;
+                let newly_stuck = stuck && !worker.stuck;
+                worker.stuck = stuck;
+                let id = worker.meta.id.clone();
+                drop(inner);
+                if newly_stuck {
+                    self.log(
+                        "[ultron server warning]",
+                        &format!(
+                            "Session {id}: run {} made no progress for {} ms (stuck); abort it with ultron.session-ops abortStuck",
+                            health["runId"].as_str().unwrap_or_default(),
+                            health["idleMs"]
+                        ),
+                    );
+                }
+                return;
+            }
             _ => {}
         }
         drop(inner);
@@ -1034,6 +1291,10 @@ impl Manager {
                 retiring: false,
                 stopping: false,
                 terminated: Arc::new(Terminated::default()),
+                busy: message["busy"] == true,
+                stuck: false,
+                last_seen: Instant::now(),
+                started: Instant::now(),
             },
         );
         inner.by_session.insert(path.clone(), peer.to_string());

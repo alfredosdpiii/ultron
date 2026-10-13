@@ -5,8 +5,10 @@
 //! of the latest slot (`skipped`). A goal is achieved only when every required check succeeds with `passed: true`;
 //! `max_tasks` caps firings, verification and attachments. The document is `{version: 1, schedules, goals}`.
 //!
-//! The TS module also ticks on a background timer; here the owner calls [`SchedulesModule::tick`] (or the model
-//! sends `schedules.tick`).
+//! The TS module ticks on a background interval timer (1 s). Here [`crate::schedule_tick::ScheduleTicker`] sleeps
+//! until the earliest due slot ([`SchedulesModule::next_fire`], derived from each schedule's durable `start_at`,
+//! `every_ms`, `last_slot` and `pending_slot`, so a reopened module recomputes it) and is woken by every committed
+//! change; the model may still send `schedules.tick`.
 
 use crate::store::{DocumentStore, read_versioned};
 use crate::tasks::TaskHost;
@@ -168,8 +170,39 @@ fn push_task(goal: &mut Value, task_id: &Value) {
     }
 }
 
+/// When `schedule` next fires: a claimed slot whose admission was not recorded is due at once (`i64::MIN`); else the
+/// start of the slot after `last_slot` (slot 0 at `start_at`). `None` when it does not fire: not active, or its goal is
+/// missing or not active. A time in the past means due now; missed slots then coalesce into one run.
+pub fn next_fire_at(schedule: &Value, goals: &[Value]) -> Option<i64> {
+    if schedule["state"] != "active" {
+        return None;
+    }
+    if let Some(goal_id) = schedule["goal_id"].as_str()
+        && !goals
+            .iter()
+            .any(|goal| goal["id"] == goal_id && goal["state"] == "active")
+    {
+        return None;
+    }
+    if schedule["pending_slot"].is_i64() {
+        return Some(i64::MIN);
+    }
+    let every_ms = schedule["every_ms"].as_i64().filter(|every| *every > 0)?;
+    let next_slot = schedule["last_slot"].as_i64().map_or(0, |last| last.saturating_add(1));
+    Some(
+        schedule["start_at"]
+            .as_i64()
+            .unwrap_or(0)
+            .saturating_add(next_slot.saturating_mul(every_ms)),
+    )
+}
+
+/// Called after every committed change (the ticker re-reads the next fire time).
+pub type ChangeHook = Arc<dyn Fn() + Send + Sync>;
+
 pub struct SchedulesModule {
     store: Arc<dyn DocumentStore>,
+    on_change: Mutex<Option<ChangeHook>>,
     /// `None`: the host's clock.
     clock: Option<Clock>,
     /// The loaded document; every read-modify-write runs under this lock.
@@ -180,9 +213,35 @@ impl SchedulesModule {
     pub fn new(store: Arc<dyn DocumentStore>, clock: Option<Clock>) -> Self {
         Self {
             store,
+            on_change: Mutex::new(None),
             clock,
             document: Mutex::new(None),
         }
+    }
+
+    /// Calls `hook` after every committed change (the ticker's wake-up).
+    pub fn on_change(&self, hook: Option<ChangeHook>) {
+        *lock(&self.on_change) = hook;
+    }
+
+    fn changed(&self) {
+        let hook = lock(&self.on_change).clone();
+        if let Some(hook) = hook {
+            hook();
+        }
+    }
+
+    /// The earliest time a schedule fires (see [`next_fire_at`]), after the document loads; `None`: none will.
+    pub fn next_fire(&self) -> Result<Option<i64>, String> {
+        let mut guard = lock(&self.document);
+        let document = self.loaded(&mut guard)?;
+        let goals = document["goals"].as_array().cloned().unwrap_or_default();
+        Ok(document["schedules"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|schedule| next_fire_at(schedule, &goals))
+            .min())
     }
 
     fn now(&self, host: &dyn TaskHost) -> i64 {
@@ -211,6 +270,7 @@ impl SchedulesModule {
         let result = mutate(&mut draft)?;
         self.store.write(&draft)?;
         *document = draft;
+        self.changed();
         Ok(result)
     }
 

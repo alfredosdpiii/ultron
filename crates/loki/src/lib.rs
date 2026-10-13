@@ -20,7 +20,6 @@ pub mod rules;
 pub mod run;
 pub mod scan;
 pub mod shell;
-pub mod shell_writes;
 pub mod slop;
 pub mod text;
 pub mod typescript;

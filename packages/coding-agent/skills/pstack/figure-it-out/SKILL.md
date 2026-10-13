@@ -1,6 +1,6 @@
 ---
 name: figure-it-out
-description: "Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away. Scales rigor to the task, runs a hypothesis loop, and logs decisions via show-me-your-work. Use for /skill:figure-it-out, 'figure it out', a large migration, or when no narrower playbook applies."
+description: "Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away. Scales rigor to the task, runs a hypothesis loop, and logs decisions. Use for /skill:figure-it-out or 'figure it out'."
 disable-model-invocation: true
 license: MIT (see ../LICENSE)
 metadata:
@@ -72,7 +72,7 @@ before features (the foundational-thinking principle (`../principle-foundational
   `../swarm/SKILL.md`. Do not over-fan, and never spawn to read or classify files: narrow with code and `rlm.map`.
 - Write the designed phase list down. That list is what the human reviews.
 
-Then execute the design. Insert its steps into `state["plan"]` as concrete items after "C run the loop" and before
+Then execute the design. Insert its steps into `state["plan"]` as concrete items between "C run the loop" and
 "D audit trail". Run each under the Phase C discipline, and add the Phase D log entry as each step lands rather than
 saving the whole trail for the end.
 

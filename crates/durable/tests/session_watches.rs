@@ -14,7 +14,8 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-const WAIT: Duration = Duration::from_secs(10);
+/// A hang guard, never a timing expectation.
+const WAIT: Duration = Duration::from_secs(120);
 
 fn state_doc() -> durable::Doc {
     DocDefinition::new(

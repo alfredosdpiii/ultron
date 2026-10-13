@@ -70,6 +70,7 @@ fn model(id: &str) -> ModelInfo {
         name: format!("Claude {id}"),
         reasoning: true,
         context_window: 1000,
+        thinking_levels: Vec::new(),
     }
 }
 

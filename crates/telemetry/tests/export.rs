@@ -41,7 +41,7 @@ fn telemetry_hung_sink_never_delays_the_caller() {
     let context = TelemetryContext::exporting(Hang(entered_tx, never), config(1, 1000, 4));
     context.start("first", Attributes::new()).end(End::Ok);
     assert_eq!(
-        entered.recv_timeout(Duration::from_secs(5)),
+        entered.recv_timeout(Duration::from_secs(120)),
         Ok(1),
         "sink is now stuck inside export"
     );
@@ -57,7 +57,7 @@ fn telemetry_hung_sink_never_delays_the_caller() {
         let _ = done_tx.send(caller.dropped());
     });
     // 20,000 settled spans against a 4-slot queue whose consumer never returns: 4 queue, the rest are dropped.
-    assert_eq!(done.recv_timeout(Duration::from_secs(10)), Ok(19_996));
+    assert_eq!(done.recv_timeout(Duration::from_secs(120)), Ok(19_996));
     assert!(
         !context.shutdown(Duration::from_millis(50)),
         "the hung sink cannot finish"
@@ -71,14 +71,14 @@ fn telemetry_exports_full_batches_then_the_remainder_on_shutdown() {
     for name in ["a", "b", "c", "d", "e", "f", "g"] {
         context.start(name, Attributes::new()).end(End::Ok);
     }
-    let first = rx.recv_timeout(Duration::from_secs(5)).expect("first batch");
-    let second = rx.recv_timeout(Duration::from_secs(5)).expect("second batch");
+    let first = rx.recv_timeout(Duration::from_secs(120)).expect("first batch");
+    let second = rx.recv_timeout(Duration::from_secs(120)).expect("second batch");
     assert_eq!(
         (names(&first), names(&second)),
         (vec!["a", "b", "c"], vec!["d", "e", "f"])
     );
     assert!(rx.try_recv().is_err(), "a partial batch waits for its delay");
-    assert!(context.shutdown(Duration::from_secs(5)));
+    assert!(context.shutdown(Duration::from_secs(120)));
     assert_eq!(names(&rx.recv().expect("remainder")), vec!["g"]);
     context.start("late", Attributes::new()).end(End::Ok);
     assert_eq!(context.dropped(), 1);
@@ -95,7 +95,7 @@ fn telemetry_partial_batch_is_delivered_after_max_delay() {
     );
     span.add_event("e", Attributes::new());
     span.end(End::Ok);
-    let batch = rx.recv_timeout(Duration::from_secs(5)).expect("delayed batch");
+    let batch = rx.recv_timeout(Duration::from_secs(120)).expect("delayed batch");
     assert_eq!(
         json!(batch),
         json!([{ "id": 1, "parentId": null, "name": "only", "attributes": { "k": 2 },
@@ -112,6 +112,6 @@ fn telemetry_dropped_span_handle_ends_as_failed() {
     drop(span);
     assert!(rx.try_recv().is_err(), "a live clone keeps the span open");
     drop(clone);
-    let batch = rx.recv_timeout(Duration::from_secs(5)).expect("batch");
+    let batch = rx.recv_timeout(Duration::from_secs(120)).expect("batch");
     assert_eq!(json!(batch[0].status), json!({ "status": "error" }));
 }

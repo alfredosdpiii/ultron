@@ -10,6 +10,8 @@ publish.workspace = true
 tui = { path = "../tui" }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 fancy-regex = "=0.19.2"
+crossterm = { version = "=0.29.0", default-features = false }
+rustix = { version = "=1.1.5", features = ["event", "std"] }
 
 [lints]
 workspace = true

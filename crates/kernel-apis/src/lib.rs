@@ -6,14 +6,18 @@
 //! - `memory.*`: prepare / propose / correct / get / forget / why / list over a Hindsight-shaped backend, ported from
 //!   `ultron/memory.ts` and the dispatch of `ultron/worker-services.ts`;
 //! - `grants.*`: scoped approvals (`ultron/grants.ts`);
-//! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`).
+//! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`);
+//! - `schedules.*`, `goals.*` and `goal.*` as durable work: the schedule tick, goal recovery over the task journal,
+//!   and [`DurableWork`], the entry point a composition root opens and closes.
 //!
 //! Modules are [`ApiModule`]s, matched by request-type prefix as TS host modules are; every other request goes to
 //! the inner handler. Modules start once, on the first request of any type. Requests carry the calling lane, the
 //! task that owns it (from the [`TaskHost`]) and the host's task operations.
 
+pub mod artifacts;
 pub mod code_skills;
 pub mod context_control;
+pub mod durable_work;
 pub mod family;
 pub mod goal;
 pub mod grants;
@@ -21,6 +25,7 @@ pub mod hints;
 pub mod instances;
 pub mod memory;
 pub mod progress;
+pub mod schedule_tick;
 pub mod schedules;
 pub mod skills;
 pub mod store;
@@ -31,15 +36,20 @@ use kernel::{HostHandler, Signal};
 use serde_json::{Map, Value};
 use std::sync::{Arc, Mutex};
 
+pub use artifacts::{
+    ArtifactLimits, Artifacts, ArtifactsModule, FileKeyedDocuments, KeyedDocuments, MemoryKeyedDocuments,
+};
 pub use code_skills::{CodeSkillKind, CodeSkills, CodeSkillsOptions};
 pub use context_control::{ContextBranches, ContextControl};
+pub use durable_work::{DurableWork, DurableWorkOptions, Recovered};
 pub use family::{FamilyModule, FamilyOptions};
-pub use goal::{GoalDriver, GoalJobs};
+pub use goal::{GoalDriver, GoalJobs, JobState, TaskGoalJobs};
 pub use grants::GrantsModule;
 pub use hints::HintsModule;
 pub use instances::InstancesModule;
 pub use memory::{MemoryApi, MemoryBackend, MemoryError, MemoryService, worker_gate};
 pub use progress::ProgressModule;
+pub use schedule_tick::{ManualTickClock, ScheduleTicker, SystemTickClock, TickClock, TickObserver};
 pub use schedules::SchedulesModule;
 pub use skills::{SkillLoader, SkillSource, SkillsModule};
 pub use store::{DocumentStore, FileDocumentStore, MemoryDocumentStore};

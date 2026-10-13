@@ -25,6 +25,7 @@ pub const APIS: &[&str] = &[
     "bedrock-converse-stream",
     "pi-messages",
     "claude-code-cli",
+    "claude-subscription",
 ];
 
 pub async fn stream_simple(
@@ -62,6 +63,10 @@ pub async fn stream_simple(
                 json_schema: None,
             };
             Ok(claude_code_cli::stream_simple(model, context, &options, sink).await)
+        }
+        // Subscription first, API credits when the plan is out of usage (`claude_subscription::fallback`).
+        "claude-subscription" => {
+            Ok(crate::claude_subscription::fallback::stream_simple(model, context, options, transport, sink).await)
         }
         other => Err(format!("No API implementation for \"{other}\"")),
     }

@@ -90,8 +90,11 @@ struct Children {
     runs: Vec<Value>,
 }
 
+/// A hang guard, never a timing expectation: a loaded machine must slow a test down, never fail it.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
 fn settle(host: &Delegation, children: &Arc<(Mutex<Children>, Condvar)>) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + HANG_GUARD;
     loop {
         let tasks = host.tasks().unwrap();
         let state = children.0.lock().unwrap();
@@ -239,7 +242,15 @@ fn delegation_spawn_collect_finish_replay_typescript_scenarios() {
                     state.parked.insert(index, false);
                     children.1.notify_all();
                 }
-                "sleep" => std::thread::sleep(Duration::from_millis(op[1].as_u64().unwrap())),
+                // The generator sleeps past a child's `timeout_ms`; here, wait for what that sleep stands for: no
+                // child still running (the timed-out one has ended), however slow the machine.
+                "sleep" => {
+                    let deadline = Instant::now() + HANG_GUARD;
+                    while host.tasks().unwrap().iter().any(|task| task["state"] == "running") {
+                        assert!(Instant::now() < deadline, "the timed-out child never ended");
+                        std::thread::sleep(Duration::from_millis(2));
+                    }
+                }
                 _ => settle(&host, &children),
             }
         }

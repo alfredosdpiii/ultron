@@ -34,6 +34,8 @@ pub struct Conn {
     id: u64,
     stream: Mutex<UnixStream>,
     subscriptions: Mutex<HashMap<String, Subscription>>,
+    /// The subscriptions made on the session attachment (dropped with it).
+    session_subscriptions: Mutex<HashSet<String>>,
     services: Mutex<Option<Arc<Endpoint>>>,
     closed: AtomicBool,
 }
@@ -111,7 +113,14 @@ struct Attachment {
 struct Router {
     hosted: HashMap<String, Hosted>,
     by_conn: HashMap<u64, Attachment>,
+    /// Connections whose session's worker is restarting, by session: they are re-attached when it is back.
+    reconnecting: HashMap<u64, String>,
 }
+
+/// The code of a session call made while its worker restarts.
+pub const RECONNECTING_CODE: &str = "session_reconnecting";
+/// How long clients wait for a crashed worker to come back before they are detached.
+const RESTART_WAIT: Duration = Duration::from_secs(120);
 
 /// The shared state of one generation's endpoint.
 pub struct Hub {
@@ -279,34 +288,64 @@ impl Hub {
         );
         drop(router);
         let hub = self.me.clone();
-        let (id, terminated) = (meta.id.clone(), handle.terminated.clone());
+        let (id, path, terminated) = (meta.id.clone(), meta.path.clone(), handle.terminated.clone());
         terminated.on_resolve(Box::new(move |error| {
             if let Some(hub) = hub.upgrade() {
                 // Off the reporting thread: releasing talks to the worker manager.
-                std::thread::spawn(move || hub.invalidate(&id, error));
+                std::thread::spawn(move || hub.invalidate(&id, &path, error));
             }
         }));
         Ok(handle)
     }
 
-    /// The worker ended: drop the hosted session and its attachments (clients see `attachment: null`).
-    fn invalidate(&self, session_id: &str, error: Option<String>) {
+    /// The worker ended: drop the hosted session and its attachments (clients see `attachment: null`). When the
+    /// worker manager restarts it, the clients are re-attached to the new worker (a new attachment ID; session
+    /// calls in between fail with `session_reconnecting`).
+    fn invalidate(&self, session_id: &str, path: &PathBuf, error: Option<String>) {
+        let restarting = error.is_some() && self.manager.restart_pending(path);
         let attachments: Vec<(u64, Attachment)> = {
             let mut router = self.router();
             let Some(hosted) = router.hosted.remove(session_id) else {
                 return;
             };
-            hosted
+            let attachments: Vec<(u64, Attachment)> = hosted
                 .attachments
                 .iter()
                 .filter_map(|c| router.by_conn.remove(c).map(|a| (*c, a)))
-                .collect()
+                .collect();
+            if restarting {
+                for (conn, _) in &attachments {
+                    router.reconnecting.insert(*conn, session_id.to_string());
+                }
+            }
+            attachments
         };
+        let conns: Vec<u64> = attachments.iter().map(|(c, _)| *c).collect();
         for (conn, attachment) in attachments {
             self.release(conn, attachment, true);
         }
         if let Some(error) = error {
             self.log("[ultron server error]", &error);
+        }
+        if restarting {
+            self.reattach(session_id, path, conns);
+        }
+    }
+
+    /// Re-attach `conns` to `session_id` once its restarted worker is back (or detach them if it is not).
+    fn reattach(&self, session_id: &str, path: &PathBuf, conns: Vec<u64>) {
+        let back = self.manager.wait_restart(path, RESTART_WAIT).is_some();
+        for id in conns {
+            let still = self.router().reconnecting.get(&id).is_some_and(|s| s == session_id);
+            let conn = self.conns.lock().unwrap_or_else(|e| e.into_inner()).get(&id).cloned();
+            let Some(conn) = conn.filter(|_| still) else {
+                self.router().reconnecting.remove(&id);
+                continue;
+            };
+            if back {
+                let _ = self.serialized(|| self.attach(&conn, session_id));
+            }
+            self.router().reconnecting.remove(&id);
         }
     }
 
@@ -321,14 +360,27 @@ impl Hub {
             .unwrap_or_else(|e| e.into_inner())
             .get(&conn_id)
             .cloned();
-        if let Some(conn) = conn
-            && publish
-        {
-            conn.send(&ServerMessage::Attachment { attachment: None });
+        if let Some(conn) = conn {
+            // The attachment's subscriptions end with it.
+            let ended: Vec<String> = conn
+                .session_subscriptions
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .drain()
+                .collect();
+            let mut subscriptions = conn.subscriptions();
+            for subscription in ended {
+                subscriptions.remove(&subscription);
+            }
+            drop(subscriptions);
+            if publish {
+                conn.send(&ServerMessage::Attachment { attachment: None });
+            }
         }
     }
 
     fn detach(&self, conn: &Arc<Conn>) {
+        self.router().reconnecting.remove(&conn.id);
         let attachment = self.router().by_conn.remove(&conn.id);
         if let Some(attachment) = attachment {
             self.release(conn.id, attachment, true);
@@ -518,6 +570,7 @@ impl Hub {
             id: self.next_conn.fetch_add(1, Ordering::SeqCst),
             stream: Mutex::new(write),
             subscriptions: Mutex::new(HashMap::new()),
+            session_subscriptions: Mutex::new(HashSet::new()),
             services: Mutex::new(None),
             closed: AtomicBool::new(false),
         });
@@ -529,6 +582,7 @@ impl Hub {
         self.read_loop(&conn, stream);
         // Disconnect: release the attachment (without publishing) and the server services.
         conn.close();
+        self.router().reconnecting.remove(&conn.id);
         let attachment = self.router().by_conn.remove(&conn.id);
         if let Some(attachment) = attachment {
             let hub = self.clone();
@@ -678,11 +732,23 @@ impl Hub {
                         .map(|a| (a.handle.clone(), a.id.clone()))
                 };
                 let Some((handle, attachment)) = attachment else {
+                    if self.router().reconnecting.get(&conn.id) == Some(&session.session_id) {
+                        return finish(Err(coded(
+                            RECONNECTING_CODE,
+                            "The session worker is restarting; this client is re-attached when it is back",
+                        )));
+                    }
                     return finish(Err(coded(
                         "session_not_attached",
                         "Session is not attached to this client",
                     )));
                 };
+                if let Some(sub) = &subscription {
+                    conn.session_subscriptions
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .insert(sub.clone());
+                }
                 self.manager
                     .invoke(&handle, &attachment, call_json, conn.publisher(), Box::new(finish));
             }

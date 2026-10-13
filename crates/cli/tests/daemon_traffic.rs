@@ -12,15 +12,15 @@
 mod common;
 
 use chord_delta::Decoder;
-use common::{Home, assert_no_processes, provider, start_server, text_reply};
+use common::{HANG_GUARD, Home, assert_no_processes, processes_mentioning, provider, start_server, text_reply};
 use regex::Regex;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 fn cbor_json(value: &protocol::Value) -> Value {
     client::runtime::to_json(value)
@@ -68,19 +68,63 @@ fn normalize(frames: &[(String, Value)], tmp: &str) -> Vec<(String, Value)> {
         .collect()
 }
 
+/// Counts of proxy pump threads started and finished.
+type Pumps = Arc<(Mutex<(usize, usize)>, Condvar)>;
+
+/// Waits until every pump the proxy started has finished: each connection's frames are then all recorded, both
+/// ways (hang guard [`HANG_GUARD`]).
+fn wait_drained(pumps: &Pumps) {
+    let (counts, changed) = &**pumps;
+    let counts = counts.lock().unwrap();
+    let (counts, _) = changed
+        .wait_timeout_while(counts, HANG_GUARD, |(started, finished)| {
+            *started == 0 || finished < started
+        })
+        .unwrap();
+    assert!(
+        counts.0 > 0 && counts.1 == counts.0,
+        "proxy connections never ended: {counts:?}"
+    );
+}
+
+/// Waits until no session worker of this test is running: the idle worker retired, as between two separate
+/// `ultron` runs (the generator waits 1.5 s for the same; here the condition itself, hang guard [`HANG_GUARD`]).
+fn wait_workers_retired(root: &Path) {
+    let deadline = Instant::now() + HANG_GUARD;
+    loop {
+        let workers: Vec<u32> = processes_mentioning(root)
+            .into_iter()
+            .filter(|pid| {
+                std::fs::read(format!("/proc/{pid}/cmdline"))
+                    .is_ok_and(|cmdline| String::from_utf8_lossy(&cmdline).contains("\0session-worker\0"))
+            })
+            .collect();
+        if workers.is_empty() {
+            return;
+        }
+        assert!(Instant::now() < deadline, "session workers never retired: {workers:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// Decoded frames in arrival order, each with the direction it travelled.
+type Frames = Arc<Mutex<Vec<(String, Value)>>>;
+
 /// A recording proxy in front of `upstream`: decoded frames in arrival order.
-fn proxy(path: &Path, upstream: &Path) -> Arc<Mutex<Vec<(String, Value)>>> {
+fn proxy(path: &Path, upstream: &Path) -> (Frames, Pumps) {
     let frames = Arc::new(Mutex::new(Vec::new()));
+    let pumps: Pumps = Arc::default();
     let listener = UnixListener::bind(path).unwrap();
-    let (seen, upstream) = (frames.clone(), upstream.to_path_buf());
+    let (seen, upstream, counts) = (frames.clone(), upstream.to_path_buf(), pumps.clone());
     std::thread::spawn(move || {
         for client in listener.incoming().flatten() {
             let server = UnixStream::connect(&upstream).unwrap();
+            counts.0.lock().unwrap().0 += 2;
             for (dir, mut from, mut to) in [
                 ("c2s", client.try_clone().unwrap(), server.try_clone().unwrap()),
                 ("s2c", server.try_clone().unwrap(), client.try_clone().unwrap()),
             ] {
-                let seen = seen.clone();
+                let (seen, counts) = (seen.clone(), counts.clone());
                 std::thread::spawn(move || {
                     let mut decoder = protocol::FrameDecoder::default();
                     let mut buffer = vec![0u8; 65536];
@@ -100,11 +144,38 @@ fn proxy(path: &Path, upstream: &Path) -> Arc<Mutex<Vec<(String, Value)>>> {
                         }
                     }
                     let _ = to.shutdown(std::net::Shutdown::Both);
+                    counts.0.lock().unwrap().1 += 1;
+                    counts.1.notify_all();
                 });
             }
         }
     });
-    frames
+    (frames, pumps)
+}
+
+/// `got` reordered into `want`'s interleaving of directions, keeping each direction's own order. Frames of one
+/// direction are ordered by the protocol; how the two directions interleave is timing (a pipelined request may reach
+/// the proxy after the response to the one before it), so the comparison does not depend on it. Frames beyond
+/// `want`'s pattern keep their order at the end, so a count mismatch still shows.
+fn interleave_like(got: Vec<(String, Value)>, want: &[(String, Value)]) -> Vec<(String, Value)> {
+    let mut queues: HashMap<String, std::collections::VecDeque<(String, Value)>> = HashMap::new();
+    let mut order = Vec::new();
+    for frame in got {
+        if !queues.contains_key(&frame.0) {
+            order.push(frame.0.clone());
+        }
+        queues.entry(frame.0.clone()).or_default().push_back(frame);
+    }
+    let mut out = Vec::new();
+    for (dir, _) in want {
+        if let Some(frame) = queues.get_mut(dir).and_then(|q| q.pop_front()) {
+            out.push(frame);
+        }
+    }
+    for dir in order {
+        out.extend(queues.remove(&dir).into_iter().flatten());
+    }
+    out
 }
 
 fn is_transcript_update(frame: &Value, transcript: Option<&str>) -> bool {
@@ -256,16 +327,16 @@ fn cli_daemon_traffic_matches_typescript() {
                 client::runtime::ClientResult::Prompted { session_id: id, .. } => session_id = Some(id),
                 other => panic!("{name} setup: {other:?}"),
             }
-            std::thread::sleep(Duration::from_millis(1500));
+            wait_workers_retired(&home.root);
         }
         let proxy_path = home.server_dir().join("proxy.sock");
-        let frames = proxy(&proxy_path, &server.socket);
+        let (frames, pumps) = proxy(&proxy_path, &server.socket);
         let route = client::runtime::Route {
             server_id: server.server_id.clone(),
             path: proxy_path,
         };
         let result = client::runtime::run_client(&command_for(case, session_id), &route).unwrap();
-        std::thread::sleep(Duration::from_millis(100));
+        wait_drained(&pumps);
         let mut got = frames.lock().unwrap().clone();
         got.push(("result".into(), result.to_json()));
         server.stop();
@@ -276,7 +347,19 @@ fn cli_daemon_traffic_matches_typescript() {
             .iter()
             .map(|f| (f["dir"].as_str().unwrap().to_string(), f["frame"].clone()))
             .collect();
-        let (got_cmp, want_cmp) = (comparable(&got), comparable(&want));
+        // Transcript updates are compared by projection, so their count may differ: leave them out before
+        // aligning the interleaving.
+        let strip = |frames: &[(String, Value)]| -> Vec<(String, Value)> {
+            let transcript = subscription_for(frames, "pi.transcript");
+            frames
+                .iter()
+                .filter(|(_, f)| !is_transcript_update(f, transcript.as_deref()))
+                .cloned()
+                .collect()
+        };
+        let want_core = strip(&want);
+        let got_core = interleave_like(strip(&got), &want_core);
+        let (got_cmp, want_cmp) = (comparable(&got_core), comparable(&want_core));
         for (i, (g, w)) in got_cmp.iter().zip(&want_cmp).enumerate() {
             assert_eq!(g, w, "{name} frame {i}");
             let encode = |v: &Value| protocol::encode_cbor(&client::runtime::to_cbor(v), &Default::default()).unwrap();

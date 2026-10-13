@@ -557,6 +557,15 @@ impl SettingsManager {
         }
     }
 
+    /// Global only `claude.apiFallback` (default `true`): a Claude subscription call that is out of usage continues
+    /// on Anthropic API credits. Only an explicit `false` turns it off; a repository cannot spend the user's credits.
+    pub fn claude_api_fallback(&self) -> bool {
+        !matches!(
+            self.global.get("claude").and_then(|c| c.get("apiFallback")),
+            Some(Value::Bool(false))
+        )
+    }
+
     /// Global only `loki` settings, dropping invalid values.
     pub fn loki_settings(&self) -> Settings {
         let mut out = Map::new();

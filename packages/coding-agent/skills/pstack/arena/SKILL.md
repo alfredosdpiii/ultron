@@ -11,8 +11,7 @@ metadata:
 
 # Arena
 
-Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft
-the best ideas from the others into it. Verify the synthesized result.
+Track one entry per phase before launching anything.
 
 ```python
 state["plan"] = ["frame", "fan out", "cross-judge", "pick", "graft", "verify"]
@@ -20,11 +19,11 @@ state["plan"] = ["frame", "fan out", "cross-judge", "pick", "graft", "verify"]
 
 ## Phase A: Frame
 
-The N candidates receive the same prompt, so the prompt is the contract.
+Every candidate gets the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate produces.
-2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable
-   criteria. The rubric is the picker's tool in Phase D. Candidates see only the task.
+2. Derive the rubric, 3-6 concrete gradeable criteria for what success looks like on *this* task. It is the
+   picker's tool in Phase D. Candidates see only the task.
 3. Pick the runners: by default one per model family, so the differences between candidates come from different
    models. Same model N times when the work is generation-bound rather than judgment-sensitive; more runners when the
    arena covers several design directions. Use models the user names; otherwise query families:
@@ -74,7 +73,7 @@ for i, (m, item) in enumerate(zip(runners, results)):
 state["arena"] = [{k: c[k] for k in ("label", "model", "check")} | {"branch": c["worktree"]["branch"]} for c in cands]
 ```
 
-A candidate that produced nothing is a dropout: proceed with N-1 and note it in the synthesis record.
+If a candidate produces no output, proceed with N-1 and note the dropout.
 
 ## Phase C: Cross-judge
 
@@ -106,19 +105,17 @@ For large diffs, `h = await rlm.load(text=c["diff"])` and pass views instead of 
 ## Phase D: Pick a base
 
 Read every candidate end to end before picking: its diff and its rationale (both in `cands`; the files themselves
-under `c["worktree"]["path"]`). Do not trust the judge or the candidates' self-reports alone;
-run the candidates' tests in their worktrees where it matters (`await bash(f"cd {c['worktree']['path']} && npm test")`).
-
-Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare with the judge.
-Agreement on the base confirms the pick. Disagreement means one of you is biased or the rubric was ambiguous: read both
-rationales before deciding.
+under `c["worktree"]["path"]`). Do not trust the judge or the candidates' self-reports alone; run the candidates' tests
+in their worktrees where it matters (`await bash(f"cd {c['worktree']['path']} && npm test")`). Score each against the
+rubric criterion by criterion, not on holistic feel, and compare with the judge. Agreement on the base confirms the
+pick. Disagreement means one of you is biased or the rubric was ambiguous: read both rationales before deciding.
 
 Pick the base a future maintainer can extend most easily without breaking invariants. When two feel tied, prefer the
 cleaner boundary or smaller API, per the laziness-protocol principle (`../principle-laziness-protocol/SKILL.md`).
 
 ## Phase E: Graft
 
-Walk each losing candidate once more and name what is worth porting into the base. Usually one or two things per
+Walk each losing candidate once more for what is worth porting into the base, usually one or two things per
 candidate, not most of it.
 
 Merge exactly one branch, the base, then fold each graft in by hand with `edit`, per
@@ -138,21 +135,18 @@ for c in cands:
         print(await bash(f"git worktree remove --force {wt['path']} && git branch -D {wt['branch']}"))
 ```
 
-Record what was grafted, from which candidate, and what was rejected and why.
-
-When the N candidates converge on the same shape, that is a strong agreement signal: note it and ship the consensus
-shape with no graft. When they wildly diverge, Phase A was under-specified: reframe and re-run rather than averaging the
-divergence.
+If the candidates converge on one shape, that is strong agreement: note it and ship the consensus shape with no
+graft. If they wildly diverge, Phase A was under-specified: reframe and re-run rather than averaging the divergence.
 
 ## Phase F: Verify
 
-The synthesized artifact faces the same scrutiny as any other output, per the prove-it-works principle (`../principle-prove-it-works/SKILL.md`): run the checks on
-the merged tree and read the result.
-
-If verification finds a problem the arena did not catch, either Phase A was wrong (reframe and re-run) or a candidate
-caught it and you missed the graft (back to Phase E). Do not paper over.
+Verify the synthesized artifact like any other output, per the prove-it-works principle
+(`../principle-prove-it-works/SKILL.md`): run the checks on the merged tree and read the result. If verification finds
+a problem the arena missed, either Phase A was wrong (reframe and re-run) or a candidate caught it and you missed the
+graft (back to Phase E). Do not paper over it.
 
 ## Outputs
 
-One synthesized artifact, uncommitted in your tree. One short synthesis note alongside it naming the base, the judge's
-verdict, the grafts (with source candidate), the rejections, the dropouts, and the verification result.
+One synthesized artifact, uncommitted in your tree, with a short synthesis note alongside naming the base and why,
+the judge's verdict, each graft with its source candidate, what was rejected and why, any convergence or dropouts, and
+the verification result.

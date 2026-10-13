@@ -665,7 +665,14 @@ impl Inference {
             } else {
                 tranche
             };
-            let response = self.request(system, &history, max_tokens, options.thinking.as_deref(), deadline);
+            let response = self.request(
+                system,
+                &history,
+                max_tokens,
+                options.thinking.as_deref(),
+                deadline,
+                signal,
+            );
             // A failed or timed-out request is refunded; only a response is charged. One lock, so a concurrent frame
             // never sees the hold released before the charge lands.
             let charged = match &response {
@@ -781,6 +788,7 @@ impl Inference {
         max_tokens: u64,
         thinking: Option<&str>,
         deadline: Instant,
+        signal: &Signal,
     ) -> Result<Option<AssistantMessage>, String> {
         let mut messages = vec![Message::System(
             serde_json::from_value(json!({"role": "system", "content": system, "timestamp": 0}))
@@ -809,13 +817,31 @@ impl Inference {
                 "anthropic-messages" => {
                     ai::anthropic::stream_simple(&self.model, &context, &options, transport, &mut sink).await
                 }
+                "claude-subscription" => Ok(ai::claude_subscription::fallback::stream_simple(
+                    &self.model,
+                    &context,
+                    &options,
+                    transport,
+                    &mut sink,
+                )
+                .await),
                 other => Err(format!("frames cannot call {other} models in this host yet")),
             }
         };
+        // The request ends at the deadline or as soon as the calling cell is aborted (the root turn's abort
+        // cancels every in-flight frame); either way nothing is charged.
         runtime.block_on(async {
-            match tokio::time::timeout_at(deadline.into(), stream).await {
-                Ok(reply) => reply.map(Some),
-                Err(_) => Ok(None),
+            let mut stream = std::pin::pin!(stream);
+            loop {
+                if signal.is_aborted() {
+                    return Ok(None);
+                }
+                let step = (Instant::now() + std::time::Duration::from_millis(20)).min(deadline);
+                match tokio::time::timeout_at(step.into(), &mut stream).await {
+                    Ok(reply) => return reply.map(Some),
+                    Err(_) if Instant::now() >= deadline => return Ok(None),
+                    Err(_) => {}
+                }
             }
         })
     }

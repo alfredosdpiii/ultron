@@ -32,7 +32,8 @@ fn git(cwd: &Path, args: &[&str]) -> String {
 }
 
 fn settle(host: &Delegation) {
-    let deadline = Instant::now() + Duration::from_secs(20);
+    // A hang guard, never a timing expectation.
+    let deadline = Instant::now() + Duration::from_secs(120);
     while host
         .tasks()
         .unwrap()

@@ -20,7 +20,12 @@ pub fn builtin_models(provider: &str) -> impl Iterator<Item = &'static Model> {
     CATALOG.get(provider).into_iter().flat_map(IndexMap::values)
 }
 
+/// A built-in model; `claude-subscription/<id>` resolves through that provider's pinned route table (any valid
+/// id: unpinned ids pass through at the 200K window).
 pub fn builtin_model(provider: &str, id: &str) -> Option<&'static Model> {
+    if provider == crate::claude_subscription::PROVIDER {
+        return crate::claude_subscription::catalog::interned(id);
+    }
     CATALOG.get(provider)?.get(id)
 }
 

@@ -9,7 +9,7 @@ use ai::{Model, TranscriptContext};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn cc_model() -> Model {
     serde_json::from_value(json!({
@@ -53,8 +53,10 @@ fn ai_claude_code_cli_second_request_takes_the_warm_spare() {
             .filter(|l| l.starts_with(prefix))
             .count()
     };
+    // Hang guard only: under load the spare can take long to start.
     let wait_for = |prefix: &str, n: usize| {
-        for _ in 0..500 {
+        let deadline = Instant::now() + Duration::from_secs(120);
+        while Instant::now() < deadline {
             if count(prefix) >= n {
                 return;
             }
@@ -88,6 +90,7 @@ fn ai_claude_code_cli_second_request_takes_the_warm_spare() {
     );
     // The second request wrote its prompt into the spare; a proven shape gets the next spare while it runs.
     wait_for("argv:", 3);
+    // Settle, then check no fourth process started (a short settle can only miss an extra spawn, never fail).
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(count("argv:"), 3);
     assert_eq!(count("stdin:"), 2);
@@ -95,8 +98,43 @@ fn ai_claude_code_cli_second_request_takes_the_warm_spare() {
     assert_eq!(claude_code_cli::claude_code_cli_stats().1, 0);
 }
 
+/// The page the browser thread read back from the callback server, once it has read it (hang guard 120 s).
+fn served_page(pages: &Mutex<Vec<String>>) -> String {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let page = pages.lock().unwrap().join("");
+        if !page.is_empty() || Instant::now() >= deadline {
+            return page;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 /// Both callback tests bind 127.0.0.1:1456.
-static PORT: Mutex<()> = Mutex::new(());
+/// Holds the fixed OAuth callback port (1456) for one test, across every test process on the machine (an exclusive
+/// lock on a file beside the port; the product must use 1456, the registered redirect URI). When something else
+/// still has the port, login falls back to the manual prompt, which these fake browsers never answer: fail with the
+/// reason instead of hanging.
+fn callback_port() -> std::fs::File {
+    let lock = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(std::env::temp_dir().join("ultron-test-oauth-callback-1456.lock"))
+        .unwrap();
+    lock.lock().unwrap();
+    if let Err(error) = std::net::TcpListener::bind(("127.0.0.1", 1456)) {
+        panic!("OAuth callback port 1456 is held by a process outside these tests ({error}); they need it free");
+    }
+    lock
+}
+
+/// Runs a login with a 120 s hang guard.
+fn login<T>(runtime: &tokio::runtime::Runtime, future: impl std::future::Future<Output = T>) -> T {
+    runtime
+        .block_on(async { tokio::time::timeout(Duration::from_secs(120), future).await })
+        .expect("the login neither completed nor failed within 120 s")
+}
 
 struct OneBody(Option<Vec<u8>>);
 
@@ -159,7 +197,8 @@ impl AuthInteraction for Browser {
             let query = (self.query)(&state);
             let pages = self.pages.clone();
             std::thread::spawn(move || {
-                let mut stream = std::net::TcpStream::connect(("127.0.0.1", 1456)).unwrap();
+                let mut stream =
+                    std::net::TcpStream::connect(("127.0.0.1", 1456)).expect("connect to the callback server");
                 write!(
                     stream,
                     "GET /oauth/callback?{query} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
@@ -183,6 +222,8 @@ fn now() -> i64 {
 
 #[test]
 fn ai_oauth_radius_browser_login_completes_through_the_loopback_callback() {
+    // Held until the end of the test, after the runtime (and its callback listener) is dropped.
+    let _port = callback_port();
     let transport = Arc::new(GatewayTransport(Mutex::default()));
     let radius = ai::oauth_radius::RadiusOAuth::new("Radius", "gateway.example.com", transport.clone(), now);
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -194,21 +235,21 @@ fn ai_oauth_radius_browser_login_completes_through_the_loopback_callback() {
         pages: pages.clone(),
         query: |state| format!("code=browser-code&state={state}"),
     };
-    let _port = PORT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    let credential = runtime.block_on(radius.login(&browser)).expect("login");
+    let credential = login(&runtime, radius.login(&browser)).expect("login");
     assert_eq!(credential.access, "from-callback");
     assert_eq!(credential.expires, 1_767_225_600_000.0);
     let token = &transport.0.lock().unwrap()[1];
     assert!(token.body.contains("code=browser-code"), "{}", token.body);
     assert!(token.body.contains("grant_type=authorization_code"));
-    std::thread::sleep(Duration::from_millis(50));
-    let page = pages.lock().unwrap().join("");
+    let page = served_page(&pages);
     assert!(page.starts_with("HTTP/1.1 200 OK"), "{page}");
     assert!(page.contains("Signed in to Radius. You may now close this page."));
 }
 
 #[test]
 fn ai_oauth_radius_browser_denial_ends_the_login() {
+    // Held until the end of the test, after the runtime (and its callback listener) is dropped.
+    let _port = callback_port();
     let radius = ai::oauth_radius::RadiusOAuth::new(
         "Radius",
         "gateway.example.com",
@@ -224,11 +265,9 @@ fn ai_oauth_radius_browser_denial_ends_the_login() {
         pages: pages.clone(),
         query: |state| format!("error=access_denied&error_description=User+said+no&state={state}"),
     };
-    let _port = PORT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    let error = runtime.block_on(radius.login(&browser)).unwrap_err();
+    let error = login(&runtime, radius.login(&browser)).unwrap_err();
     assert_eq!(error, "OAuth callback did not complete.");
-    std::thread::sleep(Duration::from_millis(50));
-    let page = pages.lock().unwrap().join("");
+    let page = served_page(&pages);
     assert!(page.starts_with("HTTP/1.1 400 Bad Request"), "{page}");
     assert!(page.contains("User said no"));
 }

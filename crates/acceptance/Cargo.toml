@@ -20,9 +20,15 @@ config = { path = "../config" }
 daemon = { path = "../daemon" }
 
 [dev-dependencies]
+delegation = { path = "../delegation" }
+extensions = { path = "../extensions" }
 harness = { path = "../harness" }
 host = { path = "../host" }
+inference = { path = "../inference" }
 kernel = { path = "../kernel" }
+hindsight = { path = "../hindsight" }
+kernel-apis = { path = "../kernel-apis" }
+session-core = { path = "../session-core" }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 tempfile = "=3.27.0"
 

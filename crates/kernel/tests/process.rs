@@ -55,9 +55,21 @@ fn alive(pid: u32) -> bool {
         .is_ok_and(|stat| !stat.rsplit(')').next().unwrap_or("").trim_start().starts_with('Z'))
 }
 
-/// Whether `pid` ends (or is a zombie) within 5 s.
+/// A hang guard, never a timing expectation: every wait in these tests is for a condition.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
+/// Polls `ready` until it holds; panics only after the hang guard.
+fn wait_until(what: &str, mut ready: impl FnMut() -> bool) {
+    let deadline = Instant::now() + HANG_GUARD;
+    while !ready() {
+        assert!(Instant::now() < deadline, "{what}: not reached in {HANG_GUARD:?}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// Whether `pid` ends (or is a zombie) within the hang guard.
 fn gone(pid: u32) -> bool {
-    let deadline = Instant::now() + Duration::from_secs(5);
+    let deadline = Instant::now() + HANG_GUARD;
     while alive(pid) && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(20));
     }
@@ -122,13 +134,14 @@ fn kernel_queued_cancellation_leaves_the_active_cell_running() {
     let kernel = Arc::new(kernel_with(options(), handler));
     let active_kernel = kernel.clone();
     let active = std::thread::spawn(move || active_kernel.execute("await agents.list()", None, None));
-    entered_rx.recv_timeout(Duration::from_secs(20)).unwrap();
+    entered_rx.recv_timeout(HANG_GUARD).unwrap();
     let pid = kernel.pid().unwrap();
     let signal = Signal::new();
     let queued_kernel = kernel.clone();
     let queued_signal = signal.clone();
     let queued = std::thread::spawn(move || queued_kernel.execute("1 + 1", Some(&queued_signal), None));
-    std::thread::sleep(Duration::from_millis(100));
+    // The queued call is behind the active cell before it is cancelled.
+    wait_until("the second call is queued", || kernel.pending_calls() == 2);
     signal.abort("cancel queued");
     assert_eq!(queued.join().unwrap(), Err(KernelError::new("cancel queued")));
     gate.open();
@@ -149,7 +162,7 @@ fn kernel_active_cancellation_kills_the_kernel_and_aborts_host_work() {
     let seen = host_aborted.clone();
     let handler: Arc<dyn HostHandler> = Arc::new(move |_: &str, _: Map<String, Value>, signal: &Signal| {
         let _ = entered.send(());
-        signal.wait(Duration::from_secs(30));
+        signal.wait(HANG_GUARD);
         *seen.lock().unwrap() = signal.reason();
         Ok(json!([]))
     });
@@ -162,13 +175,12 @@ fn kernel_active_cancellation_kills_the_kernel_and_aborts_host_work() {
     let running = kernel.clone();
     let running_signal = signal.clone();
     let executing = std::thread::spawn(move || running.execute("await agents.list()", Some(&running_signal), None));
-    entered_rx.recv_timeout(Duration::from_secs(20)).unwrap();
+    entered_rx.recv_timeout(HANG_GUARD).unwrap();
     signal.abort("cancel active");
     assert_eq!(executing.join().unwrap(), Err(KernelError::new("cancel active")));
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while host_aborted.lock().unwrap().is_none() && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    wait_until("the host work sees the abort", || {
+        host_aborted.lock().unwrap().is_some()
+    });
     assert_eq!(host_aborted.lock().unwrap().as_deref(), Some("cancel active"));
     assert!(gone(pid_before), "the cancelled kernel process is gone");
     assert_eq!(value(&kernel, "'fresh'"), "'fresh'");
@@ -179,15 +191,20 @@ fn kernel_active_cancellation_kills_the_kernel_and_aborts_host_work() {
 fn kernel_cancellation_interrupts_a_busy_python_cell_and_the_next_cell_starts_fresh() {
     let kernel = Arc::new(kernel());
     assert_eq!(value(&kernel, "kept = 1\n'ok'"), "'ok'");
+    let directory = tempfile::tempdir().unwrap();
+    let entered = directory.path().join("entered");
     let signal = Signal::new();
     let busy = kernel.clone();
     let busy_signal = signal.clone();
-    let started = Instant::now();
-    let executing = std::thread::spawn(move || busy.execute("while True:\n    pass", Some(&busy_signal), None));
-    std::thread::sleep(Duration::from_millis(300));
+    let code = format!(
+        "open({:?}, 'w').close()\nwhile True:\n    pass",
+        entered.display().to_string()
+    );
+    let executing = std::thread::spawn(move || busy.execute(&code, Some(&busy_signal), None));
+    // The cell is spinning in Python before it is cancelled (a signal aborted earlier never reaches the kernel).
+    wait_until("the busy cell runs", || entered.exists());
     signal.abort("stop");
     assert_eq!(executing.join().unwrap(), Err(KernelError::new("stop")));
-    assert!(started.elapsed() < Duration::from_secs(10));
     assert_eq!(value(&kernel, "'kept' in globals()"), "False");
     // A signal aborted before the call rejects it without touching the kernel.
     let pid = kernel.pid();
@@ -214,7 +231,7 @@ fn kernel_rejects_malformed_protocol_and_startup_stalls() {
         "{error}"
     );
     let stalled = directory.path().join("stalled.py");
-    std::fs::write(&stalled, "import time\ntime.sleep(30)\n").unwrap();
+    std::fs::write(&stalled, "import time\ntime.sleep(3600)\n").unwrap();
     let mut options = KernelOptions::new(directory.path(), &stalled);
     options.startup_timeout = Duration::from_millis(100);
     let hanging = kernel_with(options, null_handler());
@@ -223,7 +240,8 @@ fn kernel_rejects_malformed_protocol_and_startup_stalls() {
         failure(&hanging, "1"),
         KernelError::new("RLM kernel startup timed out after 100ms")
     );
-    assert!(started.elapsed() < Duration::from_secs(5));
+    // The startup timeout fires, not the stalled script's hour-long sleep.
+    assert!(started.elapsed() < HANG_GUARD);
 }
 
 #[test]
@@ -268,7 +286,7 @@ fn kernel_protocol_violations_end_the_kernel_with_explicit_errors() {
         ),
         ("os._exit(5)", "RLM kernel exited (5)"),
         (
-            "os.close(3); time.sleep(5)",
+            "os.close(3); time.sleep(3600)",
             "RLM kernel protocol channel (fd 3) closed",
         ),
     ];
@@ -317,12 +335,20 @@ fn kernel_crash_rejects_the_running_and_queued_cells_and_the_next_cell_restarts(
         kernel.pid().unwrap().to_string()
     );
     let pid = kernel.pid().unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let go = directory.path().join("go");
     let crashing = kernel.clone();
-    let crash =
-        std::thread::spawn(move || crashing.execute("import time, os\ntime.sleep(0.5)\nos._exit(3)", None, None));
-    std::thread::sleep(Duration::from_millis(150));
+    let code = format!(
+        "import time, os\nwhile not os.path.exists({:?}):\n    time.sleep(0.01)\nos._exit(3)",
+        go.display().to_string()
+    );
+    let crash = std::thread::spawn(move || crashing.execute(&code, None, None));
+    wait_until("the crashing cell runs", || kernel.pending_calls() == 1);
     let queued = kernel.clone();
     let queued = std::thread::spawn(move || queued.execute("'never runs'", None, None));
+    // The second cell is queued behind the running one before that one crashes.
+    wait_until("the second cell is queued", || kernel.pending_calls() == 2);
+    std::fs::write(&go, "").unwrap();
     let crashed = crash.join().unwrap().unwrap_err();
     assert!(crashed.message().starts_with("RLM kernel exited (3)"), "{crashed}");
     assert_eq!(queued.join().unwrap(), Err(crashed));
@@ -389,12 +415,21 @@ fn kernel_host_requests_round_trip_with_per_cell_handlers_and_limits() {
         .execute("await rlm.host_request('x.y')", None, Some(override_handler))
         .unwrap();
     assert_eq!(result.result.as_deref(), Some("'cell handler: x.y'"));
-    // A request after its cell has finished has no active cell.
+    // A request after its cell has finished has no active cell. The task waits for `go` (created once the cell has
+    // returned) and touches `asked` once its request is answered.
+    let directory = tempfile::tempdir().unwrap();
+    let go = directory.path().join("go");
+    let asked = directory.path().join("asked");
     run(
         &kernel,
-        "import asyncio\nasync def later():\n    await asyncio.sleep(0.2)\n    return await rlm.host_request('test.echo', {})\nlate = asyncio.ensure_future(later())",
+        &format!(
+            "import asyncio, os\nasync def later():\n    while not os.path.exists({go:?}):\n        await asyncio.sleep(0.01)\n    try:\n        return await rlm.host_request('test.echo', {{}})\n    finally:\n        open({asked:?}, 'w').close()\nlate = asyncio.ensure_future(later())",
+            go = go.display().to_string(),
+            asked = asked.display().to_string(),
+        ),
     );
-    std::thread::sleep(Duration::from_millis(800));
+    std::fs::write(&go, "").unwrap();
+    wait_until("the late request is answered", || asked.exists());
     let late = value(
         &kernel,
         "try:\n    await late\nexcept Exception as error:\n    message = str(error)\nmessage",
@@ -417,7 +452,7 @@ fn kernel_host_requests_beyond_sixteen_in_flight_are_refused() {
     let counter = in_flight.clone();
     let handler: Arc<dyn HostHandler> = Arc::new(move |_: &str, _: Map<String, Value>, _: &Signal| {
         counter.fetch_add(1, Ordering::SeqCst);
-        let deadline = Instant::now() + Duration::from_secs(20);
+        let deadline = Instant::now() + HANG_GUARD;
         while counter.load(Ordering::SeqCst) < 16 && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(5));
         }
@@ -607,29 +642,31 @@ fn kernel_failing_cell_still_collects_raw_output() {
 #[test]
 fn kernel_output_from_outside_a_cell_is_reported_once_at_the_next_cell() {
     with_kernel(|kernel| {
+        // stderr, not stdout: the host's stderr tail shows when the host has read the late output, so the next cell
+        // starts only after it (fd 1 and fd 2 share this code path).
         let directory = tempfile::tempdir().unwrap();
-        let written = directory.path().join("written");
+        let go = directory.path().join("go");
         let started = run(
             kernel,
             &format!(
-                "background = subprocess.Popen(['sh', '-c', 'sleep 0.2; echo late output; touch {}'])\n'started'",
-                written.display()
+                "background = subprocess.Popen(['sh', '-c', 'i=0; while [ ! -e {} ] && [ $i -lt 12000 ]; do sleep 0.01; i=$((i+1)); done; echo late output >&2'])\n'started'",
+                go.display()
             ),
         );
         assert_eq!(
-            (started.stdout.as_str(), started.result.as_deref()),
+            (started.stderr.as_str(), started.result.as_deref()),
             ("", Some("'started'"))
         );
-        while !written.exists() {
-            std::thread::sleep(Duration::from_millis(20));
-        }
-        std::thread::sleep(Duration::from_millis(300));
-        let next = run(kernel, "background.wait()\nprint('next cell')");
+        std::fs::write(&go, "").unwrap();
+        wait_until("the host reads the late output", || {
+            kernel.stderr_tail().ends_with("late output\n")
+        });
+        let next = run(kernel, "background.wait()\nprint('next cell', file=sys.stderr)");
         assert_eq!(
-            next.stdout,
+            next.stderr,
             "[kernel output written outside a cell, before this one (a background thread or process):]\nlate output\n[end of output from outside a cell]\nnext cell\n"
         );
-        assert_eq!(run(kernel, "print('clean')").stdout, "clean\n");
+        assert_eq!(run(kernel, "print('clean', file=sys.stderr)").stderr, "clean\n");
     });
 }
 
@@ -679,11 +716,7 @@ fn kernel_stdio_protocol_channel_works() {
     // On this channel stderr is only a diagnostic tail (read asynchronously).
     let result = run(&kernel, "import os\nos.write(2, b'tail text\\n')");
     assert_eq!(result.stderr, "");
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while !kernel.stderr_tail().ends_with("tail text\n") && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(10));
-    }
-    assert!(kernel.stderr_tail().ends_with("tail text\n"));
+    wait_until("the stderr tail", || kernel.stderr_tail().ends_with("tail text\n"));
 }
 
 // ultron-kernel-long-session.test.ts
@@ -914,7 +947,7 @@ fn kernel_cpu_backstop_kills_a_cell_that_swallows_the_limit_or_sits_in_c() {
         std::thread::spawn(move || {
             let _ = sender.send(running.execute(code, None, None));
         });
-        receiver.recv_timeout(Duration::from_secs(30)).unwrap_or_else(|_| {
+        receiver.recv_timeout(HANG_GUARD).unwrap_or_else(|_| {
             kernel.shutdown();
             panic!("no CPU backstop for {code}")
         })

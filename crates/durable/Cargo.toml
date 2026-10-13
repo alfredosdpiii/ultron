@@ -10,6 +10,7 @@ publish.workspace = true
 chord-delta = { path = "../chord-delta" }
 indexmap = "=2.14.2"
 rusqlite = { version = "=0.40.2", features = ["bundled"] }
+rustix = { version = "=1.1.5", features = ["fs", "std"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 

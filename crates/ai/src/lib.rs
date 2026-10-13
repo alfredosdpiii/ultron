@@ -1,6 +1,6 @@
 //! Rust port of the provider layer of Ultron's `packages/ai`: the message model, stream events, every API
 //! implementation (Anthropic Messages, OpenAI Chat Completions/Responses/Codex Responses, Azure OpenAI Responses,
-//! Google, Vertex, Mistral, Bedrock Converse, pi-messages, Claude Code CLI), provider auth with every OAuth flow, the
+//! Google, Vertex, Mistral, Bedrock Converse, pi-messages, Claude Code CLI, Claude subscription), provider auth with every OAuth flow, the
 //! `Models` runtime, the images API, the built-in model catalog, user `models.json`, and env API keys.
 //!
 //! Evidence: the `fixtures/generate*.mjs` scripts run the TypeScript sources against canned HTTP/SSE responses through
@@ -12,6 +12,7 @@ pub mod aws;
 pub mod azure_openai_responses;
 pub mod bedrock;
 pub mod claude_code_cli;
+pub mod claude_subscription;
 pub mod cloudflare;
 pub mod constrained;
 pub mod dispatch;

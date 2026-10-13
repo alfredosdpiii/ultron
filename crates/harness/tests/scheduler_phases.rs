@@ -299,6 +299,9 @@ fn harness_tasks_resume_a_waiting_task_once_every_awaited_task_is_terminal() {
         let waiter_id = start(&root, &waiter, false);
         opened.harness.resume().unwrap();
         eventually(|| order.lock().unwrap().len() == 3);
+        // The waiter records its `wait` before it commits the waiting state.
+        eventually(|| js(&opened.harness.get_task(waiter_id).unwrap().unwrap().state)["status"] == "waiting");
+        // Settle, then check nothing else ran: a slow machine can only let this pass wrongly.
         flush();
         let mut sorted = order.lock().unwrap().clone();
         sorted.sort();
@@ -512,24 +515,25 @@ fn harness_runtime_orders_commits_against_the_step_one_queued_before_lands_one_a
         );
         let detached = one_step("test.detached", move |_, runtime| {
             // Hold the line, queue a commit without waiting for it, and return; the step queues behind that commit.
-            *h.lock().unwrap() = Some(st.hold_commits());
+            let gate = st.hold_commits();
+            *h.lock().unwrap() = Some(gate.clone());
             let harness = hr.lock().unwrap().clone().unwrap();
             let conversation = runtime.conversation_id();
+            let blocker = harness.clone();
             spawn(move || {
-                harness.commit(|tx| Ok(tx.append_entry(conversation, EntryDraft::new("blocker")).map(drop)?))
+                blocker.commit(|tx| Ok(tx.append_entry(conversation, EntryDraft::new("blocker")).map(drop)?))
             });
-            flush();
+            gate.wait_entered();
             let queued = runtime.clone();
             *b.lock().unwrap() = Some(spawn(move || {
                 queued.commit(&bg(), |_, _| Ok(completed(json!("before"))))
             }));
-            flush();
-            // Queued after the handler returned, so after the step.
+            // `before` is on the line behind the held commit before the handler returns.
+            line_reaches(&harness, 2);
+            // Started after `before` was queued, so it lands after it: rejected whether it queues before or after the
+            // step's own commit.
             let late = runtime.clone();
-            *a.lock().unwrap() = Some(spawn(move || {
-                flush();
-                late.commit(&bg(), |_, _| Ok(completed(json!("after"))))
-            }));
+            *a.lock().unwrap() = Some(spawn(move || late.commit(&bg(), |_, _| Ok(completed(json!("after"))))));
             Ok(())
         });
         let opened = open_tasks(storage.clone(), vec![detached.clone()], OpenOptions::default()).unwrap();
@@ -541,8 +545,6 @@ fn harness_runtime_orders_commits_against_the_step_one_queued_before_lands_one_a
         let gate = held.lock().unwrap().clone().unwrap();
         gate.wait_entered();
         eventually(|| after.lock().unwrap().is_some());
-        flush();
-        flush();
         gate.release();
         before.lock().unwrap().take().unwrap().join().unwrap().unwrap();
         assert_eq!(
@@ -586,7 +588,8 @@ fn harness_runtime_sleeps_until_the_harness_clock_reaches_the_deadline() {
         let (opened, root, _) = open_root(backend, vec![sleeper.clone()], options);
         let id = start(&root, &sleeper, false);
         opened.harness.resume().unwrap();
-        // The clock stands still, so real timers keep firing without waking the task.
+        // The clock stands still, so real timers keep firing without waking the task. (A settle: a slow machine can
+        // only let this check pass wrongly.)
         std::thread::sleep(std::time::Duration::from_millis(30));
         assert!(!woke.is_resolved());
         *clock.lock().unwrap() = 1_005;
@@ -606,7 +609,7 @@ fn harness_runtime_rejects_a_sleep_when_signalled_or_its_own_context_is_cancelle
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_millis() as u64
-                + 60_000
+                + 3_600_000
         };
         let signalled = one_step("test.sleep-signalled", move |_, runtime| {
             s.resolve();

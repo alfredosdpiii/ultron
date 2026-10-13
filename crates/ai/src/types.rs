@@ -264,6 +264,10 @@ pub struct AssistantMessage {
     pub raw_stop_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_turn: Option<bool>,
+    /// Provider-owned replay state keyed by provider (an Ultron extension; absent in TypeScript messages). The
+    /// `claude-subscription` provider keeps its versioned native-assistant carrier here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_metadata: Option<Map<String, Value>>,
     pub timestamp: i64,
 }
 
@@ -285,6 +289,7 @@ impl AssistantMessage {
             error_message: None,
             raw_stop_reason: None,
             end_turn: None,
+            provider_metadata: None,
             timestamp,
         }
     }

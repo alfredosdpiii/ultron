@@ -158,7 +158,7 @@ impl FileWriteGuard for LokiGuard {
 
     fn before_shell(&self, command: &str, cwd: &Path) -> Result<Verdict, String> {
         let (status, stderr) =
-            loki::shell_writes::run(&self.root, &json!({"command": command, "cwd": cwd.to_string_lossy()}));
+            loki::shell::run_shell_writes(&self.root, &json!({"command": command, "cwd": cwd.to_string_lossy()}));
         if status == 0 {
             return Ok(Verdict::Allow(None));
         }

@@ -17,7 +17,10 @@ fn runtime() -> PathBuf {
 fn load_hello(dir: &Path) -> ExtensionHost {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/hello/hello.py");
     let python = std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| "/usr/bin/python3".into());
-    let text = json!({ "name": "hello", "command": python, "args": [script.to_string_lossy()] }).to_string();
+    // The startup timeout is an input no test here exercises; long so a loaded machine never trips it.
+    let text =
+        json!({ "name": "hello", "command": python, "args": [script.to_string_lossy()], "startupTimeoutMs": 120_000 })
+            .to_string();
     let path = dir.join("extension.json");
     std::fs::write(&path, &text).unwrap();
     let session = SessionInfo {
@@ -74,7 +77,7 @@ fn extensions_ext_namespace_calls_extension_functions_from_a_cell() {
             &served,
             kind,
             &Value::Object(payload),
-            Some(Duration::from_secs(5)),
+            Some(Duration::from_secs(120)),
             None,
         )
         .unwrap_or_else(|| Err(extensions::RpcError::Other(format!("Unknown host request: {kind}"))))
@@ -109,7 +112,7 @@ fn extensions_ext_namespace_calls_extension_functions_from_a_cell() {
     );
     assert_eq!(
         value(&k, "r = await ext.hello.info()\n(str(r), sorted(r.details))"),
-        "('', ['bus', 'pid', 'prompts', 'restart', 'session'])"
+        "('', ['bus', 'pid', 'prompts', 'restart', 'running', 'session'])"
     );
 
     // Unknown names fail in Python with what exists; positional arguments are refused.

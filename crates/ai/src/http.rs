@@ -455,11 +455,52 @@ pub(crate) fn join_url(base: &str, path: &str) -> String {
     }
 }
 
+/// `DEFAULT_HTTP_IDLE_TIMEOUT_MS` of `core/http-dispatcher.ts`: five minutes.
+pub const DEFAULT_HTTP_IDLE_TIMEOUT: Duration = Duration::from_millis(300_000);
+
+/// `parseHttpIdleTimeoutMs` of the `httpIdleTimeoutMs` setting: a non-negative number of milliseconds (floored), a
+/// numeric string, or `"disabled"` (0). `None` for anything else.
+pub fn parse_http_idle_timeout_ms(value: &Value) -> Option<u64> {
+    match value {
+        Value::String(text) => {
+            let trimmed = text.trim();
+            if trimmed.eq_ignore_ascii_case("disabled") {
+                return Some(0);
+            }
+            if trimmed.is_empty() {
+                return None;
+            }
+            trimmed
+                .parse::<f64>()
+                .ok()
+                .and_then(|n| parse_http_idle_timeout_ms(&serde_json::json!(n)))
+        }
+        Value::Number(n) => n
+            .as_f64()
+            .filter(|n| n.is_finite() && *n >= 0.0)
+            .map(|n| n.floor() as u64),
+        _ => None,
+    }
+}
+
+/// The idle timeout a `httpIdleTimeoutMs` setting selects (`None`: disabled; an invalid or missing setting is the
+/// default).
+pub fn http_idle_timeout(setting: Option<&Value>) -> Option<Duration> {
+    match setting.and_then(parse_http_idle_timeout_ms) {
+        Some(0) => None,
+        Some(ms) => Some(Duration::from_millis(ms)),
+        None => Some(DEFAULT_HTTP_IDLE_TIMEOUT),
+    }
+}
+
 /// Real HTTP over reqwest with rustls.
 #[derive(Clone, Debug, Default)]
 pub struct ReqwestTransport {
     client: reqwest::Client,
     timeout: Option<Duration>,
+    /// The longest wait for the response headers, or between two body chunks (undici's `headersTimeout` and
+    /// `bodyTimeout`, which TypeScript sets to `httpIdleTimeoutMs`).
+    idle: Option<Duration>,
 }
 
 impl ReqwestTransport {
@@ -468,20 +509,35 @@ impl ReqwestTransport {
     }
 
     pub fn with_client(client: reqwest::Client, timeout: Option<Duration>) -> Self {
-        ReqwestTransport { client, timeout }
+        ReqwestTransport {
+            client,
+            timeout,
+            idle: None,
+        }
+    }
+
+    /// Fail a request whose headers, or whose next body chunk, take longer than `idle` (`None`: wait forever).
+    /// A stalled body fails as `terminated`, as Node's fetch reports undici's body timeout, which the retry
+    /// classifier retries.
+    pub fn with_idle_timeout(mut self, idle: Option<Duration>) -> Self {
+        self.idle = idle;
+        self
     }
 }
 
-struct ReqwestBody(reqwest::Response);
+struct ReqwestBody(reqwest::Response, Option<Duration>);
 
 impl Body for ReqwestBody {
     fn next_chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, String>> {
         Box::pin(async move {
-            self.0
-                .chunk()
-                .await
-                .map(|c| c.map(|b| b.to_vec()))
-                .map_err(|e| e.to_string())
+            let chunk = self.0.chunk();
+            let chunk = match self.1 {
+                Some(idle) => tokio::time::timeout(idle, chunk)
+                    .await
+                    .map_err(|_| "terminated".to_string())?,
+                None => chunk.await,
+            };
+            chunk.map(|c| c.map(|b| b.to_vec())).map_err(|e| e.to_string())
         })
     }
 }
@@ -497,7 +553,13 @@ impl Transport for ReqwestTransport {
             if let Some(timeout) = self.timeout {
                 builder = builder.timeout(timeout);
             }
-            let response = builder.send().await.map_err(|e| e.to_string())?;
+            let response = match self.idle {
+                Some(idle) => tokio::time::timeout(idle, builder.send())
+                    .await
+                    .map_err(|_| "Headers Timeout Error".to_string())?,
+                None => builder.send().await,
+            }
+            .map_err(|e| e.to_string())?;
             let status = response.status().as_u16();
             let mut headers = HeaderMap::new();
             for (name, value) in response.headers() {
@@ -508,7 +570,7 @@ impl Transport for ReqwestTransport {
             Ok(HttpResponse {
                 status,
                 headers,
-                body: Box::new(ReqwestBody(response)),
+                body: Box::new(ReqwestBody(response, self.idle)),
             })
         })
     }

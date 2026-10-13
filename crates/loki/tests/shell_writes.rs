@@ -77,7 +77,7 @@ fn compare(run: impl Fn(&Path, &Value) -> (i64, String)) {
 #[test]
 fn loki_shell_writes_library_matches_loki_py_corpus() {
     compare(|root, payload| {
-        let (status, stderr) = loki::shell_writes::run(root, payload);
+        let (status, stderr) = loki::shell::run_shell_writes(root, payload);
         (i64::from(status), stderr)
     });
 }
@@ -128,14 +128,18 @@ fn loki_shell_tokens_match_python_shlex() {
         ("2>&1 >|f", &["2", ">&", "1", ">|", "f"]),
     ];
     for (input, expected) in cases {
-        assert_eq!(loki::shell_writes::shlex_tokens(input).unwrap(), expected, "{input:?}");
+        assert_eq!(
+            loki::shell::shlex_punctuated(input, false).unwrap(),
+            expected,
+            "{input:?}"
+        );
     }
     assert_eq!(
-        loki::shell_writes::shlex_tokens("'a").unwrap_err(),
+        loki::shell::shlex_punctuated("'a", false).unwrap_err(),
         "No closing quotation"
     );
     assert_eq!(
-        loki::shell_writes::shlex_tokens("a\\").unwrap_err(),
+        loki::shell::shlex_punctuated("a\\", false).unwrap_err(),
         "No escaped character"
     );
 }
@@ -157,9 +161,38 @@ fn loki_shell_write_targets_match_loki_py() {
     for (command, expected) in cases {
         let expected: Vec<(String, String)> = expected.iter().map(|(t, h)| (t.to_string(), h.to_string())).collect();
         assert_eq!(
-            loki::shell_writes::shell_write_targets(command, dir.path()),
+            loki::shell::shell_write_targets(command, dir.path()),
             Some(expected),
             "{command:?}"
+        );
+    }
+}
+
+/// `Path(src).name` keeps `..` (loki.py: `cp sub/.. sub/` writes `sub/..`, the root itself), against output printed by
+/// `loki.py --root R shell-writes` in a fresh `git init` repository with a `sub/` directory.
+#[test]
+fn loki_shell_writes_dot_dot_source_name_matches_loki_py() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    std::fs::create_dir(root.join("sub")).unwrap();
+    let status = Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(&root)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    for (command, expected) in [
+        ("cp sub/.. sub/", "loki: directory target is not a file: <ROOT>\n"),
+        ("cp -t . /", "loki: directory target is not a file: <ROOT>\n"),
+        ("cp x ..", ""),
+    ] {
+        let (status, stderr) = loki::shell::run_shell_writes(&root, &json!({ "command": command }));
+        let stderr = stderr.replace(root.to_str().unwrap(), "<ROOT>");
+        assert_eq!(
+            (status, stderr.as_str()),
+            (if expected.is_empty() { 0 } else { 2 }, expected),
+            "{command}"
         );
     }
 }

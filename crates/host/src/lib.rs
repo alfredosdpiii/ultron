@@ -4,6 +4,13 @@
 //! `bash` (ultron/rlm/host-bash.ts over core/bash-executor.ts) and host-owned shell jobs (ultron/rlm/shell-jobs.ts).
 //! `read`, `write` and `edit` run inside runtime.py; the host only answers their `files.before_write` check.
 //! Requests that need a model, subagents or durable stores are refused with [`not_available`].
+//!
+//! Shell jobs are durable (`Host::with_journal`): each runs under a small keeper shell in its own process group that
+//! writes the raw output to `<id>.out` and the exit status to `<id>.exit`, so the job does not depend on the worker
+//! that started it. The host follows those files into the cleaned, bounded spill file `<id>.log` and journals every
+//! start and end. A reopened worker settles each job the journal lists as running from what really happened: still
+//! running (the keeper is alive: it is followed again), completed with the status the keeper wrote, or `lost` (the
+//! process ended without one); never silently gone.
 
 pub mod cell;
 pub mod file_hooks;
@@ -15,6 +22,7 @@ pub mod shell_env;
 pub mod text;
 pub mod view_image;
 
+use journal::{JobJournal, JobRecord};
 use kernel::{HostHandler, Signal};
 use serde_json::{Map, Value, json};
 use std::fs::File;
@@ -23,7 +31,7 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError, mpsc};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use text::{DEFAULT_MAX_BYTES, Decoder, clean, tail_bytes, truncate_tail};
@@ -64,7 +72,31 @@ pub struct Host {
     guard: Box<dyn Guard>,
     /// Runs shell commands isolated (see [`Host::sandboxed`]); None runs them as before.
     launcher: Option<Arc<sandbox::Launcher>>,
+    shared: Arc<Shared>,
+}
+
+/// What job threads share with the host: the jobs, the journal they are written to, and whether the host released
+/// its jobs to a next owner.
+struct Shared {
     jobs: Mutex<Vec<Arc<Job>>>,
+    journal: Mutex<Option<Arc<dyn JobJournal>>>,
+    cwd: String,
+    released: AtomicBool,
+}
+
+impl Shared {
+    /// Writes the journal (every job, tails left out), serialized under the jobs lock so the newest state wins.
+    fn persist(&self) {
+        let jobs = lock(&self.jobs);
+        let Some(journal) = lock(&self.journal).clone() else {
+            return;
+        };
+        if self.released.load(Ordering::SeqCst) {
+            return;
+        }
+        let records: Vec<JobRecord> = jobs.iter().map(|job| job_record(job, &self.cwd)).collect();
+        let _ = journal.write(&journal::persisted(&records));
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -74,6 +106,10 @@ enum Status {
     Failed,
     Cancelled,
     TimedOut,
+    /// A TypeScript journal's running job after a restart (no process to follow).
+    Interrupted,
+    /// Its process ended while no worker followed it and left no exit status.
+    Lost,
 }
 
 impl Status {
@@ -84,6 +120,20 @@ impl Status {
             Status::Failed => "failed",
             Status::Cancelled => "cancelled",
             Status::TimedOut => "timed_out",
+            Status::Interrupted => "interrupted",
+            Status::Lost => "lost",
+        }
+    }
+
+    fn from_name(name: &str) -> Status {
+        match name {
+            "running" => Status::Running,
+            "completed" => Status::Completed,
+            "cancelled" => Status::Cancelled,
+            "timed_out" => Status::TimedOut,
+            "interrupted" => Status::Interrupted,
+            "lost" => Status::Lost,
+            _ => Status::Failed,
         }
     }
 }
@@ -103,11 +153,93 @@ struct Job {
     id: String,
     command: String,
     timeout: Option<f64>,
+    /// The cleaned, bounded output the kernel reads.
     output_path: PathBuf,
+    /// The keeper's raw output and the exit status it writes when the command ends.
+    raw_path: PathBuf,
+    exit_path: PathBuf,
     record: Mutex<Record>,
-    cancel: Mutex<bool>,
+    /// The keeper process (process group leader) and its start time.
+    process: Mutex<Option<(i32, Option<u64>)>>,
+    /// Set by the waiter of this worker's own keeper when it exits (its status code); guarded by `cancel.0`'s lock
+    /// for wake-ups.
+    exited: Mutex<Option<Option<i32>>>,
+    /// Cancel requested; its condvar wakes the follower (cancel, keeper exit, release).
+    cancel: (Mutex<bool>, Condvar),
     done: (Mutex<bool>, Condvar),
     waiters: AtomicUsize,
+}
+
+impl Job {
+    fn new(id: String, command: String, timeout: Option<f64>, jobs_dir: &Path, record: Record) -> Job {
+        Job {
+            output_path: jobs_dir.join(format!("{id}.log")),
+            raw_path: jobs_dir.join(format!("{id}.out")),
+            exit_path: jobs_dir.join(format!("{id}.exit")),
+            id,
+            command,
+            timeout,
+            record: Mutex::new(record),
+            process: Mutex::new(None),
+            exited: Mutex::new(None),
+            cancel: (Mutex::new(false), Condvar::new()),
+            done: (Mutex::new(false), Condvar::new()),
+            waiters: AtomicUsize::new(0),
+        }
+    }
+
+    fn finished(&self) {
+        *lock(&self.done.0) = true;
+        self.done.1.notify_all();
+    }
+}
+
+fn job_record(job: &Job, cwd: &str) -> JobRecord {
+    let record = lock(&job.record);
+    let process = *lock(&job.process);
+    JobRecord {
+        id: job.id.clone(),
+        lane: "main".into(),
+        root_id: None,
+        command: job.command.clone(),
+        cwd: cwd.into(),
+        timeout: job.timeout,
+        status: record.status.name().into(),
+        exit_code: record.exit_code.map(i64::from),
+        started_at: record.started_at,
+        ended_at: record.ended_at,
+        output_path: job.output_path.to_string_lossy().into_owned(),
+        output_bytes: record.output_bytes as u64,
+        retained_bytes: record.retained_bytes as u64,
+        tail: record.tail.clone(),
+        error: record.error.clone(),
+        pid: process.map(|(pid, _)| i64::from(pid)),
+        pid_start: process.and_then(|(_, start)| start),
+    }
+}
+
+/// Start time of a live (not zombie) process, in clock ticks since boot (`/proc/<pid>/stat` field 22).
+fn process_start(pid: i32) -> Option<u64> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    let fields: Vec<&str> = stat.rsplit_once(')')?.1.split_whitespace().collect();
+    if fields.first() == Some(&"Z") {
+        return None;
+    }
+    fields.get(19)?.parse().ok()
+}
+
+/// Whether the keeper recorded for a job still runs (same pid and start time).
+fn keeper_alive(process: Option<(i32, Option<u64>)>) -> bool {
+    match process {
+        Some((pid, start)) => process_start(pid).is_some_and(|now| start.is_none_or(|start| start == now)),
+        None => false,
+    }
+}
+
+/// The exit status the keeper wrote, once the command has ended.
+fn exit_status(path: &Path) -> Option<i32> {
+    let text = std::fs::read_to_string(path).ok()?;
+    text.split_whitespace().last()?.parse().ok()
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -243,13 +375,91 @@ impl Host {
     ) -> Self {
         let jobs_dir = jobs_dir.into();
         let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&jobs_dir);
+        let cwd = cwd.into();
         Host {
-            cwd: cwd.into(),
+            shared: Arc::new(Shared {
+                jobs: Mutex::new(Vec::new()),
+                journal: Mutex::new(None),
+                cwd: cwd.to_string_lossy().into_owned(),
+                released: AtomicBool::new(false),
+            }),
+            cwd,
             jobs_dir,
             spill_dir: spill_dir.into(),
             guard,
             launcher: None,
-            jobs: Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Makes shell jobs durable: restores the jobs journal from `journal` and journals every start and end from now
+    /// on. A job the journal lists as running is settled from its process: followed again while its keeper runs,
+    /// completed with the exit status the keeper wrote, or `lost` when the process ended without one. Records
+    /// without a process (TypeScript journals) read as `interrupted`, as there. Call once, before the first request.
+    pub fn with_journal(self, journal: Arc<dyn JobJournal>) -> Result<Host, String> {
+        let now = now_ms();
+        let restored = journal::restore_durable(journal.read()?.as_ref(), now)?;
+        let mut adopted = Vec::new();
+        {
+            let mut jobs = lock(&self.shared.jobs);
+            for saved in restored.records {
+                let job = Arc::new(Job::new(
+                    saved.id.clone(),
+                    saved.command.clone(),
+                    saved.timeout,
+                    // The record names its own spill file; the keeper's files sit next to it.
+                    Path::new(&saved.output_path).parent().unwrap_or(&self.jobs_dir),
+                    Record {
+                        status: Status::from_name(&saved.status),
+                        exit_code: saved.exit_code.and_then(|code| i32::try_from(code).ok()),
+                        started_at: saved.started_at,
+                        ended_at: saved.ended_at,
+                        output_bytes: saved.output_bytes as usize,
+                        retained_bytes: saved.retained_bytes as usize,
+                        tail: saved.tail.clone(),
+                        error: saved.error.clone(),
+                    },
+                ));
+                if saved.status == "running" {
+                    let pid = saved.pid.and_then(|pid| i32::try_from(pid).ok());
+                    *lock(&job.process) = pid.map(|pid| (pid, saved.pid_start));
+                    adopted.push(job.clone());
+                } else {
+                    job.finished();
+                }
+                jobs.push(job);
+            }
+        }
+        *lock(&self.shared.journal) = Some(journal);
+        for job in adopted {
+            if keeper_alive(*lock(&job.process)) {
+                let (runner, shared) = (job.clone(), self.shared.clone());
+                std::thread::spawn(move || follow(&runner, None, &shared));
+            } else {
+                // Ended while no worker followed it: settle it now, so the first reply is already its real state.
+                follow(&job, None, &self.shared);
+            }
+        }
+        self.shared.persist();
+        Ok(self)
+    }
+
+    /// Hands the running jobs to the next owner of the journal: this host stops following and journaling them, and
+    /// dropping it no longer stops them (a worker handing over to its successor). Without a journal it changes
+    /// nothing but the drop.
+    pub fn release_jobs(&self) {
+        self.shared.persist();
+        self.shared.released.store(true, Ordering::SeqCst);
+        for job in lock(&self.shared.jobs).iter() {
+            job.cancel.1.notify_all();
+        }
+    }
+
+    /// Stops every running job and waits until each has ended (worker shutdown). Dropping the host does the same
+    /// unless [`Host::release_jobs`] was called.
+    pub fn stop_jobs(&self) {
+        let jobs = lock(&self.shared.jobs).clone();
+        for job in jobs {
+            cancel(&job);
         }
     }
 
@@ -321,7 +531,7 @@ impl Host {
             }
             "shell.list" => {
                 fields(&payload, &[])?;
-                let jobs = lock(&self.jobs).clone();
+                let jobs = lock(&self.shared.jobs).clone();
                 Ok(Value::Array(
                     jobs.iter()
                         .rev()
@@ -429,7 +639,7 @@ impl Host {
         let Some(Value::String(id)) = id.filter(|id| id.as_str().is_some_and(|id| !id.is_empty())) else {
             return Err("job id must be a nonempty string".into());
         };
-        lock(&self.jobs)
+        lock(&self.shared.jobs)
             .iter()
             .find(|job| &job.id == id)
             .cloned()
@@ -437,18 +647,18 @@ impl Host {
     }
 
     fn start(&self, command: String, timeout: Option<f64>) -> Result<Arc<Job>, String> {
-        let mut jobs = lock(&self.jobs);
+        let mut jobs = lock(&self.shared.jobs);
         let running = |job: &Arc<Job>| lock(&job.record).status == Status::Running;
         if jobs.iter().filter(|job| running(job)).count() >= JOB_MAX_ACTIVE {
             return Err(format!("At most {JOB_MAX_ACTIVE} shell jobs can run at once"));
         }
         let id = format!("job-{}", hex(4));
-        let job = Arc::new(Job {
-            output_path: self.jobs_dir.join(format!("{id}.log")),
+        let job = Arc::new(Job::new(
             id,
             command,
             timeout,
-            record: Mutex::new(Record {
+            &self.jobs_dir,
+            Record {
                 status: Status::Running,
                 exit_code: None,
                 started_at: now_ms(),
@@ -457,13 +667,10 @@ impl Host {
                 retained_bytes: 0,
                 tail: String::new(),
                 error: None,
-            }),
-            cancel: Mutex::new(false),
-            done: (Mutex::new(false), Condvar::new()),
-            waiters: AtomicUsize::new(0),
-        });
+            },
+        ));
         jobs.push(job.clone());
-        // Bounded retention: drop the oldest finished jobs and their spill files.
+        // Bounded retention: drop the oldest finished jobs and their files.
         let excess = jobs.len().saturating_sub(JOB_MAX_RETAINED);
         let pruned: Vec<String> = jobs
             .iter()
@@ -474,89 +681,254 @@ impl Host {
         jobs.retain(|job| {
             let keep = !pruned.contains(&job.id);
             if !keep {
-                let _ = std::fs::remove_file(&job.output_path);
+                for path in [&job.output_path, &job.raw_path, &job.exit_path] {
+                    let _ = std::fs::remove_file(path);
+                }
             }
             keep
         });
         drop(jobs);
-        let cwd = self.cwd.clone();
-        let runner = job.clone();
-        let launcher = self.launcher.clone();
-        std::thread::spawn(move || run_job(&runner, &cwd, launcher.as_deref()));
+        // The keeper is spawned on the thread that follows it: a sandbox launcher ties the command to its parent
+        // thread (PR_SET_PDEATHSIG), so the request thread that starts a job must not be its parent.
+        let (started, spawned) = mpsc::channel();
+        let (runner, shared, cwd, launcher) = (
+            job.clone(),
+            self.shared.clone(),
+            self.cwd.clone(),
+            self.launcher.clone(),
+        );
+        std::thread::spawn(move || match spawn_keeper(&runner, &cwd, launcher.as_deref()) {
+            Ok(child) => {
+                let pid = child.id() as i32;
+                *lock(&runner.process) = Some((pid, process_start(pid)));
+                let _ = started.send(());
+                follow(&runner, Some(child), &shared);
+            }
+            Err(error) => {
+                let mut record = lock(&runner.record);
+                record.status = Status::Failed;
+                record.ended_at = Some(now_ms());
+                record.error = Some(error);
+                drop(record);
+                let _ = started.send(());
+                runner.finished();
+            }
+        });
+        let _ = spawned.recv();
+        self.shared.persist();
         Ok(job)
     }
 }
 
-fn run_job(job: &Job, cwd: &Path, launcher: Option<&sandbox::Launcher>) {
-    let file = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&job.output_path);
-    let deadline = job
-        .timeout
-        .map(|seconds| Instant::now() + Duration::from_secs_f64(seconds));
-    let timed_out = std::cell::Cell::new(false);
-    let mut file = file.ok();
-    let result = run_shell(
-        &job.command,
-        cwd,
-        launcher,
-        |text, _| {
-            if text.is_empty() {
-                return;
-            }
-            let mut record = lock(&job.record);
-            record.output_bytes += text.len();
-            let room = JOB_RETAINED_BYTES.saturating_sub(record.retained_bytes);
-            if room > 0 {
-                let kept = &text.as_bytes()[..room.min(text.len())];
-                if let Some(file) = file.as_mut() {
-                    let _ = file.write_all(kept);
-                }
-                record.retained_bytes += kept.len();
-            }
-            let tail = format!("{}{text}", record.tail);
-            record.tail = tail_bytes(&tail, JOB_TEXT_BYTES / 2).to_owned();
-        },
-        || {
-            if deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-                timed_out.set(true);
-            }
-            timed_out.get() || *lock(&job.cancel)
-        },
-    );
-    let aborted = timed_out.get() || *lock(&job.cancel);
-    {
+/// The keeper: runs the command with bash (stdout and stderr together into the raw file, which is the keeper's
+/// stdout), then writes the command's exit status to its own stderr, the exit file. Files, not pipes, so the command
+/// keeps running and its end is recorded when the worker that started it is gone.
+const KEEPER: &str = r#"bash -c "$0" 2>&1 </dev/null; printf '%s\n' "$?" >&2"#;
+
+fn spawn_keeper(job: &Job, cwd: &Path, launcher: Option<&sandbox::Launcher>) -> Result<std::process::Child, String> {
+    let create = |path: &Path| {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .map_err(|error| format!("{}: {error}", path.display()))
+    };
+    let raw = create(&job.raw_path)?;
+    let exit = create(&job.exit_path)?;
+    let argv = ["bash".to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
+    let mut process = match launcher {
+        Some(launcher) => launcher.command(&argv, cwd)?,
+        None => {
+            let mut process = Command::new(&argv[0]);
+            process.args(&argv[1..]).current_dir(cwd);
+            process
+        }
+    };
+    process
+        .stdin(Stdio::null())
+        .stdout(raw)
+        .stderr(exit)
+        .process_group(0)
+        .spawn()
+        .map_err(|error| error.to_string())
+}
+
+/// Turns raw output into the cleaned, bounded spill file and the record's counts and tail, as the TypeScript job
+/// does with its stream.
+struct Digest {
+    decoder: Decoder,
+    log: Option<File>,
+}
+
+impl Digest {
+    /// Starts the spill file over: a job followed again after a restart is digested from its first raw byte.
+    fn new(job: &Job) -> Digest {
+        let log = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&job.output_path)
+            .ok();
         let mut record = lock(&job.record);
-        record.ended_at = Some(now_ms());
-        record.exit_code = match &result {
-            Ok(code) if !aborted => *code,
-            _ => None,
-        };
-        record.status = if timed_out.get() {
-            Status::TimedOut
-        } else if aborted {
-            Status::Cancelled
-        } else if result.is_err() {
-            Status::Failed
-        } else {
-            Status::Completed
-        };
-        if timed_out.get() {
-            record.error = Some(format!(
-                "timed out after {}s; process tree killed",
-                js_number(job.timeout.unwrap_or(0.0))
-            ));
-        } else if let Err(error) = result
-            && !aborted
-        {
-            record.error = Some(error);
+        record.output_bytes = 0;
+        record.retained_bytes = 0;
+        record.tail.clear();
+        Digest {
+            decoder: Decoder::default(),
+            log,
         }
     }
-    *lock(&job.done.0) = true;
-    job.done.1.notify_all();
+
+    fn text(&mut self, job: &Job, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        let mut record = lock(&job.record);
+        record.output_bytes += text.len();
+        let room = JOB_RETAINED_BYTES.saturating_sub(record.retained_bytes);
+        if room > 0 {
+            let kept = &text.as_bytes()[..room.min(text.len())];
+            if let Some(log) = self.log.as_mut() {
+                let _ = log.write_all(kept);
+            }
+            record.retained_bytes += kept.len();
+        }
+        let tail = format!("{}{text}", record.tail);
+        record.tail = tail_bytes(&tail, JOB_TEXT_BYTES / 2).to_owned();
+    }
+
+    /// Reads every raw byte written so far.
+    fn pump(&mut self, job: &Job, raw: &mut Option<File>) {
+        let Some(file) = raw.as_mut() else {
+            return;
+        };
+        let mut buffer = vec![0u8; 64 * 1024];
+        while let Ok(read) = file.read(&mut buffer) {
+            if read == 0 {
+                break;
+            }
+            let text = clean(&self.decoder.decode(&buffer[..read], true));
+            self.text(job, &text);
+        }
+    }
+
+    fn finish(&mut self, job: &Job) {
+        let text = clean(&self.decoder.decode(&[], false));
+        self.text(job, &text);
+    }
+}
+
+/// Follows a job until it ends: its own child (`child`), or a keeper started by an earlier worker (`None`), whose
+/// end is its exit file or, without one, its process going away (`lost`). Stops the process group on cancel or
+/// timeout. Returns without settling the job when the host released its jobs.
+fn follow(job: &Arc<Job>, child: Option<std::process::Child>, shared: &Shared) {
+    let own = child.is_some();
+    if let Some(mut child) = child {
+        // Waits for the keeper on a thread of its own so its exit wakes the follower at once.
+        let waiter = job.clone();
+        std::thread::spawn(move || {
+            let code = child.wait().ok().and_then(|status| status.code());
+            let guard = lock(&waiter.cancel.0);
+            *lock(&waiter.exited) = Some(code);
+            drop(guard);
+            waiter.cancel.1.notify_all();
+        });
+    }
+    let mut digest = Digest::new(job);
+    let mut raw = File::open(&job.raw_path).ok();
+    let started_at = lock(&job.record).started_at;
+    let deadline = job
+        .timeout
+        .map(|seconds| started_at.saturating_add((seconds * 1000.0) as u64));
+    let process = *lock(&job.process);
+    let mut stopped: Option<Status> = None;
+    let ended = loop {
+        let ended = match own {
+            true => *lock(&job.exited),
+            false => {
+                let code = exit_status(&job.exit_path);
+                (code.is_some() || !keeper_alive(process)).then_some(code)
+            }
+        };
+        digest.pump(job, &mut raw);
+        if let Some(ended) = ended {
+            break ended;
+        }
+        if shared.released.load(Ordering::SeqCst) {
+            return;
+        }
+        if stopped.is_none() {
+            if deadline.is_some_and(|deadline| now_ms() >= deadline) {
+                stopped = Some(Status::TimedOut);
+            } else if *lock(&job.cancel.0) {
+                stopped = Some(Status::Cancelled);
+            }
+            if stopped.is_some()
+                && let Some(pid) = process.and_then(|(pid, _)| rustix::process::Pid::from_raw(pid))
+            {
+                let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+            }
+        }
+        let cancel = lock(&job.cancel.0);
+        if lock(&job.exited).is_none() {
+            drop(
+                job.cancel
+                    .1
+                    .wait_timeout(cancel, POLL)
+                    .unwrap_or_else(PoisonError::into_inner),
+            );
+        }
+    };
+    digest.finish(job);
+    // The keeper writes the command's status just before it exits.
+    let code = exit_status(&job.exit_path);
+    {
+        let mut record = lock(&job.record);
+        record.ended_at = Some(match own {
+            true => now_ms(),
+            // Ended while nobody followed it: the exit file's time, when there is one.
+            false => std::fs::metadata(&job.exit_path)
+                .and_then(|meta| meta.modified())
+                .ok()
+                .filter(|_| code.is_some())
+                .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+                .map_or_else(now_ms, |d| d.as_millis() as u64),
+        });
+        match stopped {
+            Some(status) => {
+                record.status = status;
+                record.exit_code = None;
+                if status == Status::TimedOut {
+                    record.error = Some(format!(
+                        "timed out after {}s; process tree killed",
+                        js_number(job.timeout.unwrap_or(0.0))
+                    ));
+                }
+            }
+            None => match (code, own) {
+                (Some(code), _) => {
+                    record.status = Status::Completed;
+                    record.exit_code = Some(code);
+                }
+                // The keeper itself was killed: as a command killed by a signal, no exit code.
+                (None, true) => {
+                    record.status = Status::Completed;
+                    record.exit_code = ended;
+                }
+                (None, false) => {
+                    record.status = Status::Lost;
+                    record.exit_code = None;
+                    record.error =
+                        Some("its process ended while no Ultron worker was running; the exit status is unknown".into());
+                }
+            },
+        }
+    }
+    shared.persist();
+    job.finished();
 }
 
 /// A number as JS prints it in a template string (integers without a fraction).
@@ -598,7 +970,8 @@ fn cancel(job: &Job) {
     if *lock(&job.done.0) {
         return;
     }
-    *lock(&job.cancel) = true;
+    *lock(&job.cancel.0) = true;
+    job.cancel.1.notify_all();
     let mut done = lock(&job.done.0);
     while !*done {
         done = job.done.1.wait(done).unwrap_or_else(PoisonError::into_inner);
@@ -708,10 +1081,10 @@ impl HostHandler for Host {
 }
 
 impl Drop for Host {
-    /// Worker shutdown: stop every running job.
+    /// Worker shutdown: stop every running job, unless they were released to the next owner.
     fn drop(&mut self) {
-        for job in lock(&self.jobs).iter() {
-            cancel(job);
+        if !self.shared.released.load(Ordering::SeqCst) {
+            self.stop_jobs();
         }
     }
 }

@@ -411,6 +411,17 @@ impl Drop for TempIndex {
     }
 }
 
+/// Copy the index with its modification time. Git trusts an entry whose cached stat matches the file (seconds
+/// only) unless the entry is racily clean: not older than the index file itself. A plain copy is newer than every
+/// entry, so a file rewritten with the same size in the second it was staged (an edit right after a commit) looked
+/// unchanged once the copy landed a second later, and the snapshot left the edit out: under load the fixture's
+/// parent edit went missing and a conflicting merge came back as "changed during the merge".
+fn copy_index(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::copy(from, to)?;
+    let modified = std::fs::metadata(from)?.modified()?;
+    std::fs::File::options().write(true).open(to)?.set_modified(modified)
+}
+
 /// A commit of `top`'s working tree as it is now, made from a copy of its index (the working tree and the real index
 /// stay untouched); HEAD itself (`dirty: false`) when nothing differs from it.
 pub fn snapshot_working_tree(top: &Path, head: &str, message: &str) -> Result<(String, bool)> {
@@ -418,7 +429,7 @@ pub fn snapshot_working_tree(top: &Path, head: &str, message: &str) -> Result<(S
     let temporary = TempIndex(temporary_index("index"));
     let index = text(&temporary.0);
     let env = [("GIT_INDEX_FILE", index.as_str()), ("GIT_OPTIONAL_LOCKS", "0")];
-    if std::fs::copy(index_path.trim(), &temporary.0).is_err() {
+    if copy_index(Path::new(index_path.trim()), &temporary.0).is_err() {
         git_ok_with(top, &["read-tree", head], opts(&env))?;
     }
     git_ok_with(top, &quiet(&["add", "-A", "--", "."]), opts(&env))?;
@@ -916,15 +927,22 @@ pub fn run_setup_command(record: &WorktreeRecord, signal: Option<&Signal>) -> Re
     let Some(command) = record.command.as_deref() else {
         return Ok(());
     };
-    let mut child = Command::new("/bin/sh")
-        .args(["-c", command])
-        .current_dir(&record.cwd)
-        .envs(worktree_env(record))
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0)
-        .spawn();
+    // One pipe for stdout and stderr: the output keeps the order the command wrote it in. Two pipes drained by two
+    // threads (or two event-loop callbacks) can reorder `echo out; echo err >&2` into "err\nout".
+    let (reader, writer) = std::io::pipe()?;
+    let mut child = {
+        let mut sh = Command::new("/bin/sh");
+        sh.args(["-c", command])
+            .current_dir(&record.cwd)
+            .envs(worktree_env(record))
+            .stdin(Stdio::null())
+            .stdout(writer.try_clone()?)
+            .stderr(writer)
+            .process_group(0);
+        // The Command (and with it our copies of the write end) is dropped here, so the reader sees EOF once the
+        // command and anything it left running close the pipe.
+        sh.spawn()
+    };
     let output = std::sync::Arc::new(Mutex::new(String::new()));
     let (code, timed_out) = match &mut child {
         Err(error) => {
@@ -932,14 +950,9 @@ pub fn run_setup_command(record: &WorktreeRecord, signal: Option<&Signal>) -> Re
             (None, false)
         }
         Ok(child) => {
-            let readers: Vec<_> = [
-                child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>),
-                child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>),
-            ]
-            .into_iter()
-            .flatten()
-            .map(|mut pipe| {
+            let drain = {
                 let output = output.clone();
+                let mut pipe = reader;
                 std::thread::spawn(move || {
                     let mut chunk = [0u8; 8192];
                     while let Ok(n) = pipe.read(&mut chunk) {
@@ -954,8 +967,7 @@ pub fn run_setup_command(record: &WorktreeRecord, signal: Option<&Signal>) -> Re
                         }
                     }
                 })
-            })
-            .collect();
+            };
             let group = rustix::process::Pid::from_raw(child.id() as i32);
             let timeout = Duration::from_millis(record.command_timeout_ms.unwrap_or(DEFAULT_SETUP_TIMEOUT_MS));
             let started = std::time::Instant::now();
@@ -979,9 +991,7 @@ pub fn run_setup_command(record: &WorktreeRecord, signal: Option<&Signal>) -> Re
                     None => std::thread::sleep(Duration::from_millis(10)),
                 }
             };
-            for reader in readers {
-                let _ = reader.join();
-            }
+            let _ = drain.join();
             (status.code(), timed_out)
         }
     };

@@ -62,39 +62,74 @@ pub fn protect_with(
     payload: impl FnOnce() -> Result<Value, CheckError>,
 ) -> Outcome {
     let checked = || -> Result<(Vec<String>, Vec<String>), CheckError> {
+        let deadline = crate::proc::Deadline::after(20.0);
         let payload = match preview {
             Some(_) => Some(payload()?),
             None => None,
         };
-        let mut paths: Vec<String> = Vec::new();
-        for path in files {
-            crate::valid_path(path)?;
-            if !paths.contains(path) {
-                paths.push(path.clone());
-            }
-        }
-        let mut messages = Vec::new();
-        for path in &paths {
-            messages.extend(protect_path(path, root, config)?);
-        }
+        let paths = file_paths(files)?;
         let mut warnings = Vec::new();
-        if messages.is_empty() {
-            messages.extend(crate::preview_violations(
-                root,
-                &paths,
-                payload.as_ref(),
-                preview.unwrap_or(""),
-                crate::proc::Deadline::after(20.0),
-                &mut warnings,
-                config,
-            )?);
-        }
+        let messages = protect_violations(
+            root,
+            config,
+            &paths,
+            payload.as_ref(),
+            preview.unwrap_or(""),
+            deadline,
+            &mut warnings,
+        )?;
         Ok((messages, warnings))
     };
-    let (messages, mut warnings) = match checked() {
-        Ok(result) => result,
-        Err(error) => return fail("protect", &error, json),
-    };
+    match checked() {
+        Ok((messages, warnings)) => report("protect", &messages, warnings, json, false),
+        Err(error) => fail("protect", &error, json),
+    }
+}
+
+/// The `--file` arguments, validated, without repeats.
+pub fn file_paths(files: &[String]) -> Result<Vec<String>, CheckError> {
+    let mut paths: Vec<String> = Vec::new();
+    for path in files {
+        crate::valid_path(path)?;
+        if !paths.contains(path) {
+            paths.push(path.clone());
+        }
+    }
+    Ok(paths)
+}
+
+/// The protected-path refusals for `paths`.
+pub fn protected(root: &Path, config: &Config, paths: &[String]) -> Result<Vec<String>, CheckError> {
+    let mut messages = Vec::new();
+    for path in paths {
+        messages.extend(protect_path(path, root, config)?);
+    }
+    Ok(messages)
+}
+
+/// `protect`'s check: protected paths, then (when none is protected) the preview of the write in `mode`.
+pub fn protect_violations(
+    root: &Path,
+    config: &Config,
+    paths: &[String],
+    payload: Option<&Value>,
+    mode: &str,
+    deadline: crate::proc::Deadline,
+    warnings: &mut Vec<String>,
+) -> Result<Vec<String>, CheckError> {
+    let mut messages = protected(root, config, paths)?;
+    if messages.is_empty() {
+        messages.extend(crate::preview_violations(
+            root, paths, payload, mode, deadline, warnings, config,
+        )?);
+    }
+    Ok(messages)
+}
+
+/// What `protect` and `hook` print for a finished check: the JSON report for `--format json`, blocking messages
+/// (then advisories and unchecked notes) on stderr with status 2, else the warnings, which a `--harness` run also
+/// hands back as hook context.
+pub fn report(command: &str, messages: &[String], mut warnings: Vec<String>, json: bool, harness: bool) -> Outcome {
     let mut seen = Vec::new();
     warnings.retain(|w| {
         !seen.contains(w) && {
@@ -102,12 +137,17 @@ pub fn protect_with(
             true
         }
     });
-    let stdout = if json {
-        format!("{}\n", py::dumps(&hook_report("protect", &messages, &warnings, None)))
+    let mut stdout = if json {
+        format!("{}\n", py::dumps(&hook_report(command, messages, &warnings, None)))
     } else {
         String::new()
     };
     if !messages.is_empty() {
+        let prefix = if command == "hook" {
+            "loki: post-write check failed; files are already changed.\n"
+        } else {
+            ""
+        };
         let advisory: Vec<&String> = warnings.iter().filter(|w| !w.starts_with("NOT CHECKED")).collect();
         let unchecked = warnings.iter().filter(|w| w.starts_with("NOT CHECKED"));
         let label = (!advisory.is_empty()).then(|| "loki: advisory (not blocking):".to_string());
@@ -122,17 +162,29 @@ pub fn protect_with(
         return Outcome {
             status: 2,
             stdout,
-            stderr: format!("{}\n", lines.join("\n")),
+            stderr: format!("{prefix}{}\n", lines.join("\n")),
         };
     }
-    let stderr = if warnings.is_empty() {
-        String::new()
-    } else {
-        format!("{}\n", warnings.join("\n"))
-    };
+    if warnings.is_empty() {
+        return Outcome {
+            status: 0,
+            stdout,
+            stderr: String::new(),
+        };
+    }
+    let text = warnings.join("\n");
+    if harness {
+        let event = if command == "protect" {
+            "PreToolUse"
+        } else {
+            "PostToolUse"
+        };
+        let context = serde_json::json!({"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}});
+        stdout.push_str(&format!("{}\n", py::dumps(&context)));
+    }
     Outcome {
         status: 0,
         stdout,
-        stderr,
+        stderr: format!("{text}\n"),
     }
 }

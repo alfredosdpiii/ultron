@@ -1,11 +1,12 @@
 //! A02: large input stays outside active context; full data remains usable.
 //! Ported from packages/coding-agent/test/ultron-a02-large-data.test.ts with its literal expectations: the real
 //! runtime.py under the Rust kernel supervisor, the Rust `rlm` tool text (crates/host `cell_output`), and the
-//! `ultron` binary against a scripted OpenAI-compatible provider that records every request body.
+//! `ultron` binary in RPC mode (`--mode rpc --no-session`, as the TS test drives it: server generation plus session
+//! worker) against a scripted OpenAI-compatible provider that records every request body.
 
 mod common;
 
-use common::{Install, Provider, Reply, kernel_in, null_handler, run, stdout_of};
+use common::{Install, Provider, Reply, kernel_in, null_handler, run};
 use host::cell::{CellFormat, cell_output};
 use host::secrets::OutputMasker;
 use kernel::Status;
@@ -111,8 +112,12 @@ fn end_to_end_part() {
     });
     let install = Install::new(&provider);
     let data = write_dataset(&install.project());
-    let output = install.prompt("Sum the value column of large.csv", &[]);
-    assert_eq!(stdout_of(&output), "A02_DONE\n");
+    let mut client = install.rpc(&["--no-session"], &[]);
+    client
+        .prompt_and_wait("Sum the value column of large.csv", common::HANG)
+        .unwrap();
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("A02_DONE"));
+    assert_eq!(client.stop(), Some(0));
 
     let requests = provider.requests();
     assert_eq!(requests.len(), 2);

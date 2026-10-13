@@ -14,6 +14,15 @@ const python = process.env.ULTRON_PYTHON || "/usr/bin/python3";
 const rlm = join(root, "packages/coding-agent/src/ultron/rlm");
 const out = execFileSync(python, ["-I", join(here, "record.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
 writeFileSync(join(here, "review.json"), out);
+// Chunking, find plans, scope over local git repositories (gh scripted), related code, the report, save and post.
+const scope = execFileSync(python, ["-I", join(here, "record_scope.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
+writeFileSync(join(here, "scope.json"), scope);
+// Autoreview's context, guides (trees built in a temp dir), line mapping, slices, merging and public findings.
+const autoreview = execFileSync(python, ["-I", join(here, "record_autoreview.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
+writeFileSync(join(here, "autoreview.json"), autoreview);
+// The autoreview frame scheduler on a virtual clock with scripted rlm.map replies.
+const frames = execFileSync(python, ["-I", join(here, "record_frames.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
+writeFileSync(join(here, "frames.json"), frames);
 
 // The fates ledger (packages/coding-agent/src/ultron/autoreview/lessons.ts): pure functions over recorded inputs.
 process.env.TZ = "UTC";

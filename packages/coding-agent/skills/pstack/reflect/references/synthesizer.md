@@ -12,8 +12,8 @@ Apply each criterion to every finding:
 - Convergence: findings echoed by 2+ reviewers carry higher confidence. Singletons must clear a higher bar on the other criteria.
 - Decision-changing: a future session does something different because of the edit, not just reads more text.
 - Structural-mechanism check: route to Backlog when a lint rule, test, script, metadata flag, or runtime check already enforces the rule or could enforce it cheaply. Skill prose is for things mechanisms cannot enforce. A repeated procedure that can be tested belongs in a `code skill:` row rather than prose.
-- Skill-was-used: only accept findings that route to a skill, tool, or MCP server the session actually used. If the skill wasn't used but should have been, route to `tune description: <skill path>` so it triggers next time. If neither, reject as `skill-not-used`.
-- Already-covered: check the target skill's text in your context before accepting any body-edit row. If the proposal duplicates clear, well-placed existing guidance, reject as `already-covered`: the issue is execution, not the skill. If the existing guidance is buried, weak, or easy to skip past, accept the row but reframe it as a wording or placement change that makes it fire, not a duplicate addition. If the target's text is missing from your context, say so in the row.
+- Skill-was-used: accept only findings that route to a skill, tool, or MCP server the session used. If the skill wasn't used but should have been, route to `tune description: <skill path>`. If neither, reject as `skill-not-used`.
+- Already-covered: check the target skill's text in your context before accepting any body-edit row. If the proposal duplicates clear, well-placed existing guidance, reject as `already-covered`, because the issue is execution, not the skill. If the existing guidance is buried, weak, or easy to skip past, accept the row but reframe it as a wording or placement change that makes it fire, not a duplicate addition. If the target's text is missing from your context, say so in the row.
 
 Drop (implementation details that drift):
 - "linter at SHA `bd91aa7` uses chars/4 heuristic"

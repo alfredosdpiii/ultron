@@ -12,8 +12,11 @@ ai = { path = "../ai" }
 compaction = { path = "../compaction" }
 config = { path = "../config" }
 delegation = { path = "../delegation" }
+durable = { path = "../durable" }
 extensions = { path = "../extensions" }
+harness = { path = "../harness" }
 hindsight = { path = "../hindsight" }
+indexmap = "=2.14.2"
 host = { path = "../host" }
 inference = { path = "../inference" }
 kernel = { path = "../kernel" }

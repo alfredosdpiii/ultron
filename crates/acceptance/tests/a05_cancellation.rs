@@ -42,9 +42,7 @@ fn process_tree_cell(pid_file: &Path, wait: &str) -> String {
 }
 
 fn all_gone(pids: &[u32]) {
-    wait_until("the process tree to end", Duration::from_secs(10), || {
-        pids.iter().all(|pid| !alive(*pid))
-    });
+    wait_until("the process tree to end", || pids.iter().all(|pid| !alive(*pid)));
 }
 
 /// A gate the test opens once.
@@ -66,12 +64,14 @@ fn cancelling_a_cell_kills_its_tree_and_a_late_reply_does_not_revive_it() {
     let pid_file = dir.path().join("pids.json");
     let gate = Arc::new(Gate::default());
     let (signals, host_signal) = mpsc::channel::<Signal>();
+    let (answered, late_answer) = mpsc::channel::<()>();
     let late = gate.clone();
-    let signals = Mutex::new(signals);
+    let (signals, answered) = (Mutex::new(signals), Mutex::new(answered));
     // Delayed provider: answers only after the test opens the gate, ignoring the abort signal.
     let handler: Arc<dyn HostHandler> = Arc::new(move |_: &str, _: Map<String, Value>, signal: &Signal| {
         let _ = signals.lock().unwrap().send(signal.clone());
         late.wait();
+        let _ = answered.lock().unwrap().send(());
         Ok(json!({"late": "success"}))
     });
     let kernel = Arc::new(kernel_in(dir.path(), handler));
@@ -80,7 +80,7 @@ fn cancelling_a_cell_kills_its_tree_and_a_late_reply_does_not_revive_it() {
     let code = process_tree_cell(&pid_file, "late = await rlm.host_request('provider.call', {})");
     let running = std::thread::spawn(move || cell_kernel.execute(&code, Some(&cell_signal), None));
     let pids = read_pids(&pid_file, 4);
-    let host_signal = host_signal.recv_timeout(Duration::from_secs(20)).unwrap();
+    let host_signal = host_signal.recv_timeout(common::HANG).unwrap();
     assert!(pids.iter().all(|pid| alive(*pid)));
 
     signal.abort("user cancelled");
@@ -90,6 +90,8 @@ fn cancelling_a_cell_kills_its_tree_and_a_late_reply_does_not_revive_it() {
 
     // The late provider success arrives after cancellation and must not revive the cell.
     gate.open();
+    late_answer.recv_timeout(common::HANG).unwrap();
+    // A short settle for the answer to reach the kernel; a slower machine can only make this pass without testing.
     std::thread::sleep(Duration::from_millis(50));
     let fresh = run(&kernel, "'late' in globals()");
     assert_eq!((fresh.status, fresh.result.as_deref()), (Status::Ok, Some("False")));

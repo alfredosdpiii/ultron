@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use fancy_regex::{Captures, Regex};
+use fancy_regex::{Captures, Regex, RegexInput};
 
 use crate::markdown::{ListItem, Token, trim_partial_closing_fences};
 
@@ -98,11 +98,16 @@ mod rules {
     pub static EM_L: LazyLock<Regex> = LazyLock::new(|| {
         re(r##"^(?:\*+(?:((?!\*)(?!~)[\p{P}\p{S}])|([^\s*]))?)|^_+(?:((?!_)(?!~)[\p{P}\p{S}])|([^\s_]))?"##)
     });
+    pub static EM_R_AST_SKIP: LazyLock<Regex> = LazyLock::new(|| re(r##"^[^_*]*?__[^_*]*?\*[^_*]*?(?=__)"##));
+    pub static EM_R_UND_SKIP: LazyLock<Regex> = LazyLock::new(|| re(r##"^[^_*]*?\*\*[^_*]*?_[^_*]*?(?=\*\*)"##));
+    pub static PUNCT_OR_SYMBOL: LazyLock<Regex> = LazyLock::new(|| re(r"[\p{P}\p{S}]"));
+    #[cfg(test)]
     pub static EM_R_AST: LazyLock<Regex> = LazyLock::new(|| {
         re(
             r##"^[^_*]*?__[^_*]*?\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\*)(?!~)[\p{P}\p{S}](\*+)(?=[\s]|$)|(?:[^\s\p{P}\p{S}]|~)(\*+)(?!\*)(?=(?!~)[\s\p{P}\p{S}]|$)|(?!\*)(?!~)[\s\p{P}\p{S}](\*+)(?=(?:[^\s\p{P}\p{S}]|~))|[\s](\*+)(?!\*)(?=(?!~)[\p{P}\p{S}])|(?!\*)(?!~)[\p{P}\p{S}](\*+)(?!\*)(?=(?!~)[\p{P}\p{S}])|(?:[^\s\p{P}\p{S}]|~)(\*+)(?=(?:[^\s\p{P}\p{S}]|~))"##,
         )
     });
+    #[cfg(test)]
     pub static EM_R_UND: LazyLock<Regex> = LazyLock::new(|| {
         re(
             r##"^[^_*]*?\*\*[^_*]*?_[^_*]*?(?=\*\*)|[^_]+(?=[^_])|(?!_)[\p{P}\p{S}](_+)(?=[\s]|$)|[^\s\p{P}\p{S}](_+)(?!_)(?=[\s\p{P}\p{S}]|$)|(?!_)[\s\p{P}\p{S}](_+)(?=[^\s\p{P}\p{S}])|[\s](_+)(?!_)(?=[\p{P}\p{S}])|(?!_)[\p{P}\p{S}](_+)(?!_)(?=[\p{P}\p{S}])"##,
@@ -122,6 +127,7 @@ mod rules {
     });
     pub static BACKPEDAL: LazyLock<Regex> =
         LazyLock::new(|| re(r##"(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+"##));
+    #[cfg(test)]
     pub static INLINE_TEXT: LazyLock<Regex> = LazyLock::new(|| {
         re(
             r##"^(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|(?<![A-Za-z0-9_])_|[hH][tT][tT][pP][sS]?|[fF][tT][pP]://|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-]+@)))"##,
@@ -140,7 +146,9 @@ mod rules {
     pub static CODE_INDENT: LazyLock<Regex> = LazyLock::new(|| re(r"(?m)^(?: {1,4}| {0,3}\t)"));
     pub static STRICT_DEL: LazyLock<Regex> =
         LazyLock::new(|| re(r"^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)"));
-    pub static LATEX_BLOCK_START: LazyLock<Regex> = LazyLock::new(|| re(r"(?:^|\n) {0,3}(?:\$\$|\\\[)"));
+    /// `(?:^|\n) {0,3}(?:\$\$|\\\[)` split into its two branches, so the `\n` one can be searched once per document.
+    pub static LATEX_BLOCK_AT_START: LazyLock<Regex> = LazyLock::new(|| re(r"^ {0,3}(?:\$\$|\\\[)"));
+    pub static LATEX_BLOCK_AFTER_NEWLINE: LazyLock<Regex> = LazyLock::new(|| re(r"\n {0,3}(?:\$\$|\\\[)"));
     pub static LATEX_DOLLAR: LazyLock<Regex> =
         LazyLock::new(|| re(r"^ {0,3}\$\$[ \t]*(?:\n)?([\s\S]*?)\$\$[ \t]*(?:\n|$)"));
     pub static LATEX_BRACKET: LazyLock<Regex> =
@@ -151,13 +159,71 @@ mod rules {
     pub static ENV_LIKE: LazyLock<Regex> = LazyLock::new(|| re(r"^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_\s])?$"));
     pub static IDENT_START: LazyLock<Regex> = LazyLock::new(|| re(r"^[A-Za-z_][A-Za-z0-9_]*"));
     pub static ALNUM: LazyLock<Regex> = LazyLock::new(|| re(r"[\p{L}\p{N}]"));
+
+    /// A list's item rule per bullet (`*`, `+`, `-`, `1.`, `1)`), compiled once instead of per list.
+    pub static LIST_ITEM: LazyLock<[Regex; 5]> = LazyLock::new(|| {
+        [r"\*", r"\+", r"\-", r"\d{1,9}\.", r"\d{1,9}\)"]
+            .map(|b| re(&format!(r"^( {{0,3}}{b})((?:[\t ][^\n]*)?(?:\n|$))")))
+    });
+
+    /// The lines that end a list item, for an item indent `lim + 1` (`lim` 0..=3).
+    pub struct ItemEnds {
+        pub next_bullet: Regex,
+        pub hr: Regex,
+        pub fences: Regex,
+        pub heading: Regex,
+        pub html: Regex,
+        pub quote: Regex,
+    }
+
+    /// [`ItemEnds`] per `lim`, compiled once instead of per list item.
+    pub static LIST_ITEM_ENDS: LazyLock<[ItemEnds; 4]> = LazyLock::new(|| {
+        [0, 1, 2, 3].map(|lim| ItemEnds {
+            next_bullet: re(&format!(
+                r"^ {{0,{lim}}}(?:[*+-]|\d{{1,9}}[.)])((?:[ \t][^\n]*)?(?:\n|$))"
+            )),
+            hr: re(&format!(
+                r"^ {{0,{lim}}}((?:- *){{3,}}|(?:_ *){{3,}}|(?:\* *){{3,}})(?:\n+|$)"
+            )),
+            fences: re(&format!(r"^ {{0,{lim}}}(?:```|~~~)")),
+            heading: re(&format!(r"^ {{0,{lim}}}#")),
+            html: re(&format!(r"(?i)^ {{0,{lim}}}<(?:[a-z].*>|!--)")),
+            quote: re(&format!(r"^ {{0,{lim}}}>")),
+        })
+    });
 }
 
+/// The item rule for a list opened by `bull` (`-`, `+`, `*`, or digits and `.`/`)`).
+fn item_rule(bull: &str) -> &'static Regex {
+    let i = match bull {
+        "*" => 0,
+        "+" => 1,
+        "-" => 2,
+        b if b.ends_with('.') => 3,
+        _ => 4,
+    };
+    &rules::LIST_ITEM[i]
+}
+
+/// `rule.exec(s)` for a rule whose every branch starts with `^`. The search is anchored at the start: fancy-regex only
+/// anchors a pattern on its own when it is a single `^…` sequence without a trailing lookahead, and otherwise retries
+/// at every later position of `s`, which made each call cost the length of the unlexed rest of the document.
 fn exec<'t>(r: &Regex, s: &'t str) -> Option<Caps<'t>> {
+    r.captures_input(RegexInput::new(s).anchored(true)).ok().flatten()
+}
+
+/// `rule.test(s)` for a rule whose every branch starts with `^` (see [`exec`]).
+fn test(r: &Regex, s: &str) -> bool {
+    r.is_match_input(RegexInput::new(s).anchored(true)).unwrap_or(false)
+}
+
+/// Unanchored `rule.exec(s)`.
+fn search<'t>(r: &Regex, s: &'t str) -> Option<Caps<'t>> {
     r.captures(s).ok().flatten()
 }
 
-fn test(r: &Regex, s: &str) -> bool {
+/// Unanchored `rule.test(s)`.
+fn contains(r: &Regex, s: &str) -> bool {
     r.is_match(s).unwrap_or(false)
 }
 
@@ -330,7 +396,7 @@ fn tokenize_block_latex(src: &str) -> Option<Block> {
     }
     if let Some(c) = exec(&rules::LATEX_PENDING_DOLLAR, src)
         && !g(&c, 1).is_empty()
-        && test(&rules::PENDING_MATH, &g(&c, 1))
+        && contains(&rules::PENDING_MATH, &g(&c, 1))
     {
         return Some(block("latexBlock", &g(&c, 0), &g(&c, 1)));
     }
@@ -383,7 +449,7 @@ fn tokenize_inline_latex(src: &str) -> Option<String> {
     }
     let Some(ci) = close else {
         let pending = &src[opening.len()..];
-        return (opening.starts_with('\\') || test(&rules::PENDING_MATH, pending)).then(|| src.to_string());
+        return (opening.starts_with('\\') || contains(&rules::PENDING_MATH, pending)).then(|| src.to_string());
     };
     let text = &src[opening.len()..ci];
     if text.is_empty() || text.contains('\n') {
@@ -392,13 +458,71 @@ fn tokenize_inline_latex(src: &str) -> Option<String> {
     Some(src[..ci + closing.len()].to_string())
 }
 
-fn inline_latex_start(s: &str) -> Option<usize> {
-    [s.find('$'), s.find("\\("), s.find("\\[")].into_iter().flatten().min()
+/// The next match of a search at or after a moving start offset into `whole`. The lexers only ever drop a prefix of
+/// `whole`, so a match found once stays the answer until the start passes it: repeated "find the next X in the rest"
+/// scans cost one pass over `whole` instead of one pass per token.
+#[derive(Default)]
+struct NextAt {
+    searched: bool,
+    at: Option<usize>,
+}
+
+impl NextAt {
+    fn get(&mut self, whole: &str, start: usize, find: impl Fn(&str) -> Option<usize>) -> Option<usize> {
+        if !self.searched || self.at.is_some_and(|a| a < start) {
+            self.searched = true;
+            self.at = find(&whole[start..]).map(|i| i + start);
+        }
+        self.at
+    }
+}
+
+/// Byte offset of `s.slice(1)` (`from(s, 1)`): the length of the first character.
+fn second_char(s: &str) -> usize {
+    s.chars().next().map_or(0, char::len_utf8)
+}
+
+/// Length of the paragraph cut before a block LaTeX start (`(?:^|\n) {0,3}(?:\$\$|\\\[)` searched in
+/// `src.slice(1)`), where `src` is the unlexed suffix of `whole`.
+fn latex_block_start(whole: &str, src: &str, next: &mut NextAt) -> Option<usize> {
+    let skip = second_char(src);
+    let rest = &src[skip..];
+    if test(&rules::LATEX_BLOCK_AT_START, rest) {
+        return Some(skip);
+    }
+    let start = whole.len() - rest.len();
+    let at = next.get(whole, start, |s| {
+        rules::LATEX_BLOCK_AFTER_NEWLINE
+            .find(s)
+            .ok()
+            .flatten()
+            .map(|m| m.start())
+    })?;
+    Some(at - (whole.len() - src.len()) + 1)
+}
+
+/// Length of the inline text cut before the next LaTeX opener (`$`, `\(` or `\[`) after the first character of
+/// `src`, the unlexed suffix of `whole`.
+fn inline_latex_start(whole: &str, src: &str, next: &mut [NextAt; 3]) -> Option<usize> {
+    let start = whole.len() - src.len() + second_char(src);
+    let [dollar, paren, bracket] = next;
+    let found = [
+        dollar.get(whole, start, |s| s.find('$')),
+        paren.get(whole, start, |s| s.find("\\(")),
+        bracket.get(whole, start, |s| s.find("\\[")),
+    ];
+    found
+        .into_iter()
+        .flatten()
+        .min()
+        .map(|at| at - (whole.len() - src.len()))
 }
 
 impl Lexer {
     fn block_tokens(&mut self, src: &str, tokens: &mut Vec<Block>, mut last_paragraph_clipped: bool) {
-        let mut src = src.to_string();
+        let whole = src;
+        let mut src = src;
+        let mut latex_start = NextAt::default();
         let mut shortest = usize::MAX;
         while !src.is_empty() {
             if src.len() < shortest {
@@ -406,33 +530,34 @@ impl Lexer {
             } else {
                 break;
             }
-            if let Some(t) = tokenize_block_latex(&src) {
-                src = src[t.raw.len()..].to_string();
+            if let Some(t) = tokenize_block_latex(src) {
+                src = &src[t.raw.len()..];
                 tokens.push(t);
                 continue;
             }
-            if let Some(c) = exec(&rules::NEWLINE, &src)
+            if let Some(c) = exec(&rules::NEWLINE, src)
                 && !c[0].is_empty()
             {
                 let raw = g(&c, 0);
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 match tokens.last_mut() {
                     Some(last) if raw.len() == 1 => last.raw.push('\n'),
                     _ => tokens.push(block("space", &raw, "")),
                 }
                 continue;
             }
-            if let Some(c) = exec(&rules::CODE, &src) {
+            if let Some(c) = exec(&rules::CODE, src) {
                 let raw = trim_trailing_blank_lines(&c[0]);
                 let text = replace(&rules::CODE_INDENT, &raw, "");
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 match tokens.last_mut() {
                     Some(last) if last.kind == "paragraph" || last.kind == "text" => {
                         if !last.raw.ends_with('\n') {
                             last.raw.push('\n');
                         }
                         last.raw += &raw;
-                        last.text = format!("{}\n{text}", last.text);
+                        last.text.push('\n');
+                        last.text.push_str(&text);
                     }
                     _ => tokens.push(Block {
                         kind: "code",
@@ -443,11 +568,11 @@ impl Lexer {
                 }
                 continue;
             }
-            if let Some(c) = exec(&rules::FENCES, &src) {
+            if let Some(c) = exec(&rules::FENCES, src) {
                 let raw = g(&c, 0);
                 let text = indent_code_compensation(&raw, group(&c, 3).unwrap_or(""));
                 let lang = group(&c, 2).map(|l| replace(&rules::ANY_PUNCT, l.trim(), "$1"));
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 tokens.push(Block {
                     kind: "code",
                     raw,
@@ -457,7 +582,7 @@ impl Lexer {
                 });
                 continue;
             }
-            if let Some(c) = exec(&rules::HEADING, &src) {
+            if let Some(c) = exec(&rules::HEADING, src) {
                 let mut text = g(&c, 2).trim().to_string();
                 if text.ends_with('#') {
                     let trimmed = rtrim(&text, '#');
@@ -470,34 +595,32 @@ impl Lexer {
                     ..block("heading", rtrim(&c[0], '\n'), &text)
                 });
                 let n = c[0].len();
-                drop(c);
-                src = src[n..].to_string();
+                src = &src[n..];
                 continue;
             }
-            if let Some(c) = exec(&rules::HR, &src) {
+            if let Some(c) = exec(&rules::HR, src) {
                 tokens.push(block("hr", rtrim(&c[0], '\n'), ""));
                 let n = c[0].len();
-                drop(c);
-                src = src[n..].to_string();
+                src = &src[n..];
                 continue;
             }
-            if let Some(t) = self.blockquote(&src) {
-                src = src[t.raw.len()..].to_string();
+            if let Some(t) = self.blockquote(src) {
+                src = &src[t.raw.len()..];
                 tokens.push(t);
                 continue;
             }
-            if let Some(t) = self.list(&src) {
-                src = src[t.raw.len()..].to_string();
+            if let Some(t) = self.list(src) {
+                src = &src[t.raw.len()..];
                 tokens.push(t);
                 continue;
             }
-            if let Some(c) = exec(&rules::HTML, &src) {
+            if let Some(c) = exec(&rules::HTML, src) {
                 let raw = trim_trailing_blank_lines(&c[0]);
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 tokens.push(block("html", &raw, &raw));
                 continue;
             }
-            if let Some(c) = exec(&rules::DEF, &src) {
+            if let Some(c) = exec(&rules::DEF, src) {
                 let raw = rtrim(&c[0], '\n').to_string();
                 let consumed = c[0].len();
                 match tokens.last_mut() {
@@ -506,7 +629,8 @@ impl Lexer {
                             last.raw.push('\n');
                         }
                         last.raw += &raw;
-                        last.text = format!("{}\n{raw}", last.text);
+                        last.text.push('\n');
+                        last.text.push_str(&raw);
                     }
                     _ => {
                         let tag = c[1].to_lowercase().split_whitespace().collect::<Vec<_>>().join(" ");
@@ -522,30 +646,26 @@ impl Lexer {
                         }
                     }
                 }
-                drop(c);
-                src = src[consumed..].to_string();
+                src = &src[consumed..];
                 continue;
             }
-            if let Some(t) = table(&src) {
-                src = src[t.raw.len()..].to_string();
+            if let Some(t) = table(src) {
+                src = &src[t.raw.len()..];
                 tokens.push(t);
                 continue;
             }
-            if let Some(c) = exec(&rules::LHEADING, &src) {
+            if let Some(c) = exec(&rules::LHEADING, src) {
                 tokens.push(Block {
                     depth: if c[2].starts_with('=') { 1 } else { 2 },
                     ..block("heading", rtrim(&c[0], '\n'), c[1].trim())
                 });
                 let n = c[0].len();
-                drop(c);
-                src = src[n..].to_string();
+                src = &src[n..];
                 continue;
             }
-            let mut cut = src.as_str();
-            if let Some(c) = exec(&rules::LATEX_BLOCK_START, from(&src, 1)) {
-                let m = c.get(0).unwrap();
-                let at = m.start() + usize::from(m.as_str().starts_with('\n'));
-                cut = &src[..at + 1];
+            let mut cut = src;
+            if let Some(at) = latex_block_start(whole, src, &mut latex_start) {
+                cut = &src[..at];
             }
             if self.top
                 && let Some(c) = exec(&rules::PARAGRAPH, cut)
@@ -559,24 +679,26 @@ impl Lexer {
                             last.raw.push('\n');
                         }
                         last.raw += &raw;
-                        last.text = format!("{}\n{text}", last.text);
+                        last.text.push('\n');
+                        last.text.push_str(&text);
                     }
                     _ => tokens.push(block("paragraph", &raw, &text)),
                 }
                 last_paragraph_clipped = clipped;
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 continue;
             }
-            if let Some(c) = exec(&rules::TEXT, &src) {
+            if let Some(c) = exec(&rules::TEXT, src) {
                 let raw = g(&c, 0);
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 match tokens.last_mut() {
                     Some(last) if last.kind == "text" => {
                         if !last.raw.ends_with('\n') {
                             last.raw.push('\n');
                         }
                         last.raw += &raw;
-                        last.text = format!("{}\n{raw}", last.text);
+                        last.text.push('\n');
+                        last.text.push_str(&raw);
                     }
                     _ => tokens.push(block("text", &raw, &raw)),
                 }
@@ -669,25 +791,20 @@ impl Lexer {
             },
             ..Block::default()
         };
-        let bull_re = if ordered {
-            format!(r"\d{{1,9}}\{}", &bull[bull.len() - 1..])
-        } else {
-            format!(r"\{bull}")
-        };
-        let item_re = re(&format!(r"^( {{0,3}}{bull_re})((?:[\t ][^\n]*)?(?:\n|$))"));
-        let mut src = src.to_string();
+        let item_re = item_rule(&bull);
+        let mut src = src;
         let mut ends_with_blank = false;
         while !src.is_empty() {
-            let Some(c) = exec(&item_re, &src) else { break };
-            if test(&rules::HR, &src) {
+            let Some(c) = exec(item_re, src) else { break };
+            if test(&rules::HR, src) {
                 break;
             }
             let mut end_early = false;
             let mut raw = g(&c, 0);
             let marker_len = c[1].len();
             let mut line = expand_tabs(c[2].split('\n').next().unwrap_or(""), marker_len);
-            src = src[raw.len()..].to_string();
-            let mut next_line = src.split('\n').next().unwrap_or("").to_string();
+            src = &src[raw.len()..];
+            let mut next_line = src.split('\n').next().unwrap_or("");
             let mut blank = line.trim().is_empty();
             let mut item_contents = String::new();
             let indent;
@@ -703,58 +820,50 @@ impl Lexer {
                 }
             }
             if blank && next_line.chars().all(|c| c == ' ' || c == '\t') {
-                raw += &next_line;
+                raw += next_line;
                 raw.push('\n');
-                src = from(&src, next_line.len() + 1).to_string();
+                src = from(src, next_line.len() + 1);
                 end_early = true;
             }
             if !end_early {
-                let lim = indent.saturating_sub(1).min(3);
-                let next_bullet = re(&format!(
-                    r"^ {{0,{lim}}}(?:[*+-]|\d{{1,9}}[.)])((?:[ \t][^\n]*)?(?:\n|$))"
-                ));
-                let hr = re(&format!(
-                    r"^ {{0,{lim}}}((?:- *){{3,}}|(?:_ *){{3,}}|(?:\* *){{3,}})(?:\n+|$)"
-                ));
-                let fences = re(&format!(r"^ {{0,{lim}}}(?:```|~~~)"));
-                let heading = re(&format!(r"^ {{0,{lim}}}#"));
-                let html = re(&format!(r"(?i)^ {{0,{lim}}}<(?:[a-z].*>|!--)"));
-                let quote = re(&format!(r"^ {{0,{lim}}}>"));
+                let r = &rules::LIST_ITEM_ENDS[indent.saturating_sub(1).min(3)];
                 while !src.is_empty() {
-                    let raw_line = src.split('\n').next().unwrap_or("").to_string();
-                    next_line = raw_line.clone();
+                    let raw_line = src.split('\n').next().unwrap_or("");
+                    next_line = raw_line;
                     let expanded = next_line.replace('\t', "    ");
-                    if [&fences, &heading, &html, &quote, &next_bullet, &hr]
+                    if [&r.fences, &r.heading, &r.html, &r.quote, &r.next_bullet, &r.hr]
                         .iter()
-                        .any(|r| test(r, &next_line))
+                        .any(|r| test(r, next_line))
                     {
                         break;
                     }
                     if first_non_space(&expanded).is_some_and(|i| i >= indent) || next_line.trim().is_empty() {
-                        item_contents = format!("{item_contents}\n{}", from(&expanded, indent));
+                        item_contents.push('\n');
+                        item_contents.push_str(from(&expanded, indent));
                     } else {
                         let line_x = line.replace('\t', "    ");
                         if blank
                             || first_non_space(&line_x).is_some_and(|i| i >= 4)
-                            || test(&fences, &line)
-                            || test(&heading, &line)
-                            || test(&hr, &line)
+                            || test(&r.fences, &line)
+                            || test(&r.heading, &line)
+                            || test(&r.hr, &line)
                         {
                             break;
                         }
-                        item_contents = format!("{item_contents}\n{next_line}");
+                        item_contents.push('\n');
+                        item_contents.push_str(next_line);
                     }
                     blank = next_line.trim().is_empty();
-                    raw += &raw_line;
+                    raw += raw_line;
                     raw.push('\n');
-                    src = from(&src, raw_line.len() + 1).to_string();
+                    src = from(src, raw_line.len() + 1);
                     line = from(&expanded, indent).to_string();
                 }
             }
             if !list.loose {
                 if ends_with_blank {
                     list.loose = true;
-                } else if test(&rules::DOUBLE_BLANK, &raw) {
+                } else if contains(&rules::DOUBLE_BLANK, &raw) {
                     ends_with_blank = true;
                 }
             }
@@ -778,7 +887,7 @@ impl Lexer {
             if !list.loose {
                 list.loose = tokens
                     .iter()
-                    .any(|t| t.kind == "space" && test(&rules::ANY_LINE, &t.raw));
+                    .any(|t| t.kind == "space" && contains(&rules::ANY_LINE, &t.raw));
             }
             list.items[i].tokens = tokens;
         }
@@ -790,7 +899,7 @@ impl Lexer {
                 let first = &mut item.tokens[0];
                 first.raw = replace(&rules::TASK, &first.raw, "");
                 first.text = replace(&rules::TASK, &first.text, "");
-                if let Some(c) = exec(&rules::CHECKBOX, &item.raw) {
+                if let Some(c) = search(&rules::CHECKBOX, &item.raw) {
                     let checked = &c[0] != "[ ]";
                     item.checked = checked;
                     if loose {
@@ -889,9 +998,7 @@ impl Lexer {
         masked = rules::ANY_PUNCT
             .replace_all(&masked, |c: &Caps| "+".repeat(c[0].len()))
             .into_owned();
-        rules::BLOCK_SKIP
-            .replace_all(&masked, |c: &Caps| format!("[{}]", "a".repeat(c[0].len() - 2)))
-            .into_owned()
+        mask_block_skip(&masked)
     }
 
     fn mask_reflinks(&self, s: &str) -> String {
@@ -937,7 +1044,10 @@ impl Lexer {
     fn inline_tokens(&mut self, src: &str) -> Vec<Token> {
         let masked = self.mask(src);
         let mut tokens: Vec<Token> = Vec::new();
-        let mut src = src.to_string();
+        let whole = src;
+        let mut src = src;
+        let mut latex_start = [NextAt::default(), NextAt::default(), NextAt::default()];
+        let mut runs = DelimiterRuns::default();
         let mut keep_prev = false;
         let mut prev_char = String::new();
         let mut shortest = usize::MAX;
@@ -951,22 +1061,21 @@ impl Lexer {
                 prev_char.clear();
             }
             keep_prev = false;
-            if let Some(raw) = tokenize_inline_latex(&src) {
-                src = src[raw.len()..].to_string();
+            if let Some(raw) = tokenize_inline_latex(src) {
+                src = &src[raw.len()..];
                 tokens.push(Token::Latex { raw });
                 continue;
             }
-            if let Some(c) = exec(&rules::ESCAPE, &src) {
+            if let Some(c) = exec(&rules::ESCAPE, src) {
                 tokens.push(Token::Escape {
                     raw: g(&c, 0),
                     text: g(&c, 1),
                 });
                 let n = c[0].len();
-                drop(c);
-                src = src[n..].to_string();
+                src = &src[n..];
                 continue;
             }
-            if let Some(c) = exec(&rules::TAG, &src) {
+            if let Some(c) = exec(&rules::TAG, src) {
                 let raw = g(&c, 0);
                 let lower = raw.to_ascii_lowercase();
                 if !self.in_link && lower.starts_with("<a ") {
@@ -985,58 +1094,58 @@ impl Lexer {
                 } else if self.in_raw_block && lower.strip_prefix("</").is_some_and(pre) {
                     self.in_raw_block = false;
                 }
-                src = src[raw.len()..].to_string();
+                src = &src[raw.len()..];
                 tokens.push(Token::Html { raw });
                 continue;
             }
-            if let Some((len, t)) = self.link(&src) {
-                src = src[len..].to_string();
+            if let Some((len, t)) = self.link(src) {
+                src = &src[len..];
                 tokens.push(t);
                 continue;
             }
-            if let Some((len, t)) = self.reflink(&src) {
-                src = src[len..].to_string();
+            if let Some((len, t)) = self.reflink(src) {
+                src = &src[len..];
                 push_text(&mut tokens, t);
                 continue;
             }
-            if let Some((len, t)) = self.em_strong(&src, &masked, &prev_char) {
-                src = src[len..].to_string();
+            if let Some((len, t)) = self.em_strong(src, &masked, &prev_char, &mut runs) {
+                src = &src[len..];
                 tokens.push(t);
                 continue;
             }
-            if let Some(c) = exec(&rules::CODESPAN, &src) {
+            if let Some(c) = exec(&rules::CODESPAN, src) {
                 let mut text = c[2].replace('\n', " ");
                 if text.contains(|c| c != ' ') && text.starts_with(' ') && text.ends_with(' ') {
                     text = text[1..text.len() - 1].to_string();
                 }
-                src = src[c[0].len()..].to_string();
+                src = &src[c[0].len()..];
                 tokens.push(Token::Codespan { text });
                 continue;
             }
-            if let Some(c) = exec(&rules::BR, &src) {
-                src = src[c[0].len()..].to_string();
+            if let Some(c) = exec(&rules::BR, src) {
+                src = &src[c[0].len()..];
                 tokens.push(Token::Br);
                 continue;
             }
-            if let Some(c) = exec(&rules::STRICT_DEL, &src) {
+            if let Some(c) = exec(&rules::STRICT_DEL, src) {
                 let inner = self.inline_tokens(&c[2]);
-                src = src[c[0].len()..].to_string();
+                src = &src[c[0].len()..];
                 tokens.push(Token::Del { tokens: inner });
                 continue;
             }
-            if let Some(c) = exec(&rules::AUTOLINK, &src) {
+            if let Some(c) = exec(&rules::AUTOLINK, src) {
                 let text = g(&c, 1);
                 let href = if group(&c, 2) == Some("@") {
                     format!("mailto:{text}")
                 } else {
                     text.clone()
                 };
-                src = src[c[0].len()..].to_string();
+                src = &src[c[0].len()..];
                 tokens.push(link_token(href, text));
                 continue;
             }
             if !self.in_link
-                && let Some(c) = exec(&rules::URL, &src)
+                && let Some(c) = exec(&rules::URL, src)
             {
                 let (text, href);
                 if group(&c, 2) == Some("@") {
@@ -1046,7 +1155,7 @@ impl Lexer {
                     let mut cur = g(&c, 0);
                     loop {
                         let prev = cur.clone();
-                        cur = exec(&rules::BACKPEDAL, &cur).map_or(String::new(), |m| g(&m, 0));
+                        cur = search(&rules::BACKPEDAL, &cur).map_or(String::new(), |m| g(&m, 0));
                         if prev == cur {
                             break;
                         }
@@ -1058,17 +1167,17 @@ impl Lexer {
                         cur
                     };
                 }
-                src = src[text.len()..].to_string();
+                src = &src[text.len()..];
                 tokens.push(link_token(href, text));
                 continue;
             }
-            let mut cut = src.as_str();
-            if let Some(at) = inline_latex_start(from(&src, 1)) {
-                cut = &src[..at + 1];
+            let mut cut = src;
+            if let Some(at) = inline_latex_start(whole, src, &mut latex_start) {
+                cut = &src[..at];
             }
-            if let Some(c) = exec(&rules::INLINE_TEXT, cut) {
-                let raw = g(&c, 0);
-                src = src[raw.len()..].to_string();
+            if let Some(n) = inline_text_len(cut) {
+                let raw = cut[..n].to_string();
+                src = &src[n..];
                 if !raw.ends_with('_') {
                     prev_char = raw.chars().last().map(String::from).unwrap_or_default();
                 }
@@ -1166,10 +1275,16 @@ impl Lexer {
         Some((raw.len(), Token::Link { href, text, tokens }))
     }
 
-    fn em_strong(&mut self, src: &str, masked: &str, prev_char: &str) -> Option<(usize, Token)> {
+    fn em_strong(
+        &mut self,
+        src: &str,
+        masked: &str,
+        prev_char: &str,
+        runs: &mut DelimiterRuns,
+    ) -> Option<(usize, Token)> {
         let m = exec(&rules::EM_L, src)?;
         let has = |i| group(&m, i).is_some_and(|s| !s.is_empty());
-        if !(has(1) || has(2) || has(3) || has(4)) || (has(4) && test(&rules::ALNUM, prev_char)) {
+        if !(has(1) || has(2) || has(3) || has(4)) || (has(4) && contains(&rules::ALNUM, prev_char)) {
             return None;
         }
         if !(!(has(1) || has(3)) || prev_char.is_empty() || test(&rules::PUNCT, prev_char)) {
@@ -1178,24 +1293,32 @@ impl Lexer {
         let l_len = m[0].chars().count() - 1;
         let delim = m[0].as_bytes()[0];
         let same_prev = prev_char.as_bytes() == [delim];
-        let r_delim = if delim == b'*' {
-            &*rules::EM_R_AST
-        } else {
-            &*rules::EM_R_UND
-        };
         let mut left = l_len as isize;
         let mut mid = 0isize;
-        let hay = from(masked, masked.len() - src.len() + l_len);
-        for c in r_delim.captures_iter(hay).flatten() {
-            let Some(d) = (1..=6).find_map(|i| group(&c, i).filter(|s| !s.is_empty())) else {
-                continue;
-            };
-            let mut r_len = d.chars().count() as isize;
-            let gi = |i| group(&c, i).is_some_and(|s| !s.is_empty());
-            if gi(3) || gi(4) {
-                left += r_len;
-                continue;
-            } else if gi(5) || gi(6) {
+        let hay_start = masked.len() - src.len() + l_len;
+        let runs = runs.get(masked, delim);
+        // marked's emStrongRDelim regex starts with a branch anchored at the search start that skips one delimiter.
+        let skip_to = exec(
+            if delim == b'*' {
+                &rules::EM_R_AST_SKIP
+            } else {
+                &rules::EM_R_UND_SKIP
+            },
+            from(masked, hay_start),
+        )
+        .map_or(0, |c| c[0].len());
+        let first = runs.runs.partition_point(|r| r.start < hay_start + skip_to.max(1));
+        let mut i = first;
+        loop {
+            // Runs that can only open (branches 3 and 4) just raise `left`; add them in one step and stop at the
+            // next run that can close.
+            let j = runs.next_closer[i];
+            let Some(run) = runs.runs.get(j) else { break };
+            left += (runs.opener_len[j] - runs.opener_len[i]) as isize;
+            i = j + 1;
+            let class = run.class.unwrap_or(0);
+            let mut r_len = run.len as isize;
+            if class == 5 || class == 6 {
                 if l_len % 3 != 0 && (l_len as isize + r_len) % 3 == 0 {
                     mid += r_len;
                     continue;
@@ -1209,9 +1332,7 @@ impl Lexer {
                 continue;
             }
             r_len = r_len.min(r_len + left + mid);
-            let first_len = c[0].chars().next().map_or(0, char::len_utf8);
-            let m0 = c.get(0).unwrap().start();
-            let raw = &src[..l_len + m0 + first_len + r_len as usize];
+            let raw = &src[..l_len + (run.start - hay_start) + r_len as usize];
             if l_len.min(r_len as usize) % 2 == 1 {
                 let text = &raw[1..raw.len() - 1];
                 return Some((
@@ -1231,6 +1352,252 @@ impl Lexer {
         }
         None
     }
+}
+
+/// `s.replace(blockSkip, m => `[${"a".repeat(m.length - 2)}]`)`. Every blockSkip match starts at `[`, `` ` `` or `<`,
+/// so the rule is tried anchored at those bytes only (with the whole string still visible to its lookbehind) instead
+/// of at every position, which the fancy-regex VM does for an unanchored search.
+fn mask_block_skip(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = String::new();
+    let (mut copied, mut i) = (0, 0);
+    while let Some(off) = b[i..].iter().position(|c| matches!(c, b'[' | b'`' | b'<')) {
+        let at = i + off;
+        let m = rules::BLOCK_SKIP
+            .find_input(RegexInput::new(s).from_pos(at).anchored(true))
+            .ok()
+            .flatten();
+        match m {
+            Some(m) => {
+                out.push_str(&s[copied..at]);
+                out.push('[');
+                out.push_str(&"a".repeat(m.end() - at - 2));
+                out.push(']');
+                copied = m.end();
+                i = m.end();
+            }
+            None => i = at + 1,
+        }
+    }
+    if copied == 0 {
+        return s.to_string();
+    }
+    out.push_str(&s[copied..]);
+    out
+}
+
+/// `[a-zA-Z0-9.!#$%&'*+/=?_`{|}~-]`: a character of an email local part as marked's inline text rule spells it.
+fn is_email_char(c: u8) -> bool {
+    c.is_ascii_alphanumeric() || b".!#$%&'*+/=?_`{|}~-".contains(&c)
+}
+
+/// End of the maximal run of bytes satisfying `f` that starts at `i`, remembered per run so repeated lookups inside
+/// one run cost one scan of it.
+#[derive(Default)]
+struct RunEnd {
+    start: usize,
+    end: usize,
+}
+
+impl RunEnd {
+    fn get(&mut self, b: &[u8], i: usize, f: impl Fn(u8) -> bool) -> usize {
+        if !(self.start..self.end).contains(&i) {
+            self.start = i;
+            self.end = i + b[i..].iter().take_while(|&&c| f(c)).count();
+        }
+        self.end
+    }
+}
+
+/// Length of marked's inline text token at the start of `s` (the `inlineText` rule, `None` for empty `s`):
+///
+/// ```text
+/// ^(`+|~+|[^`~])(?:(?=[`~])|(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]
+///   |(?<![A-Za-z0-9_])_|[hH][tT][tT][pP][sS]?|[fF][tT][pP]://|www\.|$)|[^ ](?= {2,}\n)
+///   |[^a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+/=?_`{\|}~-]+@)))
+/// ```
+///
+/// The rule is a lazy scan with lookaheads at every character; run by fancy-regex's backtracking VM it was the
+/// largest single cost of lexing. This scanner tries the same alternatives in the same order at each position.
+fn inline_text_len(s: &str) -> Option<usize> {
+    let b = s.as_bytes();
+    let first = *b.first()?;
+    let p = if first == b'`' || first == b'~' {
+        b.iter().take_while(|&&c| c == first).count()
+    } else {
+        second_char(s)
+    };
+    let mut spaces = RunEnd::default();
+    let mut email = RunEnd::default();
+    // `(?= {2,}\n)` and `(?=[email]+@)` at byte `i`.
+    let mut break_ahead = |i: usize| {
+        b.get(i) == Some(&b' ') && {
+            let e = spaces.get(b, i, |c| c == b' ');
+            e - i >= 2 && b.get(e) == Some(&b'\n')
+        }
+    };
+    let mut email_ahead =
+        |i: usize| b.get(i).copied().is_some_and(is_email_char) && b.get(email.get(b, i, is_email_char)) == Some(&b'@');
+    if b.get(p).is_some_and(|c| *c == b'`' || *c == b'~') || break_ahead(p) || email_ahead(p) {
+        return Some(p);
+    }
+    let mut q = p;
+    loop {
+        let rest = &b[q..];
+        let starts = |pat: &[u8]| rest.len() >= pat.len() && rest[..pat.len()].eq_ignore_ascii_case(pat);
+        if rest.is_empty()
+            || b"\\<![`*~_".contains(&rest[0])
+            || starts(b"http")
+            || starts(b"ftp://")
+            || rest.starts_with(b"www.")
+        {
+            return Some(q);
+        }
+        let next = q + second_char(&s[q..]);
+        if (rest[0] != b' ' && break_ahead(next)) || (!is_email_char(rest[0]) && email_ahead(next)) {
+            return Some(next);
+        }
+        q = next;
+    }
+}
+
+/// One maximal run of `*` or `_` in a masked inline source, with the emStrongRDelim branch (capture group 1-6) that
+/// matches it. Each branch consumes the character before the run, which no earlier match can have consumed (a match
+/// ends at a run's end or just before a run's preceding character), so a run's branch depends only on its two
+/// neighbours and not on where the search started. That lets one pass classify every run of a paragraph instead of
+/// re-running the regex over the rest of the paragraph at each delimiter.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Run {
+    start: usize,
+    len: usize,
+    class: Option<u8>,
+}
+
+/// The `*` and `_` runs of one inline source, computed on first use.
+#[derive(Default)]
+struct DelimiterRuns {
+    ast: Option<RunTable>,
+    und: Option<RunTable>,
+}
+
+impl DelimiterRuns {
+    fn get(&mut self, masked: &str, delim: u8) -> &RunTable {
+        let slot = if delim == b'*' { &mut self.ast } else { &mut self.und };
+        slot.get_or_insert_with(|| RunTable::new(delimiter_runs(masked, delim)))
+    }
+}
+
+/// A source's runs with what lets the emStrong scan skip runs that can only open: `opener_len[i]` sums the lengths
+/// of opener-only runs (branches 3 and 4) before run `i`, and `next_closer[i]` is the first run at or after `i` that
+/// can close (branches 1, 2, 5 and 6), `runs.len()` when none.
+struct RunTable {
+    runs: Vec<Run>,
+    opener_len: Vec<usize>,
+    next_closer: Vec<usize>,
+}
+
+impl RunTable {
+    fn new(runs: Vec<Run>) -> Self {
+        let mut opener_len = vec![0; runs.len() + 1];
+        for (i, r) in runs.iter().enumerate() {
+            opener_len[i + 1] = opener_len[i] + if matches!(r.class, Some(3 | 4)) { r.len } else { 0 };
+        }
+        let mut next_closer = vec![runs.len(); runs.len() + 1];
+        for i in (0..runs.len()).rev() {
+            next_closer[i] = if matches!(runs[i].class, Some(1 | 2 | 5 | 6)) {
+                i
+            } else {
+                next_closer[i + 1]
+            };
+        }
+        RunTable {
+            runs,
+            opener_len,
+            next_closer,
+        }
+    }
+}
+
+/// `[\p{P}\p{S}]`.
+fn is_punct(c: char) -> bool {
+    if c.is_ascii() {
+        c.is_ascii_punctuation()
+    } else {
+        contains(&rules::PUNCT_OR_SYMBOL, c.encode_utf8(&mut [0; 4]))
+    }
+}
+
+/// `\s` (Unicode White_Space).
+fn is_space(c: char) -> bool {
+    c.is_whitespace()
+}
+
+/// The emStrongRDelimAst branch (1-6) for a `*` run between `c` and `d` (`None` at the end of the source).
+fn classify_ast(c: char, d: Option<char>) -> Option<u8> {
+    let word = |x: char| (!is_space(x) && !is_punct(x)) || x == '~';
+    let punct = is_punct(c) && c != '~';
+    let punct_after = |d: char| d != '~' && is_punct(d);
+    if punct && d.is_none_or(is_space) {
+        Some(1)
+    } else if word(c) && d.is_none_or(|d| is_space(d) || punct_after(d)) {
+        Some(2)
+    } else if (is_space(c) || punct) && d.is_some_and(word) {
+        Some(3)
+    } else if is_space(c) && d.is_some_and(punct_after) {
+        Some(4)
+    } else if punct && d.is_some_and(punct_after) {
+        Some(5)
+    } else if word(c) && d.is_some_and(word) {
+        Some(6)
+    } else {
+        None
+    }
+}
+
+/// The emStrongRDelimUnd branch (1-5) for a `_` run between `c` and `d` (`None` at the end of the source).
+fn classify_und(c: char, d: Option<char>) -> Option<u8> {
+    let word = |x: char| !is_space(x) && !is_punct(x);
+    let punct = is_punct(c);
+    if punct && d.is_none_or(is_space) {
+        Some(1)
+    } else if word(c) && d.is_none_or(|d| is_space(d) || is_punct(d)) {
+        Some(2)
+    } else if (is_space(c) || punct) && d.is_some_and(word) {
+        Some(3)
+    } else if is_space(c) && d.is_some_and(is_punct) {
+        Some(4)
+    } else if punct && d.is_some_and(is_punct) {
+        Some(5)
+    } else {
+        None
+    }
+}
+
+/// Every maximal `delim` run of `masked`, classified as [`Run`] describes.
+fn delimiter_runs(masked: &str, delim: u8) -> Vec<Run> {
+    let b = masked.as_bytes();
+    let mut runs = Vec::new();
+    let mut i = 0;
+    while let Some(off) = b[i..].iter().position(|&x| x == delim) {
+        let start = i + off;
+        let end = start + b[start..].iter().take_while(|&&x| x == delim).count();
+        let c = masked[..start].chars().next_back();
+        let d = masked[end..].chars().next();
+        let class = c.and_then(|c| {
+            if delim == b'*' {
+                classify_ast(c, d)
+            } else {
+                classify_und(c, d)
+            }
+        });
+        runs.push(Run {
+            start,
+            len: end - start,
+            class,
+        });
+        i = end;
+    }
+    runs
 }
 
 fn checkbox() -> Token {
@@ -1341,4 +1708,119 @@ pub fn lex(src: &str) -> Vec<Token> {
     let mut blocks = Vec::new();
     lexer.block_tokens(&src, &mut blocks, false);
     lexer.convert_all(blocks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The closing-delimiter matches marked's emStrongRDelim regex finds scanning `masked` from `hay_start`, as
+    /// (group, run start, run length): the reference the delimiter-run classifier must reproduce.
+    fn regex_closers(masked: &str, hay_start: usize, delim: u8) -> Vec<(u8, usize, usize)> {
+        let r = if delim == b'*' {
+            &*rules::EM_R_AST
+        } else {
+            &*rules::EM_R_UND
+        };
+        r.captures_iter(&masked[hay_start..])
+            .flatten()
+            .filter_map(|c| {
+                (1..=6).find_map(|i| {
+                    let m = c.get(i).filter(|m| !m.as_str().is_empty())?;
+                    Some((i as u8, hay_start + m.start(), m.as_str().len()))
+                })
+            })
+            .collect()
+    }
+
+    fn run_closers(masked: &str, hay_start: usize, delim: u8) -> Vec<(u8, usize, usize)> {
+        let skip = if delim == b'*' {
+            &*rules::EM_R_AST_SKIP
+        } else {
+            &*rules::EM_R_UND_SKIP
+        };
+        let skip_to = exec(skip, &masked[hay_start..]).map_or(0, |c| c[0].len());
+        delimiter_runs(masked, delim)
+            .into_iter()
+            .filter(|r| r.start >= hay_start + skip_to.max(1))
+            .filter_map(|r| r.class.map(|c| (c, r.start, r.len)))
+            .collect()
+    }
+
+    fn xorshift(mut seed: u64) -> impl FnMut() -> usize {
+        move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed as usize
+        }
+    }
+
+    fn generated(next: &mut impl FnMut() -> usize, alphabet: &[&str], max: usize) -> String {
+        let len = 1 + next() % max;
+        (0..len).map(|_| alphabet[next() % alphabet.len()]).collect()
+    }
+
+    /// The inline text scanner ends every token where marked's `inlineText` regex does, on generated strings over the
+    /// characters its alternatives test (stop characters, `http`/`ftp://`/`www.` prefixes, double-space line breaks,
+    /// email local parts before `@`, backtick and tilde runs, non-ASCII).
+    #[test]
+    fn tui_marked_inline_text_scanner_matches_the_regex() {
+        let alphabet = [
+            "a", "Z", "0", " ", " ", "  \n", "\n", "`", "~", "_", "*", "\\", "<", "!", "[", "@", ".", "-", "é", "€",
+            "http", "HTTPs", "ftp://", "FTP:/", "www.", "ww", "x@y", "(",
+        ];
+        let mut next = xorshift(0x9e37_79b9_7f4a_7c15);
+        for _ in 0..50_000 {
+            let s = generated(&mut next, &alphabet, 16);
+            let want = exec(&rules::INLINE_TEXT, &s).map(|c| c[0].len());
+            assert_eq!(inline_text_len(&s), want, "{s:?}");
+        }
+        assert_eq!(inline_text_len(""), None);
+    }
+
+    /// Masking code spans, links and tags by candidate positions equals blockSkip's `replace_all`.
+    #[test]
+    fn tui_marked_block_skip_mask_matches_the_regex() {
+        let alphabet = ["[", "]", "(", ")", "`", "``", "<", ">", " ", "a", "\\", "!", "é", "\n"];
+        let mut next = xorshift(0x2545_f491_4f6c_dd1d);
+        for _ in 0..50_000 {
+            let s = generated(&mut next, &alphabet, 24);
+            let want = rules::BLOCK_SKIP
+                .replace_all(&s, |c: &Caps| format!("[{}]", "a".repeat(c[0].len() - 2)))
+                .into_owned();
+            assert_eq!(mask_block_skip(&s), want, "{s:?}");
+        }
+    }
+
+    /// Generated strings over delimiters, word characters, spaces, ASCII and Unicode punctuation and symbols, `~`
+    /// and non-ASCII spaces, scanned from every start a left delimiter can leave (just after a run, before a
+    /// non-delimiter character): the per-run classes equal the regex's matches.
+    #[test]
+    fn tui_marked_delimiter_runs_match_the_em_strong_regex() {
+        let alphabet = [
+            "*", "*", "_", "_", "a", "é", " ", "\u{a0}", "\n", ".", "~", "\"", "!", "«", "–", "€", "+", "[", "]", "0",
+        ];
+        let mut next = xorshift(0x2545_f491_4f6c_dd1d);
+        let mut checked = 0;
+        for _ in 0..20_000 {
+            let s = generated(&mut next, &alphabet, 40);
+            for delim in *b"*_" {
+                for (start, ch) in s.char_indices() {
+                    let prev_is_delim = s[..start].ends_with(delim as char);
+                    if !prev_is_delim || ch as u32 == u32::from(delim) {
+                        continue;
+                    }
+                    assert_eq!(
+                        run_closers(&s, start, delim),
+                        regex_closers(&s, start, delim),
+                        "{s:?} from {start} ({})",
+                        delim as char
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked > 50_000, "only {checked} scans");
+    }
 }

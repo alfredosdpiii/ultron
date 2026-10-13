@@ -10,6 +10,10 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+/// The least any wait here allows before giving up: waits poll for their condition, and a deadline is only a hang
+/// guard, so a loaded machine slows a test down instead of failing it.
+pub const HANG_GUARD: Duration = Duration::from_secs(120);
+
 pub fn sse(events: &[Value]) -> String {
     events
         .iter()
@@ -183,7 +187,7 @@ pub fn start_server(home: &Home, server_id: &str) -> ServerProcess {
         .spawn()
         .unwrap();
     let socket = home.server_dir().join(format!("{server_id}.sock"));
-    let deadline = Instant::now() + Duration::from_secs(20);
+    let deadline = Instant::now() + HANG_GUARD;
     while client::runtime::Connection::connect(&socket, server_id).is_err() {
         assert!(Instant::now() < deadline, "server did not start");
         std::thread::sleep(Duration::from_millis(20));
@@ -242,8 +246,9 @@ pub fn processes_mentioning(needle: &Path) -> Vec<u32> {
 }
 
 /// Workers' option arguments carry their session path, so a session's worker is found by the temp root as well.
+/// `timeout` is raised to at least [`HANG_GUARD`].
 pub fn wait_gone(root: &Path, timeout: Duration) -> Vec<u32> {
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + timeout.max(HANG_GUARD);
     loop {
         let left = processes_mentioning(root);
         if left.is_empty() || Instant::now() >= deadline {
@@ -259,8 +264,9 @@ pub fn assert_no_processes(root: &Path, timeout: Duration) {
 }
 
 /// Like [`assert_no_processes`], for processes found by any of `needles` (temp roots, socket directories).
+/// `timeout` is raised to at least [`HANG_GUARD`]: processes exit on their own, possibly slowly under load.
 pub fn assert_none_mentioning(needles: &[PathBuf], timeout: Duration) {
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + timeout.max(HANG_GUARD);
     let mut left: Vec<u32>;
     loop {
         left = needles.iter().flat_map(|n| processes_mentioning(n)).collect();

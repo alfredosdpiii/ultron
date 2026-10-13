@@ -4,11 +4,14 @@
 
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 use tui::autocomplete::{AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions};
 use tui::autocomplete_sources::*;
+
+mod support;
+use support::latch::{HANG_GUARD, Latch};
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!("../fixtures/autocomplete-sources-parity.json")).unwrap()
@@ -88,9 +91,12 @@ fn tui_autocomplete_sources_github_titles_off_thread() {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let seen = calls.clone();
     let (tx, rx) = mpsc::channel();
+    // The lookup blocks until the test releases it: suggestions that waited on it would hang, not merely be slow.
+    let slow = Latch::default();
+    let release = slow.clone();
     let titles = GhRefTitles::spawn(
         move |kind, n| {
-            std::thread::sleep(Duration::from_millis(150));
+            slow.wait();
             seen.lock().unwrap().push((kind, n));
             (kind == RefKind::Pr).then(|| format!("Fix thing {n}"))
         },
@@ -98,13 +104,12 @@ fn tui_autocomplete_sources_github_titles_off_thread() {
             let _ = tx.send(());
         },
     );
-    let start = Instant::now();
     let first = github_ref_suggestions("#7", Some(&titles)).unwrap();
-    assert!(start.elapsed() < Duration::from_millis(50));
     assert_eq!(first.items[0].description.as_deref(), Some("GitHub pull request"));
     github_ref_suggestions("#7", Some(&titles));
-    rx.recv_timeout(Duration::from_secs(5)).unwrap();
-    rx.recv_timeout(Duration::from_secs(5)).unwrap();
+    release.open();
+    rx.recv_timeout(HANG_GUARD).unwrap();
+    rx.recv_timeout(HANG_GUARD).unwrap();
     let later = github_ref_suggestions("#7", Some(&titles)).unwrap();
     assert_eq!(later.items[0].description.as_deref(), Some("Fix thing 7"));
     assert_eq!(later.items[1].description.as_deref(), Some("GitHub issue"));

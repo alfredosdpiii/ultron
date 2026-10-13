@@ -192,7 +192,7 @@ pub fn str_of(value: &serde_json::Value) -> String {
     }
 }
 
-fn repr_value(value: &serde_json::Value) -> String {
+pub fn repr_value(value: &serde_json::Value) -> String {
     use serde_json::Value;
     match value {
         Value::Null => "None".to_string(),
@@ -229,5 +229,31 @@ pub fn float_repr(value: f64) -> String {
         format!("{value:.1}")
     } else {
         format!("{value}")
+    }
+}
+
+/// `f"{n:,}"`: an integer with comma thousands separators.
+pub fn thousands(n: i64) -> String {
+    let digits = n.unsigned_abs().to_string();
+    let mut out = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(digit);
+    }
+    if n < 0 { format!("-{out}") } else { out }
+}
+
+/// `str.rstrip()`.
+pub fn rstrip(text: &str) -> &str {
+    text.trim_end_matches(is_space)
+}
+
+/// `f"{value}"` for a JSON value as Python holds it (`None` for null or a missing key).
+pub fn fstr(value: Option<&serde_json::Value>) -> String {
+    match value {
+        None | Some(serde_json::Value::Null) => "None".to_string(),
+        Some(value) => str_of(value),
     }
 }

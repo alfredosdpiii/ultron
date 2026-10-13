@@ -131,7 +131,9 @@ fn instances(home: &Home) -> Vec<Vec<String>> {
 
 #[test]
 fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
-    let provider = provider(vec![text_reply("slow"), text_reply("p")], Duration::from_millis(2500));
+    // The project run must stay in progress until the test kills it, however slowly the machine gets there: its
+    // reply is held far past the test's end.
+    let provider = provider(vec![text_reply("slow"), text_reply("p")], Duration::from_secs(3600));
     let home = Home::new(provider.port);
     let project = home.root.join("proj");
     std::fs::create_dir_all(&project).unwrap();
@@ -148,7 +150,7 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
         .instance_command(&project, &["--mode", "json", "--model", MODEL, "busy"])
         .spawn()
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(20);
+    let deadline = Instant::now() + common::HANG_GUARD;
     let running = loop {
         let running = instances(&home);
         if running.len() == 2 {
@@ -172,6 +174,7 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
     // Killing the project's server (its `ultron` process) leaves the durable one running.
     client.kill().unwrap();
     client.wait().unwrap();
+    let deadline = Instant::now() + common::HANG_GUARD;
     let left = loop {
         let left = instances(&home);
         if left.len() == 1 {

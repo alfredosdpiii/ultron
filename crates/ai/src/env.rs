@@ -83,6 +83,10 @@ pub fn find_env_keys_in(provider: &str, source: &EnvSource<'_>) -> Option<Vec<&'
 /// The API key for `provider` from known variables; `<authenticated>` for configured Vertex ADC or AWS credentials.
 /// `ANTHROPIC_AUTH_TOKEN` is reported by [`find_env_keys_in`] but never returned (it is sent as a bearer token).
 pub fn env_api_key_in(provider: &str, source: &EnvSource<'_>) -> Option<String> {
+    // The Claude Code login authenticates `claude-subscription`; there is no key to find (or send).
+    if provider == crate::claude_subscription::PROVIDER {
+        return Some("<claude-code-login>".into());
+    }
     if let Some(keys) = find_env_keys_in(provider, source) {
         let key = if provider == "anthropic" {
             keys.iter().find(|k| **k != ANTHROPIC_AUTH_TOKEN_ENV).copied()

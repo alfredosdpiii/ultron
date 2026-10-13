@@ -74,8 +74,13 @@ pub fn alive(pid: u32) -> bool {
         .is_ok_and(|stat| !stat.rsplit(')').next().unwrap_or("").trim_start().starts_with('Z'))
 }
 
-pub fn wait_until(what: &str, timeout: Duration, mut condition: impl FnMut() -> bool) {
-    let deadline = Instant::now() + timeout;
+/// The deadline of every wait in these tests: a hang guard only, never a timing expectation. A test may slow down
+/// under load but must not fail because of it.
+pub const HANG: Duration = Duration::from_secs(120);
+
+/// Polls `condition` until it holds; fails only after the [`HANG`] guard.
+pub fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
+    let deadline = Instant::now() + HANG;
     while !condition() {
         assert!(Instant::now() < deadline, "timed out waiting for {what}");
         std::thread::sleep(Duration::from_millis(25));
@@ -85,7 +90,7 @@ pub fn wait_until(what: &str, timeout: Duration, mut condition: impl FnMut() -> 
 /// Waits for `path` to hold `count` whitespace-separated pids (or a JSON object of pids).
 pub fn read_pids(path: &Path, count: usize) -> Vec<u32> {
     let mut pids = Vec::new();
-    wait_until("the cell's pid file", Duration::from_secs(20), || {
+    wait_until("the cell's pid file", || {
         let text = std::fs::read_to_string(path).unwrap_or_default();
         pids = match serde_json::from_str::<Value>(&text) {
             Ok(Value::Object(map)) => map.values().filter_map(Value::as_u64).map(|p| p as u32).collect(),
@@ -326,4 +331,58 @@ pub fn stdout_of(output: &Output) -> String {
         String::from_utf8_lossy(&output.stdout)
     );
     String::from_utf8(output.stdout.clone()).unwrap()
+}
+
+/// The minimal environment of every `ultron` run of an [`Install`], plus `env`.
+fn base_env(install: &Install, env: &[(&str, &str)]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = vec![
+        ("PATH".into(), std::env::var("PATH").unwrap_or_default()),
+        ("HOME".into(), install.root.path().display().to_string()),
+        ("ULTRON_CODING_AGENT_DIR".into(), install.agent().display().to_string()),
+        (
+            "ULTRON_SERVER_DIR".into(),
+            install.root.path().join("server").display().to_string(),
+        ),
+        ("GROQ_API_KEY".into(), "test-groq".into()),
+        ("ULTRON_HINDSIGHT_URL".into(), "off".into()),
+        ("PI_OFFLINE".into(), "1".into()),
+        ("NO_COLOR".into(), "1".into()),
+        ("TZ".into(), "UTC".into()),
+    ];
+    if let Ok(python) = std::env::var("ULTRON_PYTHON") {
+        out.push(("ULTRON_PYTHON".into(), python));
+    }
+    out.extend(env.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+    out
+}
+
+impl Install {
+    /// `ultron --mode rpc --model groq/... <args>` in the project directory (the shipped path: this process's
+    /// server generation and a session worker), driven through the Rust `RpcClient`.
+    pub fn rpc(&self, args: &[&str], env: &[(&str, &str)]) -> cli::rpc::client::RpcClient {
+        let options = cli::rpc::client::RpcClientOptions {
+            program: env!("CARGO_BIN_EXE_ultron-acceptance").into(),
+            cwd: Some(self.project()),
+            env_clear: true,
+            env: base_env(self, env),
+            model: Some(MODEL.into()),
+            args: args.iter().map(|a| a.to_string()).collect(),
+            ..Default::default()
+        };
+        cli::rpc::client::RpcClient::start(&options).expect("start ultron --mode rpc")
+    }
+
+    /// A private sessions directory for `--session-dir`.
+    pub fn sessions(&self) -> PathBuf {
+        self.root.path().join("sessions")
+    }
+}
+
+/// Every `toolResult` text of the `rlm` tool in RPC `get_messages` output, in order.
+pub fn rpc_tool_results(messages: &[Value]) -> Vec<String> {
+    messages
+        .iter()
+        .filter(|m| m["role"] == "toolResult")
+        .map(|m| content_text(&m["content"]))
+        .collect()
 }

@@ -78,7 +78,15 @@ fn mcp_http_transport_matches_typescript_frames() {
         };
         steps.push(out);
     }
-    std::thread::sleep(std::time::Duration::from_millis(200));
+    // The server logs some requests (the GET stream, the closing DELETE) on its own threads: wait until it has
+    // logged as many as the fixture holds (hang guard 120 s) instead of sleeping.
+    let wanted = fixture["requests"].as_array().unwrap().len();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    while std::fs::read_to_string(&log).unwrap_or_default().matches('\n').count() < wanted
+        && std::time::Instant::now() < deadline
+    {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     let _ = server.kill();
     let _ = server.wait();
     assert_eq!(Value::Array(steps), fixture["steps"]);

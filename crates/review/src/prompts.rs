@@ -13,21 +13,27 @@ pub fn reviewer(key: &str) -> Option<&'static Reviewer> {
 
 /// A `/review` finder frame's instructions.
 pub fn finder_task(reviewer: &Reviewer) -> String {
-    let checklist = reviewer
-        .checklist
+    finder_task_for(reviewer.title, reviewer.focus, reviewer.checklist)
+}
+
+/// A finder frame's instructions for a specialty given by its parts (a merged specialist has owned ones).
+pub fn finder_task_for(title: &str, focus: &str, checklist: &[impl AsRef<str>]) -> String {
+    let checklist = checklist
         .iter()
-        .map(|item| format!("- {item}"))
+        .map(|item| format!("- {}", item.as_ref()))
         .collect::<Vec<_>>()
         .join("\n");
-    format!(
-        "{FINDER_RULES}\n\nYour specialty: {}.\nYour question: {}\nLook in particular for:\n{checklist}",
-        reviewer.title, reviewer.focus
-    )
+    format!("{FINDER_RULES}\n\nYour specialty: {title}.\nYour question: {focus}\nLook in particular for:\n{checklist}")
 }
 
 /// The finder task with the automated review's severity rubric and extra fields.
 pub fn autoreview_finder_task(reviewer: &Reviewer) -> String {
-    let task = finder_task(reviewer).replace(FINDER_SEVERITY, "");
+    autoreview_finder_task_for(reviewer.title, reviewer.focus, reviewer.checklist)
+}
+
+/// [`autoreview_finder_task`] for a specialty given by its parts.
+pub fn autoreview_finder_task_for(title: &str, focus: &str, checklist: &[impl AsRef<str>]) -> String {
+    let task = finder_task_for(title, focus, checklist).replace(FINDER_SEVERITY, "");
     format!("{task}\n\n{SEVERITY_RUBRIC}\n\n{AUTOREVIEW_FINDER_EXTRA}")
 }
 

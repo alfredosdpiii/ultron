@@ -388,10 +388,13 @@ fn kill(pid: u32) {
     rustix::process::kill_process(pid, rustix::process::Signal::KILL).unwrap();
 }
 
+/// A hang guard, never a timing expectation: every wait in these tests is for a condition.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
 fn wait_until(mut ready: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + HANG_GUARD;
     while !ready() {
-        assert!(Instant::now() < deadline, "condition not reached in 10 s");
+        assert!(Instant::now() < deadline, "condition not reached in {HANG_GUARD:?}");
         std::thread::sleep(Duration::from_millis(10));
     }
 }
@@ -505,7 +508,7 @@ fn kernel_continuity_sigkill_during_a_cell_keeps_the_state_before_it() {
     let running = {
         let kernel = kernel.clone();
         let code = format!(
-            "during = 'gone'\nopen({:?}, 'w').close()\nimport time\ntime.sleep(30)",
+            "during = 'gone'\nopen({:?}, 'w').close()\nimport time\ntime.sleep(3600)",
             started.display().to_string()
         );
         std::thread::spawn(move || kernel.execute(&code, None, None))
@@ -578,10 +581,11 @@ fn kernel_continuity_a_tampered_checkpoint_is_refused_and_reported_and_the_kerne
 }
 
 #[test]
-fn kernel_continuity_debounce_reports_unsaved_cells_and_flushes_when_idle() {
+fn kernel_continuity_debounce_reports_unsaved_cells() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("main.snapshot");
-    let kernel = continuous(&path, Duration::from_millis(1500));
+    // An interval no test step can outlast: "b" is never checkpointed before the crash, however slow the machine.
+    let kernel = continuous(&path, Duration::from_secs(3600));
     value(&kernel, "a = 1");
     checkpointed(&kernel, "a");
     // Inside the interval: no checkpoint yet, so a crash now loses this cell, and the report says so.
@@ -599,9 +603,19 @@ fn kernel_continuity_debounce_reports_unsaved_cells_and_flushes_when_idle() {
             .render()
             .contains("[1 completed cell(s) after the last checkpoint are lost; restored values predate them]\n")
     );
-    // Once idle, the pending cells are checkpointed without another call.
-    value(&kernel, "c = 3");
-    checkpointed(&kernel, "c");
+}
+
+#[test]
+fn kernel_continuity_debounce_flushes_when_idle() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("main.snapshot");
+    let kernel = continuous(&path, Duration::from_secs(1));
+    value(&kernel, "a = 1");
+    checkpointed(&kernel, "a");
+    // Within the interval (or past it on a slow machine, when the cell checkpoints at once): once idle, the pending
+    // cell is checkpointed without another call.
+    value(&kernel, "b = 2");
+    checkpointed(&kernel, "b");
 }
 
 #[test]
@@ -631,6 +645,7 @@ fn kernel_continuity_shutdown_does_not_restart() {
     checkpointed(&kernel, "x");
     let pid = kernel.pid().unwrap();
     kernel.shutdown();
+    // Settle, then check no restart happened: a late restart could only let this pass wrongly, never fail.
     std::thread::sleep(Duration::from_millis(300));
     assert!(kernel.pid().is_none());
     assert!(!kernel.is_running());
@@ -638,12 +653,12 @@ fn kernel_continuity_shutdown_does_not_restart() {
         kernel.execute("x", None, None).unwrap_err().message(),
         "RLM kernel is shut down"
     );
-    assert!(
+    wait_until(|| {
         !std::path::Path::new(&format!("/proc/{pid}")).exists() || {
             let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
             stat.rsplit(')').next().unwrap_or("").trim_start().starts_with('Z')
         }
-    );
+    });
 }
 
 #[test]

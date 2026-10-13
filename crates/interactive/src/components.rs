@@ -910,6 +910,11 @@ impl BashExecution {
     pub fn output(&self) -> String {
         self.output_lines.join("\n")
     }
+
+    /// Advance the running spinner one frame.
+    pub fn tick(&mut self) {
+        self.loader.tick();
+    }
 }
 
 impl Component for BashExecution {

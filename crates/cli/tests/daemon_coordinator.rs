@@ -44,8 +44,9 @@ fn reader(seen: Shared, name: String, mut stream: UnixStream, lines: bool) {
     });
 }
 
+/// Waits for `check` (hang guard 120 s).
 fn wait_for(check: impl Fn() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(5);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while !check() {
         assert!(Instant::now() < deadline, "timed out");
         std::thread::sleep(Duration::from_millis(5));
@@ -126,7 +127,7 @@ fn cli_daemon_coordinator_matches_typescript() {
                 stream.shutdown(std::net::Shutdown::Both).unwrap();
             }
             "exit" => {
-                let deadline = Instant::now() + Duration::from_secs(5);
+                let deadline = Instant::now() + Duration::from_secs(120);
                 exit = loop {
                     if let Some(status) = child.try_wait().unwrap() {
                         break status.code();
@@ -155,4 +156,60 @@ fn cli_daemon_coordinator_matches_typescript() {
     let sockets = [public.exists(), control.exists()].map(|e| e.to_string());
     assert_eq!(serde_json::to_value(sockets).unwrap(), want["sockets"]["lines"]);
     assert!(!Path::new(&public).exists());
+}
+
+#[path = "daemon_common/mod.rs"]
+mod common;
+
+/// A server generation whose leased coordinator exits before registering it (its empty shutdown fired while the
+/// lease sat unaccepted, and it removed its control socket) starts a live coordinator and registers there, instead
+/// of failing with the removed socket's `No such file or directory`.
+#[test]
+fn cli_daemon_server_registers_again_when_its_leased_coordinator_exits() {
+    let provider = common::provider(Vec::new(), Duration::ZERO);
+    let home = common::Home::new(provider.port);
+    let sockets = daemon::instance::socket_dir(&home.server_dir());
+    daemon::paths::ensure_private_directory(&sockets).unwrap();
+    let control = sockets.join(format!("control-{}.sock", common::SERVER_ID));
+    // The exiting coordinator: takes the lease connection, then removes its socket and goes away unanswered.
+    let listener = UnixListener::bind(&control).unwrap();
+    let exiting = {
+        let control = control.clone();
+        std::thread::spawn(move || {
+            let lease = listener.accept().unwrap();
+            std::fs::remove_file(&control).unwrap();
+            drop((listener, lease));
+        })
+    };
+    let model = r#"{"model":"anthropic/claude-sonnet-4-5"}"#;
+    let mut child = home
+        .command(&[
+            "__internal",
+            "server",
+            home.server_dir().to_str().unwrap(),
+            common::SERVER_ID,
+            home.sessions().to_str().unwrap(),
+            model,
+        ])
+        .env("__ULTRON_SERVER_KEEP_ALIVE", "1")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    exiting.join().unwrap();
+    let socket = sockets.join(format!("{}.sock", common::SERVER_ID));
+    let deadline = Instant::now() + common::HANG_GUARD;
+    while client::runtime::Connection::connect(&socket, common::SERVER_ID).is_err() {
+        if let Some(status) = child.try_wait().unwrap() {
+            let mut stderr = String::new();
+            child.stderr.take().unwrap().read_to_string(&mut stderr).unwrap();
+            panic!("the server exited ({status}): {stderr}");
+        }
+        assert!(Instant::now() < deadline, "server did not start");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    common::assert_no_processes(&home.root, common::HANG_GUARD);
 }

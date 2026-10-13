@@ -666,6 +666,7 @@ fn harness_ownership_cancels_only_the_callers_wait_never_the_shared_work() {
         let ctx = Ctx::with_signal(&waiting);
         let r = env.root.clone();
         let idle = spawn(move || r.wait_for_idle(&ctx));
+        // Settle only: a wait that starts after its signal was cancelled is rejected with the same reason.
         flush();
         waiting.cancel(HarnessError::msg("stop waiting"));
         assert_eq!(idle.join().unwrap().unwrap_err().message(), "stop waiting");
@@ -907,6 +908,7 @@ fn harness_barrier_does_not_start_the_next_phase_while_the_cascade_that_marks_it
         gate.wait_entered();
         // The parent's request is durable, the cascade's mark of the child is not: its phase must not advance.
         advance.resolve();
+        // Settle, then check the phase did not advance: a slow machine can only let this pass wrongly.
         for _ in 0..5 {
             flush();
         }

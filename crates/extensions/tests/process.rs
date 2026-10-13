@@ -24,7 +24,9 @@ fn manifest(dir: &Path, name: &str, extra: Value) -> Manifest {
         "name": name,
         "command": python(),
         "args": [example_script().to_string_lossy()],
-        "eventTimeoutMs": 5000,
+        // Inputs no test here exercises; long so a loaded machine never trips them.
+        "eventTimeoutMs": 120_000,
+        "startupTimeoutMs": 120_000,
         "maxRestarts": 2,
     });
     for (k, v) in extra.as_object().cloned().unwrap_or_default() {
@@ -92,14 +94,15 @@ fn load(manifests: Vec<Manifest>, has_ui: bool) -> (ExtensionHost, Arc<Recorder>
     (host, recorder)
 }
 
+/// A call timeout no test here exercises (a hang guard).
+const CALL: Option<Duration> = Some(Duration::from_secs(120));
+
 fn info(host: &ExtensionHost, ext: &str) -> Value {
-    host.call_function(ext, "info", json!({}), Some(Duration::from_secs(5)), None)
-        .unwrap()["details"]
-        .clone()
+    host.call_function(ext, "info", json!({}), CALL, None).unwrap()["details"].clone()
 }
 
 fn wait_for(what: &str, mut ready: impl FnMut() -> bool) {
-    let end = Instant::now() + Duration::from_secs(5);
+    let end = Instant::now() + Duration::from_secs(120);
     while !ready() {
         assert!(Instant::now() < end, "timed out waiting for {what}");
         std::thread::sleep(Duration::from_millis(10));
@@ -154,13 +157,7 @@ fn extensions_process_kernel_function_call_round_trip() {
     let dir = tempfile::tempdir().unwrap();
     let (host, _) = load(vec![manifest(dir.path(), "hello", json!({}))], false);
     let result = host
-        .call_function(
-            "hello",
-            "greet",
-            json!({ "name": "Ultron" }),
-            Some(Duration::from_secs(5)),
-            None,
-        )
+        .call_function("hello", "greet", json!({ "name": "Ultron" }), CALL, None)
         .unwrap();
     assert_eq!(text(&result), "Hello, Ultron!");
     let missing = host.call_function("hello", "nope", json!({}), None, None).unwrap_err();
@@ -253,6 +250,7 @@ fn extensions_process_without_ui_prompts_get_default_answers() {
     host.run_command("hello", "", None).unwrap();
     // No UI: the select was answered `null` without reaching the host, and UI updates are dropped.
     assert!(recorder.requests.lock().unwrap().is_empty());
+    // Settle, then check nothing arrived (a short settle can only miss a late update, never fail).
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(*recorder.ui.lock().unwrap(), UiModel::default());
     host.shutdown();
@@ -267,30 +265,38 @@ fn extensions_process_timeout_and_cancel_notify_the_extension() {
         .call_function(
             "hello",
             "slow",
-            json!({ "seconds": 5 }),
+            json!({ "seconds": 600 }),
             Some(Duration::from_millis(200)),
             None,
         )
         .unwrap_err();
     assert_eq!(error, RpcError::Timeout(200));
-    assert!(started.elapsed() < Duration::from_secs(2));
+    // The 200 ms timeout ended it, not the 600 s call (a hang guard, loose for load).
+    assert!(started.elapsed() < Duration::from_secs(120));
 
+    // Cancel once the extension is running the second slow call; info() reports its request id. Request ids: 1 is
+    // initialize, 2 is the timed-out call; the second slow call and the info() polls share the ids after that.
     let token = CancelToken::new();
-    let canceller = token.clone();
-    std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(150));
-        canceller.cancel(Some("user pressed Escape"));
+    let (error, running) = std::thread::scope(|scope| {
+        let canceller = scope.spawn(|| {
+            let mut running = Value::Null;
+            wait_for("the second slow call to run", || {
+                running = info(&host, "hello")["running"].clone();
+                running.as_array().is_some_and(|ids| ids.iter().any(|id| id != 2))
+            });
+            token.cancel(Some("user pressed Escape"));
+            running
+        });
+        let error = host
+            .call_function("hello", "slow", json!({ "seconds": 600 }), None, Some(&token))
+            .unwrap_err();
+        (error, canceller.join().unwrap())
     });
-    let error = host
-        .call_function("hello", "slow", json!({ "seconds": 5 }), None, Some(&token))
-        .unwrap_err();
     assert_eq!(error, RpcError::Cancelled("user pressed Escape".into()));
-    // Both requests were cancelled on the extension's side too (`notifications/cancelled`). Request ids: 1 is
-    // initialize, 2 and 3 are the two slow calls; info() calls come after.
+    let second = running.as_array().unwrap().iter().find(|id| *id != 2).unwrap().clone();
+    // Both requests were cancelled on the extension's side too (`notifications/cancelled`).
     wait_for("cancellations", || {
-        host.call_function("hello", "cancelled", json!({}), Some(Duration::from_secs(5)), None)
-            .unwrap()["details"]
-            == json!([2, 3])
+        host.call_function("hello", "cancelled", json!({}), CALL, None).unwrap()["details"] == json!([2, second])
     });
     // An already-cancelled token never sends the request.
     assert_eq!(
@@ -312,9 +318,7 @@ fn extensions_process_crash_is_isolated_restarted_then_disabled() {
         false,
     );
     let first_pid = info(&host, "hello")["pid"].clone();
-    let crash = host
-        .call_function("hello", "crash", json!({}), Some(Duration::from_secs(5)), None)
-        .unwrap_err();
+    let crash = host.call_function("hello", "crash", json!({}), CALL, None).unwrap_err();
     assert!(matches!(crash, RpcError::Closed(_)), "{crash:?}");
     // The other extension is unaffected.
     assert_eq!(

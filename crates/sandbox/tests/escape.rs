@@ -274,22 +274,28 @@ fn sandbox_escape_sandbox_dies_with_its_parent() {
             .unwrap();
         let tick = tree.project.join("tick");
         let started = Instant::now();
-        while !tick.exists() && started.elapsed() < Duration::from_secs(10) {
+        while !tick.exists() && started.elapsed() < Duration::from_secs(120) {
             std::thread::sleep(Duration::from_millis(20));
         }
         assert!(tick.exists(), "{}: the sandboxed loop never started", mechanism.name());
         child.kill().unwrap();
         child.wait().unwrap();
-        std::thread::sleep(Duration::from_millis(400));
-        let before = std::fs::read_to_string(&tick).unwrap_or_default();
-        std::thread::sleep(Duration::from_millis(400));
-        let after = std::fs::read_to_string(&tick).unwrap_or_default();
-        assert_eq!(
-            before,
-            after,
-            "{}: the sandboxed command outlived its parent",
-            mechanism.name()
-        );
+        // The loop ticks every 50 ms while it lives: wait until the tick holds still for 400 ms. Teardown can take
+        // a while under load; a loop that outlived its parent never holds still (hang guard 120 s).
+        let killed = Instant::now();
+        loop {
+            let before = std::fs::read_to_string(&tick).unwrap_or_default();
+            std::thread::sleep(Duration::from_millis(400));
+            let after = std::fs::read_to_string(&tick).unwrap_or_default();
+            if before == after {
+                break;
+            }
+            assert!(
+                killed.elapsed() < Duration::from_secs(120),
+                "{}: the sandboxed command outlived its parent",
+                mechanism.name()
+            );
+        }
     }
 }
 

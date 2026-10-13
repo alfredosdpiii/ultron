@@ -26,6 +26,7 @@ fn info(provider: &str, id: &str, reasoning: bool) -> ModelInfo {
         name: id.into(),
         reasoning,
         context_window: 200_000,
+        thinking_levels: Vec::new(),
     }
 }
 

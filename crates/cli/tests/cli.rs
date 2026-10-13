@@ -134,9 +134,10 @@ fn cli_prompt_and_subcommands_report_not_implemented() {
             vec!["hello"],
             "Error: running a prompt or an interactive session is not implemented in the Rust build yet\n",
         ),
+        // `ultron claude` is ported (crates/claude-root); `autoreview` still reports the stub.
         (
-            vec!["claude"],
-            "Error: `ultron claude` is not implemented in the Rust build yet\n",
+            vec!["autoreview"],
+            "Error: `ultron autoreview` is not implemented in the Rust build yet\n",
         ),
     ] {
         let tmp = tempfile::tempdir().unwrap();

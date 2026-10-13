@@ -12,6 +12,7 @@ mod documents;
 mod jsonl;
 mod memory;
 mod observation;
+pub mod owner;
 mod records;
 mod session;
 mod sqlite;

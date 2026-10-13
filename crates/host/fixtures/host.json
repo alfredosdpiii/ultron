@@ -82,7 +82,7 @@
 			}
 		},
 		{
-			"code": "j = await bash(\"true\", yield_after=0); (j.status, j.running, j.exit_code)",
+			"code": "j = await bash(\"true\", yield_after=0); await j.result(); (j.status, j.running, j.exit_code)",
 			"ok": {
 				"status": "ok",
 				"stdout": "",

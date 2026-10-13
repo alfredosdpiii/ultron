@@ -21,6 +21,8 @@ const { memoryStore, memoryDefinitionStore } = await load("test/ultron-host-fixt
 
 const MODEL = { provider: "fake", id: "frame-model", api: "openai-completions", contextWindow: 32_000, maxTokens: 8_192 };
 const u = (input, output, cacheRead = 0) => ({ input, output, cacheRead });
+// Timeouts: a hung request ends only at its frame's timeout, so the deadlines that must not pass first (sending the
+// first request, a re-ask after an instant reply, the next frame's request) get seconds of margin for a loaded machine.
 const show = "print(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))";
 const cells = [
 	{
@@ -74,7 +76,7 @@ const cells = [
 		replies: [],
 	},
 	{
-		code: 'r = await rlm.map("Pick", ["a", "b"], budget=Budget(calls=1, tokens=5000), model="fake/frame-model", timeout_ms=1000, thinking="low", max_repairs=1, concurrency=2)\nprint(r)\nprint(r.remaining)',
+		code: 'r = await rlm.map("Pick", ["a", "b"], budget=Budget(calls=1, tokens=5000), model="fake/frame-model", timeout_ms=600000, thinking="low", max_repairs=1, concurrency=2)\nprint(r)\nprint(r.remaining)',
 		replies: [{ text: "only", usage: u(10, 1) }],
 	},
 	{
@@ -96,15 +98,15 @@ const cells = [
 		replies: [{ text: "x", usage: u(100, 5) }, { text: "y", usage: u(30, 2, 10) }],
 	},
 	{
-		code: 'try:\n    await rlm.infer("Slow", timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)',
+		code: 'try:\n    await rlm.infer("Slow", timeout_ms=5000)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)',
 		replies: [{ hang: true }],
 	},
 	{
-		code: `r = await rlm.map("Slow", ["a", "b"], budget=Budget(calls=2, tokens=2000), timeout_ms=50, concurrency=1)\n${show}\nprint([x.error for x in r if isinstance(x, FrameError)])`,
+		code: `r = await rlm.map("Slow", ["a", "b"], budget=Budget(calls=2, tokens=2000), timeout_ms=5000, concurrency=1)\n${show}\nprint([x.error for x in r if isinstance(x, FrameError)])`,
 		replies: [{ hang: true }, { text: "fast", usage: u(10, 1) }],
 	},
 	{
-		code: 'try:\n    await rlm.infer("Count", contract=int, timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)',
+		code: 'try:\n    await rlm.infer("Count", contract=int, timeout_ms=5000)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)',
 		replies: [{ text: "many", usage: u(40, 2) }, { hang: true }],
 	},
 	{

@@ -15,6 +15,8 @@
 //! - `attachments`: bool (default on; `images.blockImages: true` turns it off).
 //! - `markdown.syntaxHighlight`: bool (default on).
 //! - `autocomplete.emoji`, `autocomplete.modelMentions` (default on), `autocomplete.githubRefs` (default off).
+//! - `overlays`: bool (default on): the omp-inspired overlays (F5 retry, Alt+L display reset, Alt+A agent hub, the
+//!   `/copy` picker, the Esc-Esc rewind selector and the model hub for `/model` and Ctrl+L).
 
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -90,6 +92,8 @@ pub struct QolSettings {
     pub autocomplete_models: bool,
     /// `#123` GitHub reference completion (titles through `gh`).
     pub autocomplete_github: bool,
+    /// The omp-inspired overlays and keys (retry, display reset, agent hub, copy picker, rewind, model hub).
+    pub overlays: bool,
 }
 
 impl Default for QolSettings {
@@ -109,6 +113,7 @@ impl Default for QolSettings {
             autocomplete_emoji: true,
             autocomplete_models: true,
             autocomplete_github: false,
+            overlays: true,
         }
     }
 }
@@ -152,6 +157,7 @@ impl QolSettings {
             autocomplete_emoji: false,
             autocomplete_models: false,
             autocomplete_github: false,
+            overlays: false,
         }
     }
 
@@ -207,6 +213,7 @@ impl QolSettings {
         set(&mut q.autocomplete_emoji, &settings["autocomplete"]["emoji"]);
         set(&mut q.autocomplete_models, &settings["autocomplete"]["modelMentions"]);
         set(&mut q.autocomplete_github, &settings["autocomplete"]["githubRefs"]);
+        set(&mut q.overlays, &settings["overlays"]);
         q
     }
 }

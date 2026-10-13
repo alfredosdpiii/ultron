@@ -3,6 +3,8 @@
 //! the alternate screen. Nothing here waits on the network or the disk.
 
 use std::io::Write;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
 
@@ -31,6 +33,90 @@ const DEBOUNCE: Duration = Duration::from_millis(tui::editor::AUTOCOMPLETE_DEBOU
 
 /// How long exit waits for the writer thread to drain.
 const EXIT_FLUSH: Duration = Duration::from_secs(1);
+
+/// Stdin that stops reading while `paused` (an external editor owns the terminal): it polls before each read, so
+/// no keystroke meant for the editor is taken.
+struct GatedStdin {
+    paused: Arc<AtomicBool>,
+}
+
+impl std::io::Read for GatedStdin {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        use rustix::event::{PollFd, PollFlags, Timespec, poll};
+        let stdin = std::io::stdin();
+        loop {
+            if self.paused.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_millis(20));
+                continue;
+            }
+            let mut fds = [PollFd::new(&stdin, PollFlags::IN)];
+            let timeout = Timespec {
+                tv_sec: 0,
+                tv_nsec: 50_000_000,
+            };
+            match poll(&mut fds, Some(&timeout)) {
+                Ok(0) => continue,
+                Ok(_) => {
+                    if self.paused.load(Ordering::SeqCst) {
+                        continue;
+                    }
+                    return std::io::Read::read(&mut stdin.lock(), buf);
+                }
+                Err(rustix::io::Errno::INTR) => continue,
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
+}
+
+/// Forward stdin input sequences into `tx`, not reading while `paused`.
+pub fn spawn_gated_input(tx: Sender<UiEvent>, paused: Arc<AtomicBool>) {
+    let input = tui::terminal::spawn_input_pump(GatedStdin { paused });
+    std::thread::spawn(move || {
+        for data in input {
+            if tx.send(UiEvent::Input(data)).is_err() {
+                return;
+            }
+        }
+        let _ = tx.send(UiEvent::InputClosed);
+    });
+}
+
+/// Run `command` on a temporary `prompt.md` holding `content` with the terminal handed over (`editInExternalEditor`):
+/// the edited text without a trailing newline, or `None` when the editor failed.
+pub fn edit_externally(command: &str, content: &str) -> Option<String> {
+    let dir = std::env::temp_dir().join(format!(
+        "pi-editor-{}-{}",
+        std::process::id(),
+        Instant::now().elapsed().as_nanos()
+    ));
+    std::fs::create_dir_all(&dir).ok()?;
+    let path = dir.join("prompt.md");
+    let result = (|| {
+        std::fs::write(&path, content).ok()?;
+        let mut parts = command.split(' ');
+        let editor = parts.next()?;
+        let mut out = std::io::stdout();
+        let _ = write!(
+            out,
+            "Launching external editor: {command}\nPi will resume when the editor exits.\n"
+        );
+        let _ = out.flush();
+        let status = std::process::Command::new(editor)
+            .args(parts)
+            .arg(&path)
+            .status()
+            .ok()?;
+        if !status.success() {
+            return None;
+        }
+        let text = std::fs::read_to_string(&path).ok()?;
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        Some(text.strip_suffix('\n').unwrap_or(text).to_string())
+    })();
+    let _ = std::fs::remove_dir_all(&dir);
+    result
+}
 
 /// Forward stdin input sequences into `tx`.
 pub fn spawn_input(tx: Sender<UiEvent>) {
@@ -130,6 +216,38 @@ pub fn paint_loop(
             dirty = true;
         }
         if app.poll_services() {
+            dirty = true;
+        }
+        if let Some((command, content)) = app.take_edit_request() {
+            // Pi's Ctrl+G: the TUI stops (input paused, alternate screen left, cooked mode) while the editor runs.
+            let gate = app.input_gate();
+            gate.store(true, Ordering::SeqCst);
+            out(if split {
+                "\x1b[?2004l\x1b[?25h\r\n"
+            } else {
+                "\x1b[?2004l\x1b[?25h\x1b[?1049l"
+            })?;
+            let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
+            if raw {
+                let _ = crossterm::terminal::disable_raw_mode();
+            }
+            let edited = edit_externally(&command, &content);
+            if raw {
+                let _ = crossterm::terminal::enable_raw_mode();
+            }
+            out("\x1b[?2004h")?;
+            gate.store(false, Ordering::SeqCst);
+            app.finish_edit(edited);
+            app.reset_display = true;
+        }
+        if app.take_reset_display() {
+            // Alt+L: forget what the terminal shows and paint everything again.
+            out("\x1b[2J\x1b[3J\x1b[H")?;
+            screen = AltScreen::new();
+            viewport = ViewportRenderer::new();
+            if !split {
+                out(&screen.enter())?;
+            }
             dirty = true;
         }
         let mut deferred = None;

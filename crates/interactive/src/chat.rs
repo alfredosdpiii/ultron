@@ -10,7 +10,8 @@ use tui::select::Loader;
 use tui::theme::Theme;
 
 use crate::components::{
-    AssistantBlock, AssistantMessage, AssistantView, ToolContent, ToolExecution, ToolResultView, UserMessage, fg,
+    AssistantBlock, AssistantMessage, AssistantView, BashExecution, ToolContent, ToolExecution, ToolResultView,
+    UserMessage, fg,
 };
 use crate::lane::{QueueKind, Queued};
 use crate::rlm_cell::{Highlighter, rlm_renderers};
@@ -94,6 +95,8 @@ enum Kind {
     /// A `Text` with horizontal padding 1 (notices and command output).
     Text(String),
     Component(Box<dyn Component>),
+    /// A recorded `!` command (`bashExecution` message); follows the tool expansion toggle.
+    Bash(Box<BashExecution>),
 }
 
 struct Item {
@@ -124,6 +127,8 @@ pub struct ChatView {
     indicator: Option<Loader>,
     pub tools_expanded: bool,
     pub hide_thinking: bool,
+    /// Formatted `tui.select.cancel` key (the running `!` command's hint).
+    pub cancel_key: String,
 }
 
 impl ChatView {
@@ -136,6 +141,64 @@ impl ChatView {
             indicator: None,
             tools_expanded: false,
             hide_thinking: false,
+            cancel_key: "escape".into(),
+        }
+    }
+
+    /// A copy of the rendering context (for overlays that replay the transcript).
+    pub fn style(&self) -> ChatStyle {
+        let s = &self.style;
+        ChatStyle {
+            theme: Rc::clone(&s.theme),
+            highlight: Rc::clone(&s.highlight),
+            code_highlight: s.code_highlight.clone(),
+            expand_key: s.expand_key.clone(),
+            dequeue_key: s.dequeue_key.clone(),
+            interrupt_key: s.interrupt_key.clone(),
+        }
+    }
+
+    /// A `!` command's component (`BashExecutionComponent`), running.
+    pub fn bash_component(&self, command: &str, exclude: bool) -> BashExecution {
+        let mut bash = BashExecution::new(
+            Rc::clone(&self.style.theme),
+            command,
+            exclude,
+            &self.style.expand_key,
+            &self.cancel_key,
+        );
+        bash.expanded = self.tools_expanded;
+        bash
+    }
+
+    /// A transcript entry as the client TUI draws it (`#addEntry`): compactions with their retained tail, branch
+    /// summaries, custom entries, messages.
+    pub fn add_entry(&mut self, entry: &Value) {
+        let t = Rc::clone(&self.style.theme);
+        match entry["type"].as_str() {
+            Some("compaction") => {
+                let tokens = match &entry["tokensBefore"] {
+                    Value::Null => "undefined".to_string(),
+                    v => v.to_string(),
+                };
+                self.append_notice_text(&fg(
+                    &t,
+                    "muted",
+                    &format!("[compaction] compacted from {tokens} tokens"),
+                ));
+                for retained in entry["retainedTail"].as_array().into_iter().flatten() {
+                    self.add_message(retained);
+                }
+            }
+            Some("branch_summary") => {
+                self.append_notice_text(&fg(&t, "muted", "[branch summary]"));
+                self.append_notice_text(entry["summary"].as_str().unwrap_or(""));
+            }
+            Some("custom") => {
+                let kind = entry["customType"].as_str().unwrap_or("");
+                self.append_notice_text(&fg(&t, "muted", &format!("[{kind}]")));
+            }
+            _ => self.add_message(&entry["message"]),
         }
     }
 
@@ -176,6 +239,43 @@ impl ChatView {
                     t.partial = false;
                 }
                 self.items[i].cache = None;
+            }
+            Some("bashExecution") => {
+                let mut bash = self.bash_component(
+                    message["command"].as_str().unwrap_or(""),
+                    message["excludeFromContext"] == true,
+                );
+                if let Some(output) = message["output"].as_str().filter(|o| !o.is_empty()) {
+                    bash.append_output(output);
+                }
+                bash.set_complete(
+                    message["exitCode"].as_i64(),
+                    message["cancelled"] == true,
+                    message["truncated"] == true,
+                    message["fullOutputPath"].as_str(),
+                );
+                self.push(Kind::Bash(Box::new(bash)));
+            }
+            // Other injected context is shown muted, so what reached the model is visible.
+            Some("custom") if message["display"] == true => {
+                let text = match &message["content"] {
+                    Value::String(s) => s.clone(),
+                    Value::Array(parts) => parts
+                        .iter()
+                        .map(|p| {
+                            if p["type"] == "text" {
+                                p["text"].as_str().unwrap_or("")
+                            } else {
+                                ""
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    _ => String::new(),
+                };
+                let kind = message["customType"].as_str().unwrap_or("");
+                let t = Rc::clone(&self.style.theme);
+                self.append_notice_text(&fg(&t, "muted", &format!("[{kind}]\n{text}")));
             }
             _ => {}
         }
@@ -268,6 +368,22 @@ impl ChatView {
         }
     }
 
+    /// Show or hide the compaction indicator (`Compacting context... (escape to cancel)`).
+    pub fn set_compacting(&mut self, compacting: bool) {
+        if !compacting {
+            self.indicator = None;
+            return;
+        }
+        let t = Rc::clone(&self.style.theme);
+        let t2 = Rc::clone(&self.style.theme);
+        self.indicator = Some(Loader::new(
+            Box::new(move |s| fg(&t, "accent", s)),
+            Box::new(move |s| fg(&t2, "muted", s)),
+            &format!("Compacting context... ({} to cancel)", self.style.interrupt_key),
+            None,
+        ));
+    }
+
     /// Whether a started tool (an `rlm` cell) has no result yet.
     pub fn tool_running(&self) -> bool {
         self.items
@@ -304,6 +420,17 @@ impl ChatView {
 
     pub fn set_tools_expanded(&mut self, expanded: bool) {
         self.tools_expanded = expanded;
+        for item in &mut self.items {
+            if let Kind::Bash(bash) = &mut item.kind {
+                bash.expanded = expanded;
+            }
+            item.cache = None;
+        }
+    }
+
+    /// Pi's Ctrl+T: show or hide thinking blocks in every assistant message.
+    pub fn set_hide_thinking(&mut self, hide: bool) {
+        self.hide_thinking = hide;
         for item in &mut self.items {
             item.cache = None;
         }
@@ -397,6 +524,7 @@ impl ChatView {
             }
             Kind::Text(text) => Text::new(text, 1, 0, None).render(width),
             Kind::Component(c) => c.render(width),
+            Kind::Bash(bash) => bash.render(width),
         }
     }
 

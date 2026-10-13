@@ -239,7 +239,7 @@ fn cli_composition_delegation_child_done_continues_the_run() {
         .to_string();
     assert!(event.contains("<runtime_event kind=\\\"child_done\\\""), "{event}");
     assert!(
-        event.contains("status=\\\"succeeded\\\" summary=\\\"hi from the child\\\""),
+        event.contains("status=\\\"succeeded\\\" summary=\\\"rlm-child@1: [unverified] hi from the child\\\""),
         "{event}"
     );
     assert_eq!(

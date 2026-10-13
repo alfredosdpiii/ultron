@@ -159,19 +159,28 @@ fn config_ported_settings_write_reads_the_file_only_after_taking_the_lock() {
     let path = agent.join("settings.json");
     fs::write(&path, r#"{"theme":"dark"}"#).expect("seed");
     let lock = agent.join("settings.json.lock");
-    let mut manager = SettingsManager::create(&project, &agent, true);
-    fs::create_dir(&lock).expect("held lock");
-    // Another process holds the lock, writes a key, then releases it inside the 200 ms retry window.
-    let other = {
-        let (path, lock) = (path.clone(), lock.clone());
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(60));
-            fs::write(&path, r#"{"theme":"dark","packages":["npm:other"]}"#).expect("other write");
-            fs::remove_dir(&lock).expect("release");
-        })
-    };
-    manager.set_global("theme", Some("light".into()));
-    other.join().expect("other");
-    assert_eq!(manager.drain_errors(), vec![]);
-    assert_eq!(read_json(&path), json!({ "theme": "light", "packages": ["npm:other"] }));
+    // Another process holds the lock, writes a key, then releases it inside the 200 ms retry window. Under load
+    // that process can be starved past the window; the write then fails with the lock held, which is right, so
+    // that attempt checks nothing was written and the test tries again until the other process kept its pace.
+    for _attempt in 0..50 {
+        fs::write(&path, r#"{"theme":"dark"}"#).expect("seed");
+        let mut manager = SettingsManager::create(&project, &agent, true);
+        fs::create_dir(&lock).expect("held lock");
+        let other = {
+            let (path, lock) = (path.clone(), lock.clone());
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(60));
+                fs::write(&path, r#"{"theme":"dark","packages":["npm:other"]}"#).expect("other write");
+                fs::remove_dir(&lock).expect("release");
+            })
+        };
+        manager.set_global("theme", Some("light".into()));
+        other.join().expect("other");
+        if manager.drain_errors().is_empty() {
+            assert_eq!(read_json(&path), json!({ "theme": "light", "packages": ["npm:other"] }));
+            return;
+        }
+        assert_eq!(read_json(&path), json!({ "theme": "dark", "packages": ["npm:other"] }));
+    }
+    panic!("the other writer never released inside the retry window in 50 attempts");
 }

@@ -364,3 +364,56 @@ fn delegation_worktree_pure_helpers_match_typescript() {
         );
     }
 }
+
+/// A same-size edit made in the second its file was staged is in the snapshot even when the snapshot is taken a
+/// second later, as the real index sees it (`git diff` reports it): the index copy keeps the index's mtime, so Git
+/// still treats the entry as racily clean and rehashes it. A copy with a fresh mtime trusted the stale stat and the
+/// snapshot left the edit out (the load-only flake of `delegation_worktrees_replay_typescript_scenarios`, whose
+/// conflicting merge then came back as "changed during the merge").
+#[test]
+fn delegation_worktree_snapshot_keeps_a_same_second_same_size_edit() {
+    let dir = tempfile::tempdir().unwrap();
+    let top = std::fs::canonicalize(dir.path()).unwrap();
+    sh(&top, &["init", "-q", "-b", "main"]);
+    sh(&top, &["config", "user.name", "Fixture"]);
+    sh(&top, &["config", "user.email", "fixture@example.com"]);
+    let file = top.join("a.txt");
+    let index = top.join(".git/index");
+    let second = |path: &Path| {
+        std::fs::metadata(path)
+            .unwrap()
+            .modified()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    };
+    // Commit, then rewrite with the same size within the second the file was staged (setup only: a run that crosses
+    // a second boundary commits again). The index is last written by that commit, while the content still matched.
+    let commit = [
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "base",
+    ];
+    loop {
+        std::fs::write(&file, "shared\n").unwrap();
+        let staged = second(&file);
+        sh(&top, &["add", "a.txt"]);
+        sh(&top, &commit);
+        std::fs::write(&file, "parent\n").unwrap();
+        if second(&file) == staged && second(&index) == staged {
+            break;
+        }
+    }
+    let head = sh(&top, &["rev-parse", "HEAD"]).trim().to_string();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    // The real index sees the edit (`git diff` writes no index).
+    assert_eq!(sh(&top, &["diff", "--name-only"]), "a.txt\n");
+    let (commit, dirty) = wt::snapshot_working_tree(&top, &head, "snapshot").unwrap();
+    assert!(dirty);
+    assert_eq!(sh(&top, &["show", &format!("{commit}:a.txt")]), "parent\n");
+}

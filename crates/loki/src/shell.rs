@@ -159,13 +159,15 @@ pub fn shell_redirect(command: &str) -> Option<(String, String)> {
     Some((printer, tokens[n - 1].clone()))
 }
 
+/// `path.suffix.lower()` (Python 3.14 `PurePath.suffix`): from the last dot of the name, unless only dots precede it;
+/// so `a.` has the suffix `.` and `..c` has none.
 fn suffix(path: &Path) -> String {
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     match name.rfind('.') {
-        Some(i) if i > 0 && i + 1 < name.len() => name[i..].to_lowercase(),
+        Some(i) if !name[..i].chars().all(|c| c == '.') => name[i..].to_lowercase(),
         _ => String::new(),
     }
 }
@@ -507,22 +509,42 @@ pub fn strip_heredocs(command: &str) -> String {
     out.join("\n")
 }
 
-fn file_name(path: &str) -> String {
-    Path::new(path)
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default()
+/// `Path(path).name`: the last component once empty and `.` components are dropped (`..` is a name).
+fn file_name(path: &str) -> &str {
+    path.split('/')
+        .rfind(|part| !part.is_empty() && *part != ".")
+        .unwrap_or("")
 }
 
-/// `str(Path(directory) / Path(src).name)`.
+/// `str(Path(directory) / Path(source).name)`: pathlib drops empty and `.` components and a trailing slash, keeps a
+/// leading `//`, and prints an empty relative path as `.`.
 fn join_name(directory: &str, source: &str) -> String {
-    let joined: PathBuf = Path::new(directory).join(file_name(source)).components().collect();
-    joined.to_string_lossy().into_owned()
+    let mut parts: Vec<&str> = directory
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect();
+    let name = file_name(source);
+    if !name.is_empty() {
+        parts.push(name);
+    }
+    let anchor = if directory.starts_with("//") && !directory.starts_with("///") {
+        "//"
+    } else if directory.starts_with('/') {
+        "/"
+    } else {
+        ""
+    };
+    let body = parts.join("/");
+    if anchor.is_empty() && body.is_empty() {
+        ".".into()
+    } else {
+        format!("{anchor}{body}")
+    }
 }
 
 static PERL_INPLACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-[a-zA-Z]*i\S*$").expect("static pattern"));
 
-fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>) {
+fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>, base: &Path) {
     while words
         .first()
         .is_some_and(|w| (w.contains('=') && !w.starts_with('-')) || COMMAND_PREFIXES.contains(&w.as_str()))
@@ -532,7 +554,7 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>)
     if words.is_empty() {
         return;
     }
-    let (name, args) = (file_name(&words[0]), &words[1..]);
+    let (name, args) = (file_name(&words[0]).to_string(), &words[1..]);
     let plain: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
     let mut add = |target: String, how: &str| targets.push((target, how.to_string()));
     match name.as_str() {
@@ -572,7 +594,7 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>)
                 }
             } else if plain.len() >= 2 {
                 let destination = plain[plain.len() - 1];
-                if plain.len() > 2 || destination.ends_with('/') || Path::new(destination.as_str()).is_dir() {
+                if plain.len() > 2 || destination.ends_with('/') || base.join(destination).is_dir() {
                     for source in &plain[..plain.len() - 1] {
                         add(join_name(destination, source), &name);
                     }
@@ -590,8 +612,9 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>)
     words.clear();
 }
 
-/// The files a shell command writes, as `(target, how)`; `None` when it cannot be parsed.
-pub fn shell_write_targets(command: &str) -> Option<Vec<(String, String)>> {
+/// `shell_write_targets`: the files a shell command writes, as `(target, how)`; `None` when it cannot be parsed.
+/// `base` is the directory loki.py's `Path(destination).is_dir()` resolves against: the engine's working directory.
+pub fn shell_write_targets(command: &str, base: &Path) -> Option<Vec<(String, String)>> {
     let tokens = shlex_punctuated(&strip_heredocs(command), false).ok()?;
     let (mut targets, mut words) = (Vec::new(), Vec::new());
     let mut index = 0;
@@ -607,7 +630,7 @@ pub fn shell_write_targets(command: &str) -> Option<Vec<(String, String)>> {
             continue;
         }
         if punctuation_only(token) {
-            command_targets(&mut words, &mut targets);
+            command_targets(&mut words, &mut targets, base);
             index += 1;
             continue;
         }
@@ -621,7 +644,7 @@ pub fn shell_write_targets(command: &str) -> Option<Vec<(String, String)>> {
         words.push(token.to_string());
         index += 1;
     }
-    command_targets(&mut words, &mut targets);
+    command_targets(&mut words, &mut targets, base);
     targets.retain(|(t, _)| {
         !WRITE_SINKS.contains(&t.as_str()) && !t.starts_with("/dev/fd/") && !t.starts_with("/proc/self/fd/")
     });
@@ -639,11 +662,17 @@ fn git_ignored(root: &Path, relative: &str) -> bool {
 }
 
 /// `shell_writes_violation`: deny shell writes of source or configuration inside the project.
-pub fn shell_writes_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Option<String>, CheckError> {
+/// `base` is the engine's working directory (see `shell_write_targets`).
+pub fn shell_writes_violation(
+    command: &Value,
+    root: &Path,
+    cwd: &Path,
+    base: &Path,
+) -> Result<Option<String>, CheckError> {
     let Some(command) = command.as_str().filter(|c| !py::strip(c).is_empty()) else {
         return Ok(None);
     };
-    let Some(targets) = shell_write_targets(command).filter(|t| !t.is_empty()) else {
+    let Some(targets) = shell_write_targets(command, base).filter(|t| !t.is_empty()) else {
         return Ok(None);
     };
     let root = resolve(root);
@@ -673,6 +702,37 @@ pub fn shell_writes_violation(command: &Value, root: &Path, cwd: &Path) -> Resul
         )));
     }
     Ok(None)
+}
+
+/// `loki --root ROOT shell-writes` on a parsed envelope `{command, cwd?}`, from the engine's working directory `base`.
+pub fn shell_writes(root: &Path, payload: &Value, base: &Path) -> Result<Option<String>, CheckError> {
+    if !payload.is_object() {
+        return Err(invalid("invalid shell envelope"));
+    }
+    let root = resolve(root);
+    let cwd = match payload.get("cwd") {
+        Some(Value::String(cwd)) if !cwd.is_empty() => resolve(Path::new(cwd)),
+        _ => root.clone(),
+    };
+    shell_writes_violation(payload.get("command").unwrap_or(&Value::Null), &root, &cwd, base)
+}
+
+/// The exit status and stderr of `shell` and `shell-writes` for a check result: loki.py reports `ValueError` and
+/// `OSError` as invalid shell input; another exception escapes as a guard error.
+pub fn shell_report(result: Result<Option<String>, CheckError>) -> (u8, String) {
+    match result {
+        Ok(None) => (0, String::new()),
+        Ok(Some(reason)) => (2, format!("{reason}\n")),
+        Err(error @ CheckError::Value(_)) => (2, format!("loki: invalid shell input: {}\n", error.message())),
+        Err(error) if error.is_os() => (2, format!("loki: invalid shell input: {}\n", error.message())),
+        Err(error) => (2, format!("loki: {}\n", error.describe())),
+    }
+}
+
+/// `shell-writes` as the host runs it: the engine with the project root as its working directory (Ultron's
+/// `beforeShell` spawns it with `cwd: root`). Exit status and stderr.
+pub fn run_shell_writes(root: &Path, payload: &Value) -> (u8, String) {
+    shell_report(shell_writes(root, payload, &resolve(root)))
 }
 
 /// `event_path`: `~/.local/state/loki/<sha256(root)>/events.jsonl`.
@@ -762,8 +822,11 @@ mod tests {
 
     #[test]
     fn loki_shell_write_targets_cover_writers() {
-        let found =
-            shell_write_targets("sed -i -e s/a/b/ x.py y.py; dd of=z.img; make 2>/dev/null | tee -a log.txt").unwrap();
+        let found = shell_write_targets(
+            "sed -i -e s/a/b/ x.py y.py; dd of=z.img; make 2>/dev/null | tee -a log.txt",
+            Path::new("/nonexistent"),
+        )
+        .unwrap();
         let expected = [
             ("x.py", "sed -i"),
             ("y.py", "sed -i"),
@@ -771,7 +834,7 @@ mod tests {
             ("log.txt", "tee"),
         ];
         assert_eq!(found, expected.map(|(t, h)| (t.to_string(), h.to_string())));
-        assert_eq!(shell_write_targets("echo 'x > a.py"), None);
+        assert_eq!(shell_write_targets("echo 'x > a.py", Path::new("/nonexistent")), None);
     }
 
     #[test]

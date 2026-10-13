@@ -80,4 +80,4 @@ One or two sentences on overall confidence: what is well supported, what is infe
 6. No code is cited as evidence of its own intent.
 7. The tone matches the evidence. A confident answer on weak evidence is the failure this exists to prevent.
 
-The value of this answer is its honesty, not its authority. A reader who takes it to the original author or a lead should know exactly which follow-up questions to ask.
+The value of this answer is its honesty, not its authority. A reader who takes it to the original author or a lead should know exactly which follow-up questions to ask. Optimize for being useful, not for looking decisive.

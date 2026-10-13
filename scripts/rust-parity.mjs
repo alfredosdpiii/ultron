@@ -14,7 +14,7 @@ const rows = lines.map((line) => {
 	return { id, area, behavior, test };
 });
 
-const run = spawnSync("cargo", ["test", "--workspace", "--locked", "--no-fail-fast"], { cwd: root, encoding: "utf8" });
+const run = spawnSync(process.env.CARGO ?? "cargo", ["test", "--workspace", "--locked", "--no-fail-fast"], { cwd: root, encoding: "utf8" });
 const results = new Map();
 for (const match of `${run.stdout}`.matchAll(/^test (\S+) \.\.\. (\w+)/gm)) {
 	const name = match[1].split("::").pop();

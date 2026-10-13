@@ -156,10 +156,13 @@ fn value(kernel: &Kernel, code: &str) -> String {
     result.result.unwrap_or_default()
 }
 
+/// A hang guard, never a timing expectation: every wait in these tests is for a condition.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
 fn wait_until(what: &str, mut ready: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + HANG_GUARD;
     while !ready() {
-        assert!(Instant::now() < deadline, "{what}: not reached in 10 s");
+        assert!(Instant::now() < deadline, "{what}: not reached in {HANG_GUARD:?}");
         std::thread::sleep(Duration::from_millis(10));
     }
 }
@@ -355,6 +358,7 @@ fn kernel_sandbox_snapshot_restore_and_continuity_work_in_the_session_dir() {
             kernel.is_running() && kernel.pid().is_some_and(|pid| pid != old)
         });
         let restarted = kernel.pid().unwrap();
+        // Settle, then check nothing happened: a late death could only let this check pass wrongly, never fail.
         std::thread::sleep(Duration::from_millis(500));
         assert_eq!(
             kernel.pid(),
@@ -398,7 +402,7 @@ fn kernel_sandbox_limits_and_exits_are_reported_as_unsandboxed() {
         std::thread::spawn(move || {
             let _ = sender.send(running.execute("sum(range(10 ** 12))", None, None));
         });
-        let outcome = receiver.recv_timeout(Duration::from_secs(30)).unwrap_or_else(|_| {
+        let outcome = receiver.recv_timeout(HANG_GUARD).unwrap_or_else(|_| {
             kernel.shutdown();
             panic!("{name}: no CPU backstop")
         });
@@ -412,15 +416,21 @@ fn kernel_sandbox_limits_and_exits_are_reported_as_unsandboxed() {
         assert_eq!(value(&kernel, "2 + 2"), "4", "{name}");
         // A kill from the host is reported by signal, through the launcher's exit status.
         let old = kernel.pid().unwrap();
+        let entered = tree.project.join("entered");
         let (sender, receiver) = std::sync::mpsc::channel();
         let running = kernel.clone();
+        let code = format!(
+            "open({:?}, 'w').close()\nimport time\ntime.sleep(3600)",
+            entered.display().to_string()
+        );
         std::thread::spawn(move || {
-            let _ = sender.send(running.execute("import time\ntime.sleep(30)", None, None));
+            let _ = sender.send(running.execute(&code, None, None));
         });
-        std::thread::sleep(Duration::from_millis(300));
+        // The cell is running in Python before its process is killed.
+        wait_until("the cell runs", || entered.exists());
         assert_eq!(kernel.pid(), Some(old), "{name}");
         kill(python_pid(&kernel));
-        let error = receiver.recv_timeout(Duration::from_secs(10)).unwrap().unwrap_err();
+        let error = receiver.recv_timeout(HANG_GUARD).unwrap().unwrap_err();
         assert!(
             error.message().starts_with("RLM kernel exited (SIGKILL)"),
             "{name}: {error}"
@@ -480,8 +490,12 @@ fn kernel_sandbox_helper_host() {
     std::thread::scope(|scope| {
         scope.spawn(|| kernel.start().unwrap());
     });
+    let started = kernel.pid();
+    // Settle, then check the kernel started by the ended thread still serves (a late death could only make the
+    // outer test pass wrongly, never fail).
     std::thread::sleep(Duration::from_millis(300));
     assert_eq!(value(&kernel, "6 * 7"), "42");
+    assert_eq!(kernel.pid(), started, "the kernel died with its spawning thread");
     let root = i32::try_from(kernel.pid().unwrap()).unwrap();
     let mut pids = vec![root];
     pids.extend(descendants(root));
@@ -531,7 +545,7 @@ fn kernel_sandbox_kernel_dies_with_its_host() {
             "{name}: the helper host did not die by SIGKILL"
         );
         assert!(pids.len() >= 2, "{name}: no kernel processes reported: {pids:?}");
-        let deadline = Instant::now() + Duration::from_secs(5);
+        let deadline = Instant::now() + HANG_GUARD;
         while pids.iter().any(|pid| alive(*pid)) && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(20));
         }

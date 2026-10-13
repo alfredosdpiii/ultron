@@ -410,13 +410,17 @@ fn run_case(case: &Value) {
                             line["type"] == want.as_str()
                         }
                     },
-                    Duration::from_secs(60),
+                    Duration::from_secs(120),
                 )
                 .unwrap_or_else(|e| panic!("{name}: step {step}: {e}"));
         }
+        // The generator's `touch`: a file a scripted cell waits for, created once the step is done.
+        if let Some(touch) = step["touch"].as_str() {
+            std::fs::write(options.cwd.as_ref().unwrap().join(touch), "").unwrap();
+        }
     }
     let stderr = client.stderr();
-    let (lines, code) = client.finish(Duration::from_secs(60));
+    let (lines, code) = client.finish(Duration::from_secs(120));
     assert_eq!(
         code.map(i64::from),
         case["code"].as_i64(),

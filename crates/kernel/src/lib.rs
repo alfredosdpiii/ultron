@@ -625,6 +625,11 @@ impl Kernel {
         lock(&self.shared.state).stderr.clone()
     }
 
+    /// How many calls (cells, snapshots, checkpoints) are running or queued, in call order.
+    pub fn pending_calls(&self) -> usize {
+        lock(&self.shared.state).queue.len()
+    }
+
     /// The pid of the running kernel process.
     pub fn pid(&self) -> Option<u32> {
         let state = lock(&self.shared.state);

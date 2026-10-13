@@ -13,8 +13,9 @@ use std::collections::HashMap;
 use std::io::{ErrorKind, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, mpsc};
+use std::time::{Duration, Instant};
 
 pub fn to_cbor(json: &Json) -> Value {
     match json {
@@ -271,6 +272,34 @@ impl Connection {
         }
     }
 
+    /// [`Connection::wait`] for at most `timeout`; `None` when the response has not arrived.
+    pub fn wait_for(&self, id: &str, timeout: Duration) -> Option<Result<Option<Json>, CallError>> {
+        let deadline = Instant::now() + timeout;
+        let (lock, changed) = &*self.shared;
+        let mut shared = lock.lock().unwrap_or_else(|e| e.into_inner());
+        loop {
+            if let Some(result) = shared.responses.remove(id) {
+                return Some(result.map_err(CallError::Server));
+            }
+            if let Some(reason) = &shared.closed {
+                return Some(Err(CallError::Disconnected(reason.clone())));
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return None;
+            }
+            shared = changed
+                .wait_timeout(shared, deadline - now)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+
+    /// The connection ended (the server went away or closed it).
+    pub fn is_closed(&self) -> bool {
+        self.lock().closed.is_some()
+    }
+
     pub fn call(&self, target: RpcTarget, service: &str, member: &str, args: Json) -> Result<Option<Json>, CallError> {
         let id = self.start(target, service, member, args)?;
         self.wait(&id)
@@ -455,10 +484,94 @@ fn fail(error: CallError) -> String {
     error.to_string()
 }
 
+/// How a prompted client survives interruptions.
+#[derive(Clone, Default)]
+pub struct RunOptions {
+    /// Set when the user interrupts (SIGINT/SIGTERM): the prompted turn is aborted, and the client still waits for
+    /// it to end, as Pi's print mode does.
+    pub interrupt: Option<Arc<AtomicBool>>,
+    /// The server went away: reach it again (restarting it), for rejoining the session.
+    pub reconnect: Option<Arc<dyn Fn() -> Result<Route, String> + Send + Sync>>,
+}
+
+/// The session operations service of the Rust worker (crates/daemon `worker::OPS_SERVICE`).
+pub const OPS_SERVICE: &str = "ultron.session-ops";
+/// Server error codes that mean the session's worker is gone for now and is being brought back.
+pub const LOST_CODES: [&str; 2] = ["session_worker_lost", "session_reconnecting"];
+/// How long a client tries to rejoin its session after losing its worker or server.
+pub const REJOIN_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// The call failed because the worker or the server went away (the session is durable: rejoin it).
+pub fn is_lost(error: &CallError) -> bool {
+    match error {
+        CallError::Disconnected(_) => true,
+        CallError::Server(error) => LOST_CODES.contains(&error.code.as_str()),
+    }
+}
+
+fn interrupted(options: &RunOptions) -> bool {
+    options.interrupt.as_ref().is_some_and(|i| i.load(Ordering::SeqCst))
+}
+
+fn ops(connection: &Connection, session: &RpcTarget, op: Json) -> Result<Option<Json>, CallError> {
+    connection.call(session.clone(), OPS_SERVICE, "op", json!([op]))
+}
+
+/// Rejoin `session_id` after its worker or server went away: attach (the server re-attaches clients of a restarted
+/// worker by itself; attaching again is harmless), let the worker recover what was interrupted, follow the
+/// session until it is idle with nothing queued, and answer its last assistant text.
+pub fn rejoin(connection: &Connection, session_id: &str, options: &RunOptions) -> Result<String, CallError> {
+    let deadline = Instant::now() + REJOIN_TIMEOUT;
+    let server = connection.server_target();
+    let session = loop {
+        let attached = connection
+            .call(server.clone(), "pi.session-management", "attach", json!([session_id]))
+            .and_then(|_| {
+                connection.wait_attachment(|a| a.is_some_and(|a| a.session_id == session_id))?;
+                connection.session_target()
+            });
+        match attached {
+            Ok(session) => break session,
+            Err(CallError::Server(error)) if error.code == "session_not_found" => {
+                return Err(CallError::Server(error));
+            }
+            Err(error) if connection.is_closed() || Instant::now() >= deadline => return Err(error),
+            Err(_) => std::thread::sleep(Duration::from_millis(250)),
+        }
+    };
+    // Recovery is idempotent: whichever of the worker and this client asks first starts the recovered run.
+    ops(connection, &session, json!({"op": "recover"}))?;
+    let mut abort_sent = false;
+    loop {
+        let state = ops(connection, &session, json!({"op": "state"}))?.unwrap_or_default();
+        let busy = state["isStreaming"] == true || state["pendingMessageCount"].as_u64().unwrap_or(0) > 0;
+        if !busy || (abort_sent && state["isStreaming"] != true) {
+            break;
+        }
+        if interrupted(options) && !abort_sent {
+            abort_sent = true;
+            connection.call(session.clone(), "pi.agent-controller", "requestAbort", json!([]))?;
+        }
+        if Instant::now() >= deadline {
+            return Err(CallError::Disconnected(
+                "The rejoined session did not become idle".into(),
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let text = ops(connection, &session, json!({"op": "lastAssistantText"}))?;
+    Ok(text.and_then(|t| t.as_str().map(str::to_string)).unwrap_or_default())
+}
+
 /// `runClient` against one server route.
 pub fn run_client(command: &ClientCommand, route: &Route) -> Result<ClientResult, String> {
+    run_client_with(command, route, &RunOptions::default())
+}
+
+/// [`run_client`] that aborts on interrupt and rejoins its session when the worker or the server goes away.
+pub fn run_client_with(command: &ClientCommand, route: &Route, options: &RunOptions) -> Result<ClientResult, String> {
     let connection = Connection::connect(&route.path, &route.server_id).map_err(fail)?;
-    let result = run_operation(command, &connection);
+    let result = run_operation(command, &connection, options);
     let mut cleanup = Vec::new();
     if let (Ok(Some(created)), true) = (&result.1, command.no_session) {
         let target = connection.server_target();
@@ -472,6 +585,13 @@ pub fn run_client(command: &ClientCommand, route: &Route) -> Result<ClientResult
         }
     }
     let (subscriptions, outcome) = (result.0, result.2);
+    let outcome = match outcome {
+        Err(Failure::Lost { session_id, error }) => {
+            recover_lost(&connection, &route.server_id, &session_id, error, options)
+        }
+        Err(Failure::Other(error)) => Err(error),
+        Ok(result) => Ok(result),
+    };
     // Dispose: unsubscribe every open subscription, server-scoped first, all pipelined.
     let mut calls = Vec::new();
     for (subscription, session) in &subscriptions {
@@ -495,17 +615,77 @@ pub fn run_client(command: &ClientCommand, route: &Route) -> Result<ClientResult
     }
 }
 
+/// The prompted session's worker or server went away mid-prompt, or the operation failed.
+enum Failure {
+    Lost { session_id: String, error: CallError },
+    Other(String),
+}
+
+impl From<String> for Failure {
+    fn from(error: String) -> Self {
+        Failure::Other(error)
+    }
+}
+
+/// Rejoin after a lost prompt: on the same connection when it lives (the worker restarted), else on a new
+/// connection to the restarted server. Answers the prompted result.
+fn recover_lost(
+    connection: &Arc<Connection>,
+    server_id: &str,
+    session_id: &str,
+    error: CallError,
+    options: &RunOptions,
+) -> Result<ClientResult, String> {
+    let rejoined = if !connection.is_closed() {
+        rejoin(connection, session_id, options)
+    } else if let Some(reconnect) = &options.reconnect {
+        let route = reconnect()?;
+        let fresh = Connection::connect(&route.path, &route.server_id).map_err(fail)?;
+        let rejoined = rejoin(&fresh, session_id, options);
+        fresh.disconnect();
+        rejoined
+    } else {
+        Err(error)
+    };
+    rejoined
+        .map(|text| ClientResult::Prompted {
+            server_id: server_id.to_string(),
+            session_id: session_id.to_string(),
+            text,
+        })
+        .map_err(fail)
+}
+
 type Operation = (
     Vec<(String, bool)>,
     Result<Option<String>, String>,
-    Result<ClientResult, String>,
+    Result<ClientResult, Failure>,
 );
 
-fn run_operation(command: &ClientCommand, connection: &Arc<Connection>) -> Operation {
+fn run_operation(command: &ClientCommand, connection: &Arc<Connection>, options: &RunOptions) -> Operation {
     let mut subscriptions = Vec::new();
     let mut created = Ok(None);
-    let outcome = operation(command, connection, &mut subscriptions, &mut created);
+    let outcome = operation(command, connection, &mut subscriptions, &mut created, options);
     (subscriptions, created, outcome)
+}
+
+/// Wait for a prompt's response; an interrupt asks the worker to abort the run (once) and keeps waiting.
+fn await_prompt(
+    connection: &Connection,
+    session: &RpcTarget,
+    request: &str,
+    options: &RunOptions,
+) -> Result<Option<Json>, CallError> {
+    let mut abort_sent = false;
+    loop {
+        if let Some(result) = connection.wait_for(request, Duration::from_millis(100)) {
+            return result;
+        }
+        if interrupted(options) && !abort_sent {
+            abort_sent = true;
+            let _ = connection.start(session.clone(), "pi.agent-controller", "requestAbort", json!([]));
+        }
+    }
 }
 
 fn operation(
@@ -513,7 +693,8 @@ fn operation(
     connection: &Arc<Connection>,
     subscriptions: &mut Vec<(String, bool)>,
     created: &mut Result<Option<String>, String>,
-) -> Result<ClientResult, String> {
+    options: &RunOptions,
+) -> Result<ClientResult, Failure> {
     let server = connection.server_target();
     let server_id = connection.server_id.clone();
     let mut started = Vec::new();
@@ -582,14 +763,14 @@ fn operation(
         Some(id) => {
             if sessions.iter().any(|s| s["sessionId"] == json!(id)) {
                 if command.fork_from_session_id.is_some() {
-                    return Err(format!("Cannot fork into existing Session {id}"));
+                    return Err(format!("Cannot fork into existing Session {id}").into());
                 }
                 if let Some(name) = &command.name {
                     management("rename", json!([id, name])).map_err(fail)?;
                 }
             } else {
                 if command.prompt.is_none() {
-                    return Err(format!("No discovered server contains session {id}"));
+                    return Err(format!("No discovered server contains session {id}").into());
                 }
                 create_options["id"] = json!(id);
                 let mut ordered = json!({"id": id});
@@ -636,7 +817,7 @@ fn operation(
         .state(&transcript, "state")
         .is_none_or(|s| s["snapshot"].is_null())
     {
-        return Err("Transcript has no initialized snapshot".into());
+        return Err(Failure::Other("Transcript has no initialized snapshot".into()));
     }
     let (events, received) = mpsc::channel::<Json>();
     connection.listen(
@@ -648,13 +829,20 @@ fn operation(
         }),
     );
     let response = connection
-        .call(
+        .start(
             session.clone(),
             "pi.agent-controller",
             "prompt",
             json!([{"message": prompt, "images": null}]),
         )
-        .map_err(fail);
+        .and_then(|request| await_prompt(connection, &session, &request, options));
+    let response = match response {
+        Err(error) if is_lost(&error) => {
+            connection.unlisten(&transcript);
+            return Err(Failure::Lost { session_id, error });
+        }
+        other => other.map_err(fail),
+    };
     let response = response.and_then(|r| r.ok_or_else(|| "Agent prompt returned no response".to_string()));
     let mut completed: HashMap<String, String> = HashMap::new();
     let mut ended = Vec::new();
@@ -676,7 +864,7 @@ fn operation(
         Ok(response) => response,
         Err(error) => {
             connection.unlisten(&transcript);
-            return Err(error);
+            return Err(Failure::Other(error));
         }
     };
     if response["accepted"] == true {
@@ -688,7 +876,7 @@ fn operation(
                 Err(mpsc::RecvTimeoutError::Timeout) => {
                     if let Err(error) = connection.wait_attachment(|_| true) {
                         connection.unlisten(&transcript);
-                        return Err(fail(error));
+                        return Err(Failure::Lost { session_id, error });
                     }
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -710,7 +898,7 @@ fn operation(
             absorb(&event, &mut completed, &mut ended);
         }
         if let Some(message) = response["error"]["message"].as_str() {
-            return Err(message.to_string());
+            return Err(Failure::Other(message.to_string()));
         }
         return Ok(ClientResult::Prompted {
             server_id,
@@ -719,10 +907,12 @@ fn operation(
         });
     }
     connection.unlisten(&transcript);
-    Err(response["error"]["message"]
-        .as_str()
-        .unwrap_or("Prompt was not accepted")
-        .to_string())
+    Err(Failure::Other(
+        response["error"]["message"]
+            .as_str()
+            .unwrap_or("Prompt was not accepted")
+            .to_string(),
+    ))
 }
 
 /// `followEventRuns`: while the worker reports root-owned work that can re-invoke the model, keep waiting.

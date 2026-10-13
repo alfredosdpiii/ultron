@@ -1,6 +1,8 @@
 //! The `ultron` command line: argument parsing (`cli/args.ts`), help, version, `--list-models` (`cli/list-models.ts`)
 //! native session selection (`native-command.ts`) and prompted runs (`-p`, `--mode json`, see [`print_mode`]).
 
+/// The `claude-subscription` provider's inert MCP inventory server (`ultron __internal inert-mcp`).
+pub use ai::claude_subscription::inert_mcp;
 pub use session_core::{compose, journal, lane, naming};
 
 pub mod args;
@@ -110,13 +112,17 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if let Some(code) = package_cli::run_config(argv, env, out, err) {
         return Ok(code);
     }
+    // `ultron claude|mcp|hook|watch|guide` (bare `ultron mcp` is Ultron's own MCP server for Claude Code).
+    if let Some(code) = claude_root::cli::run(argv, env, out, err) {
+        return Ok(code);
+    }
     if argv.first().is_some_and(|a| a == "sandbox") {
         return sandbox_cli::run(&argv[1..], env, out, err);
     }
     if let Some(command) = argv.first().filter(|a| COMMANDS.contains(&a.as_str())) {
         return Err(format!("`ultron {command}` is not implemented in the Rust build yet"));
     }
-    let parsed = parse_args(argv);
+    let mut parsed = parse_args(argv);
     for d in &parsed.diagnostics {
         let label = if d.kind == DiagnosticKind::Error {
             "Error"
@@ -158,6 +164,24 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
         out.write_all(list_models::render(&models, search, &env.docs).as_bytes())
             .map_err(io)?;
         return Ok(0);
+    }
+    // `--claude`: the root lane runs on Claude Code (worker-root.ts `prepareClaudeRoot`).
+    let claude_setting = claude_root::settings::ClaudeCodeSettings::load(&env.cwd, &env.agent_dir()).root;
+    if parsed.claude || claude_root::worker_root::claude_root_requested(&*env.var) || claude_setting {
+        match claude_root::worker_root::prepare_claude_root(
+            parsed.provider.as_deref(),
+            parsed.model.as_deref(),
+            &*env.var,
+        ) {
+            Ok(selection) => {
+                parsed.model = Some(selection.model);
+                parsed.provider = selection.provider;
+            }
+            Err(message) => {
+                writeln!(err, "Error: {message}").map_err(io)?;
+                return Ok(1);
+            }
+        }
     }
     let json_mode = parsed.mode.as_deref() == Some("json");
     let rpc_mode = parsed.mode.as_deref() == Some("rpc");

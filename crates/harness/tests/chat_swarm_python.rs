@@ -212,7 +212,9 @@ fn child_main(dir: &Path) {
         .filter_map(|(conversation, lane)| opened.cells.lane(conversation, &lane).ok()?.pid())
         .map(|pid| pid.to_string())
         .collect();
-    std::fs::write(dir.join("ready"), pids.join(" ")).unwrap();
+    // Written whole, then renamed: the parent never reads a half-written file.
+    std::fs::write(dir.join("ready.tmp"), pids.join(" ")).unwrap();
+    std::fs::rename(dir.join("ready.tmp"), dir.join("ready")).unwrap();
     loop {
         std::thread::sleep(Duration::from_secs(60));
     }
@@ -244,13 +246,12 @@ fn harness_chat_swarm_python_asks_a_persistent_child_again_after_the_process_was
         .spawn()
         .unwrap();
     let ready = dir.path().join("ready");
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while !ready.exists() {
         assert!(Instant::now() < deadline, "child never finished its first turn");
         assert!(child.try_wait().unwrap().is_none(), "child exited early");
         std::thread::sleep(Duration::from_millis(10));
     }
-    std::thread::sleep(Duration::from_millis(50));
     child.kill().unwrap();
     child.wait().unwrap();
     for pid in std::fs::read_to_string(&ready).unwrap().split_whitespace() {

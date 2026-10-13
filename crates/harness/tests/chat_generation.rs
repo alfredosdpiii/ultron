@@ -173,10 +173,10 @@ fn open_wrapped(storage: Controlled, setup: &Setup, models: Wrapped) -> (ChatHar
     open_chat(storage, &setup)
 }
 
-/// A partial `text` streamed after an empty start, then `end` after `delay`.
+/// A partial `text` streamed after an empty start, then `end` once `release` resolves (or the signal aborts).
 fn short_stream(
     text: &'static str,
-    delay: Duration,
+    release: Deferred,
     end: impl Fn() -> Result<AssistantMessage> + Send + Sync + 'static,
 ) -> StreamOverride {
     Arc::new(move |signal, on_event| {
@@ -186,9 +186,18 @@ fn short_stream(
             partial.content.clear();
         }
         on_event(&AssistantMessageEvent::Start { partial });
-        signal.wait_timeout(delay);
+        while !release.is_resolved() && signal.wait_timeout(Duration::from_millis(5)).is_none() {}
         end()
     })
+}
+
+/// Whether a live publication carried the partial `text`.
+fn published_partial(values: &Mutex<Vec<Value>>, text: &str) -> bool {
+    values
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|value| text_of_value(&value["generation"]["message"]).as_deref() == Some(text))
 }
 
 #[test]
@@ -867,26 +876,31 @@ fn harness_chat_generation_resolves_settings_over_the_built_in_defaults() {
 
 #[test]
 fn harness_chat_generation_commits_partials_no_more_often_than_the_partial_interval() {
-    let published = |interval: u64| -> bool {
+    // `expected`: wait for the partial's publication before the stream ends; otherwise end it after a settle (an
+    // interval of an hour cannot pass during the settle, however slow the machine).
+    let published = |interval: u64, expected: bool| -> bool {
         let setup = Setup::new();
         setup.settings(|settings| settings.partial_interval_ms = interval);
         let mut models = Wrapped::new(&setup.faux);
-        models.stream = Some(short_stream("partial", Duration::from_millis(300), || {
-            Ok(text_message("final"))
-        }));
+        let release = Deferred::new();
+        models.stream = Some(short_stream("partial", release.clone(), || Ok(text_message("final"))));
         let (chat, root) = open_wrapped(Controlled::new(Backend::Memory), &setup, models);
         let values = live_publications(&chat);
         chat.resume().unwrap();
-        let settled = root.submit(SubmissionDraft::input("hi")).unwrap().wait(&bg()).unwrap();
+        let submission = root.submit(SubmissionDraft::input("hi")).unwrap();
+        if expected {
+            eventually(|| published_partial(&values, "partial"));
+        } else {
+            std::thread::sleep(Duration::from_millis(300));
+        }
+        release.resolve();
+        let settled = submission.wait(&bg()).unwrap();
         assert_eq!(settled.status, SubmissionStatus::Done);
         chat.close().unwrap();
-        let values = values.lock().unwrap();
-        values
-            .iter()
-            .any(|value| text_of_value(&value["generation"]["message"]).as_deref() == Some("partial"))
+        published_partial(&values, "partial")
     };
-    assert!(published(100));
-    assert!(!published(5000));
+    assert!(published(100, true));
+    assert!(!published(3_600_000, false));
 }
 
 #[test]
@@ -950,7 +964,14 @@ fn harness_chat_generation_commits_no_partial_for_a_response_that_turns_deferred
     each_backend(|backend| {
         let setup = Setup::new();
         let mut models = Wrapped::new(&setup.faux);
-        models.stream = Some(short_stream("", Duration::from_millis(300), || {
+        // Ended after a settle that gives a wrong empty partial a chance to be published.
+        let release = Deferred::new();
+        let settle = release.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(300));
+            settle.resolve();
+        });
+        models.stream = Some(short_stream("", release, || {
             let mut deferred = message(Vec::new(), StopReason::Deferred);
             deferred.deferred = Some(DeferredHandle {
                 provider: "faux".into(),
@@ -989,13 +1010,17 @@ fn harness_chat_generation_faults_a_run_task_settling_its_inputs_and_converting_
     each_backend(|backend| {
         let setup = Setup::new();
         let mut models = Wrapped::new(&setup.faux);
-        models.stream = Some(short_stream("partial", Duration::from_millis(300), || {
+        let release = Deferred::new();
+        models.stream = Some(short_stream("partial", release.clone(), || {
             Err(HarnessError::msg("transport returned a malformed response"))
         }));
         let (chat, root) = open_wrapped(Controlled::new(backend), &setup, models);
         let values = live_publications(&chat);
         chat.resume().unwrap();
         let submission = root.submit(SubmissionDraft::input("hi")).unwrap();
+        // The partial is committed before the stream fails.
+        eventually(|| published_partial(&values, "partial"));
+        release.resolve();
         let settled = submission.wait(&bg()).unwrap();
         assert_matches(
             &record(&settled),

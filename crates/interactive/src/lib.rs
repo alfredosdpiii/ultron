@@ -5,6 +5,7 @@
 
 pub mod agent_hub;
 pub mod app;
+pub mod changelog;
 pub mod chat;
 pub mod commands;
 mod components;
@@ -16,9 +17,14 @@ pub mod lane;
 pub mod model_hub;
 pub mod qol;
 pub mod retry;
+pub mod rlm;
 pub mod rlm_cell;
 pub mod run;
+pub mod selectors;
+pub mod session_selector;
+pub mod settings_selector;
 pub mod transcript_picker;
+pub mod tree_selector;
 pub mod word_diff;
 
 pub use components::*;

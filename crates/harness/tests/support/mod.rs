@@ -31,6 +31,9 @@ pub enum Backend {
 
 pub const BACKENDS: [Backend; 3] = [Backend::Memory, Backend::Sqlite, Backend::Jsonl];
 
+/// A hang guard, never a timing expectation: a loaded machine must slow a test down, never fail it.
+pub const HANG_GUARD: Duration = Duration::from_secs(120);
+
 /// A gate that holds calls until released and reports when the first held call arrives.
 #[derive(Clone, Default)]
 pub struct Gate(Arc<(Mutex<(bool, bool)>, Condvar)>);
@@ -39,9 +42,7 @@ impl Gate {
     pub fn wait_entered(&self) {
         let (state, changed) = &*self.0;
         let state = state.lock().unwrap();
-        let (state, _) = changed
-            .wait_timeout_while(state, Duration::from_secs(10), |state| !state.0)
-            .unwrap();
+        let (state, _) = changed.wait_timeout_while(state, HANG_GUARD, |state| !state.0).unwrap();
         assert!(state.0, "gate never entered");
     }
 
@@ -431,14 +432,17 @@ pub fn reports(opened: &Opened) -> Vec<HarnessError> {
     opened.reports.lock().unwrap().clone()
 }
 
-/// Let pending work run: a short real-time pause.
+/// A short real-time settle, only before checking that something did NOT happen: a slow machine can make such a
+/// check pass wrongly, never fail. Never use it to wait for something; wait for a condition (`eventually`,
+/// `line_reaches`, a gate or latch).
 pub fn flush() {
     std::thread::sleep(Duration::from_millis(15));
 }
 
-/// Poll until `check` holds (10 s).
+/// Poll until `check` holds. The deadline only guards against hangs: a loaded machine must slow a test down, never
+/// fail it.
 pub fn eventually(mut check: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + HANG_GUARD;
     while Instant::now() < deadline {
         if check() {
             return;
@@ -446,6 +450,17 @@ pub fn eventually(mut check: impl FnMut() -> bool) {
         std::thread::sleep(Duration::from_millis(2));
     }
     panic!("Condition was not reached");
+}
+
+/// Wait until `jobs` calls are admitted to the Session line (the held one included): the handshake for "this call has
+/// queued behind the held commit". The line is FIFO, so a job admitted now runs after every job counted.
+pub fn line_reaches(harness: &Harness, jobs: u64) {
+    eventually(|| harness.line_len() >= jobs);
+}
+
+/// Wait until a close has sealed admission (`resume` refuses), for a Harness that is already resumed.
+pub fn sealed(harness: &Harness) {
+    eventually(|| harness.resume().is_err());
 }
 
 /// A one-shot latch (upstream `deferred()`): `resolve` once, `wait` blocks until then.

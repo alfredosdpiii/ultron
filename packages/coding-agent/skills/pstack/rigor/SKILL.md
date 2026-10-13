@@ -59,41 +59,44 @@ changed. Cite only principles whose leaf you read this session.
 
 ## Principles
 
-Read the leaf for any principle you apply. Each entry names when it applies.
+Read the leaf for any principle you apply. Each entry names when it applies. Each leaf is
+`../principle-<title>/SKILL.md`, with the title in kebab case, hyphens kept and other punctuation dropped, unless the
+entry gives its path.
 
 **Core**
-- `the laziness-protocol principle (`../principle-laziness-protocol/SKILL.md`)`: sizing a diff, tempted by abstractions or layers. Bias to deletion and the smallest change.
-- `the foundational-thinking principle (`../principle-foundational-thinking/SKILL.md`)`: before logic. Core types, scaffold-vs-feature order, what concurrent actors share.
-- `the redesign-from-first-principles principle (`../principle-redesign-from-first-principles/SKILL.md`)`: a new requirement in an old design. Redesign as if it were there from day one.
-- `the attack-the-premise principle (`../principle-attack-the-premise/SKILL.md`)`: two fixes sharing one premise failed the same gate. Census the actors, question the premise.
-- `the subtract-before-you-add principle (`../principle-subtract-before-you-add/SKILL.md`)`: sequencing an addition or rewrite. Remove dead weight first.
-- `the minimize-reader-load principle (`../principle-minimize-reader-load/SKILL.md`)`: code hard to trace. Count layers and hidden state, collapse one-caller wrappers.
-- `the outcome-oriented-execution principle (`../principle-outcome-oriented-execution/SKILL.md`)`: planned migrations. Converge on the target, keep no throwaway compatibility states.
-- `the experience-first principle (`../principle-experience-first/SKILL.md`)`: product and scope tradeoffs. User delight over implementation convenience.
-- `the exhaust-the-design-space principle (`../principle-exhaust-the-design-space/SKILL.md`)`: a novel interaction or architecture. Build 2-3 prototypes and compare.
-- `the build-the-lever principle (`../principle-build-the-lever/SKILL.md`)`: any non-trivial work. Build the tool (codemod, script, generator) that does or proves it.
+- **Laziness Protocol.** Sizing a diff, tempted by abstractions or layers. Bias to deletion and the smallest change.
+- **Foundational Thinking.** Before logic. Core types, scaffold-vs-feature order, what concurrent actors share.
+- **Redesign From First Principles.** A new requirement in an old design. Redesign as if it were there from day one.
+- **Attack the Premise.** Two fixes sharing one premise failed the same gate. Census the actors, question the premise.
+- **Subtract Before You Add.** Sequencing an addition or rewrite. Remove dead weight first.
+- **Minimize Reader Load.** Code hard to trace. Count layers and hidden state, collapse one-caller wrappers.
+- **Outcome-Oriented Execution.** Planned migrations. Converge on the target, keep no throwaway compatibility states.
+- **Experience First.** Product and scope tradeoffs. User delight over implementation convenience.
+- **Exhaust the Design Space.** A novel interaction or architecture. Build 2-3 prototypes and compare.
+- **Build the Lever.** Any non-trivial work. Build the tool (codemod, script, generator) that does or proves it.
 
 **Architecture**
-- `the model-the-domain principle (`../principle-model-the-domain/SKILL.md`)`: stateful or branchy logic, a shape assumption repeated across files. Encode it in a structure.
-- `the boundary-discipline principle (`../principle-boundary-discipline/SKILL.md`)`: validation, errors, adapters. Guard boundaries, trust internal types, keep logic pure.
-- `the type-system-discipline principle (`../principle-type-system-discipline/SKILL.md`)`: types and signatures. Illegal states unrepresentable, parse at boundaries.
-- `the make-operations-idempotent principle (`../principle-make-operations-idempotent/SKILL.md`)`: commands and loops amid crashes and retries. Converge to one end state.
-- `the migrate-callers-then-delete-legacy-apis principle (`../principle-migrate-callers-then-delete-legacy-apis/SKILL.md`)`: a new API with old callers. Migrate and delete in one wave.
-- `the separate-before-serializing-shared-state principle (`../principle-separate-before-serializing-shared-state/SKILL.md`)`: actors that may write the same file, branch or key. Remove the sharing.
+- **Model the Domain.** Stateful or branchy logic, a shape assumption repeated across files. Encode it in a structure.
+- **Boundary Discipline.** Validation, errors, adapters. Guard boundaries, trust internal types, keep logic pure.
+- **Type System Discipline.** Types and signatures. Illegal states unrepresentable, parse at boundaries.
+- **Make Operations Idempotent.** Commands and loops amid crashes and retries. Converge to one end state.
+- **Migrate Callers Then Delete Legacy APIs.** A new API with old callers. Migrate and delete in one wave.
+- **Separate Before Serializing Shared State.** Actors that may write the same file, branch or key. Remove the sharing.
 
 **Verification**
-- `the prove-it-works principle (`../principle-prove-it-works/SKILL.md`)`: before declaring done. Verify the real artifact, not a proxy or "it compiles".
-- `the fix-root-causes principle (`../principle-fix-root-causes/SKILL.md`)`: debugging. Reproduce first, ask why until you reach the cause.
-- `the sequence-verifiable-units principle (`../principle-sequence-verifiable-units/SKILL.md`)`: multi-step work and commit or PR stacking. Small units, each ending in a check.
-- `the test-behavior-not-implementation principle (`../principle-test-behavior-not-implementation/SKILL.md`)`: any test. Call it as users do, assert a literal expected value.
-- `the explain-the-number principle (`../principle-explain-the-number/SKILL.md`)`: a measured number. Find what limits it; rule out that it measured something else.
+- **Prove It Works.** Before declaring done. Verify the real artifact, not a proxy or "it compiles".
+- **Fix Root Causes.** Debugging. Reproduce first, ask why until you reach the cause.
+- **Sequence Work into Verifiable Units** (`../principle-sequence-verifiable-units/SKILL.md`). Multi-step work and
+  commit or PR stacking. Small units, each ending in a check.
+- **Test Behavior, Not Implementation.** Any test. Call it as users do, assert a literal expected value.
+- **Explain the Number.** A measured number. Find what limits it; rule out that it measured something else.
 
 **Delegation**
-- `the guard-the-context-window principle (`../principle-guard-the-context-window/SKILL.md`)`: large outputs and files. Narrow with code, keep bulk in variables, print summaries.
-- `the never-block-on-the-human principle (`../principle-never-block-on-the-human/SKILL.md`)`: tempted to ask about reversible work. Proceed, show the result, let them correct.
+- **Guard the Context Window.** Large outputs and files. Narrow with code, keep bulk in variables, print summaries.
+- **Never Block on the Human.** Tempted to ask about reversible work. Proceed, show the result, let them correct.
 
 **Meta**
-- `the encode-lessons-in-structure principle (`../principle-encode-lessons-in-structure/SKILL.md`)`: writing the same instruction twice. Make it a lint, check or script instead.
+- **Encode Lessons in Structure.** Writing the same instruction twice. Make it a lint, check or script instead.
 
 ## Autonomy
 
@@ -103,7 +106,7 @@ without asking.
 **Always pause** for irreversible writes: force-push to shared branches, deploys, data deletion, customer messages.
 
 **Session overrides.** "Don't stop", "going to bed", "run until done", "be fully autonomous" → keep going; for a long
-run that should outlive your turns, see `playbooks/autonomous-run.md`.
+run that should outlive your turns, see
 
 **No is an acceptable answer.** Asked whether to do something, invited to add scope, or shown an approach, give your
 real judgment. Decline or push back when it is true. Candor over agreement.
@@ -140,6 +143,8 @@ The queries are examples; use what `find_models` offers. Pass `model=state["mode
 `rlm.infer` and `rlm.map`. The hardest changes go to the `hard` model whether the task is vague or precisely
 specified; trivial mechanical edits go to `code`.
 
+The session that loads rigor runs the playbook. Never spawn a child to run the playbook itself.
+
 You own every child's work. Trust a verdict only when `result["check"]["outcome"] == "verified"`; re-check the rest.
 Review the diff and write your own summary. A second opinion is the same brief on a different model; agreement is
 high signal.
@@ -162,7 +167,8 @@ Write it clean as you draft; a cleanup pass does not remove these patterns.
 - Every claim carries its evidence or its label in the same sentence: measured, inferred, or guess. Never hand the
   human a check you could run.
 
-Every playbook ends with such a reply, PR links as `https://github.com/<owner>/<repo>/pull/<number>`.
+Every playbook ends with such a reply, PR links as `https://github.com/<owner>/<repo>/pull/<number>`. Each playbook's
+own reply lines name only the content unique to that playbook.
 
 ## Comments
 
@@ -171,32 +177,33 @@ the assertion message documents the step (`assert ok, "persisted across restart"
 
 ## Playbooks
 
-Put the matched playbook's steps into `state["plan"]` as your first items, before task-specific ones, and print it
-compactly as you go. A step you skip stays with `skip: <reason>`.
+Match the task to a playbook below and read its full steps at `playbooks/<title>.md`, with the title in kebab case,
+hyphens kept and other punctuation dropped. Put its steps into `state["plan"]` as your first items, before
+task-specific ones, and print it compactly as you go. A step you skip stays with `skip: <reason>`.
 
 A large or cross-cutting effort, or work the user will trust later without watching, routes to
 `../figure-it-out/SKILL.md` even when a narrower playbook fits; so does a task no playbook fits. A standing,
 multi-day program with many PRs and children routes to Orchestrate.
 
-- **Investigation.** Read-only: how does X work, why is Y this way, are we sure about Z, X or Y? `playbooks/investigation.md`.
-- **Bug fix.** Reproduce, root-cause and fix a reported defect with runtime evidence. `playbooks/bug-fix.md`.
-- **Perf issue.** Trace and improve a measured slowness against a baseline. `playbooks/perf-issue.md`.
-- **Hillclimb.** Sustained improvement of one metric against a target, one measured attempt at a time. `playbooks/hillclimb.md`.
-- **Runtime forensics.** Diagnose a live symptom (leak, idle spin, glitch) by instrumenting it. Diagnosis, not a fix. `playbooks/runtime-forensics.md`.
-- **Trace forensics.** Diagnose a captured profile, trace or heap snapshot. Diagnosis, not a fix. `playbooks/trace-forensics.md`.
-- **Feature.** New or changed behavior built from a named data shape. `playbooks/feature.md`.
-- **Refactoring.** Behavior-preserving change to structure. `playbooks/refactoring.md`.
-- **Prototype.** A throwaway sketch to decide a design or settle an empirical fork. `playbooks/prototype.md`.
-- **Visual parity.** Pixel-exact UI equivalence for web UIs (optional). `playbooks/visual-parity.md`.
-- **Authoring a skill.** Writing or editing a SKILL.md or a code skill. `playbooks/authoring-a-skill.md`.
-- **Eval.** Test how a skill, prompt or structure change affects agent behavior before promoting it. `playbooks/eval.md`.
-- **Babysit.** Drive a PR or stack to merge-ready: conflicts, review threads, CI. `playbooks/babysit.md`.
-- **Shipping.** Independently verify a green stack, then land the verified run bottom-up. `playbooks/shipping.md`.
-- **Autonomous run.** Drive one task to a checkable predicate without stopping, through `/goal`. `playbooks/autonomous-run.md`.
+- **Investigation.** Read-only: how does X work, why is Y this way, are we sure about Z, X or Y?
+- **Bug fix.** Reproduce, root-cause and fix a reported defect with runtime evidence.
+- **Perf issue.** Trace and improve a measured slowness against a baseline.
+- **Hillclimb.** Sustained improvement of one metric against a target, one measured attempt at a time.
+- **Runtime forensics.** Diagnose a live symptom (leak, idle spin, glitch) by instrumenting it. Diagnosis, not a fix.
+- **Trace forensics.** Diagnose a captured profile, trace or heap snapshot. Diagnosis, not a fix.
+- **Feature.** New or changed behavior built from a named data shape.
+- **Refactoring.** Behavior-preserving change to structure.
+- **Prototype.** A throwaway sketch to decide a design or settle an empirical fork.
+- **Visual parity.** Pixel-exact UI equivalence for web UIs (optional).
+- **Authoring a skill.** Writing or editing a SKILL.md or a code skill.
+- **Eval.** Test how a skill, prompt or structure change affects agent behavior before promoting it.
+- **Babysit.** Drive a PR or stack to merge-ready: conflicts, review threads, CI.
+- **Shipping.** Independently verify a green stack, then land the verified run bottom-up.
+- **Autonomous run.** Drive one task to a checkable predicate without stopping, through `/goal`.
 - **Orchestrate.** A standing program: a queue or project of many PRs run by one coordinator with children,
-  delivered as merged PRs or one reviewed stack. Work one agent could finish in the budget is not a program. `playbooks/orchestrate.md`.
-- **Session pickup.** Resume or take over a prior agent's in-flight work. `playbooks/session-pickup.md`.
-- **Pause safely.** Suspend in-flight work so a cold start can resume it. `playbooks/pause-safely.md`.
-- **Multi-phase plan.** Write the plan for work spanning phases or stacked PRs. `playbooks/multi-phase-plan.md`.
-- **Worktree cleanup.** Reclaim disk by pruning merged or abandoned git worktrees. `playbooks/worktree-cleanup.md`.
-- **Opening a PR.** Run at the end of every other playbook that changes code. `playbooks/opening-a-pr.md`.
+  delivered as merged PRs or one reviewed stack. Work one agent could finish in the budget is not a program.
+- **Session pickup.** Resume or take over a prior agent's in-flight work.
+- **Pause safely.** Suspend in-flight work so a cold start can resume it.
+- **Multi-phase plan.** Write the plan for work spanning phases or stacked PRs.
+- **Worktree cleanup.** Reclaim disk by pruning merged or abandoned git worktrees.
+- **Opening a PR.** Run at the end of every other playbook that changes code.

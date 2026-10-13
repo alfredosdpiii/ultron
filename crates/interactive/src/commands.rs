@@ -229,23 +229,39 @@ pub struct MarkdownNotice {
 
 impl Component for MarkdownNotice {
     fn render(&mut self, width: usize) -> Vec<String> {
-        let t = &self.theme;
-        let border = fg(t, "border", &"─".repeat(width.max(1)));
-        let mut lines = vec![border.clone()];
-        lines.extend(Text::new(&bold(&fg(t, "accent", &self.title)), 1, 0, None).render(width));
-        lines.extend(Spacer(1).render(width));
-        let mut md = Markdown {
-            tokens: markdown_tokens(self.markdown.trim()),
-            padding_x: 1,
-            padding_y: 1,
-            theme: markdown_theme(t),
-            style: None,
-            options: MarkdownOptions::default(),
-        };
-        lines.extend(md.render(width));
-        lines.push(border);
-        lines
+        notice_lines(&self.theme, &self.title, markdown_tokens(self.markdown.trim()), width)
     }
+}
+
+/// A [`MarkdownNotice`] whose Markdown was lexed already (`/changelog`, lexed off the UI thread).
+pub struct LexedNotice {
+    pub theme: Rc<Theme>,
+    pub title: String,
+    pub tokens: Vec<tui::markdown::Token>,
+}
+
+impl Component for LexedNotice {
+    fn render(&mut self, width: usize) -> Vec<String> {
+        notice_lines(&self.theme, &self.title, self.tokens.clone(), width)
+    }
+}
+
+fn notice_lines(t: &Rc<Theme>, title: &str, tokens: Vec<tui::markdown::Token>, width: usize) -> Vec<String> {
+    let border = fg(t, "border", &"─".repeat(width.max(1)));
+    let mut lines = vec![border.clone()];
+    lines.extend(Text::new(&bold(&fg(t, "accent", title)), 1, 0, None).render(width));
+    lines.extend(Spacer(1).render(width));
+    let mut md = Markdown {
+        tokens,
+        padding_x: 1,
+        padding_y: 1,
+        theme: markdown_theme(t),
+        style: None,
+        options: MarkdownOptions::default(),
+    };
+    lines.extend(md.render(width));
+    lines.push(border);
+    lines
 }
 
 /// What `/session` reports (`SessionStats` over the session's entries).
@@ -330,4 +346,33 @@ pub fn session_info(t: &Theme, s: &SessionStats) -> String {
         info += &format!("\n{}\n{} ${}", bold("Cost"), dim("Total:"), js_to_fixed(s.cost, 3));
     }
     info.trim_end().to_string()
+}
+
+/// `reviewPrompt` (ultron/review.ts): the model-facing prompt `/review <args>` expands to (the worker expands every
+/// client's prompt this way; the TUI sends the expansion).
+pub fn review_prompt(args: &str) -> String {
+    let trimmed = args.trim();
+    let literal = serde_json::to_string(trimmed).unwrap_or_else(|_| "\"\"".into());
+    let mut lines = vec![
+        format!("/review{}", if trimmed.is_empty() { String::new() } else { format!(" {trimmed}") }),
+        String::new(),
+        "Run Ultron's built-in code review in one REPL cell, exactly:".into(),
+        String::new(),
+        "import review_api".into(),
+        format!("review = await review_api.run(rlm, {literal})"),
+        "print(review.report)".into(),
+        String::new(),
+        "Then reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.".into(),
+    ];
+    // `/(^|\s)--post(\s|=|$)/`
+    let post = trimmed.match_indices("--post").any(|(i, _)| {
+        let before = trimmed[..i].chars().next_back();
+        let after = trimmed[i + 6..].chars().next();
+        before.is_none_or(char::is_whitespace) && after.is_none_or(|c| c.is_whitespace() || c == '=')
+    });
+    if post {
+        lines.push(String::new());
+        lines.push("If the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.".into());
+    }
+    lines.join("\n")
 }

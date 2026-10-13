@@ -102,7 +102,9 @@ fn child_main(backend: &str, dir: &Path) {
             && std::fs::read_to_string(dir.join("effects.log")).is_ok_and(|log| log == "ran\n")
     });
     let pid = cells.lane(root.id, "main").unwrap().pid().unwrap();
-    std::fs::write(dir.join("ready"), pid.to_string()).unwrap();
+    // Written whole, then renamed: the parent never reads a half-written file.
+    std::fs::write(dir.join("ready.tmp"), pid.to_string()).unwrap();
+    std::fs::rename(dir.join("ready.tmp"), dir.join("ready")).unwrap();
     loop {
         std::thread::sleep(Duration::from_secs(60));
     }
@@ -137,7 +139,7 @@ fn kill_and_recover(backend: &str) {
         .spawn()
         .unwrap();
     let ready = dir.path().join("ready");
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while !ready.exists() {
         assert!(Instant::now() < deadline, "child never reached the kill point");
         assert!(child.try_wait().unwrap().is_none(), "child exited early");

@@ -7,6 +7,7 @@ use crate::control::{LineReader, LineWriter};
 use crate::coordinator::COORDINATOR_PROTOCOL_VERSION;
 use crate::lane::Lane;
 use crate::lifecycle::{Hold, Lifecycle};
+use crate::watchdog::{Change, Progress};
 use base64::Engine;
 use serde_json::{Value, json};
 use session_core::compose::Services;
@@ -16,8 +17,8 @@ use std::collections::HashMap;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex, mpsc};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, OnceLock, Weak, mpsc};
+use std::time::{Duration, Instant};
 
 pub const CONTROL_ADDRESS_ENV: &str = "PI_SESSION_WORKER_CONTROL_ADDRESS";
 pub const CONTROL_TOKEN_ENV: &str = "PI_SESSION_WORKER_CONTROL_TOKEN";
@@ -33,8 +34,16 @@ const DEFAULT_INITIAL_DEMAND_GRACE_MS: u64 = 10_000;
 const DEFAULT_ORPHAN_DEMAND_GRACE_MS: u64 = 1_000;
 const DEFAULT_DISCOVERY_GRACE_MS: u64 = 5_000;
 
+/// How long `abortStuck` waits for an aborted run to end before it restarts the worker.
+pub const ABORT_GRACE_ENV: &str = "ULTRON_ABORT_GRACE_MS";
+const DEFAULT_ABORT_GRACE_MS: u64 = 10_000;
+/// The exit code of a worker that restarts itself because an aborted run would not stop.
+pub const RESTART_EXIT_CODE: i32 = 75;
+
 /// Operations that wait on a run (or a long poll) execute off the command reader, so it keeps serving the rest.
-const LONG_OPERATIONS: [(&str, &str); 7] = [
+/// The others run in order on one operation thread; the reader itself only dispatches, so it always answers the
+/// server's heartbeat.
+const LONG_OPERATIONS: [(&str, &str); 9] = [
     ("pi.agent-controller", "prompt"),
     ("pi.agent-controller", "resume"),
     ("pi.agent-controller", "compact"),
@@ -42,6 +51,9 @@ const LONG_OPERATIONS: [(&str, &str); 7] = [
     ("ultron.extension-ui", "poll"),
     ("ultron.session-control", "bash"),
     ("ultron.session-control", "readTree"),
+    // A session operation may be a compaction or a bash command; `abortStuck` waits for the run to stop.
+    (OPS_SERVICE, "op"),
+    (OPS_SERVICE, "abortStuck"),
 ];
 
 fn lifecycle_delay(name: &str, fallback: u64) -> Result<Duration, String> {
@@ -112,6 +124,13 @@ struct Shared {
     closing: Mutex<bool>,
     ready: Mutex<bool>,
     _lock: Mutex<Option<crate::lock::Lock>>,
+    _owner: Mutex<Option<durable::owner::OwnerLock>>,
+    progress: Arc<Progress>,
+    /// The `health` state of the operations service (crate::watchdog).
+    health: Arc<crate::chord::State>,
+    stuck_after: Option<Duration>,
+    /// The ordered operation thread.
+    jobs: Mutex<mpsc::Sender<Box<dyn FnOnce() + Send>>>,
 }
 
 impl Shared {
@@ -137,7 +156,38 @@ impl Shared {
 
     fn worker_ready(&self) -> Value {
         json!({"type": "worker_ready", "token": self.token, "sessionKey": self.session_key, "sessionId": self.session_id,
-            "pid": std::process::id(), "metadata": self.metadata, "pluginManifestPaths": self.plugin_manifest_paths})
+            "pid": std::process::id(), "metadata": self.metadata, "pluginManifestPaths": self.plugin_manifest_paths,
+            "busy": self.progress.busy()})
+    }
+
+    /// `worker_status`: whether a run is in progress and its health (the heartbeat answer, sent on every change).
+    fn status(&self, nonce: Value) -> Value {
+        let busy = self.progress.busy()
+            || self
+                .lifecycle
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_ref()
+                .is_some_and(|l| l.busy());
+        json!({"type": "worker_status", "token": self.token, "sessionKey": self.session_key, "nonce": nonce,
+            "pid": std::process::id(), "busy": busy, "health": self.progress.health(session_core::lane::now_ms(), self.stuck_after)})
+    }
+
+    fn report(&self) {
+        self.health
+            .replace(self.progress.health(session_core::lane::now_ms(), self.stuck_after));
+        let _ = self.send(self.status(Value::Null), None);
+    }
+
+    /// A run started or ended (it holds retirement while it runs), or a stuck run moved again.
+    fn progress_changed(&self, change: Change) {
+        let lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        match (&change, &lifecycle) {
+            (Change::Started(run), Some(lifecycle)) => lifecycle.operation_started("run", "main", run),
+            (Change::Ended(run), Some(lifecycle)) => lifecycle.operation_stopped("run", "main", run),
+            _ => {}
+        }
+        self.report();
     }
 
     fn remove_subscriptions(&self, matches: impl Fn(&Value) -> bool) {
@@ -198,13 +248,24 @@ fn request(args: &[Value]) -> &Value {
 }
 
 /// The session services in their catalogue order, over the session actor `core`.
+/// What the operations service's watchdog members use.
+struct Watch {
+    progress: Arc<Progress>,
+    health: Arc<crate::chord::State>,
+    stuck_after: Option<Duration>,
+    abort_grace: Duration,
+    shared: Arc<OnceLock<Weak<Shared>>>,
+}
+
 fn services(
     lane: &Lane,
     models_state: Arc<crate::chord::State>,
     name_state: Arc<crate::chord::State>,
     core: Sender<Input>,
     lifecycle: LifecycleRef,
+    watch: Watch,
 ) -> Provider {
+    let navigate_core = core.clone();
     let (prompt_core, abort_core, steer_core, follow_core, cancel_core, compact_core) = (
         core.clone(),
         core.clone(),
@@ -235,7 +296,18 @@ fn services(
                 },
             )
         })
-        .unported("navigate")
+        .method("navigate", move |args| {
+            // `{targetId, summarize, label, customInstructions}`; a long operation (a summary is a model call).
+            let request = request(&args);
+            call_core(
+                &navigate_core,
+                Op::Navigate {
+                    target_id: request["targetId"].as_str().map(str::to_string),
+                    summarize: request["summarize"] == true,
+                    instructions: request["customInstructions"].as_str().map(str::to_string),
+                },
+            )
+        })
         .unported("nextRun")
         .method("prompt", move |args| {
             let message = request(&args)["message"]
@@ -272,6 +344,7 @@ fn services(
     let legacy = Service::new("pi.legacy-extension-commands")
         .method("list", |_| Ok(Some(json!([]))))
         .method("run", |_| Ok(Some(json!({"notifications": []}))));
+    let (stuck_core, health_progress) = (core.clone(), watch.progress.clone());
     let (op_core, bash_core, abort_bash_core, name_core, forked_core, tree_core, inspect_core) = (
         core.clone(),
         core.clone(),
@@ -380,8 +453,38 @@ fn services(
             let op = Op::from_json(request(&args)).map_err(ServiceError::internal)?;
             call_core(&op_core, op)
         })
+        // The run's progress (crate::watchdog), now.
+        .method("checkHealth", move |_| {
+            Ok(Some(
+                health_progress.health(session_core::lane::now_ms(), watch.stuck_after),
+            ))
+        })
+        // Abort the run in progress; one that does not stop within the grace restarts the worker, whose recovery
+        // ends it as aborted (its cancel request is journaled first).
+        .method("abortStuck", move |_| {
+            let Some(run) = watch.progress.run() else {
+                return Ok(Some(json!({"aborted": false, "reason": "no run in progress"})));
+            };
+            call_core(&stuck_core, Op::Abort)?;
+            let deadline = Instant::now() + watch.abort_grace;
+            while Instant::now() < deadline {
+                if watch.progress.run().as_deref() != Some(run.as_str()) {
+                    return Ok(Some(json!({"aborted": true, "runId": run, "restarted": false})));
+                }
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            if let Some(shared) = watch.shared.get().and_then(Weak::upgrade) {
+                std::thread::spawn(move || {
+                    // Let the answer leave first.
+                    std::thread::sleep(Duration::from_millis(100));
+                    shared.close_and_exit(RESTART_EXIT_CODE)
+                });
+            }
+            Ok(Some(json!({"aborted": true, "runId": run, "restarted": true})))
+        })
         // The session's display name (`{name}`), as it changes.
         .state("name", name_state)
+        .state("health", watch.health)
         .unlisted();
     Provider {
         services: vec![agent, plugins, legacy, control, extension_ui, models, transcript, ops],
@@ -423,14 +526,27 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         .ok()
         .filter(|o| !o.is_empty())
         .or_else(|| registered.and_then(|r| r["serverConnectionId"].as_str().map(str::to_string)));
-    let fail = |message: String| -> String {
+    let fail_coded = |code: Option<&str>, message: String| -> String {
         let to = owner.clone().unwrap_or_else(|| "server".into());
-        let payload = json!({"type": "worker_failed", "token": token, "sessionKey": session_key, "message": message});
+        let mut payload =
+            json!({"type": "worker_failed", "token": token, "sessionKey": session_key, "message": message});
+        if let Some(code) = code {
+            payload["code"] = json!(code);
+        }
         let _ = writer.send(&json!({"type": "send", "to": to, "payload": payload}));
         message
     };
+    let fail = |message: String| fail_coded(None, message);
     let metadata = options.metadata.clone();
     let path = PathBuf::from(metadata["path"].as_str().unwrap_or_default());
+    let session_id = metadata["id"].as_str().unwrap_or_default().to_string();
+    // One writer per session file, across every server and instance: a live owner refuses this worker at once.
+    let owner_lock = durable::owner::OwnerLock::acquire(&path).map_err(|error| match error {
+        durable::owner::OwnerError::InUse { pid } => {
+            fail_coded(Some("service_invalid_value"), session_in_use(&session_id, pid))
+        }
+        durable::owner::OwnerError::Io(error) => fail(error.to_string()),
+    })?;
     let lock = crate::lock::Lock::acquire(
         &path,
         Duration::from_millis(2_000),
@@ -438,7 +554,6 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         Duration::from_millis(8_000),
     )
     .map_err(|e| fail(e.to_string()))?;
-    let session_id = metadata["id"].as_str().unwrap_or_default().to_string();
     let env = RunEnv::process(PathBuf::from(metadata["cwd"].as_str().unwrap_or_default()), docs);
     let session_metadata = session_journal::repo::read_metadata(&path)
         .ok_or_else(|| fail(format!("Not a session file: {}", path.display())))?;
@@ -457,9 +572,20 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     };
     let name_state = crate::chord::State::new(json!({"name": null}));
     let names = name_state.clone();
+    let progress = Arc::new(Progress::default());
+    let stuck_after = crate::watchdog::stuck_after(&|k| std::env::var(k).ok());
+    let health_state = crate::chord::State::new(progress.health(session_core::lane::now_ms(), stuck_after));
+    let shared_slot: Arc<OnceLock<Weak<Shared>>> = Arc::new(OnceLock::new());
+    let (sink_progress, sink_shared) = (progress.clone(), shared_slot.clone());
     let (core, _actor, summary) = session_core::core::spawn(
         open,
         Box::new(move |event| {
+            let change = sink_progress.event(&event, session_core::lane::now_ms());
+            if change != Change::None
+                && let Some(shared) = sink_shared.get().and_then(Weak::upgrade)
+            {
+                shared.progress_changed(change);
+            }
             if event["type"] == "session_name" {
                 names.replace(json!({"name": event["name"]}));
             } else if let Some(lane) = sink_lane.get() {
@@ -484,13 +610,27 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     if let Ok(Some(described)) = session_core::core::call(&core, Op::Describe) {
         name_state.replace(json!({"name": described["name"]}));
     }
+    let watch = Watch {
+        progress: progress.clone(),
+        health: health_state.clone(),
+        stuck_after,
+        abort_grace: lifecycle_delay(ABORT_GRACE_ENV, DEFAULT_ABORT_GRACE_MS)?,
+        shared: shared_slot.clone(),
+    };
     let provider = Arc::new(services(
         &lane.lock().unwrap_or_else(|e| e.into_inner()),
         models_state,
         name_state,
         core.clone(),
         lifecycle_slot.clone(),
+        watch,
     ));
+    let (jobs, queue) = mpsc::channel::<Box<dyn FnOnce() + Send>>();
+    std::thread::spawn(move || {
+        for job in queue {
+            job();
+        }
+    });
     let shared = Arc::new(Shared {
         token: token.clone(),
         session_key: session_key.clone(),
@@ -505,7 +645,13 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         closing: Mutex::new(false),
         ready: Mutex::new(false),
         _lock: Mutex::new(Some(lock)),
+        _owner: Mutex::new(Some(owner_lock)),
+        progress,
+        health: health_state,
+        stuck_after,
+        jobs: Mutex::new(jobs),
     });
+    let _ = shared_slot.set(Arc::downgrade(&shared));
     let retiring = Arc::downgrade(&shared);
     let lifecycle = Lifecycle::new(
         owner,
@@ -530,6 +676,20 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     if shared.send(shared.worker_ready(), None).is_err() {
         shared.close_and_exit(1);
     }
+    // A signal stops the session (its run stays open in the journal; the next worker recovers it) and exits.
+    let signalled = Arc::downgrade(&shared);
+    crate::signals::set_handler(Arc::new(move |_| {
+        if let Some(shared) = signalled.upgrade() {
+            shared.close_and_exit(0);
+        }
+        std::process::exit(0);
+    }));
+    // Continue what a dead worker left (an interrupted run, queued messages), without waiting for a client.
+    let recover = shared.core.clone();
+    std::thread::spawn(move || {
+        let _ = session_core::core::call(&recover, Op::Recover);
+    });
+    spawn_watchdog(&shared);
     loop {
         let message = match reader.read_value() {
             Ok(Some(message)) => message,
@@ -560,6 +720,10 @@ fn handle_input(shared: &Arc<Shared>, message: &Value, discovery_grace: Duration
                 return;
             }
             match command["type"].as_str() {
+                // The server's heartbeat: answered by the reader, which never waits on the session.
+                Some("ping") => {
+                    let _ = shared.send(shared.status(command["nonce"].clone()), None);
+                }
                 Some("shutdown") => shared.close_and_exit(0),
                 Some("release") => release(shared, &lifecycle, command),
                 Some("session_demand") => demand(shared, &lifecycle, command),
@@ -643,6 +807,7 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
     let long = call
         .as_ref()
         .is_some_and(|c| LONG_OPERATIONS.contains(&(c.service_id.as_str(), c.member.as_str())));
+    let jobs = shared.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let shared = shared.clone();
     let execute = move || {
         let result: ServiceResult = match (hold, call) {
@@ -699,6 +864,30 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
     if long {
         std::thread::spawn(execute);
     } else {
-        execute();
+        let _ = jobs.send(Box::new(execute));
     }
+}
+
+/// `SessionInUseError`'s message.
+pub fn session_in_use(session_id: &str, pid: Option<u32>) -> String {
+    let pid = pid.map_or_else(|| "unknown".to_string(), |p| p.to_string());
+    format!(
+        "Session {session_id} is open in another Ultron process (worker pid {pid}); close it there, or wait for its work to finish, then resume it"
+    )
+}
+
+/// Check the run's progress against the stuck threshold; a run that just became stuck is reported.
+fn spawn_watchdog(shared: &Arc<Shared>) {
+    let Some(after) = shared.stuck_after else { return };
+    let period = (after / 4).clamp(Duration::from_millis(50), Duration::from_secs(1));
+    let watched = Arc::downgrade(shared);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(period);
+            let Some(shared) = watched.upgrade() else { return };
+            if shared.progress.check(session_core::lane::now_ms(), shared.stuck_after) {
+                shared.report();
+            }
+        }
+    });
 }

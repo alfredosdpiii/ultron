@@ -13,12 +13,14 @@ base64 = "=0.23.1"
 chord-delta = { path = "../chord-delta" }
 client = { path = "../client" }
 config = { path = "../config" }
+durable = { path = "../durable" }
 getrandom = "=0.4.3"
 harness = { path = "../harness" }
 host = { path = "../host" }
 inference = { path = "../inference" }
 kernel = { path = "../kernel" }
 loki = { path = "../loki" }
+nix = { version = "=0.31.3", features = ["signal"] }
 protocol = { path = "../protocol" }
 resources = { path = "../resources" }
 rustix = { version = "=1.1.5", features = ["process", "std"] }

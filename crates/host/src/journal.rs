@@ -2,13 +2,56 @@
 //! ultron/rlm/shell-jobs.ts (`#load`, `#persist`, `snapshot`, `read`, `jobSummary`, `#fileTail`) and
 //! experimental/session-worker.ts `jobEvent`.
 //!
-//! Processes do not outlive the worker that owned them: on restore, a job the journal still lists as running becomes
-//! `interrupted` ("worker restarted") and the journal is rewritten. Restored jobs answer `shell.list`, `shell.get`,
-//! `shell.result` and `shell.read` from their records and spill files.
+//! TypeScript: processes do not outlive the worker that owned them, so on restore a job the journal still lists as
+//! running becomes `interrupted` ("worker restarted") and the journal is rewritten ([`restore`]). The Rust host keeps
+//! a job's process running past its worker (see `Host::with_journal`): a record that names its keeper process (`pid`,
+//! `pidStart`) is left running here and settled by the host from the process and its exit file. Restored jobs answer
+//! `shell.list`, `shell.get`, `shell.result` and `shell.read` from their records and spill files.
 
 use serde_json::{Map, Value, json};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
+use std::path::PathBuf;
+
+/// Where the jobs journal (the session value `ultron.module/jobs`) is kept; one document, replaced whole.
+pub trait JobJournal: Send + Sync {
+    /// The stored document, `None` before the first write.
+    fn read(&self) -> Result<Option<Value>, String>;
+    fn write(&self, document: &Value) -> Result<(), String>;
+}
+
+/// A journal in one JSON file, replaced atomically (temporary file, then rename) on every write.
+pub struct FileJobJournal {
+    path: PathBuf,
+}
+
+impl FileJobJournal {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into() }
+    }
+}
+
+impl JobJournal for FileJobJournal {
+    fn read(&self) -> Result<Option<Value>, String> {
+        match std::fs::read_to_string(&self.path) {
+            Ok(text) => serde_json::from_str(&text)
+                .map(Some)
+                .map_err(|error| format!("{}: {error}", self.path.display())),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(format!("{}: {error}", self.path.display())),
+        }
+    }
+
+    fn write(&self, document: &Value) -> Result<(), String> {
+        if let Some(parent) = self.path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        let temporary = PathBuf::from(format!("{}.{}.tmp", self.path.display(), std::process::id()));
+        std::fs::write(&temporary, serde_json::to_string(document).unwrap_or_default())
+            .map_err(|error| error.to_string())?;
+        std::fs::rename(&temporary, &self.path).map_err(|error| error.to_string())
+    }
+}
 
 pub const JOURNAL_NAMESPACE: &str = "ultron.module/jobs";
 const JOURNAL_VERSION: u64 = 1;
@@ -32,6 +75,10 @@ pub struct JobRecord {
     pub retained_bytes: u64,
     pub tail: String,
     pub error: Option<String>,
+    /// The job's keeper process (its process group leader) and that process's start time in clock ticks since boot,
+    /// so a reopened worker can tell the job's own process from a reused pid. Absent in TypeScript journals.
+    pub pid: Option<i64>,
+    pub pid_start: Option<u64>,
 }
 
 fn text_of(value: &Value, key: &str) -> String {
@@ -71,6 +118,8 @@ impl JobRecord {
             retained_bytes: int_of(value, "retainedBytes").unwrap_or(0),
             tail: text_of(value, "tail"),
             error: value.get("error").and_then(Value::as_str).map(str::to_owned),
+            pid: value.get("pid").and_then(Value::as_i64),
+            pid_start: int_of(value, "pidStart"),
         }
     }
 
@@ -93,6 +142,12 @@ impl JobRecord {
         });
         if let Some(error) = &self.error {
             out["error"] = json!(error);
+        }
+        if let Some(pid) = self.pid {
+            out["pid"] = json!(pid);
+        }
+        if let Some(start) = self.pid_start {
+            out["pidStart"] = json!(start);
         }
         out
     }
@@ -137,8 +192,19 @@ pub struct Restored {
     pub persist: Option<Value>,
 }
 
-/// Restore the journal (`saved` is the session value, None when unset) at time `now` (ms).
+/// Restore the journal (`saved` is the session value, None when unset) at time `now` (ms), as TypeScript does: every
+/// job still running becomes `interrupted`.
 pub fn restore(saved: Option<&Value>, now: u64) -> Result<Restored, String> {
+    restore_records(saved, now, false)
+}
+
+/// [`restore`] for a host that keeps job processes past their worker: a running record that names its keeper
+/// process stays `running` for the host to settle; one without (a TypeScript journal) is `interrupted`.
+pub fn restore_durable(saved: Option<&Value>, now: u64) -> Result<Restored, String> {
+    restore_records(saved, now, true)
+}
+
+fn restore_records(saved: Option<&Value>, now: u64, keep_processes: bool) -> Result<Restored, String> {
     let jobs = match saved {
         Some(Value::Object(document)) => {
             if let Some(version) = document.get("version")
@@ -164,7 +230,7 @@ pub fn restore(saved: Option<&Value>, now: u64) -> Result<Restored, String> {
             if job.tail.is_empty() {
                 job.tail = file_tail(&job);
             }
-            if job.status == "running" {
+            if job.status == "running" && (!keep_processes || job.pid.is_none()) {
                 changed = true;
                 job.status = "interrupted".into();
                 job.ended_at = Some(job.ended_at.unwrap_or(now));

@@ -1,0 +1,7386 @@
+{
+ "sessions": [
+  {
+   "name": "admission and wall deadline",
+   "options": {
+    "limits": {
+     "maxAdmittedTasks": 2,
+     "maxWallMs": 1000
+    }
+   },
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "a",
+       "timeoutMs": 500,
+       "taskId": "t1"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "taskId": "t1",
+      "requestKey": "a",
+      "admittedAt": 1000,
+      "deadlineAt": 1500
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      10
+     ],
+     "ok": 1010,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "b",
+       "timeoutMs": 5000,
+       "taskId": "t2"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-2",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "taskId": "t2",
+      "requestKey": "b",
+      "admittedAt": 1010,
+      "deadlineAt": 2000
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "c"
+      }
+     ],
+     "error": "Usage admitted-task limit exceeded for root ultron-root",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "a"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "taskId": "t1",
+      "requestKey": "a",
+      "admittedAt": 1000,
+      "deadlineAt": 1500
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "t1:model",
+       "parentTaskId": "t1",
+       "taskId": "t1",
+       "deadlineAt": 1400,
+       "budgetId": "frame-1"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-3",
+      "rootId": "ultron-root",
+      "kind": "model",
+      "taskId": "t1",
+      "parentTaskId": "t1",
+      "requestKey": "t1:model",
+      "budgetId": "frame-1",
+      "admittedAt": 1010,
+      "deadlineAt": 1400
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "deadlineAt": 1400
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      20
+     ],
+     "ok": 1030,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1500
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "deadlineAt": 1400
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      0,
+      {
+       "status": "succeeded",
+       "usage": {
+        "inputTokens": 10,
+        "outputTokens": 5,
+        "totalTokens": 15,
+        "cost": 0.01
+       }
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "deadlineAt": 1400
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      0,
+      {
+       "status": "failed"
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "deadlineAt": 1400
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "c"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-5",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "requestKey": "c",
+      "admittedAt": 1030,
+      "deadlineAt": 2000
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "deadlineAt": 1400
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      3,
+      {
+       "status": "succeeded",
+       "usage": {
+        "inputTokens": 1,
+        "outputTokens": 2,
+        "totalTokens": 3,
+        "cost": null
+       }
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": 2,
+       "maxWallMs": 1000,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 1,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 2,
+      "activeReservations": 2,
+      "startedAt": 1000,
+      "deadlineAt": 2000,
+      "remainingWallMs": 970,
+      "usage": {
+       "calls": 2,
+       "taskCalls": 1,
+       "modelCalls": 1,
+       "wallMs": 50,
+       "inputTokens": 11,
+       "outputTokens": 7,
+       "totalTokens": 18,
+       "cost": null,
+       "unknownCalls": 1
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-2",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "taskId": "t2",
+        "requestKey": "b",
+        "admittedAt": 1010,
+        "deadlineAt": 2000
+       },
+       {
+        "id": "ultron-usage-id-5",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "requestKey": "c",
+        "admittedAt": 1030,
+        "deadlineAt": 2000
+       }
+      ],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 1,
+        "modelCalls": 1,
+        "wallMs": 50,
+        "inputTokens": 11,
+        "outputTokens": 7,
+        "totalTokens": 18,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 1
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      2000
+     ],
+     "ok": 3030,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "d"
+      }
+     ],
+     "error": "Usage wall deadline exceeded for root ultron-root",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "late"
+      }
+     ],
+     "error": "Usage wall deadline exceeded for root ultron-root",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": 2,
+       "maxWallMs": 1000,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 1,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 2,
+      "activeReservations": 2,
+      "startedAt": 1000,
+      "deadlineAt": 2000,
+      "remainingWallMs": 0,
+      "usage": {
+       "calls": 2,
+       "taskCalls": 1,
+       "modelCalls": 1,
+       "wallMs": 50,
+       "inputTokens": 11,
+       "outputTokens": 7,
+       "totalTokens": 18,
+       "cost": null,
+       "unknownCalls": 1
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-2",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "taskId": "t2",
+        "requestKey": "b",
+        "admittedAt": 1010,
+        "deadlineAt": 2000
+       },
+       {
+        "id": "ultron-usage-id-5",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "requestKey": "c",
+        "admittedAt": 1030,
+        "deadlineAt": 2000
+       }
+      ],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 1,
+        "modelCalls": 1,
+        "wallMs": 50,
+        "inputTokens": 11,
+        "outputTokens": 7,
+        "totalTokens": 18,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 1
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "deadlineAt": 2000
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      1,
+      {}
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "settledAt": 3030,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 2020
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      4,
+      {
+       "status": "maybe"
+      }
+     ],
+     "error": "Invalid usage settlement status",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "settledAt": 3030,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 2020
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      4,
+      {
+       "usage": {
+        "cost": "NaN"
+       }
+      }
+     ],
+     "error": "Invalid usage ledger cost",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "settledAt": 3030,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 2020
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      4,
+      {
+       "usage": {
+        "wallMs": -1
+       }
+      }
+     ],
+     "error": "Usage wallMs must be a non-negative finite number",
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "settledAt": 3030,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 2020
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status",
+      "elsewhere"
+     ],
+     "ok": {
+      "rootId": "elsewhere",
+      "limits": {
+       "maxAdmittedTasks": 2,
+       "maxWallMs": 1000,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 0,
+      "activeReservations": 0,
+      "startedAt": null,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 3,
+        "taskCalls": 2,
+        "modelCalls": 1,
+        "wallMs": 2070,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 2
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 1
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": 2000,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "c",
+          "admittedAt": 1030,
+          "deadlineAt": 2000
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 10,
+           "outputTokens": 5,
+           "totalTokens": 15,
+           "cost": 0.01,
+           "wallMs": 30
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "frame-1",
+          "admittedAt": 1010,
+          "settledAt": 1030,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": null,
+           "wallMs": 20
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "b",
+          "admittedAt": 1010,
+          "settledAt": 3030,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 2020
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "refused": [
+    "Usage admitted-task limit exceeded for root ultron-root",
+    "Usage wall deadline exceeded for root ultron-root",
+    "Usage wall deadline exceeded for root ultron-root"
+   ]
+  },
+  {
+   "name": "validation of requests",
+   "options": {},
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "jev"
+      }
+     ],
+     "error": "Invalid usage kind",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "  "
+      }
+     ],
+     "error": "Usage requestKey is empty",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "budgetId": " "
+      }
+     ],
+     "error": "Usage budgetId is empty",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "rootId": " "
+      }
+     ],
+     "error": "Usage rootId must be a nonempty string without NUL",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "rootId": "a\u0000b"
+      }
+     ],
+     "error": "Usage rootId must be a nonempty string without NUL",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "timeoutMs": 0
+      }
+     ],
+     "error": "Invalid usage ledger timeoutMs",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "timeoutMs": 1.5
+      }
+     ],
+     "error": "Invalid usage ledger timeoutMs",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "deadlineAt": 999
+      }
+     ],
+     "error": "Usage deadline has expired for root ultron-root",
+     "document": null
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "y",
+       "timeoutMs": 100
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "requestKey": "y",
+      "admittedAt": 1000,
+      "deadlineAt": 1100
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "y",
+          "admittedAt": 1000,
+          "deadlineAt": 1100
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": null,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 1,
+      "activeReservations": 1,
+      "startedAt": 1000,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-1",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "requestKey": "y",
+        "admittedAt": 1000,
+        "deadlineAt": 1100
+       }
+      ],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 0,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cost": 0,
+        "unknownCalls": 0
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "y",
+          "admittedAt": 1000,
+          "deadlineAt": 1100
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    }
+   ],
+   "refused": [
+    "Usage deadline has expired for root ultron-root"
+   ]
+  },
+  {
+   "name": "goal roots and untimed work",
+   "options": {
+    "limits": {
+     "maxAdmittedTasks": 1,
+     "maxWallMs": 50
+    }
+   },
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "g1",
+       "rootId": "goal:release"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "goal:release",
+      "kind": "task",
+      "requestKey": "g1",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "g2",
+       "rootId": "goal:release"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-2",
+      "rootId": "goal:release",
+      "kind": "task",
+      "requestKey": "g2",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      10000
+     ],
+     "ok": 11000,
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "g3",
+       "rootId": "goal:release",
+       "timeoutMs": 100
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-3",
+      "rootId": "goal:release",
+      "kind": "task",
+      "requestKey": "g3",
+      "admittedAt": 11000,
+      "deadlineAt": 11100
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g3",
+          "admittedAt": 11000,
+          "deadlineAt": 11100
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status",
+      "goal:release"
+     ],
+     "ok": {
+      "rootId": "goal:release",
+      "limits": {
+       "maxAdmittedTasks": 1,
+       "maxWallMs": 50,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 3,
+      "activeReservations": 3,
+      "startedAt": 1000,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-1",
+        "rootId": "goal:release",
+        "kind": "task",
+        "requestKey": "g1",
+        "admittedAt": 1000,
+        "deadlineAt": null
+       },
+       {
+        "id": "ultron-usage-id-2",
+        "rootId": "goal:release",
+        "kind": "task",
+        "requestKey": "g2",
+        "admittedAt": 1000,
+        "deadlineAt": null
+       },
+       {
+        "id": "ultron-usage-id-3",
+        "rootId": "goal:release",
+        "kind": "task",
+        "requestKey": "g3",
+        "admittedAt": 11000,
+        "deadlineAt": 11100
+       }
+      ],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 0,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cost": 0,
+        "unknownCalls": 0
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g3",
+          "admittedAt": 11000,
+          "deadlineAt": 11100
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "j1",
+       "rootId": "job:one"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-4",
+      "rootId": "job:one",
+      "kind": "task",
+      "requestKey": "j1",
+      "admittedAt": 11000,
+      "deadlineAt": 11050
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g3",
+          "admittedAt": 11000,
+          "deadlineAt": 11100
+         }
+        ],
+        "calls": []
+       },
+       "job:one": {
+        "rootId": "job:one",
+        "startedAt": 11000,
+        "deadlineAt": 11050,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-4",
+          "rootId": "job:one",
+          "kind": "task",
+          "requestKey": "j1",
+          "admittedAt": 11000,
+          "deadlineAt": 11050
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "j2",
+       "rootId": "job:one"
+      }
+     ],
+     "error": "Usage admitted-task limit exceeded for root job:one",
+     "document": {
+      "version": 1,
+      "roots": {
+       "goal:release": {
+        "rootId": "goal:release",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "goal:release",
+          "kind": "task",
+          "requestKey": "g3",
+          "admittedAt": 11000,
+          "deadlineAt": 11100
+         }
+        ],
+        "calls": []
+       },
+       "job:one": {
+        "rootId": "job:one",
+        "startedAt": 11000,
+        "deadlineAt": 11050,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-4",
+          "rootId": "job:one",
+          "kind": "task",
+          "requestKey": "j1",
+          "admittedAt": 11000,
+          "deadlineAt": 11050
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    }
+   ],
+   "refused": [
+    "Usage admitted-task limit exceeded for root job:one"
+   ]
+  },
+  {
+   "name": "turn, token and cost limits",
+   "options": {
+    "limits": {
+     "maxTotalTurns": 3,
+     "maxCostUsd": 0.05,
+     "defaultMaxTotalTokens": 100
+    }
+   },
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "recordTurn",
+      "turn:a",
+      {
+       "totalTokens": 40,
+       "cost": 0.01
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 40,
+         "lastAt": 1000,
+         "cost": 0.01,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "exhaustion",
+      "turn:a"
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 40,
+         "lastAt": 1000,
+         "cost": 0.01,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "remaining",
+      "turn:a"
+     ],
+     "ok": {
+      "turnsLeft": 2,
+      "tokensLeft": 60,
+      "tokenCap": 100
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 40,
+         "lastAt": 1000,
+         "cost": 0.01,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "turn:a",
+      {
+       "totalTokens": 70,
+       "cost": 0.01
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "exhaustion",
+      "turn:a"
+     ],
+     "ok": {
+      "kind": "tokens",
+      "reason": "Usage token limit reached for root turn:a: 110 of 100 tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). No further model work is admitted for this root; answer with what you have."
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "m1",
+       "rootId": "turn:a"
+      }
+     ],
+     "error": "Usage token limit reached for root turn:a: 110 of 100 tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). No further model work is admitted for this root; answer with what you have.",
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "det",
+       "rootId": "turn:a",
+       "modelBacked": false
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "turn:a",
+      "kind": "task",
+      "requestKey": "det",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "turn:b",
+      {
+       "totalTokens": 1
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "exhaustion",
+      "turn:b"
+     ],
+     "ok": {
+      "kind": "cost",
+      "reason": "Usage pricing unknown; cannot enforce cost cap of $0.05 for root turn:b (1 model call(s) reported no cost). No further model work is admitted for this root; answer with what you have."
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "turn:c",
+      {
+       "totalTokens": 1,
+       "cost": 0.06
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "exhaustion",
+      "turn:c"
+     ],
+     "ok": {
+      "kind": "cost",
+      "reason": "Usage cost cap reached for root turn:c: spent $0.06 of $0.05 (ULTRON_MAX_COST_USD). No further model work is admitted for this root; answer with what you have."
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "goal:g",
+      {
+       "totalTokens": 500,
+       "cost": 0.001
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 500,
+         "lastAt": 1000,
+         "cost": 0.001,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "goal:g",
+      {
+       "totalTokens": 1,
+       "cost": 0.001
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 501,
+         "lastAt": 1000,
+         "cost": 0.002,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "goal:g",
+      {
+       "totalTokens": 1,
+       "cost": 0.001
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "exhaustion",
+      "goal:g"
+     ],
+     "ok": {
+      "kind": "turns",
+      "reason": "Usage turn limit reached for root goal:g: 3 of 3 model turns used (max_total_turns, ULTRON_MAX_TOTAL_TURNS). No further model work is admitted for this root; answer with what you have."
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "remaining",
+      "goal:g"
+     ],
+     "ok": {
+      "turnsLeft": 0,
+      "tokensLeft": null,
+      "tokenCap": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status",
+      "turn:a"
+     ],
+     "ok": {
+      "rootId": "turn:a",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": null,
+       "maxCostUsd": 0.05,
+       "maxTotalTokens": null,
+       "maxTotalTurns": 3
+      },
+      "cost": {
+       "maxCostUsd": 0.05,
+       "spentUsd": 0.02,
+       "unknownPricedCalls": 0,
+       "remainingUsd": 0.030000000000000002
+      },
+      "turns": {
+       "turns": 2,
+       "tokens": 110,
+       "maxTotalTurns": 3,
+       "maxTotalTokens": 100
+      },
+      "admittedTasks": 1,
+      "activeReservations": 1,
+      "startedAt": 1000,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-1",
+        "rootId": "turn:a",
+        "kind": "task",
+        "requestKey": "det",
+        "admittedAt": 1000,
+        "deadlineAt": null
+       }
+      ],
+      "session": {
+       "roots": 4,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 0,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cost": 0,
+        "unknownCalls": 0
+       },
+       "spentUsd": 0.083,
+       "unknownPricedCalls": 1
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      null,
+      {
+       "totalTokens": -5,
+       "cost": -1
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 0,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": null,
+       "maxCostUsd": 0.05,
+       "maxTotalTokens": null,
+       "maxTotalTurns": 3
+      },
+      "cost": {
+       "maxCostUsd": 0.05,
+       "spentUsd": 0,
+       "unknownPricedCalls": 1,
+       "remainingUsd": 0.05
+      },
+      "turns": {
+       "turns": 1,
+       "tokens": 0,
+       "maxTotalTurns": 3,
+       "maxTotalTokens": 100
+      },
+      "admittedTasks": 0,
+      "activeReservations": 0,
+      "startedAt": null,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [],
+      "session": {
+       "roots": 5,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 0,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cost": 0,
+        "unknownCalls": 0
+       },
+       "spentUsd": 0.083,
+       "unknownPricedCalls": 2
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "turn:a": {
+        "rootId": "turn:a",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "turn:a",
+          "kind": "task",
+          "requestKey": "det",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [],
+        "turns": {
+         "count": 2,
+         "tokens": 110,
+         "lastAt": 1000,
+         "cost": 0.02,
+         "unpriced": 0
+        }
+       },
+       "turn:b": {
+        "rootId": "turn:b",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       },
+       "turn:c": {
+        "rootId": "turn:c",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 1,
+         "lastAt": 1000,
+         "cost": 0.06,
+         "unpriced": 0
+        }
+       },
+       "goal:g": {
+        "rootId": "goal:g",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 3,
+         "tokens": 502,
+         "lastAt": 1000,
+         "cost": 0.003,
+         "unpriced": 0
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 0,
+         "lastAt": 1000,
+         "cost": 0,
+         "unpriced": 1
+        }
+       }
+      }
+     }
+    }
+   ],
+   "refused": [
+    "Usage token limit reached for root turn:a: 110 of 100 tokens used (max_total_tokens, ULTRON_MAX_TOTAL_TOKENS). No further model work is admitted for this root; answer with what you have."
+   ]
+  },
+  {
+   "name": "history import and reconcile",
+   "options": {
+    "limits": {
+     "maxAdmittedTasks": 9
+    }
+   },
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "import",
+      "pi:old",
+      "pi",
+      [
+       {
+        "at": 10,
+        "usage": {
+         "inputTokens": 1,
+         "outputTokens": 2,
+         "totalTokens": 3,
+         "cost": 0.5
+        }
+       },
+       {
+        "at": 5,
+        "usage": {},
+        "status": "failed"
+       }
+      ]
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "import",
+      "pi:old",
+      "pi",
+      []
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "x",
+       "rootId": "pi:old"
+      }
+     ],
+     "error": "Usage root pi:old is an imported history root",
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "pi:old",
+      {
+       "totalTokens": 9
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "t1",
+       "taskId": "t1"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "taskId": "t1",
+      "requestKey": "t1",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "t1:model",
+       "taskId": "t1",
+       "parentTaskId": "t1",
+       "budgetId": "b"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-2",
+      "rootId": "ultron-root",
+      "kind": "model",
+      "taskId": "t1",
+      "parentTaskId": "t1",
+      "requestKey": "t1:model",
+      "budgetId": "b",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "t2",
+       "taskId": "t2"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-3",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "taskId": "t2",
+      "requestKey": "t2",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "t2:model",
+       "taskId": "t2",
+       "parentTaskId": "t2"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-4",
+      "rootId": "ultron-root",
+      "kind": "model",
+      "taskId": "t2",
+      "parentTaskId": "t2",
+      "requestKey": "t2:model",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "orphan"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-5",
+      "rootId": "ultron-root",
+      "kind": "task",
+      "requestKey": "orphan",
+      "admittedAt": 1000,
+      "deadlineAt": null
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      7
+     ],
+     "ok": 1007,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reconcile",
+      [
+       "t1"
+      ]
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-8",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": 9,
+       "maxWallMs": null,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 1,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 1,
+      "activeReservations": 2,
+      "startedAt": 1000,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 3,
+       "taskCalls": 2,
+       "modelCalls": 1,
+       "wallMs": 21,
+       "inputTokens": null,
+       "outputTokens": null,
+       "totalTokens": null,
+       "cost": null,
+       "unknownCalls": 3
+      },
+      "reservations": [
+       {
+        "id": "ultron-usage-id-1",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "taskId": "t1",
+        "requestKey": "t1",
+        "admittedAt": 1000,
+        "deadlineAt": null
+       },
+       {
+        "id": "ultron-usage-id-2",
+        "rootId": "ultron-root",
+        "kind": "model",
+        "taskId": "t1",
+        "parentTaskId": "t1",
+        "requestKey": "t1:model",
+        "budgetId": "b",
+        "admittedAt": 1000,
+        "deadlineAt": null
+       }
+      ],
+      "session": {
+       "roots": 2,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 5,
+        "taskCalls": 2,
+        "modelCalls": 3,
+        "wallMs": 21,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 4
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 2
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         },
+         {
+          "id": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "budgetId": "b",
+          "admittedAt": 1000,
+          "deadlineAt": null
+         }
+        ],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-8",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reconcile",
+      []
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-8",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-9",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-10",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": 9,
+       "maxWallMs": null,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 2,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 0,
+      "activeReservations": 0,
+      "startedAt": 1000,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 5,
+       "taskCalls": 3,
+       "modelCalls": 2,
+       "wallMs": 35,
+       "inputTokens": null,
+       "outputTokens": null,
+       "totalTokens": null,
+       "cost": null,
+       "unknownCalls": 5
+      },
+      "reservations": [],
+      "session": {
+       "roots": 2,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 7,
+        "taskCalls": 3,
+        "modelCalls": 4,
+        "wallMs": 35,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 6
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 3
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "pi:old": {
+        "rootId": "pi:old",
+        "startedAt": 5,
+        "deadlineAt": 5,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-pi:old-0",
+          "reservationId": "ultron-usage-pi:old-0",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 10,
+          "settledAt": 10,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 2,
+           "totalTokens": 3,
+           "cost": 0.5,
+           "wallMs": 0
+          }
+         },
+         {
+          "id": "ultron-usage-call-pi:old-1",
+          "reservationId": "ultron-usage-pi:old-1",
+          "rootId": "pi:old",
+          "kind": "model",
+          "admittedAt": 5,
+          "settledAt": 5,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ],
+        "imported": {
+         "source": "pi",
+         "entries": 2
+        }
+       },
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 1000,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-6",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t2",
+          "requestKey": "t2",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-4",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t2",
+          "parentTaskId": "t2",
+          "requestKey": "t2:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-8",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "requestKey": "orphan",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-9",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t1",
+          "requestKey": "t1",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         },
+         {
+          "id": "ultron-usage-call-id-10",
+          "reservationId": "ultron-usage-id-2",
+          "rootId": "ultron-root",
+          "kind": "model",
+          "taskId": "t1",
+          "parentTaskId": "t1",
+          "requestKey": "t1:model",
+          "admittedAt": 1000,
+          "settledAt": 1007,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 7
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "refused": []
+  },
+  {
+   "name": "folding idle roots",
+   "options": {
+    "detailedRoots": 2,
+    "limits": {
+     "maxWallMs": 100
+    }
+   },
+   "initial": null,
+   "ops": [
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "a",
+       "rootId": "r1"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-1",
+      "rootId": "r1",
+      "kind": "task",
+      "requestKey": "a",
+      "admittedAt": 1000,
+      "deadlineAt": 1100
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "deadlineAt": 1100
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      0,
+      {
+       "status": "succeeded"
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      1
+     ],
+     "ok": 1001,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "b",
+       "rootId": "r2"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-3",
+      "rootId": "r2",
+      "kind": "task",
+      "requestKey": "b",
+      "admittedAt": 1001,
+      "deadlineAt": 1101
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r2": {
+        "rootId": "r2",
+        "startedAt": 1001,
+        "deadlineAt": 1101,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-3",
+          "rootId": "r2",
+          "kind": "task",
+          "requestKey": "b",
+          "admittedAt": 1001,
+          "deadlineAt": 1101
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      1,
+      {
+       "status": "cancelled",
+       "usage": {
+        "inputTokens": 1,
+        "outputTokens": 1,
+        "totalTokens": 2,
+        "cost": 0.25
+       }
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r2": {
+        "rootId": "r2",
+        "startedAt": 1001,
+        "deadlineAt": 1101,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "r2",
+          "kind": "task",
+          "requestKey": "b",
+          "admittedAt": 1001,
+          "settledAt": 1001,
+          "status": "cancelled",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 1,
+           "totalTokens": 2,
+           "cost": 0.25,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      1
+     ],
+     "ok": 1002,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r2": {
+        "rootId": "r2",
+        "startedAt": 1001,
+        "deadlineAt": 1101,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "r2",
+          "kind": "task",
+          "requestKey": "b",
+          "admittedAt": 1001,
+          "settledAt": 1001,
+          "status": "cancelled",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 1,
+           "totalTokens": 2,
+           "cost": 0.25,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "model",
+       "requestKey": "c",
+       "rootId": "r3"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-5",
+      "rootId": "r3",
+      "kind": "model",
+      "requestKey": "c",
+      "admittedAt": 1002,
+      "deadlineAt": 1102
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r2": {
+        "rootId": "r2",
+        "startedAt": 1001,
+        "deadlineAt": 1101,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "r2",
+          "kind": "task",
+          "requestKey": "b",
+          "admittedAt": 1001,
+          "settledAt": 1001,
+          "status": "cancelled",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 1,
+           "totalTokens": 2,
+           "cost": 0.25,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "advance",
+      200
+     ],
+     "ok": 1202,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r1": {
+        "rootId": "r1",
+        "startedAt": 1000,
+        "deadlineAt": 1100,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-2",
+          "reservationId": "ultron-usage-id-1",
+          "rootId": "r1",
+          "kind": "task",
+          "requestKey": "a",
+          "admittedAt": 1000,
+          "settledAt": 1000,
+          "status": "succeeded",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r2": {
+        "rootId": "r2",
+        "startedAt": 1001,
+        "deadlineAt": 1101,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-4",
+          "reservationId": "ultron-usage-id-3",
+          "rootId": "r2",
+          "kind": "task",
+          "requestKey": "b",
+          "admittedAt": 1001,
+          "settledAt": 1001,
+          "status": "cancelled",
+          "usage": {
+           "inputTokens": 1,
+           "outputTokens": 1,
+           "totalTokens": 2,
+           "cost": 0.25,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "d",
+       "rootId": "r4"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-6",
+      "rootId": "r4",
+      "kind": "task",
+      "requestKey": "d",
+      "admittedAt": 1202,
+      "deadlineAt": 1302
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       }
+      },
+      "history": {
+       "roots": 2,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      3,
+      {
+       "status": "failed"
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      },
+      "history": {
+       "roots": 2,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "recordTurn",
+      "r5",
+      {
+       "totalTokens": 3,
+       "cost": 0.5
+      }
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       }
+      },
+      "history": {
+       "roots": 2,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "e",
+       "rootId": "r6"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-8",
+      "rootId": "r6",
+      "kind": "task",
+      "requestKey": "e",
+      "admittedAt": 1202,
+      "deadlineAt": 1302
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "deadlineAt": 1102
+         }
+        ],
+        "calls": []
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r5": {
+        "rootId": "r5",
+        "startedAt": null,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [],
+        "turns": {
+         "count": 1,
+         "tokens": 3,
+         "lastAt": 1202,
+         "cost": 0.5,
+         "unpriced": 0
+        }
+       },
+       "r6": {
+        "rootId": "r6",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-8",
+          "rootId": "r6",
+          "kind": "task",
+          "requestKey": "e",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       }
+      },
+      "history": {
+       "roots": 2,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "settle",
+      2,
+      {}
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-9",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "settledAt": 1202,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 200
+          }
+         }
+        ]
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r6": {
+        "rootId": "r6",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-8",
+          "rootId": "r6",
+          "kind": "task",
+          "requestKey": "e",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       }
+      },
+      "history": {
+       "roots": 3,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "reserve",
+      {
+       "kind": "task",
+       "requestKey": "f",
+       "rootId": "r7"
+      }
+     ],
+     "ok": {
+      "id": "ultron-usage-id-10",
+      "rootId": "r7",
+      "kind": "task",
+      "requestKey": "f",
+      "admittedAt": 1202,
+      "deadlineAt": 1302
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-9",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "settledAt": 1202,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 200
+          }
+         }
+        ]
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r6": {
+        "rootId": "r6",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-8",
+          "rootId": "r6",
+          "kind": "task",
+          "requestKey": "e",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       },
+       "r7": {
+        "rootId": "r7",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-10",
+          "rootId": "r7",
+          "kind": "task",
+          "requestKey": "f",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       }
+      },
+      "history": {
+       "roots": 3,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": 100,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 0,
+      "activeReservations": 0,
+      "startedAt": null,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [],
+      "session": {
+       "roots": 4,
+       "foldedRoots": 3,
+       "usage": {
+        "calls": 4,
+        "taskCalls": 3,
+        "modelCalls": 1,
+        "wallMs": 200,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 3
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 1
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "r3": {
+        "rootId": "r3",
+        "startedAt": 1002,
+        "deadlineAt": 1102,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-9",
+          "reservationId": "ultron-usage-id-5",
+          "rootId": "r3",
+          "kind": "model",
+          "requestKey": "c",
+          "admittedAt": 1002,
+          "settledAt": 1202,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 200
+          }
+         }
+        ]
+       },
+       "r4": {
+        "rootId": "r4",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-7",
+          "reservationId": "ultron-usage-id-6",
+          "rootId": "r4",
+          "kind": "task",
+          "requestKey": "d",
+          "admittedAt": 1202,
+          "settledAt": 1202,
+          "status": "failed",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 0
+          }
+         }
+        ]
+       },
+       "r6": {
+        "rootId": "r6",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-8",
+          "rootId": "r6",
+          "kind": "task",
+          "requestKey": "e",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       },
+       "r7": {
+        "rootId": "r7",
+        "startedAt": 1202,
+        "deadlineAt": 1302,
+        "reservations": [
+         {
+          "id": "ultron-usage-id-10",
+          "rootId": "r7",
+          "kind": "task",
+          "requestKey": "f",
+          "admittedAt": 1202,
+          "deadlineAt": 1302
+         }
+        ],
+        "calls": []
+       }
+      },
+      "history": {
+       "roots": 3,
+       "firstStartedAt": 1000,
+       "lastSettledAt": 1001,
+       "usage": {
+        "calls": 2,
+        "taskCalls": 2,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "byKind": {
+        "task": {
+         "calls": 2,
+         "taskCalls": 2,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "unknownCalls": 1
+        },
+        "model": {
+         "calls": 0,
+         "taskCalls": 0,
+         "modelCalls": 0,
+         "wallMs": 0,
+         "inputTokens": 0,
+         "outputTokens": 0,
+         "totalTokens": 0,
+         "cost": 0,
+         "unknownCalls": 0
+        }
+       },
+       "spentUsd": 0.5,
+       "unknownPricedCalls": 0,
+       "taskAdmissions": {
+        "succeeded": 1,
+        "failed": 0,
+        "cancelled": 1,
+        "unknown": 0
+       },
+       "importedRoots": 0
+      }
+     }
+    }
+   ],
+   "refused": []
+  },
+  {
+   "name": "reopen with open reservations",
+   "options": {},
+   "initial": {
+    "version": 1,
+    "roots": {
+     "ultron-root": {
+      "rootId": "ultron-root",
+      "startedAt": 5,
+      "deadlineAt": null,
+      "reservations": [
+       {
+        "id": "r-1",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "taskId": "t",
+        "requestKey": "k",
+        "admittedAt": 5,
+        "deadlineAt": null
+       }
+      ],
+      "calls": []
+     }
+    }
+   },
+   "ops": [
+    {
+     "step": [
+      "ready"
+     ],
+     "ok": null,
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 5,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "r-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t",
+          "requestKey": "k",
+          "admittedAt": 5,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": null,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 0,
+       "tokens": 0,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 1,
+      "activeReservations": 1,
+      "startedAt": 5,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 0,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 0,
+       "inputTokens": 0,
+       "outputTokens": 0,
+       "totalTokens": 0,
+       "cost": 0,
+       "unknownCalls": 0
+      },
+      "reservations": [
+       {
+        "id": "r-1",
+        "rootId": "ultron-root",
+        "kind": "task",
+        "taskId": "t",
+        "requestKey": "k",
+        "admittedAt": 5,
+        "deadlineAt": null
+       }
+      ],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 0,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 0,
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0,
+        "cost": 0,
+        "unknownCalls": 0
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0
+      }
+     },
+     "document": {
+      "version": 1,
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 5,
+        "deadlineAt": null,
+        "reservations": [
+         {
+          "id": "r-1",
+          "rootId": "ultron-root",
+          "kind": "task",
+          "taskId": "t",
+          "requestKey": "k",
+          "admittedAt": 5,
+          "deadlineAt": null
+         }
+        ],
+        "calls": []
+       }
+      }
+     }
+    }
+   ],
+   "refused": []
+  },
+  {
+   "name": "reconcile on reopen",
+   "options": {},
+   "initial": {
+    "roots": {
+     "ultron-root": {
+      "rootId": "ultron-root",
+      "startedAt": 5,
+      "deadlineAt": null,
+      "reservations": [
+       {
+        "id": "r-1",
+        "rootId": "ultron-root",
+        "kind": "jev",
+        "parentTaskId": "t",
+        "admittedAt": 5,
+        "deadlineAt": 900
+       }
+      ],
+      "calls": [],
+      "turns": {
+       "count": 2,
+       "tokens": 10,
+       "lastAt": 6
+      }
+     }
+    }
+   },
+   "ops": [
+    {
+     "step": [
+      "reconcile",
+      []
+     ],
+     "ok": null,
+     "document": {
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 5,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-1",
+          "reservationId": "r-1",
+          "rootId": "ultron-root",
+          "kind": "jev",
+          "parentTaskId": "t",
+          "admittedAt": 5,
+          "settledAt": 1000,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 995
+          }
+         }
+        ],
+        "turns": {
+         "count": 2,
+         "tokens": 10,
+         "lastAt": 6
+        }
+       }
+      },
+      "version": 1
+     }
+    },
+    {
+     "step": [
+      "status"
+     ],
+     "ok": {
+      "rootId": "ultron-root",
+      "limits": {
+       "maxAdmittedTasks": null,
+       "maxWallMs": null,
+       "maxCostUsd": null,
+       "maxTotalTokens": null,
+       "maxTotalTurns": null
+      },
+      "cost": {
+       "maxCostUsd": null,
+       "spentUsd": 0,
+       "unknownPricedCalls": 0,
+       "remainingUsd": null
+      },
+      "turns": {
+       "turns": 2,
+       "tokens": 10,
+       "maxTotalTurns": null,
+       "maxTotalTokens": null
+      },
+      "admittedTasks": 0,
+      "activeReservations": 0,
+      "startedAt": 5,
+      "deadlineAt": null,
+      "remainingWallMs": null,
+      "usage": {
+       "calls": 1,
+       "taskCalls": 0,
+       "modelCalls": 0,
+       "wallMs": 995,
+       "inputTokens": null,
+       "outputTokens": null,
+       "totalTokens": null,
+       "cost": null,
+       "unknownCalls": 1
+      },
+      "reservations": [],
+      "session": {
+       "roots": 1,
+       "foldedRoots": 0,
+       "usage": {
+        "calls": 1,
+        "taskCalls": 0,
+        "modelCalls": 0,
+        "wallMs": 995,
+        "inputTokens": null,
+        "outputTokens": null,
+        "totalTokens": null,
+        "cost": null,
+        "unknownCalls": 1
+       },
+       "spentUsd": 0,
+       "unknownPricedCalls": 0
+      }
+     },
+     "document": {
+      "roots": {
+       "ultron-root": {
+        "rootId": "ultron-root",
+        "startedAt": 5,
+        "deadlineAt": null,
+        "reservations": [],
+        "calls": [
+         {
+          "id": "ultron-usage-call-id-1",
+          "reservationId": "r-1",
+          "rootId": "ultron-root",
+          "kind": "jev",
+          "parentTaskId": "t",
+          "admittedAt": 5,
+          "settledAt": 1000,
+          "status": "unknown",
+          "usage": {
+           "inputTokens": null,
+           "outputTokens": null,
+           "totalTokens": null,
+           "cost": null,
+           "wallMs": 995
+          }
+         }
+        ],
+        "turns": {
+         "count": 2,
+         "tokens": 10,
+         "lastAt": 6
+        }
+       }
+      },
+      "version": 1
+     }
+    }
+   ],
+   "refused": []
+  }
+ ],
+ "invalid": [
+  {
+   "document": {
+    "version": 2,
+    "roots": {}
+   },
+   "error": "Cannot resume: session value ultron.usage/root has format version 2, but this Ultron reads only format version 1. It was left unchanged; open the session with the Ultron version that wrote it, or upgrade."
+  },
+  {
+   "document": {
+    "version": 1
+   },
+   "error": "Invalid usage ledger document"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "b",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": []
+     }
+    }
+   },
+   "error": "Invalid usage ledger root"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": []
+     }
+    }
+   },
+   "error": "Invalid usage ledger startedAt"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": {},
+      "calls": []
+     }
+    }
+   },
+   "error": "Invalid usage ledger root records"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [
+       {
+        "id": "x",
+        "rootId": "a",
+        "kind": "bogus",
+        "admittedAt": 1,
+        "deadlineAt": null
+       }
+      ],
+      "calls": []
+     }
+    }
+   },
+   "error": "Invalid usage ledger reservation kind"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [
+       {
+        "id": "x",
+        "rootId": "a",
+        "kind": "task",
+        "admittedAt": -1,
+        "deadlineAt": null
+       }
+      ],
+      "calls": []
+     }
+    }
+   },
+   "error": "Invalid usage ledger admittedAt"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [
+       {
+        "id": "x",
+        "rootId": "a",
+        "kind": "task",
+        "admittedAt": 1,
+        "deadlineAt": null
+       },
+       {
+        "id": "x",
+        "rootId": "a",
+        "kind": "task",
+        "admittedAt": 1,
+        "deadlineAt": null
+       }
+      ],
+      "calls": []
+     }
+    }
+   },
+   "error": "Duplicate usage ledger reservation"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": [
+       {
+        "id": "c",
+        "reservationId": "r",
+        "rootId": "a",
+        "kind": "model",
+        "admittedAt": 1,
+        "settledAt": 2,
+        "status": "won",
+        "usage": {
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "cost": null,
+         "wallMs": 1
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid usage ledger call status"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": [
+       {
+        "id": "c",
+        "reservationId": "r",
+        "rootId": "a",
+        "kind": "model",
+        "admittedAt": 1,
+        "settledAt": 2,
+        "status": "unknown",
+        "usage": {
+         "inputTokens": null,
+         "outputTokens": null,
+         "totalTokens": null,
+         "wallMs": 1
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid usage ledger measurement"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": [],
+      "turns": {
+       "count": 1.5,
+       "tokens": 1,
+       "lastAt": 1
+      }
+     }
+    }
+   },
+   "error": "Invalid usage ledger turn count"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {
+     "a": {
+      "rootId": "a",
+      "startedAt": null,
+      "deadlineAt": null,
+      "reservations": [],
+      "calls": [],
+      "imported": {
+       "source": "",
+       "entries": 1
+      }
+     }
+    }
+   },
+   "error": "Invalid usage ledger import"
+  },
+  {
+   "document": {
+    "version": 1,
+    "roots": {},
+    "history": {
+     "roots": 1
+    }
+   },
+   "error": "Invalid usage ledger history importedRoots"
+  },
+  {
+   "document": "not an object",
+   "error": "Invalid usage ledger document"
+  }
+ ],
+ "env": [
+  {
+   "vars": {},
+   "settings": {},
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000,
+    "defaultMaxTotalTokens": 10000000
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_ADMITTED_TASKS": "0",
+    "ULTRON_MAX_WALL_MS": "off"
+   },
+   "settings": {},
+   "limits": {
+    "maxAdmittedTasks": 0,
+    "defaultMaxTotalTokens": 10000000
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_ADMITTED_TASKS": "unlimited",
+    "ULTRON_MAX_WALL_MS": "1.5"
+   },
+   "settings": {},
+   "limits": {
+    "maxWallMs": 1800000,
+    "defaultMaxTotalTokens": 10000000
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_COST_USD": "$2.50",
+    "ULTRON_MAX_TOTAL_TOKENS": "500",
+    "ULTRON_MAX_TOTAL_TURNS": "7"
+   },
+   "settings": {},
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000,
+    "maxCostUsd": 2.5,
+    "maxTotalTokens": 500,
+    "maxTotalTurns": 7
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_COST_USD": "-1",
+    "ULTRON_MAX_TOTAL_TOKENS": "off"
+   },
+   "settings": {
+    "maxTotalTokens": 900
+   },
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000
+   }
+  },
+  {
+   "vars": {},
+   "settings": {
+    "maxTotalTokens": 900,
+    "maxTotalTurns": 3
+   },
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000,
+    "maxTotalTokens": 900,
+    "maxTotalTurns": 3
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_TOTAL_TURNS": "none"
+   },
+   "settings": {
+    "maxTotalTurns": 3,
+    "maxTotalTokens": 0.5
+   },
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000,
+    "defaultMaxTotalTokens": 10000000
+   }
+  },
+  {
+   "vars": {
+    "ULTRON_MAX_TOTAL_TOKENS": " 12 ",
+    "ULTRON_MAX_WALL_MS": "  "
+   },
+   "settings": {},
+   "limits": {
+    "maxAdmittedTasks": 24,
+    "maxWallMs": 1800000,
+    "maxTotalTokens": 12
+   }
+  }
+ ],
+ "lines": [
+  {
+   "remaining": {
+    "turnsLeft": null,
+    "tokensLeft": 9000000,
+    "tokenCap": 10000000
+   },
+   "explicit": false,
+   "line": null
+  },
+  {
+   "remaining": {
+    "turnsLeft": null,
+    "tokensLeft": 4000000,
+    "tokenCap": 10000000
+   },
+   "explicit": false,
+   "line": "[budget left for this request: 4,000,000 tokens]"
+  },
+  {
+   "remaining": {
+    "turnsLeft": null,
+    "tokensLeft": 900,
+    "tokenCap": 1000
+   },
+   "explicit": true,
+   "line": "[budget left for this request: 900 tokens]"
+  },
+  {
+   "remaining": {
+    "turnsLeft": 3,
+    "tokensLeft": null,
+    "tokenCap": null
+   },
+   "explicit": false,
+   "line": "[budget left for this request: 3 model turns]"
+  },
+  {
+   "remaining": {
+    "turnsLeft": 0,
+    "tokensLeft": 5,
+    "tokenCap": 10
+   },
+   "explicit": false,
+   "line": "[budget left for this request: 0 model turns, 5 tokens]"
+  },
+  {
+   "remaining": {
+    "turnsLeft": null,
+    "tokensLeft": null,
+    "tokenCap": null
+   },
+   "explicit": true,
+   "line": null
+  }
+ ]
+}

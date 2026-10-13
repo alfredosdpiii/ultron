@@ -9,10 +9,16 @@ dependencies = [
  "cli",
  "config",
  "daemon",
+ "delegation",
+ "extensions",
  "harness",
+ "hindsight",
  "host",
+ "inference",
  "kernel",
+ "kernel-apis",
  "serde_json",
+ "session-core",
  "tempfile",
 ]
 
@@ -50,6 +56,7 @@ dependencies = [
  "getrandom 0.4.3",
  "indexmap",
  "reqwest",
+ "rustix",
  "serde",
  "serde_json",
  "sha2",
@@ -229,12 +236,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "claude-root"
+version = "0.1.0"
+dependencies = [
+ "agent",
+ "ai",
+ "config",
+ "getrandom 0.4.3",
+ "kernel",
+ "kernel-apis",
+ "loki",
+ "regex",
+ "resources",
+ "rustix",
+ "serde_json",
+ "session-core",
+ "session-file",
+ "session-journal",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "cli"
 version = "0.1.0"
 dependencies = [
  "agent",
  "ai",
  "chord-delta",
+ "claude-root",
  "client",
  "compaction",
  "config",
@@ -423,12 +453,14 @@ dependencies = [
  "chord-delta",
  "client",
  "config",
+ "durable",
  "getrandom 0.4.3",
  "harness",
  "host",
  "inference",
  "kernel",
  "loki",
+ "nix",
  "protocol",
  "resources",
  "rustix",
@@ -447,9 +479,11 @@ version = "0.1.0"
 dependencies = [
  "agent",
  "ai",
+ "fancy-regex 0.19.2",
  "getrandom 0.4.3",
  "harness",
  "kernel",
+ "kernel-apis",
  "regex",
  "rustix",
  "serde",
@@ -517,6 +551,7 @@ dependencies = [
  "chord-delta",
  "indexmap",
  "rusqlite",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",
@@ -1148,7 +1183,9 @@ dependencies = [
 name = "interactive"
 version = "0.1.0"
 dependencies = [
+ "crossterm",
  "fancy-regex 0.19.2",
+ "rustix",
  "serde_json",
  "tui",
 ]
@@ -2119,9 +2156,12 @@ dependencies = [
  "compaction",
  "config",
  "delegation",
+ "durable",
  "extensions",
+ "harness",
  "hindsight",
  "host",
+ "indexmap",
  "inference",
  "kernel",
  "kernel-apis",

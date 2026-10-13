@@ -16,8 +16,9 @@ model settings and `/skill:` commands cover the first two; the third needs Grok 
 - `/skill:rigor <task>`: the rigorous mode. It reads the task, picks a playbook (bug fix, feature, refactoring,
   perf, investigation, shipping, orchestrate, ...) and runs the other skills as the steps need them.
 - `/skill:<name>` runs one skill directly: architect, arena, automate-me, benchmark-checklist, blast-radius, bro,
-  correct, create-verification-skill, figure-it-out, how, interrogate, maintain-verification-skill, no-comments,
-  recall, reflect, show-me-your-work, swarm, tdd, teach, technical-writing, typescript-best-practices, unslop, why.
+  correct, create-verification-skill, figure-it-out, how, interrogate, ketchup, maintain-verification-skill,
+  no-comments, recall, reflect, show-me-your-work, swarm, tdd, teach, technical-writing, typescript-best-practices,
+  unslop, why.
 - The 24 engineering principles are skills too (`/skill:principle-fix-root-causes`, `principle-prove-it-works`, ...);
   the other skills read the ones a step needs.
 

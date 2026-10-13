@@ -12,7 +12,7 @@ use review::ledger::{Fate, Lesson};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn options(value: &Value) -> HindsightOptions {
     let mut options = HindsightOptions::new(
@@ -103,7 +103,13 @@ fn hindsight_backend_requests_and_results_match_typescript() {
                 .as_str()
                 .is_some_and(|b| b.contains("slow"));
         if slow {
-            std::thread::sleep(Duration::from_millis(1600));
+            // A slow handler logs its request on arrival, then stalls: wait until the log holds what the fixture
+            // recorded (hang guard 120 s) instead of sleeping.
+            let wanted = expected["requests"].as_array().map_or(0, Vec::len);
+            let deadline = Instant::now() + Duration::from_secs(120);
+            while server.requests(&transport).as_array().map_or(0, Vec::len) < wanted && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+            }
         }
         let record = normalizer.apply(&json!({
             "name": scenario["name"],

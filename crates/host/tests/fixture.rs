@@ -232,19 +232,28 @@ fn host_blocking_bash_spills_the_whole_output() {
 fn host_bash_stops_the_command_when_the_cell_is_aborted() {
     let dir = tempfile::tempdir().unwrap();
     let host = Host::new(dir.path(), dir.path().join("jobs"), dir.path(), Box::new(AllowAll));
+    let started_file = dir.path().join("started");
+    // The command marks that it runs, then outlives any test; the cell is stopped once the mark is there.
+    let command = format!("touch '{}' && sleep 600", started_file.display());
     for payload in [
-        json!({ "command": "sleep 5", "yield_after": 30 }),
-        json!({ "command": "sleep 5" }),
+        json!({ "command": command, "yield_after": 300 }),
+        json!({ "command": command }),
     ] {
+        let _ = std::fs::remove_file(&started_file);
         let signal = kernel::Signal::new();
         let aborter = signal.clone();
+        let mark = started_file.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(200));
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+            while !mark.exists() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
             aborter.abort("cell ended");
         });
         let started = std::time::Instant::now();
         let reply = kernel::HostHandler::handle(&host, "bash", payload.as_object().unwrap().clone(), &signal).unwrap();
-        assert!(started.elapsed() < std::time::Duration::from_secs(3));
+        // The abort ended it, not the 600 s command (a hang guard, loose for load).
+        assert!(started.elapsed() < std::time::Duration::from_secs(120));
         assert_eq!(
             (
                 &reply["cancelled"],

@@ -1426,9 +1426,12 @@ impl Scheduler {
         Ok(())
     }
 
-    /// Fail the Session for a throw in one of the scheduler's own commits; ignored once closing.
+    /// Fail the Session for a throw in one of the scheduler's own commits; ignored once closing. A commit refused
+    /// with `Closed` is a close in progress, not a failure: `Session::close` seals admission before it runs the close
+    /// listener (`seal`) that marks the scheduler closing, and a pass committing in between is refused. Failing the
+    /// Session for it turned a plain close into "Session failed" for every later call.
     fn fail_session(&self, error: HarnessError) {
-        if !self.is_closing() {
+        if !self.is_closing() && !matches!(error, HarnessError::Session(SessionError::Closed)) {
             self.session.fail(error.into_session());
         }
     }

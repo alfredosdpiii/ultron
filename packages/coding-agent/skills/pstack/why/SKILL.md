@@ -11,9 +11,7 @@ metadata:
 
 # Why
 
-Investigate the motivation and intent behind code.
-
-Companion to `../how/SKILL.md`. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
+Investigate the motivation and intent behind code. The companion `../how/SKILL.md` answers what the code does and how it works. `why` answers what forces led to its shape.
 
 You gather the evidence yourself, in your REPL: git and `gh` through `bash`, other sources through the `mcp` gateway. No subagents: the work is reading and searching, not independent multi-step changes. One `rlm.infer` frame writes the synthesis; you check it and present it.
 
@@ -151,10 +149,3 @@ If the question is a precursor to changing this code, end with a Preserve / Chan
 - **Recency bias.** The most recent commit is not authoritative. The current shape is often an accretion of earlier decisions. Trace back.
 - **Confirming the user's guess.** A hypothesis in the question is a candidate, not a conclusion.
 - **Code as evidence of its own intent.** It is mechanics, not motivation.
-
-## Reference files
-
-- `references/epistemics.md`: confidence tiers and phrasing. The synthesis frame and you follow it.
-- `references/investigator-prompt.md`: evidence-extraction task for frames over long source documents.
-- `references/source-playbook.md`: index of the per-category playbooks in `references/sources/`.
-- `references/synthesizer-prompt.md`: the synthesis frame's task, including the output format.

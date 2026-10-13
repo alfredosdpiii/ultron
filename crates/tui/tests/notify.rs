@@ -2,9 +2,11 @@
 //! (literal expectations), plus Ultron's OSC 777 and off-thread delivery.
 
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
 use tui::notify::*;
+
+mod support;
+use support::latch::Latch;
 
 const UUID: &str = "123e4567-e89b-12d3-a456-426614174000";
 const TMUX: &str = "/tmp/tmux-1000/default,1234,0";
@@ -653,10 +655,11 @@ fn tui_notify_turn_messages() {
 /// The sink blocks (a slow D-Bus activation); `notify` must still return at once and deliver in order.
 #[test]
 fn tui_notify_service_never_blocks_the_caller() {
-    struct SlowSink(Arc<Mutex<Vec<String>>>);
+    // The sink blocks until the test releases it: a `notify` that waited on it would hang, not merely be slow.
+    struct SlowSink(Arc<Mutex<Vec<String>>>, Latch);
     impl NotifySink for SlowSink {
         fn write(&mut self, data: &str) {
-            std::thread::sleep(Duration::from_millis(150));
+            self.1.wait();
             self.0.lock().unwrap().push(data.to_string());
         }
         fn spawn(&mut self, _: &[String]) -> bool {
@@ -667,8 +670,11 @@ fn tui_notify_service_never_blocks_the_caller() {
         }
     }
     let written = Arc::new(Mutex::new(Vec::new()));
-    let svc = NotificationService::spawn(omp(NotifyProtocol::Osc99, &[]), SlowSink(written.clone()));
-    let start = Instant::now();
+    let blocked = Latch::default();
+    let svc = NotificationService::spawn(
+        omp(NotifyProtocol::Osc99, &[]),
+        SlowSink(written.clone(), blocked.clone()),
+    );
     svc.notify(text("one"));
     svc.set_osc99_supported(true);
     svc.notify(Message::Structured(Notification {
@@ -676,8 +682,8 @@ fn tui_notify_service_never_blocks_the_caller() {
         id: Some("t".into()),
         ..Notification::default()
     }));
-    assert!(start.elapsed() < Duration::from_millis(50), "{:?}", start.elapsed());
     assert!(written.lock().unwrap().is_empty());
+    blocked.open();
     svc.shutdown();
     assert_eq!(
         *written.lock().unwrap(),

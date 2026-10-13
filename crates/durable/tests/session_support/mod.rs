@@ -37,7 +37,7 @@ impl Gate {
         let (state, changed) = &*self.0;
         let state = state.lock().unwrap();
         let (state, timeout) = changed
-            .wait_timeout_while(state, Duration::from_secs(10), |state| !state.0)
+            .wait_timeout_while(state, Duration::from_secs(120), |state| !state.0)
             .unwrap();
         assert!(!timeout.timed_out() && state.0, "gate never entered");
     }
@@ -431,10 +431,11 @@ pub fn each_backend(test: impl Fn(Backend)) {
     }
 }
 
-/// Wait for a condition another thread makes true.
-#[track_caller]
+/// Wait for a condition another thread makes true: polls until `condition` holds. The deadline only guards against hangs: a loaded machine must slow a
+/// test down, never fail it.
 pub fn eventually(mut condition: impl FnMut() -> bool) {
-    for _ in 0..2_000 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(120);
+    while std::time::Instant::now() < deadline {
         if condition() {
             return;
         }
@@ -443,7 +444,8 @@ pub fn eventually(mut condition: impl FnMut() -> bool) {
     panic!("condition never became true");
 }
 
-/// Give other threads a moment, for asserting that something did not happen.
+/// Give other threads a moment, only for asserting that something did NOT happen (a slow machine can make such a
+/// check pass wrongly, never fail). Never use it to wait for something.
 pub fn settle() {
     std::thread::sleep(Duration::from_millis(50));
 }

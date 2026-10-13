@@ -300,6 +300,12 @@ impl Harness {
         result.map_err(HarnessError::Session)
     }
 
+    /// Jobs admitted to the Session line and not yet finished (commits, waits registering, a close), the running one
+    /// included: a test's handshake for "this call has queued behind the held commit".
+    pub fn line_len(&self) -> u64 {
+        self.session.line_len()
+    }
+
     /// Wait until the Harness has closed: Storage closed and every invocation ended.
     pub fn closed(&self) -> SessionEnd {
         let end = self.session.wait_closed();

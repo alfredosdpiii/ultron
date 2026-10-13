@@ -167,7 +167,7 @@ const backendScenarios = [
 	{ name: "redirect refused", options: opts({ bankId: "redirect" }), calls: [{ op: "get", arg: "d" }] },
 	{ name: "declared length over the limit", options: opts({ bankId: "big", maxResponseBytes: 1000 }), calls: [{ op: "recall", arg: recall("x") }] },
 	{ name: "length within a raised limit", options: opts({ bankId: "big", maxResponseBytes: 4000 }), calls: [{ op: "recall", arg: recall("x") }] },
-	{ name: "declared length over the limit refused before the body", options: opts({ bankId: "big-slow", maxResponseBytes: 1000, timeoutMs: 600 }), calls: [{ op: "recall", arg: recall("x") }] },
+	{ name: "declared length over the limit refused before the body", options: opts({ bankId: "big-slow", maxResponseBytes: 1000, timeoutMs: 10000 }), calls: [{ op: "recall", arg: recall("x") }] },
 	{ name: "streamed body over the limit", options: opts({ bankId: "big-chunked", maxResponseBytes: 1000 }), calls: [{ op: "recall", arg: recall("x") }] },
 	{ name: "streamed body at the limit is read", options: opts({ bankId: "big-chunked", maxResponseBytes: 2000 }), calls: [{ op: "recall", arg: recall("x") }] },
 	{ name: "invalid JSON", options: opts({ bankId: "bad-json" }), calls: [{ op: "recall", arg: recall("x") }] },
@@ -230,8 +230,11 @@ async function runBackend(scenario) {
 		clearTimeout(timer);
 		record.calls.push({ ...call, ...result });
 	}
-	// Let a slow handler finish logging before reading the log.
-	await new Promise((done) => setTimeout(done, scenario.calls.some((c) => c.abortAfterMs || /slow/.test(scenario.options.bankId ?? "")) ? 1600 : 0));
+	// A slow handler logs its request on arrival and then stalls: wait until the log has it (each slow scenario
+	// sends one request) instead of sleeping.
+	if (scenario.calls.some((c) => c.abortAfterMs || /slow/.test(scenario.options.bankId ?? ""))) {
+		while ((await control("/__log")).length === 0) await new Promise((done) => setTimeout(done, 10));
+	}
 	record.requests = await requests();
 	return norm(record);
 }

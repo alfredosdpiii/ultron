@@ -172,6 +172,7 @@ fn model(id: &str) -> ModelInfo {
         name: id.into(),
         reasoning: true,
         context_window: 1000,
+        thinking_levels: Vec::new(),
     }
 }
 
@@ -334,9 +335,9 @@ fn interactive_slash_commands() {
     typed(&mut app, "/resume");
     app.handle_input("\r");
     assert_eq!(calls(&c)[calls(&c).len() - 2..], ["new", "list"]);
-    typed(&mut app, "/tree");
+    typed(&mut app, "/goal");
     app.handle_input("\r");
-    assert!(screen(&mut app).contains(" Error: /tree is not available in the Rust build yet"));
+    assert!(screen(&mut app).contains(" Error: /goal is not available in the Rust build yet"));
     typed(&mut app, "/bogus");
     app.handle_input("\r");
     assert!(screen(&mut app).contains(" Unknown slash command: /bogus"));

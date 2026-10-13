@@ -24,9 +24,19 @@ import re
 
 plan = await read(".orchestrate/<slug>-plan.md")
 problems = []
-fence = "`" * 3
-prose = re.sub(fence + ".*?" + fence, "", plan, flags=re.S)
-for n, line in enumerate(prose.splitlines(), 1):
+prose, fence = [], None  # fence: (char, length) of the open code fence, per CommonMark
+for n, line in enumerate(plan.splitlines(), 1):
+    if fence:
+        close = re.match(r" {0,3}(`+|~+)[ \t]*$", line)
+        if close and close[1][0] == fence[0] and len(close[1]) >= fence[1]:
+            fence = None
+        continue
+    opening = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", line)
+    if opening and not (opening[1][0] == "`" and "`" in opening[2]):
+        fence = (opening[1][0], len(opening[1]))
+        continue
+    prose.append((n, line))
+for n, line in prose:
     if re.search("[" + chr(0x2013) + chr(0x2014) + "]", line):
         problems.append(f"{n}: long dash")
     if re.search("[" + chr(0x2018) + chr(0x2019) + chr(0x201C) + chr(0x201D) + "]", line):

@@ -1,59 +1,59 @@
 id	area	behavior	rust_test
-A01	acceptance	Direct/graph/RLM invocation shares one definition and result contract	
+A01	acceptance	Direct/graph/RLM invocation shares one definition and result contract	acceptance_a01_the_same_definition_yields_the_same_validated_result_and_durable_task_record_on_all_three_paths
 A02	acceptance	Large input stays outside active context; full data remains usable	acceptance_a02_large_input_stays_in_the_kernel_and_the_model_sees_only_bounded_results
-A03	acceptance	Invalid result triggers bounded repair or typed failure	
-A04	acceptance	Root pin and explicit child model are preserved	
-A05	acceptance	Cancellation terminates owned work and rejects late success	
-A06	acceptance	Output, artifact, wall-time, concurrency, and process limits hold	
+A03	acceptance	Invalid result triggers bounded repair or typed failure	acceptance_a03_predict_repairs_a_semantically_invalid_result_within_max_repairs_and_reports_the_repair
+A04	acceptance	Root pin and explicit child model are preserved	acceptance_a04_an_explicit_child_model_reaches_only_the_child_lane_the_root_lanes_model_is_never_changed
+A05	acceptance	Cancellation terminates owned work and rejects late success	acceptance_a05_runs_an_explicit_background_job_through_the_same_durable_task_host
+A06	acceptance	Output, artifact, wall-time, concurrency, and process limits hold	acceptance_a06_oversize_artifacts_and_quota_overflow_are_rejected_without_being_stored
 A07	acceptance	Branch/fork/resume restores matching state; no abandoned lesson leak	
-A08	acceptance	Unsupported Python state reports non-restorable, never silently correct	
-A09	acceptance	Concurrent calls/retries cannot bypass tree budget admission	
+A08	acceptance	Unsupported Python state reports non-restorable, never silently correct	acceptance_a08_snapshot_type_matrix_reports_every_unsupported_name_with_a_reason
+A09	acceptance	Concurrent calls/retries cannot bypass tree budget admission	acceptance_a09_a_burst_of_concurrent_spawns_admits_exactly_the_limit_and_rejects_the_rest
 A10	acceptance	Worker receives no ambient credentials or unauthorized host capability	acceptance_a10_kernel_gets_no_ambient_credentials_or_unauthorized_host_capability
-A11	acceptance	Approval binds scope/revision/policy and is rechecked	
-A12	acceptance	Graph validates before effects; routes/skips/fan-in/cycles are explicit	
-A13	acceptance	Agent admission does not satisfy a graph dependency	
+A11	acceptance	Approval binds scope/revision/policy and is rechecked	acceptance_a11_a_check_is_a_pure_evaluation_that_reports_every_failing_binding
+A12	acceptance	Graph validates before effects; routes/skips/fan-in/cycles are explicit	acceptance_a12_every_validation_error_is_raised_before_any_task_is_admitted_or_any_node_runs
+A13	acceptance	Agent admission does not satisfy a graph dependency	acceptance_a13_a_dependent_is_not_admitted_or_started_until_the_slow_dependencys_result_is_durable
 A14	acceptance	No checks/incomplete review/stale receipt cannot imply verified completion	
 A15	acceptance	Baseline versus candidate is recorded; required regressions block	
 A16	acceptance	Memory skip causes no retrieval; scopes survive consolidation	
-A17	acceptance	Correction supersedes stale claims; hypotheses remain distinguishable	
-A18	acceptance	Ingestion acceptance is distinct from completed retention; forgetting persists	
+A17	acceptance	Correction supersedes stale claims; hypotheses remain distinguishable	acceptance_a17_corrected_claim_is_current_and_stale_claim_superseded_in_fresh_sessions
+A18	acceptance	Ingestion acceptance is distinct from completed retention; forgetting persists	acceptance_a18_accepted_stays_distinct_from_stored_through_receipt_failure_and_restart
 A19	acceptance	Refiner cannot alter policy, grants, or acceptance tests	
 A20	acceptance	Versioned refinement changes later behavior and can roll back	
 A21	acceptance	Replay does not duplicate external effects; uncertainty stays explicit	
-A22	acceptance	Detached work and retained children survive UI loss	
-A23	acceptance	Schedules/goals/verification compose within budgets	
-A24	acceptance	Costs, task transitions, and inspection agree on one record	
+A22	acceptance	Detached work and retained children survive UI loss	acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_collectable
+A23	acceptance	Schedules/goals/verification compose within budgets	acceptance_a23_admission_failure_from_the_usage_budget_is_recorded_once_per_slot_without_a_retry_storm
+A24	acceptance	Costs, task transitions, and inspection agree on one record	acceptance_a24_reconstructs_a_mixed_run_from_the_journal_ledger_progress_and_schedule_records_and_matches_agents_status
 A25	acceptance	Existing Pi capabilities and data survive migration and rollback	
 A26	acceptance	Component changes cannot pass merely by weakening tests	
 A27	acceptance	RLM handles a self-contained task without graph/delegation/memory/refinement	acceptance_a27_rlm_completes_a_self_contained_task_without_host_services
-A28	acceptance	Retrieval explanation/query/scope match the executed search; rewrite cannot widen access	
+A28	acceptance	Retrieval explanation/query/scope match the executed search; rewrite cannot widen access	acceptance_a28_recorded_decision_equals_the_request_the_backend_received
 A29	acceptance	Memory inspector shows actual injected evidence without a new search or hidden-scope disclosure	
 A30	acceptance	Correction/deletion propagates to managed memory views/exports without changing trusted instructions	
 A31	acceptance	Skill selection is version-pinned, explainable, and cannot grant capabilities	
 A32	acceptance	Skill proposals require evidence, validation, and applicable approval; rejection/rollback holds	
 A33	acceptance	Experiment history includes all attempts and variants do not contaminate each other	
 A34	acceptance	Optional-service failure preserves RLM operation without bypassing required checks or replaying effects	
-A35	acceptance	Deterministic/predict/rlm methods share policy, validation, accounting, and task semantics	
+A35	acceptance	Deterministic/predict/rlm methods share policy, validation, accounting, and task semantics	acceptance_a35_only_rlm_launches_a_lane_predict_and_deterministic_never_start_an_iterative_kernel
 A36	acceptance	Invocation scratch is isolated while declared instance state persists	
-A37	acceptance	Bounded preview preserves full values and does not execute unsafe introspection on the host	
+A37	acceptance	Bounded preview preserves full values and does not execute unsafe introspection on the host	acceptance_a37_range_reads_return_exact_byte_ranges_including_ranges_that_split_multibyte_characters
 A38	acceptance	Nested context excludes unauthorized and contaminating history	
 A39	acceptance	Configured models can use the actual typed RLM interface	
 A40	acceptance	Retained instances accept new invocations without rewriting old terminal outcomes	
-A41	acceptance	Family messages enforce identity, scope, deduplication, expiry, and safe delivery	
-A42	acceptance	Human child intervention and subtree stop preserve unrelated work	
+A41	acceptance	Family messages enforce identity, scope, deduplication, expiry, and safe delivery	acceptance_a41_derives_identity_from_real_task_lanes_and_steers_a_live_child_lane
+A42	acceptance	Human child intervention and subtree stop preserve unrelated work	acceptance_a42_inspect_correct_and_stop_one_childs_subtree_while_the_sibling_continues_and_completes
 A43	acceptance	Resource release/eviction respects live references, evidence retention, and quotas	
 A44	acceptance	Progress and reassessment use evidence and cannot extend budgets or declare unsupported success	
-A45	acceptance	Saturated nested recursion makes progress or returns bounded capacity failure, never deadlock	
+A45	acceptance	Saturated nested recursion makes progress or returns bounded capacity failure, never deadlock	acceptance_a45_a_parent_awaiting_children_at_saturation_gets_bounded_capacity_failures_and_still_completes
 A46	acceptance	The combined system performs the full demonstration without manual state repair	
 A47	acceptance	An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input	
-A48	acceptance	Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues	
+A48	acceptance	Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues	acceptance_a48_end_to_end_repair_is_valid_exhaustion_is_incomplete_and_the_turn_continues
 A49	acceptance	Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded	
 A50	acceptance	Cancellation: aborting the root cancels every running inference frame within 2 s	
 A51	acceptance	After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values	
 A52	acceptance	ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins	
-A53	acceptance	A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly	
-A54	acceptance	On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first	
-A55	acceptance	An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error	
+A53	acceptance	A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly	acceptance_a53_a_passing_skill_is_importable_listed_and_survives_worker_restart
+A54	acceptance	On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first	acceptance_a54_the_second_run_imports_the_saved_skill_and_makes_fewer_cheaper_calls
+A55	acceptance	An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error	acceptance_a55_a_class_defined_in_a_cell_is_invokable_typed_end_to_end_keeps_state_and_rejects_a_bad_return
 A56	acceptance	Long-running work does not block the turn and completion is delivered without polling	
 CHORD-DELTA-01	chord-delta	Replays real tracker batches with apply, applyImmutable and applyImmutableBatches to upstream values	tracker_streams_replay_encode_and_decode_like_upstream
 CHORD-DELTA-02	chord-delta	apply and applyImmutable edge cases and errors (name and message) match upstream	apply_edge_and_error_cases_match_upstream
@@ -832,7 +832,8 @@ KSNAP-W8-04	kernel	kernel raw capture keeps head and tail and counts the cut	ker
 KSNAP-W8-05	kernel	kernel stderr tail keeps the last 8000 code units	kernel_stderr_tail_keeps_the_last_8000_code_units
 KSNAP-W8-06	kernel	kernel utf8 stream holds split characters and replaces invalid bytes	kernel_utf8_stream_holds_split_characters_and_replaces_invalid_bytes
 KSNAP-W8-07	kernel	kernel continuity a tampered checkpoint is refused and reported and the kernel keeps serving	kernel_continuity_a_tampered_checkpoint_is_refused_and_reported_and_the_kernel_keeps_serving
-KSNAP-W8-08	kernel	kernel continuity debounce reports unsaved cells and flushes when idle	kernel_continuity_debounce_reports_unsaved_cells_and_flushes_when_idle
+KSNAP-W8-08	kernel	kernel continuity debounce reports unsaved cells	kernel_continuity_debounce_reports_unsaved_cells
+KSNAP-W8-08B	kernel	kernel continuity debounce flushes when idle	kernel_continuity_debounce_flushes_when_idle
 KSNAP-W8-09	kernel	kernel continuity first start reports what it restored from an earlier process	kernel_continuity_first_start_reports_what_it_restored_from_an_earlier_process
 KSNAP-W8-10	kernel	kernel continuity shutdown does not restart	kernel_continuity_shutdown_does_not_restart
 KSNAP-W8-11	kernel	kernel continuity sigkill during a cell keeps the state before it	kernel_continuity_sigkill_during_a_cell_keeps_the_state_before_it
@@ -1059,7 +1060,7 @@ TUIQOL-90	tui	tui vim state machine matches omp	tui_vim_state_machine_matches_om
 CLI-INT-01	cli	cli composition cell calls a code skill	cli_composition_cell_calls_a_code_skill
 CLI-INT-02	cli	cli composition cell calls an extension function never a tool	cli_composition_cell_calls_an_extension_function_never_a_tool
 CLI-INT-03	cli	cli composition cell calls the memory api on the injected backend	cli_composition_cell_calls_the_memory_api_on_the_injected_backend
-CLI-INT-04	cli	cli composition delegation spawns and collects a subagent	cli_composition_delegation_spawns_and_collects_a_subagent
+CLI-INT-04	cli	cli composition delegation spawns and collects a subagent	cli_composition_delegation_child_done_continues_the_run
 CLI-INT-05	cli	cli composition kernel sigkill recovers state and reports restored names	cli_composition_kernel_sigkill_recovers_state_and_reports_restored_names
 CLI-INT-06	cli	cli composition lane declares exactly the rlm tool	cli_composition_lane_declares_exactly_the_rlm_tool
 CLI-INT-07	cli	cli composition sandbox doctor reports isolation	cli_composition_sandbox_doctor_reports_isolation
@@ -1475,6 +1476,292 @@ HINDSIGHT-05	hindsight	hindsight url resolution matches typescript	hindsight_url
 HINDSIGHT-06	hindsight	hindsight worker sessions share one bank like typescript	hindsight_worker_sessions_share_one_bank_like_typescript
 HINDSIGHT-SC-01	session-core	session core instances in two projects share hindsight memory	session_core_instances_in_two_projects_share_hindsight_memory
 HINDSIGHT-SC-02	session-core	session core memory follows env over setting and turns off	session_core_memory_follows_env_over_setting_and_turns_off
+DUR-P2-01	durable	durable owner dead owner lock is adopted	durable_owner_dead_owner_lock_is_adopted
+DUR-P2-02	durable	durable owner holder process	durable_owner_holder_process
+DUR-P2-03	durable	durable owner second claimant is refused with the owner pid	durable_owner_second_claimant_is_refused_with_the_owner_pid
+DUR-P2-SC-01	session-core	session core recovery completes an answered run and aborts a cancelled one	session_core_recovery_completes_an_answered_run_and_aborts_a_cancelled_one
+DUR-P2-SC-02	session-core	session core recovery gives running cells unknown outcomes and keeps finished ones	session_core_recovery_gives_running_cells_unknown_outcomes_and_keeps_finished_ones
+DUR-P2-SC-03	session-core	session core recovery hands back queued messages and stops resuming after repeated crashes	session_core_recovery_hands_back_queued_messages_and_stops_resuming_after_repeated_crashes
+DUR-P2-SC-04	session-core	session core recovery reduces frames to text and thinking	session_core_recovery_reduces_frames_to_text_and_thinking
+DUR-P2-SC-05	session-core	session core recovery settles an interrupted stream from its committed frames	session_core_recovery_settles_an_interrupted_stream_from_its_committed_frames
+DUR-P2-D-01	daemon	daemon restart backoff doubles to its cap	daemon_restart_backoff_doubles_to_its_cap
+DUR-P2-D-02	daemon	daemon signal exit codes and session in use message	daemon_signal_exit_codes_and_session_in_use_message
+DUR-P2-D-03	daemon	daemon watchdog stuck threshold comes from the environment	daemon_watchdog_stuck_threshold_comes_from_the_environment
+DUR-P2-D-04	daemon	daemon watchdog tracks runs and flags a run without progress	daemon_watchdog_tracks_runs_and_flags_a_run_without_progress
+DUR-P2-CLI-01	cli	cli durable busy worker without clients is restarted and finishes	cli_durable_busy_worker_without_clients_is_restarted_and_finishes
+DUR-P2-CLI-02	cli	cli durable killed worker restarts by itself and runs the queued follow up	cli_durable_killed_worker_restarts_by_itself_and_runs_the_queued_follow_up
+DUR-P2-CLI-03	cli	cli durable print client rejoins after its coordinator is killed	cli_durable_print_client_rejoins_after_its_coordinator_is_killed
+DUR-P2-CLI-04	cli	cli durable rpc client rejoins after its coordinator is killed	cli_durable_rpc_client_rejoins_after_its_coordinator_is_killed
+DUR-P2-CLI-05	cli	cli durable sigint aborts the print turn	cli_durable_sigint_aborts_the_print_turn
+DUR-P2-CLI-06	cli	cli durable sigterm shuts the coordinator and a server down with socket cleanup	cli_durable_sigterm_shuts_the_coordinator_and_a_server_down_with_socket_cleanup
+DUR-P2-CLI-07	cli	cli durable stuck run is reported and aborted through session ops	cli_durable_stuck_run_is_reported_and_aborted_through_session_ops
+DUR-P2-CLI-08	cli	cli durable two servers racing for one session one is refused	cli_durable_two_servers_racing_for_one_session_one_is_refused
+DUR-P2-CLI-09	cli	cli durable worker that stops answering heartbeats is killed and restarted	cli_durable_worker_that_stops_answering_heartbeats_is_killed_and_restarted
+DUR-P2-AI-01	ai	ai http idle timeout ends a stalled stream as a retryable error	ai_http_idle_timeout_ends_a_stalled_stream_as_a_retryable_error
+DUR-P2-AI-02	ai	ai http idle timeout fails a stalled body but not a slow steady one	ai_http_idle_timeout_fails_a_stalled_body_but_not_a_slow_steady_one
+DUR-P2-AI-03	ai	ai http idle timeout fails missing headers and zero disables it	ai_http_idle_timeout_fails_missing_headers_and_zero_disables_it
+DUR-P2-AI-04	ai	ai http idle timeout setting parses like typescript	ai_http_idle_timeout_setting_parses_like_typescript
+CLAUDE-01	claude-root	claude root child has only the repl tool and its own prompt	claude_root_child_has_only_the_repl_tool_and_its_own_prompt
+CLAUDE-02	claude-root	claude root child models map to claude code aliases	claude_root_child_models_map_to_claude_code_aliases
+CLAUDE-03	claude-root	claude root control socket owner only registry requests and hooks	claude_root_control_socket_owner_only_registry_requests_and_hooks
+CLAUDE-04	claude-root	claude root external root inbox is bounded with a count	claude_root_external_root_inbox_is_bounded_with_a_count
+CLAUDE-05	claude-root	claude root external root user turn carries events and stop closes it	claude_root_external_root_user_turn_carries_events_and_stop_closes_it
+CLAUDE-06	claude-root	claude root external root waiting events lead the next result	claude_root_external_root_waiting_events_lead_the_next_result
+CLAUDE-07	claude-root	claude root guide wording for a root nothing can wake	claude_root_guide_wording_for_a_root_nothing_can_wake
+CLAUDE-08	claude-root	claude root launcher argument parsing and flag detection	claude_root_launcher_argument_parsing_and_flag_detection
+CLAUDE-09	claude-root	claude root launcher runs claude with the repl as the only tool	claude_root_launcher_runs_claude_with_the_repl_as_the_only_tool
+CLAUDE-10	claude-root	claude root mcp cancelled notification aborts the call	claude_root_mcp_cancelled_notification_aborts_the_call
+CLAUDE-11	claude-root	claude root mcp initialize tools prompts and resources	claude_root_mcp_initialize_tools_prompts_and_resources
+CLAUDE-12	claude-root	claude root mcp server flags are checked	claude_root_mcp_server_flags_are_checked
+CLAUDE-13	claude-root	claude root prepare claude root model selection	claude_root_prepare_claude_root_model_selection
+CLAUDE-14	claude-root	claude root registry drops dead servers	claude_root_registry_drops_dead_servers
+CLAUDE-15	claude-root	claude root shell quote matches self ts	claude_root_shell_quote_matches_self_ts
+CLAUDE-16	claude-root	claude root skip permissions by default except as root or turned off	claude_root_skip_permissions_by_default_except_as_root_or_turned_off
+CLAUDE-17	claude-root	claude root stream json turns count responses not blocks	claude_root_stream_json_turns_count_responses_not_blocks
+CLAUDE-CLI-01	cli	claude root guide matches typescript	claude_root_guide_matches_typescript
+CLAUDE-CLI-02	cli	claude root hook commands match typescript	claude_root_hook_commands_match_typescript
+CLAUDE-CLI-03	cli	claude root launcher print config and errors match typescript	claude_root_launcher_print_config_and_errors_match_typescript
+CLAUDE-CLI-04	cli	claude root launcher starts fake claude like typescript	claude_root_launcher_starts_fake_claude_like_typescript
+CLAUDE-CLI-05	cli	claude root mcp argument errors match typescript	claude_root_mcp_argument_errors_match_typescript
+CLAUDE-CLI-06	cli	claude root mcp cells control hooks match typescript	claude_root_mcp_cells_control_hooks_match_typescript
+CLAUDE-CLI-07	cli	claude root mcp child server matches typescript	claude_root_mcp_child_server_matches_typescript
+CLAUDE-CLI-08	cli	claude root mcp loki session context matches typescript	claude_root_mcp_loki_session_context_matches_typescript
+CLAUDE-CLI-09	cli	claude root mcp protocol frames match typescript	claude_root_mcp_protocol_frames_match_typescript
+CLAUDE-CLI-10	cli	claude root skip permissions setting leaves the flag out	claude_root_skip_permissions_setting_leaves_the_flag_out
+CLAUDE-CLI-11	cli	claude root watch arguments and list match typescript	claude_root_watch_arguments_and_list_match_typescript
+REVIEW-W13-01	review	review autoreview context block matches python	review_autoreview_context_block_matches_python
+REVIEW-W13-02	review	review autoreview dedupe fast and root causes match python	review_autoreview_dedupe_fast_and_root_causes_match_python
+REVIEW-W13-03	review	review autoreview describe failure matches python	review_autoreview_describe_failure_matches_python
+REVIEW-W13-04	review	review autoreview finding records match python	review_autoreview_finding_records_match_python
+REVIEW-W13-05	review	review autoreview line mapping matches python	review_autoreview_line_mapping_matches_python
+REVIEW-W13-06	review	review autoreview load guides matches python	review_autoreview_load_guides_matches_python
+REVIEW-W13-07	review	review autoreview merged reviewers match python	review_autoreview_merged_reviewers_match_python
+REVIEW-W13-08	review	review autoreview raised by others matches python	review_autoreview_raised_by_others_matches_python
+REVIEW-W13-09	review	review autoreview reviewer keys match python	review_autoreview_reviewer_keys_match_python
+REVIEW-W13-10	review	review autoreview slices and members match python	review_autoreview_slices_and_members_match_python
+REVIEW-W13-11	review	review frames scheduler bounds concurrency per model under threads	review_frames_scheduler_bounds_concurrency_per_model_under_threads
+REVIEW-W13-12	review	review frames scheduler matches python	review_frames_scheduler_matches_python
+REVIEW-W13-13	review	review build chunks matches python	review_build_chunks_matches_python
+REVIEW-W13-14	review	review plan find and plan report match python	review_plan_find_and_plan_report_match_python
+REVIEW-W13-15	review	review process runner reports missing programs and timeouts	review_process_runner_reports_missing_programs_and_timeouts
+REVIEW-W13-16	review	review render report matches python	review_render_report_matches_python
+REVIEW-W13-17	review	review scope over local repositories matches python	review_scope_over_local_repositories_matches_python
+REVIEW-W13-18	review	review verifier views match python	review_verifier_views_match_python
+TUICMD-01	cli	cli interactive compaction and thinking events become tui events	cli_interactive_compaction_and_thinking_events_become_tui_events
+TUICMD-02	cli	cli interactive subagents become agent hub rows	cli_interactive_subagents_become_agent_hub_rows
+TUICMD-03	cli	cli interactive bare bang is a prompt like ts	cli_interactive_bare_bang_is_a_prompt_like_ts
+TUICMD-04	cli	cli interactive bash cancel matches ts	cli_interactive_bash_cancel_matches_ts
+TUICMD-05	cli	cli interactive bash exit code matches ts	cli_interactive_bash_exit_code_matches_ts
+TUICMD-06	cli	cli interactive bash output matches ts	cli_interactive_bash_output_matches_ts
+TUICMD-07	cli	cli interactive bash output reaches the model like ts	cli_interactive_bash_output_reaches_the_model_like_ts
+TUICMD-08	cli	cli interactive clone empty matches ts	cli_interactive_clone_empty_matches_ts
+TUICMD-09	cli	cli interactive clone matches ts	cli_interactive_clone_matches_ts
+TUICMD-10	cli	cli interactive cmds fixture has a test per scenario	cli_interactive_cmds_fixture_has_a_test_per_scenario
+TUICMD-11	cli	cli interactive compact empty session matches ts	cli_interactive_compact_empty_session_matches_ts
+TUICMD-12	cli	cli interactive compact matches ts	cli_interactive_compact_matches_ts
+TUICMD-13	cli	cli interactive compact then prompt matches ts	cli_interactive_compact_then_prompt_matches_ts
+TUICMD-14	cli	cli interactive export html matches ts	cli_interactive_export_html_matches_ts
+TUICMD-15	cli	cli interactive export jsonl matches ts	cli_interactive_export_jsonl_matches_ts
+TUICMD-16	cli	cli interactive fork matches ts	cli_interactive_fork_matches_ts
+TUICMD-17	cli	cli interactive fork without messages matches ts	cli_interactive_fork_without_messages_matches_ts
+TUICMD-18	cli	cli interactive history search empty matches ts	cli_interactive_history_search_empty_matches_ts
+TUICMD-19	cli	cli interactive history search matches ts	cli_interactive_history_search_matches_ts
+TUICMD-20	cli	cli interactive model cycle key matches ts	cli_interactive_model_cycle_key_matches_ts
+TUICMD-21	cli	cli interactive thinking argument matches ts	cli_interactive_thinking_argument_matches_ts
+TUICMD-22	cli	cli interactive thinking block toggle matches ts	cli_interactive_thinking_block_toggle_matches_ts
+TUICMD-23	cli	cli interactive thinking cycle key matches ts	cli_interactive_thinking_cycle_key_matches_ts
+TUICMD-24	cli	cli interactive thinking selector matches ts	cli_interactive_thinking_selector_matches_ts
+TUICMD-25	cli	cli interactive tools expand status matches ts	cli_interactive_tools_expand_status_matches_ts
+TUICMD-26	cli	cli interactive usage matches ts	cli_interactive_usage_matches_ts
+TUICMD-27	cli	cli interactive alt a opens the agent hub	cli_interactive_alt_a_opens_the_agent_hub
+TUICMD-28	cli	cli interactive alt l repaints the display	cli_interactive_alt_l_repaints_the_display
+TUICMD-29	cli	cli interactive copy picker copies the selected turn	cli_interactive_copy_picker_copies_the_selected_turn
+TUICMD-30	cli	cli interactive ctrl l opens the model hub and switches models	cli_interactive_ctrl_l_opens_the_model_hub_and_switches_models
+TUICMD-31	cli	cli interactive esc esc rewinds to a new session before the turn	cli_interactive_esc_esc_rewinds_to_a_new_session_before_the_turn
+TUICMD-32	cli	cli interactive f5 retries a failed turn	cli_interactive_f5_retries_a_failed_turn
+TUICMD-INT-01	interactive	interactive commands agents opens the hub with overlays only	interactive_commands_agents_opens_the_hub_with_overlays_only
+TUICMD-INT-02	interactive	interactive commands bang runs bash and double bang excludes	interactive_commands_bang_runs_bash_and_double_bang_excludes
+TUICMD-INT-03	interactive	interactive commands bash execution message renders exit code and output	interactive_commands_bash_execution_message_renders_exit_code_and_output
+TUICMD-INT-04	interactive	interactive commands compaction redraws transcript and unknown context	interactive_commands_compaction_redraws_transcript_and_unknown_context
+TUICMD-INT-05	interactive	interactive commands compaction rejection uses the lane wording	interactive_commands_compaction_rejection_uses_the_lane_wording
+TUICMD-INT-06	interactive	interactive commands ctrl o reports expansion	interactive_commands_ctrl_o_reports_expansion
+TUICMD-INT-07	interactive	interactive commands ctrl p switches and reports thinking	interactive_commands_ctrl_p_switches_and_reports_thinking
+TUICMD-INT-08	interactive	interactive commands ctrl t hides thinking and saves setting	interactive_commands_ctrl_t_hides_thinking_and_saves_setting
+TUICMD-INT-09	interactive	interactive commands esc esc asks for rewind targets when idle	interactive_commands_esc_esc_asks_for_rewind_targets_when_idle
+TUICMD-INT-10	interactive	interactive commands export clone usage reach the lane	interactive_commands_export_clone_usage_reach_the_lane
+TUICMD-INT-11	interactive	interactive commands f5 retries only a failed turn	interactive_commands_f5_retries_only_a_failed_turn
+TUICMD-INT-12	interactive	interactive commands fork selector cancels on escape	interactive_commands_fork_selector_cancels_on_escape
+TUICMD-INT-13	interactive	interactive commands fork selector picks and forks	interactive_commands_fork_selector_picks_and_forks
+TUICMD-INT-14	interactive	interactive commands history search puts the match in the editor	interactive_commands_history_search_puts_the_match_in_the_editor
+TUICMD-INT-15	interactive	interactive commands next model wraps and respects scope	interactive_commands_next_model_wraps_and_respects_scope
+TUICMD-INT-16	interactive	interactive commands overlays stay off in parity	interactive_commands_overlays_stay_off_in_parity
+TUICMD-INT-17	interactive	interactive commands path argument like ts	interactive_commands_path_argument_like_ts
+TUICMD-INT-18	interactive	interactive commands rewind forks before the picked user turn	interactive_commands_rewind_forks_before_the_picked_user_turn
+TUICMD-INT-19	interactive	interactive commands thinking argument selector and cycle	interactive_commands_thinking_argument_selector_and_cycle
+TUICMD-INT-20	interactive	interactive commands thinking cycle needs a reasoning model	interactive_commands_thinking_cycle_needs_a_reasoning_model
+TUICMD-SC-01	session-core	session core agent ops round trip as json	session_core_agent_ops_round_trip_as_json
+CLAUDESUB-01	ai	ai claude subscription abort ends an exchange blocked on a silent upstream	ai_claude_subscription_abort_ends_an_exchange_blocked_on_a_silent_upstream
+CLAUDESUB-02	ai	ai claude subscription authenticated connect tunnels to the upstream host	ai_claude_subscription_authenticated_connect_tunnels_to_the_upstream_host
+CLAUDESUB-03	ai	ai claude subscription proxy selection by no proxy	ai_claude_subscription_proxy_selection_by_no_proxy
+CLAUDESUB-04	ai	ai claude subscription proxy variables follow native order	ai_claude_subscription_proxy_variables_follow_native_order
+CLAUDESUB-05	ai	ai claude subscription relay admits one request and refuses the rest locally	ai_claude_subscription_relay_admits_one_request_and_refuses_the_rest_locally
+CLAUDESUB-06	ai	ai claude subscription relay forwards the restored frame and an unmatched one unchanged	ai_claude_subscription_relay_forwards_the_restored_frame_and_an_unmatched_one_unchanged
+CLAUDESUB-07	ai	ai claude subscription two native marks keep one breakpoint the next request reads	ai_claude_subscription_two_native_marks_keep_one_breakpoint_the_next_request_reads
+CLAUDESUB-08	ai	ai claude subscription unprovable restoration forwards the native payload unchanged	ai_claude_subscription_unprovable_restoration_forwards_the_native_payload_unchanged
+CLAUDESUB-09	ai	ai claude subscription unrestorable result falls back to native tool use mark	ai_claude_subscription_unrestorable_result_falls_back_to_native_tool_use_mark
+CLAUDESUB-10	ai	ai claude subscription unsupported proxy connects directly without leaking credentials	ai_claude_subscription_unsupported_proxy_connects_directly_without_leaking_credentials
+CLAUDESUB-11	ai	ai claude subscription upstream must be https or a loopback fixture	ai_claude_subscription_upstream_must_be_https_or_a_loopback_fixture
+CLAUDESUB-12	ai	ai claude subscription wire continuity across parallel rounds and relay recreation	ai_claude_subscription_wire_continuity_across_parallel_rounds_and_relay_recreation
+CLAUDESUB-13	ai	ai claude subscription aliases resolve to pinned routes and models resolve by id	ai_claude_subscription_aliases_resolve_to_pinned_routes_and_models_resolve_by_id
+CLAUDESUB-14	ai	ai claude subscription catalog windows match explicit native routes	ai_claude_subscription_catalog_windows_match_explicit_native_routes
+CLAUDESUB-15	ai	ai claude subscription edited history replays a call outside the inventory by its own name	ai_claude_subscription_edited_history_replays_a_call_outside_the_inventory_by_its_own_name
+CLAUDESUB-16	ai	ai claude subscription history must end in a user frame and later system messages replay in place	ai_claude_subscription_history_must_end_in_a_user_frame_and_later_system_messages_replay_in_place
+CLAUDESUB-17	ai	ai claude subscription host history edits replay canonical visible blocks	ai_claude_subscription_host_history_edits_replay_canonical_visible_blocks
+CLAUDESUB-18	ai	ai claude subscription images reach native as image blocks	ai_claude_subscription_images_reach_native_as_image_blocks
+CLAUDESUB-19	ai	ai claude subscription inventory is exactly rlm and other tools are refused	ai_claude_subscription_inventory_is_exactly_rlm_and_other_tools_are_refused
+CLAUDESUB-20	ai	ai claude subscription thinking policy follows each route	ai_claude_subscription_thinking_policy_follows_each_route
+CLAUDESUB-21	ai	ai claude subscription tool schemas are normalized for the native validator	ai_claude_subscription_tool_schemas_are_normalized_for_the_native_validator
+CLAUDESUB-22	ai	ai claude subscription a silent native times out	ai_claude_subscription_a_silent_native_times_out
+CLAUDESUB-23	ai	ai claude subscription a tool outside the inventory is rejected	ai_claude_subscription_a_tool_outside_the_inventory_is_rejected
+CLAUDESUB-24	ai	ai claude subscription advertised inventory is exactly rlm	ai_claude_subscription_advertised_inventory_is_exactly_rlm
+CLAUDESUB-25	ai	ai claude subscription an unsafe shared workspace falls back to one private workspace	ai_claude_subscription_an_unsafe_shared_workspace_falls_back_to_one_private_workspace
+CLAUDESUB-26	ai	ai claude subscription bare rlm maps to the tool and replays with the offered name	ai_claude_subscription_bare_rlm_maps_to_the_tool_and_replays_with_the_offered_name
+CLAUDESUB-27	ai	ai claude subscription cancellation kills native and its grandchild	ai_claude_subscription_cancellation_kills_native_and_its_grandchild
+CLAUDESUB-28	ai	ai claude subscription canonical request lifecycle	ai_claude_subscription_canonical_request_lifecycle
+CLAUDESUB-29	ai	ai claude subscription child environment and argv are isolated	ai_claude_subscription_child_environment_and_argv_are_isolated
+CLAUDESUB-30	ai	ai claude subscription conflicting auth overrides are refused by name	ai_claude_subscription_conflicting_auth_overrides_are_refused_by_name
+CLAUDESUB-31	ai	ai claude subscription invalid stream json names the offending line	ai_claude_subscription_invalid_stream_json_names_the_offending_line
+CLAUDESUB-32	ai	ai claude subscription large requests use files and effort follows reasoning	ai_claude_subscription_large_requests_use_files_and_effort_follows_reasoning
+CLAUDESUB-33	ai	ai claude subscription logged out native raises the login hint	ai_claude_subscription_logged_out_native_raises_the_login_hint
+CLAUDESUB-34	ai	ai claude subscription missing claude carries 503 and the install hint	ai_claude_subscription_missing_claude_carries_503_and_the_install_hint
+CLAUDESUB-35	ai	ai claude subscription native errors carry the status for their code	ai_claude_subscription_native_errors_carry_the_status_for_their_code
+CLAUDESUB-36	ai	ai claude subscription replay needs zero turn acknowledgments	ai_claude_subscription_replay_needs_zero_turn_acknowledgments
+CLAUDESUB-37	ai	ai claude subscription requests share one workspace that survives prune	ai_claude_subscription_requests_share_one_workspace_that_survives_prune
+CLAUDESUB-38	ai	ai claude subscription telemetry stays on by default and the cli never updates itself	ai_claude_subscription_telemetry_stays_on_by_default_and_the_cli_never_updates_itself
+CLAUDESUB-39	ai	ai claude subscription a refusal is terminal and never runs a cut off call	ai_claude_subscription_a_refusal_is_terminal_and_never_runs_a_cut_off_call
+CLAUDESUB-40	ai	ai claude subscription actual client replays restored parallel rounds across calls	ai_claude_subscription_actual_client_replays_restored_parallel_rounds_across_calls
+CLAUDESUB-41	ai	ai claude subscription an old cli error names the minimum version	ai_claude_subscription_an_old_cli_error_names_the_minimum_version
+CLAUDESUB-42	ai	ai claude subscription cancel closes the active upstream socket	ai_claude_subscription_cancel_closes_the_active_upstream_socket
+CLAUDESUB-43	ai	ai claude subscription empty tool input completes the capture	ai_claude_subscription_empty_tool_input_completes_the_capture
+CLAUDESUB-44	ai	ai claude subscription first response owns usage and stops recovery	ai_claude_subscription_first_response_owns_usage_and_stops_recovery
+CLAUDESUB-45	ai	ai claude subscription first turn frame goes ahead of native context	ai_claude_subscription_first_turn_frame_goes_ahead_of_native_context
+CLAUDESUB-46	ai	ai claude subscription incomplete upstream error carries the first status	ai_claude_subscription_incomplete_upstream_error_carries_the_first_status
+CLAUDESUB-47	ai	ai claude subscription incomplete upstream error names the first attempt	ai_claude_subscription_incomplete_upstream_error_names_the_first_attempt
+CLAUDESUB-48	ai	ai claude subscription silent upstream fails fast and pings keep a slow one alive	ai_claude_subscription_silent_upstream_fails_fast_and_pings_keep_a_slow_one_alive
+CLAUDESUB-49	ai	ai claude subscription breakpoint moves to the last block ultron itself sent	ai_claude_subscription_breakpoint_moves_to_the_last_block_ultron_itself_sent
+CLAUDESUB-50	ai	ai claude subscription equivalent plain tool result shapes restore exact host shape	ai_claude_subscription_equivalent_plain_tool_result_shapes_restore_exact_host_shape
+CLAUDESUB-51	ai	ai claude subscription first request caches a prefix the second request replays	ai_claude_subscription_first_request_caches_a_prefix_the_second_request_replays
+CLAUDESUB-52	ai	ai claude subscription first turn is only reordered when the frame is unambiguous	ai_claude_subscription_first_turn_is_only_reordered_when_the_frame_is_unambiguous
+CLAUDESUB-53	ai	ai claude subscription first turn keeps every block and moves only the marker	ai_claude_subscription_first_turn_keeps_every_block_and_moves_only_the_marker
+CLAUDESUB-54	ai	ai claude subscription invalid or true error flags never normalize to success	ai_claude_subscription_invalid_or_true_error_flags_never_normalize_to_success
+CLAUDESUB-55	ai	ai claude subscription mixed frame restores split and extended user text	ai_claude_subscription_mixed_frame_restores_split_and_extended_user_text
+CLAUDESUB-56	ai	ai claude subscription nested cache settings are kept and conflicts rejected	ai_claude_subscription_nested_cache_settings_are_kept_and_conflicts_rejected
+CLAUDESUB-57	ai	ai claude subscription nested result accepts only appended unmarked plain text	ai_claude_subscription_nested_result_accepts_only_appended_unmarked_plain_text
+CLAUDESUB-58	ai	ai claude subscription parallel results do not pin inside a partly changed user message	ai_claude_subscription_parallel_results_do_not_pin_inside_a_partly_changed_user_message
+CLAUDESUB-59	ai	ai claude subscription plain user frames are out of scope byte for byte	ai_claude_subscription_plain_user_frames_are_out_of_scope_byte_for_byte
+CLAUDESUB-60	ai	ai claude subscription protected or changed text cannot be flattened	ai_claude_subscription_protected_or_changed_text_cannot_be_flattened
+CLAUDESUB-61	ai	ai claude subscription restoration is anchored on ids and content not native wording	ai_claude_subscription_restoration_is_anchored_on_ids_and_content_not_native_wording
+CLAUDESUB-62	ai	ai claude subscription split host text restores original representation	ai_claude_subscription_split_host_text_restores_original_representation
+CLAUDESUB-63	ai	ai claude subscription stable breakpoint or nothing to anchor forwards unchanged	ai_claude_subscription_stable_breakpoint_or_nothing_to_anchor_forwards_unchanged
+CLAUDESUB-64	ai	ai claude subscription unexpected duplicate or appended results fail closed	ai_claude_subscription_unexpected_duplicate_or_appended_results_fail_closed
+CLAUDESUB-65	ai	ai claude subscription discovery probes follow the telemetry setting	ai_claude_subscription_discovery_probes_follow_the_telemetry_setting
+CLAUDESUB-66	ai	ai claude subscription every model the cli advertises is selectable	ai_claude_subscription_every_model_the_cli_advertises_is_selectable
+CLAUDESUB-67	ai	ai claude subscription inert mcp serves the inventory and denies every call	ai_claude_subscription_inert_mcp_serves_the_inventory_and_denies_every_call
+CLAUDESUB-68	ai	ai claude subscription logged out missing or leaking cli degrades to the catalog	ai_claude_subscription_logged_out_missing_or_leaking_cli_degrades_to_the_catalog
+CLAUDESUB-69	ai	ai claude subscription path and explicit commands take precedence	ai_claude_subscription_path_and_explicit_commands_take_precedence
+CLAUDESUB-70	ai	ai claude subscription pinned models the picker omits stay selectable	ai_claude_subscription_pinned_models_the_picker_omits_stay_selectable
+CLAUDESUB-71	ai	ai claude subscription privacy shrunk picker is unioned with the pinned table	ai_claude_subscription_privacy_shrunk_picker_is_unioned_with_the_pinned_table
+CLAUDESUB-72	ai	ai claude subscription resolves claude outside a service path	ai_claude_subscription_resolves_claude_outside_a_service_path
+CLAUDESUB-73	ai	ai claude subscription setup status reports login and models from the cli	ai_claude_subscription_setup_status_reports_login_and_models_from_the_cli
+CLAUDESUB-CLI-01	cli	cli claude subscription turn runs rlm in the host and replays natively	cli_claude_subscription_turn_runs_rlm_in_the_host_and_replays_natively
+DELEGATION-REG-01	delegation	schema meta-check fixture	delegation_schema_meta_check_matches_validate_json_schema
+DELEGATION-REG-02	delegation	typebox Check/Errors fixture	delegation_schema_check_and_errors_match_typebox
+DELEGATION-REG-03	delegation	registry fixture	delegation_registry_matches_definition_registry
+DELEGATION-REG-04	delegation	usage ledger sessions fixture	delegation_usage_sessions_match_the_typescript_ledger
+DELEGATION-REG-05	delegation	usage invalid documents	delegation_usage_invalid_documents_fail_like_typescript
+DELEGATION-REG-06	delegation	usage env limits and budget line	delegation_usage_limits_from_env_and_budget_line_match
+DELEGATION-REG-07	delegation	agents host fixture	delegation_agents_host_matches_native_rlm_host
+DELEGATION-REG-08	delegation	reconcile fixture	delegation_reconcile_matches_reconcile_records
+DELEGATION-REG-09	delegation	predict adapter fixture	delegation_predict_adapter_matches_create_predict_adapter
+DELEGATION-REG-10	delegation	rlm.spawn malformed model refused	delegation_spawn_refuses_a_malformed_model
+DELEGATION-REG-11	delegation	rlm.spawn unknown model refused with check	delegation_spawn_with_the_model_check_refuses_an_unknown_model_and_passes_a_known_one
+KERNEL-APIS-ART-01	kernel-apis	artifacts fixture	kernel_apis_artifacts_match_native_local_services
+KERNEL-APIS-ART-02	kernel-apis	artifact limits	kernel_apis_artifact_limits_must_be_positive
+KERNEL-APIS-ART-03	kernel-apis	base64	kernel_apis_artifact_base64_is_standard_padded
+CSF-1	ai/claude-subscription	usage limit falls back to anthropic/<id> with same context, streamed, one route notice	ai_claude_subscription_fallback_usage_limit_streams_the_same_model_and_context_from_the_api
+CSF-2	ai/claude-subscription	transient 429 and 529 do not fall back	ai_claude_subscription_fallback_transient_429_and_overload_do_not_fall_back
+CSF-3	ai/claude-subscription	error after streamed content does not fall back	ai_claude_subscription_fallback_error_after_streamed_content_does_not_fall_back
+CSF-4	ai/claude-subscription	no API key: error unchanged plus hint	ai_claude_subscription_fallback_without_an_api_key_returns_the_error_with_the_hint
+CSF-5	ai/claude-subscription	auth.json anthropic api_key is the fallback key	ai_claude_subscription_fallback_uses_the_auth_store_api_key
+CSF-6	ai/claude-subscription	sticky until reset then subscription again	ai_claude_subscription_fallback_holds_until_the_reset_then_tries_the_subscription_again
+CSF-7	ai/claude-subscription	API credits exhausted gives combined error	ai_claude_subscription_fallback_api_credits_exhausted_names_both
+CSF-8	ai/claude-subscription	claude.apiFallback false keeps subscription error	ai_claude_subscription_fallback_setting_off_keeps_the_subscription_error
+CSF-9	ai/claude-subscription	out-of-usage classification	ai_claude_subscription_fallback_classifies_only_the_plans_usage_limit
+CSF-10	ai/claude-subscription	same model id on the API	ai_claude_subscription_fallback_api_model_keeps_the_model_id
+CSF-11	session-core/lane	lane path falls back and holds	session_core_lane_claude_subscription_falls_back_to_api_credits_and_holds
+CSF-12	session-core/lane	lane path honours claude.apiFallback false	session_core_lane_claude_subscription_fallback_setting_off
+CSF-13	ai/claude-subscription	API credentials stripped from the CLI child	ai_claude_subscription_api_credentials_never_reach_the_child
+CSF-14	ai/claude-subscription	setup probes never see API credentials	ai_claude_subscription_setup_probes_never_see_api_credentials
+CSF-15	ai/claude-subscription	env key is the fallback key ahead of auth.json	ai_claude_subscription_fallback_env_key_wins_and_never_reaches_the_cli
+CSF-16	ai/claude-subscription	catalog-gap model thinks adaptively on the API	ai_claude_subscription_fallback_model_missing_from_the_api_catalog_thinks_adaptively
+CSF-17	ai/claude-subscription	sealed test env resolves only the sentinel claude	ai_claude_subscription_sealed_tests_cannot_reach_a_real_claude
+TUICMD-34	interactive	/tree selector, summary choice, navigation	cli_interactive_tree_navigates_like_ts
+TUICMD-35	interactive	/tree branches, search, filters	cli_interactive_tree_branches_and_search_like_ts
+TUICMD-36	interactive	/tree filter keys	cli_interactive_tree_filters_like_ts
+TUICMD-37	interactive	/tree on empty session	cli_interactive_tree_empty_like_ts
+TUICMD-38	interactive	/tree summarized navigation	cli_interactive_tree_summarize_like_ts
+TUICMD-39	interactive	session selector sort/named/rename/delete	cli_interactive_resume_selector_like_ts
+TUICMD-40	interactive	resume switch and already-current	cli_interactive_resume_switch_like_ts
+TUICMD-41	interactive	resume after compaction	cli_interactive_resume_after_compaction_like_ts
+TUICMD-42	interactive	/settings search, cycle, theme, warnings	cli_interactive_settings_like_ts
+TUICMD-43	interactive	/settings Models section	cli_interactive_settings_models_like_ts
+TUICMD-44	interactive	/settings per-model thinking	cli_interactive_settings_model_thinking_like_ts
+TUICMD-45	interactive	Ctrl+G external editor	cli_interactive_external_editor_like_ts
+TUICMD-46	interactive	external editor missing	cli_interactive_external_editor_missing_like_ts
+TUICMD-47	interactive	external editor failure keeps text	cli_interactive_external_editor_failure_keeps_text_like_ts
+TUICMD-48	interactive	/logout without credentials	cli_interactive_logout_without_credentials_like_ts
+TUICMD-49	interactive	/logout removes stored key	cli_interactive_logout_like_ts
+TUICMD-50	interactive	/login API key	cli_interactive_login_api_key_like_ts
+TUICMD-51	interactive	/share without gh login	cli_interactive_share_without_gh_login_like_ts
+TUICMD-52	interactive	/changelog	cli_interactive_changelog_like_ts
+TUICMD-53	interactive	/review expansion	cli_interactive_review_expands_like_ts
+TUICMD-54	interactive	RLM panel, focus, pane	cli_interactive_rlm_views_like_ts
+TUICMD-55	interactive	changelog link pinning	interactive_changelog_links_pin_to_the_release_like_ts
+TUICMD-56	interactive	changelog entries	interactive_changelog_entries_match_ts
+TUICMD-57	interactive	worker death reattach	cli_interactive_reattaches_after_the_session_worker_dies
+TUICMD-58	interactive	images with steer/follow-up	interactive_commands_images_go_with_steering_and_follow_ups
+TUICMD-59	interactive	transcript search	interactive_commands_ctrl_shift_f_opens_transcript_search_with_overlays
+TUICMD-60	interactive	prompt history flushed on drop	interactive_commands_prompt_history_is_on_disk_when_the_store_drops
+TUICMD-61	interactive	changelog lexed per entry equals whole document	interactive_changelog_lexed_per_entry_matches_the_whole_document
+DURP4-01	kernel-apis	schedule tick fires due slots, recomputed after reopen	kernel_apis_schedule_ticker_fires_on_its_own_and_recomputes_after_reopen
+DURP4-02	kernel-apis	next fire time from durable schedule fields	kernel_apis_schedules_next_fire_follows_the_durable_fields
+DURP4-03	kernel-apis	committed schedule changes wake the ticker	kernel_apis_schedule_changes_wake_the_ticker
+DURP4-04	kernel-apis	goal reconciled with the task journal on reopen	kernel_apis_goal_recovery_reconciles_the_goal_with_the_task_journal
+DURP4-05	kernel-apis	goal run saved before its task starts	kernel_apis_goal_writes_the_run_before_admitting_its_task
+DURP4-06	host	jobs report their real state after the worker is SIGKILLed	host_durable_jobs_report_their_real_state_after_the_worker_is_killed
+DURP4-07	host	released jobs pass to the next owner; drop stops jobs	host_durable_jobs_release_hands_running_jobs_to_the_next_owner
+DURP4-08	host	TypeScript journal records read as interrupted	host_durable_jobs_typescript_records_read_as_interrupted
+DURP4-09	acceptance	a fire runs exactly once across a crash after the claim	acceptance_a23_durable_a_fire_runs_exactly_once_across_a_crash_between_claim_and_admission
+DURP4-10	acceptance	a fire runs exactly once across a crash after admission	acceptance_a23_durable_a_fire_runs_exactly_once_across_a_crash_between_admission_and_record
+DURP4-11	acceptance	missed fires coalesce and fire on their own after reopen	acceptance_a23_durable_missed_fires_while_down_coalesce_and_fire_on_their_own_after_reopen
+DURP4-12	acceptance	the goal keeps its checks and runs on after SIGKILL	acceptance_a23_durable_the_session_goal_keeps_its_checks_and_runs_on_after_the_worker_is_killed
+DURP4-13	acceptance	a started goal run is adopted, not started twice	acceptance_a23_durable_a_goal_run_admitted_before_the_crash_is_adopted_not_started_twice
+DURP4-14	acceptance	DurableWork driven like the composition root	acceptance_a23_durable_work_wiring_drives_schedules_goal_and_jobs_like_the_composition_root
+DURP4-15	acceptance	jobs journal stays small and survives a worker restart	acceptance_a56_the_journal_stays_small_and_survives_a_worker_restart
+MDPERF-1	tui/marked	lex time grows linearly with input (1x vs 4x < 6x)	tui_marked_lex_time_grows_linearly
+MDPERF-2	tui/marked	per-run emStrongRDelim classification equals the regex	tui_marked_delimiter_runs_match_the_em_strong_regex
+MDPERF-3	tui/marked	hand-written inlineText scanner ends tokens where the regex does	tui_marked_inline_text_scanner_matches_the_regex
+MDPERF-4	tui/marked	candidate-position blockSkip masking equals replace_all	tui_marked_block_skip_mask_matches_the_regex
+MDPERF-5	tui/marked	multi-byte character before a LaTeX opener lexes like TS	tui_marked_multibyte_char_before_latex_opener_like_ts
+MDPERF-6	tui/marked	emStrongRDelim skip branch keeps *x__y*z__ literal like TS	tui_marked_em_strong_skip_branch_like_ts
+DURINT-01	session-core	pinned resend after a kill during a model call	cli_durable_kill_during_model_call_resends_the_pinned_request_once
+DURINT-02	session-core	interrupted cell with partial output	cli_durable_kill_during_a_cell_reports_it_interrupted_with_its_partial_output
+DURINT-03	session-core	committed answer kept once	cli_durable_kill_after_the_answer_commits_keeps_it_once_without_asking_again
+DURINT-04	session-core	committed cell result kept once	cli_durable_kill_after_a_cell_result_commits_keeps_it_once
+DURINT-05	session-core	steer delivered exactly once	cli_durable_kill_after_a_steer_is_taken_delivers_it_exactly_once
+DURINT-06	session-core	two conversations resume after a kill	cli_durable_two_conversations_progress_together_and_both_resume_after_a_kill
+DURINT-07	acceptance	running child survives a worker kill, result collectable	acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_collectable
+DURINT-08	acceptance	A56 child_done summary leads with definition and verdict tag	acceptance_a56_child_done_event_reinvokes_the_idle_root_ported_part
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

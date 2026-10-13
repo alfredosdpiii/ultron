@@ -16,6 +16,7 @@ ai = { path = "../ai" }
 loki = { path = "../loki" }
 resources = { path = "../resources" }
 tokio = { version = "=1.53.2", features = ["rt", "time"] }
+claude-root = { path = "../claude-root" }
 client = { path = "../client" }
 compaction = { path = "../compaction" }
 config = { path = "../config" }

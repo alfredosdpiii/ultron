@@ -1,7 +1,8 @@
 //! `loki` command line: loki.py's argparse interface over the Rust engine.
 
 use loki::proc::Deadline;
-use loki::{CheckError, MAX_VIOLATIONS, config, hook, hook_report, injected_context, protect_path, py, resolve};
+use loki::run;
+use loki::{CheckError, config, hook, injected_context, py, resolve};
 use serde_json::{Value, json};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -371,38 +372,22 @@ fn check(args: &Args, root: &Path, config: &config::Config) -> Result<(Vec<Strin
             let payload = read_stdin_json("hook")?;
             (loki::harness_paths(&payload, harness)?, Some(payload))
         }
-        None => {
-            let payload = match args.get("--preview") {
-                Some(_) => Some(read_stdin_json("preview")?),
-                None => None,
-            };
-            let mut paths: Vec<String> = Vec::new();
-            for path in args.all("--file") {
-                loki::valid_path(&path)?;
-                if !paths.contains(&path) {
-                    paths.push(path);
-                }
-            }
-            (paths, payload)
-        }
+        None => (run::file_paths(&args.all("--file"))?, None),
     };
-    let mut messages = Vec::new();
-    for path in &paths {
-        messages.extend(protect_path(path, root, config)?);
-    }
-    if args.command == "protect" && messages.is_empty() {
-        let mode = harness.or(args.get("--preview")).unwrap_or("");
-        messages.extend(loki::preview_violations(
+    if args.command == "protect" {
+        let messages = run::protect_violations(
             root,
+            config,
             &paths,
             payload.as_ref(),
-            mode,
+            harness.unwrap_or(""),
             deadline,
             &mut warnings,
-            config,
-        )?);
+        )?;
+        return Ok((messages, warnings));
     }
-    if args.command == "hook" && messages.is_empty() {
+    let mut messages = run::protected(root, config, &paths)?;
+    if messages.is_empty() {
         let targets: Vec<PathBuf> = paths.iter().map(|p| loki::abspath(root, p)).collect();
         messages.extend(hook::write_guardrail_violations(&targets, root, config, deadline)?);
         let typescript = targets.iter().any(|t| {
@@ -463,70 +448,30 @@ fn check(args: &Args, root: &Path, config: &config::Config) -> Result<(Vec<Strin
 
 fn guard(args: &Args) -> ExitCode {
     let json = args.get("--format") == Some("json");
-    let fail = |error: CheckError| {
-        let text = error.describe();
-        eprintln!("loki: {text}");
-        if json {
-            println!("{}", py::dumps(&hook_report(&args.command, &[], &[], Some(&text))));
-        }
-        ExitCode::from(2)
-    };
     let root = root_of(args);
-    let config = match config::load_config(&root) {
-        Ok(config) => config,
-        Err(config::ConfigError::Invalid(m)) => return fail(CheckError::Value(m)),
-        Err(config::ConfigError::Guard(kind, m)) => return fail(CheckError::Guard(kind, m)),
+    let outcome = match run::load(&root) {
+        Err(error) => run::fail(&args.command, &error, json),
+        Ok(_) if args.has("--record") => run::fail(&args.command, &CheckError::not_ported("--record"), json),
+        Ok(config) if args.command == "protect" && args.get("--harness").is_none() => {
+            let files = args.all("--file");
+            run::protect_with(&root, &config, &files, args.get("--preview"), json, || {
+                read_stdin_json("preview")
+            })
+        }
+        Ok(config) => match check(args, &root, &config) {
+            Ok((messages, warnings)) => run::report(
+                &args.command,
+                &messages,
+                warnings,
+                json,
+                args.get("--harness").is_some(),
+            ),
+            Err(error) => run::fail(&args.command, &error, json),
+        },
     };
-    if args.has("--record") {
-        return fail(CheckError::not_ported("--record"));
-    }
-    let (messages, mut warnings) = match check(args, &root, &config) {
-        Ok(result) => result,
-        Err(error) => return fail(error),
-    };
-    let mut seen = Vec::new();
-    warnings.retain(|w| {
-        !seen.contains(w) && {
-            seen.push(w.clone());
-            true
-        }
-    });
-    if json {
-        println!("{}", py::dumps(&hook_report(&args.command, &messages, &warnings, None)));
-    }
-    if !messages.is_empty() {
-        if args.command == "hook" {
-            eprintln!("loki: post-write check failed; files are already changed.");
-        }
-        let advisory: Vec<&String> = warnings.iter().filter(|w| !w.starts_with("NOT CHECKED")).collect();
-        let label = (!advisory.is_empty()).then(|| "loki: advisory (not blocking):".to_string());
-        let lines: Vec<String> = messages
-            .iter()
-            .cloned()
-            .chain(label)
-            .chain(advisory.into_iter().cloned())
-            .chain(warnings.iter().filter(|w| w.starts_with("NOT CHECKED")).cloned())
-            .take(MAX_VIOLATIONS)
-            .collect();
-        eprintln!("{}", lines.join("\n"));
-        return ExitCode::from(2);
-    }
-    if !warnings.is_empty() {
-        let text = warnings.join("\n");
-        eprintln!("{text}");
-        if args.get("--harness").is_some() {
-            let event = if args.command == "protect" {
-                "PreToolUse"
-            } else {
-                "PostToolUse"
-            };
-            println!(
-                "{}",
-                py::dumps(&json!({"hookSpecificOutput": {"hookEventName": event, "additionalContext": text}}))
-            );
-        }
-    }
-    ExitCode::SUCCESS
+    eprint!("{}", outcome.stderr);
+    print!("{}", outcome.stdout);
+    ExitCode::from(outcome.status)
 }
 
 fn exit(code: i32) -> ExitCode {

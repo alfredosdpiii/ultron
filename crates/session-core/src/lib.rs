@@ -12,10 +12,15 @@
 pub mod compaction_op;
 pub mod compose;
 pub mod core;
+pub mod durable_store;
 pub mod journal;
 pub mod lane;
 pub mod naming;
+pub mod op_journal;
 pub mod pi_view;
+pub mod recovery;
+pub mod subagents;
+pub mod turns;
 pub mod view;
 
 use std::path::PathBuf;

@@ -5,7 +5,7 @@ use mcp::{CancelToken, Client, ClientOptions, Error, RequestOptions, StdioOption
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn python() -> String {
     std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| {
@@ -36,7 +36,27 @@ fn unit(result: Result<(), Error>) -> Result<Value, Error> {
     result.map(|()| Value::Null)
 }
 
-fn run_step(client: &Client, step: &Value, events: &Arc<Mutex<Vec<Value>>>) -> Result<Value, Error> {
+/// The complete frames the fake server has logged so far (a line still being written is left out).
+fn logged(log: &Path) -> Vec<Value> {
+    let text = std::fs::read_to_string(log).unwrap_or_default();
+    let complete = text.rfind('\n').map_or("", |end| &text[..end]);
+    complete
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
+/// How many `tools/call` requests for `name` the fake server has read.
+fn calls_read(log: &Path, name: &str) -> usize {
+    logged(log)
+        .iter()
+        .filter(|frame| frame["dir"] == "in")
+        .filter_map(|frame| serde_json::from_str::<Value>(frame["line"].as_str()?).ok())
+        .filter(|message| message["method"] == "tools/call" && message["params"]["name"] == name)
+        .count()
+}
+
+fn run_step(client: &Client, step: &Value, events: &Arc<Mutex<Vec<Value>>>, log: &Path) -> Result<Value, Error> {
     let s = |k: &str| step.get(k).and_then(Value::as_str);
     match s("op").unwrap_or_default() {
         "listTools" => client.list_tools(RequestOptions::default()).map(Value::from),
@@ -70,15 +90,21 @@ fn run_step(client: &Client, step: &Value, events: &Arc<Mutex<Vec<Value>>>) -> R
             }
             let cancel = s("abort").map(|reason| (CancelToken::new(), reason.to_string()));
             options.cancel = cancel.as_ref().map(|(token, _)| token.clone());
+            let name = s("name").unwrap_or_default().to_string();
+            let before = calls_read(log, &name);
             let call = {
                 let client = client.clone();
-                let name = s("name").unwrap_or_default().to_string();
+                let name = name.clone();
                 let args = step.get("args").cloned();
                 std::thread::spawn(move || client.call_tool(&name, args, options))
             };
             if let Some((token, reason)) = cancel {
-                // Wait until the request is on the wire, as the TypeScript abort follows the synchronous send.
-                std::thread::sleep(Duration::from_millis(50));
+                // Cancel once the request is on the wire (the server has read it), as the TypeScript abort follows
+                // the synchronous send. Hang guard 120 s.
+                let deadline = Instant::now() + Duration::from_secs(120);
+                while calls_read(log, &name) == before && Instant::now() < deadline {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
                 token.cancel(Some(&reason));
             }
             call.join().unwrap()
@@ -151,7 +177,7 @@ fn mcp_client_replays_typescript_stdio_session_frames_and_results() {
             let mut record: Map<String, Value> = recorded.as_object().unwrap().clone();
             record.shift_remove("ok");
             record.shift_remove("error");
-            let outcome = run_step(&client, &Value::Object(record.clone()), &events);
+            let outcome = run_step(&client, &Value::Object(record.clone()), &events, &log);
             match outcome {
                 Ok(v) => record.insert("ok".into(), v),
                 Err(e) => record.insert("error".into(), error_value(&e)),

@@ -11,9 +11,8 @@ metadata:
 
 # Architect
 
-Design before implementing. Sketch types, function signatures, class shapes and module boundaries with
-`not implemented` bodies and pseudocode. Synthesize across several model perspectives, then fill in code against the
-chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
+Sketch types, function signatures, class shapes and module boundaries with `not implemented` bodies and pseudocode.
+Synthesize across several model perspectives, then fill in code against the chosen sketch.
 
 ```python
 state["plan"] = ["ground", "sketch (arena)", "agree", "implement", "scrap if wrong"]
@@ -22,7 +21,7 @@ state["plan"] = ["ground", "sketch (arena)", "agree", "implement", "scrap if wro
 ## Phase A: Ground the problem
 
 Build a real mental model of every system the new code touches: read `../how/SKILL.md` and run it over the relevant
-subsystems. Naming a file is not grounding; produce the traced model `how` prescribes. If the design redefines
+subsystems. Naming a file is not grounding; produce the architectural explanation `how` prescribes. If the design redefines
 ownership or layering, also run `../why/SKILL.md` on the existing shape, so the rationale becomes a constraint, not a
 guess. Keep the grounding as files the runners can read (for example under `/tmp/architect-<slug>/`).
 
@@ -31,9 +30,9 @@ Skip Phase A only when the work is greenfield with no surrounding system to inte
 ## Phase B: Sketch
 
 Read `../arena/SKILL.md` and run it with the design-sketch task and the Phase A grounding paths. Each runner's brief
-is the text of `references/runner-prompt.md` plus the task, the grounding paths and where to write; each candidate
-produces a design package shaped per `references/rationale-template.md`, in its own worktree. Runners follow arena's
-Phase A: one per model family by default, from `rlm.find_models`.
+is the text of `references/runner-prompt.md` plus the task, the grounding paths and where to write, and each
+candidate works in its own worktree. Runners follow arena's Phase A: one per model family by default, from
+`rlm.find_models`.
 
 ```python
 SKILL_DIR = "..."  # this skill's directory, as Ultron listed it
@@ -74,9 +73,8 @@ Phase B before writing more code.
 
 ## Phase D: Implement against the sketch
 
-Replace `not implemented` bodies with code, pseudocode with logic. The synthesized sketch is the contract.
-
-Deviations from the sketch are signal to surface, not friction to absorb silently. Log each one
+Replace `not implemented` bodies with code, pseudocode with logic. The synthesized sketch is the contract. Deviations
+from it are signal to surface, not friction to absorb silently. Log each one
 (`state.setdefault("deviations", []).append("parse() needs a clock: sketch missed time-dependence")`). If a function
 needs a parameter the sketch did not anticipate, ask whether the sketch was wrong, the requirement was missed, or the
 implementation is overreaching.

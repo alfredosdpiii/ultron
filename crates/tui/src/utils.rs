@@ -144,7 +144,16 @@ pub fn visible_width(s: &str) -> usize {
     if is_printable_ascii(s) {
         return s.len();
     }
-    let clean = strip_terminal_sequences(&s.replace('\t', "   "));
+    let clean = if s.contains('\t') {
+        strip_terminal_sequences(&s.replace('\t', "   "))
+    } else {
+        strip_terminal_sequences(s)
+    };
+    // Styled lines are mostly printable ASCII once their escape sequences are gone: one column per byte, as above,
+    // without segmenting graphemes (the bulk of Markdown layout time, which measures every line several times).
+    if is_printable_ascii(&clean) {
+        return clean.len();
+    }
     clean.graphemes(true).map(grapheme_width).sum()
 }
 

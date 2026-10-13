@@ -1,12 +1,14 @@
 //! Ported from packages/coding-agent/test/experimental-session-worker-lifecycle.test.ts and
 //! experimental-server-lifecycle.test.ts. TypeScript advances fake timers to the millisecond; these run on the real
-//! clock, so each "not yet" check sits well inside a grace and each "now" check well past it.
+//! clock. A "not yet" check counts only when it ran before the grace could have elapsed (`before_grace`), so a
+//! descheduled test thread skips it instead of failing; a "now" check waits for the retirement (`retires`), so a
+//! late timer thread slows the test down instead of failing it.
 
 use daemon::lifecycle::Lifecycle;
 use daemon::server::Lifetime;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const GENERATION: &str = "generation-1";
 
@@ -30,6 +32,26 @@ fn create(initial: u64, orphan: u64) -> (Arc<Lifecycle>, Arc<AtomicUsize>) {
 
 fn retired(count: &AtomicUsize) -> usize {
     count.load(Ordering::SeqCst)
+}
+
+/// Asserts nothing retired yet, when the read provably happened before `grace` had passed since `armed` (taken
+/// before the timer was armed, so the timer cannot fire earlier). Under load the read may come too late; then the
+/// check proves nothing and is skipped.
+fn before_grace(count: &AtomicUsize, armed: Instant, grace: Duration) {
+    let seen = retired(count);
+    if armed.elapsed() < grace {
+        assert_eq!(seen, 0, "retired before the grace elapsed");
+    }
+}
+
+/// Waits (hang guard 120 s) until the worker retired exactly once.
+fn retires(count: &AtomicUsize) {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    while retired(count) == 0 {
+        assert!(Instant::now() < deadline, "never retired");
+        std::thread::sleep(ms(5));
+    }
+    assert_eq!(retired(count), 1);
 }
 
 #[test]
@@ -135,23 +157,23 @@ fn daemon_lifecycle_rejects_requests_from_stale_generations_and_attachments() {
 
 #[test]
 fn daemon_lifecycle_disconnected_generation_demand_lasts_the_orphan_grace() {
-    let (lifecycle, count) = create(100, 200);
+    let (lifecycle, count) = create(100, 500);
     lifecycle.set_demand(GENERATION, "attachment-1", true).unwrap();
+    let armed = Instant::now();
     lifecycle.server_disconnected(GENERATION);
     std::thread::sleep(ms(100));
-    assert_eq!(retired(&count), 0);
-    std::thread::sleep(ms(250));
-    assert_eq!(retired(&count), 1);
+    before_grace(&count, armed, ms(500));
+    retires(&count);
 }
 
 #[test]
 fn daemon_lifecycle_server_lost_before_demanding_lapses_after_the_orphan_grace() {
-    let (lifecycle, count) = create(10_000, 200);
+    let (lifecycle, count) = create(10_000, 500);
+    let armed = Instant::now();
     lifecycle.server_disconnected(GENERATION);
     std::thread::sleep(ms(100));
-    assert_eq!(retired(&count), 0);
-    std::thread::sleep(ms(250));
-    assert_eq!(retired(&count), 1);
+    before_grace(&count, armed, ms(500));
+    retires(&count);
 }
 
 #[test]
@@ -183,11 +205,11 @@ fn daemon_lifecycle_owned_by_launching_server_until_released_or_disconnected() {
 
 #[test]
 fn daemon_lifecycle_retires_a_worker_that_never_receives_demand() {
-    let (lifecycle, count) = create(100, 200);
+    let armed = Instant::now();
+    let (lifecycle, count) = create(500, 200);
     std::thread::sleep(ms(50));
-    assert_eq!(retired(&count), 0);
-    std::thread::sleep(ms(150));
-    assert_eq!(retired(&count), 1);
+    before_grace(&count, armed, ms(500));
+    retires(&count);
     let error = lifecycle.set_demand(GENERATION, "attachment-1", true).err().unwrap();
     assert!(error.contains("retiring"), "{error}");
 }
@@ -220,11 +242,12 @@ fn daemon_lifetime_holds_a_foreground_server_until_shutdown() {
 
 #[test]
 fn daemon_lifetime_retires_an_automatic_server_without_a_first_client() {
+    let armed = Instant::now();
     let (lifetime, count) = lifetime(false);
     std::thread::sleep(ms(250));
-    assert_eq!(retired(&count), 0);
-    std::thread::sleep(ms(400));
-    assert_eq!(retired(&count), 1);
+    // The startup grace runs first, then the idle grace.
+    before_grace(&count, armed, ms(300 + 100));
+    retires(&count);
     lifetime.stop();
 }
 
@@ -236,10 +259,10 @@ fn daemon_lifetime_requires_both_client_and_worker_demand_to_disappear() {
     lifetime.set_connections(0);
     std::thread::sleep(ms(600));
     assert_eq!(retired(&count), 0);
+    let armed = Instant::now();
     lifetime.set_workers(0);
     std::thread::sleep(ms(50));
-    assert_eq!(retired(&count), 0);
-    std::thread::sleep(ms(200));
-    assert_eq!(retired(&count), 1);
+    before_grace(&count, armed, ms(100));
+    retires(&count);
     lifetime.stop();
 }

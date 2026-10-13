@@ -597,7 +597,7 @@ fn tui_status_git_probe_reads_a_real_repository_and_caches_pr_lookups() {
     let watcher = GitWatcher::spawn(dir.clone(), FakePr(ptx), move || {
         let _ = utx.send(());
     });
-    urx.recv_timeout(Duration::from_secs(10)).unwrap();
+    urx.recv_timeout(Duration::from_secs(120)).unwrap(); // hang guard
     assert_eq!(watcher.snapshot().branch.as_deref(), Some("feature"));
     assert_eq!(watcher.snapshot().pr.map(|p| p.0), Some(7));
     watcher.shutdown();

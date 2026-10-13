@@ -134,6 +134,7 @@ fn harness_scheduling_waits_for_harness_and_conversation_idleness() {
         let ctx = Ctx::with_signal(&cancelled);
         let h = harness.clone();
         let cancelled_wait = spawn(move || h.wait_for_idle(&ctx));
+        // Settle only: a wait that starts after its signal was cancelled is rejected with the same reason.
         flush();
         cancelled.cancel(HarnessError::msg("stop waiting"));
         assert_eq!(cancelled_wait.join().unwrap().unwrap_err().message(), "stop waiting");
@@ -161,8 +162,10 @@ fn harness_scheduling_waits_for_harness_and_conversation_idleness() {
         open(background);
         harness.wait_for_task(background, &bg()).unwrap();
         harness.close().unwrap();
-        assert!(harness.wait_for_idle(&bg()).unwrap_err().message().contains("closed"));
-        assert!(root.wait_for_idle(&bg()).unwrap_err().message().contains("closed"));
+        let error = harness.wait_for_idle(&bg()).unwrap_err().message();
+        assert!(error.contains("closed"), "{error}");
+        let error = root.wait_for_idle(&bg()).unwrap_err().message();
+        assert!(error.contains("closed"), "{error}");
     });
 }
 
@@ -258,7 +261,7 @@ fn harness_scheduling_rejects_task_waits_cancelled_or_closed_while_queued_on_the
         let ctx = Ctx::with_signal(&controller);
         let h = harness.clone();
         let cancelled_while_queued = spawn(move || h.wait_for_task(id, &ctx));
-        flush();
+        line_reaches(&harness, 2);
         controller.cancel(HarnessError::msg("wait cancelled"));
         held.release();
         first.join().unwrap().unwrap();
@@ -273,16 +276,18 @@ fn harness_scheduling_rejects_task_waits_cancelled_or_closed_while_queued_on_the
         let idle = spawn(move || h.wait_for_idle(&bg()));
         let r = root.clone();
         let conversation_idle = spawn(move || r.wait_for_idle(&bg()));
+        // Settle only: a wait that registers late, behind the second hold or after the close, is rejected as closed
+        // all the same.
         flush();
         let held_again = storage.hold_commits();
         let second = blocker(&harness);
         held_again.wait_entered();
         let h = harness.clone();
         let closed_while_queued = spawn(move || h.wait_for_task(id, &bg()));
-        flush();
+        line_reaches(&harness, 2);
         let h = harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&harness);
         held_again.release();
         second.join().unwrap().unwrap();
         for wait in [closed_while_queued, pending] {
@@ -418,15 +423,24 @@ fn harness_abort_starts_no_further_phase_after_a_mark_that_lands_during_a_phase_
 #[test]
 fn harness_abort_signals_and_joins_the_run_before_returning() {
     each_backend(|backend| {
-        let reached = Deferred::new();
+        let (reached, finish) = (Deferred::new(), Deferred::new());
         let run_ended = Arc::new(Mutex::new(false));
-        let (re, en) = (reached.clone(), run_ended.clone());
-        let signalled = one_step("test.signalled", move |_, runtime| {
-            re.resolve();
-            let result = aborted(runtime);
-            *en.lock().unwrap() = true;
-            result
-        });
+        let (re, en, fi) = (reached.clone(), run_ended.clone(), finish.clone());
+        // The abort handler commits its outcome only once the test let it: the second abort must find the task
+        // still aborting (upstream's microtask order guarantees it; here threads race, so the test orders it).
+        let signalled = one_step_abort(
+            "test.signalled",
+            move |_, runtime| {
+                re.resolve();
+                let result = aborted(runtime);
+                *en.lock().unwrap() = true;
+                result
+            },
+            move |_, runtime| {
+                fi.wait();
+                runtime.commit(&runtime.ctx(), |_, _| Ok(aborted_with("test")))
+            },
+        );
         let (opened, root, _) = open_root(backend, vec![signalled.clone()], OpenOptions::default());
         let id = start(&root, &signalled, false);
         opened.harness.resume().unwrap();
@@ -434,6 +448,7 @@ fn harness_abort_signals_and_joins_the_run_before_returning() {
         assert_eq!(opened.harness.abort_task(id, &bg()).unwrap(), AbortResult::Marked);
         assert!(*run_ended.lock().unwrap());
         assert_eq!(opened.harness.abort_task(id, &bg()).unwrap(), AbortResult::Marked);
+        finish.resolve();
         assert_eq!(
             outcome(&opened.harness.wait_for_task(id, &bg()).unwrap()),
             json!({ "status": "aborted", "reason": "test" })
@@ -500,10 +515,12 @@ fn harness_abort_aborts_waiting_work_and_faults_abort_handlers_that_throw_or_set
 #[test]
 fn harness_abort_does_not_signal_a_running_abort_handler_when_aborted_again() {
     each_backend(|backend| {
-        let (reached, proceed, run_release) = (Deferred::new(), Deferred::new(), Deferred::new());
+        let (entered, reached, proceed, run_release) =
+            (Deferred::new(), Deferred::new(), Deferred::new(), Deferred::new());
         let abort_signalled = Arc::new(Mutex::new(None));
         let aborts = Arc::new(AtomicUsize::new(0));
-        let (rr, re, pr, sig, ab) = (
+        let (en, rr, re, pr, sig, ab) = (
+            entered.clone(),
             run_release.clone(),
             reached.clone(),
             proceed.clone(),
@@ -513,6 +530,7 @@ fn harness_abort_does_not_signal_a_running_abort_handler_when_aborted_again() {
         let run = one_step_abort(
             "test.abort-again",
             move |_, _| {
+                en.resolve();
                 // Ignores the signal, so the first caller is still joining when it gives up.
                 rr.wait();
                 Ok(())
@@ -529,7 +547,9 @@ fn harness_abort_does_not_signal_a_running_abort_handler_when_aborted_again() {
         let harness = opened.harness.clone();
         let id = start(&root, &run, false);
         harness.resume().unwrap();
-        eventually(|| harness.get_task(id).unwrap().unwrap().state.status() == TaskStatus::Running);
+        // The phase handler itself, not only the `running` record (TS: `await flush()`): a mark committed before the
+        // run invocation's first step ends it without a phase, and the join would return before the caller gives up.
+        entered.wait();
         // This caller gives up while joining; the mark and the abort invocation are unaffected.
         let controller = Cancel::new();
         let ctx = Ctx::with_signal(&controller);
@@ -566,7 +586,7 @@ fn harness_abort_keeps_a_terminal_outcome_committed_by_an_abort_handler_that_thr
         let (opened, root, _) = open_root(backend, vec![run.clone()], OpenOptions::default());
         let id = start(&root, &run, false);
         opened.harness.resume().unwrap();
-        flush();
+        eventually(|| opened.harness.get_task(id).unwrap().unwrap().state.status() == TaskStatus::Running);
         opened.harness.abort_task(id, &bg()).unwrap();
         assert_eq!(
             outcome(&opened.harness.wait_for_task(id, &bg()).unwrap()),
@@ -593,7 +613,7 @@ fn harness_abort_never_starts_phase_one_when_the_abort_lands_while_the_reservati
         // The reservation commit is in storage; the abort mark commit queues behind it.
         let h = opened.harness.clone();
         let aborting = spawn(move || h.abort_task(id, &bg()));
-        flush();
+        line_reaches(&opened.harness, 2);
         held.release();
         assert_eq!(aborting.join().unwrap().unwrap(), AbortResult::Marked);
         assert_eq!(
@@ -631,7 +651,8 @@ fn harness_abort_mark_wins_over_a_fault_that_races_it() {
         eventually(|| held.lock().unwrap().is_some());
         let gate = held.lock().unwrap().clone().unwrap();
         gate.wait_entered();
-        flush();
+        // The fault commit has queued behind the held abort mark.
+        line_reaches(&opened.harness, 2);
         gate.release();
         assert_eq!(
             outcome(&opened.harness.wait_for_task(id, &bg()).unwrap()),
@@ -679,7 +700,7 @@ fn harness_close_stops_without_outcomes_and_starts_no_fresh_phase_or_abort_invoc
         let commits = storage.commit_count();
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&opened.harness);
         proceed.resolve();
         closing.join().unwrap().unwrap();
         assert_eq!(aborting.join().unwrap().unwrap(), AbortResult::Marked);
@@ -733,13 +754,14 @@ fn harness_close_writes_no_fault_when_it_seals_while_the_step_after_a_failed_pha
         let harness_ref: Arc<Mutex<Option<Harness>>> = Arc::default();
         let (st, he, hr) = (storage.clone(), held.clone(), harness_ref.clone());
         let throws = one_step("test.close-fault", move |_, runtime| {
-            *he.lock().unwrap() = Some(st.hold_commits());
+            let gate = st.hold_commits();
+            *he.lock().unwrap() = Some(gate.clone());
             let harness = hr.lock().unwrap().clone().unwrap();
             let conversation = runtime.conversation_id();
             spawn(move || {
                 harness.commit(|tx| Ok(tx.append_entry(conversation, EntryDraft::new("blocker")).map(drop)?))
             });
-            flush();
+            gate.wait_entered();
             Err(HarnessError::msg("would fault"))
         });
         let opened = open_tasks(storage.clone(), vec![throws.clone()], OpenOptions::default()).unwrap();
@@ -750,10 +772,11 @@ fn harness_close_writes_no_fault_when_it_seals_while_the_step_after_a_failed_pha
         eventually(|| held.lock().unwrap().is_some());
         let gate = held.lock().unwrap().clone().unwrap();
         gate.wait_entered();
-        flush();
+        // The step after the failed phase has queued behind the held commit.
+        line_reaches(&opened.harness, 2);
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&opened.harness);
         gate.release();
         closing.join().unwrap().unwrap();
         assert_eq!(statuses(&task_writes(&storage, id)), vec!["pending", "running"]);
@@ -781,7 +804,7 @@ fn harness_close_starts_no_abort_handler_whose_reservation_settles_while_closing
         held.wait_entered();
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&opened.harness);
         held.release();
         closing.join().unwrap().unwrap();
         assert!(!*ran.lock().unwrap());
@@ -819,13 +842,14 @@ fn harness_close_rejects_a_runtime_commit_that_was_queued_on_the_line_when_it_se
             proceed.clone(),
         );
         let task = one_step("test.close-queued-commit", move |_, runtime| {
-            *he.lock().unwrap() = Some(st.hold_commits());
+            let gate = st.hold_commits();
+            *he.lock().unwrap() = Some(gate.clone());
             let harness = hr.lock().unwrap().clone().unwrap();
             let conversation = runtime.conversation_id();
             spawn(move || {
                 harness.commit(|tx| Ok(tx.append_entry(conversation, EntryDraft::new("blocker")).map(drop)?))
             });
-            flush();
+            gate.wait_entered();
             let late = runtime.clone();
             *qu.lock().unwrap() = Some(spawn(move || late.commit(&bg(), |_, _| Ok(completed(Value::Null)))));
             // Ignores the close signal, so the invocation is still alive when the queued commit reaches the line.
@@ -840,10 +864,11 @@ fn harness_close_rejects_a_runtime_commit_that_was_queued_on_the_line_when_it_se
         eventually(|| queued.lock().unwrap().is_some());
         let gate = held.lock().unwrap().clone().unwrap();
         gate.wait_entered();
-        flush();
+        // The runtime commit has queued behind the held one.
+        line_reaches(&opened.harness, 2);
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&opened.harness);
         gate.release();
         let rejected = queued.lock().unwrap().take().unwrap().join().unwrap().unwrap_err();
         assert!(rejected.message().contains("Harness is closed"), "{rejected}");
@@ -941,7 +966,7 @@ fn harness_close_joins_a_reservation_that_settles_while_closing_without_starting
         held.wait_entered();
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        sealed(&opened.harness);
         held.release();
         closing.join().unwrap().unwrap();
         assert!(!*ran.lock().unwrap());

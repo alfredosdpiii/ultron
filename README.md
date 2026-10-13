@@ -731,6 +731,9 @@ Ultron combines ideas from several projects and papers:
 - **[Answer me with HTML](https://github.com/QingYunA/answer-me-with-html)** by QingYunA: bundled as
   `/skill:answer-me-with-html`, which answers a hard question with one HTML page (panels, diagrams, tables) rendered
   by its own `am` CLI. See [packages/coding-agent/skills/qingyuna](packages/coding-agent/skills/qingyuna/README.md).
+- **[Anatomy](https://github.com/wheresryan22/anatomy)** by Ryan ([@wheresryan22](https://github.com/wheresryan22)):
+  bundled as `/skill:anatomy`, which explains an idea as a live isometric figure of a real machine, built with its kit
+  and checked in headless Chrome. See [packages/coding-agent/skills/wheresryan](packages/coding-agent/skills/wheresryan/README.md).
 
 [`supremeplan.md`](supremeplan.md) records how each one landed and what was measured.
 
@@ -760,5 +763,6 @@ MIT license (see [LICENSE](LICENSE)). It bundles [Loki](https://github.com/alfre
 `packages/coding-agent/skills/pstack/LICENSE`) and HumanLayer's [`show-me`](https://github.com/humanlayer/skills) skill
 as `diagram-it` (MIT, its license in `packages/coding-agent/skills/humanlayer/LICENSE`), and QingYunA's
 [Answer me with HTML](https://github.com/QingYunA/answer-me-with-html) skill with its `am` CLI (MIT, its license in
-`packages/coding-agent/skills/qingyuna/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
+`packages/coding-agent/skills/qingyuna/LICENSE`), and Ryan's [Anatomy](https://github.com/wheresryan22/anatomy) skill with
+its kit (MIT, its license in `packages/coding-agent/skills/wheresryan/LICENSE`). Pi's documentation at [pi.dev](https://pi.dev) covers the interface,
 providers, extensions and settings that Ultron shares.

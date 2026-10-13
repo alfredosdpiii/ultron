@@ -261,19 +261,28 @@ fn inference_map_frames_run_concurrently_without_oversubscribing_the_pool() {
 /// no re-ask goes out, and the frame ends "cancelled" with the reply in `last_outputs`.
 #[test]
 fn inference_frame_sends_no_request_after_its_deadline() {
-    let (handler, transport, _dir) = frames(&[], ModelSettings::default(), false);
-    transport
-        .replies
-        .lock()
-        .unwrap()
-        .push(json!({"text": "many", "usage": {"input": 40, "output": 2, "cacheRead": 0}, "block_ms": 80}));
-    let reply = call(
-        &handler,
-        "rlm.infer",
-        json!({"task": "Count", "contract": {"type": "integer"}, "timeout_ms": 50}),
-    );
-    assert_eq!(transport.bodies.lock().unwrap().len(), 1);
-    assert_eq!(reply["error"], "cancelled");
-    assert_eq!(reply["spent"], json!({"calls": 1, "tokens": 42}));
-    assert_eq!(reply["last_outputs"], json!(["many"]));
+    // Under load the 50 ms deadline can pass before the first request goes out; the frame then rightly sends
+    // nothing, so that attempt checks it was cancelled and the test tries again until the first request went out.
+    for _attempt in 0..50 {
+        let (handler, transport, _dir) = frames(&[], ModelSettings::default(), false);
+        transport
+            .replies
+            .lock()
+            .unwrap()
+            .push(json!({"text": "many", "usage": {"input": 40, "output": 2, "cacheRead": 0}, "block_ms": 80}));
+        let reply = call(
+            &handler,
+            "rlm.infer",
+            json!({"task": "Count", "contract": {"type": "integer"}, "timeout_ms": 50}),
+        );
+        assert_eq!(reply["error"], "cancelled");
+        if transport.bodies.lock().unwrap().is_empty() {
+            continue;
+        }
+        assert_eq!(transport.bodies.lock().unwrap().len(), 1);
+        assert_eq!(reply["spent"], json!({"calls": 1, "tokens": 42}));
+        assert_eq!(reply["last_outputs"], json!(["many"]));
+        return;
+    }
+    panic!("the first request never went out inside the 50 ms deadline in 50 attempts");
 }

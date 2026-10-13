@@ -54,11 +54,21 @@ fn harness_failure_ends_everything_with_the_first_error() {
         let id = start(&root, &task, false);
         harness.resume().unwrap();
         running(&harness, id);
+        // The task wait registers on the Session line before the failure: queue it behind a held commit, then run
+        // one more line job, which (FIFO) ends after the registration.
+        let held = storage.hold_commits();
+        let h = harness.clone();
+        let blocker = spawn(move || note(&h, root.id));
+        held.wait_entered();
         let h = harness.clone();
         let task_wait = spawn(move || h.wait_for_task(id, &bg()));
+        line_reaches(&harness, 2);
+        held.release();
+        blocker.join().unwrap().unwrap();
+        harness.get_task(id).unwrap();
+        // A wait for idle registers off the line; one that starts after the failure gets the same error.
         let h = harness.clone();
         let idle = spawn(move || h.wait_for_idle(&bg()));
-        flush();
         storage.fail_next_commit(disk_gone());
         // The call that hit it gets the storage error itself.
         assert_eq!(note(&harness, root.id).unwrap_err(), storage_error(disk_gone()));
@@ -184,7 +194,8 @@ fn harness_failure_for_a_storage_error_during_a_host_close_before_the_backend_cl
         held.wait_entered();
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        // The close has queued behind the held commit.
+        line_reaches(&opened.harness, 2);
         held.release();
         assert_eq!(committing.join().unwrap().unwrap_err(), storage_error(disk_gone()));
         let _ = closing.join().unwrap();
@@ -234,6 +245,7 @@ fn harness_failure_ends_an_abort_that_joins_a_run_ignoring_its_signal_and_a_reen
         let aborting = spawn(move || h.abort_task(id, &bg()));
         // The abort mark commits and the abort joins the run, which ignores its signal; then the Session fails.
         eventually(|| harness.get_task(id).unwrap().unwrap().abort_requested);
+        // Settle only: an abort that has not joined the run yet when the Session fails ends with the same error.
         flush();
         storage.fail_next_commit(disk_gone());
         assert_eq!(note(&harness, root.id).unwrap_err(), storage_error(disk_gone()));

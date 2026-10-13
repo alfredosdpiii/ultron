@@ -211,7 +211,8 @@ fn harness_recovery_resumes_abort_work_after_close_at_every_direct_task_abort_st
         eventually(|| opened.harness.get_task(id).unwrap().unwrap().abort_requested);
         let h = opened.harness.clone();
         let closing = spawn(move || h.close());
-        flush();
+        // The close has sealed admission; it now joins the run.
+        sealed(&opened.harness);
         run_release.resolve();
         closing.join().unwrap().unwrap();
         assert_eq!(aborting.join().unwrap().unwrap(), AbortResult::Marked);
@@ -242,6 +243,7 @@ fn harness_recovery_resumes_abort_work_after_close_at_every_direct_task_abort_st
         // Stage 4: the terminal receipt survives reopen and nothing runs again.
         let opened = open_tasks(storage.reopen(), vec![abortable], OpenOptions::default()).unwrap();
         opened.harness.resume().unwrap();
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_eq!(opened.harness.abort_task(id, &bg()).unwrap(), AbortResult::Terminal);
         opened.harness.close().unwrap();
@@ -329,6 +331,7 @@ fn harness_crash_after_the_mark_before_the_run_joins_only_the_abort_handler_runs
         let h = opened.harness.clone();
         let joining = spawn(move || h.abort_task(id, &bg()));
         eventually(|| opened.harness.get_task(id).unwrap().unwrap().abort_requested);
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert!(!joining.is_finished());
         let (recovered, _) = recover(&storage, &log);
@@ -418,6 +421,7 @@ fn harness_crash_after_the_terminal_outcome_nothing_runs_again() {
         opened.harness.wait_for_task(id, &bg()).unwrap();
         let (recovered, _) = recover(&storage, &log);
         recovered.harness.resume().unwrap();
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_eq!(logged(&log), vec!["abort"]);
         assert_eq!(
@@ -459,6 +463,7 @@ fn harness_blocked_keeps_a_task_with_a_missing_definition_pending_and_live_until
         let opened = open_tasks(Controlled::new(backend), vec![], OpenOptions::default()).unwrap();
         let id = create_in(&opened.harness, &v1, Value::Null);
         opened.harness.resume().unwrap();
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_eq!(status(&opened.harness, id), TaskStatus::Pending);
         let h = opened.harness.clone();
@@ -495,6 +500,7 @@ fn harness_blocked_keeps_a_task_stored_by_a_newer_version_pending_until_a_fittin
         .unwrap();
         let id = create_in(&opened.harness, &versioned(2, "new", None), Value::Null);
         opened.harness.resume().unwrap();
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_eq!(status(&opened.harness, id), TaskStatus::Pending);
         // The same extension name replaces the old one in place.
@@ -549,6 +555,7 @@ fn harness_blocked_migrates_at_reservation_and_retries_a_failed_migration_only_f
                 tools: vec!["unrelated".into()],
             })
             .unwrap();
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_eq!(failures.load(Ordering::SeqCst), 1);
         assert_eq!(reports(&opened), vec![HarnessError::msg("cannot migrate")]);
@@ -728,7 +735,8 @@ fn handover_task(
             }
             let next = next.clone();
             runtime.commit(&runtime.ctx(), |_, _| Ok(running(next)))?;
-            // Leave room for a wrongly dispatched successor before this invocation ends.
+            // Leave room for a wrongly dispatched successor before this invocation ends (a settle: a slow machine can
+            // only hide such a successor, never fail the test).
             flush();
             if let Some(on_end) = &gates.on_end {
                 on_end();
@@ -908,6 +916,7 @@ fn harness_handover_to_a_newer_version_whose_migration_fails_leaves_the_task_blo
         );
         gate.resolve();
         eventually(|| reports(&opened).len() == 1);
+        // Settle, then check nothing (more) happened: a slow machine can only let this pass wrongly.
         flush();
         assert_matches(
             &js(&opened.harness.get_task(id).unwrap().unwrap()),
@@ -979,7 +988,8 @@ fn harness_handover_preserves_an_abort_mark_that_races_the_handover_commit() {
         gate.wait_entered();
         let h = opened.harness.clone();
         let aborting = spawn(move || h.abort_task(id, &bg()));
-        flush();
+        // The abort mark has queued behind the held handover commit.
+        line_reaches(&opened.harness, 2);
         gate.release();
         assert_eq!(aborting.join().unwrap().unwrap(), AbortResult::Marked);
         assert_eq!(
@@ -1082,31 +1092,20 @@ fn harness_handover_rejects_a_runtime_commit_of_the_old_invocation_queued_behind
         let storage = Controlled::new(backend);
         let held: Arc<Mutex<Option<Gate>>> = Arc::default();
         let old_runtime: Arc<Mutex<Option<harness::scheduler::TaskRuntime>>> = Arc::default();
-        let harness_ref: Arc<Mutex<Option<Harness>>> = Arc::default();
-        let (g, st, he, or, hr) = (
-            gate.clone(),
-            storage.clone(),
-            held.clone(),
-            old_runtime.clone(),
-            harness_ref.clone(),
-        );
+        let (g, st, he, or) = (gate.clone(), storage.clone(), held.clone(), old_runtime.clone());
         let old = Task::define("test.handover", 1, |_| json!({ "phase": "a" }))
             .phase("a", move |task, runtime| {
                 *or.lock().unwrap() = Some(runtime.clone());
                 g.wait();
                 runtime.commit(&runtime.ctx(), |_, _| Ok(running(json!({ "phase": "b" }))))?;
-                // Hold the line with an unrelated commit so the handover commit queues behind it.
-                *he.lock().unwrap() = Some(st.hold_commits());
-                let harness = hr.lock().unwrap().clone().unwrap();
-                let conversation = task.conversation_id;
-                spawn(move || {
-                    harness.commit(|tx| {
-                        Ok(tx
-                            .append_entry(conversation, durable::EntryDraft::new("blocker"))
-                            .map(drop)?)
-                    })
-                });
-                flush();
+                // Hold the task's next write, the handover commit, on the line: whatever is admitted after it has
+                // entered storage queues behind it.
+                let id = task.id;
+                *he.lock().unwrap() = Some(st.hold_commits_when(move |writes| {
+                    writes
+                        .iter()
+                        .any(|write| matches!(write, StorageWrite::Task { value } if value.id == id))
+                }));
                 Ok(())
             })
             .phase("b", |_, _| Ok(()))
@@ -1123,7 +1122,6 @@ fn harness_handover_rejects_a_runtime_commit_of_the_old_invocation_queued_behind
             },
         )
         .unwrap();
-        *harness_ref.lock().unwrap() = Some(opened.harness.clone());
         let id = create_in(&opened.harness, &old, Value::Null);
         opened.harness.resume().unwrap();
         eventually(|| old_runtime.lock().unwrap().is_some());
@@ -1131,12 +1129,12 @@ fn harness_handover_rejects_a_runtime_commit_of_the_old_invocation_queued_behind
         gate.resolve();
         eventually(|| held.lock().unwrap().is_some());
         let gate = held.lock().unwrap().clone().unwrap();
+        // The handover commit is in storage, holding the line.
         gate.wait_entered();
-        flush();
-        // Queued behind the handover commit while the invocation has not ended yet.
+        // Started while the handover commit holds the line and the invocation has not ended yet: it lands after the
+        // handover whenever it gets there, so no handshake is needed before the release.
         let runtime = old_runtime.lock().unwrap().clone().unwrap();
         let late = spawn(move || runtime.commit(&bg(), |_, _| Ok(completed(Value::Null))));
-        flush();
         gate.release();
         assert!(
             late.join()

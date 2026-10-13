@@ -565,6 +565,13 @@ impl Session {
     pub fn failure(&self) -> Option<SessionError> {
         lock(&self.inner.status).failure.clone()
     }
+
+    /// Jobs admitted to the mutation line and not yet finished, the running one included. Lets a caller (a test)
+    /// know that a commit or close has queued behind another, instead of guessing with a sleep.
+    pub fn line_len(&self) -> u64 {
+        let turn = lock(&self.inner.line.turn);
+        turn.0 - turn.1
+    }
 }
 
 impl Inner {

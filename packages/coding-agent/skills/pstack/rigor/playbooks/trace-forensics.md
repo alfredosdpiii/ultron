@@ -1,6 +1,6 @@
 ### Trace forensics
 
-**You own the diagnosis from the artifact. Load it, shape it, narrow to the cause, attribute to source.**
+**You own the diagnosis from the artifact.**
 
 Distinct from Runtime forensics, which instruments a live process. Here the capture already exists: read it, don't
 re-run it.
@@ -13,8 +13,8 @@ re-run it.
    reason.
 4. Attribute to source through the artifact's own symbols: file, symbol, line. A frame with no source mapping is not
    yet a diagnosis; resolve the symbols or say the artifact lacks them.
-5. Confirm against a paired capture when you have one (diff before and after). Without one, mark the finding as the
-   strongest hypothesis the artifact supports.
+5. If you have a paired capture, diff the before and after artifacts to confirm. Otherwise, mark the finding as the
+   strongest hypothesis the artifact supports, not a confirmed cause.
 6. Hand back a cited diagnosis, no fix unless asked. Route to Bug fix or Perf issue once the cause is known.
    Throughput checkpoint: `n/a, read-only forensics`.
 

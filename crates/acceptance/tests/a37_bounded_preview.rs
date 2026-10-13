@@ -114,11 +114,12 @@ fn raising_repr(kernel: &kernel::Kernel) {
 fn sleeping_repr(kernel: &kernel::Kernel) {
     run(
         kernel,
-        "import time\nclass Sleeps:\n    def __repr__(self):\n        time.sleep(30)\n        return 'late'\nslow = Sleeps()",
+        "import time\nclass Sleeps:\n    def __repr__(self):\n        time.sleep(600)\n        return 'late'\nslow = Sleeps()",
     );
     let started = Instant::now();
     let slow = run(kernel, "slow");
-    assert!(started.elapsed() < Duration::from_secs(10));
+    // The 600 s workload was interrupted by the preview deadline, not waited out.
+    assert!(started.elapsed() < Duration::from_secs(300));
     assert_eq!(slow.status, Status::Ok);
     assert_eq!(result_of(&slow), format!(" <preview timed out>{MARKER}\n{HINT}"));
     assert!(value(kernel, "preview([1, slow])['preview']").contains("preview timed out"));
@@ -165,9 +166,10 @@ fn hostile_exceptions(kernel: &kernel::Kernel) {
     let started = Instant::now();
     let sleeping = run(
         kernel,
-        "import time\nclass S(Exception):\n    def __str__(self):\n        time.sleep(30)\n        return 'late'\nraise S()",
+        "import time\nclass S(Exception):\n    def __str__(self):\n        time.sleep(600)\n        return 'late'\nraise S()",
     );
-    assert!(started.elapsed() < Duration::from_secs(10));
+    // The 600 s workload was interrupted by the preview deadline, not waited out.
+    assert!(started.elapsed() < Duration::from_secs(300));
     bounded(&sleeping);
     let error = sleeping.error.unwrap();
     assert_eq!(error.ename, "S");

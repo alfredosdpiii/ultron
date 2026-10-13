@@ -160,18 +160,16 @@ fn cli_sessions_naming_failure_keeps_the_fallback() {
 
 #[test]
 fn cli_sessions_slow_naming_never_holds_the_turn() {
-    let (port, _seen) = mock_server(
-        vec![anthropic_text("ok")],
-        Naming::Slow(Duration::from_secs(6), "Too late".into()),
-    );
+    // The naming reply is held far longer than any run takes, however loaded the machine: a run that waited for it
+    // would take at least this long. (Waiting only up to the product's own 10 s naming timeout cannot be told
+    // apart from a slow run without a wall-clock bound, so that is not asserted.)
+    let held = Duration::from_secs(300);
+    let (port, _seen) = mock_server(vec![anthropic_text("ok")], Naming::Slow(held, "Too late".into()));
     let sandbox = Sandbox::new(port);
     let started = Instant::now();
     let output = run(&sandbox, &["-p", "--model", MODEL, "Quick question"]);
     assert_eq!(stdout(&output), "ok\n", "{}", stderr(&output));
-    assert!(
-        started.elapsed() < Duration::from_secs(5),
-        "print mode exits when the turn ends"
-    );
+    assert!(started.elapsed() < held, "print mode exits when the turn ends");
     assert_eq!(listings(&sandbox)[0].name.as_deref(), Some("Quick question"));
 }
 

@@ -61,7 +61,24 @@ struct Root {
     gates: Gates,
 }
 
+/// A hang guard, never a timing expectation: a loaded machine must slow a test down, never fail it.
+const HANG_GUARD: Duration = Duration::from_secs(120);
+
+fn wait_until(what: &str, mut ready: impl FnMut() -> bool) {
+    let deadline = Instant::now() + HANG_GUARD;
+    while !ready() {
+        assert!(Instant::now() < deadline, "{what}: not reached in {HANG_GUARD:?}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// A root whose cancelled cells get a grace period no test step can outlast, so "ended without the grace period"
+/// holds however slow the machine.
 fn root(collect: CollectMode, max_lanes: usize) -> Root {
+    root_with_grace(collect, max_lanes, HANG_GUARD)
+}
+
+fn root_with_grace(collect: CollectMode, max_lanes: usize, cancel_grace: Duration) -> Root {
     let dir = tempfile::tempdir().unwrap();
     let gates = Gates::default();
     let (host, events) = Delegation::new(DelegationOptions {
@@ -95,7 +112,7 @@ fn root(collect: CollectMode, max_lanes: usize) -> Root {
         }),
         handlers: Arc::new(move |lane, signal, park| Arc::new(handlers_host.cell_handler(lane, signal, park))),
         max_lanes,
-        cancel_grace: Duration::from_secs(5),
+        cancel_grace,
     })
     .unwrap();
     lanes.open("main").unwrap();
@@ -109,7 +126,8 @@ fn root(collect: CollectMode, max_lanes: usize) -> Root {
     }
 }
 
-const BUDGET: Duration = Duration::from_secs(20);
+/// A cell budget no ordinary cell outlasts, however slow the machine (it is an input: a cell past it is detached).
+const BUDGET: Duration = HANG_GUARD;
 
 fn done(outcome: CellOutcome) -> ExecutionResult {
     match outcome {
@@ -135,13 +153,12 @@ fn running(outcome: CellOutcome) -> (String, bool) {
 fn delegation_host_collect_never_holds_a_cell() {
     let r = root(CollectMode::Host, 2);
     ok(&r.lanes, "main", "h = await rlm.spawn('brief', name='a')");
-    let started = Instant::now();
+    // Returns within the budget (`ok`), though the child never ends until its gate opens.
     let result = ok(
         &r.lanes,
         "main",
         "try:\n    await rlm.collect([h])\nexcept RuntimeError as e:\n    print(e)",
     );
-    assert!(started.elapsed() < Duration::from_secs(5));
     let id = r.host.running("main").pop().unwrap();
     assert_eq!(
         result.stdout,
@@ -157,7 +174,7 @@ fn delegation_host_collect_never_holds_a_cell() {
     // The host waits (between turns), and the end arrives as an event.
     assert_eq!(r.host.running("main"), vec![id.clone()]);
     r.gates.open(0);
-    let event = r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    let event = r.events.recv_timeout(HANG_GUARD).unwrap();
     assert_eq!(event.task["id"], id.as_str());
     assert!(!event.awaited);
     assert!(r.host.running("main").is_empty());
@@ -181,7 +198,7 @@ fn delegation_parked_collect_detaches_and_other_lanes_run() {
             .unwrap(),
     );
     assert!(parked, "a cell waiting on children is detached at once");
-    assert!(started.elapsed() < Duration::from_secs(5));
+    assert!(started.elapsed() < BUDGET, "detached before its budget");
     // The parked lane refuses another cell; the root opens a second lane, which runs at once with its own state.
     assert_eq!(
         r.lanes.run("main", "1", BUDGET).unwrap_err(),
@@ -204,10 +221,10 @@ fn delegation_parked_collect_detaches_and_other_lanes_run() {
     );
     // The child ends; the parked cell completes and its end arrives as an event, not as a tool result.
     r.gates.open(0);
-    let end = r.ends.recv_timeout(Duration::from_secs(10)).unwrap();
+    let end = r.ends.recv_timeout(HANG_GUARD).unwrap();
     assert_eq!((end.cell.as_str(), end.lane.as_str()), (cell.as_str(), "main"));
     assert_eq!(end.outcome.unwrap().stdout, "reply-0 42\n");
-    let event = r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    let event = r.events.recv_timeout(HANG_GUARD).unwrap();
     assert!(event.awaited, "the child's end was awaited by the parked collect");
     // The lane is free again, its state intact.
     assert_eq!(ok(&r.lanes, "main", "x").result.unwrap(), "41");
@@ -224,10 +241,7 @@ fn delegation_cancel_parked_cell_keeps_kernel_state() {
     assert!(parked);
     let started = Instant::now();
     let outcome = r.lanes.cancel(&cell, "user pressed escape").unwrap().unwrap();
-    assert!(
-        started.elapsed() < Duration::from_secs(5),
-        "the wait ends without the grace period"
-    );
+    assert!(started.elapsed() < HANG_GUARD, "the wait ends without the grace period");
     assert_eq!(outcome.status, Status::Error);
     let error = outcome.error.unwrap();
     assert_eq!(
@@ -241,32 +255,50 @@ fn delegation_cancel_parked_cell_keeps_kernel_state() {
     // The child itself keeps running; it was not the cell's to cancel.
     assert_eq!(r.host.running("main").len(), 1);
     r.gates.open(0);
-    r.events.recv_timeout(Duration::from_secs(10)).unwrap();
+    r.events.recv_timeout(HANG_GUARD).unwrap();
     r.lanes.close();
 }
 
 #[test]
 fn delegation_cell_outliving_its_budget_detaches_or_cancels() {
-    let r = root(CollectMode::Host, 1);
-    ok(&r.lanes, "main", "import time\ny = 5");
-    // Over budget: the caller detaches it; its end arrives on the channel.
+    // A short grace: the busy cell below is killed once it passes.
+    let r = root_with_grace(CollectMode::Host, 1, Duration::from_secs(1));
+    let go = r._dir.path().join("go");
+    ok(
+        &r.lanes,
+        "main",
+        &format!("import os, time\ny = 5\ngo = {:?}", go.display().to_string()),
+    );
+    // Over budget: the caller detaches it; its end arrives on the channel. The cell runs until the test creates
+    // `go`, so it is still running when detached.
     let (cell, parked) = running(
         r.lanes
-            .run("main", "time.sleep(0.5)\nprint('slept')", Duration::from_millis(50))
+            .run(
+                "main",
+                "while not os.path.exists(go):\n    time.sleep(0.01)\nprint('slept')",
+                Duration::from_millis(50),
+            )
             .unwrap(),
     );
     assert!(!parked);
     assert_eq!(r.lanes.detach(&cell).unwrap(), None);
-    let end = r.ends.recv_timeout(Duration::from_secs(10)).unwrap();
+    std::fs::write(&go, "").unwrap();
+    let end = r.ends.recv_timeout(HANG_GUARD).unwrap();
     assert_eq!(end.cell, cell);
     assert_eq!(end.outcome.unwrap().stdout, "slept\n");
     // Detaching a cell that already ended hands back its outcome instead.
+    std::fs::remove_file(&go).unwrap();
     let (cell, _) = running(
         r.lanes
-            .run("main", "time.sleep(0.2)\n'late'", Duration::from_millis(20))
+            .run(
+                "main",
+                "while not os.path.exists(go):\n    time.sleep(0.01)\n'late'",
+                Duration::from_millis(20),
+            )
             .unwrap(),
     );
-    std::thread::sleep(Duration::from_millis(600));
+    std::fs::write(&go, "").unwrap();
+    wait_until("the late cell ends", || r.lanes.list()[0]["cell"].is_null());
     let late = r.lanes.detach(&cell).unwrap().unwrap().unwrap();
     assert_eq!(late.result.unwrap(), "'late'");
     // Over budget and cancelled: a cell not parked on the host is ended by killing its kernel; the next cell starts
@@ -274,7 +306,7 @@ fn delegation_cell_outliving_its_budget_detaches_or_cancels() {
     let pid = r.lanes.kernel("main").unwrap().pid().unwrap();
     let (cell, _) = running(
         r.lanes
-            .run("main", "time.sleep(60)", Duration::from_millis(50))
+            .run("main", "time.sleep(3600)", Duration::from_millis(50))
             .unwrap(),
     );
     let (lanes, id) = (r.lanes.clone(), cell.clone());
@@ -283,7 +315,8 @@ fn delegation_cell_outliving_its_budget_detaches_or_cancels() {
         .join()
         .unwrap()
         .unwrap();
-    assert!(started.elapsed() < Duration::from_secs(15));
+    // Killed after the grace period, not after the cell's hour-long sleep.
+    assert!(started.elapsed() < HANG_GUARD);
     assert_eq!(cancelled.unwrap_err(), "stop");
     assert!(r.ends.recv_timeout(Duration::from_millis(100)).is_err());
     assert_eq!(ok(&r.lanes, "main", "'y' in globals()").result.unwrap(), "False");

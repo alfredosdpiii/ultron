@@ -164,7 +164,7 @@ impl Mock {
 
     /// Wait until the naming call reached the server.
     fn wait_title_request(&self) {
-        let deadline = Instant::now() + Duration::from_secs(30);
+        let deadline = Instant::now() + Duration::from_secs(120);
         while self.title_requests.load(Ordering::SeqCst) == 0 {
             assert!(Instant::now() < deadline, "no naming request");
             std::thread::sleep(Duration::from_millis(10));
@@ -390,7 +390,7 @@ impl Tui {
 
     /// Wait until the screen shows `text`, then until it is unchanged for 400 ms; returns it.
     fn wait(&self, text: &str) -> String {
-        let deadline = Instant::now() + Duration::from_secs(30);
+        let deadline = Instant::now() + Duration::from_secs(120);
         let mut screen = self.capture();
         while !screen.contains(text) {
             assert!(Instant::now() < deadline, "timed out waiting for {text:?}:\n{screen}");
@@ -413,8 +413,18 @@ impl Tui {
 impl Drop for Tui {
     fn drop(&mut self) {
         self.tmux(&["kill-server"]);
-        // The binary flushes its session file and stops its kernel when its terminal closes.
-        std::thread::sleep(Duration::from_millis(200));
+        // The binary flushes its session file and stops its kernel when its terminal closes: wait for every
+        // process of this root to be gone (a hang guard of 120 s).
+        let deadline = Instant::now() + Duration::from_secs(120);
+        let pattern = self.root.display().to_string();
+        while Instant::now() < deadline
+            && Command::new("pgrep")
+                .args(["-f", &pattern])
+                .output()
+                .is_ok_and(|o| o.status.success())
+        {
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 }
 
@@ -534,7 +544,7 @@ fn cli_interactive_first_frame_beats_typescript_startup() {
     let mut best = u128::MAX;
     for _ in 0..3 {
         let tui = Tui::start(mock.port, 100, 30, &["--model", "anthropic/claude-sonnet-4-5"], &[]);
-        let deadline = Instant::now() + Duration::from_secs(30);
+        let deadline = Instant::now() + Duration::from_secs(120);
         while !tui.capture().contains("ultron v") {
             assert!(Instant::now() < deadline, "no first frame");
             std::thread::sleep(Duration::from_millis(5));
@@ -744,7 +754,7 @@ fn cli_interactive_resume_lists_this_directory_with_names() {
         tui.send_text("/resume");
         tui.send_keys(&["Enter"]);
         let screen = tui.wait("Resume Session");
-        assert!(screen.contains("→ beta prompt"), "{screen}");
+        assert!(screen.contains("› beta prompt"), "{screen}");
         assert!(screen.contains("  Named one"), "{screen}");
         assert!(!screen.contains("elsewhere") && !screen.contains("Foreign"), "{screen}");
         tui.send_keys(&["Down", "Enter"]);
@@ -808,7 +818,8 @@ fn cli_interactive_copy_sends_last_assistant_text_to_the_terminal_clipboard() {
         100,
         30,
         &["--model", "anthropic/claude-sonnet-4-5"],
-        &[("ULTRON_AUTO_NAME", "off")],
+        // The TypeScript `/copy` (with the overlays on, `/copy` opens the picker: interactive_overlays.rs).
+        &[("ULTRON_AUTO_NAME", "off"), ("ULTRON_TUI_PARITY", "1")],
     );
     tui.wait("Session:");
     tui.tmux(&["set-option", "-s", "set-clipboard", "on"]);

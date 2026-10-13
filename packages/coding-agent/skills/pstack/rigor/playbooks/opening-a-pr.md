@@ -9,32 +9,37 @@ start a fresh worktree, apply it there. A snarled worktree: start again from mai
 
 **Commits.** Commit liberally, staging explicit paths. Rebase into small, ordered commits before the PR. Each commit is
 a future PR: landable, ordered to tell the story. Amend when the fix belongs in the commit just made; a new commit when
-separable.
+separable. Commit bodies don't restate the subject.
 
 **Before the PR.** Strip slop from the diff, then `../no-comments/SKILL.md`. Run `/review` on the diff (or
 `r = await review_api.run(rlm, "main")` after `import review_api`, then `print(r.report)`) and fix what holds up. Write
-the title, description and commit bodies with `../technical-writing/SKILL.md`, then `../unslop/SKILL.md`. Use one word
-for each action, keep articles, prefer a plain verb over `-ing`.
+the title, description and commit bodies with `../technical-writing/SKILL.md` (every layer except Diátaxis, and the STE
+vocabulary rules: one word per action, keep articles, a plain verb over `-ing` where one works), then
+`../unslop/SKILL.md`.
 
 **Titles.** Conventional Commits, `type(scope): subject`, unless the repo uses another form: `feat`, `fix`, `docs`,
 `refactor`, `test`, `chore` or `perf`; the changed area as scope; a short imperative subject naming a real symbol when
 one carries the change; no trailing period.
 
-**Descriptions.** The body is a briefing, not the lab notebook. A reviewer with the diff learns why the change exists,
-what it leaves out, what it could break and how you proved it, in under a minute. Short sentences, few identifiers,
-under about 40 lines (it becomes the squash commit body). `##` headings, in this order, each dropped when empty:
+**Descriptions.** The body is a one-minute briefing, not a lab notebook, for a reviewer who has the diff. It says why
+the change exists, what it leaves out, what it could break and how you proved it. Short sentences, few identifiers, no
+walls of text, under about 40 lines (it becomes the squash commit body). `##` headings, not bold lead-ins, in this
+order, each dropped when empty:
 
-- `## Why`: the problem and the approach in one to three sentences. No SHAs, no rebase genealogy.
+- `## Why`: the problem and the approach in one to three sentences. No SHAs, rebase genealogy or "based on main"
+  preamble.
 - `## What changed`: one to three bullets. Name a symbol or path only when it carries the change; both sides of a rename.
-- `## Scope`: what the PR covers and what it deliberately leaves out. One to three items.
-- `## Tradeoffs`: only rejected alternatives a reviewer would ask about.
+- `## Scope`: always. One to three items on what the PR covers and what it deliberately leaves out (a follow-up, a known
+  gap). No symbols, paths or file-by-file essay.
+- `## Tradeoffs`: only rejected alternatives a reviewer would ask about. Skip it when there was no real choice.
 - `## Blast Radius`: one or two sentences on who or what it touches and why that is safe or risky. If main is red, the
   cost of leaving it red.
 - `## Verification`: one to three bullets, each a real run and its outcome. For perf, one primary number as
-  `before → after` with its unit; link the arena or swarm directory for the rest.
+  `before → after` with its unit; link the arena or swarm directory for the rest. No sample-size methodology, lane
+  recitals or metric tables.
 
-Attach screenshots or recordings when they prove a claim. No full SHAs, lane recitals, file-by-file checklists or
-"CLEAN" verdicts; put such detail in a linked artifact. A commit body does not restate its subject.
+Attach screenshots or recordings when they prove a claim. Full SHAs, lane recitals, file-by-file checklists and
+"CLEAN" verdicts go in a linked artifact, not the body.
 
 **Forge.** GitHub through `gh` via `bash`. Write bodies to a file and pass `--body-file`.
 

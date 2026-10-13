@@ -15,6 +15,10 @@ const A: &str = "00000000-0000-4000-8000-00000000000a";
 const B: &str = "00000000-0000-4000-8000-00000000000b";
 const C: &str = "00000000-0000-4000-8000-00000000000c";
 
+/// Handshake and probe timeouts that must not fire while the peer answers: a hang guard, so a loaded machine slows
+/// these tests down instead of timing a live peer out.
+const PATIENT: Duration = Duration::from_secs(120);
+
 struct Echo;
 
 impl ServerServices for Echo {
@@ -30,9 +34,13 @@ impl ServerServices for Echo {
 }
 
 fn start(dir: &Path, server_id: &str) -> UnixServer {
+    start_with(dir, server_id, PATIENT)
+}
+
+fn start_with(dir: &Path, server_id: &str, handshake: Duration) -> UnixServer {
     let path = unix_socket_path(server_id, dir).expect("path");
     let config = ServerConfig::new(server_id, 1 << 24).expect("config");
-    UnixServer::start(&path, config, Duration::from_millis(200), || Echo).expect("start")
+    UnixServer::start(&path, config, handshake, || Echo).expect("start")
 }
 
 fn call(service: &str, args: Vec<Value>) -> Value {
@@ -91,7 +99,8 @@ fn client_carries_handshake_and_requests_over_a_real_unix_socket() {
 #[test]
 fn client_server_handshake_timeout_sends_a_final_hello_error() {
     let temp = tempfile::tempdir().expect("temp");
-    let server = start(temp.path(), A);
+    // The handshake timeout is the input here: the client never says hello.
+    let server = start_with(temp.path(), A, Duration::from_millis(200));
     let mut stream = UnixStream::connect(server.path()).expect("connect");
     let mut bytes = Vec::new();
     stream.read_to_end(&mut bytes).expect("server closes");
@@ -135,7 +144,7 @@ fn client_server_refuses_live_listeners_and_regular_files_but_replaces_stale_soc
 
     drop(UnixListener::bind(&path).expect("stale bind"));
     assert!(path.exists(), "a dropped listener leaves a stale socket");
-    let server = UnixServer::start(&path, config, Duration::from_secs(1), || Echo).expect("replaces stale socket");
+    let server = UnixServer::start(&path, config, PATIENT, || Echo).expect("replaces stale socket");
     Client::connect(UnixStream::connect(&path).expect("connect"), A).expect("handshake");
     server.close().expect("close");
 }
@@ -167,24 +176,30 @@ fn client_discovery_returns_reachable_servers_in_id_order_and_never_deletes() {
     // A socket named for one server that answers as another is not that server.
     let impostor = unix_socket_path("00000000-0000-4000-8000-0000000000ee", dir).expect("path");
     let config = ServerConfig::new(A, 1 << 24).expect("config");
-    let _impostor = UnixServer::start(&impostor, config, Duration::from_secs(1), || Echo).expect("start");
+    let _impostor = UnixServer::start(&impostor, config, PATIENT, || Echo).expect("start");
     let stale = unix_socket_path("00000000-0000-4000-8000-0000000000ff", dir).expect("path");
     drop(UnixListener::bind(&stale).expect("stale"));
-    // Accepts connections (backlog) but never answers: times out.
-    let silent_path = unix_socket_path("00000000-0000-4000-8000-0000000000dd", dir).expect("path");
-    let _silent = UnixListener::bind(&silent_path).expect("silent");
 
-    let routes = discover_unix_servers(dir, Duration::from_millis(150)).expect("discover");
+    let routes = discover_unix_servers(dir, PATIENT).expect("discover");
     let expected = [A, B].map(|id| UnixServerRoute {
         server_id: id.into(),
         path: dir.join(format!("{id}.sock")),
     });
     assert_eq!(routes, expected.to_vec());
-    assert!(
-        stale.exists() && silent_path.exists(),
-        "discovery never deletes endpoints"
-    );
+    assert!(stale.exists(), "discovery never deletes endpoints");
     drop((a, b));
+}
+
+#[test]
+fn client_discovery_omits_a_silent_endpoint_after_the_probe_timeout() {
+    // Alone in its directory, so the short probe timeout (the input) can only ever drop this endpoint.
+    let temp = tempfile::tempdir().expect("temp");
+    // Accepts connections (backlog) but never answers: times out.
+    let silent_path = unix_socket_path("00000000-0000-4000-8000-0000000000dd", temp.path()).expect("path");
+    let _silent = UnixListener::bind(&silent_path).expect("silent");
+    let routes = discover_unix_servers(temp.path(), Duration::from_millis(150)).expect("discover");
+    assert_eq!(routes, vec![]);
+    assert!(silent_path.exists(), "discovery never deletes endpoints");
 }
 
 #[test]
@@ -230,7 +245,7 @@ fn client_discovery_propagates_non_version_handshake_errors() {
         let reply = protocol::encode_server_message(&protocol::ServerMessage::HelloError { error }, 1 << 24);
         stream.write_all(&reply.expect("frame")).expect("write");
     });
-    let error = discover_unix_servers(temp.path(), Duration::from_secs(1)).expect_err("not a stale endpoint");
+    let error = discover_unix_servers(temp.path(), PATIENT).expect_err("not a stale endpoint");
     assert_eq!(error.to_string(), "internal_error: Internal server error");
     peer.join().expect("peer");
 }

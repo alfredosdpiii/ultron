@@ -15,7 +15,7 @@ Endpoints (any path prefix before /v1/default/banks/ is accepted, so a base URL 
 Control (not logged): GET /__log (every request received, raw), POST /__reset (clear log and banks).
 
 Some bank names misbehave on purpose: fail-500, redirect, slow, slow-body, big, big-chunked, bad-json, empty,
-no-content, big-slow, flaky-bank (its first PUT answers 503).
+no-content, big-slow (the slow ones stall STALL seconds), flaky-bank (its first PUT answers 503).
 """
 
 import json
@@ -31,6 +31,9 @@ log = []
 banks = {}
 puts = {}
 MARK = "/v1/default/banks/"
+# How long the slow banks stall: far beyond any client timeout or abort in the scenarios, so a loaded machine never
+# lets a stalled answer arrive first.
+STALL = 30
 
 
 def bank_state(name):
@@ -98,7 +101,7 @@ class Handler(BaseHTTPRequestHandler):
         if bank == "redirect":
             return self.reply(302, {}, headers=[("location", "/v1/default/banks/ultron" + sub)])
         if bank == "slow":
-            time.sleep(1.5)
+            time.sleep(STALL)
             return self.reply(200, {"results": []})
         if bank == "slow-body":
             self.send_response(200)
@@ -107,7 +110,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'{"results": [')
             self.wfile.flush()
-            time.sleep(1.5)
+            time.sleep(STALL)
             self.wfile.write(b"]}" + b" " * 25)
             return None
         if bank == "big-slow":
@@ -117,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'{"results": [')
             self.wfile.flush()
-            time.sleep(1.5)
+            time.sleep(STALL)
             self.wfile.write(b" " * 4987)
             return None
         if bank == "big":

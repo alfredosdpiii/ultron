@@ -1,5 +1,6 @@
 // Records the TypeScript `ultron --mode rpc` against a scripted Anthropic SSE server: each case sends JSONL commands
-// one step at a time (a step waits for the lines it names before the next is sent), then closes stdin and records
+// one step at a time (a step waits for the lines it names before the next is sent, then creates its `touch` file in the
+// working directory), then closes stdin and records
 // every stdout line, the provider requests, the exit code and the session files left (format-4 journals, normalized
 // by journal.mjs). Ids, timestamps and temp paths are normalized.
 // Usage: node crates/cli/fixtures/rpc_mode.mjs
@@ -111,6 +112,8 @@ async function run(c) {
 				setTimeout(r, 50);
 			});
 		}
+		// `touch`: create this file in the working directory once the step is done (a readiness signal for a cell).
+		if (step.touch) writeFileSync(join(cwd, step.touch), "");
 	}
 	child.stdin.end();
 	const code = await closed;
@@ -312,12 +315,18 @@ export const cases = [
 	{
 		name: "steer-follow-up-while-running",
 		args: MODEL,
-		replies: [toolReply("toolu_10", "import time\ntime.sleep(2)\n'slept'"), textReply("first done"), textReply("follow done")],
+		// The cell runs until the client has queued its steer and follow-up (`touch`), not for a fixed time: a 2 s sleep
+		// could end first on a loaded machine.
+		replies: [
+			toolReply("toolu_10", "import os, time\nwhile not os.path.exists('queued'):\n    time.sleep(0.01)\n'slept'"),
+			textReply("first done"),
+			textReply("follow done"),
+		],
 		steps: [
 			{ command: { id: "p1", type: "prompt", message: "sleep" }, wait: ["response", "tool_execution_start"] },
 			{ command: { id: "p2", type: "prompt", message: "not now" } },
 			{ command: { id: "st", type: "steer", message: "steer me" } },
-			{ command: { id: "fu", type: "prompt", message: "then this", streamingBehavior: "followUp" } },
+			{ command: { id: "fu", type: "prompt", message: "then this", streamingBehavior: "followUp" }, touch: "queued" },
 			{ command: { id: "gs", type: "get_state" }, wait: ["response", "agent_settled"] },
 			{ command: { id: "m1", type: "get_messages" } },
 		],

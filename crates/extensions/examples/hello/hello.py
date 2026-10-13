@@ -1,7 +1,8 @@
 """A tiny Ultron extension process (crates/extensions/PROTOCOL.md), standard library only.
 
 Registers:
-  functions  greet(name), slow(seconds), cancelled(), crash(), info(), shout(channel, data)
+  functions  greet(name), slow(seconds), cancelled(), crash(), info() (running: slow calls in flight),
+             shout(channel, data)
   command    /hello            asks ui/select, then sets a status line and a panel
   events     session_before_switch (vetoes "resume"), tool_call (blocks "rm -rf"), input ("hi" -> "hello"),
              session_start (status line), turn_start (exits when HELLO_CRASH_ON_TURN matches), ui_prompt_start / ui_prompt_end (recorded)
@@ -21,6 +22,7 @@ _pending = {}
 _pending_lock = threading.Lock()
 _next_id = [1]
 _cancelled = set()
+_running = set()
 _seen = {"prompts": [], "bus": [], "restart": None, "session": None}
 
 
@@ -61,18 +63,22 @@ def call_function(request_id, name, args):
     if name == "greet":
         return text("Hello, %s!" % args.get("name", "world"))
     if name == "slow":
-        deadline = time.monotonic() + float(args.get("seconds", 1))
-        while time.monotonic() < deadline:
-            if request_id in _cancelled:
-                return text("stopped")
-            time.sleep(0.01)
-        return text("slept")
+        _running.add(request_id)
+        try:
+            deadline = time.monotonic() + float(args.get("seconds", 1))
+            while time.monotonic() < deadline:
+                if request_id in _cancelled:
+                    return text("stopped")
+                time.sleep(0.01)
+            return text("slept")
+        finally:
+            _running.discard(request_id)
     if name == "cancelled":
         return {"content": [], "details": sorted(_cancelled)}
     if name == "crash":
         os._exit(3)
     if name == "info":
-        return {"content": [], "details": {"pid": os.getpid(), **_seen}}
+        return {"content": [], "details": {"pid": os.getpid(), "running": sorted(_running), **_seen}}
     if name == "shout":
         notify("bus/emit", {"channel": args["channel"], "data": args.get("data")})
         return text("sent")

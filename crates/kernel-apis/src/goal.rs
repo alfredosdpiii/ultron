@@ -8,8 +8,14 @@
 //!   completion is recorded as unverified. `goal.blocked` needs BLOCK_MIN_CHECKS checks when there is a check command.
 //!   STUCK_CHECKS identical failing checks in a row pause the goal (and stop its job shortly after the reply).
 //! - A job that ends while the goal is active starts again only if its run changed the check result
-//!   ([`GoalDriver::task_ended`]); otherwise the goal pauses. A job does not survive a restart: an active goal whose
-//!   job was running loads as paused.
+//!   ([`GoalDriver::task_ended`]); otherwise the goal pauses.
+//! - Durable (Rust): a goal's job is a task on the task journal, started with the idempotent key `<goal id>:<run>`.
+//!   When the worker reopens ([`GoalDriver::recover`]) the goal is reconciled with the journal through
+//!   [`GoalJobs::job_state`] and [`GoalJobs::job_with_key`]: a run admitted but not yet recorded is adopted, a job
+//!   still running is kept, a job the restart interrupted is followed by the next run (the goal stays active), and a
+//!   job that ended while no worker ran is settled as [`GoalDriver::task_ended`] would have. Checks, the stuck count
+//!   and progress are in the goal document, written with every change. A worker whose `GoalJobs` keeps no journal
+//!   (`job_state` is `None`) behaves as TypeScript: an active goal whose job was running loads as paused.
 //!
 //! The document `{version: 1, goal}` is the session value `ultron.module/goal`. Requests and commands run one at a
 //! time (TS interleaves `goal.*` requests with commands; only their order of effects matters here).
@@ -44,6 +50,24 @@ pub struct GoalCheckResult {
     pub output: String,
 }
 
+/// What the task journal says about a goal job.
+#[derive(Clone, Debug, PartialEq)]
+pub enum JobState {
+    /// Admitted and not ended (it runs under this worker).
+    Running,
+    /// Ended, with its durable result (`NativeResult`; `status: "interrupted"` when a restart cut it off).
+    Ended(Value),
+}
+
+/// The task host's error for work it stopped because it closed (`HOST_CLOSED` of native-host.ts).
+pub const HOST_CLOSED: &str = "Ultron task host closed";
+
+/// A job result that says the worker went away under the run (a restart interrupted it, or its host closed), not
+/// that the run itself ended.
+fn cut_off(result: &Value) -> bool {
+    result["status"] == "interrupted" || (result["status"] == "cancelled" && result["error"] == HOST_CLOSED)
+}
+
 /// What the driver needs from its worker: run the check in the session's working directory, start and stop the
 /// goal's background job, and name the lane a job runs on.
 pub trait GoalJobs: Send + Sync {
@@ -52,6 +76,14 @@ pub trait GoalJobs: Send + Sync {
     fn start_job(&self, prompt: &str, key: &str, usage_root: &str, signal: &Signal) -> Result<String, String>;
     fn stop_job(&self, task_id: &str, reason: &str) -> Result<(), String>;
     fn lane_of_job(&self, task_id: &str) -> Option<String>;
+    /// The journal's state of a job task; `None` when the worker keeps no task journal.
+    fn job_state(&self, _task_id: &str) -> Option<JobState> {
+        None
+    }
+    /// The task admitted with `key`, if any.
+    fn job_with_key(&self, _key: &str) -> Option<String> {
+        None
+    }
 }
 
 fn regexes() -> &'static [(Regex, &'static str); 3] {
@@ -297,20 +329,63 @@ impl GoalDriver {
         }
         state.loaded = true;
         let saved = read_versioned("ultron.module/goal", self.store.read()?, "version")?;
-        let mut goal = saved.and_then(|saved| saved.get("goal").filter(|goal| goal.is_object()).cloned());
-        // A job does not outlive the worker that ran it: an active goal whose job was running is paused.
-        if let Some(goal) = goal.as_mut()
-            && goal["status"] == "active"
-            && !goal["job"].is_null()
-        {
-            goal["job"] = Value::Null;
-            goal["status"] = "paused".into();
-            goal["reason"] = "Ultron restarted while the goal job ran; /goal resume continues".into();
-        }
+        let goal = saved.and_then(|saved| saved.get("goal").filter(|goal| goal.is_object()).cloned());
         if state.goal.is_none() {
             state.goal = goal;
         }
+        self.reconcile(state);
         Ok(())
+    }
+
+    /// Reconciles an active goal with the task journal after a reopen (see the module docs).
+    fn reconcile(&self, state: &mut State) {
+        let Some(goal) = state.goal.as_mut().filter(|goal| goal["status"] == "active") else {
+            return;
+        };
+        let mut changed = false;
+        if goal["job"].is_null() {
+            // An active goal without a job was starting a run when the worker died: the run is written before it is
+            // admitted, so its key names the task if the admission happened.
+            let key = format!("{}:{}", text_of(goal, "id"), int_of(goal, "runs"));
+            match self.jobs.job_with_key(&key) {
+                Some(task) => {
+                    goal["job"] = task.into();
+                    changed = true;
+                }
+                None => {
+                    self.start_job(state, &Signal::new());
+                    return;
+                }
+            }
+        }
+        let Some(job) = goal["job"].as_str().map(str::to_string) else {
+            return;
+        };
+        match self.jobs.job_state(&job) {
+            Some(JobState::Running) => {
+                if changed {
+                    self.persist(state);
+                }
+            }
+            Some(JobState::Ended(result)) if cut_off(&result) => {
+                // The worker going away cut the run off, not the job's own work: the goal goes on with its next run.
+                goal["job"] = Value::Null;
+                goal["last_answer"] = "The previous run was interrupted when Ultron restarted; continue from the goal's state and the files.".into();
+                self.start_job(state, &Signal::new());
+            }
+            Some(JobState::Ended(result)) => self.job_ended(state, &job, Some(&result)),
+            None => {
+                // No journal: a job does not outlive the worker that ran it, so the goal pauses (TypeScript).
+                goal["job"] = Value::Null;
+                goal["status"] = "paused".into();
+                goal["reason"] = "Ultron restarted while the goal job ran; /goal resume continues".into();
+            }
+        }
+    }
+
+    /// Loads the goal and reconciles it with the task journal (the worker's open); returns it.
+    pub fn recover(&self) -> Result<Option<Value>, String> {
+        self.get()
     }
 
     /// Writes the document; as in TS a failed write does not fail the operation.
@@ -341,6 +416,10 @@ impl GoalDriver {
         goal["updated_at"] = now.into();
         let id = text_of(goal, "id");
         let key = format!("{id}:{}", goal["runs"]);
+        // The run is durable before its task is admitted, so a reopen finds the task by this key.
+        goal["job"] = Value::Null;
+        self.persist(state);
+        let goal = state.goal.as_mut().expect("a goal");
         match self.jobs.start_job(
             &goal_brief(goal),
             &key,
@@ -466,12 +545,17 @@ impl GoalDriver {
         let mut guard = lock(&self.state);
         let state = &mut *guard;
         self.load(state)?;
+        self.job_ended(state, task_id, result);
+        Ok(())
+    }
+
+    fn job_ended(&self, state: &mut State, task_id: &str, result: Option<&Value>) {
         let now = self.now();
         let Some(goal) = state.goal.as_mut() else {
-            return Ok(());
+            return;
         };
         if state.closed || goal["job"] != task_id {
-            return Ok(());
+            return;
         }
         goal["job"] = Value::Null;
         let answer = match result.map(|result| (&result["value"], result.get("error"))) {
@@ -489,18 +573,17 @@ impl GoalDriver {
         goal["updated_at"] = now.into();
         if goal["status"] != "active" {
             self.persist(state);
-            return Ok(());
+            return;
         }
         if goal["run_progress"] == true {
             self.start_job(state, &Signal::new());
-            return Ok(());
+            return;
         }
         self.set_status(
             state,
             "paused",
             Some("the goal job ended without progress; /goal resume continues"),
         );
-        Ok(())
     }
 
     fn run_check(&self, state: &mut State) -> Result<Value, String> {
@@ -659,5 +742,67 @@ impl ApiModule for GoalDriver {
 
     fn handle(&self, request: &Request<'_>) -> Result<Value, String> {
         self.handle_request(request.kind, request.payload, request.lane)
+    }
+}
+
+/// [`GoalJobs`] over the worker's task journal and shell: a goal job is a `background-job@1` task admitted through
+/// [`TaskHost::spawn`] with the goal's run key, and a check is the host's blocking `bash`.
+pub struct TaskGoalJobs {
+    tasks: Arc<dyn crate::TaskHost>,
+    shell: Arc<dyn kernel::HostHandler>,
+}
+
+impl TaskGoalJobs {
+    pub fn new(tasks: Arc<dyn crate::TaskHost>, shell: Arc<dyn kernel::HostHandler>) -> TaskGoalJobs {
+        TaskGoalJobs { tasks, shell }
+    }
+
+    fn task(&self, matches: impl Fn(&Value) -> bool) -> Option<Value> {
+        self.tasks.tasks().ok()?.into_iter().find(matches)
+    }
+}
+
+impl GoalJobs for TaskGoalJobs {
+    fn run_check(&self, command: &str, timeout_seconds: u64) -> Result<GoalCheckResult, String> {
+        let mut payload = Map::new();
+        payload.insert("command".into(), command.into());
+        payload.insert("timeout".into(), timeout_seconds.into());
+        let reply = self.shell.handle("bash", payload, &Signal::new())?;
+        Ok(GoalCheckResult {
+            exit_code: reply["exit_code"].as_i64(),
+            timed_out: reply["timed_out"] == true,
+            output: reply["output"].as_str().unwrap_or_default().to_string(),
+        })
+    }
+
+    /// The usage root is not passed: [`TaskHost::spawn`] charges the job to its admission root.
+    fn start_job(&self, prompt: &str, key: &str, _usage_root: &str, signal: &Signal) -> Result<String, String> {
+        let request = json!({"definition": "background-job@1", "input": {"prompt": prompt}, "key": key});
+        let task = self.tasks.spawn(&request, None, signal)?;
+        task["id"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| "the task host returned no task id".into())
+    }
+
+    fn stop_job(&self, task_id: &str, reason: &str) -> Result<(), String> {
+        self.tasks.cancel(task_id, reason).map(|_| ())
+    }
+
+    fn lane_of_job(&self, task_id: &str) -> Option<String> {
+        self.tasks.task_lane(task_id)
+    }
+
+    fn job_state(&self, task_id: &str) -> Option<JobState> {
+        let task = self.task(|task| task["id"] == task_id)?;
+        Some(match task.get("result").filter(|result| !result.is_null()) {
+            Some(result) => JobState::Ended(result.clone()),
+            None => JobState::Running,
+        })
+    }
+
+    fn job_with_key(&self, key: &str) -> Option<String> {
+        self.task(|task| task["key"] == key)
+            .and_then(|task| task["id"].as_str().map(str::to_string))
     }
 }

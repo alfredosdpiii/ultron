@@ -43,6 +43,7 @@ fn model(id: &str) -> ModelInfo {
         name: id.into(),
         reasoning: true,
         context_window: 200_000,
+        thinking_levels: Vec::new(),
     }
 }
 

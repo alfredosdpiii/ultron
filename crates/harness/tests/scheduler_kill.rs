@@ -319,12 +319,14 @@ fn child_main(backend: &str, dir: &Path) {
         "hold:owner2",
         "hold:inner2",
     ];
-    eventually(|| {
+    // No deadline of its own: the parent bounds the whole child and kills it (a 10 s `eventually` here panicked
+    // under a loaded `cargo test --workspace` before the effects ran, and the child exited early).
+    until(|| {
         let seen = lines(&effects);
         expected.iter().all(|line| seen.iter().any(|each| each == line))
     });
     let id = |key: &str| TaskId(ids[key].as_u64().unwrap());
-    eventually(|| harness.get_task(id("owner2")).unwrap().unwrap().state.status() == TaskStatus::Completing);
+    until(|| harness.get_task(id("owner2")).unwrap().unwrap().state.status() == TaskStatus::Completing);
     let owner = id("owner");
     *freeze_after.lock().unwrap() = Some(owner);
     harness
@@ -340,6 +342,13 @@ fn child_main(backend: &str, dir: &Path) {
     append(&dir.join("acked.log"), "mark");
     loop {
         std::thread::sleep(Duration::from_secs(60));
+    }
+}
+
+/// Poll until `check` holds; the child's caller (the parent test) owns the deadline.
+fn until(mut check: impl FnMut() -> bool) {
+    while !check() {
+        std::thread::sleep(Duration::from_millis(2));
     }
 }
 
@@ -364,13 +373,19 @@ fn kill_and_recover(backend: &str) {
         .env(CHILD_ENV, backend)
         .env("ULTRON_HARNESS_KILL_DIR", dir.path())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::fs::File::create(dir.path().join("child.stderr")).unwrap())
         .spawn()
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let stderr = || std::fs::read_to_string(dir.path().join("child.stderr")).unwrap_or_default();
+    let deadline = Instant::now() + Duration::from_secs(120);
     while !(dir.path().join("ready").exists() && dir.path().join("acked.log").exists()) {
-        assert!(Instant::now() < deadline, "child never reached the kill point");
-        assert!(child.try_wait().unwrap().is_none(), "child exited early");
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            panic!("child never reached the kill point; its stderr:\n{}", stderr());
+        }
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("child exited early ({status}); its stderr:\n{}", stderr());
+        }
         std::thread::sleep(Duration::from_millis(5));
     }
     // SIGKILL mid-phase: handlers are blocked in their effects and the cascade commit is in flight.
@@ -455,6 +470,7 @@ fn kill_and_recover(backend: &str) {
     assert_eq!(abandoned.abort_reason, Some(durable::AbortReason::Restart));
     // The `completing` hold is re-derived: the completed owner waits for its live owned work.
     eventually(|| lines(&effects).iter().filter(|line| *line == "hold:inner2").count() == 2);
+    // Settle, then check the owner is still completing: a slow machine can only let this pass wrongly.
     support::flush();
     assert_eq!(
         harness.get_task(id("owner2")).unwrap().unwrap().state.status(),

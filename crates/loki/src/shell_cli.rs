@@ -39,21 +39,9 @@ fn read_payload() -> Result<Value, CheckError> {
 }
 
 fn report(result: Result<Option<String>, CheckError>) -> ExitCode {
-    match result {
-        Ok(None) => ExitCode::SUCCESS,
-        Ok(Some(reason)) => {
-            eprintln!("{reason}");
-            ExitCode::from(2)
-        }
-        Err(CheckError::Value(message)) => {
-            eprintln!("loki: invalid shell input: {message}");
-            ExitCode::from(2)
-        }
-        Err(error) => {
-            eprintln!("loki: {}", error.describe());
-            ExitCode::from(2)
-        }
-    }
+    let (status, stderr) = shell::shell_report(result);
+    eprint!("{stderr}");
+    ExitCode::from(status)
 }
 
 /// Handles `shell`, `shell-writes` and `explain`; `None` for every other command.
@@ -136,12 +124,6 @@ pub fn dispatch(argv: &[String]) -> Option<ExitCode> {
                 shell::shell_violation(&payload["tool_input"]["command"], &root, &cwd)
             }))
         }
-        _ => report(read_payload().and_then(|payload| {
-            let cwd = match payload.get("cwd") {
-                Some(Value::String(s)) if !s.is_empty() => resolve(Path::new(s)),
-                _ => root.clone(),
-            };
-            shell::shell_writes_violation(payload.get("command").unwrap_or(&Value::Null), &root, &cwd)
-        })),
+        _ => report(read_payload().and_then(|payload| shell::shell_writes(&root, &payload, Path::new(".")))),
     })
 }

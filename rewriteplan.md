@@ -152,7 +152,7 @@ and `ultron durable`; crates/session-core as the one session path for print/json
 sessions; client-tui TUI with QoL batches 1 and 2; Pi Durable scheduler; kernel continuity and sandboxed kernels; kernel APIs;
 extensions protocol; Loki in Rust; CLI subcommands. 1325 tests; parity 1310/1364 (remaining: A01-A56 rows).
 
-Running (2026-10-11): durable layer 2 (inbox, cell/generation tasks, one journal, swarm items), durable layer 3 (proactive restart,
+Ran (2026-10-11, since merged): durable layer 2 (inbox, cell/generation tasks, one journal, swarm items), durable layer 3 (proactive restart,
 storage lock, watchdogs, reconnect, signals), acceptance round 2, remaining TUI commands and overlay wiring, Claude Code integration,
 autoreview orchestration, Hindsight backend, flaky-test root causes. Then: release packaging without Node and cutover.
 Session naming (user decisions): -n/--name, /name, -r <name>, -r lists only the current directory, automatic names from one small background model call with a first-prompt fallback.
@@ -328,40 +328,45 @@ Never relabel the TypeScript report as Rust evidence. Review any changed accepta
 Record decisions in [decisions.tsv](docs/rust-rewrite/decisions.tsv). Keep test output and fixture provenance with each phase's evidence.
 Before release, apply the existing release checklist, including `npm run scan:secrets`, and add Rust artifact checks.
 
-## Checkpoint (2026-10-11, all work stopped)
+## Checkpoint (2026-10-13)
 
-Verified in this worktree at the checkpoint:
-- `cargo fmt --check` and `cargo clippy --workspace --all-targets --locked -- -D warnings`: clean.
-- `cargo test --workspace --locked`: 1455 tests; the last full run passed (exit 0). One test fails only under heavy machine load
-  (`cli_rpc_steer_and_follow_up_while_running_match_typescript`; passes alone 3/3); two scheduler tests behave the same way
-  (decisions.tsv "flaky" rows). Root causes not yet fixed.
-- `npm run rust:parity`: 1439 of 1493 ledger rows verified. Missing rows are A01-A56 acceptance behaviors (A02, A10, A27 verified).
-- `npm run check`: clean. `./test.sh` and `npm run test:acceptance` were not rerun after `runtime.py` changed; 44 + 39 focused
-  TypeScript kernel tests passed against the new `runtime.py`.
+Verified in this worktree at the checkpoint (all cargo runs through ../ultron-rust-wt/tools/cargo.sh, one job at a time):
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`: clean.
+- `cargo test --workspace --locked --no-fail-fast`: all 321 test binaries pass (exit 0).
+- Parity: the last run reported 1716 of 1750 ledger rows verified; 35 rows were added since (registry, Claude fallback, P4,
+  lexer, durable live path) and not rerun. Acceptance (crates/acceptance/COVERAGE.md): 28 of 56 rows verified.
+- `npm run check` clean at the last skills change; `./test.sh` and `npm run test:acceptance` not rerun.
 
-Working through the Rust binary: `ultron` interactive (client-tui parity plus omp-inspired QoL), `-p`, `--mode json`, `--mode rpc`,
-all as clients of the Rust session daemon (coordinator, server generations, supervised workers) on one session path
-(`crates/session-core`); format-4 journals readable by the TypeScript product; named sessions with model-made titles; per-project
-instances and `ultron durable`; sandboxed kernels with crash continuity; kernel APIs, delegation lanes, rlm.infer/map, extensions
-(ext.* functions, never model tools); Hindsight memory shared by all instances; Loki in Rust; most subcommands; all providers.
+Done since 2026-10-11:
+- Durable generation is the live path: every root turn runs in `harness::chat` (session-core turns.rs, durable_store.rs);
+  kill-point tests (model call, cell, steer, follow-up, after commit, two conversations) on the real daemon. Subagents are
+  durable child conversations; typed agents, artifacts, usage ledger and model check wired in the composition root.
+- P4: schedule tick, goals and shell jobs as durable tasks (kernel-apis durable_work.rs, host jobs journal).
+- Definition registry, typed agents, workflows, usage ledger, reconciliation, artifacts (crates/delegation, kernel-apis).
+- Claude: `claude-subscription` (Hermes-style, rlm only) primary, Anthropic API key on Max monthly credits as fallback when
+  the plan's usage limit is hit; subscription tests sealed so no test can reach a real `claude`.
+- TUI round 3: /tree, session selector, /settings, RLM views, reconnect, external editor, /login, /logout, /share,
+  /changelog, /review. Markdown lexer 18x faster in release, output byte-identical.
+- Load discipline: one machine-wide cargo lock with a 90-minute cap; tests wait on events; helper loops bound themselves.
+- Skills: pstack synced to upstream 0.15.21 (+ketchup), Ultron's own debug-unfamiliar, wheresryan's anatomy.
 
-Built and tested as libraries, not yet the product path: the durable conversation runtime (`crates/harness::chat`: inbox, durable
-cells and generation, children as tasks, persistent children, peer messaging, task board), the Pi Durable scheduler.
+Stopped mid-flight (a weekly model limit interrupted them; partial, unmerged, in ../ultron-rust-wt/<name>; merge base _base19
+unless noted; resume from those trees):
+- services: local services and release gates (A07, A14, A15, A19, A20, A32, A33, A34, A46).
+- inspect: session inspector, RPC inspect/export_html, durable frames, import-pi/export-pi (A25, A29, A30, A47, A49, A50).
+- lanes: definitions on named lanes, skills.invoke, verifiers, ContextControl, kernel pool, MASS contracts (A31, A36, A38,
+  A40, A43, A44, A51, A52).
+- durfin: durable leftovers (partial print output, worktree children, queue ordering, RPC restart, /goal, fallback notice,
+  A56 remainder, two flaky tests).
+- review3 [_base18]: rest of autoreview (engine, runner, local/GitHub flows, service, lessons, Python wrappers).
+- claude [_base13]: `ultron claude|mcp|hook|watch|guide` port (older, not resumed).
 
-Stopped mid-flight (partial, unmerged, in ../ultron-rust-wt/<name>; resume from those trees, merge base in brackets):
-- accept2 [_base13]: acceptance round 2 (memory rows A16-A18, A28-A30 have passing `_ported_part` tests; clippy clean).
-- tuicmds [_base13]: remaining TUI commands and overlay wiring.
-- claude [_base13]: `ultron claude|mcp|hook|watch|guide` port.
-- review2 [_base13]: autoreview orchestration.
-- durable-p2 [_base13]: proactive worker restart, storage lock, watchdogs, reconnect, signals.
-- cleanup [_base10]: flaky-test root causes, Loki shell-writes dedupe.
-Tools: ../ultron-rust-wt/tools/{merge.py,gates.sh,integrate.py,auto_rows.py,set_arow.py}; briefs in ../ultron-rust-wt/BRIEF.md.
+Next, in order: finish and merge the stopped workers; remaining acceptance rows; release packaging without Node; cutover.
+Before any release: `npm run scan:secrets` reports 133 findings, all deliberate test fakes or home paths in recorded fixtures
+(Node stack traces in crates/ai/fixtures/{auth,oauth-login}.json and others); normalize the paths and allowlist the fakes.
 
-Next, in order: finish and merge the stopped workers; make `harness::chat` the session path in `crates/session-core`; fix the
-load-only test flakes; remaining acceptance rows; release packaging without Node; cutover.
-
-Needs the user: (1) the Claude launcher passes `--dangerously-skip-permissions` to `claude` (kept for parity); (2) approval before
-the TypeScript product is removed at cutover.
+Needs the user: approval before the TypeScript product is removed at cutover; live runs for A39 (metered provider) and the
+A16 live Hindsight case; Sonnet 5.5 pricing for the model catalog (generate-models.ts, regenerating fetches over the network).
 
 ## Ultron Durable build list (2026-10-11, from the Pi Durable and omp surveys)
 
@@ -392,3 +397,12 @@ Multi-agent work mainly adds context capacity. Adopted for Ultron Durable, all a
 - Shared world: a durable task board and notes document per session that agents read and write as the source of truth.
 - Defaults: delegate after the question is known; summaries point to handles and files; start flat and add hierarchy only where
   coordination cost justifies it.
+
+## Workflow design items (from Sakana "MASS", read 2026-10-12)
+
+- Now (durable runtime work): delegation briefs and workflow definitions carry role, instruction, contract and hop; contracts
+  list boolean checks the host verifies on the child's result (extends verdict/check evidence and typed contracts).
+- Later (after cutover), `workflows.evolve` kernel API: champion/challenger over versioned workflow definitions; pairwise judging
+  aggregated over several runs (Bradley-Terry), never promoting on one win; optimizer and judge pinned to a different model
+  family than the executor; versions with rollback (A20), full attempt history (A33), no change to policy or acceptance tests (A19).
+- Not adopted: weight fine-tuning; team-by-default for coding (MASS showed no coding gain at about 2.4x tokens).

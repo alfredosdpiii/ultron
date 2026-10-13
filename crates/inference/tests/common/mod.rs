@@ -42,10 +42,10 @@ impl Transport for Scripted {
         Box::pin(async move {
             let reply = reply.ok_or("unexpected request")?;
             if let Some(count) = reply["gather"].as_u64() {
-                // Concurrent frames: answer only once `count` requests are in flight (or after 2 s, so a host that
-                // runs them one at a time fails the comparison instead of hanging).
+                // Concurrent frames: answer only once `count` requests are in flight (or after 120 s, a hang guard,
+                // so a host that runs them one at a time fails the comparison instead of hanging).
                 let since = std::time::Instant::now();
-                while (self.bodies.lock().unwrap().len() as u64) < count && since.elapsed().as_secs() < 2 {
+                while (self.bodies.lock().unwrap().len() as u64) < count && since.elapsed().as_secs() < 120 {
                     tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                 }
             }

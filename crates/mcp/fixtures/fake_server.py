@@ -102,11 +102,13 @@ while True:
             send({"jsonrpc": "2.0", "method": "notifications/tools/list_changed"})
             result = {"content": [{"type": "text", "text": "roots done"}]}
         elif name == "progress":
+            # Each wait is under the client's 5 s timeout and both together exceed it, so the call succeeds only when
+            # progress resets the timeout; the seconds of margin keep a loaded machine from tripping it.
             token = params["_meta"]["progressToken"]
-            time.sleep(0.3)
+            time.sleep(3)
             send({"jsonrpc": "2.0", "method": "notifications/progress",
                   "params": {"progressToken": token, "progress": 1, "total": 2, "message": "half"}})
-            time.sleep(0.3)
+            time.sleep(3)
             result = {"content": [{"type": "text", "text": "done"}]}
         else:
             send({"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": "Unknown tool: " + name}})

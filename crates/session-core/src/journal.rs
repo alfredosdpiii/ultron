@@ -2,11 +2,11 @@
 //! with its prompt, each turn's stream is journaled as it arrives, assistant messages and tool results commit as
 //! entries, and the run finishes with its outcome. Print, JSON and RPC runs write the same records.
 
+use crate::op_journal::Run;
 use agent::AgentEvent;
 use ai::Message;
 use serde_json::{Value, json};
 use session_journal::Session;
-use session_journal::run::Run;
 
 /// One run's journal writer. A failed write stops further writes and is reported when the run ends.
 pub struct RunJournal {
@@ -14,6 +14,9 @@ pub struct RunJournal {
     /// The model's `(max_tokens, context_window)`.
     model: (u64, u64),
     error: Option<String>,
+    /// The session's usage ledger counts each response (`recordTurn`) before its entry commits; the journal does
+    /// not count it again.
+    ledger_counts_turns: bool,
 }
 
 impl RunJournal {
@@ -37,7 +40,28 @@ impl RunJournal {
             run,
             model,
             error: None,
+            ledger_counts_turns: false,
         })
+    }
+
+    /// Continue the journal of the open operation `operation_id` (a run the durable runtime resumes).
+    pub fn reopen(session: &Session, operation_id: &str, model: (u64, u64)) -> Result<Self, String> {
+        Ok(RunJournal {
+            run: Some(Run::reopen(session, operation_id)?),
+            model,
+            error: None,
+            ledger_counts_turns: false,
+        })
+    }
+
+    /// Leave counting responses to the usage ledger (see [`RunJournal::event`]).
+    pub fn ledger_counts_turns(&mut self) {
+        self.ledger_counts_turns = true;
+    }
+
+    /// The operation being journaled.
+    pub fn run(&self) -> Option<&Run> {
+        self.run.as_ref()
     }
 
     fn apply(&mut self, session: &mut Session, f: impl FnOnce(&mut Run, &mut Session) -> Result<(), String>) {
@@ -74,8 +98,11 @@ impl RunJournal {
                 message: Message::Assistant(message),
             } => {
                 if let Ok(value) = serde_json::to_value(message) {
+                    let count = !self.ledger_counts_turns;
                     self.apply(session, |run, s| {
-                        run.record_turn(s, &value)?;
+                        if count {
+                            run.record_turn(s, &value)?;
+                        }
                         run.commit_assistant(s, value.clone()).map(|_| ())
                     });
                 }

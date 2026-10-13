@@ -1,10 +1,13 @@
 //! Ported from omp crates/pi-natives/src/tty_writer.rs tests (pipes replaced by in-process writers).
 
 use std::io::{self, ErrorKind, Write};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use tui::tty_writer::*;
+
+mod support;
+use support::latch::{HANG_GUARD, Latch};
 
 #[test]
 fn tui_tty_writer_splits_large_frames_into_bounded_writes() {
@@ -101,10 +104,10 @@ fn tui_tty_writer_writes_in_order_and_drains() {
     let mut w = TtyWriter::new(sink.clone()).unwrap();
     w.write("hello ");
     w.write("world");
-    assert!(w.flush_sync(Duration::from_secs(2)));
+    assert!(w.flush_sync(HANG_GUARD));
     assert_eq!(w.pending(), 0);
     assert_eq!(sink.bytes(), b"hello world");
-    w.stop(Duration::from_secs(1));
+    w.stop(HANG_GUARD);
 }
 
 #[test]
@@ -112,29 +115,32 @@ fn tui_tty_writer_enqueue_never_blocks_and_reports_pending() {
     let sink = Gated::new(false, usize::MAX);
     let mut w = TtyWriter::new(sink.clone()).unwrap();
     let chunk = "x".repeat(256 * 1024);
-    let start = Instant::now();
+    // The terminal never accepts a byte until the gate opens, so an enqueue that waited on it would hang.
     w.write(&chunk);
     let pending = w.write(&chunk);
-    assert!(start.elapsed() < Duration::from_millis(200), "enqueue blocked");
     assert_eq!(pending, 512 * 1024);
     assert!(
         !w.flush_sync(Duration::from_millis(20)),
         "cannot drain while the terminal is stalled"
     );
     sink.set(true);
-    assert!(w.flush_sync(Duration::from_secs(5)));
+    assert!(w.flush_sync(HANG_GUARD));
     assert_eq!(sink.bytes().len(), 512 * 1024);
-    w.stop(Duration::from_secs(1));
+    w.stop(HANG_GUARD);
 }
 
 #[test]
 fn tui_tty_writer_pending_tracks_partial_drain_progress() {
     // The terminal accepts 1000 bytes per write call; pending must shrink as chunks land, not only per batch.
+    // After the first chunk it blocks until the test has observed the partial count, so the pump cannot finish
+    // the whole frame before the test looks.
     #[derive(Clone)]
-    struct Slow(Arc<Mutex<usize>>);
+    struct Slow(Arc<Mutex<usize>>, Latch);
     impl Write for Slow {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            std::thread::sleep(Duration::from_millis(2));
+            if *self.0.lock().unwrap() > 0 {
+                self.1.wait();
+            }
             let n = buf.len().min(1000);
             *self.0.lock().unwrap() += n;
             Ok(n)
@@ -145,20 +151,23 @@ fn tui_tty_writer_pending_tracks_partial_drain_progress() {
     }
     let total = 200_000;
     let counter = Arc::new(Mutex::new(0));
-    let mut w = TtyWriter::new(Slow(counter.clone())).unwrap();
+    let observed = Latch::default();
+    let mut w = TtyWriter::new(Slow(counter.clone(), observed.clone())).unwrap();
     w.write_bytes(&vec![b'x'; total]);
-    let deadline = Instant::now() + Duration::from_secs(5);
+    let deadline = Instant::now() + HANG_GUARD;
     loop {
         let p = w.pending();
         if p > 0 && p < total {
+            assert_eq!(p, total - 1000);
             break;
         }
         assert!(Instant::now() < deadline, "no observable partial progress: {p}");
         std::thread::sleep(Duration::from_millis(5));
     }
-    assert!(w.flush_sync(Duration::from_secs(10)));
+    observed.open();
+    assert!(w.flush_sync(HANG_GUARD));
     assert_eq!(*counter.lock().unwrap(), total);
-    w.stop(Duration::from_secs(1));
+    w.stop(HANG_GUARD);
 }
 
 #[test]
@@ -168,10 +177,10 @@ fn tui_tty_writer_rapid_small_writes_never_underflow() {
     for _ in 0..100_000 {
         w.write("x");
     }
-    assert!(w.flush_sync(Duration::from_secs(5)));
+    assert!(w.flush_sync(HANG_GUARD));
     assert_eq!(w.pending(), 0);
     assert_eq!(sink.bytes().len(), 100_000);
-    w.stop(Duration::from_secs(1));
+    w.stop(HANG_GUARD);
 }
 
 #[test]
@@ -187,7 +196,7 @@ fn tui_tty_writer_dead_output_marks_writer_and_drops_queue() {
     }
     let mut w = TtyWriter::new(Broken).unwrap();
     w.write("doomed");
-    let deadline = Instant::now() + Duration::from_secs(2);
+    let deadline = Instant::now() + HANG_GUARD;
     while !w.dead() && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(5));
     }
@@ -203,13 +212,15 @@ fn tui_tty_writer_stop_detaches_a_blocked_pump() {
     let sink = Gated::new(false, usize::MAX);
     let mut w = TtyWriter::new(sink.clone()).unwrap();
     w.write("stuck");
-    let start = Instant::now();
-    w.stop(Duration::from_millis(30));
-    assert!(
-        start.elapsed() < Duration::from_secs(1),
-        "stop must not join a blocked pump"
-    );
+    // The terminal stays stalled until `stop` returns, so a `stop` that joined the pump would never return.
+    let (done, stopped) = mpsc::channel();
+    std::thread::spawn(move || {
+        w.stop(Duration::from_millis(30));
+        let _ = done.send(());
+    });
+    let returned = stopped.recv_timeout(HANG_GUARD).is_ok();
     sink.set(true); // let the detached thread finish
+    assert!(returned, "stop must not join a blocked pump");
 }
 
 #[test]
@@ -219,7 +230,7 @@ fn tui_tty_writer_handle_shares_one_queue() {
     let h2 = h.clone();
     h.write("a");
     h2.write("b");
-    assert!(h.flush_sync(Duration::from_secs(2)));
+    assert!(h.flush_sync(HANG_GUARD));
     assert_eq!(sink.bytes(), b"ab");
     assert!(!h.dead());
     assert_eq!(h2.pending(), 0);

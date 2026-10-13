@@ -1,0 +1,324 @@
+{
+ "amazon-bedrock": {
+  "name": "Amazon Bedrock",
+  "apiKey": {
+   "name": "AWS credentials or bearer token",
+   "login": true
+  }
+ },
+ "ant-ling": {
+  "name": "Ant Ling",
+  "apiKey": {
+   "name": "Ant Ling API key",
+   "login": true
+  }
+ },
+ "anthropic": {
+  "name": "Anthropic",
+  "apiKey": {
+   "name": "Anthropic API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "Anthropic (Claude Pro/Max)",
+   "loginLabel": null
+  }
+ },
+ "azure-openai-responses": {
+  "name": "Azure OpenAI",
+  "apiKey": {
+   "name": "Azure OpenAI API key",
+   "login": true
+  }
+ },
+ "baseten": {
+  "name": "Baseten",
+  "apiKey": {
+   "name": "Baseten API key",
+   "login": true
+  }
+ },
+ "cerebras": {
+  "name": "Cerebras",
+  "apiKey": {
+   "name": "Cerebras API key",
+   "login": true
+  }
+ },
+ "claude-code": {
+  "name": "Claude Code (CLI)",
+  "apiKey": {
+   "name": "Claude Code CLI",
+   "login": false
+  }
+ },
+ "cloudflare-ai-gateway": {
+  "name": "Cloudflare AI Gateway",
+  "apiKey": {
+   "name": "Cloudflare API key",
+   "login": true
+  }
+ },
+ "cloudflare-workers-ai": {
+  "name": "Cloudflare Workers AI",
+  "apiKey": {
+   "name": "Cloudflare API key",
+   "login": true
+  }
+ },
+ "deepseek": {
+  "name": "DeepSeek",
+  "apiKey": {
+   "name": "DeepSeek API key",
+   "login": true
+  }
+ },
+ "fireworks": {
+  "name": "Fireworks",
+  "apiKey": {
+   "name": "Fireworks API key",
+   "login": true
+  }
+ },
+ "github-copilot": {
+  "name": "GitHub Copilot",
+  "apiKey": {
+   "name": "GitHub Copilot token",
+   "login": true
+  },
+  "oauth": {
+   "name": "GitHub Copilot",
+   "loginLabel": null
+  }
+ },
+ "google": {
+  "name": "Google",
+  "apiKey": {
+   "name": "Gemini API key",
+   "login": true
+  }
+ },
+ "google-vertex": {
+  "name": "Google Vertex AI",
+  "apiKey": {
+   "name": "Google Cloud credentials",
+   "login": true
+  }
+ },
+ "groq": {
+  "name": "Groq",
+  "apiKey": {
+   "name": "Groq API key",
+   "login": true
+  }
+ },
+ "huggingface": {
+  "name": "Hugging Face",
+  "apiKey": {
+   "name": "Hugging Face token",
+   "login": true
+  }
+ },
+ "kimi-coding": {
+  "name": "Kimi For Coding",
+  "apiKey": {
+   "name": "Kimi API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "Kimi Code (subscription)",
+   "loginLabel": "Sign in with Kimi Code"
+  }
+ },
+ "meta": {
+  "name": "Meta",
+  "apiKey": {
+   "name": "Meta Model API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "Meta (Muse subscription)",
+   "loginLabel": "Sign in with Meta"
+  }
+ },
+ "minimax": {
+  "name": "MiniMax",
+  "apiKey": {
+   "name": "MiniMax API key",
+   "login": true
+  }
+ },
+ "minimax-cn": {
+  "name": "MiniMax CN",
+  "apiKey": {
+   "name": "MiniMax CN API key",
+   "login": true
+  }
+ },
+ "mistral": {
+  "name": "Mistral",
+  "apiKey": {
+   "name": "Mistral API key",
+   "login": true
+  }
+ },
+ "moonshotai": {
+  "name": "Moonshot AI",
+  "apiKey": {
+   "name": "Moonshot AI API key",
+   "login": true
+  }
+ },
+ "moonshotai-cn": {
+  "name": "Moonshot AI CN",
+  "apiKey": {
+   "name": "Moonshot AI API key",
+   "login": true
+  }
+ },
+ "nvidia": {
+  "name": "NVIDIA",
+  "apiKey": {
+   "name": "NVIDIA API key",
+   "login": true
+  }
+ },
+ "openai": {
+  "name": "OpenAI",
+  "apiKey": {
+   "name": "OpenAI API key",
+   "login": true
+  }
+ },
+ "openai-codex": {
+  "name": "OpenAI Codex",
+  "oauth": {
+   "name": "OpenAI (ChatGPT Plus/Pro)",
+   "loginLabel": null
+  }
+ },
+ "opencode": {
+  "name": "OpenCode Zen",
+  "apiKey": {
+   "name": "OpenCode API key",
+   "login": true
+  }
+ },
+ "opencode-go": {
+  "name": "OpenCode Go",
+  "apiKey": {
+   "name": "OpenCode API key",
+   "login": true
+  }
+ },
+ "openrouter": {
+  "name": "OpenRouter",
+  "apiKey": {
+   "name": "OpenRouter API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "OpenRouter OAuth",
+   "loginLabel": "Sign in with OpenRouter"
+  }
+ },
+ "qwen-token-plan": {
+  "name": "Qwen Token Plan",
+  "apiKey": {
+   "name": "Qwen Token Plan API key",
+   "login": true
+  }
+ },
+ "qwen-token-plan-cn": {
+  "name": "Qwen Token Plan CN",
+  "apiKey": {
+   "name": "Qwen Token Plan CN API key",
+   "login": true
+  }
+ },
+ "qwen-token-plan-individual": {
+  "name": "Qwen Token Plan Individual",
+  "apiKey": {
+   "name": "Qwen Token Plan Individual API key",
+   "login": true
+  }
+ },
+ "radius": {
+  "name": "Radius",
+  "apiKey": {
+   "name": "Radius API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "Radius",
+   "loginLabel": null
+  }
+ },
+ "together": {
+  "name": "Together",
+  "apiKey": {
+   "name": "Together API key",
+   "login": true
+  }
+ },
+ "vercel-ai-gateway": {
+  "name": "Vercel AI Gateway",
+  "apiKey": {
+   "name": "Vercel AI Gateway API key",
+   "login": true
+  }
+ },
+ "xai": {
+  "name": "xAI",
+  "apiKey": {
+   "name": "xAI API key",
+   "login": true
+  },
+  "oauth": {
+   "name": "xAI (Grok/X subscription)",
+   "loginLabel": "Sign in with SuperGrok or X Premium"
+  }
+ },
+ "xiaomi": {
+  "name": "Xiaomi",
+  "apiKey": {
+   "name": "Xiaomi API key",
+   "login": true
+  }
+ },
+ "xiaomi-token-plan-ams": {
+  "name": "Xiaomi Token Plan AMS",
+  "apiKey": {
+   "name": "Xiaomi Token Plan AMS API key",
+   "login": true
+  }
+ },
+ "xiaomi-token-plan-cn": {
+  "name": "Xiaomi Token Plan CN",
+  "apiKey": {
+   "name": "Xiaomi Token Plan CN API key",
+   "login": true
+  }
+ },
+ "xiaomi-token-plan-sgp": {
+  "name": "Xiaomi Token Plan SGP",
+  "apiKey": {
+   "name": "Xiaomi Token Plan SGP API key",
+   "login": true
+  }
+ },
+ "zai": {
+  "name": "Z.AI",
+  "apiKey": {
+   "name": "Z.AI API key",
+   "login": true
+  }
+ },
+ "zai-coding-cn": {
+  "name": "Z.AI Coding CN",
+  "apiKey": {
+   "name": "Z.AI Coding CN API key",
+   "login": true
+  }
+ }
+}

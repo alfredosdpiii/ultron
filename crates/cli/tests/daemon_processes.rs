@@ -71,7 +71,7 @@ fn cli_daemon_reattach_after_client_exit_resumes_the_session() {
     assert_eq!(assistant_texts(&requests[1]), ["One."]);
     assert_eq!(user_texts(&requests[2]), ["first", "second", "third"]);
     assert_eq!(assistant_texts(&requests[2]), ["One.", "Two."]);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn cli_daemon_busy_worker_survives_a_killed_client_and_is_adopted() {
         .command(&["--mode", "json", "--model", model, "slow"])
         .spawn()
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(20);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while provider.requests.lock().unwrap().is_empty() {
         assert!(Instant::now() < deadline, "the first request never arrived");
         std::thread::sleep(Duration::from_millis(20));
@@ -116,7 +116,7 @@ fn cli_daemon_busy_worker_survives_a_killed_client_and_is_adopted() {
     let requests = provider.requests.lock().unwrap().clone();
     assert_eq!(user_texts(&requests[1]), ["slow", "next"]);
     assert_eq!(assistant_texts(&requests[1]), ["Slow."]);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
 /// The worker process serving `session_id` (its options argument names the session file).
@@ -212,7 +212,7 @@ fn cli_daemon_worker_crash_restarts_with_committed_state() {
     assert_eq!(assistant_texts(&requests[1]), ["Before."]);
     connection.disconnect();
     drop(server);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
 #[test]
@@ -224,14 +224,33 @@ fn cli_daemon_two_clients_share_one_server_and_session() {
     let a = Connection::connect(&route.path, &route.server_id).unwrap();
     let b = Connection::connect(&route.path, &route.server_id).unwrap();
     let directory = b.subscribe(b.server_target(), "pi.session-directory").unwrap();
+    let (listed_tx, listed_rx) = std::sync::mpsc::channel();
+    b.listen(
+        &directory,
+        Box::new(move |_, value| {
+            let _ = listed_tx.send(value["sessions"][0]["sessionId"].clone());
+        }),
+    );
     let created = a
         .call(a.server_target(), "pi.session-management", "create", json!([{}]))
         .unwrap()
         .unwrap();
     let id = created["sessionId"].as_str().unwrap().to_string();
-    // B's directory replica learned about A's session.
-    let listed = b.state(&directory, "state").unwrap();
-    assert_eq!(listed["sessions"][0]["sessionId"], json!(id));
+    // B's directory replica learns about A's session: its update reaches B's connection on its own, and may arrive
+    // after A's create response.
+    loop {
+        let listed = listed_rx
+            .recv_timeout(Duration::from_secs(120))
+            .expect("B's directory lists A's session");
+        if listed == json!(id) {
+            break;
+        }
+    }
+    b.unlisten(&directory);
+    assert_eq!(
+        b.state(&directory, "state").unwrap()["sessions"][0]["sessionId"],
+        json!(id)
+    );
     let mut transcripts = Vec::new();
     for connection in [&a, &b] {
         connection
@@ -274,7 +293,7 @@ fn cli_daemon_two_clients_share_one_server_and_session() {
     assert_eq!(response["accepted"], true);
     // B saw A's run from start to end, and both replicas hold the same transcript.
     let mut types = Vec::new();
-    while let Ok(event) = events.recv_timeout(Duration::from_secs(5)) {
+    while let Ok(event) = events.recv_timeout(Duration::from_secs(120)) {
         types.push(event["type"].as_str().unwrap_or_default().to_string());
         if event["type"] == "run_end" {
             break;
@@ -293,7 +312,7 @@ fn cli_daemon_two_clients_share_one_server_and_session() {
     a.disconnect();
     b.disconnect();
     drop(server);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
 #[test]
@@ -356,7 +375,7 @@ fn cli_daemon_attach_to_unknown_session_and_detached_calls_fail_like_typescript(
     );
     connection.disconnect();
     drop(server);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
 #[test]
@@ -393,7 +412,7 @@ fn cli_daemon_new_server_adopts_a_busy_orphan_worker() {
         json!([{"message": "long", "images": null}]),
     );
     assert!(prompting.is_ok());
-    let deadline = Instant::now() + Duration::from_secs(20);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while provider.requests.lock().unwrap().is_empty() {
         assert!(Instant::now() < deadline, "the run never reached the provider");
         std::thread::sleep(Duration::from_millis(20));
@@ -424,5 +443,5 @@ fn cli_daemon_new_server_adopts_a_busy_orphan_worker() {
     adopter.disconnect();
     drop(second);
     drop(first);
-    assert_no_processes(&home.root, Duration::from_secs(10));
+    assert_no_processes(&home.root, Duration::from_secs(120));
 }

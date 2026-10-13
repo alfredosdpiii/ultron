@@ -181,7 +181,8 @@ fn harness_chat_inbox_reads_queue_modes_when_the_final_boundarys_commit_runs_on_
         held.wait_entered();
         release.abort();
         yielded.wait();
-        flush();
+        // The boundary commit has queued behind the held one.
+        line_reaches(chat.harness(), 2);
         setup.settings(|settings| settings.follow_up_mode = QueueMode::All);
         held.release();
         occupying.join().unwrap().unwrap();

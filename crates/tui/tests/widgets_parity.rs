@@ -2,6 +2,9 @@
 //! produced by `node crates/tui/fixtures/generate-widgets.mjs`.
 
 use serde_json::Value;
+
+mod support;
+use support::latch::HANG_GUARD;
 use tui::components::{Component, Text};
 use tui::image::{
     Capabilities, Dimensions, Image, ImageProtocol, calculate_image_cell_size, detect_capabilities, encode_iterm2,
@@ -530,45 +533,81 @@ fn tui_terminal_escape_writes_match_ts() {
     report(failures, 0);
 }
 
-/// A reader that yields scripted chunks, pausing between them so the pump's flush timeout can fire.
-struct Chunks(Vec<(&'static [u8], u64)>);
+/// A reader that yields scripted chunks and records when each `read` was entered and returned. A chunk marked
+/// `gated` is held until the test releases it, so the lone-escape flush timeout fires with no input racing it.
+struct Chunks {
+    chunks: Vec<(&'static [u8], bool)>,
+    gate: std::sync::mpsc::Receiver<()>,
+    reads: std::sync::Arc<std::sync::Mutex<Vec<(std::time::Instant, std::time::Instant)>>>,
+}
 
 impl std::io::Read for Chunks {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        if self.0.is_empty() {
-            return Ok(0);
-        }
-        let (bytes, pause_ms) = self.0.remove(0);
-        std::thread::sleep(std::time::Duration::from_millis(pause_ms));
-        buf[..bytes.len()].copy_from_slice(bytes);
-        Ok(bytes.len())
+        let entered = std::time::Instant::now();
+        let n = if self.chunks.is_empty() {
+            0
+        } else {
+            let (bytes, gated) = self.chunks.remove(0);
+            if gated {
+                let _ = self.gate.recv_timeout(HANG_GUARD);
+            }
+            buf[..bytes.len()].copy_from_slice(bytes);
+            bytes.len()
+        };
+        self.reads.lock().unwrap().push((entered, std::time::Instant::now()));
+        Ok(n)
     }
 }
 
+/// The pump flushes an incomplete sequence after 50 ms without input (10 ms for a lone ESC). The scripted chunks
+/// up to the lone ESC must reach the pump within that window or a split sequence is flushed early: correct product
+/// behaviour for input that really paused. When load stretches the gap, the run is discarded and repeated.
 #[test]
 fn tui_terminal_input_pump_splits_sequences_pastes_and_lone_escape() {
-    let reader = Chunks(vec![
-        (b"ab\x1b[A\x1b[1;5", 0),
-        (b"C\x1b[200~pa", 0),
-        (b"ste\x1b[201~x", 0),
-        (b"\x1b", 0),
-        (b"y", 120),
-        (b"\x1b[", 0),
-    ]);
-    let rx = tui::terminal::spawn_input_pump(reader);
-    let got: Vec<String> = rx.iter().collect();
-    assert_eq!(
-        got,
-        [
-            "a",
-            "b",
-            "\x1b[A",
-            "\x1b[1;5C",
-            "\x1b[200~paste\x1b[201~",
-            "x",
-            "\x1b",
-            "y",
-            "\x1b["
-        ]
-    );
+    let want = [
+        "a",
+        "b",
+        "\x1b[A",
+        "\x1b[1;5C",
+        "\x1b[200~paste\x1b[201~",
+        "x",
+        "\x1b",
+        "y",
+        "\x1b[",
+    ];
+    let hang = std::time::Instant::now() + HANG_GUARD;
+    loop {
+        let (release, gate) = std::sync::mpsc::channel();
+        let reads = std::sync::Arc::default();
+        let reader = Chunks {
+            chunks: vec![
+                (b"ab\x1b[A\x1b[1;5", false),
+                (b"C\x1b[200~pa", false),
+                (b"ste\x1b[201~x", false),
+                (b"\x1b", false),
+                (b"y", true),
+                (b"\x1b[", false),
+            ],
+            gate,
+            reads: std::sync::Arc::clone(&reads),
+        };
+        let rx = tui::terminal::spawn_input_pump(reader);
+        let mut got = Vec::new();
+        while let Ok(event) = rx.recv_timeout(HANG_GUARD) {
+            if event == "\x1b" {
+                let _ = release.send(());
+            }
+            got.push(event);
+        }
+        // Each chunk before the ESC was sent after the previous read returned and before the next read began, so
+        // the gap between consecutive sends is below the time from the first read's return to the gated read's entry.
+        let reads = reads.lock().unwrap().clone();
+        let burst = reads[4].0 - reads[0].1;
+        if burst >= std::time::Duration::from_millis(45) && std::time::Instant::now() < hang {
+            eprintln!("chunks took {burst:?} to arrive; flush timeouts may have fired, repeating");
+            continue;
+        }
+        assert_eq!(got, want);
+        return;
+    }
 }

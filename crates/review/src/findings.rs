@@ -134,12 +134,12 @@ pub fn normalize_category(category: &str, reviewer: Option<&str>) -> String {
 }
 
 /// Python's `_text`: `str(value)` with whitespace runs squashed, clipped to `limit` characters.
-fn text(value: Option<&Value>, limit: usize) -> String {
+pub(crate) fn text(value: Option<&Value>, limit: usize) -> String {
     py::clip(&py::squash(&value.map(py::str_of).unwrap_or_default()), limit)
 }
 
 /// Python's `int(value)` on a JSON value.
-fn int_of(value: Option<&Value>) -> Option<i64> {
+pub(crate) fn int_of(value: Option<&Value>) -> Option<i64> {
     match value? {
         Value::Bool(flag) => Some(i64::from(*flag)),
         Value::Number(number) => number
@@ -163,7 +163,7 @@ fn int_of(value: Option<&Value>) -> Option<i64> {
 }
 
 /// Python's `float(value)` on a JSON value.
-fn float_of(value: &Value) -> Option<f64> {
+pub(crate) fn float_of(value: &Value) -> Option<f64> {
     match value {
         Value::Bool(flag) => Some(f64::from(u8::from(*flag))),
         Value::Number(number) => number.as_f64(),
@@ -233,7 +233,7 @@ const STOP: [&str; 23] = [
 
 static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[a-z0-9_]+").expect("regex"));
 
-fn words(text: &str) -> HashSet<String> {
+pub(crate) fn words(text: &str) -> HashSet<String> {
     let lower = text.to_lowercase();
     WORD.find_iter(&lower)
         .map(|found| found.as_str())

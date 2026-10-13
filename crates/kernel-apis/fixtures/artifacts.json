@@ -1,0 +1,3339 @@
+[
+ {
+  "name": "limits and dedupe",
+  "options": {
+   "maxArtifactBytes": 1024,
+   "maxArtifactStorageBytes": 1500
+  },
+  "steps": [
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "error": "Artifact of 1025 bytes exceeds the 1024-byte artifact limit",
+    "documents": {}
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+     }
+    ],
+    "error": "Artifact of 1026 bytes exceeds the 1024-byte artifact limit",
+    "documents": {}
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "result": {
+     "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+     "bytes": 1000,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "result": {
+     "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+     "bytes": 1000,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "error": "Artifact storage quota of 1500 bytes exceeded (1000 stored, 600 requested)",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.list",
+     {}
+    ],
+    "request": [
+     "artifacts.list",
+     {}
+    ],
+    "result": [
+     {
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": ""
+     }
+    ],
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.usage",
+     {}
+    ],
+    "request": [
+     "artifacts.usage",
+     {}
+    ],
+    "result": {
+     "usedBytes": 1000,
+     "quotaBytes": null,
+     "count": 1,
+     "pinned": []
+    },
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "x",
+      "options": {
+       "mediaType": "application/json",
+       "label": "small"
+      }
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "x",
+      "options": {
+       "mediaType": "application/json",
+       "label": "small"
+      }
+     }
+    ],
+    "result": {
+     "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+     "bytes": 1,
+     "mediaType": "application/json",
+     "label": "small",
+     "preview": "x"
+    },
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": 5
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": 5
+     }
+    ],
+    "error": "artifact content must be a string",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "options": {
+       "mediaType": 1
+      }
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "options": {
+       "mediaType": 1
+      }
+     }
+    ],
+    "error": "Invalid artifact metadata",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "options": {
+       "other": 1
+      }
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "options": {
+       "other": 1
+      }
+     }
+    ],
+    "error": "Malformed local service fields",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "extra": 1
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "y",
+      "extra": 1
+     }
+    ],
+    "error": "Malformed local service fields",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {}
+    ],
+    "request": [
+     "artifacts.put",
+     {}
+    ],
+    "error": "Malformed local service fields",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.list",
+     {
+      "x": 1
+     }
+    ],
+    "request": [
+     "artifacts.list",
+     {
+      "x": 1
+     }
+    ],
+    "error": "Malformed local service fields",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.nope",
+     {}
+    ],
+    "request": [
+     "artifacts.nope",
+     {}
+    ],
+    "error": "Unknown local service request: artifacts.nope",
+    "documents": {
+     "ultron.artifacts/f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b": {
+      "formatVersion": 1,
+      "id": "f6f118e120e52be0bd0cfdf2794cd12c07686cc871235ac2f11459378e6d235b",
+      "bytes": 1000,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     },
+     "ultron.artifacts/2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881": {
+      "formatVersion": 1,
+      "id": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881",
+      "bytes": 1,
+      "mediaType": "application/json",
+      "label": "small",
+      "text": "x"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "range reads",
+  "options": {},
+  "steps": [
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "bytes": 1804,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     0,
+     1
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 0,
+       "length": 1
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "�",
+     "base64": "ww==",
+     "offset": 0,
+     "length": 1,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1,
+     3
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1,
+       "length": 3
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "��",
+     "base64": "qeKY",
+     "offset": 1,
+     "length": 3,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     2,
+     5
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 2,
+       "length": 5
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "☃�",
+     "base64": "4piD8J0=",
+     "offset": 2,
+     "length": 5,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     3,
+     7
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 3,
+       "length": 7
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "��𝄞�",
+     "base64": "mIPwnYSeww==",
+     "offset": 3,
+     "length": 7,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1798,
+     6
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1798,
+       "length": 6
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "��tail",
+     "base64": "hJ50YWls",
+     "offset": 1798,
+     "length": 6,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1802,
+     100
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1802,
+       "length": 100
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "il",
+     "base64": "aWw=",
+     "offset": 1802,
+     "length": 2,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1804,
+     10
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1804,
+       "length": 10
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "",
+     "base64": "",
+     "offset": 1804,
+     "length": 0,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1809,
+     10
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1809,
+       "length": 10
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "",
+     "base64": "",
+     "offset": 1809,
+     "length": 0,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     null,
+     null
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c"
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail",
+     "base64": "w6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSedGFpbA==",
+     "offset": 0,
+     "length": 1804,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     0,
+     1048576
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 0,
+       "length": 1048576
+      }
+     }
+    ],
+    "result": {
+     "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+     "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail",
+     "base64": "w6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSew6nimIPwnYSedGFpbA==",
+     "offset": 0,
+     "length": 1804,
+     "total": 1804
+    },
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     0,
+     1048577
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 0,
+       "length": 1048577
+      }
+     }
+    ],
+    "error": "Invalid artifact range",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     -1,
+     1
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": -1,
+       "length": 1
+      }
+     }
+    ],
+    "error": "Invalid artifact range",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     1.5,
+     1
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 1.5,
+       "length": 1
+      }
+     }
+    ],
+    "error": "Invalid artifact range",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "range",
+     0,
+     "1"
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "options": {
+       "offset": 0,
+       "length": "1"
+      }
+     }
+    ],
+    "error": "Invalid artifact range",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.read",
+     {
+      "id": "nope"
+     }
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "nope"
+     }
+    ],
+    "error": "Unknown artifact",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    ],
+    "error": "Unknown artifact",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "options": {
+       "start": 1
+      }
+     }
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "options": {
+       "start": 1
+      }
+     }
+    ],
+    "error": "Unknown artifact",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "holder": "x"
+     }
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "holder": "x"
+     }
+    ],
+    "error": "Malformed local service fields",
+    "documents": {
+     "ultron.artifacts/40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c": {
+      "formatVersion": 1,
+      "id": "40954b04e69a350c08c1ec3d5b56f1a8d3a2394d7f941c703ce0430c2992b44c",
+      "bytes": 1804,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞é☃𝄞tail"
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "retention, deletion and reclaim",
+  "options": {},
+  "steps": [
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "checkpoint state",
+      "options": {
+       "label": "checkpoint"
+      }
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "checkpoint state",
+      "options": {
+       "label": "checkpoint"
+      }
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "bytes": 16,
+     "mediaType": "text/plain",
+     "label": "checkpoint",
+     "preview": "checkpoint state"
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    ],
+    "result": {
+     "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+     "bytes": 500,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "test log: 12 passed"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "test log: 12 passed"
+     }
+    ],
+    "result": {
+     "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+     "bytes": 19,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "test log: 12 passed"
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    ],
+    "result": {
+     "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+     "bytes": 300,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     0,
+     "checkpoint:worker@1"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "holder": "checkpoint:worker@1"
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "holders": [
+      "checkpoint:worker@1"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     0,
+     "checkpoint:worker@1"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "holder": "checkpoint:worker@1"
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "holders": [
+      "checkpoint:worker@1"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     2,
+     "evidence:task-9"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "holder": "evidence:task-9"
+     }
+    ],
+    "result": {
+     "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+     "holders": [
+      "evidence:task-9"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     2,
+     " "
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "holder": " "
+     }
+    ],
+    "error": "Artifact holder must be a nonempty string of at most 200 characters",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     2,
+     "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "holder": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+     }
+    ],
+    "error": "Artifact holder must be a nonempty string of at most 200 characters",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "delete",
+     0,
+     null
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c"
+     }
+    ],
+    "error": "Artifact e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c is retained by checkpoint:worker@1; unpin it first",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.reclaim",
+     {
+      "bytes": 400
+     }
+    ],
+    "request": [
+     "artifacts.reclaim",
+     {
+      "bytes": 400
+     }
+    ],
+    "result": {
+     "deleted": [
+      "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad"
+     ],
+     "freedBytes": 500,
+     "satisfied": true,
+     "retained": [
+      "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.reclaim",
+     {
+      "bytes": 1000000,
+      "reason": "make room"
+     }
+    ],
+    "request": [
+     "artifacts.reclaim",
+     {
+      "bytes": 1000000,
+      "reason": "make room"
+     }
+    ],
+    "result": {
+     "deleted": [
+      "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1"
+     ],
+     "freedBytes": 300,
+     "satisfied": false,
+     "retained": [
+      "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.reclaim",
+     {
+      "bytes": -1
+     }
+    ],
+    "request": [
+     "artifacts.reclaim",
+     {
+      "bytes": -1
+     }
+    ],
+    "error": "reclaim bytes must be a nonnegative safe integer",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.reclaim",
+     {
+      "bytes": 1,
+      "reason": 5
+     }
+    ],
+    "request": [
+     "artifacts.reclaim",
+     {
+      "bytes": 1,
+      "reason": 5
+     }
+    ],
+    "error": "reclaim reason must be a string",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "read",
+     1,
+     0
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "options": {
+       "length": 0
+      }
+     }
+    ],
+    "error": "Artifact c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad was deleted (reclaimed)",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.list",
+     {}
+    ],
+    "request": [
+     "artifacts.list",
+     {}
+    ],
+    "result": [
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint"
+     },
+     {
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": ""
+     }
+    ],
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.usage",
+     {}
+    ],
+    "request": [
+     "artifacts.usage",
+     {}
+    ],
+    "result": {
+     "usedBytes": 35,
+     "quotaBytes": null,
+     "count": 2,
+     "pinned": [
+      "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "reopen"
+    ],
+    "request": null,
+    "result": null,
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "delete",
+     2,
+     null
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d"
+     }
+    ],
+    "error": "Artifact 72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d is retained by evidence:task-9; unpin it first",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": [
+        "checkpoint:worker@1"
+       ],
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "unpin",
+     0,
+     "checkpoint:worker@1"
+    ],
+    "request": [
+     "artifacts.unpin",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "holder": "checkpoint:worker@1"
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "holders": []
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "unpin",
+     0,
+     "never-held"
+    ],
+    "request": [
+     "artifacts.unpin",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "holder": "never-held"
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "holders": []
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "delete",
+     0,
+     "checkpoint superseded"
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "reason": "checkpoint superseded"
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "deleted": true
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "checkpoint superseded"
+      }
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "delete",
+     0,
+     null
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c"
+     }
+    ],
+    "error": "Artifact e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c was deleted (checkpoint superseded)",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "checkpoint superseded"
+      }
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "read",
+     0,
+     10
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "options": {
+       "length": 10
+      }
+     }
+    ],
+    "error": "Artifact e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c was deleted (checkpoint superseded)",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "checkpoint superseded"
+      }
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     0,
+     "late"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "holder": "late"
+     }
+    ],
+    "error": "Artifact e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c was deleted (checkpoint superseded)",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "checkpoint",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "checkpoint superseded"
+      }
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "checkpoint state",
+      "options": {
+       "label": "restored"
+      }
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "checkpoint state",
+      "options": {
+       "label": "restored"
+      }
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "bytes": 16,
+     "mediaType": "text/plain",
+     "label": "restored",
+     "preview": "checkpoint state"
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "restored",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "read",
+     0,
+     100
+    ],
+    "request": [
+     "artifacts.read",
+     {
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "options": {
+       "length": 100
+      }
+     }
+    ],
+    "result": {
+     "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+     "text": "checkpoint state",
+     "base64": "Y2hlY2twb2ludCBzdGF0ZQ==",
+     "offset": 0,
+     "length": 16,
+     "total": 16
+    },
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "restored",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.delete",
+     {
+      "id": "nope"
+     }
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "nope"
+     }
+    ],
+    "error": "Unknown artifact",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "restored",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "delete",
+     3,
+     7
+    ],
+    "request": [
+     "artifacts.delete",
+     {
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "reason": 7
+     }
+    ],
+    "error": "Artifact 9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1 was deleted (make room)",
+    "documents": {
+     "ultron.artifacts/e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c": {
+      "formatVersion": 1,
+      "id": "e19f0f0d3b3401236908cf6734ec6c7f8a358797a3a9c4409d7afde27eacd60c",
+      "bytes": 16,
+      "mediaType": "text/plain",
+      "label": "restored",
+      "text": "checkpoint state"
+     },
+     "ultron.artifacts/c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad": {
+      "formatVersion": 1,
+      "id": "c38c2bf3055c516a98ac5d97f30e7c364e827bc0199e1c3415b794afbe55dcad",
+      "bytes": 500,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": {
+      "formatVersion": 1,
+      "id": "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d",
+      "bytes": 19,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "test log: 12 passed"
+     },
+     "ultron.artifacts/9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1": {
+      "formatVersion": 1,
+      "id": "9637cfead94a85e03a7ea004468a639f68a872e98696b90a023e13f42b8a0ad1",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "make room"
+      }
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "72dc4cf158748c828119a6b6696164b779c1afa1304be5d44f6e0af87ea8dd4d": [
+        "evidence:task-9"
+       ]
+      }
+     }
+    }
+   }
+  ]
+ },
+ {
+  "name": "quota never evicts",
+  "options": {
+   "artifactQuotaBytes": 1000
+  },
+  "steps": [
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "result": {
+     "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+     "bytes": 600,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    }
+   },
+   {
+    "step": [
+     "pin",
+     0,
+     "task:live"
+    ],
+    "request": [
+     "artifacts.pin",
+     {
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "holder": "task:live"
+     }
+    ],
+    "result": {
+     "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+     "holders": [
+      "task:live"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    ],
+    "result": {
+     "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+     "bytes": 300,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "error": "Artifact quota exceeded: 900 bytes used + 200 requested > 1000 byte quota. Delete or reclaim unpinned artifacts first.",
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     }
+    ],
+    "result": {
+     "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+     "bytes": 600,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.usage",
+     {}
+    ],
+    "request": [
+     "artifacts.usage",
+     {}
+    ],
+    "result": {
+     "usedBytes": 900,
+     "quotaBytes": 1000,
+     "count": 2,
+     "pinned": [
+      "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.reclaim",
+     {
+      "bytes": 300
+     }
+    ],
+    "request": [
+     "artifacts.reclaim",
+     {
+      "bytes": 300
+     }
+    ],
+    "result": {
+     "deleted": [
+      "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f"
+     ],
+     "freedBytes": 300,
+     "satisfied": true,
+     "retained": [
+      "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "request": [
+     "artifacts.put",
+     {
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    ],
+    "result": {
+     "id": "5e39abe881f543e1215902fe6309ea58521e6911e3af4fd241aea8a95322ae09",
+     "bytes": 200,
+     "mediaType": "text/plain",
+     "label": "",
+     "preview": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/5e39abe881f543e1215902fe6309ea58521e6911e3af4fd241aea8a95322ae09": {
+      "formatVersion": 1,
+      "id": "5e39abe881f543e1215902fe6309ea58521e6911e3af4fd241aea8a95322ae09",
+      "bytes": 200,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    }
+   },
+   {
+    "step": [
+     "artifacts.usage",
+     {}
+    ],
+    "request": [
+     "artifacts.usage",
+     {}
+    ],
+    "result": {
+     "usedBytes": 800,
+     "quotaBytes": 1000,
+     "count": 2,
+     "pinned": [
+      "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d"
+     ]
+    },
+    "documents": {
+     "ultron.artifacts/ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": {
+      "formatVersion": 1,
+      "id": "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d",
+      "bytes": 600,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     },
+     "ultron.artifact-refs": {
+      "formatVersion": 1,
+      "refs": {
+       "ba35c170729417f1499e0886e7e12fcdb4ab00ad411110ae1e888c766d4ed70d": [
+        "task:live"
+       ]
+      }
+     },
+     "ultron.artifacts/dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f": {
+      "formatVersion": 1,
+      "id": "dccc1450d6fc4232955fcc5cf81105d874c4c6f8c710a71b2763d2c3238e923f",
+      "bytes": 300,
+      "mediaType": "text/plain",
+      "label": "",
+      "deleted": {
+       "at": "2023-11-14T22:13:20.000Z",
+       "reason": "reclaimed"
+      }
+     },
+     "ultron.artifacts/5e39abe881f543e1215902fe6309ea58521e6911e3af4fd241aea8a95322ae09": {
+      "formatVersion": 1,
+      "id": "5e39abe881f543e1215902fe6309ea58521e6911e3af4fd241aea8a95322ae09",
+      "bytes": 200,
+      "mediaType": "text/plain",
+      "label": "",
+      "text": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+     }
+    }
+   }
+  ]
+ }
+]

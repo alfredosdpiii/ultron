@@ -1435,7 +1435,7 @@
      ]
     },
     "maxResponseBytes": 1000,
-    "timeoutMs": 600
+    "timeoutMs": 10000
    },
    "created": {
     "namespace": "http://127.0.0.1:<port>/v1/default/banks/big-slow",

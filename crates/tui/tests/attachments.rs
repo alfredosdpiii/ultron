@@ -2,11 +2,13 @@
 //! paste routing and the off-thread clipboard service.
 
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
 use tui::attachments::*;
 use tui::clipboard::*;
 use tui::utils::{strip_terminal_sequences, visible_width};
+
+mod support;
+use support::latch::{HANG_GUARD, Latch};
 
 /// 2x2 red PNG with a real header.
 const TINY_PNG: &str =
@@ -146,16 +148,25 @@ fn tui_attachments_draft_recall() {
 struct FakeClipboard {
     text: Arc<Mutex<String>>,
     image: Option<Vec<u8>>,
-    delay: Duration,
+    /// Text access blocks until the test opens this (a slow clipboard tool).
+    slow: Option<Latch>,
+}
+
+impl FakeClipboard {
+    fn wait(&self) {
+        if let Some(slow) = &self.slow {
+            slow.wait();
+        }
+    }
 }
 
 impl Clipboard for FakeClipboard {
     fn get_text(&mut self) -> Result<String, String> {
-        std::thread::sleep(self.delay);
+        self.wait();
         Ok(self.text.lock().unwrap().clone())
     }
     fn set_text(&mut self, text: &str) -> Result<(), String> {
-        std::thread::sleep(self.delay);
+        self.wait();
         *self.text.lock().unwrap() = text.to_string();
         Ok(())
     }
@@ -166,23 +177,24 @@ impl Clipboard for FakeClipboard {
 
 #[test]
 fn tui_clipboard_service_is_off_thread_and_ordered() {
+    // The clipboard blocks until released: a caller that waited on it would hang, not merely be slow.
+    let slow = Latch::default();
     let fake = FakeClipboard {
-        delay: Duration::from_millis(100),
+        slow: Some(slow.clone()),
         ..FakeClipboard::default()
     };
     let store = fake.text.clone();
     let svc = ClipboardService::spawn(fake);
-    let start = Instant::now();
     svc.copy("yanked");
     let mut sink = svc.yank_sink();
     sink("from vim");
     svc.request(ClipboardRead::Text);
     svc.request(ClipboardRead::Image);
     svc.request(ClipboardRead::ImageOrText);
-    assert!(start.elapsed() < Duration::from_millis(50), "{:?}", start.elapsed());
     assert_eq!(svc.try_reply(), None);
+    slow.open();
     let replies: Vec<_> = (0..3)
-        .map(|_| svc.replies().recv_timeout(Duration::from_secs(5)).unwrap())
+        .map(|_| svc.replies().recv_timeout(HANG_GUARD).unwrap())
         .collect();
     assert_eq!(
         replies,
@@ -203,7 +215,7 @@ fn tui_clipboard_service_is_off_thread_and_ordered() {
     let svc = ClipboardService::spawn(img);
     svc.request(ClipboardRead::ImageOrText);
     assert_eq!(
-        svc.replies().recv_timeout(Duration::from_secs(5)).unwrap(),
+        svc.replies().recv_timeout(HANG_GUARD).unwrap(),
         ClipboardReply::Image("iVBOR2RhdGE=".into())
     );
 }

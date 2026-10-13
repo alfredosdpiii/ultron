@@ -1,6 +1,6 @@
 /**
  * Skills bundled with Ultron (packages/coding-agent/skills/<source>: the pstack port, HumanLayer's diagram-it,
- * QingYunA's answer-me-with-html):
+ * QingYunA's answer-me-with-html, Ryan's anatomy, Ultron's own debug-unfamiliar):
  * - they load after the user's and project's skills, so a skill of the same name there wins;
  * - `ULTRON_BUNDLED_SKILLS=off` and `noSkills` leave them out;
  * - every bundled SKILL.md loads without diagnostics, names its source and license, and its references to other
@@ -8,7 +8,17 @@
  *   dialect (top-level await).
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -71,7 +81,9 @@ describe("bundled skills", () => {
 		mkdirSync(join(root, "project"), { recursive: true });
 		const all = await load();
 		const names = all.skills.map((skill) => skill.name);
-		expect(names).toEqual(expect.arrayContaining(["rigor", "diagram-it", "answer-me-with-html", ...skillDirs]));
+		expect(names).toEqual(
+			expect.arrayContaining(["rigor", "diagram-it", "answer-me-with-html", "anatomy", ...skillDirs]),
+		);
 		expect(all.diagnostics.filter((d) => d.path?.startsWith(bundled))).toEqual([]);
 
 		const own = join(root, "agent", "skills", "swarm");
@@ -108,8 +120,13 @@ describe("bundled skills", () => {
 		expect(note).not.toMatch(/start with rigor/);
 		expect(note).toMatch(/^- pstack\/rigor: Rigorous engineering mode/m);
 		expect(note).toMatch(/^- pstack\/how: /m);
+		expect(note).toMatch(/^- pstack\/ketchup: Catch the user up on everything in this session/m);
 		expect(note).toMatch(/^- humanlayer\/diagram-it: Explain the current topic visually/m);
 		expect(note).toMatch(/^- qingyuna\/answer-me-with-html: Answer a hard question with one visual HTML page/m);
+		expect(note).toMatch(
+			/^- wheresryan\/anatomy: Explain a technical idea as a live isometric figure of a real machine\.$/m,
+		);
+		expect(note).toMatch(/^- ultron\/debug-unfamiliar: Facts-first debugging for code nobody here knows well\./m);
 		expect(note).not.toMatch(/principle-[a-z-]+:/);
 		for (const line of note.split("\n").slice(1))
 			expect(existsSync(join(bundled, line.slice(2, line.indexOf(":")), "SKILL.md")), line).toBe(true);
@@ -144,6 +161,25 @@ describe("bundled skills", () => {
 		expect(answer).toMatch(/^---\nname: answer-me-with-html\n/);
 		expect(answer).toContain("github.com/QingYunA/answer-me-with-html");
 		expect(answer).toContain("AM_NO_UPDATE_CHECK=1");
+		// Ryan's Anatomy, with its license, its kit and its check scripts.
+		expect(readFileSync(join(bundled, "wheresryan", "LICENSE"), "utf8")).toContain("Ryan");
+		const anatomy = readFileSync(join(bundled, "wheresryan", "anatomy", "SKILL.md"), "utf8");
+		expect(anatomy).toMatch(/^---\nname: anatomy\n/);
+		expect(anatomy).toContain("source: github.com/wheresryan22/anatomy (commit bb13e5e)");
+		expect(anatomy).toContain("license: MIT (see ../LICENSE)");
+		expect(anatomy).toContain("disable-model-invocation: true");
+		expect(anatomy).toContain("view_image");
+		for (const file of [
+			"kit/iso-kit.mjs",
+			"scripts/capture.mjs",
+			"scripts/lines.mjs",
+			"examples/dial-indicator/build.mjs",
+		])
+			expect(existsSync(join(bundled, "wheresryan", "anatomy", file)), file).toBe(true);
+		// Ultron's own skills name the work their method follows.
+		const debug = readFileSync(join(bundled, "ultron", "debug-unfamiliar", "SKILL.md"), "utf8");
+		expect(debug).toMatch(/^---\nname: debug-unfamiliar\n/);
+		expect(debug).toContain("Cindy Sridharan");
 	});
 
 	test("the bundled answer-me-with-html CLI renders a draft to a page without fetching updates", () => {
@@ -160,6 +196,30 @@ describe("bundled skills", () => {
 		expect(run.stdout).toContain("flow×1");
 		const state = JSON.parse(readFileSync(join(home, "state.json"), "utf8")) as { lastUpdateCheck?: number };
 		expect(state.lastUpdateCheck).toBeUndefined();
+	});
+
+	test("the bundled anatomy kit builds the dial-indicator example into a scratch copy, without Chrome", () => {
+		const skillDir = join(bundled, "wheresryan", "anatomy");
+		// The example is built as SKILL.md says: a scratch folder mirroring the skill, kit/ and scripts/ linked.
+		const work = join(root, "anatomy");
+		mkdirSync(join(work, "examples"), { recursive: true });
+		for (const part of ["kit", "scripts"]) symlinkSync(join(skillDir, part), join(work, part), "dir");
+		cpSync(join(skillDir, "examples", "dial-indicator"), join(work, "examples", "dial-indicator"), {
+			recursive: true,
+		});
+		const run = spawnSync(process.execPath, ["build.mjs"], {
+			cwd: join(work, "examples", "dial-indicator"),
+			encoding: "utf8",
+			env: { ...process.env, CHROME_PATH: join(root, "no-chrome") },
+		});
+		expect(run.status, run.stderr).toBe(0);
+		expect(run.stdout).toContain("wrote dial-indicator.html");
+		const page = readFileSync(join(work, "examples", "dial-indicator", "dial-indicator.html"), "utf8");
+		expect(page).toMatch(/^<!doctype html>/);
+		expect(page).toContain("<title>Dial indicator</title>");
+		expect(page).toMatch(/<svg[^>]*viewBox=/);
+		// Nothing was written into the bundled copy.
+		expect(existsSync(join(skillDir, "examples", "dial-indicator", "dial-indicator.html"))).toBe(false);
 	});
 
 	test("cross-references resolve and no Cursor-only mechanics remain", () => {

@@ -150,7 +150,7 @@ fn delegation_agent_child_finishes_and_root_collects() {
     assert_eq!(result["value"], "first\nsecond");
     assert_eq!(result["verdict"]["summary"], "added it");
     assert_eq!(result["check"]["outcome"], "unchecked");
-    let event = events.recv_timeout(Duration::from_secs(5)).unwrap();
+    let event = events.recv_timeout(Duration::from_secs(120)).unwrap();
     assert_eq!(event.task["id"], id.as_str());
     assert_eq!(event.kind, "child_done");
     assert_eq!(event.owner_lane, "main");
@@ -165,7 +165,7 @@ fn delegation_detached_child_end_arrives_as_event_without_a_wait() {
     ))]]);
     host.handle("rlm.spawn", json!({ "prompt": "p", "kwargs": { "name": "a" } }), "main")
         .unwrap();
-    let event = events.recv_timeout(Duration::from_secs(5)).unwrap();
+    let event = events.recv_timeout(Duration::from_secs(120)).unwrap();
     assert!(!event.awaited);
     assert_eq!(event.task["state"], "completed");
     assert_eq!(event.task["result"]["value"], "hi");
@@ -186,7 +186,7 @@ fn delegation_deleting_a_child_aborts_its_agent_loop() {
             .unwrap(),
         json!({ "deleted": true })
     );
-    let event = events.recv_timeout(Duration::from_secs(5)).unwrap();
+    let event = events.recv_timeout(Duration::from_secs(120)).unwrap();
     assert_eq!(
         event.task["result"],
         json!({ "status": "cancelled", "error": "RLM child deleted", "verification": "unverified" })

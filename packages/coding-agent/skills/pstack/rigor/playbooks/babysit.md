@@ -29,11 +29,18 @@ async def pr_status(pr, repo):
     if not out.ok:
         raise RuntimeError(out)
     view = json.loads(out)
-    query = "query($o:String!,$n:String!,$p:Int!){repository(owner:$o,name:$n){pullRequest(number:$p){reviewThreads(first:100){nodes{isResolved path comments(first:1){nodes{databaseId author{login} body}}}}}}}"
-    raw = await bash(f'''gh api graphql -f query='{query}' -F o={owner} -F n={name} -F p={pr}''')
-    if not raw.ok:
-        raise RuntimeError(raw)
-    threads = json.loads(raw)["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+    query = "query($o:String!,$n:String!,$p:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$p){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved path comments(first:1){nodes{databaseId author{login} body}}}}}}}"
+    threads, cursor = [], None
+    while True:  # page through every thread; a busy PR has more than 100
+        after = f" -f c='{cursor}'" if cursor else ""
+        raw = await bash(f'''gh api graphql -f query='{query}' -F o={owner} -F n={name} -F p={pr}{after}''')
+        if not raw.ok:
+            raise RuntimeError(raw)
+        page = json.loads(raw)["data"]["repository"]["pullRequest"]["reviewThreads"]
+        threads += page["nodes"]
+        if not page["pageInfo"]["hasNextPage"]:
+            break
+        cursor = page["pageInfo"]["endCursor"]
     checks = view["statusCheckRollup"] or []
     failing = [c.get("name") or c.get("context") for c in checks if (c.get("conclusion") or c.get("state")) in ("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")]
     pending = [c.get("name") or c.get("context") for c in checks if c.get("status") not in (None, "COMPLETED") or c.get("state") == "PENDING"]
@@ -69,6 +76,3 @@ async def pr_status(pr, repo):
 9. **Stop at the human's line.** Owner approval is a wait, not a blocker to fix. Surface the escalation and keep
    working the rest. At the end, sweep the run's dismissals once and offer any recurring pattern as a project rule or
    skill change in its own PR.
-
-**Reply:** the mode, the frontier and its merge state, a table of PR, head, checks and open threads, what you fixed
-versus dismissed with reasons, what is pending, and what needs the human.

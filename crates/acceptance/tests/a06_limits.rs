@@ -11,7 +11,6 @@ use common::{alive, kernel_in, null_handler, read_pids, run, value, wait_until};
 use kernel::{KernelError, Signal, Status};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 const PREVIEW_LIMIT: usize = 8192 + "\n... [truncated]".len();
 const OUTPUT_LIMIT: usize = 20_000 + 64;
@@ -64,14 +63,26 @@ fn an_interrupted_runaway_cell_stops(dir: &Path) {
     let kernel = Arc::new(kernel_in(dir, null_handler()));
     run(&kernel, "marker = 1");
     let signal = Signal::new();
-    let timer = signal.clone();
+    // The cell announces that it is spinning before the test interrupts it, so the abort lands inside the loop
+    // however slowly the cell starts; the result arrives over a channel with only a hang guard.
+    let spinning = dir.join("spinning");
+    let code = format!(
+        "open({}, 'w').close()\nwhile True:\n    pass",
+        serde_json::to_string(&spinning).unwrap()
+    );
+    let (done, outcome) = std::sync::mpsc::channel();
+    let (cell_kernel, cell_signal) = (kernel.clone(), signal.clone());
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(300));
-        timer.abort("timeout");
+        let _ = done.send(cell_kernel.execute(&code, Some(&cell_signal), None));
     });
-    let started = Instant::now();
-    assert!(kernel.execute("while True:\n    pass", Some(&signal), None).is_err());
-    assert!(started.elapsed() < Duration::from_secs(5));
+    wait_until("the cell to spin", || spinning.exists());
+    signal.abort("timeout");
+    assert!(
+        outcome
+            .recv_timeout(common::HANG)
+            .expect("the runaway cell stops")
+            .is_err()
+    );
     // Interrupt replaces the process; state is lost rather than silently restored.
     assert_eq!(value(&kernel, "'marker' in globals()"), "False");
     kernel.shutdown();
@@ -95,9 +106,7 @@ fn interrupting_a_cell_kills_its_children(dir: &Path) {
     assert!(pids.iter().all(|pid| alive(*pid)));
     signal.abort("interrupt");
     assert_eq!(running.join().unwrap(), Err(KernelError::new("interrupt")));
-    wait_until("the interrupted tree to end", Duration::from_secs(5), || {
-        !pids.iter().any(|pid| alive(*pid))
-    });
+    wait_until("the interrupted tree to end", || !pids.iter().any(|pid| alive(*pid)));
     kernel.shutdown();
 }
 
@@ -113,9 +122,7 @@ fn shutdown_kills_the_whole_tree(dir: &Path) {
         running.join().unwrap(),
         Err(KernelError::new("RLM kernel is shut down"))
     );
-    wait_until("the shut-down tree to end", Duration::from_secs(5), || {
-        !pids.iter().any(|pid| alive(*pid))
-    });
+    wait_until("the shut-down tree to end", || !pids.iter().any(|pid| alive(*pid)));
 }
 
 #[test]

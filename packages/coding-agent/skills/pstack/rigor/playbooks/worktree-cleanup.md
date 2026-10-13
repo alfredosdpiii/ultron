@@ -1,9 +1,5 @@
 ### Worktree cleanup
 
-**You own the disk and the safety gate.** Prune merged or abandoned git worktrees to reclaim space. Deletion is
-irreversible, so every step guards against deleting something in use or holding uncommitted work. This is the one
-playbook that deletes user state with no code review, so the gates are the review.
-
 1. Snapshot and audit. Record `df -h .`. Ultron's own child worktrees come first: `await rlm.worktrees.list(all=True)`
    shows them, and `await rlm.worktrees.cleanup()` removes finished children's worktrees and those of crashed sessions,
    keeping branches with unmerged work. For the rest, classify every worktree from `git worktree list --porcelain`,
@@ -12,8 +8,14 @@ playbook that deletes user state with no code review, so the gates are the revie
 ```python
 import json, re, time
 
-await bash('''git fetch origin --quiet''')
-trunk = "origin/main"
+# MERGED checks against the branch PRs merge into: origin/HEAD (the remote's default branch) unless you set another
+base = ""  # e.g. "origin/integration" when PRs target a branch other than the default
+if not base:
+    head = await bash('''git symbolic-ref --short refs/remotes/origin/HEAD''')
+    base = head.strip() if head.ok else "origin/main"
+    print("no base given; MERGED checks against", base)
+await bash(f'''git fetch origin '+refs/heads/{base.removeprefix("origin/")}:refs/remotes/{base}' --quiet''')
+trunk = base
 out = await bash('''gh pr list --author "@me" --state all --limit 500 --json number,state,headRefName''')
 prs = json.loads(out) if out.ok else []
 by_branch = {p["headRefName"]: f"#{p['number']}/{p['state']}" for p in prs}
@@ -37,7 +39,7 @@ for r in rows:
     print(r["bucket"], r["size"], f"{r['age_days']}d", r["pr"], f"wip:{r['wip']}", r["path"])
 ```
 
-   Squash-merged branches are not ancestors of trunk, so PR state is the stronger signal.
+   Squash-merged branches are not ancestors of the base, so PR state is the stronger signal.
 2. The bucket is advice, not permission. Ask which worktrees the user or a running session is using, and cross-check
    every candidate against that set; the in-use set wins over `safe`.
 3. Verify usage before deleting. For anything you doubt, look for live users: processes with the path as cwd

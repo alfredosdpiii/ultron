@@ -6,7 +6,7 @@
 
 use crate::Env;
 use crate::args::Args;
-use client::runtime::{ClientCommand, ClientResult, Route, run_client};
+use client::runtime::{ClientCommand, ClientResult, Route, RunOptions, run_client_with};
 use daemon::server::{ServerOptions, start_foreground_server};
 use daemon::workers::WorkerModel;
 use serde_json::json;
@@ -109,8 +109,15 @@ pub fn client_command(parsed: &Args, target: &Target, prompt: Option<String>) ->
     command
 }
 
-/// Run one prompted turn through this process's own server generation.
+/// How long a signalled print run waits for its aborted turn to end before it exits anyway (`PROMPT_ABORT_WAIT_MS`).
+pub const PROMPT_ABORT_WAIT: std::time::Duration = std::time::Duration::from_millis(5_000);
+
+/// Run one prompted turn through this process's own server generation. A signal aborts the turn and exits with the
+/// signal's code once it ended; a lost worker or server is rejoined (the server restarted) and the turn's session
+/// followed to its end.
 pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> Result<Prompted, String> {
+    use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+    use std::sync::{Arc, Mutex};
     preflight(parsed, env, &target)?;
     let json_mode = parsed.mode.as_deref() == Some("json");
     let options = server_options(parsed, env, if json_mode { "json" } else { "print" })?;
@@ -119,8 +126,39 @@ pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> R
         server_id: server.server_id.clone(),
         path: server.endpoint_path.clone(),
     };
-    let result = run_client(&client_command(parsed, &target, Some(prompt)), &route);
-    server.close();
+    let servers = Arc::new(Mutex::new(vec![server]));
+    let interrupt = Arc::new(AtomicBool::new(false));
+    let code = Arc::new(AtomicI32::new(0));
+    let (flag, signalled) = (interrupt.clone(), code.clone());
+    daemon::signals::set_handler(Arc::new(move |signal| {
+        signalled.store(daemon::signals::exit_code(signal), Ordering::SeqCst);
+        flag.store(true, Ordering::SeqCst);
+        // Never hang the exit on the aborted turn.
+        std::thread::sleep(PROMPT_ABORT_WAIT);
+        std::process::exit(daemon::signals::exit_code(signal));
+    }));
+    let (restarted, server_options) = (servers.clone(), options.clone());
+    let run_options = RunOptions {
+        interrupt: Some(interrupt.clone()),
+        reconnect: Some(Arc::new(move || {
+            // The server generation went away with its coordinator: start a new one (and coordinator).
+            let server = start_foreground_server(&server_options).map_err(|e| e.to_string())?;
+            let route = Route {
+                server_id: server.server_id.clone(),
+                path: server.endpoint_path.clone(),
+            };
+            restarted.lock().unwrap_or_else(|e| e.into_inner()).push(server);
+            Ok(route)
+        })),
+    };
+    let result = run_client_with(&client_command(parsed, &target, Some(prompt)), &route, &run_options);
+    for server in servers.lock().unwrap_or_else(|e| e.into_inner()).drain(..) {
+        server.close();
+    }
+    if interrupt.load(Ordering::SeqCst) {
+        std::process::exit(code.load(Ordering::SeqCst));
+    }
+    daemon::signals::clear_handler();
     match result.map_err(|e| daemon::lost::describe(&e).unwrap_or(e))? {
         ClientResult::Prompted {
             server_id,

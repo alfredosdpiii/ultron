@@ -25,6 +25,9 @@ pub enum Event {
         result: Result<Option<Value>, String>,
         pending: Arc<AtomicUsize>,
     },
+    /// A signal ended RPC mode: release the session (a busy worker keeps its work, detached; nothing is aborted,
+    /// as leaving RPC mode is not an abort) and exit with this code.
+    Signal(i32),
 }
 
 pub struct Remote<'a> {
@@ -34,6 +37,10 @@ pub struct Remote<'a> {
     tx: Sender<Input<Event>>,
     translator: RpcEventTranslator,
     running: bool,
+    /// The run in progress (its `run_start` id).
+    run_id: Option<String>,
+    /// The run that was in progress when the link lost its worker or server.
+    lost_run: Option<String>,
     bash: Arc<AtomicUsize>,
 }
 
@@ -77,6 +84,8 @@ impl<'a> Remote<'a> {
             tx,
             translator: RpcEventTranslator::default(),
             running: false,
+            run_id: None,
+            lost_run: None,
             bash: Arc::new(AtomicUsize::new(0)),
         })
     }
@@ -104,7 +113,7 @@ impl<'a> Remote<'a> {
 
     /// Fork the current session (`forkPath`), record the fork in the new session, and attach to it.
     fn fork_to(&mut self, fork_path: Value) -> Result<(), String> {
-        let source = self.link()?.session_id.clone();
+        let source = self.link()?.session_id();
         let created = self
             .link
             .as_mut()
@@ -128,9 +137,35 @@ impl RpcSession for Remote<'_> {
                 pending.fetch_sub(1, Ordering::SeqCst);
                 return;
             }
+            Event::Signal(code) => {
+                if let Some(link) = self.link.take() {
+                    link.close(false);
+                }
+                std::process::exit(code);
+            }
+        };
+        // A run its worker lost ends for RPC clients as failed when the link rejoins (recovery settled it), unless
+        // its end, or another run, was seen meanwhile.
+        if event["type"] == "connection" && event["state"] == "reconnecting" {
+            self.lost_run = self.run_id.clone().filter(|_| self.running);
+        }
+        let lost = event["type"] == "connection"
+            && event["state"] == "rejoined"
+            && self
+                .lost_run
+                .take()
+                .is_some_and(|lost| self.running && self.run_id.as_deref() == Some(&lost));
+        let event = if lost {
+            json!({"type": "run_end", "status": "failed", "endedAt": session_core::lane::now_ms(),
+                "error": {"code": "interrupted", "message": "The session worker stopped during this run"}})
+        } else {
+            event
         };
         match event["type"].as_str() {
-            Some("run_start") => self.running = true,
+            Some("run_start") => {
+                self.running = true;
+                self.run_id = event["runId"].as_str().map(str::to_string);
+            }
             Some("run_end") => self.running = false,
             _ => {}
         }
@@ -146,8 +181,14 @@ impl RpcSession for Remote<'_> {
     }
 
     fn input_ended(&mut self) {
-        self.abort();
-        self.abort_bash();
+        // Leaving is not an abort (TS: a root turn in flight when its client closes stdin runs to completion): the
+        // session is released at once and a busy worker keeps its work running detached.
+        if daemon::signals::received().is_some() {
+            return;
+        }
+        self.close();
+        self.running = false;
+        self.bash.store(0, Ordering::SeqCst);
     }
 
     fn close(&mut self) {
@@ -263,10 +304,9 @@ impl RpcSession for Remote<'_> {
     }
 
     fn bash(&mut self, command: String, exclude_from_context: bool, reply: Reply) -> Result<(), String> {
-        let link = self.link()?;
-        let session = link.connection.session_target().map_err(|e| e.to_string())?;
-        let request = link
-            .connection
+        let connection = self.link()?.connection();
+        let session = connection.session_target().map_err(|e| e.to_string())?;
+        let request = connection
             .start(
                 session,
                 "ultron.session-control",
@@ -274,7 +314,6 @@ impl RpcSession for Remote<'_> {
                 json!([command, exclude_from_context]),
             )
             .map_err(|e| e.to_string())?;
-        let connection = link.connection.clone();
         let (pending, tx) = (self.bash.clone(), self.tx.clone());
         pending.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
@@ -298,7 +337,7 @@ impl RpcSession for Remote<'_> {
             return Err("Agent is already processing".into());
         }
         let id = selector_id(self.env, selector)?;
-        if id == self.link()?.session_id {
+        if id == self.link()?.session_id() {
             return Ok(());
         }
         if self.link()?.session_file(&id)?.is_none() {
@@ -372,6 +411,22 @@ pub fn run(
 ) -> Result<i32, String> {
     let (tx, rx) = std::sync::mpsc::channel();
     let mut session = Remote::open(parsed, env, target, tx.clone())?;
+    // A signal ends RPC mode as the end of its input does (the session detaches, the server closes), then exits
+    // with the signal's code.
+    let signalled = Arc::new(std::sync::atomic::AtomicI32::new(0));
+    let (code, end) = (signalled.clone(), std::sync::Mutex::new(tx.clone()));
+    daemon::signals::set_handler(Arc::new(move |signal| {
+        let exit = daemon::signals::exit_code(signal);
+        code.store(exit, Ordering::SeqCst);
+        // Leaving RPC on a signal releases the session without aborting the running turn (as in TS): a busy worker
+        // keeps its work running detached.
+        let _ = end
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .send(Input::Event(Event::Signal(exit)));
+        std::thread::sleep(crate::print_mode::PROMPT_ABORT_WAIT);
+        std::process::exit(daemon::signals::exit_code(signal));
+    }));
     let reader = std::thread::spawn(move || {
         for line in super::jsonl::JsonlLines::new(input) {
             match line {
@@ -389,5 +444,10 @@ pub fn run(
     super::serve(&mut session, &rx, &out);
     drop(rx);
     let _ = reader;
-    Ok(0)
+    let code = signalled.load(Ordering::SeqCst);
+    Ok(if code != 0 {
+        code
+    } else {
+        daemon::signals::received().map_or(0, daemon::signals::exit_code)
+    })
 }

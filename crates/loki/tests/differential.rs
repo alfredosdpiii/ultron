@@ -153,3 +153,19 @@ fn loki_unported_checks_fail_closed() {
         "loki: guard error: NotPorted: the daemon command is not ported to the Rust engine\n"
     );
 }
+
+/// `protect` stops at MAX_VIOLATIONS (40) lines, against `loki.py --root R protect --file .loki/f0 ... --file
+/// .loki/f44` (exit 2, stderr the first 40 refusals, stdout empty).
+#[test]
+fn loki_protect_reports_at_most_forty_violations_like_loki_py() {
+    let dir = tempfile::tempdir().unwrap();
+    let files: Vec<String> = (0..45).map(|i| format!(".loki/f{i}")).collect();
+    let outcome = loki::run::protect(dir.path(), &files, None, false, || unreachable!("no preview"));
+    let expected: String = (0..40)
+        .map(|i| format!("loki: protected file: .loki/f{i} (set LOKI_ALLOW_PROTECTED=1 to override)\n"))
+        .collect();
+    assert_eq!(
+        (outcome.status, outcome.stdout.as_str(), outcome.stderr.as_str()),
+        (2, "", expected.as_str())
+    );
+}

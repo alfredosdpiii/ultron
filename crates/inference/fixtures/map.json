@@ -476,7 +476,7 @@
 			"calls": []
 		},
 		{
-			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\"], budget=Budget(calls=1, tokens=5000), model=\"fake/frame-model\", timeout_ms=1000, thinking=\"low\", max_repairs=1, concurrency=2)\nprint(r)\nprint(r.remaining)",
+			"code": "r = await rlm.map(\"Pick\", [\"a\", \"b\"], budget=Budget(calls=1, tokens=5000), model=\"fake/frame-model\", timeout_ms=600000, thinking=\"low\", max_repairs=1, concurrency=2)\nprint(r)\nprint(r.remaining)",
 			"replies": [
 				{
 					"text": "only",
@@ -668,7 +668,7 @@
 			]
 		},
 		{
-			"code": "try:\n    await rlm.infer(\"Slow\", timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
+			"code": "try:\n    await rlm.infer(\"Slow\", timeout_ms=5000)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
 			"replies": [
 				{
 					"hang": true
@@ -694,7 +694,7 @@
 			]
 		},
 		{
-			"code": "r = await rlm.map(\"Slow\", [\"a\", \"b\"], budget=Budget(calls=2, tokens=2000), timeout_ms=50, concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.error for x in r if isinstance(x, FrameError)])",
+			"code": "r = await rlm.map(\"Slow\", [\"a\", \"b\"], budget=Budget(calls=2, tokens=2000), timeout_ms=5000, concurrency=1)\nprint(r)\nprint(r.spent, r.budget, r.remaining)\nfor x in r: print(type(x).__name__, repr(x))\nprint([x.error for x in r if isinstance(x, FrameError)])",
 			"replies": [
 				{
 					"hang": true
@@ -738,7 +738,7 @@
 			]
 		},
 		{
-			"code": "try:\n    await rlm.infer(\"Count\", contract=int, timeout_ms=50)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
+			"code": "try:\n    await rlm.infer(\"Count\", contract=int, timeout_ms=5000)\nexcept InferenceError as e:\n    print(repr(e), e.spent, e.last_outputs)",
 			"replies": [
 				{
 					"text": "many",

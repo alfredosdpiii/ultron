@@ -9,6 +9,9 @@
 //! ends when the cell is cancelled, and reports itself through [`CellContext::park`] so the lane detaches the cell.
 //! A detached child's end is pushed to the [`DetachedEnd`] channel as soon as its result is durable.
 
+mod restore;
+pub use restore::ChildWaiter;
+
 use crate::task_store::{MemoryStore, TaskJournal, TaskStore, task_fingerprint};
 use crate::verdict::{MAX_VERDICT_REJECTIONS, validate_verdict};
 use crate::workspace::{
@@ -181,6 +184,25 @@ struct Inner {
     keep_worktrees: bool,
     /// `rlm.merge` calls run one at a time: each writes into a working tree.
     merging: Mutex<()>,
+    /// Refuses a spawn's `model=` the session cannot run (see [`Delegation::set_model_check`]).
+    model_check: Mutex<Option<ModelCheck>>,
+}
+
+/// Checks a well-formed `provider/model` a spawn names; an error refuses the spawn with that message.
+pub type ModelCheck = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
+
+/// A [`ModelCheck`] that accepts only the built-in model catalog.
+pub fn builtin_model_check() -> ModelCheck {
+    Arc::new(|spec: &str| {
+        let known = spec
+            .split_once('/')
+            .is_some_and(|(provider, id)| ai::models::builtin_model(provider, id).is_some());
+        if known {
+            Ok(())
+        } else {
+            Err(format!("model must be provider/model naming a known model, not {spec}"))
+        }
+    })
 }
 
 /// `worktreeChanges`: Git's changes in a worktree minus files unchanged since the child started (its setup command's
@@ -386,9 +408,15 @@ impl Delegation {
                 worktree_setup: options.worktree_setup,
                 keep_worktrees: options.keep_worktrees,
                 merging: Mutex::new(()),
+                model_check: Mutex::new(None),
             }),
         };
         (host, receiver)
+    }
+
+    /// Refuse spawns whose `model=` fails `check` (by default only the `provider/model` form is checked).
+    pub fn set_model_check(&self, check: ModelCheck) {
+        *self.inner.model_check.lock().unwrap_or_else(PoisonError::into_inner) = Some(check);
     }
 
     /// The kernel host handler for `lane` ("main" for the root; a child's `lane_name`).
@@ -918,8 +946,23 @@ impl Delegation {
                 "rlm.spawn depth={child_depth} is too deep here: at most {max_child_depth} (ULTRON_SPAWN_DEPTH={limit} levels in all)."
             ));
         }
+        // A named model must be `provider/model` and one the session can run: never silently the root's model.
         let model = match kwargs.get("model") {
-            Some(Value::String(model)) => Some(model.clone()),
+            Some(Value::String(model)) => {
+                if !crate::definitions::is_model(model) {
+                    return Err("model must be provider/model".into());
+                }
+                if let Some(check) = self
+                    .inner
+                    .model_check
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .as_ref()
+                {
+                    check(model)?;
+                }
+                Some(model.clone())
+            }
             _ => self.inner.child_model.clone(),
         };
         let timeout = match kwargs.get("timeout_ms") {

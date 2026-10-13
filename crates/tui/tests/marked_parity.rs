@@ -119,3 +119,73 @@ fn tui_marked_lexes_renderer_corpus_like_ts() {
 fn tui_marked_lexes_gfm_and_latex_corpus_like_ts() {
     check("marked-parity.json");
 }
+
+/// A multi-byte character right before a LaTeX opener (`“$PATH”`, `€$5`, `é` then a `$$` block): marked cuts the
+/// text token one character after its start, which the byte-offset port took as one byte and panicked mid-character.
+/// Expected lines recorded from packages/tui's Markdown (renderLatex: false) at width 40.
+#[test]
+fn tui_marked_multibyte_char_before_latex_opener_like_ts() {
+    let config = serde_json::json!({ "highlight": false, "style": null });
+    let cases: [(&str, &[&str]); 4] = [
+        (
+            "Set “$PATH” and €$5 then $x$.",
+            &["Set “$PATH” and €$5 then $x$.           "],
+        ),
+        (
+            "é\n$$\na+b\n$$",
+            &[
+                "é                                       ",
+                "                                        ",
+                "$$                                      ",
+                "a+b                                     ",
+                "$$                                      ",
+            ],
+        ),
+        ("€$x$ ok", &["€$x$ ok                                 "]),
+        ("“\\(a\\)” ü$$y$$", &["“\\(a\\)” ü$$y$$                          "]),
+    ];
+    for (doc, want) in cases {
+        let mut md = Markdown {
+            tokens: markdown_tokens(doc),
+            padding_x: 0,
+            padding_y: 0,
+            theme: theme(&config),
+            style: style(&config),
+            options: MarkdownOptions {
+                raw_latex: true,
+                ..MarkdownOptions::default()
+            },
+        };
+        assert_eq!(md.render(40), want, "{doc:?}");
+    }
+}
+
+/// marked's right-delimiter rule opens with a branch, anchored where the scan starts, that skips one delimiter between
+/// `__` (or `**`) pairs: `*x__y*z__` stays literal although `y*z` alone would close the emphasis. Expected lines recorded
+/// from packages/tui's Markdown at width 40.
+#[test]
+fn tui_marked_em_strong_skip_branch_like_ts() {
+    let config = serde_json::json!({ "highlight": false, "style": null });
+    let cases = [
+        ("*x__y*z__ end", "*x__y*z__ end                           "),
+        (
+            "_x**y_z** end",
+            "_x\x1b[1my_z\x1b[22m end                               ",
+        ),
+        (
+            "a *x__y*z__ *b*",
+            "a *x__y*z__ \x1b[3mb\x1b[23m                           ",
+        ),
+    ];
+    for (doc, want) in cases {
+        let mut md = Markdown {
+            tokens: markdown_tokens(doc),
+            padding_x: 0,
+            padding_y: 0,
+            theme: theme(&config),
+            style: style(&config),
+            options: MarkdownOptions::default(),
+        };
+        assert_eq!(md.render(40), [want], "{doc:?}");
+    }
+}

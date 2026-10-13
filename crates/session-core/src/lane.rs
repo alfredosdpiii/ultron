@@ -296,6 +296,8 @@ pub fn api_supported(api: &str) -> bool {
 pub struct Provider {
     transport: Arc<dyn Transport>,
     api_key: Option<String>,
+    /// Routes `claude-subscription` calls (subscription first, API credits when out of usage): the process's.
+    router: Arc<ai::claude_subscription::fallback::Router>,
 }
 
 impl Provider {
@@ -303,12 +305,30 @@ impl Provider {
         Provider {
             transport: Arc::new(ReqwestTransport::new(None)),
             api_key: None,
+            router: ai::claude_subscription::fallback::global(),
+        }
+    }
+
+    /// A provider over `transport` whose Claude subscription calls go through `router` (tests and embedders).
+    pub fn with_router(router: Arc<ai::claude_subscription::fallback::Router>, transport: Arc<dyn Transport>) -> Self {
+        Provider {
+            transport,
+            api_key: None,
+            router,
         }
     }
 
     pub fn with_key(api_key: Option<String>) -> Self {
         Provider {
             api_key,
+            ..Provider::new()
+        }
+    }
+
+    /// A provider whose requests fail when headers or the stream stall for `idle` (`httpIdleTimeoutMs`).
+    pub fn with_idle_timeout(idle: Option<std::time::Duration>) -> Self {
+        Provider {
+            transport: Arc::new(ReqwestTransport::new(None).with_idle_timeout(idle)),
             ..Provider::new()
         }
     }
@@ -354,6 +374,7 @@ impl StreamFn for Provider {
                     ai::openai_responses::stream_simple(model, context, options, transport, sink).await
                 }
                 "google-generative-ai" => ai::google::stream_simple(model, context, options, transport, sink).await,
+                "claude-subscription" => Ok(self.router.stream(model, context, options, transport, sink).await),
                 api => Err(format!("API \"{api}\" is not ported to the Rust build yet")),
             };
             result.unwrap_or_else(|e| error_message(model, e))
@@ -502,7 +523,18 @@ pub struct Lane {
 impl Lane {
     /// Start the root lane ("main") of `session_id` over `runtime`'s host stack.
     pub fn open(runtime: &Runtime, model: &Model, api_key: Option<String>, session_id: &str) -> Result<Lane, String> {
-        let stack = runtime.stack(model, api_key, session_id)?;
+        Lane::open_with(runtime, model, api_key, session_id, None)
+    }
+
+    /// [`Lane::open`] whose subagents run as `subagents` says.
+    pub fn open_with(
+        runtime: &Runtime,
+        model: &Model,
+        api_key: Option<String>,
+        session_id: &str,
+        subagents: Option<crate::compose::SubagentHost>,
+    ) -> Result<Lane, String> {
+        let stack = runtime.stack_with(model, api_key, session_id, subagents)?;
         let tool = Arc::new(stack.rlm(MAIN)?);
         Ok(Lane {
             host: stack.host.clone(),
@@ -538,8 +570,18 @@ pub const MAIN: &str = "main";
 
 /// The `rlm` tool for `lane` of `lanes`.
 pub(crate) fn rlm_over(config: &Config, lanes: Lanes, lane: &str, spill_dir: PathBuf) -> Rlm {
+    let mut tool = rlm_tool();
+    // `codeSkillsToolSection`: the tool description lists the profile's active code skills.
+    let listing = kernel_apis::CodeSkills::new(kernel_apis::CodeSkillsOptions::new(
+        &config.skills_dir,
+        &config.runtime_path,
+    ))
+    .describe();
+    if !listing.is_empty() {
+        tool.description = format!("{}\n{listing}", tool.description);
+    }
     Rlm {
-        tool: rlm_tool(),
+        tool,
         lanes,
         lane: lane.to_string(),
         masker: OutputMasker::default(),
