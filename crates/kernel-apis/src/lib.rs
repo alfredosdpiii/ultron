@@ -6,7 +6,9 @@
 //! - `memory.*`: prepare / propose / correct / get / forget / why / list over a Hindsight-shaped backend, ported from
 //!   `ultron/memory.ts` and the dispatch of `ultron/worker-services.ts`;
 //! - `grants.*`: scoped approvals (`ultron/grants.ts`);
-//! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`);
+//! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`), and [`cell_hints`], the situational hints a cell's
+//!   result ends with;
+//! - `tools.*`: extension tool calls from the REPL, detached after `yield_after` (`ultron/rlm/extension-tools.ts`);
 //! - `schedules.*`, `goals.*` and `goal.*` as durable work: the schedule tick, goal recovery over the task journal,
 //!   and [`DurableWork`], the entry point a composition root opens and closes.
 //!
@@ -15,6 +17,7 @@
 //! task that owns it (from the [`TaskHost`]) and the host's task operations.
 
 pub mod artifacts;
+pub mod cell_hints;
 pub mod code_skills;
 pub mod context_control;
 pub mod durable_work;
@@ -30,6 +33,7 @@ pub mod schedules;
 pub mod skills;
 pub mod store;
 pub mod tasks;
+pub mod tool_calls;
 pub mod util;
 
 use kernel::{HostHandler, Signal};
@@ -54,6 +58,7 @@ pub use schedules::SchedulesModule;
 pub use skills::{SkillLoader, SkillSource, SkillsModule};
 pub use store::{DocumentStore, FileDocumentStore, MemoryDocumentStore};
 pub use tasks::{RootOnly, TaskHost};
+pub use tool_calls::{ToolCallEnd, ToolCalls, ToolInfo, ToolRunner};
 
 /// One host request as a module sees it (TS `HostModuleRequest` plus the `NativeHostApi`).
 pub struct Request<'a> {

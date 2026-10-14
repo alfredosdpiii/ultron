@@ -1,0 +1,1950 @@
+{
+	"cases": [
+		{
+			"name": "custom provider with literal key, headers, compat and overrides",
+			"models": {
+				"providers": {
+					"cliproxyapi": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"apiKey": "proxy-key",
+						"headers": {
+							"x-proxy-token": "$PROXY_TOKEN",
+							"x-static": "static"
+						},
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						},
+						"models": [
+							{
+								"id": "gpt-6.1-sol",
+								"name": "GPT 6.1 Sol",
+								"reasoning": true,
+								"thinkingLevelMap": {
+									"off": null,
+									"high": "high"
+								},
+								"input": [
+									"text",
+									"image"
+								],
+								"contextWindow": 400000,
+								"maxTokens": 128000,
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"headers": {
+									"x-model": "sol",
+									"X-Static": "model-wins"
+								},
+								"compat": {
+									"maxTokensField": "max_tokens",
+									"openRouterRouting": {
+										"order": [
+											"b"
+										]
+									}
+								}
+							},
+							{
+								"id": "plain"
+							},
+							{
+								"id": "responses",
+								"api": "openai-responses",
+								"baseUrl": "http://127.0.0.1:9/alt"
+							}
+						],
+						"modelOverrides": {
+							"plain": {
+								"contextWindow": 9000,
+								"maxTokens": 900,
+								"headers": {
+									"x-override": "o"
+								},
+								"cost": {
+									"output": 7
+								}
+							},
+							"not-listed": {
+								"name": "ignored"
+							}
+						}
+					}
+				}
+			},
+			"env": {
+				"PROXY_TOKEN": "tok-1"
+			},
+			"error": null,
+			"providers": {
+				"cliproxyapi": [
+					{
+						"id": "gpt-6.1-sol",
+						"name": "GPT 6.1 Sol",
+						"api": "openai-completions",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"high": "high"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 400000,
+						"maxTokens": 128000,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								],
+								"order": [
+									"b"
+								]
+							},
+							"maxTokensField": "max_tokens"
+						}
+					},
+					{
+						"id": "plain",
+						"name": "plain",
+						"api": "openai-completions",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 7,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 9000,
+						"maxTokens": 900,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						}
+					},
+					{
+						"id": "responses",
+						"name": "responses",
+						"api": "openai-responses",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/alt",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						}
+					}
+				]
+			},
+			"available": [
+				"cliproxyapi/gpt-6.1-sol",
+				"cliproxyapi/plain",
+				"cliproxyapi/responses"
+			],
+			"auth": [
+				{
+					"model": "cliproxyapi/gpt-6.1-sol",
+					"apiKey": null,
+					"result": {
+						"apiKey": "proxy-key",
+						"headers": {
+							"x-proxy-token": "tok-1",
+							"x-model": "sol",
+							"X-Static": "model-wins"
+						}
+					}
+				},
+				{
+					"model": "cliproxyapi/plain",
+					"apiKey": null,
+					"result": {
+						"apiKey": "proxy-key",
+						"headers": {
+							"x-proxy-token": "tok-1",
+							"x-static": "static",
+							"x-override": "o"
+						}
+					}
+				},
+				{
+					"model": "cliproxyapi/plain",
+					"apiKey": "override-key",
+					"result": {
+						"apiKey": "override-key",
+						"headers": {
+							"x-proxy-token": "tok-1",
+							"x-static": "static",
+							"x-override": "o"
+						}
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "cliproxyapi/gpt-6.1-sol",
+					"result": {
+						"id": "gpt-6.1-sol",
+						"name": "GPT 6.1 Sol",
+						"api": "openai-completions",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"high": "high"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 400000,
+						"maxTokens": 128000,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								],
+								"order": [
+									"b"
+								]
+							},
+							"maxTokensField": "max_tokens"
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": "cliproxyapi",
+					"model": "gpt-6.1-sol",
+					"result": {
+						"id": "gpt-6.1-sol",
+						"name": "GPT 6.1 Sol",
+						"api": "openai-completions",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"high": "high"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 400000,
+						"maxTokens": 128000,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								],
+								"order": [
+									"b"
+								]
+							},
+							"maxTokensField": "max_tokens"
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": "cliproxyapi",
+					"model": "cliproxyapi/plain",
+					"result": {
+						"id": "plain",
+						"name": "plain",
+						"api": "openai-completions",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 7,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 9000,
+						"maxTokens": 900,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "cliproxyapi/responses",
+					"result": {
+						"id": "responses",
+						"name": "responses",
+						"api": "openai-responses",
+						"provider": "cliproxyapi",
+						"baseUrl": "http://127.0.0.1:9/alt",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384,
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "nosuch/model",
+					"result": null,
+					"error": "Model \"nosuch/model\" not found. Use --list-models to see available models."
+				},
+				{
+					"provider": "nosuch",
+					"model": "model",
+					"result": null,
+					"error": "Unknown provider \"nosuch\". Use --list-models to see available providers/models."
+				}
+			],
+			"list": {
+				"search": "cliproxyapi",
+				"stdout": "provider     model        context  max-out  thinking  images\ncliproxyapi  gpt-6.1-sol  400K     128K     yes       yes   \ncliproxyapi  plain        9K       900      no        no    \ncliproxyapi  responses    128K     16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "authHeader adds a bearer header",
+			"models": {
+				"providers": {
+					"gw": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "anthropic-messages",
+						"apiKey": "gw-key",
+						"authHeader": true,
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"gw": [
+					{
+						"id": "m",
+						"name": "m",
+						"api": "anthropic-messages",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [
+				"gw/m"
+			],
+			"auth": [
+				{
+					"model": "gw/m",
+					"apiKey": null,
+					"result": {
+						"apiKey": "gw-key",
+						"headers": {
+							"Authorization": "Bearer gw-key"
+						}
+					}
+				},
+				{
+					"model": "gw/m",
+					"apiKey": "flag-key",
+					"result": {
+						"apiKey": "flag-key",
+						"headers": {
+							"Authorization": "Bearer flag-key"
+						}
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "gw/m",
+					"result": {
+						"id": "m",
+						"name": "m",
+						"api": "anthropic-messages",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "gw",
+				"stdout": "provider  model  context  max-out  thinking  images\ngw        m      128K     16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "env template key resolved",
+			"models": {
+				"providers": {
+					"envp": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "pre-${KEY_A}-$KEY_B",
+						"models": [
+							{
+								"id": "e"
+							}
+						]
+					}
+				}
+			},
+			"env": {
+				"KEY_A": "a",
+				"KEY_B": "b"
+			},
+			"error": null,
+			"providers": {
+				"envp": [
+					{
+						"id": "e",
+						"name": "e",
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [
+				"envp/e"
+			],
+			"auth": [
+				{
+					"model": "envp/e",
+					"apiKey": null,
+					"result": {
+						"apiKey": "pre-a-b",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "envp/e",
+					"result": {
+						"id": "e",
+						"name": "e",
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "envp",
+				"stdout": "provider  model  context  max-out  thinking  images\nenvp      e      128K     16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "env template key with missing variables",
+			"models": {
+				"providers": {
+					"envp": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "pre-${KEY_A}-$KEY_B",
+						"models": [
+							{
+								"id": "e"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"envp": [
+					{
+						"id": "e",
+						"name": "e",
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [],
+			"auth": [
+				{
+					"model": "envp/e",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider envp: Failed to resolve API key for provider \"envp\" from environment variables: KEY_A, KEY_B",
+						"cause": "Failed to resolve API key for provider \"envp\" from environment variables: KEY_A, KEY_B"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "envp/e",
+					"result": {
+						"id": "e",
+						"name": "e",
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "envp",
+				"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "single env variable key missing",
+			"models": {
+				"providers": {
+					"envp": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "$ONLY_KEY",
+						"models": [
+							{
+								"id": "e"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"envp": [
+					{
+						"id": "e",
+						"name": "e",
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [],
+			"auth": [
+				{
+					"model": "envp/e",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider envp: Failed to resolve API key for provider \"envp\" from environment variable: ONLY_KEY",
+						"cause": "Failed to resolve API key for provider \"envp\" from environment variable: ONLY_KEY"
+					}
+				}
+			],
+			"resolve": [],
+			"list": {
+				"search": "envp",
+				"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command key",
+			"models": {
+				"providers": {
+					"cmd": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "!printf ' cmd-key \\n'",
+						"models": [
+							{
+								"id": "c"
+							}
+						]
+					},
+					"bad": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "!exit 3",
+						"models": [
+							{
+								"id": "b"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"cmd": [
+					{
+						"id": "c",
+						"name": "c",
+						"api": "openai-completions",
+						"provider": "cmd",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				],
+				"bad": [
+					{
+						"id": "b",
+						"name": "b",
+						"api": "openai-completions",
+						"provider": "bad",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [
+				"cmd/c",
+				"bad/b"
+			],
+			"auth": [
+				{
+					"model": "cmd/c",
+					"apiKey": null,
+					"result": {
+						"apiKey": "cmd-key",
+						"headers": null
+					}
+				},
+				{
+					"model": "bad/b",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider bad: Failed to resolve API key for provider \"bad\" from shell command: exit 3",
+						"cause": "Failed to resolve API key for provider \"bad\" from shell command: exit 3"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "cmd/c",
+					"result": {
+						"id": "c",
+						"name": "c",
+						"api": "openai-completions",
+						"provider": "cmd",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "c",
+				"stdout": "provider  model  context  max-out  thinking  images\ncmd       c      128K     16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "header from a missing variable fails the request",
+			"models": {
+				"providers": {
+					"hp": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "k",
+						"headers": {
+							"x-h": "$NO_SUCH_HEADER"
+						},
+						"models": [
+							{
+								"id": "h",
+								"headers": {
+									"x-m": "${NO_MODEL_HEADER}"
+								}
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"hp": [
+					{
+						"id": "h",
+						"name": "h",
+						"api": "openai-completions",
+						"provider": "hp",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [
+				"hp/h"
+			],
+			"auth": [
+				{
+					"model": "hp/h",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider hp: Failed to resolve provider \"hp\" header \"x-h\" from environment variable: NO_SUCH_HEADER",
+						"cause": "Failed to resolve provider \"hp\" header \"x-h\" from environment variable: NO_SUCH_HEADER"
+					}
+				}
+			],
+			"resolve": [],
+			"list": {
+				"search": "hp",
+				"stdout": "provider  model  context  max-out  thinking  images\nhp        h      128K     16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "custom provider without a key is not available",
+			"models": {
+				"providers": {
+					"nokey": {
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "n"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": null,
+			"providers": {
+				"nokey": [
+					{
+						"id": "n",
+						"name": "n",
+						"api": "openai-completions",
+						"provider": "nokey",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [],
+			"auth": [
+				{
+					"model": "nokey/n",
+					"apiKey": null,
+					"result": null
+				},
+				{
+					"model": "nokey/n",
+					"apiKey": "given",
+					"result": {
+						"apiKey": "given",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "nokey/n",
+					"result": {
+						"id": "n",
+						"name": "n",
+						"api": "openai-completions",
+						"provider": "nokey",
+						"baseUrl": "http://h/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "nokey",
+				"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "built-in provider overrides",
+			"models": {
+				"providers": {
+					"deepseek": {
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"headers": {
+							"x-ds": "1"
+						},
+						"compat": {
+							"supportsStore": true
+						},
+						"models": [
+							{
+								"id": "deepseek-v4-pro",
+								"contextWindow": 5000
+							},
+							{
+								"id": "brand-new",
+								"name": "Brand New"
+							}
+						],
+						"modelOverrides": {
+							"deepseek-flash": {
+								"name": "Flash Custom",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"maxTokens": 1234,
+								"cost": {
+									"input": 9,
+									"tiers": [
+										{
+											"inputTokensAbove": 100,
+											"input": 1,
+											"output": 2,
+											"cacheRead": 0.1,
+											"cacheWrite": 0.5
+										}
+									]
+								},
+								"thinkingLevelMap": {
+									"low": null,
+									"xhigh": "xhigh"
+								},
+								"promptCache": {
+									"short": 60
+								},
+								"samplingParams": {
+									"top_k": 3
+								},
+								"inputLimits": {
+									"maxRequestBytes": 10,
+									"images": {
+										"maxPerMessage": 2,
+										"resize": {
+											"maxWidth": 512
+										}
+									}
+								},
+								"compat": {
+									"thinkingFormat": "openai"
+								}
+							}
+						}
+					}
+				}
+			},
+			"env": {
+				"DEEPSEEK_API_KEY": "ds-env"
+			},
+			"error": null,
+			"providers": {
+				"deepseek": [
+					{
+						"id": "deepseek-flash",
+						"name": "Flash Custom",
+						"api": "openai-completions",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"provider": "deepseek",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": null,
+							"medium": null,
+							"high": "high",
+							"max": "max",
+							"xhigh": "xhigh"
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 9,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0,
+							"tiers": [
+								{
+									"inputTokensAbove": 100,
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								}
+							]
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 1234,
+						"compat": {
+							"supportsStore": true,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "openai",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 512,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								},
+								"maxPerMessage": 2
+							},
+							"maxRequestBytes": 10
+						},
+						"promptCache": {
+							"short": 60
+						},
+						"samplingParams": {
+							"top_k": 3
+						}
+					},
+					{
+						"id": "deepseek-v4-pro",
+						"name": "deepseek-v4-pro",
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 5000,
+						"maxTokens": 16384,
+						"compat": {
+							"supportsStore": true
+						}
+					},
+					{
+						"id": "brand-new",
+						"name": "Brand New",
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384,
+						"compat": {
+							"supportsStore": true
+						}
+					}
+				]
+			},
+			"available": [
+				"deepseek/deepseek-flash",
+				"deepseek/deepseek-v4-pro",
+				"deepseek/brand-new"
+			],
+			"auth": [
+				{
+					"model": "deepseek/deepseek-flash",
+					"apiKey": null,
+					"result": {
+						"apiKey": "ds-env",
+						"headers": {
+							"x-ds": "1"
+						}
+					}
+				},
+				{
+					"model": "deepseek/brand-new",
+					"apiKey": null,
+					"result": {
+						"apiKey": "ds-env",
+						"headers": {
+							"x-ds": "1"
+						}
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "deepseek/brand-new",
+					"result": {
+						"id": "brand-new",
+						"name": "Brand New",
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384,
+						"compat": {
+							"supportsStore": true
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "deepseek/deepseek-flash",
+					"result": {
+						"id": "deepseek-flash",
+						"name": "Flash Custom",
+						"api": "openai-completions",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"provider": "deepseek",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": null,
+							"medium": null,
+							"high": "high",
+							"max": "max",
+							"xhigh": "xhigh"
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 9,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0,
+							"tiers": [
+								{
+									"inputTokensAbove": 100,
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								}
+							]
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 1234,
+						"compat": {
+							"supportsStore": true,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "openai",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 512,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								},
+								"maxPerMessage": 2
+							},
+							"maxRequestBytes": 10
+						},
+						"promptCache": {
+							"short": 60
+						},
+						"samplingParams": {
+							"top_k": 3
+						}
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "deepseek",
+				"stdout": "provider  model            context  max-out  thinking  images\ndeepseek  brand-new        128K     16.4K    no        no    \ndeepseek  deepseek-flash   1M       1.2K     no        no    \ndeepseek  deepseek-v4-pro  5K       16.4K    no        no    \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "built-in provider with a models.json key ignores the environment key",
+			"models": {
+				"providers": {
+					"cerebras": {
+						"apiKey": "$CEREBRAS_CUSTOM"
+					}
+				}
+			},
+			"env": {
+				"CEREBRAS_API_KEY": "env-key"
+			},
+			"error": null,
+			"providers": {
+				"cerebras": [
+					{
+						"id": "gpt-oss-120b",
+						"name": "GPT OSS 120B",
+						"api": "openai-completions",
+						"provider": "cerebras",
+						"baseUrl": "https://api.cerebras.ai/v1",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0.35,
+							"output": 0.75,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 131072,
+						"maxTokens": 40960,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false
+						},
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": null,
+							"max": null
+						}
+					},
+					{
+						"id": "qwen-3.8-27b",
+						"name": "Qwen3.8 27B",
+						"api": "openai-completions",
+						"provider": "cerebras",
+						"baseUrl": "https://api.cerebras.ai/v1",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.99,
+							"output": 1.49,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 65536,
+						"maxTokens": 32768,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false
+						},
+						"thinkingLevelMap": {
+							"off": "none",
+							"minimal": null,
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": null,
+							"max": null
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					}
+				]
+			},
+			"available": [],
+			"auth": [
+				{
+					"model": "cerebras/gpt-oss-120b",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider cerebras: Failed to resolve API key for provider \"cerebras\" from environment variable: CEREBRAS_CUSTOM",
+						"cause": "Failed to resolve API key for provider \"cerebras\" from environment variable: CEREBRAS_CUSTOM"
+					}
+				}
+			],
+			"resolve": [],
+			"list": {
+				"search": "cerebras",
+				"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "built-in provider with only a base URL keeps the environment key",
+			"models": {
+				"providers": {
+					"cerebras": {
+						"baseUrl": "http://127.0.0.1:9/c"
+					}
+				}
+			},
+			"env": {
+				"CEREBRAS_API_KEY": "env-key"
+			},
+			"error": null,
+			"providers": {
+				"cerebras": [
+					{
+						"id": "gpt-oss-120b",
+						"name": "GPT OSS 120B",
+						"api": "openai-completions",
+						"provider": "cerebras",
+						"baseUrl": "http://127.0.0.1:9/c",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0.35,
+							"output": 0.75,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 131072,
+						"maxTokens": 40960,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false
+						},
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": null,
+							"max": null
+						}
+					},
+					{
+						"id": "qwen-3.8-27b",
+						"name": "Qwen3.8 27B",
+						"api": "openai-completions",
+						"provider": "cerebras",
+						"baseUrl": "http://127.0.0.1:9/c",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.99,
+							"output": 1.49,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 65536,
+						"maxTokens": 32768,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false
+						},
+						"thinkingLevelMap": {
+							"off": "none",
+							"minimal": null,
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": null,
+							"max": null
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					}
+				]
+			},
+			"available": [
+				"cerebras/gpt-oss-120b",
+				"cerebras/qwen-3.8-27b"
+			],
+			"auth": [
+				{
+					"model": "cerebras/gpt-oss-120b",
+					"apiKey": null,
+					"result": {
+						"apiKey": "env-key",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "cerebras/gpt-oss-120b",
+					"result": {
+						"id": "gpt-oss-120b",
+						"name": "GPT OSS 120B",
+						"api": "openai-completions",
+						"provider": "cerebras",
+						"baseUrl": "http://127.0.0.1:9/c",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0.35,
+							"output": 0.75,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 131072,
+						"maxTokens": 40960,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false
+						},
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": null,
+							"max": null
+						}
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "cerebras",
+				"stdout": "provider  model         context  max-out  thinking  images\ncerebras  gpt-oss-120b  131.1K   41.0K    yes       no    \ncerebras  qwen-3.8-27b  65.5K    32.8K    yes       yes   \n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "composition errors",
+			"models": {
+				"providers": {
+					"empty": {},
+					"noapi": {
+						"baseUrl": "http://h",
+						"models": [
+							{
+								"id": "x"
+							}
+						]
+					},
+					"nourl": {
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "x"
+							}
+						]
+					},
+					"zero": {
+						"baseUrl": "http://h",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "x",
+								"contextWindow": 0
+							}
+						]
+					},
+					"negative": {
+						"baseUrl": "http://h",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "x",
+								"maxTokens": -1
+							}
+						]
+					},
+					"oauthnourl": {
+						"oauth": "radius"
+					},
+					"deepseek": {},
+					"ok": {
+						"baseUrl": "http://h",
+						"api": "openai-completions",
+						"apiKey": "k",
+						"models": [
+							{
+								"id": "fine"
+							}
+						]
+					}
+				}
+			},
+			"env": {},
+			"error": "Provider \"deepseek\": Provider deepseek: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", or \"models\".\n\nProvider \"empty\": Provider empty: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", or \"models\".\n\nProvider \"noapi\": Provider noapi, model x: no \"api\" specified. Set at provider or model level.\n\nProvider \"nourl\": Provider nourl: \"baseUrl\" is required when defining custom models.\n\nProvider \"zero\": Provider zero, model x: invalid contextWindow\n\nProvider \"negative\": Provider negative, model x: invalid maxTokens\n\nProvider \"oauthnourl\": Provider oauthnourl: \"baseUrl\" is required when \"oauth\" is set.",
+			"providers": {
+				"empty": [],
+				"noapi": [],
+				"nourl": [],
+				"zero": [],
+				"negative": [],
+				"oauthnourl": [],
+				"deepseek": [
+					{
+						"id": "deepseek-flash",
+						"name": "DeepSeek V4.1 Flash",
+						"api": "openai-completions",
+						"baseUrl": "https://api.deepseek.com",
+						"provider": "deepseek",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.3,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					{
+						"id": "deepseek-v4-pro",
+						"name": "DeepSeek V4 Pro",
+						"api": "openai-completions",
+						"baseUrl": "https://api.deepseek.com",
+						"provider": "deepseek",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1.32,
+							"output": 3.96,
+							"cacheRead": 0.044,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true,
+							"supportsMidConvoSystemMessages": true
+						},
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": null,
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						}
+					}
+				],
+				"ok": [
+					{
+						"id": "fine",
+						"name": "fine",
+						"api": "openai-completions",
+						"provider": "ok",
+						"baseUrl": "http://h",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					}
+				]
+			},
+			"available": [
+				"ok/fine"
+			],
+			"auth": [
+				{
+					"model": "ok/fine",
+					"apiKey": null,
+					"result": {
+						"apiKey": "k",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "noapi/x",
+					"result": null,
+					"error": "Model \"noapi/x\" not found. Use --list-models to see available models."
+				},
+				{
+					"provider": null,
+					"model": "deepseek/deepseek-flash",
+					"result": {
+						"id": "deepseek-flash",
+						"name": "DeepSeek V4.1 Flash",
+						"api": "openai-completions",
+						"baseUrl": "https://api.deepseek.com",
+						"provider": "deepseek",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.3,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "ok/fine",
+					"result": {
+						"id": "fine",
+						"name": "fine",
+						"api": "openai-completions",
+						"provider": "ok",
+						"baseUrl": "http://h",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"error": null
+				}
+			],
+			"list": {
+				"search": "o",
+				"stdout": "provider  model  context  max-out  thinking  images\nok        fine   128K     16.4K    no        no    \n",
+				"stderr": "Warning: errors loading models.json:\nProvider \"deepseek\": Provider deepseek: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", or \"models\".\n\nProvider \"empty\": Provider empty: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", or \"models\".\n\nProvider \"noapi\": Provider noapi, model x: no \"api\" specified. Set at provider or model level.\n\nProvider \"nourl\": Provider nourl: \"baseUrl\" is required when defining custom models.\n\nProvider \"zero\": Provider zero, model x: invalid contextWindow\n\nProvider \"negative\": Provider negative, model x: invalid maxTokens\n\nProvider \"oauthnourl\": Provider oauthnourl: \"baseUrl\" is required when \"oauth\" is set.\n"
+			}
+		},
+		{
+			"name": "invalid schema loads no custom providers",
+			"models": {
+				"providers": {
+					"cliproxyapi": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"apiKey": 5,
+						"headers": {
+							"x-proxy-token": "$PROXY_TOKEN",
+							"x-static": "static"
+						},
+						"compat": {
+							"supportsStore": false,
+							"openRouterRouting": {
+								"only": [
+									"a"
+								]
+							}
+						},
+						"models": [
+							{
+								"id": "gpt-6.1-sol",
+								"name": "GPT 6.1 Sol",
+								"reasoning": true,
+								"thinkingLevelMap": {
+									"off": null,
+									"high": "high"
+								},
+								"input": [
+									"text",
+									"image"
+								],
+								"contextWindow": 400000,
+								"maxTokens": 128000,
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"headers": {
+									"x-model": "sol",
+									"X-Static": "model-wins"
+								},
+								"compat": {
+									"maxTokensField": "max_tokens",
+									"openRouterRouting": {
+										"order": [
+											"b"
+										]
+									}
+								}
+							},
+							{
+								"id": "plain"
+							},
+							{
+								"id": "responses",
+								"api": "openai-responses",
+								"baseUrl": "http://127.0.0.1:9/alt"
+							}
+						],
+						"modelOverrides": {
+							"plain": {
+								"contextWindow": 9000,
+								"maxTokens": 900,
+								"headers": {
+									"x-override": "o"
+								},
+								"cost": {
+									"output": 7
+								}
+							},
+							"not-listed": {
+								"name": "ignored"
+							}
+						}
+					}
+				}
+			},
+			"env": {},
+			"error": "Invalid models.json schema:\n  - providers.cliproxyapi.apiKey: must be string\n\nFile: <dir>/models.json",
+			"providers": {
+				"cliproxyapi": []
+			},
+			"available": [],
+			"auth": [],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "cliproxyapi/gpt-6.1-sol",
+					"result": null,
+					"error": "Model \"cliproxyapi/gpt-6.1-sol\" not found. Use --list-models to see available models."
+				}
+			],
+			"list": {
+				"search": "cliproxyapi",
+				"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+				"stderr": "Warning: errors loading models.json:\nInvalid models.json schema:\n  - providers.cliproxyapi.apiKey: must be string\n\nFile: <dir>/models.json\n"
+			}
+		}
+	]
+}

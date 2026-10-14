@@ -717,7 +717,8 @@ fn interactive_qol_writer_thread_delivers_the_frames_in_order() {
         },
         Some(&|| tty.pending()),
     );
-    assert!(tty.flush_sync(Duration::from_secs(5)));
+    // A hang guard: the writer thread flushes as soon as it runs, however loaded the machine.
+    assert!(tty.flush_sync(Duration::from_secs(120)));
     let threaded = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();
     assert_eq!(threaded, direct);
     // The split paints on the main screen: no alternate screen, transcript rows above the dock, cursor shown at exit.

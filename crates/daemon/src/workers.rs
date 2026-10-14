@@ -57,6 +57,8 @@ pub struct WorkerModel {
     pub extension_mode: Option<String>,
     /// Sessions are not named (`--no-session` runs, whose session is removed when they end).
     pub no_naming: bool,
+    /// Pi `--no-extensions`: workers load no extensions and no MCP servers.
+    pub no_extensions: bool,
 }
 
 type TerminationListener = Box<dyn FnOnce(Option<String>) + Send>;
@@ -505,6 +507,9 @@ impl Manager {
         }
         if model.no_naming {
             options["noNaming"] = json!(true);
+        }
+        if model.no_extensions {
+            options["noExtensions"] = json!(true);
         }
         options
     }

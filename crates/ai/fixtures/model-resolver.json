@@ -1,0 +1,6151 @@
+{
+	"lists": {
+		"mock": [
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"claudeCode": [
+			{
+				"id": "claude-opus-5-5",
+				"name": "Claude Opus 5.5 (Claude Code CLI)",
+				"api": "claude-code-cli",
+				"provider": "claude-code",
+				"baseUrl": "claude-code://cli",
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"minimal": "low",
+					"low": "low",
+					"medium": "medium",
+					"high": "high",
+					"xhigh": "xhigh",
+					"max": "max"
+				},
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			{
+				"id": "claude-haiku-5-5",
+				"name": "Claude Haiku 5.5 (Claude Code CLI)",
+				"api": "claude-code-cli",
+				"provider": "claude-code",
+				"baseUrl": "claude-code://cli",
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"minimal": "low",
+					"low": "low",
+					"medium": "medium",
+					"high": "high",
+					"xhigh": "xhigh",
+					"max": "max"
+				},
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			{
+				"id": "opus",
+				"name": "Claude Opus (Claude Code CLI)",
+				"api": "claude-code-cli",
+				"provider": "claude-code",
+				"baseUrl": "claude-code://cli",
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"minimal": "low",
+					"low": "low",
+					"medium": "medium",
+					"high": "high",
+					"xhigh": "xhigh",
+					"max": "max"
+				},
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			{
+				"id": "sonnet",
+				"name": "Claude Sonnet (Claude Code CLI)",
+				"api": "claude-code-cli",
+				"provider": "claude-code",
+				"baseUrl": "claude-code://cli",
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"minimal": "low",
+					"low": "low",
+					"medium": "medium",
+					"high": "high",
+					"xhigh": "xhigh",
+					"max": "max"
+				},
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			{
+				"id": "haiku",
+				"name": "Claude Haiku (Claude Code CLI)",
+				"api": "claude-code-cli",
+				"provider": "claude-code",
+				"baseUrl": "claude-code://cli",
+				"reasoning": true,
+				"thinkingLevelMap": {
+					"minimal": "low",
+					"low": "low",
+					"medium": "medium",
+					"high": "high",
+					"xhigh": "xhigh",
+					"max": "max"
+				},
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"bracketed": [
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "bracketed-model[1m]",
+				"name": "Bracketed Model",
+				"api": "anthropic-messages",
+				"provider": "custom",
+				"baseUrl": "https://custom.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"ambiguous": [
+			{
+				"id": "gpt-5.6-sol",
+				"name": "GPT 5.6 Sol",
+				"api": "anthropic-messages",
+				"provider": "azure-openai-responses",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "gpt-5.6-sol",
+				"name": "GPT 5.6 Sol",
+				"api": "anthropic-messages",
+				"provider": "openai-codex",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			}
+		],
+		"gateway": [
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "glm-5",
+				"name": "GLM-5",
+				"api": "anthropic-messages",
+				"provider": "zai",
+				"baseUrl": "https://zai.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "zai/glm-5",
+				"name": "GLM-5",
+				"api": "anthropic-messages",
+				"provider": "vercel-ai-gateway",
+				"baseUrl": "https://vercel-ai-gateway.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"commandcode": [
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "xiaomi/mimo-v2.5-pro",
+				"name": "Xiaomi MiMo via Commandcode",
+				"api": "anthropic-messages",
+				"provider": "commandcode",
+				"baseUrl": "https://commandcode.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "mimo-v2.5-pro",
+				"name": "Xiaomi MiMo",
+				"api": "anthropic-messages",
+				"provider": "xiaomi",
+				"baseUrl": "https://xiaomi.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"neuralwatt": [
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-4o",
+				"name": "GPT-4o",
+				"api": "anthropic-messages",
+				"provider": "openai",
+				"baseUrl": "https://openai.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 4096
+			},
+			{
+				"id": "qwen/qwen3-coder:exacto",
+				"name": "Qwen3 Coder Exacto",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": true,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "openai/gpt-4o:extended",
+				"name": "GPT-4o Extended",
+				"api": "anthropic-messages",
+				"provider": "openrouter",
+				"baseUrl": "https://openrouter.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "some-base-model",
+				"name": "Some Base Model",
+				"api": "anthropic-messages",
+				"provider": "neuralwatt",
+				"baseUrl": "https://neuralwatt.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"dated": [
+			{
+				"id": "claude-sonnet-4-5-20250929",
+				"name": "Claude Sonnet 4.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-sonnet-4-5",
+				"name": "Claude Sonnet 4.5 (latest)",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-sonnet-4-20250514",
+				"name": "Claude Sonnet 4",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-3-5-sonnet-20241022",
+				"name": "Claude Sonnet 3.5 v2",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-3-5-sonnet-20240620",
+				"name": "Claude Sonnet 3.5",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-3-7-sonnet-latest",
+				"name": "Claude Sonnet 3.7 (latest)",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-haiku-20240307",
+				"name": "Claude Haiku",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "claude-haiku-20250101",
+				"name": "Claude Haiku Next",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "https://anthropic.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "Kimi-K2.6",
+				"name": "Moonshot Kimi",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi-k2.6",
+				"name": "kimi lower",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi_k2.6",
+				"name": "kimi underscore",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi.k2",
+				"name": "kimi dot",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi-k2-thinking",
+				"name": "Kimi K2 Thinking",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi-k10",
+				"name": "Kimi K10",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "kimi-k9",
+				"name": "Kimi K9",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "anything",
+				"name": "Uses Sonnet In Its Name",
+				"api": "anthropic-messages",
+				"provider": "acme",
+				"baseUrl": "https://acme.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-x",
+				"name": "GPT X",
+				"api": "anthropic-messages",
+				"provider": "other",
+				"baseUrl": "https://other.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-x-mini",
+				"name": "GPT X Mini",
+				"api": "anthropic-messages",
+				"provider": "other",
+				"baseUrl": "https://other.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			},
+			{
+				"id": "gpt-x",
+				"name": "GPT X again",
+				"api": "anthropic-messages",
+				"provider": "other2",
+				"baseUrl": "https://other2.invalid",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 1,
+					"output": 2,
+					"cacheRead": 0.1,
+					"cacheWrite": 1
+				},
+				"contextWindow": 128000,
+				"maxTokens": 8192
+			}
+		],
+		"empty": [],
+		"catalog": [
+			"amazon-bedrock/amazon.nova-2-lite-v1:0",
+			"amazon-bedrock/amazon.nova-lite-v1:0",
+			"amazon-bedrock/amazon.nova-micro-v1:0",
+			"amazon-bedrock/amazon.nova-pro-v1:0",
+			"amazon-bedrock/anthropic.claude-fable-5",
+			"amazon-bedrock/anthropic.claude-fable-5-1",
+			"amazon-bedrock/anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/anthropic.claude-opus-4-1-20250805-v1:0",
+			"amazon-bedrock/anthropic.claude-opus-4-5-20251101-v1:0",
+			"amazon-bedrock/anthropic.claude-opus-4-6-v1",
+			"amazon-bedrock/anthropic.claude-opus-4-7",
+			"amazon-bedrock/anthropic.claude-opus-4-8",
+			"amazon-bedrock/anthropic.claude-opus-5-5",
+			"amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/anthropic.claude-sonnet-5",
+			"amazon-bedrock/apac.amazon.nova-lite-v1:0",
+			"amazon-bedrock/apac.amazon.nova-micro-v1:0",
+			"amazon-bedrock/apac.amazon.nova-pro-v1:0",
+			"amazon-bedrock/apac.anthropic.claude-sonnet-4-20250514-v1:0",
+			"amazon-bedrock/au.anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/au.anthropic.claude-opus-4-6-v1",
+			"amazon-bedrock/au.anthropic.claude-opus-4-7",
+			"amazon-bedrock/au.anthropic.claude-opus-4-8",
+			"amazon-bedrock/au.anthropic.claude-opus-5",
+			"amazon-bedrock/au.anthropic.claude-opus-5-5",
+			"amazon-bedrock/au.anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/au.anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/au.anthropic.claude-sonnet-5",
+			"amazon-bedrock/ca.amazon.nova-lite-v1:0",
+			"amazon-bedrock/deepseek.v3-v1:0",
+			"amazon-bedrock/deepseek.v3.2",
+			"amazon-bedrock/eu.amazon.nova-2-lite-v1:0",
+			"amazon-bedrock/eu.amazon.nova-lite-v1:0",
+			"amazon-bedrock/eu.amazon.nova-micro-v1:0",
+			"amazon-bedrock/eu.amazon.nova-pro-v1:0",
+			"amazon-bedrock/eu.anthropic.claude-fable-5",
+			"amazon-bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/eu.anthropic.claude-opus-4-5-20251101-v1:0",
+			"amazon-bedrock/eu.anthropic.claude-opus-4-6-v1",
+			"amazon-bedrock/eu.anthropic.claude-opus-4-7",
+			"amazon-bedrock/eu.anthropic.claude-opus-4-8",
+			"amazon-bedrock/eu.anthropic.claude-opus-5",
+			"amazon-bedrock/eu.anthropic.claude-opus-5-5",
+			"amazon-bedrock/eu.anthropic.claude-sonnet-4-20250514-v1:0",
+			"amazon-bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/eu.anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/eu.anthropic.claude-sonnet-5",
+			"amazon-bedrock/eu.mistral.pixtral-large-2502-v1:0",
+			"amazon-bedrock/global.amazon.nova-2-lite-v1:0",
+			"amazon-bedrock/global.anthropic.claude-fable-5",
+			"amazon-bedrock/global.anthropic.claude-fable-5-1",
+			"amazon-bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0",
+			"amazon-bedrock/global.anthropic.claude-opus-4-6-v1",
+			"amazon-bedrock/global.anthropic.claude-opus-4-7",
+			"amazon-bedrock/global.anthropic.claude-opus-4-8",
+			"amazon-bedrock/global.anthropic.claude-opus-5",
+			"amazon-bedrock/global.anthropic.claude-opus-5-5",
+			"amazon-bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
+			"amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/global.anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/global.anthropic.claude-sonnet-5",
+			"amazon-bedrock/global.openai.gpt-5.6-luna",
+			"amazon-bedrock/global.openai.gpt-5.6-sol",
+			"amazon-bedrock/global.openai.gpt-5.6-terra",
+			"amazon-bedrock/global.openai.gpt-6-astra",
+			"amazon-bedrock/global.xai.grok-4.6",
+			"amazon-bedrock/google.gemma-4-26b-a4b",
+			"amazon-bedrock/google.gemma-4-31b",
+			"amazon-bedrock/google.gemma-4-e2b",
+			"amazon-bedrock/in.openai.gpt-5.6-luna",
+			"amazon-bedrock/in.openai.gpt-5.6-terra",
+			"amazon-bedrock/jp.amazon.nova-2-lite-v1:0",
+			"amazon-bedrock/jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/jp.anthropic.claude-opus-4-7",
+			"amazon-bedrock/jp.anthropic.claude-opus-4-8",
+			"amazon-bedrock/jp.anthropic.claude-opus-5",
+			"amazon-bedrock/jp.anthropic.claude-opus-5-5",
+			"amazon-bedrock/jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/jp.anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/jp.anthropic.claude-sonnet-5",
+			"amazon-bedrock/meta.llama3-1-70b-instruct-v1:0",
+			"amazon-bedrock/meta.llama3-1-8b-instruct-v1:0",
+			"amazon-bedrock/meta.llama3-3-70b-instruct-v1:0",
+			"amazon-bedrock/meta.llama4-maverick-17b-instruct-v1:0",
+			"amazon-bedrock/meta.llama4-scout-17b-instruct-v1:0",
+			"amazon-bedrock/minimax.minimax-m2",
+			"amazon-bedrock/minimax.minimax-m2.1",
+			"amazon-bedrock/minimax.minimax-m2.5",
+			"amazon-bedrock/mistral.devstral-2-123b",
+			"amazon-bedrock/mistral.magistral-small-2509",
+			"amazon-bedrock/mistral.ministral-3-14b-instruct",
+			"amazon-bedrock/mistral.ministral-3-3b-instruct",
+			"amazon-bedrock/mistral.ministral-3-8b-instruct",
+			"amazon-bedrock/mistral.mistral-large-3-675b-instruct",
+			"amazon-bedrock/mistral.pixtral-large-2502-v1:0",
+			"amazon-bedrock/mistral.voxtral-mini-3b-2507",
+			"amazon-bedrock/mistral.voxtral-small-24b-2507",
+			"amazon-bedrock/moonshot.kimi-k2-thinking",
+			"amazon-bedrock/moonshotai.kimi-k2.5",
+			"amazon-bedrock/nvidia.nemotron-nano-12b-v2",
+			"amazon-bedrock/nvidia.nemotron-nano-3-30b",
+			"amazon-bedrock/nvidia.nemotron-nano-9b-v2",
+			"amazon-bedrock/nvidia.nemotron-super-3-120b",
+			"amazon-bedrock/openai.gpt-5.4",
+			"amazon-bedrock/openai.gpt-5.5",
+			"amazon-bedrock/openai.gpt-5.6-luna",
+			"amazon-bedrock/openai.gpt-5.6-sol",
+			"amazon-bedrock/openai.gpt-5.6-terra",
+			"amazon-bedrock/openai.gpt-6-astra",
+			"amazon-bedrock/openai.gpt-oss-120b",
+			"amazon-bedrock/openai.gpt-oss-120b-1:0",
+			"amazon-bedrock/openai.gpt-oss-20b",
+			"amazon-bedrock/openai.gpt-oss-20b-1:0",
+			"amazon-bedrock/openai.gpt-oss-safeguard-120b",
+			"amazon-bedrock/openai.gpt-oss-safeguard-20b",
+			"amazon-bedrock/qwen.qwen3-235b-a22b-2507-v1:0",
+			"amazon-bedrock/qwen.qwen3-32b-v1:0",
+			"amazon-bedrock/qwen.qwen3-coder-30b-a3b-v1:0",
+			"amazon-bedrock/qwen.qwen3-coder-480b-a35b-v1:0",
+			"amazon-bedrock/qwen.qwen3-coder-next",
+			"amazon-bedrock/qwen.qwen3-next-80b-a3b",
+			"amazon-bedrock/qwen.qwen3-vl-235b-a22b",
+			"amazon-bedrock/us-gov.openai.gpt-oss-120b-1:0",
+			"amazon-bedrock/us-gov.openai.gpt-oss-20b-1:0",
+			"amazon-bedrock/us.amazon.nova-2-lite-v1:0",
+			"amazon-bedrock/us.amazon.nova-lite-v1:0",
+			"amazon-bedrock/us.amazon.nova-micro-v1:0",
+			"amazon-bedrock/us.amazon.nova-premier-v1:0",
+			"amazon-bedrock/us.amazon.nova-pro-v1:0",
+			"amazon-bedrock/us.anthropic.claude-fable-5",
+			"amazon-bedrock/us.anthropic.claude-fable-5-1",
+			"amazon-bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+			"amazon-bedrock/us.anthropic.claude-opus-4-1-20250805-v1:0",
+			"amazon-bedrock/us.anthropic.claude-opus-4-5-20251101-v1:0",
+			"amazon-bedrock/us.anthropic.claude-opus-4-6-v1",
+			"amazon-bedrock/us.anthropic.claude-opus-4-7",
+			"amazon-bedrock/us.anthropic.claude-opus-4-8",
+			"amazon-bedrock/us.anthropic.claude-opus-5",
+			"amazon-bedrock/us.anthropic.claude-opus-5-5",
+			"amazon-bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+			"amazon-bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"amazon-bedrock/us.anthropic.claude-sonnet-4-6",
+			"amazon-bedrock/us.anthropic.claude-sonnet-5",
+			"amazon-bedrock/us.meta.llama3-1-70b-instruct-v1:0",
+			"amazon-bedrock/us.meta.llama3-1-8b-instruct-v1:0",
+			"amazon-bedrock/us.meta.llama3-3-70b-instruct-v1:0",
+			"amazon-bedrock/us.meta.llama4-maverick-17b-instruct-v1:0",
+			"amazon-bedrock/us.meta.llama4-scout-17b-instruct-v1:0",
+			"amazon-bedrock/us.mistral.pixtral-large-2502-v1:0",
+			"amazon-bedrock/us.openai.gpt-5.6-luna",
+			"amazon-bedrock/us.openai.gpt-5.6-sol",
+			"amazon-bedrock/us.openai.gpt-5.6-terra",
+			"amazon-bedrock/us.openai.gpt-6-astra",
+			"amazon-bedrock/us.writer.palmyra-x4-v1:0",
+			"amazon-bedrock/us.writer.palmyra-x5-v1:0",
+			"amazon-bedrock/us.xai.grok-4.6",
+			"amazon-bedrock/writer.palmyra-x4-v1:0",
+			"amazon-bedrock/writer.palmyra-x5-v1:0",
+			"amazon-bedrock/xai.grok-4.3",
+			"amazon-bedrock/xai.grok-4.6",
+			"amazon-bedrock/zai.glm-4.7",
+			"amazon-bedrock/zai.glm-4.7-flash",
+			"amazon-bedrock/zai.glm-5",
+			"ant-ling/Ling-2.6-1T",
+			"ant-ling/Ling-2.6-flash",
+			"ant-ling/Ring-2.6-1T",
+			"anthropic/claude-fable-5",
+			"anthropic/claude-fable-5-1",
+			"anthropic/claude-haiku-4-5",
+			"anthropic/claude-haiku-4-5-20251001",
+			"anthropic/claude-haiku-5-5",
+			"anthropic/claude-opus-4-5",
+			"anthropic/claude-opus-4-5-20251101",
+			"anthropic/claude-opus-4-6",
+			"anthropic/claude-opus-4-7",
+			"anthropic/claude-opus-4-8",
+			"anthropic/claude-opus-5",
+			"anthropic/claude-opus-5-5",
+			"anthropic/claude-sonnet-4-5",
+			"anthropic/claude-sonnet-4-5-20250929",
+			"anthropic/claude-sonnet-4-6",
+			"anthropic/claude-sonnet-5",
+			"anthropic/claude-sonnet-5-5",
+			"azure-openai-responses/gpt-4",
+			"azure-openai-responses/gpt-4-turbo",
+			"azure-openai-responses/gpt-4.1",
+			"azure-openai-responses/gpt-4.1-mini",
+			"azure-openai-responses/gpt-4.1-nano",
+			"azure-openai-responses/gpt-4o",
+			"azure-openai-responses/gpt-4o-2024-05-13",
+			"azure-openai-responses/gpt-4o-2024-08-06",
+			"azure-openai-responses/gpt-4o-2024-11-20",
+			"azure-openai-responses/gpt-4o-mini",
+			"azure-openai-responses/gpt-5",
+			"azure-openai-responses/gpt-5-chat-latest",
+			"azure-openai-responses/gpt-5-mini",
+			"azure-openai-responses/gpt-5-nano",
+			"azure-openai-responses/gpt-5-pro",
+			"azure-openai-responses/gpt-5.1",
+			"azure-openai-responses/gpt-5.2",
+			"azure-openai-responses/gpt-5.2-chat-latest",
+			"azure-openai-responses/gpt-5.2-pro",
+			"azure-openai-responses/gpt-5.3-chat-latest",
+			"azure-openai-responses/gpt-5.3-codex",
+			"azure-openai-responses/gpt-5.3-codex-spark",
+			"azure-openai-responses/gpt-5.4",
+			"azure-openai-responses/gpt-5.4-mini",
+			"azure-openai-responses/gpt-5.4-nano",
+			"azure-openai-responses/gpt-5.4-pro",
+			"azure-openai-responses/gpt-5.5",
+			"azure-openai-responses/gpt-5.5-pro",
+			"azure-openai-responses/gpt-5.6-luna",
+			"azure-openai-responses/gpt-5.6-sol",
+			"azure-openai-responses/gpt-5.6-terra",
+			"azure-openai-responses/gpt-6-astra",
+			"azure-openai-responses/gpt-6-luna",
+			"azure-openai-responses/gpt-6-sol",
+			"azure-openai-responses/gpt-realtime-2.1",
+			"azure-openai-responses/o1",
+			"azure-openai-responses/o1-pro",
+			"azure-openai-responses/o3",
+			"azure-openai-responses/o3-mini",
+			"azure-openai-responses/o3-pro",
+			"azure-openai-responses/o4-mini",
+			"baseten/deepseek-ai/DeepSeek-V4-Flash-0731",
+			"baseten/deepseek-ai/DeepSeek-V4-Pro",
+			"baseten/deepseek-ai/DeepSeek-V4-Pro-0813",
+			"baseten/deepseek-ai/DeepSeek-V4.1-Flash",
+			"baseten/moonshotai/Kimi-K2.5",
+			"baseten/moonshotai/Kimi-K2.6",
+			"baseten/moonshotai/Kimi-K2.7-Code",
+			"baseten/moonshotai/Kimi-K3",
+			"baseten/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+			"baseten/nvidia/Nemotron-120B-A12B",
+			"baseten/openai/gpt-oss-120b",
+			"baseten/thinkingmachines/inkling",
+			"baseten/thinkingmachines/inkling-small",
+			"baseten/zai-org/GLM-4.7",
+			"baseten/zai-org/GLM-5",
+			"baseten/zai-org/GLM-5.1",
+			"baseten/zai-org/GLM-5.2",
+			"baseten/zai-org/GLM-5.2-Fast",
+			"baseten/zai-org/GLM-5.3",
+			"baseten/zai-org/GLM-5.3-Fast",
+			"baseten/zai-org/GLM-5.3-Flash",
+			"cerebras/gpt-oss-120b",
+			"cerebras/qwen-3.8-27b",
+			"cloudflare-ai-gateway/claude-fable-5",
+			"cloudflare-ai-gateway/claude-fable-5.1",
+			"cloudflare-ai-gateway/claude-haiku-4.5",
+			"cloudflare-ai-gateway/claude-opus-4.5",
+			"cloudflare-ai-gateway/claude-opus-4.6",
+			"cloudflare-ai-gateway/claude-opus-4.7",
+			"cloudflare-ai-gateway/claude-opus-4.8",
+			"cloudflare-ai-gateway/claude-opus-5",
+			"cloudflare-ai-gateway/claude-sonnet-4.5",
+			"cloudflare-ai-gateway/claude-sonnet-4.6",
+			"cloudflare-ai-gateway/claude-sonnet-5",
+			"cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813",
+			"cloudflare-ai-gateway/workers-ai/@cf/google/gemma-4-26b-a4b-it",
+			"cloudflare-ai-gateway/workers-ai/@cf/ibm-granite/granite-4.0-h-micro",
+			"cloudflare-ai-gateway/workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+			"cloudflare-ai-gateway/workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct",
+			"cloudflare-ai-gateway/workers-ai/@cf/mistralai/mistral-small-3.1-24b-instruct",
+			"cloudflare-ai-gateway/workers-ai/@cf/moonshotai/kimi-k2.6",
+			"cloudflare-ai-gateway/workers-ai/@cf/moonshotai/kimi-k2.7-code",
+			"cloudflare-ai-gateway/workers-ai/@cf/nvidia/nemotron-3-120b-a12b",
+			"cloudflare-ai-gateway/workers-ai/@cf/openai/gpt-oss-120b",
+			"cloudflare-ai-gateway/workers-ai/@cf/openai/gpt-oss-20b",
+			"cloudflare-ai-gateway/workers-ai/@cf/qwen/qwen3-30b-a3b-fp8",
+			"cloudflare-ai-gateway/workers-ai/@cf/qwen/qwen3.8-27b",
+			"cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-4.7-flash",
+			"cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-5.2",
+			"cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-5.3",
+			"cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-5.3-flash",
+			"cloudflare-ai-gateway/gpt-4.1",
+			"cloudflare-ai-gateway/gpt-4.1-mini",
+			"cloudflare-ai-gateway/gpt-4.1-nano",
+			"cloudflare-ai-gateway/gpt-4o",
+			"cloudflare-ai-gateway/gpt-4o-mini",
+			"cloudflare-ai-gateway/gpt-5",
+			"cloudflare-ai-gateway/gpt-5-mini",
+			"cloudflare-ai-gateway/gpt-5-nano",
+			"cloudflare-ai-gateway/gpt-5.1",
+			"cloudflare-ai-gateway/gpt-5.4",
+			"cloudflare-ai-gateway/gpt-5.4-mini",
+			"cloudflare-ai-gateway/gpt-5.4-nano",
+			"cloudflare-ai-gateway/gpt-5.4-pro",
+			"cloudflare-ai-gateway/gpt-5.5",
+			"cloudflare-ai-gateway/gpt-5.5-pro",
+			"cloudflare-ai-gateway/gpt-5.6-luna",
+			"cloudflare-ai-gateway/gpt-5.6-sol",
+			"cloudflare-ai-gateway/gpt-5.6-terra",
+			"cloudflare-ai-gateway/gpt-6-astra",
+			"cloudflare-ai-gateway/o3",
+			"cloudflare-ai-gateway/o3-mini",
+			"cloudflare-ai-gateway/o4-mini",
+			"cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813",
+			"cloudflare-workers-ai/@cf/google/gemma-4-26b-a4b-it",
+			"cloudflare-workers-ai/@cf/ibm-granite/granite-4.0-h-micro",
+			"cloudflare-workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+			"cloudflare-workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct",
+			"cloudflare-workers-ai/@cf/mistralai/mistral-small-3.1-24b-instruct",
+			"cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6",
+			"cloudflare-workers-ai/@cf/moonshotai/kimi-k2.7-code",
+			"cloudflare-workers-ai/@cf/nvidia/nemotron-3-120b-a12b",
+			"cloudflare-workers-ai/@cf/openai/gpt-oss-120b",
+			"cloudflare-workers-ai/@cf/openai/gpt-oss-20b",
+			"cloudflare-workers-ai/@cf/qwen/qwen3-30b-a3b-fp8",
+			"cloudflare-workers-ai/@cf/qwen/qwen3.8-27b",
+			"cloudflare-workers-ai/@cf/zai-org/glm-4.7-flash",
+			"cloudflare-workers-ai/@cf/zai-org/glm-5.2",
+			"cloudflare-workers-ai/@cf/zai-org/glm-5.3",
+			"cloudflare-workers-ai/@cf/zai-org/glm-5.3-flash",
+			"deepseek/deepseek-flash",
+			"deepseek/deepseek-v4-pro",
+			"fireworks/accounts/fireworks/models/deepseek-v4-flash-0731",
+			"fireworks/accounts/fireworks/models/deepseek-v4-flash-vision-exp",
+			"fireworks/accounts/fireworks/models/deepseek-v4-pro",
+			"fireworks/accounts/fireworks/models/deepseek-v4-pro-0813",
+			"fireworks/accounts/fireworks/models/deepseek-v4p1-flash",
+			"fireworks/accounts/fireworks/models/gpt-oss-120b",
+			"fireworks/accounts/fireworks/models/inkling",
+			"fireworks/accounts/fireworks/models/kimi-k2p6",
+			"fireworks/accounts/fireworks/models/kimi-k2p7-code",
+			"fireworks/accounts/fireworks/models/minimax-m2p7",
+			"fireworks/accounts/fireworks/models/minimax-m3",
+			"fireworks/accounts/fireworks/models/muse-glimmer-30b",
+			"fireworks/accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+			"fireworks/accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b",
+			"fireworks/accounts/fireworks/models/qwen3p7-plus",
+			"fireworks/accounts/fireworks/models/qwen3p8-2p4t-a95b",
+			"fireworks/accounts/fireworks/models/qwen3p8-max",
+			"fireworks/accounts/fireworks/routers/deepseek-flash-latest",
+			"fireworks/accounts/fireworks/routers/deepseek-pro-latest",
+			"fireworks/accounts/fireworks/routers/kimi-fast-latest",
+			"fireworks/accounts/fireworks/routers/kimi-latest",
+			"fireworks/accounts/fireworks/routers/minimax-latest",
+			"fireworks/accounts/fireworks/routers/qwen-max-latest",
+			"fireworks/accounts/fireworks/models/glm-5p2",
+			"fireworks/accounts/fireworks/models/glm-5p3",
+			"fireworks/accounts/fireworks/models/glm-5p3-flash",
+			"fireworks/accounts/fireworks/models/kimi-k3",
+			"fireworks/accounts/fireworks/routers/glm-5p2-fast",
+			"fireworks/accounts/fireworks/routers/glm-5p3-fast",
+			"fireworks/accounts/fireworks/routers/glm-fast-latest",
+			"fireworks/accounts/fireworks/routers/glm-flash-latest",
+			"fireworks/accounts/fireworks/routers/glm-latest",
+			"fireworks/accounts/fireworks/routers/kimi-k3-fast",
+			"github-copilot/claude-fable-5",
+			"github-copilot/claude-fable-5.1",
+			"github-copilot/claude-haiku-4.5",
+			"github-copilot/claude-opus-4.7",
+			"github-copilot/claude-opus-4.8",
+			"github-copilot/claude-opus-5",
+			"github-copilot/claude-opus-5.5",
+			"github-copilot/claude-sonnet-4.6",
+			"github-copilot/claude-sonnet-5",
+			"github-copilot/gemini-3.5-flash",
+			"github-copilot/gemini-3.6-flash",
+			"github-copilot/gemini-3.7-flash",
+			"github-copilot/gemini-3.8-flash",
+			"github-copilot/kimi-k2.7-code",
+			"github-copilot/kimi-k3",
+			"github-copilot/gpt-5-mini",
+			"github-copilot/gpt-5.3-codex",
+			"github-copilot/gpt-5.4",
+			"github-copilot/gpt-5.4-mini",
+			"github-copilot/gpt-5.4-nano",
+			"github-copilot/gpt-5.5",
+			"github-copilot/gpt-5.6-luna",
+			"github-copilot/gpt-5.6-sol",
+			"github-copilot/gpt-5.6-terra",
+			"github-copilot/gpt-6-astra",
+			"github-copilot/gpt-6-luna",
+			"github-copilot/gpt-6-sol",
+			"github-copilot/grok-4.5",
+			"github-copilot/grok-4.6",
+			"github-copilot/grok-4.7",
+			"github-copilot/mai-code-1-flash-picker",
+			"github-copilot/mai-code-1.1-flash",
+			"google/deep-research-max-preview-04-2026",
+			"google/deep-research-preview-04-2026",
+			"google/gemini-2.5-computer-use-preview-10-2025",
+			"google/gemini-2.5-flash",
+			"google/gemini-2.5-flash-lite",
+			"google/gemini-2.5-pro",
+			"google/gemini-3-flash-preview",
+			"google/gemini-3.1-flash-lite",
+			"google/gemini-3.1-flash-lite-image",
+			"google/gemini-3.1-flash-lite-preview",
+			"google/gemini-3.1-flash-live-preview",
+			"google/gemini-3.1-pro-preview",
+			"google/gemini-3.1-pro-preview-customtools",
+			"google/gemini-3.5-flash",
+			"google/gemini-3.5-flash-lite",
+			"google/gemini-3.6-flash",
+			"google/gemini-3.7-flash",
+			"google/gemini-3.8-flash",
+			"google/gemini-flash-latest",
+			"google/gemini-flash-lite-latest",
+			"google/gemma-4-26b-a4b-it",
+			"google/gemma-4-31b-it",
+			"google-vertex/gemini-2.5-flash",
+			"google-vertex/gemini-2.5-flash-lite",
+			"google-vertex/gemini-2.5-pro",
+			"google-vertex/gemini-3-flash-preview",
+			"google-vertex/gemini-3.1-flash-lite",
+			"google-vertex/gemini-3.1-pro-preview",
+			"google-vertex/gemini-3.1-pro-preview-customtools",
+			"google-vertex/gemini-3.5-flash",
+			"google-vertex/gemini-3.5-flash-lite",
+			"google-vertex/gemini-3.6-flash",
+			"google-vertex/gemini-3.7-flash",
+			"google-vertex/gemini-3.8-flash",
+			"google-vertex/gemini-flash-latest",
+			"google-vertex/gemini-flash-lite-latest",
+			"groq/llama-3.1-8b-instant",
+			"groq/llama-3.3-70b-versatile",
+			"groq/openai/gpt-oss-120b",
+			"groq/openai/gpt-oss-20b",
+			"groq/openai/gpt-oss-safeguard-20b",
+			"groq/qwen/qwen3.6-27b",
+			"groq/qwen/qwen3.8-27b",
+			"huggingface/MiniMaxAI/MiniMax-M2",
+			"huggingface/MiniMaxAI/MiniMax-M2.1",
+			"huggingface/MiniMaxAI/MiniMax-M2.5",
+			"huggingface/MiniMaxAI/MiniMax-M2.7",
+			"huggingface/MiniMaxAI/MiniMax-M3",
+			"huggingface/Qwen/Qwen2.5-Coder-32B-Instruct",
+			"huggingface/Qwen/Qwen3-235B-A22B",
+			"huggingface/Qwen/Qwen3-235B-A22B-Instruct-2507",
+			"huggingface/Qwen/Qwen3-235B-A22B-Thinking-2507",
+			"huggingface/Qwen/Qwen3-30B-A3B",
+			"huggingface/Qwen/Qwen3-32B",
+			"huggingface/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+			"huggingface/Qwen/Qwen3-Coder-480B-A35B-Instruct",
+			"huggingface/Qwen/Qwen3-Coder-Next",
+			"huggingface/Qwen/Qwen3-Next-80B-A3B-Instruct",
+			"huggingface/Qwen/Qwen3-Next-80B-A3B-Thinking",
+			"huggingface/Qwen/Qwen3-VL-235B-A22B-Instruct",
+			"huggingface/Qwen/Qwen3-VL-235B-A22B-Thinking",
+			"huggingface/Qwen/Qwen3.5-122B-A10B",
+			"huggingface/Qwen/Qwen3.5-27B",
+			"huggingface/Qwen/Qwen3.5-35B-A3B",
+			"huggingface/Qwen/Qwen3.5-397B-A17B",
+			"huggingface/Qwen/Qwen3.5-9B",
+			"huggingface/Qwen/Qwen3.6-27B",
+			"huggingface/Qwen/Qwen3.6-35B-A3B",
+			"huggingface/Qwen/Qwen3.8-2.4T-A95B",
+			"huggingface/Qwen/Qwen3.8-27B",
+			"huggingface/XiaomiMiMo/MiMo-V2-Flash",
+			"huggingface/XiaomiMiMo/MiMo-V2.5",
+			"huggingface/XiaomiMiMo/MiMo-V2.5-Pro",
+			"huggingface/deepseek-ai/DeepSeek-R1",
+			"huggingface/deepseek-ai/DeepSeek-R1-0528",
+			"huggingface/deepseek-ai/DeepSeek-V3",
+			"huggingface/deepseek-ai/DeepSeek-V3-0324",
+			"huggingface/deepseek-ai/DeepSeek-V3.1",
+			"huggingface/deepseek-ai/DeepSeek-V3.2",
+			"huggingface/deepseek-ai/DeepSeek-V4-Flash",
+			"huggingface/deepseek-ai/DeepSeek-V4-Flash-0731",
+			"huggingface/deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
+			"huggingface/deepseek-ai/DeepSeek-V4-Pro",
+			"huggingface/deepseek-ai/DeepSeek-V4-Pro-0813",
+			"huggingface/deepseek-ai/DeepSeek-V4.1-Flash",
+			"huggingface/google/gemma-3-12b-it",
+			"huggingface/google/gemma-3-27b-it",
+			"huggingface/google/gemma-3-4b-it",
+			"huggingface/google/gemma-4-26B-A4B-it",
+			"huggingface/google/gemma-4-31B-it",
+			"huggingface/meta-llama/Llama-3.1-8B-Instruct",
+			"huggingface/meta-llama/Llama-3.3-70B-Instruct",
+			"huggingface/moonshotai/Kimi-K2-Instruct",
+			"huggingface/moonshotai/Kimi-K2-Instruct-0905",
+			"huggingface/moonshotai/Kimi-K2-Thinking",
+			"huggingface/moonshotai/Kimi-K2.5",
+			"huggingface/moonshotai/Kimi-K2.6",
+			"huggingface/moonshotai/Kimi-K2.7-Code",
+			"huggingface/moonshotai/Kimi-K3",
+			"huggingface/openai/gpt-oss-120b",
+			"huggingface/openai/gpt-oss-20b",
+			"huggingface/stepfun-ai/Step-3.5-Flash",
+			"huggingface/stepfun-ai/Step-3.7-Flash",
+			"huggingface/tencent/Hy3",
+			"huggingface/tencent/Hy4-preview",
+			"huggingface/thinkingmachines/Inkling",
+			"huggingface/thinkingmachines/Inkling-Small",
+			"huggingface/zai-org/GLM-4.5",
+			"huggingface/zai-org/GLM-4.5-Air",
+			"huggingface/zai-org/GLM-4.5V",
+			"huggingface/zai-org/GLM-4.6",
+			"huggingface/zai-org/GLM-4.6V-Flash",
+			"huggingface/zai-org/GLM-4.7",
+			"huggingface/zai-org/GLM-4.7-Flash",
+			"huggingface/zai-org/GLM-5",
+			"huggingface/zai-org/GLM-5.1",
+			"huggingface/zai-org/GLM-5.2",
+			"huggingface/zai-org/GLM-5.3",
+			"huggingface/zai-org/GLM-5.3-Flash",
+			"kimi-coding/k3",
+			"kimi-coding/k3-256k",
+			"kimi-coding/kimi-for-coding",
+			"kimi-coding/kimi-for-coding-highspeed",
+			"meta/muse-spark-1.1",
+			"meta/muse-spark-1.2",
+			"meta/muse-spark-1.2-contributor",
+			"meta/muse-spark-1.3",
+			"meta/muse-spark-1.3-contributor",
+			"minimax/MiniMax-M2.7",
+			"minimax/MiniMax-M2.7-highspeed",
+			"minimax/MiniMax-M3",
+			"minimax-cn/MiniMax-M2.7",
+			"minimax-cn/MiniMax-M2.7-highspeed",
+			"minimax-cn/MiniMax-M3",
+			"mistral/codestral-latest",
+			"mistral/devstral-2512",
+			"mistral/devstral-latest",
+			"mistral/devstral-medium-2507",
+			"mistral/devstral-medium-latest",
+			"mistral/devstral-small-2505",
+			"mistral/devstral-small-2507",
+			"mistral/labs-devstral-small-2512",
+			"mistral/magistral-medium-latest",
+			"mistral/magistral-small",
+			"mistral/ministral-3b-latest",
+			"mistral/ministral-8b-latest",
+			"mistral/mistral-large-2411",
+			"mistral/mistral-large-2512",
+			"mistral/mistral-large-latest",
+			"mistral/mistral-medium-2505",
+			"mistral/mistral-medium-2508",
+			"mistral/mistral-medium-2604",
+			"mistral/mistral-medium-3.5",
+			"mistral/mistral-medium-latest",
+			"mistral/mistral-nemo",
+			"mistral/mistral-small-2506",
+			"mistral/mistral-small-2603",
+			"mistral/mistral-small-latest",
+			"mistral/open-mistral-7b",
+			"mistral/open-mistral-nemo",
+			"mistral/open-mixtral-8x22b",
+			"mistral/open-mixtral-8x7b",
+			"mistral/pixtral-12b",
+			"mistral/pixtral-large-latest",
+			"mistral/voxtral-small-latest",
+			"mistral/zai-glm-5-2",
+			"mistral/zai-glm-5-3",
+			"moonshotai/kimi-k2.6",
+			"moonshotai/kimi-k2.7-code",
+			"moonshotai/kimi-k2.7-code-highspeed",
+			"moonshotai/kimi-k3",
+			"moonshotai-cn/kimi-k2.6",
+			"moonshotai-cn/kimi-k2.7-code",
+			"moonshotai-cn/kimi-k2.7-code-highspeed",
+			"moonshotai-cn/kimi-k3",
+			"nvidia/google/gemma-3-12b-it",
+			"nvidia/google/gemma-3-4b-it",
+			"nvidia/meta/llama-3.2-11b-vision-instruct",
+			"nvidia/meta/llama-3.2-90b-vision-instruct",
+			"nvidia/meta/muse-glimmer-30b",
+			"nvidia/mistralai/mistral-7b-instruct-v0.3",
+			"nvidia/moonshotai/kimi-k2.6",
+			"nvidia/moonshotai/kimi-k3",
+			"nvidia/nvidia/cosmos-reason2-8b",
+			"nvidia/nvidia/llama-3.1-nemotron-70b-instruct",
+			"nvidia/nvidia/llama-3.1-nemotron-ultra-253b-v1",
+			"nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+			"nvidia/nvidia/nemotron-3-super-120b-a12b",
+			"nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+			"nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+			"nvidia/openai/gpt-oss-20b",
+			"nvidia/poolside/laguna-xs-2.1",
+			"nvidia/z-ai/glm-5.3",
+			"nvidia/z-ai/glm-5.3-flash",
+			"openai/gpt-4",
+			"openai/gpt-4-turbo",
+			"openai/gpt-4.1",
+			"openai/gpt-4.1-mini",
+			"openai/gpt-4.1-nano",
+			"openai/gpt-4o",
+			"openai/gpt-4o-2024-05-13",
+			"openai/gpt-4o-2024-08-06",
+			"openai/gpt-4o-2024-11-20",
+			"openai/gpt-4o-mini",
+			"openai/gpt-5",
+			"openai/gpt-5-chat-latest",
+			"openai/gpt-5-mini",
+			"openai/gpt-5-nano",
+			"openai/gpt-5-pro",
+			"openai/gpt-5.1",
+			"openai/gpt-5.2",
+			"openai/gpt-5.2-chat-latest",
+			"openai/gpt-5.2-pro",
+			"openai/gpt-5.3-chat-latest",
+			"openai/gpt-5.3-codex",
+			"openai/gpt-5.3-codex-spark",
+			"openai/gpt-5.4",
+			"openai/gpt-5.4-mini",
+			"openai/gpt-5.4-nano",
+			"openai/gpt-5.4-pro",
+			"openai/gpt-5.5",
+			"openai/gpt-5.5-pro",
+			"openai/gpt-5.6-luna",
+			"openai/gpt-5.6-sol",
+			"openai/gpt-5.6-terra",
+			"openai/gpt-6-astra",
+			"openai/gpt-6-luna",
+			"openai/gpt-6-sol",
+			"openai/gpt-realtime-2.1",
+			"openai/o1",
+			"openai/o1-pro",
+			"openai/o3",
+			"openai/o3-mini",
+			"openai/o3-pro",
+			"openai/o4-mini",
+			"openai-codex/gpt-5.3-codex-spark",
+			"openai-codex/gpt-5.5",
+			"openai-codex/gpt-5.6-luna",
+			"openai-codex/gpt-5.6-sol",
+			"openai-codex/gpt-5.6-terra",
+			"openai-codex/gpt-6-astra",
+			"openai-codex/gpt-6-luna",
+			"openai-codex/gpt-6-sol",
+			"opencode/claude-fable-5",
+			"opencode/claude-fable-5-1",
+			"opencode/claude-haiku-4-5",
+			"opencode/claude-haiku-5-5",
+			"opencode/claude-opus-4-5",
+			"opencode/claude-opus-4-6",
+			"opencode/claude-opus-4-7",
+			"opencode/claude-opus-4-8",
+			"opencode/claude-opus-5",
+			"opencode/claude-opus-5-5",
+			"opencode/claude-sonnet-4",
+			"opencode/claude-sonnet-4-5",
+			"opencode/claude-sonnet-4-6",
+			"opencode/claude-sonnet-5",
+			"opencode/qwen3.5-plus",
+			"opencode/qwen3.6-plus",
+			"opencode/qwen3.8-flash",
+			"opencode/gemini-3-flash",
+			"opencode/gemini-3.1-pro",
+			"opencode/gemini-3.5-flash",
+			"opencode/gemini-3.5-flash-lite",
+			"opencode/gemini-3.6-flash",
+			"opencode/gemini-3.7-flash",
+			"opencode/gemini-3.8-flash",
+			"opencode/big-pickle",
+			"opencode/deepseek-v4-flash",
+			"opencode/deepseek-v4-flash-vision-exp",
+			"opencode/deepseek-v4-pro",
+			"opencode/deepseek-v4.1-flash",
+			"opencode/glm-5",
+			"opencode/glm-5.1",
+			"opencode/glm-5.2",
+			"opencode/glm-5.3",
+			"opencode/glm-5.3-flash",
+			"opencode/kimi-k2.5",
+			"opencode/kimi-k2.6",
+			"opencode/kimi-k2.7-code",
+			"opencode/kimi-k3",
+			"opencode/ling-3.0-flash-fin-free",
+			"opencode/mimo-v2.6-flash-free",
+			"opencode/minimax-m2.5",
+			"opencode/minimax-m2.7",
+			"opencode/minimax-m3",
+			"opencode/nemotron-3-ultra-free",
+			"opencode/nemotron-3.5-lightning-free",
+			"opencode/gpt-5",
+			"opencode/gpt-5-codex",
+			"opencode/gpt-5-nano",
+			"opencode/gpt-5.1",
+			"opencode/gpt-5.1-codex",
+			"opencode/gpt-5.1-codex-max",
+			"opencode/gpt-5.1-codex-mini",
+			"opencode/gpt-5.2",
+			"opencode/gpt-5.2-codex",
+			"opencode/gpt-5.3-codex",
+			"opencode/gpt-5.4",
+			"opencode/gpt-5.4-mini",
+			"opencode/gpt-5.4-nano",
+			"opencode/gpt-5.4-pro",
+			"opencode/gpt-5.5",
+			"opencode/gpt-5.5-pro",
+			"opencode/gpt-5.6-luna",
+			"opencode/gpt-5.6-sol",
+			"opencode/gpt-5.6-terra",
+			"opencode/gpt-6-astra",
+			"opencode/gpt-6-luna",
+			"opencode/gpt-6-sol",
+			"opencode/grok-4.5",
+			"opencode/grok-4.6",
+			"opencode/grok-build-0.1",
+			"opencode/muse-spark-1.2",
+			"opencode/muse-spark-1.2-contributor-free",
+			"opencode/muse-spark-1.3",
+			"opencode/muse-spark-1.3-contributor-free",
+			"opencode-go/claude-haiku-5-5",
+			"opencode-go/minimax-m3",
+			"opencode-go/qwen3.8-flash",
+			"opencode-go/deepseek-v4-flash",
+			"opencode-go/deepseek-v4-flash-vision-exp",
+			"opencode-go/deepseek-v4-pro",
+			"opencode-go/deepseek-v4.1-flash",
+			"opencode-go/glm-5.1",
+			"opencode-go/glm-5.2",
+			"opencode-go/glm-5.3",
+			"opencode-go/glm-5.3-flash",
+			"opencode-go/hy3",
+			"opencode-go/hy4-preview",
+			"opencode-go/kimi-k2.6",
+			"opencode-go/kimi-k2.7-code",
+			"opencode-go/kimi-k3",
+			"opencode-go/longcat-2.0",
+			"opencode-go/mimo-v2.5",
+			"opencode-go/mimo-v2.5-pro",
+			"opencode-go/mimo-v2.6-flash",
+			"opencode-go/mimo-v2.6-pro",
+			"opencode-go/minimax-m2.7",
+			"opencode-go/qwen3.6-plus",
+			"opencode-go/qwen3.7-max",
+			"opencode-go/qwen3.7-plus",
+			"opencode-go/qwen3.8-max",
+			"opencode-go/gpt-5.6-luna",
+			"opencode-go/grok-4.6",
+			"opencode-go/grok-4.7",
+			"opencode-go/muse-spark-1.2-contributor",
+			"opencode-go/muse-spark-1.3-contributor",
+			"openrouter/anthropic/claude-3-haiku",
+			"openrouter/anthropic/claude-fable-5",
+			"openrouter/anthropic/claude-fable-5.1",
+			"openrouter/anthropic/claude-haiku-4.5",
+			"openrouter/anthropic/claude-haiku-5.5",
+			"openrouter/anthropic/claude-opus-4.1",
+			"openrouter/anthropic/claude-opus-4.5",
+			"openrouter/anthropic/claude-opus-4.6",
+			"openrouter/anthropic/claude-opus-4.7",
+			"openrouter/anthropic/claude-opus-4.8",
+			"openrouter/anthropic/claude-opus-5",
+			"openrouter/anthropic/claude-opus-5.5",
+			"openrouter/anthropic/claude-sonnet-4",
+			"openrouter/anthropic/claude-sonnet-4.5",
+			"openrouter/anthropic/claude-sonnet-4.6",
+			"openrouter/anthropic/claude-sonnet-5",
+			"openrouter/aion-labs/aion-2.0",
+			"openrouter/aion-labs/aion-3.0",
+			"openrouter/aion-labs/aion-3.0-mini",
+			"openrouter/amazon/nova-2-lite-v1",
+			"openrouter/amazon/nova-lite-v1",
+			"openrouter/amazon/nova-micro-v1",
+			"openrouter/amazon/nova-premier-v1",
+			"openrouter/amazon/nova-pro-v1",
+			"openrouter/anthropic/claude-fable-5.1:batch",
+			"openrouter/anthropic/claude-fable-5:batch",
+			"openrouter/anthropic/claude-haiku-4.5:batch",
+			"openrouter/anthropic/claude-haiku-5.5:batch",
+			"openrouter/anthropic/claude-opus-4.1:batch",
+			"openrouter/anthropic/claude-opus-4.5:batch",
+			"openrouter/anthropic/claude-opus-4.6:batch",
+			"openrouter/anthropic/claude-opus-4.7:batch",
+			"openrouter/anthropic/claude-opus-4.8:batch",
+			"openrouter/anthropic/claude-opus-5.5:batch",
+			"openrouter/anthropic/claude-opus-5:batch",
+			"openrouter/anthropic/claude-sonnet-4.5:batch",
+			"openrouter/anthropic/claude-sonnet-4.6:batch",
+			"openrouter/anthropic/claude-sonnet-5:batch",
+			"openrouter/arcee-ai/trinity-large-thinking",
+			"openrouter/auto",
+			"openrouter/bytedance-seed/seed-1.6",
+			"openrouter/bytedance-seed/seed-1.6-flash",
+			"openrouter/bytedance-seed/seed-2-1-turbo",
+			"openrouter/bytedance-seed/seed-2.0-code",
+			"openrouter/bytedance-seed/seed-2.0-lite",
+			"openrouter/bytedance-seed/seed-2.0-mini",
+			"openrouter/cohere/command-r-08-2024",
+			"openrouter/cohere/command-r-plus-08-2024",
+			"openrouter/cohere/north-mini-code:free",
+			"openrouter/deepseek/deepseek-chat",
+			"openrouter/deepseek/deepseek-chat-v3-0324",
+			"openrouter/deepseek/deepseek-chat-v3.1",
+			"openrouter/deepseek/deepseek-r1",
+			"openrouter/deepseek/deepseek-r1-0528",
+			"openrouter/deepseek/deepseek-v3.1-terminus",
+			"openrouter/deepseek/deepseek-v3.2",
+			"openrouter/deepseek/deepseek-v3.2-exp",
+			"openrouter/deepseek/deepseek-v4-flash",
+			"openrouter/deepseek/deepseek-v4-flash-0731",
+			"openrouter/deepseek/deepseek-v4-flash-vision-exp",
+			"openrouter/deepseek/deepseek-v4-pro",
+			"openrouter/deepseek/deepseek-v4-pro-0813",
+			"openrouter/deepseek/deepseek-v4.1-flash",
+			"openrouter/deepseek/deepseek-v4.1-flash:batch",
+			"openrouter/dots-studio/dots-3-note-preview:free",
+			"openrouter/google/gemini-2.5-flash",
+			"openrouter/google/gemini-2.5-flash-lite",
+			"openrouter/google/gemini-2.5-flash-lite:batch",
+			"openrouter/google/gemini-2.5-flash:batch",
+			"openrouter/google/gemini-2.5-pro",
+			"openrouter/google/gemini-2.5-pro-preview",
+			"openrouter/google/gemini-2.5-pro:batch",
+			"openrouter/google/gemini-3-flash-preview",
+			"openrouter/google/gemini-3-flash-preview:batch",
+			"openrouter/google/gemini-3-pro-image",
+			"openrouter/google/gemini-3.1-flash-lite",
+			"openrouter/google/gemini-3.1-flash-lite-preview",
+			"openrouter/google/gemini-3.1-flash-lite:batch",
+			"openrouter/google/gemini-3.1-pro-preview",
+			"openrouter/google/gemini-3.1-pro-preview-customtools",
+			"openrouter/google/gemini-3.1-pro-preview:batch",
+			"openrouter/google/gemini-3.5-flash",
+			"openrouter/google/gemini-3.5-flash-lite",
+			"openrouter/google/gemini-3.5-flash-lite:batch",
+			"openrouter/google/gemini-3.5-flash:batch",
+			"openrouter/google/gemini-3.6-flash",
+			"openrouter/google/gemini-3.6-flash:batch",
+			"openrouter/google/gemini-3.7-flash",
+			"openrouter/google/gemini-3.7-flash:batch",
+			"openrouter/google/gemini-3.8-flash",
+			"openrouter/google/gemini-3.8-flash:batch",
+			"openrouter/google/gemma-3-12b-it",
+			"openrouter/google/gemma-3-27b-it",
+			"openrouter/google/gemma-4-26b-a4b-it",
+			"openrouter/google/gemma-4-26b-a4b-it:free",
+			"openrouter/google/gemma-4-31b-it",
+			"openrouter/google/gemma-4-31b-it:free",
+			"openrouter/ibm-granite/granite-4.2-8b",
+			"openrouter/inception/mercury-2",
+			"openrouter/inception/mercury-2.5",
+			"openrouter/inclusionai/ling-3.0-flash",
+			"openrouter/inclusionai/ling-3.0-flash-fin",
+			"openrouter/inclusionai/ling-3.0-flash-fin:free",
+			"openrouter/inclusionai/ling-3.0-flash-sante:free",
+			"openrouter/inclusionai/ling-3.0-flash-vl",
+			"openrouter/inclusionai/ling-3.0-flash-vl:free",
+			"openrouter/kwaipilot/kat-coder-pro-v2.5",
+			"openrouter/liquid/lfm-2.5-2.6b:free",
+			"openrouter/meituan/longcat-2.0",
+			"openrouter/meta-llama/llama-3.1-70b-instruct",
+			"openrouter/meta-llama/llama-3.1-8b-instruct",
+			"openrouter/meta-llama/llama-3.3-70b-instruct",
+			"openrouter/meta-llama/llama-4-maverick",
+			"openrouter/meta-llama/llama-4-scout",
+			"openrouter/meta/muse-glimmer-30b",
+			"openrouter/meta/muse-spark-1.1",
+			"openrouter/meta/muse-spark-1.2",
+			"openrouter/meta/muse-spark-1.2-contributor",
+			"openrouter/meta/muse-spark-1.3",
+			"openrouter/meta/muse-spark-1.3-contributor",
+			"openrouter/minimax/minimax-m1",
+			"openrouter/minimax/minimax-m2",
+			"openrouter/minimax/minimax-m2.1",
+			"openrouter/minimax/minimax-m2.5",
+			"openrouter/minimax/minimax-m2.7",
+			"openrouter/minimax/minimax-m3",
+			"openrouter/mistralai/codestral-2508",
+			"openrouter/mistralai/codestral-2508:batch",
+			"openrouter/mistralai/devstral-2512",
+			"openrouter/mistralai/ministral-14b-2512",
+			"openrouter/mistralai/ministral-3b-2512",
+			"openrouter/mistralai/ministral-8b-2512",
+			"openrouter/mistralai/ministral-8b-2512:batch",
+			"openrouter/mistralai/mistral-large",
+			"openrouter/mistralai/mistral-large-2407",
+			"openrouter/mistralai/mistral-large-2512:batch",
+			"openrouter/mistralai/mistral-medium-3",
+			"openrouter/mistralai/mistral-medium-3-5",
+			"openrouter/mistralai/mistral-medium-3-5:batch",
+			"openrouter/mistralai/mistral-medium-3.1",
+			"openrouter/mistralai/mistral-medium-3.1:batch",
+			"openrouter/mistralai/mistral-nemo",
+			"openrouter/mistralai/mistral-saba",
+			"openrouter/mistralai/mistral-small-2603",
+			"openrouter/mistralai/mistral-small-2603:batch",
+			"openrouter/mistralai/mistral-small-3.1-24b-instruct",
+			"openrouter/mistralai/mistral-small-3.2-24b-instruct",
+			"openrouter/mistralai/mixtral-8x22b-instruct",
+			"openrouter/mistralai/voxtral-small-24b-2507",
+			"openrouter/moonshotai/kimi-k2",
+			"openrouter/moonshotai/kimi-k2-0905",
+			"openrouter/moonshotai/kimi-k2-thinking",
+			"openrouter/moonshotai/kimi-k2.5",
+			"openrouter/moonshotai/kimi-k2.6",
+			"openrouter/moonshotai/kimi-k2.7-code",
+			"openrouter/moonshotai/kimi-k3",
+			"openrouter/moonshotai/kimi-k3:batch",
+			"openrouter/nex-agi/nex-n2.5-mini:free",
+			"openrouter/nex-agi/nex-n2.5-pro",
+			"openrouter/nex-agi/nex-n2.5-pro:free",
+			"openrouter/nvidia/nemotron-3-nano-30b-a3b",
+			"openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+			"openrouter/nvidia/nemotron-3-super-120b-a12b",
+			"openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+			"openrouter/nvidia/nemotron-3-ultra-550b-a55b",
+			"openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+			"openrouter/nvidia/nemotron-3.5-lightning",
+			"openrouter/nvidia/nemotron-3.5-lightning:free",
+			"openrouter/openai/gpt-3.5-turbo",
+			"openrouter/openai/gpt-3.5-turbo-0613",
+			"openrouter/openai/gpt-3.5-turbo-16k",
+			"openrouter/openai/gpt-3.5-turbo:batch",
+			"openrouter/openai/gpt-4",
+			"openrouter/openai/gpt-4-turbo",
+			"openrouter/openai/gpt-4-turbo:batch",
+			"openrouter/openai/gpt-4.1",
+			"openrouter/openai/gpt-4.1-mini",
+			"openrouter/openai/gpt-4.1-mini:batch",
+			"openrouter/openai/gpt-4.1-nano",
+			"openrouter/openai/gpt-4.1-nano:batch",
+			"openrouter/openai/gpt-4.1:batch",
+			"openrouter/openai/gpt-4o",
+			"openrouter/openai/gpt-4o-2024-05-13",
+			"openrouter/openai/gpt-4o-2024-08-06",
+			"openrouter/openai/gpt-4o-2024-11-20",
+			"openrouter/openai/gpt-4o-mini",
+			"openrouter/openai/gpt-4o-mini-2024-07-18",
+			"openrouter/openai/gpt-4o-mini:batch",
+			"openrouter/openai/gpt-4o:batch",
+			"openrouter/openai/gpt-5",
+			"openrouter/openai/gpt-5-mini",
+			"openrouter/openai/gpt-5-mini:batch",
+			"openrouter/openai/gpt-5-nano",
+			"openrouter/openai/gpt-5-nano:batch",
+			"openrouter/openai/gpt-5-pro",
+			"openrouter/openai/gpt-5-pro:batch",
+			"openrouter/openai/gpt-5.1",
+			"openrouter/openai/gpt-5.1-codex",
+			"openrouter/openai/gpt-5.1-codex-max",
+			"openrouter/openai/gpt-5.1-codex-mini",
+			"openrouter/openai/gpt-5.1:batch",
+			"openrouter/openai/gpt-5.2",
+			"openrouter/openai/gpt-5.2-chat",
+			"openrouter/openai/gpt-5.2-codex",
+			"openrouter/openai/gpt-5.2-pro",
+			"openrouter/openai/gpt-5.2-pro:batch",
+			"openrouter/openai/gpt-5.2:batch",
+			"openrouter/openai/gpt-5.3-codex",
+			"openrouter/openai/gpt-5.4",
+			"openrouter/openai/gpt-5.4-mini",
+			"openrouter/openai/gpt-5.4-mini:batch",
+			"openrouter/openai/gpt-5.4-nano",
+			"openrouter/openai/gpt-5.4-nano:batch",
+			"openrouter/openai/gpt-5.4-pro",
+			"openrouter/openai/gpt-5.4-pro:batch",
+			"openrouter/openai/gpt-5.4:batch",
+			"openrouter/openai/gpt-5.5",
+			"openrouter/openai/gpt-5.5-pro",
+			"openrouter/openai/gpt-5.5-pro:batch",
+			"openrouter/openai/gpt-5.5:batch",
+			"openrouter/openai/gpt-5.6-luna",
+			"openrouter/openai/gpt-5.6-luna-pro",
+			"openrouter/openai/gpt-5.6-luna-pro:batch",
+			"openrouter/openai/gpt-5.6-luna:batch",
+			"openrouter/openai/gpt-5.6-sol",
+			"openrouter/openai/gpt-5.6-sol-pro",
+			"openrouter/openai/gpt-5.6-sol-pro:batch",
+			"openrouter/openai/gpt-5.6-sol:batch",
+			"openrouter/openai/gpt-5.6-terra",
+			"openrouter/openai/gpt-5.6-terra-pro",
+			"openrouter/openai/gpt-5.6-terra-pro:batch",
+			"openrouter/openai/gpt-5.6-terra:batch",
+			"openrouter/openai/gpt-5:batch",
+			"openrouter/openai/gpt-6-astra",
+			"openrouter/openai/gpt-6-astra-pro",
+			"openrouter/openai/gpt-6-astra-pro:batch",
+			"openrouter/openai/gpt-6-astra:batch",
+			"openrouter/openai/gpt-6-luna",
+			"openrouter/openai/gpt-6-luna-pro",
+			"openrouter/openai/gpt-6-luna-pro:batch",
+			"openrouter/openai/gpt-6-luna:batch",
+			"openrouter/openai/gpt-6-sol",
+			"openrouter/openai/gpt-6-sol-pro",
+			"openrouter/openai/gpt-6-sol-pro:batch",
+			"openrouter/openai/gpt-6-sol:batch",
+			"openrouter/openai/gpt-audio",
+			"openrouter/openai/gpt-audio-mini",
+			"openrouter/openai/gpt-chat-latest",
+			"openrouter/openai/gpt-oss-120b",
+			"openrouter/openai/gpt-oss-20b",
+			"openrouter/openai/gpt-oss-20b:batch",
+			"openrouter/openai/gpt-oss-safeguard-20b",
+			"openrouter/openai/o1",
+			"openrouter/openai/o3",
+			"openrouter/openai/o3-mini",
+			"openrouter/openai/o3-mini-high",
+			"openrouter/openai/o3-mini:batch",
+			"openrouter/openai/o3-pro",
+			"openrouter/openai/o3:batch",
+			"openrouter/openai/o4-mini",
+			"openrouter/openai/o4-mini-high",
+			"openrouter/openai/o4-mini:batch",
+			"openrouter/openrouter/auto",
+			"openrouter/openrouter/auto-beta",
+			"openrouter/openrouter/free",
+			"openrouter/openrouter/fusion",
+			"openrouter/poolside/laguna-s-2.1",
+			"openrouter/poolside/laguna-s-2.1:free",
+			"openrouter/poolside/laguna-xs-2.1",
+			"openrouter/poolside/laguna-xs-2.1:free",
+			"openrouter/prism-ml/ternary-bonsai-2-27b",
+			"openrouter/qwen/qwen-2.5-72b-instruct",
+			"openrouter/qwen/qwen-2.5-7b-instruct",
+			"openrouter/qwen/qwen-plus",
+			"openrouter/qwen/qwen-plus-2025-07-28",
+			"openrouter/qwen/qwen3-14b",
+			"openrouter/qwen/qwen3-235b-a22b",
+			"openrouter/qwen/qwen3-235b-a22b-2507",
+			"openrouter/qwen/qwen3-235b-a22b-thinking-2507",
+			"openrouter/qwen/qwen3-30b-a3b",
+			"openrouter/qwen/qwen3-30b-a3b-instruct-2507",
+			"openrouter/qwen/qwen3-30b-a3b-thinking-2507",
+			"openrouter/qwen/qwen3-32b",
+			"openrouter/qwen/qwen3-8b",
+			"openrouter/qwen/qwen3-coder",
+			"openrouter/qwen/qwen3-coder-30b-a3b-instruct",
+			"openrouter/qwen/qwen3-coder-flash",
+			"openrouter/qwen/qwen3-coder-next",
+			"openrouter/qwen/qwen3-coder-plus",
+			"openrouter/qwen/qwen3-max",
+			"openrouter/qwen/qwen3-max-thinking",
+			"openrouter/qwen/qwen3-next-80b-a3b-instruct",
+			"openrouter/qwen/qwen3-next-80b-a3b-thinking",
+			"openrouter/qwen/qwen3-vl-235b-a22b-instruct",
+			"openrouter/qwen/qwen3-vl-235b-a22b-thinking",
+			"openrouter/qwen/qwen3-vl-30b-a3b-instruct",
+			"openrouter/qwen/qwen3-vl-30b-a3b-thinking",
+			"openrouter/qwen/qwen3-vl-32b-instruct",
+			"openrouter/qwen/qwen3-vl-8b-instruct",
+			"openrouter/qwen/qwen3-vl-8b-thinking",
+			"openrouter/qwen/qwen3.5-122b-a10b",
+			"openrouter/qwen/qwen3.5-27b",
+			"openrouter/qwen/qwen3.5-35b-a3b",
+			"openrouter/qwen/qwen3.5-397b-a17b",
+			"openrouter/qwen/qwen3.5-9b",
+			"openrouter/qwen/qwen3.5-flash-02-23",
+			"openrouter/qwen/qwen3.5-plus-02-15",
+			"openrouter/qwen/qwen3.5-plus-20260420",
+			"openrouter/qwen/qwen3.6-27b",
+			"openrouter/qwen/qwen3.6-35b-a3b",
+			"openrouter/qwen/qwen3.6-flash",
+			"openrouter/qwen/qwen3.6-max-preview",
+			"openrouter/qwen/qwen3.6-plus",
+			"openrouter/qwen/qwen3.7-flash",
+			"openrouter/qwen/qwen3.7-max",
+			"openrouter/qwen/qwen3.7-plus",
+			"openrouter/qwen/qwen3.8-2.4t-a95b",
+			"openrouter/qwen/qwen3.8-27b",
+			"openrouter/qwen/qwen3.8-27b:free",
+			"openrouter/qwen/qwen3.8-flash",
+			"openrouter/qwen/qwen3.8-max-0902",
+			"openrouter/qwen/qwen3.8-omni-flash",
+			"openrouter/rekaai/reka-edge",
+			"openrouter/relace/relace-search",
+			"openrouter/sakana/fugu-max",
+			"openrouter/sakana/fugu-ultra",
+			"openrouter/sakana/fugu-ultra-v2",
+			"openrouter/sakana/sakana-namazu",
+			"openrouter/sao10k/l3.1-euryale-70b",
+			"openrouter/stepfun/step-3.5-flash",
+			"openrouter/stepfun/step-3.7-flash",
+			"openrouter/tencent/hy3",
+			"openrouter/tencent/hy3-preview",
+			"openrouter/tencent/hy4-preview",
+			"openrouter/thinkingmachines/inkling",
+			"openrouter/thinkingmachines/inkling-small",
+			"openrouter/thinkingmachines/inkling-small:free",
+			"openrouter/thinkingmachines/inkling:free",
+			"openrouter/unbiased/pareto",
+			"openrouter/upstage/solar-pro-3",
+			"openrouter/upstage/solar-pro4",
+			"openrouter/x-ai/grok-4.20",
+			"openrouter/x-ai/grok-4.3",
+			"openrouter/x-ai/grok-4.3:batch",
+			"openrouter/x-ai/grok-4.5",
+			"openrouter/x-ai/grok-4.6",
+			"openrouter/x-ai/grok-4.7",
+			"openrouter/x-ai/grok-build-0.1",
+			"openrouter/xiaomi/mimo-v2.5",
+			"openrouter/xiaomi/mimo-v2.5-pro",
+			"openrouter/xiaomi/mimo-v2.6-flash",
+			"openrouter/xiaomi/mimo-v2.6-pro",
+			"openrouter/xiaomi/mimo-v2.6-pro-ultraspeed",
+			"openrouter/z-ai/glm-4.5",
+			"openrouter/z-ai/glm-4.5-air",
+			"openrouter/z-ai/glm-4.5v",
+			"openrouter/z-ai/glm-4.6",
+			"openrouter/z-ai/glm-4.6v",
+			"openrouter/z-ai/glm-4.7",
+			"openrouter/z-ai/glm-4.7-flash",
+			"openrouter/z-ai/glm-5",
+			"openrouter/z-ai/glm-5-turbo",
+			"openrouter/z-ai/glm-5.1",
+			"openrouter/z-ai/glm-5.2",
+			"openrouter/z-ai/glm-5.3",
+			"openrouter/z-ai/glm-5.3-flash",
+			"openrouter/z-ai/glm-5.3-flash:batch",
+			"openrouter/z-ai/glm-5.3-flashx",
+			"openrouter/z-ai/glm-5.3:batch",
+			"openrouter/z-ai/glm-5v-turbo",
+			"openrouter/~anthropic/claude-fable-latest",
+			"openrouter/~anthropic/claude-haiku-latest",
+			"openrouter/~anthropic/claude-opus-latest",
+			"openrouter/~anthropic/claude-sonnet-latest",
+			"openrouter/~deepseek/deepseek-flash-latest",
+			"openrouter/~deepseek/deepseek-pro-latest",
+			"openrouter/~deepseek/deepseek-v4-flash-latest",
+			"openrouter/~google/gemini-flash-latest",
+			"openrouter/~google/gemini-pro-latest",
+			"openrouter/~moonshotai/kimi-latest",
+			"openrouter/~openai/gpt-astra-latest",
+			"openrouter/~openai/gpt-luna-latest",
+			"openrouter/~openai/gpt-mini-latest",
+			"openrouter/~openai/gpt-sol-latest",
+			"openrouter/~openai/gpt-terra-latest",
+			"openrouter/~x-ai/grok-latest",
+			"openrouter/~z-ai/glm-flash-latest",
+			"openrouter/~z-ai/glm-latest",
+			"qwen-token-plan/MiniMax-M2.5",
+			"qwen-token-plan/deepseek-v3.2",
+			"qwen-token-plan/deepseek-v4-flash",
+			"qwen-token-plan/deepseek-v4-flash-0731",
+			"qwen-token-plan/deepseek-v4-pro",
+			"qwen-token-plan/deepseek-v4-pro-0813",
+			"qwen-token-plan/deepseek-v4.1-flash",
+			"qwen-token-plan/glm-5",
+			"qwen-token-plan/glm-5.1",
+			"qwen-token-plan/glm-5.2",
+			"qwen-token-plan/glm-5.3",
+			"qwen-token-plan/kimi-k2.5",
+			"qwen-token-plan/kimi-k2.6",
+			"qwen-token-plan/kimi-k2.7-code",
+			"qwen-token-plan/qwen3.6-flash",
+			"qwen-token-plan/qwen3.6-plus",
+			"qwen-token-plan/qwen3.7-max",
+			"qwen-token-plan/qwen3.7-plus",
+			"qwen-token-plan/qwen3.8-flash",
+			"qwen-token-plan/qwen3.8-max",
+			"qwen-token-plan-cn/MiniMax-M2.5",
+			"qwen-token-plan-cn/deepseek-v3.2",
+			"qwen-token-plan-cn/deepseek-v4-flash",
+			"qwen-token-plan-cn/deepseek-v4-flash-0731",
+			"qwen-token-plan-cn/deepseek-v4-pro",
+			"qwen-token-plan-cn/deepseek-v4-pro-0813",
+			"qwen-token-plan-cn/deepseek-v4.1-flash",
+			"qwen-token-plan-cn/glm-5",
+			"qwen-token-plan-cn/glm-5.1",
+			"qwen-token-plan-cn/glm-5.2",
+			"qwen-token-plan-cn/glm-5.3",
+			"qwen-token-plan-cn/kimi-k2.5",
+			"qwen-token-plan-cn/kimi-k2.6",
+			"qwen-token-plan-cn/kimi-k2.7-code",
+			"qwen-token-plan-cn/qwen3.6-flash",
+			"qwen-token-plan-cn/qwen3.6-plus",
+			"qwen-token-plan-cn/qwen3.7-max",
+			"qwen-token-plan-cn/qwen3.7-plus",
+			"qwen-token-plan-cn/qwen3.8-flash",
+			"qwen-token-plan-cn/qwen3.8-max",
+			"qwen-token-plan-individual/deepseek-v4-flash-0731",
+			"qwen-token-plan-individual/deepseek-v4-pro",
+			"qwen-token-plan-individual/deepseek-v4-pro-0813",
+			"qwen-token-plan-individual/glm-5.2",
+			"qwen-token-plan-individual/qwen3.6-flash",
+			"qwen-token-plan-individual/qwen3.7-max",
+			"qwen-token-plan-individual/qwen3.7-plus",
+			"qwen-token-plan-individual/qwen3.8-flash",
+			"qwen-token-plan-individual/qwen3.8-max",
+			"radius/balanced",
+			"radius/cheap",
+			"radius/claude-fable-5",
+			"radius/claude-fable-5-1",
+			"radius/claude-haiku-4-5",
+			"radius/claude-opus-4-5",
+			"radius/claude-opus-4-8",
+			"radius/claude-opus-5",
+			"radius/claude-opus-5-5",
+			"radius/claude-sonnet-4-5",
+			"radius/claude-sonnet-5",
+			"radius/deepseek-v4-flash",
+			"radius/deepseek-v4-pro",
+			"radius/deepseek-v4.1-flash",
+			"radius/glm-5.2",
+			"radius/glm-5.3",
+			"radius/glm-5.3-flash",
+			"radius/gpt-5.3-codex",
+			"radius/gpt-5.4",
+			"radius/gpt-5.4-mini",
+			"radius/gpt-5.5",
+			"radius/gpt-5.6-luna",
+			"radius/gpt-5.6-sol",
+			"radius/gpt-5.6-terra",
+			"radius/gpt-6-astra",
+			"radius/gpt-6-luna",
+			"radius/gpt-6-sol",
+			"radius/kimi-k2.7-code",
+			"radius/kimi-k3",
+			"radius/precise",
+			"together/MiniMaxAI/MiniMax-M2.7",
+			"together/MiniMaxAI/MiniMax-M3",
+			"together/Qwen/Qwen2.5-7B-Instruct-Turbo",
+			"together/Qwen/Qwen3.5-9B",
+			"together/Qwen/Qwen3.6-Plus",
+			"together/Qwen/Qwen3.7-Max",
+			"together/deepseek-ai/DeepSeek-V4-Flash-0731",
+			"together/deepseek-ai/DeepSeek-V4-Pro",
+			"together/deepseek-ai/DeepSeek-V4-Pro-0813",
+			"together/deepseek-ai/DeepSeek-V4.1-Flash",
+			"together/google/gemma-4-31B-it",
+			"together/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+			"together/moonshotai/Kimi-K2.6",
+			"together/moonshotai/Kimi-K2.7-Code",
+			"together/moonshotai/Kimi-K3",
+			"together/nvidia/nemotron-3-ultra-550b-a55b",
+			"together/openai/gpt-oss-120b",
+			"together/openai/gpt-oss-20b",
+			"together/thinkingmachines/Inkling",
+			"together/zai-org/GLM-5.2",
+			"together/zai-org/GLM-5.3",
+			"together/zai-org/GLM-5.3-Flash",
+			"vercel-ai-gateway/alibaba/qwen-3-14b",
+			"vercel-ai-gateway/alibaba/qwen-3-235b",
+			"vercel-ai-gateway/alibaba/qwen-3-30b",
+			"vercel-ai-gateway/alibaba/qwen-3-32b",
+			"vercel-ai-gateway/alibaba/qwen-3.6-max-preview",
+			"vercel-ai-gateway/alibaba/qwen3-235b-a22b-thinking",
+			"vercel-ai-gateway/alibaba/qwen3-coder",
+			"vercel-ai-gateway/alibaba/qwen3-coder-30b-a3b",
+			"vercel-ai-gateway/alibaba/qwen3-coder-next",
+			"vercel-ai-gateway/alibaba/qwen3-coder-plus",
+			"vercel-ai-gateway/alibaba/qwen3-max",
+			"vercel-ai-gateway/alibaba/qwen3-max-preview",
+			"vercel-ai-gateway/alibaba/qwen3-max-thinking",
+			"vercel-ai-gateway/alibaba/qwen3-next-80b-a3b-instruct",
+			"vercel-ai-gateway/alibaba/qwen3-next-80b-a3b-thinking",
+			"vercel-ai-gateway/alibaba/qwen3-vl-235b-a22b-instruct",
+			"vercel-ai-gateway/alibaba/qwen3-vl-instruct",
+			"vercel-ai-gateway/alibaba/qwen3-vl-thinking",
+			"vercel-ai-gateway/alibaba/qwen3.5-flash",
+			"vercel-ai-gateway/alibaba/qwen3.5-plus",
+			"vercel-ai-gateway/alibaba/qwen3.6-27b",
+			"vercel-ai-gateway/alibaba/qwen3.6-plus",
+			"vercel-ai-gateway/alibaba/qwen3.7-flash",
+			"vercel-ai-gateway/alibaba/qwen3.7-max",
+			"vercel-ai-gateway/alibaba/qwen3.7-plus",
+			"vercel-ai-gateway/alibaba/qwen3.8-2.4t-a95b",
+			"vercel-ai-gateway/alibaba/qwen3.8-27b",
+			"vercel-ai-gateway/alibaba/qwen3.8-flash",
+			"vercel-ai-gateway/alibaba/qwen3.8-max",
+			"vercel-ai-gateway/alibaba/qwen3.8-max-0902",
+			"vercel-ai-gateway/alibaba/qwen3.8-omni-flash",
+			"vercel-ai-gateway/amazon/nova-2-lite",
+			"vercel-ai-gateway/amazon/nova-lite",
+			"vercel-ai-gateway/amazon/nova-micro",
+			"vercel-ai-gateway/amazon/nova-pro",
+			"vercel-ai-gateway/anthropic/claude-3-haiku",
+			"vercel-ai-gateway/anthropic/claude-fable-5",
+			"vercel-ai-gateway/anthropic/claude-fable-5.1",
+			"vercel-ai-gateway/anthropic/claude-haiku-4.5",
+			"vercel-ai-gateway/anthropic/claude-haiku-5.5",
+			"vercel-ai-gateway/anthropic/claude-opus-4",
+			"vercel-ai-gateway/anthropic/claude-opus-4.5",
+			"vercel-ai-gateway/anthropic/claude-opus-4.6",
+			"vercel-ai-gateway/anthropic/claude-opus-4.7",
+			"vercel-ai-gateway/anthropic/claude-opus-4.8",
+			"vercel-ai-gateway/anthropic/claude-opus-4.8-fast",
+			"vercel-ai-gateway/anthropic/claude-opus-5",
+			"vercel-ai-gateway/anthropic/claude-opus-5-fast",
+			"vercel-ai-gateway/anthropic/claude-opus-5.5",
+			"vercel-ai-gateway/anthropic/claude-opus-5.5-fast",
+			"vercel-ai-gateway/anthropic/claude-sonnet-4",
+			"vercel-ai-gateway/anthropic/claude-sonnet-4.5",
+			"vercel-ai-gateway/anthropic/claude-sonnet-4.6",
+			"vercel-ai-gateway/anthropic/claude-sonnet-5",
+			"vercel-ai-gateway/arcee-ai/trinity-large-thinking",
+			"vercel-ai-gateway/bytedance/seed-1.6",
+			"vercel-ai-gateway/bytedance/seed-1.8",
+			"vercel-ai-gateway/bytedance/seed-2.1-turbo",
+			"vercel-ai-gateway/cohere/command-a",
+			"vercel-ai-gateway/deepseek/deepseek-r1",
+			"vercel-ai-gateway/deepseek/deepseek-v3.1",
+			"vercel-ai-gateway/deepseek/deepseek-v3.1-terminus",
+			"vercel-ai-gateway/deepseek/deepseek-v3.2",
+			"vercel-ai-gateway/deepseek/deepseek-v3.2-thinking",
+			"vercel-ai-gateway/deepseek/deepseek-v4-flash",
+			"vercel-ai-gateway/deepseek/deepseek-v4-flash-0731",
+			"vercel-ai-gateway/deepseek/deepseek-v4-flash-vision-exp",
+			"vercel-ai-gateway/deepseek/deepseek-v4-pro",
+			"vercel-ai-gateway/deepseek/deepseek-v4-pro-0813",
+			"vercel-ai-gateway/deepseek/deepseek-v4.1-flash",
+			"vercel-ai-gateway/google/gemini-2.5-flash",
+			"vercel-ai-gateway/google/gemini-2.5-flash-lite",
+			"vercel-ai-gateway/google/gemini-2.5-pro",
+			"vercel-ai-gateway/google/gemini-3-flash",
+			"vercel-ai-gateway/google/gemini-3.1-flash-lite",
+			"vercel-ai-gateway/google/gemini-3.1-pro-preview",
+			"vercel-ai-gateway/google/gemini-3.5-flash",
+			"vercel-ai-gateway/google/gemini-3.5-flash-lite",
+			"vercel-ai-gateway/google/gemini-3.6-flash",
+			"vercel-ai-gateway/google/gemini-3.7-flash",
+			"vercel-ai-gateway/google/gemini-3.8-flash",
+			"vercel-ai-gateway/google/gemma-4-26b-a4b-it",
+			"vercel-ai-gateway/google/gemma-4-31b-it",
+			"vercel-ai-gateway/inception/mercury-2",
+			"vercel-ai-gateway/inception/mercury-2.5",
+			"vercel-ai-gateway/inception/mercury-coder-small",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-fin",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-fin-free",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-sante",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-sante-free",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-vl",
+			"vercel-ai-gateway/inclusionai/ling-3.0-flash-vl-free",
+			"vercel-ai-gateway/interfaze/interfaze-beta",
+			"vercel-ai-gateway/meta/llama-3.1-70b",
+			"vercel-ai-gateway/meta/llama-3.1-8b",
+			"vercel-ai-gateway/meta/llama-3.3-70b",
+			"vercel-ai-gateway/meta/llama-4-maverick",
+			"vercel-ai-gateway/meta/llama-4-scout",
+			"vercel-ai-gateway/meta/muse-glimmer-30b",
+			"vercel-ai-gateway/meta/muse-spark-1.1",
+			"vercel-ai-gateway/meta/muse-spark-1.2",
+			"vercel-ai-gateway/meta/muse-spark-1.2-contributor",
+			"vercel-ai-gateway/meta/muse-spark-1.3",
+			"vercel-ai-gateway/meta/muse-spark-1.3-contributor",
+			"vercel-ai-gateway/minimax/minimax-m2",
+			"vercel-ai-gateway/minimax/minimax-m2.1",
+			"vercel-ai-gateway/minimax/minimax-m2.1-lightning",
+			"vercel-ai-gateway/minimax/minimax-m2.5",
+			"vercel-ai-gateway/minimax/minimax-m2.5-highspeed",
+			"vercel-ai-gateway/minimax/minimax-m2.7",
+			"vercel-ai-gateway/minimax/minimax-m2.7-highspeed",
+			"vercel-ai-gateway/minimax/minimax-m3",
+			"vercel-ai-gateway/mistral/codestral",
+			"vercel-ai-gateway/mistral/ministral-14b",
+			"vercel-ai-gateway/mistral/ministral-3b",
+			"vercel-ai-gateway/mistral/ministral-8b",
+			"vercel-ai-gateway/mistral/mistral-large-3",
+			"vercel-ai-gateway/mistral/mistral-medium-3.5",
+			"vercel-ai-gateway/mistral/mistral-nemo",
+			"vercel-ai-gateway/mistral/mistral-small",
+			"vercel-ai-gateway/mixedbread/toast-1",
+			"vercel-ai-gateway/moonshotai/kimi-k2",
+			"vercel-ai-gateway/moonshotai/kimi-k2-thinking",
+			"vercel-ai-gateway/moonshotai/kimi-k2.5",
+			"vercel-ai-gateway/moonshotai/kimi-k2.6",
+			"vercel-ai-gateway/moonshotai/kimi-k2.7-code",
+			"vercel-ai-gateway/moonshotai/kimi-k2.7-code-highspeed",
+			"vercel-ai-gateway/moonshotai/kimi-k3",
+			"vercel-ai-gateway/moonshotai/kimi-k3-fast",
+			"vercel-ai-gateway/nvidia/nemotron-3-nano-30b-a3b",
+			"vercel-ai-gateway/nvidia/nemotron-3-super-120b-a12b",
+			"vercel-ai-gateway/nvidia/nemotron-3-ultra-550b-a55b",
+			"vercel-ai-gateway/nvidia/nemotron-3.5-lightning",
+			"vercel-ai-gateway/nvidia/nemotron-nano-12b-v2-vl",
+			"vercel-ai-gateway/nvidia/nemotron-nano-9b-v2",
+			"vercel-ai-gateway/openai/gpt-3.5-turbo",
+			"vercel-ai-gateway/openai/gpt-4-turbo",
+			"vercel-ai-gateway/openai/gpt-4.1",
+			"vercel-ai-gateway/openai/gpt-4.1-fast",
+			"vercel-ai-gateway/openai/gpt-4.1-mini",
+			"vercel-ai-gateway/openai/gpt-4.1-mini-fast",
+			"vercel-ai-gateway/openai/gpt-4.1-nano",
+			"vercel-ai-gateway/openai/gpt-4.1-nano-fast",
+			"vercel-ai-gateway/openai/gpt-4o",
+			"vercel-ai-gateway/openai/gpt-4o-fast",
+			"vercel-ai-gateway/openai/gpt-4o-mini",
+			"vercel-ai-gateway/openai/gpt-4o-mini-fast",
+			"vercel-ai-gateway/openai/gpt-5",
+			"vercel-ai-gateway/openai/gpt-5-codex",
+			"vercel-ai-gateway/openai/gpt-5-fast",
+			"vercel-ai-gateway/openai/gpt-5-mini",
+			"vercel-ai-gateway/openai/gpt-5-mini-fast",
+			"vercel-ai-gateway/openai/gpt-5-nano",
+			"vercel-ai-gateway/openai/gpt-5-pro",
+			"vercel-ai-gateway/openai/gpt-5.1-codex",
+			"vercel-ai-gateway/openai/gpt-5.1-codex-max",
+			"vercel-ai-gateway/openai/gpt-5.1-codex-mini",
+			"vercel-ai-gateway/openai/gpt-5.1-thinking",
+			"vercel-ai-gateway/openai/gpt-5.1-thinking-fast",
+			"vercel-ai-gateway/openai/gpt-5.2",
+			"vercel-ai-gateway/openai/gpt-5.2-codex",
+			"vercel-ai-gateway/openai/gpt-5.2-fast",
+			"vercel-ai-gateway/openai/gpt-5.2-pro",
+			"vercel-ai-gateway/openai/gpt-5.3-codex",
+			"vercel-ai-gateway/openai/gpt-5.3-codex-fast",
+			"vercel-ai-gateway/openai/gpt-5.4",
+			"vercel-ai-gateway/openai/gpt-5.4-fast",
+			"vercel-ai-gateway/openai/gpt-5.4-mini",
+			"vercel-ai-gateway/openai/gpt-5.4-mini-fast",
+			"vercel-ai-gateway/openai/gpt-5.4-nano",
+			"vercel-ai-gateway/openai/gpt-5.4-pro",
+			"vercel-ai-gateway/openai/gpt-5.5",
+			"vercel-ai-gateway/openai/gpt-5.5-fast",
+			"vercel-ai-gateway/openai/gpt-5.5-pro",
+			"vercel-ai-gateway/openai/gpt-5.6-luna",
+			"vercel-ai-gateway/openai/gpt-5.6-luna-fast",
+			"vercel-ai-gateway/openai/gpt-5.6-sol",
+			"vercel-ai-gateway/openai/gpt-5.6-sol-fast",
+			"vercel-ai-gateway/openai/gpt-5.6-terra",
+			"vercel-ai-gateway/openai/gpt-5.6-terra-fast",
+			"vercel-ai-gateway/openai/gpt-6-astra",
+			"vercel-ai-gateway/openai/gpt-6-astra-fast",
+			"vercel-ai-gateway/openai/gpt-6-luna",
+			"vercel-ai-gateway/openai/gpt-6-luna-fast",
+			"vercel-ai-gateway/openai/gpt-6-sol",
+			"vercel-ai-gateway/openai/gpt-6-sol-fast",
+			"vercel-ai-gateway/openai/gpt-oss-120b",
+			"vercel-ai-gateway/openai/gpt-oss-20b",
+			"vercel-ai-gateway/openai/gpt-oss-safeguard-120b",
+			"vercel-ai-gateway/openai/gpt-oss-safeguard-20b",
+			"vercel-ai-gateway/openai/o1",
+			"vercel-ai-gateway/openai/o3",
+			"vercel-ai-gateway/openai/o3-fast",
+			"vercel-ai-gateway/openai/o3-mini",
+			"vercel-ai-gateway/openai/o3-pro",
+			"vercel-ai-gateway/openai/o4-mini",
+			"vercel-ai-gateway/openai/o4-mini-fast",
+			"vercel-ai-gateway/poolside/laguna-s-2.1",
+			"vercel-ai-gateway/poolside/laguna-s-2.1-free",
+			"vercel-ai-gateway/quiverai/arrow-2",
+			"vercel-ai-gateway/quiverai/arrow-2-telos",
+			"vercel-ai-gateway/sakana/fugu-max",
+			"vercel-ai-gateway/sakana/fugu-ultra",
+			"vercel-ai-gateway/sakana/fugu-ultra-v2",
+			"vercel-ai-gateway/sakana/namazu",
+			"vercel-ai-gateway/spacexai/grok-4.1-fast-non-reasoning",
+			"vercel-ai-gateway/spacexai/grok-4.1-fast-reasoning",
+			"vercel-ai-gateway/spacexai/grok-4.20-multi-agent",
+			"vercel-ai-gateway/spacexai/grok-4.20-multi-agent-beta",
+			"vercel-ai-gateway/spacexai/grok-4.20-non-reasoning",
+			"vercel-ai-gateway/spacexai/grok-4.20-non-reasoning-beta",
+			"vercel-ai-gateway/spacexai/grok-4.20-reasoning",
+			"vercel-ai-gateway/spacexai/grok-4.20-reasoning-beta",
+			"vercel-ai-gateway/spacexai/grok-4.3",
+			"vercel-ai-gateway/spacexai/grok-4.5",
+			"vercel-ai-gateway/spacexai/grok-4.6",
+			"vercel-ai-gateway/spacexai/grok-4.7",
+			"vercel-ai-gateway/spacexai/grok-build-0.1",
+			"vercel-ai-gateway/stepfun/step-3.5-flash",
+			"vercel-ai-gateway/stepfun/step-3.7-flash",
+			"vercel-ai-gateway/tencent/hy3",
+			"vercel-ai-gateway/tencent/hy4-preview",
+			"vercel-ai-gateway/thinkingmachines/inkling",
+			"vercel-ai-gateway/thinkingmachines/inkling-small",
+			"vercel-ai-gateway/xiaomi/mimo-v2.5",
+			"vercel-ai-gateway/xiaomi/mimo-v2.5-pro",
+			"vercel-ai-gateway/xiaomi/mimo-v2.6-flash",
+			"vercel-ai-gateway/xiaomi/mimo-v2.6-pro",
+			"vercel-ai-gateway/xiaomi/mimo-v2.6-pro-ultraspeed",
+			"vercel-ai-gateway/zai/glm-4.5",
+			"vercel-ai-gateway/zai/glm-4.5-air",
+			"vercel-ai-gateway/zai/glm-4.5v",
+			"vercel-ai-gateway/zai/glm-4.6",
+			"vercel-ai-gateway/zai/glm-4.7",
+			"vercel-ai-gateway/zai/glm-4.7-flash",
+			"vercel-ai-gateway/zai/glm-4.7-flashx",
+			"vercel-ai-gateway/zai/glm-5",
+			"vercel-ai-gateway/zai/glm-5-turbo",
+			"vercel-ai-gateway/zai/glm-5.1",
+			"vercel-ai-gateway/zai/glm-5.2",
+			"vercel-ai-gateway/zai/glm-5.2-fast",
+			"vercel-ai-gateway/zai/glm-5.3",
+			"vercel-ai-gateway/zai/glm-5.3-fast",
+			"vercel-ai-gateway/zai/glm-5.3-flash",
+			"vercel-ai-gateway/zai/glm-5.3-flashx",
+			"vercel-ai-gateway/zai/glm-5v-turbo",
+			"xai/grok-4.3",
+			"xai/grok-4.5",
+			"xai/grok-4.6",
+			"xai/grok-4.7",
+			"xiaomi/mimo-v2.5",
+			"xiaomi/mimo-v2.5-pro",
+			"xiaomi/mimo-v2.5-pro-ultraspeed",
+			"xiaomi/mimo-v2.6-flash",
+			"xiaomi/mimo-v2.6-pro",
+			"xiaomi/mimo-v2.6-pro-ultraspeed",
+			"xiaomi-token-plan-ams/mimo-v2.5",
+			"xiaomi-token-plan-ams/mimo-v2.5-pro",
+			"xiaomi-token-plan-ams/mimo-v2.6-flash",
+			"xiaomi-token-plan-ams/mimo-v2.6-pro",
+			"xiaomi-token-plan-cn/mimo-v2.5",
+			"xiaomi-token-plan-cn/mimo-v2.5-pro",
+			"xiaomi-token-plan-cn/mimo-v2.6-flash",
+			"xiaomi-token-plan-cn/mimo-v2.6-pro",
+			"xiaomi-token-plan-sgp/mimo-v2.5",
+			"xiaomi-token-plan-sgp/mimo-v2.5-pro",
+			"xiaomi-token-plan-sgp/mimo-v2.6-flash",
+			"xiaomi-token-plan-sgp/mimo-v2.6-pro",
+			"zai/glm-4.7",
+			"zai/glm-5-turbo",
+			"zai/glm-5.2",
+			"zai/glm-5.2-highspeed",
+			"zai/glm-5.3",
+			"zai/glm-5.3-flash",
+			"zai/glm-5.3-highspeed",
+			"zai-coding-cn/glm-4.6v",
+			"zai-coding-cn/glm-5.3",
+			"zai-coding-cn/glm-5.3-flash",
+			"zai-coding-cn/glm-5.3-highspeed"
+		]
+	},
+	"parse": [
+		{
+			"list": "mock",
+			"pattern": "claude-sonnet-4-5",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "nonexistent",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "high",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "gpt-4o:medium",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "medium",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:off",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "off",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:minimal",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "minimal",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:low",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "low",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:medium",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "medium",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "high",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:xhigh",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "xhigh",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:max",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "max",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:random",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"random\" in pattern \"sonnet:random\". Using default instead."
+		},
+		{
+			"list": "mock",
+			"pattern": "gpt-4o:invalid",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"invalid\" in pattern \"gpt-4o:invalid\". Using default instead."
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:random",
+			"allowInvalidThinkingLevelFallback": false,
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "qwen3-coder:exacto",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "openrouter/qwen/qwen3-coder:exacto",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "qwen3-coder:exacto:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": "high",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "openrouter/qwen/qwen3-coder:exacto:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": "high",
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "gpt-4o:extended",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/openai/gpt-4o:extended"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "qwen3-coder:exacto:random",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"random\" in pattern \"qwen3-coder:exacto:random\". Using default instead."
+		},
+		{
+			"list": "mock",
+			"pattern": "qwen3-coder:exacto:high:random",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"random\" in pattern \"qwen3-coder:exacto:high:random\". Using default instead."
+		},
+		{
+			"list": "mock",
+			"pattern": "",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "sonnet:",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"\" in pattern \"sonnet:\". Using default instead."
+		},
+		{
+			"list": "mock",
+			"pattern": "GPT-4O",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "OpenAI/GPT-4o",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "  openai/gpt-4o  ",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "mock",
+			"pattern": "Claude Sonnet",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "claudeCode",
+			"pattern": "sonnet",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "claudeCode",
+			"pattern": "haiku",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "claudeCode",
+			"pattern": "claude-code/haiku",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "claude-code/haiku"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "claudeCode",
+			"pattern": "opus",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "sonnet",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "claude-sonnet-4",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "3-5-sonnet",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-3-5-sonnet-20241022"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "haiku",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "anthropic/claude-haiku-20250101"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "kimi",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "acme/kimi.k2"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "KIMI-K2",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "acme/Kimi-K2.6"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "gpt-x",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "other/gpt-x-mini"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "other/gpt-x",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "other/gpt-x"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "x mini",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "other/gpt-x-mini"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "kimi:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "acme/kimi.k2"
+			},
+			"thinkingLevel": "high",
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "kimi:high:low",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "acme/kimi.k2"
+			},
+			"thinkingLevel": "low",
+			"warning": null
+		},
+		{
+			"list": "dated",
+			"pattern": "kimi:bogus:high",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "acme/kimi.k2"
+			},
+			"thinkingLevel": null,
+			"warning": "Invalid thinking level \"bogus\" in pattern \"kimi:bogus\". Using default instead."
+		},
+		{
+			"list": "ambiguous",
+			"pattern": "gpt-5.6-sol",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "azure-openai-responses/gpt-5.6-sol"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		},
+		{
+			"list": "ambiguous",
+			"pattern": "sol",
+			"allowInvalidThinkingLevelFallback": true,
+			"model": {
+				"ref": "azure-openai-responses/gpt-5.6-sol"
+			},
+			"thinkingLevel": null,
+			"warning": null
+		}
+	],
+	"scope": [
+		{
+			"list": "mock",
+			"patterns": [
+				"sonnet:high",
+				"gpt-4o:invalid",
+				"missing"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "invalid-thinking-level",
+					"message": "Invalid thinking level \"invalid\" in pattern \"gpt-4o:invalid\". Using default instead.",
+					"pattern": "gpt-4o:invalid"
+				},
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"missing\"",
+					"pattern": "missing"
+				}
+			]
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"missing"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"missing\"",
+					"pattern": "missing"
+				}
+			]
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"*:high"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": "high"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"openrouter/*"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"openrouter/*\"",
+					"pattern": "openrouter/*"
+				}
+			]
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"openrouter/**"
+			],
+			"scoped": [
+				{
+					"ref": "openrouter/qwen/qwen3-coder:exacto",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/openai/gpt-4o:extended",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"*gpt*",
+				"gpt-4o",
+				"*:low"
+			],
+			"scoped": [
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": "low"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"?pt-4o",
+				"GPT-4?",
+				"[go]pt-4o"
+			],
+			"scoped": [
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"[!g]*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"{openai,anthropic}/*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/openai/gpt-4o:extended",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"*/qwen*"
+			],
+			"scoped": [
+				{
+					"ref": "openrouter/qwen/qwen3-coder:exacto",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"openrouter/qwen/*:xhigh"
+			],
+			"scoped": [
+				{
+					"ref": "openrouter/qwen/qwen3-coder:exacto",
+					"thinkingLevel": "xhigh"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"*:bogus"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"*:bogus\"",
+					"pattern": "*:bogus"
+				}
+			]
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"!*sonnet*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openai/gpt-4o",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/qwen/qwen3-coder:exacto",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/openai/gpt-4o:extended",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"#comment*"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"#comment*\"",
+					"pattern": "#comment*"
+				}
+			]
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"anthropic/claude-sonnet-4-5:max",
+				"anthropic/*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": "max"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "claudeCode",
+			"patterns": [
+				"*sonnet*",
+				"claude-code/*"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "claude-code/claude-opus-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "claude-code/claude-haiku-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "claude-code/opus",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "claude-code/sonnet",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "claude-code/haiku",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "claudeCode",
+			"patterns": [
+				"*opus*"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"*opus*\"",
+					"pattern": "*opus*"
+				}
+			]
+		},
+		{
+			"list": "bracketed",
+			"patterns": [
+				"custom/bracketed-model[1m]"
+			],
+			"scoped": [
+				{
+					"ref": "custom/bracketed-model[1m]",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "bracketed",
+			"patterns": [
+				"custom/bracketed-model[1m]:high"
+			],
+			"scoped": [
+				{
+					"ref": "custom/bracketed-model[1m]",
+					"thinkingLevel": "high"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "bracketed",
+			"patterns": [
+				"bracketed-model[1m]"
+			],
+			"scoped": [
+				{
+					"ref": "custom/bracketed-model[1m]",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "bracketed",
+			"patterns": [
+				"*[1m]"
+			],
+			"scoped": [],
+			"diagnostics": [
+				{
+					"type": "warning",
+					"code": "no-match",
+					"message": "No models match pattern \"*[1m]\"",
+					"pattern": "*[1m]"
+				}
+			]
+		},
+		{
+			"list": "dated",
+			"patterns": [
+				"sonnet",
+				"*sonnet*",
+				"acme/kimi*:low",
+				"other*/gpt-x"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-5-20250929",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-20250514",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-3-5-sonnet-20241022",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-3-5-sonnet-20240620",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-3-7-sonnet-latest",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "acme/Kimi-K2.6",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi-k2.6",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi_k2.6",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi.k2",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi-k2-thinking",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi-k10",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "acme/kimi-k9",
+					"thinkingLevel": "low"
+				},
+				{
+					"ref": "other/gpt-x",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "other2/gpt-x",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "dated",
+			"patterns": [
+				"kimi-k[0-9]*",
+				"*-2025????"
+			],
+			"scoped": [
+				{
+					"ref": "acme/Kimi-K2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "acme/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "acme/kimi-k2-thinking",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "acme/kimi-k10",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "acme/kimi-k9",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-5-20250929",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-20250514",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-haiku-20250101",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "dated",
+			"patterns": [
+				"gpt-x",
+				"gpt-x"
+			],
+			"scoped": [
+				{
+					"ref": "other/gpt-x-mini",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "catalog",
+			"patterns": [
+				"anthropic/*",
+				"*sonnet*:high"
+			],
+			"scoped": [
+				{
+					"ref": "anthropic/claude-fable-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-fable-5-1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-haiku-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-haiku-4-5-20251001",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-haiku-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-4-5-20251101",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-4-6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-4-7",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-4-8",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-opus-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-5-20250929",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-4-6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "anthropic/claude-sonnet-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-3-haiku",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5.1:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.6:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-3-haiku",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-fable-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-fable-5.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-haiku-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-haiku-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4.7",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4.8",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-4.8-fast",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-5-fast",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-opus-5.5-fast",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-sonnet-4",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-sonnet-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-sonnet-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/anthropic/claude-sonnet-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/apac.anthropic.claude-sonnet-4-20250514-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/au.anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/au.anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/au.anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/eu.anthropic.claude-sonnet-4-20250514-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/eu.anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/eu.anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/global.anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/global.anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/jp.anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/jp.anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "cloudflare-ai-gateway/claude-sonnet-4.5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "cloudflare-ai-gateway/claude-sonnet-4.6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "cloudflare-ai-gateway/claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "github-copilot/claude-sonnet-4.6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "github-copilot/claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "opencode/claude-sonnet-4",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "opencode/claude-sonnet-4-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "opencode/claude-sonnet-4-6",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "opencode/claude-sonnet-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "radius/claude-sonnet-4-5",
+					"thinkingLevel": "high"
+				},
+				{
+					"ref": "radius/claude-sonnet-5",
+					"thinkingLevel": "high"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "catalog",
+			"patterns": [
+				"opus",
+				"gpt-5.5",
+				"*/kimi-k2*",
+				"claude-opus-4-8:max"
+			],
+			"scoped": [
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-opus-5-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/openai/gpt-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "baseten/moonshotai/Kimi-K2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "baseten/moonshotai/Kimi-K2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "baseten/moonshotai/Kimi-K2.7-Code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "github-copilot/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2-Instruct",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2-Instruct-0905",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2-Thinking",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "huggingface/moonshotai/Kimi-K2.7-Code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai/kimi-k2.7-code-highspeed",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai-cn/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai-cn/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "moonshotai-cn/kimi-k2.7-code-highspeed",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "nvidia/moonshotai/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "opencode/kimi-k2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "opencode/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "opencode/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "opencode-go/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "opencode-go/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2-0905",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2-thinking",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/moonshotai/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan/kimi-k2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan-cn/kimi-k2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan-cn/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "qwen-token-plan-cn/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "radius/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "together/moonshotai/Kimi-K2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "together/moonshotai/Kimi-K2.7-Code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2-thinking",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2.7-code",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "vercel-ai-gateway/moonshotai/kimi-k2.7-code-highspeed",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "amazon-bedrock/us.anthropic.claude-opus-4-8",
+					"thinkingLevel": "max"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "catalog",
+			"patterns": [
+				"openrouter/anthropic/*"
+			],
+			"scoped": [
+				{
+					"ref": "openrouter/anthropic/claude-3-haiku",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5.1:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-fable-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-haiku-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-4.6:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-sonnet-5:batch",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"list": "catalog",
+			"patterns": [
+				"openrouter/*/*opus*"
+			],
+			"scoped": [
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.1:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.6:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.7:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-4.8:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5.5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/anthropic/claude-opus-5:batch",
+					"thinkingLevel": null
+				},
+				{
+					"ref": "openrouter/~anthropic/claude-opus-latest",
+					"thinkingLevel": null
+				}
+			],
+			"diagnostics": []
+		}
+	],
+	"cli": [
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "openai/gpt-4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "openai",
+			"cliModel": "4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "sonnet:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "high",
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "openai/gpt-4o:extended",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/openai/gpt-4o:extended"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "openai",
+			"cliModel": "gpt-4o:extended",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o:extended",
+				"model": {
+					"id": "gpt-4o:extended",
+					"name": "gpt-4o:extended",
+					"api": "anthropic-messages",
+					"provider": "openai",
+					"baseUrl": "https://openai.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 4096
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"gpt-4o:extended\" not found for provider \"openai\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "openrouter",
+			"cliModel": "openrouter/openai/ghost-model",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/openai/ghost-model",
+				"model": {
+					"id": "openai/ghost-model",
+					"name": "openai/ghost-model",
+					"api": "anthropic-messages",
+					"provider": "openrouter",
+					"baseUrl": "https://openrouter.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"openai/ghost-model\" not found for provider \"openrouter\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "empty",
+			"cliProvider": "openai",
+			"cliModel": "gpt-4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "No models available. Check your installation or add models to models.json."
+		},
+		{
+			"list": "empty",
+			"cliProvider": null,
+			"cliModel": null,
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "ambiguous",
+			"cliProvider": null,
+			"cliModel": "gpt-5.6-sol",
+			"cliThinking": null,
+			"auth": [
+				"openai-codex"
+			],
+			"model": {
+				"ref": "openai-codex/gpt-5.6-sol"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "ambiguous",
+			"cliProvider": null,
+			"cliModel": "gpt-5.6-sol",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"gpt-5.6-sol\" is ambiguous across providers: azure-openai-responses/gpt-5.6-sol, openai-codex/gpt-5.6-sol. No matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "ambiguous",
+			"cliProvider": null,
+			"cliModel": "gpt-5.6-sol",
+			"cliThinking": null,
+			"auth": [
+				"openai-codex",
+				"azure-openai-responses"
+			],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"gpt-5.6-sol\" is ambiguous across providers: azure-openai-responses/gpt-5.6-sol, openai-codex/gpt-5.6-sol. More than one matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "gateway",
+			"cliProvider": null,
+			"cliModel": "zai/glm-5",
+			"cliThinking": null,
+			"auth": [
+				"zai",
+				"vercel-ai-gateway"
+			],
+			"model": {
+				"ref": "zai/glm-5"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "commandcode",
+			"cliProvider": null,
+			"cliModel": "xiaomi/mimo-v2.5-pro",
+			"cliThinking": null,
+			"auth": [
+				"commandcode"
+			],
+			"model": {
+				"ref": "commandcode/xiaomi/mimo-v2.5-pro"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "commandcode",
+			"cliProvider": null,
+			"cliModel": "xiaomi/mimo-v2.5-pro",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "xiaomi/mimo-v2.5-pro"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "commandcode",
+			"cliProvider": null,
+			"cliModel": "xiaomi/mimo-v2.5-pro",
+			"cliThinking": null,
+			"auth": [
+				"xiaomi",
+				"commandcode"
+			],
+			"model": {
+				"ref": "xiaomi/mimo-v2.5-pro"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "openrouter/qwen",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "high",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:off",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "off",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:minimal",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "minimal",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:low",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "low",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:medium",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "medium",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "high",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:xhigh",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "xhigh",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:max",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "max",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:banana",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8:banana",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8:banana",
+					"name": "zai-org/GLM-5.1-FP8:banana",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"zai-org/GLM-5.1-FP8:banana\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": "neuralwatt",
+			"cliModel": "zai-org/GLM-5.1-FP8:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "high",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:high",
+			"cliThinking": "medium",
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8:high",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8:high",
+					"name": "zai-org/GLM-5.1-FP8:high",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"zai-org/GLM-5.1-FP8:high\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "neuralwatt",
+			"cliProvider": null,
+			"cliModel": "neuralwatt/zai-org/GLM-5.1-FP8:off",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "neuralwatt/zai-org/GLM-5.1-FP8",
+				"model": {
+					"id": "zai-org/GLM-5.1-FP8",
+					"name": "zai-org/GLM-5.1-FP8",
+					"api": "anthropic-messages",
+					"provider": "neuralwatt",
+					"baseUrl": "https://neuralwatt.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "off",
+			"warning": "Model \"zai-org/GLM-5.1-FP8\" not found for provider \"neuralwatt\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "nosuch",
+			"cliModel": "gpt-4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Unknown provider \"nosuch\". Use --list-models to see available providers/models."
+		},
+		{
+			"list": "mock",
+			"cliProvider": "OPENAI",
+			"cliModel": "OpenAI/GPT-4O",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "nosuch/model",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"nosuch/model\" not found. Use --list-models to see available models."
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "nosuchmodel",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"nosuchmodel\" not found. Use --list-models to see available models."
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "sonnet:random",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"sonnet:random\" not found. Use --list-models to see available models."
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "anthropic/sonnet:random",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/sonnet:random",
+				"model": {
+					"id": "sonnet:random",
+					"name": "sonnet:random",
+					"api": "anthropic-messages",
+					"provider": "anthropic",
+					"baseUrl": "https://anthropic.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"sonnet:random\" not found for provider \"anthropic\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "GPT-4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": null,
+			"cliModel": "gpt",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/openai/gpt-4o:extended"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "anthropic",
+			"cliModel": "gpt-4o",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/gpt-4o",
+				"model": {
+					"id": "gpt-4o",
+					"name": "gpt-4o",
+					"api": "anthropic-messages",
+					"provider": "anthropic",
+					"baseUrl": "https://anthropic.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"gpt-4o\" not found for provider \"anthropic\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "mock",
+			"cliProvider": "anthropic",
+			"cliModel": "brand-new:low",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/brand-new",
+				"model": {
+					"id": "brand-new",
+					"name": "brand-new",
+					"api": "anthropic-messages",
+					"provider": "anthropic",
+					"baseUrl": "https://anthropic.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": "low",
+			"warning": "Model \"brand-new\" not found for provider \"anthropic\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "claudeCode",
+			"cliProvider": null,
+			"cliModel": "haiku",
+			"cliThinking": null,
+			"auth": [
+				"claude-code"
+			],
+			"model": {
+				"ref": "claude-code/haiku"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "claudeCode",
+			"cliProvider": null,
+			"cliModel": "claude-code/haiku",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "claude-code/haiku"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "claudeCode",
+			"cliProvider": null,
+			"cliModel": "sonnet",
+			"cliThinking": null,
+			"auth": [
+				"claude-code"
+			],
+			"model": {
+				"ref": "claude-code/sonnet"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "kimi-k2.6",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"kimi-k2.6\" is ambiguous across providers: acme/kimi-k2.6, acme/Kimi-K2.6. No matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "kimi-k2.6",
+			"cliThinking": null,
+			"auth": [
+				"acme"
+			],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"kimi-k2.6\" is ambiguous across providers: acme/kimi-k2.6, acme/Kimi-K2.6. More than one matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "gpt-x",
+			"cliThinking": null,
+			"auth": [
+				"other"
+			],
+			"model": {
+				"ref": "other/gpt-x"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "gpt-x",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"gpt-x\" is ambiguous across providers: other/gpt-x, other2/gpt-x. No matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "anthropic/sonnet",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "dated",
+			"cliProvider": null,
+			"cliModel": "anthropic/claude-sonnet-5",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/claude-sonnet-5",
+				"model": {
+					"id": "claude-sonnet-5",
+					"name": "claude-sonnet-5",
+					"api": "anthropic-messages",
+					"provider": "anthropic",
+					"baseUrl": "https://anthropic.invalid",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"claude-sonnet-5\" not found for provider \"anthropic\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "dated",
+			"cliProvider": "acme",
+			"cliModel": "nope:high",
+			"cliThinking": "low",
+			"auth": [],
+			"model": {
+				"ref": "acme/nope:high",
+				"model": {
+					"id": "nope:high",
+					"name": "nope:high",
+					"api": "anthropic-messages",
+					"provider": "acme",
+					"baseUrl": "https://acme.invalid",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1,
+						"output": 2,
+						"cacheRead": 0.1,
+						"cacheWrite": 1
+					},
+					"contextWindow": 128000,
+					"maxTokens": 8192
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"nope:high\" not found for provider \"acme\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "sonnet",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "amazon-bedrock/us.anthropic.claude-sonnet-5"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "opus:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "amazon-bedrock/us.anthropic.claude-opus-5-5"
+			},
+			"thinkingLevel": "high",
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "anthropic/opus",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "anthropic/claude-opus-5-5"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "gpt-5.5",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"gpt-5.5\" is ambiguous across providers: azure-openai-responses/gpt-5.5, cloudflare-ai-gateway/gpt-5.5, github-copilot/gpt-5.5, openai-codex/gpt-5.5, openai/gpt-5.5, opencode/gpt-5.5, radius/gpt-5.5. No matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "gpt-5.5",
+			"cliThinking": null,
+			"auth": [
+				"openai"
+			],
+			"model": {
+				"ref": "openai/gpt-5.5"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "kimi",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "cloudflare-ai-gateway/workers-ai/@cf/moonshotai/kimi-k2.7-code"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "openrouter/moonshotai/kimi-k2.6",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/moonshotai/kimi-k2.6"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "moonshotai/kimi-k2.6",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "moonshotai/kimi-k2.6"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "zai/glm-5.1",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "vercel-ai-gateway/zai/glm-5.1"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": "openrouter",
+			"cliModel": "qwen",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openrouter/qwen/qwen3.8-omni-flash"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": "openai",
+			"cliModel": "my-finetune:high",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "openai/my-finetune",
+				"model": {
+					"id": "my-finetune",
+					"name": "my-finetune",
+					"api": "openai-responses",
+					"provider": "openai",
+					"baseUrl": "https://api.openai.com/v1",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 5,
+						"output": 30,
+						"cacheRead": 0.5,
+						"cacheWrite": 0,
+						"tiers": [
+							{
+								"inputTokensAbove": 272000,
+								"input": 10,
+								"output": 45,
+								"cacheRead": 1,
+								"cacheWrite": 0
+							}
+						]
+					},
+					"contextWindow": 272000,
+					"maxTokens": 128000,
+					"thinkingLevelMap": {
+						"off": "none",
+						"minimal": null,
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": null
+					},
+					"compat": {
+						"supportsStrictMode": true,
+						"supportsOpenAIGrammarTools": true,
+						"supportsAdditionalTools": true,
+						"supportsToolSearch": true,
+						"supportsMidConvoSystemMessages": true
+					},
+					"inputLimits": {
+						"maxRequestBytes": 536870912,
+						"images": {
+							"maxPerRequest": 1500,
+							"resize": {
+								"maxWidth": 2000,
+								"maxHeight": 2000,
+								"maxBytes": 4718592,
+								"jpegQuality": 80
+							}
+						}
+					}
+				}
+			},
+			"thinkingLevel": "high",
+			"warning": "Model \"my-finetune\" not found for provider \"openai\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "deepseek/deepseek-v9",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "deepseek/deepseek-v9",
+				"model": {
+					"id": "deepseek-v9",
+					"name": "deepseek-v9",
+					"api": "openai-completions",
+					"baseUrl": "https://api.deepseek.com",
+					"provider": "deepseek",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 1.32,
+						"output": 3.96,
+						"cacheRead": 0.044,
+						"cacheWrite": 0
+					},
+					"contextWindow": 1000000,
+					"maxTokens": 384000,
+					"compat": {
+						"supportsStore": false,
+						"supportsDeveloperRole": false,
+						"maxTokensField": "max_tokens",
+						"requiresReasoningContentOnAssistantMessages": true,
+						"thinkingFormat": "deepseek",
+						"supportsStrictMode": true,
+						"supportsMidConvoSystemMessages": true
+					},
+					"thinkingLevelMap": {
+						"minimal": null,
+						"low": null,
+						"medium": null,
+						"high": "high",
+						"max": "max"
+					}
+				}
+			},
+			"thinkingLevel": null,
+			"warning": "Model \"deepseek-v9\" not found for provider \"deepseek\". Using custom model id.",
+			"error": null
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "claude-opus-4-8",
+			"cliThinking": null,
+			"auth": [],
+			"model": null,
+			"thinkingLevel": null,
+			"warning": null,
+			"error": "Model \"claude-opus-4-8\" is ambiguous across providers: anthropic/claude-opus-4-8, opencode/claude-opus-4-8, radius/claude-opus-4-8. No matching provider is authenticated. Use --provider or provider/model."
+		},
+		{
+			"list": "catalog",
+			"cliProvider": null,
+			"cliModel": "haiku",
+			"cliThinking": null,
+			"auth": [],
+			"model": {
+				"ref": "amazon-bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+			},
+			"thinkingLevel": null,
+			"warning": null,
+			"error": null
+		}
+	],
+	"initial": [
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o",
+				"sonnet"
+			],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o:high",
+				"sonnet"
+			],
+			"isContinuing": false,
+			"settings": {
+				"defaultThinkingLevel": "low"
+			},
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "high"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o",
+				"sonnet"
+			],
+			"isContinuing": false,
+			"settings": {
+				"modelThinkingLevels": {
+					"openai/gpt-4o": "minimal"
+				},
+				"defaultThinkingLevel": "low"
+			},
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "minimal"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o",
+				"sonnet"
+			],
+			"isContinuing": false,
+			"settings": {
+				"defaultThinkingLevel": "xhigh"
+			},
+			"auth": [],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "xhigh"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o"
+			],
+			"isContinuing": true,
+			"settings": {
+				"defaultProvider": "anthropic",
+				"defaultModelId": "claude-sonnet-4-5"
+			},
+			"auth": [
+				"anthropic"
+			],
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"gpt-4o"
+			],
+			"isContinuing": true,
+			"settings": {
+				"defaultProvider": "anthropic",
+				"defaultModelId": "claude-sonnet-4-5"
+			},
+			"auth": [],
+			"model": null,
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "mock",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {
+				"defaultProvider": "anthropic",
+				"defaultModelId": "claude-sonnet-4-5",
+				"defaultThinkingLevel": "high",
+				"modelThinkingLevels": {
+					"anthropic/claude-sonnet-4-5": "max"
+				}
+			},
+			"auth": [
+				"anthropic"
+			],
+			"model": {
+				"ref": "anthropic/claude-sonnet-4-5"
+			},
+			"thinkingLevel": "max"
+		},
+		{
+			"list": "mock",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [
+				"openrouter",
+				"openai"
+			],
+			"model": {
+				"ref": "openai/gpt-4o"
+			},
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "mock",
+			"patterns": [
+				"missing"
+			],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [],
+			"model": null,
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "claudeCode",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [
+				"claude-code"
+			],
+			"model": null,
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "claudeCode",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [
+				"claude-code",
+				"openrouter"
+			],
+			"model": {
+				"ref": "openrouter/qwen/qwen3-coder:exacto"
+			},
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "catalog",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [
+				"openrouter",
+				"anthropic",
+				"openai"
+			],
+			"model": {
+				"ref": "anthropic/claude-opus-4-8"
+			},
+			"thinkingLevel": "medium"
+		},
+		{
+			"list": "catalog",
+			"patterns": [],
+			"isContinuing": false,
+			"settings": {},
+			"auth": [
+				"deepseek"
+			],
+			"model": {
+				"ref": "deepseek/deepseek-v4-pro"
+			},
+			"thinkingLevel": "medium"
+		}
+	],
+	"globs": [
+		{
+			"text": "anthropic/claude-sonnet-4-5",
+			"pattern": "*sonnet*",
+			"match": false
+		},
+		{
+			"text": "claude-sonnet-4-5",
+			"pattern": "*sonnet*",
+			"match": true
+		},
+		{
+			"text": "openrouter/qwen/qwen3-coder:exacto",
+			"pattern": "openrouter/*",
+			"match": false
+		},
+		{
+			"text": "openrouter/qwen/qwen3-coder:exacto",
+			"pattern": "openrouter/**",
+			"match": true
+		},
+		{
+			"text": "openrouter/qwen/qwen3-coder:exacto",
+			"pattern": "**/qwen3*",
+			"match": true
+		},
+		{
+			"text": "openrouter/qwen/qwen3-coder:exacto",
+			"pattern": "openrouter/**/*exacto",
+			"match": true
+		},
+		{
+			"text": "a/b",
+			"pattern": "a/**/b",
+			"match": true
+		},
+		{
+			"text": "a/.b",
+			"pattern": "a/*",
+			"match": false
+		},
+		{
+			"text": "a/.b",
+			"pattern": "a/.*",
+			"match": true
+		},
+		{
+			"text": ".hidden",
+			"pattern": "*",
+			"match": false
+		},
+		{
+			"text": ".hidden",
+			"pattern": "?hidden",
+			"match": false
+		},
+		{
+			"text": "a/",
+			"pattern": "a/*",
+			"match": false
+		},
+		{
+			"text": "a",
+			"pattern": "a/*",
+			"match": false
+		},
+		{
+			"text": "",
+			"pattern": "*",
+			"match": false
+		},
+		{
+			"text": "",
+			"pattern": "",
+			"match": true
+		},
+		{
+			"text": "GPT-4o",
+			"pattern": "gpt-4?",
+			"match": true
+		},
+		{
+			"text": "gpt-4o",
+			"pattern": "[gG]pt-[0-9]o",
+			"match": true
+		},
+		{
+			"text": "gpt-4o",
+			"pattern": "[!a-f]pt-4o",
+			"match": true
+		},
+		{
+			"text": "gpt-4o",
+			"pattern": "[^g]pt-4o",
+			"match": false
+		},
+		{
+			"text": "gpt-4o",
+			"pattern": "[]pt-4o",
+			"match": false
+		},
+		{
+			"text": "gpt-4o",
+			"pattern": "gpt-4[o",
+			"match": false
+		},
+		{
+			"text": "gpt-4[o",
+			"pattern": "gpt-4[o",
+			"match": true
+		},
+		{
+			"text": "a]b",
+			"pattern": "a]b",
+			"match": true
+		},
+		{
+			"text": "model[1m]",
+			"pattern": "model[1m]",
+			"match": false
+		},
+		{
+			"text": "model1",
+			"pattern": "model[1m]",
+			"match": true
+		},
+		{
+			"text": "model[1m]",
+			"pattern": "model\\[1m\\]",
+			"match": true
+		},
+		{
+			"text": "x*y",
+			"pattern": "x\\*y",
+			"match": true
+		},
+		{
+			"text": "xzy",
+			"pattern": "x\\*y",
+			"match": false
+		},
+		{
+			"text": "openai/gpt-4o",
+			"pattern": "{openai,anthropic}/*",
+			"match": true
+		},
+		{
+			"text": "anthropic/x",
+			"pattern": "{openai,anthropic}/*",
+			"match": true
+		},
+		{
+			"text": "mistral/x",
+			"pattern": "{openai,anthropic}/*",
+			"match": false
+		},
+		{
+			"text": "ab",
+			"pattern": "a{b,c{d,e}}",
+			"match": true
+		},
+		{
+			"text": "ace",
+			"pattern": "a{b,c{d,e}}",
+			"match": true
+		},
+		{
+			"text": "a{b",
+			"pattern": "a{b",
+			"match": true
+		},
+		{
+			"text": "a1",
+			"pattern": "a{1..3}",
+			"match": true
+		},
+		{
+			"text": "claude-sonnet",
+			"pattern": "!*opus*",
+			"match": true
+		},
+		{
+			"text": "claude-opus",
+			"pattern": "!*opus*",
+			"match": false
+		},
+		{
+			"text": "claude-opus",
+			"pattern": "!!*opus*",
+			"match": true
+		},
+		{
+			"text": "#x",
+			"pattern": "#*",
+			"match": false
+		},
+		{
+			"text": "abc",
+			"pattern": "a*b*c",
+			"match": true
+		},
+		{
+			"text": "abcbc",
+			"pattern": "a*bc",
+			"match": true
+		},
+		{
+			"text": "aXb",
+			"pattern": "a?b",
+			"match": true
+		},
+		{
+			"text": "a/b",
+			"pattern": "a?b",
+			"match": false
+		},
+		{
+			"text": "kimi-k2.6",
+			"pattern": "kimi-k[0-9].[0-9]",
+			"match": true
+		},
+		{
+			"text": "Kimi-K2.6",
+			"pattern": "KIMI-K[0-9]*",
+			"match": true
+		},
+		{
+			"text": "x",
+			"pattern": "[[:alpha:]]",
+			"match": true
+		},
+		{
+			"text": "1",
+			"pattern": "[[:alpha:]]",
+			"match": false
+		},
+		{
+			"text": "a-b",
+			"pattern": "a[a-z-]b",
+			"match": true
+		},
+		{
+			"text": "a.b",
+			"pattern": "a[.]b",
+			"match": true
+		},
+		{
+			"text": "foo",
+			"pattern": "+(f|o)",
+			"match": true
+		},
+		{
+			"text": "foo",
+			"pattern": "@(foo|bar)",
+			"match": true
+		},
+		{
+			"text": "a",
+			"pattern": "*(a)",
+			"match": true
+		},
+		{
+			"text": "ab",
+			"pattern": "a?(b)",
+			"match": true
+		}
+	]
+}

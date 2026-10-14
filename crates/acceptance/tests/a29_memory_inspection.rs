@@ -1,7 +1,9 @@
-//! A29 (partial): the memory inspector shows the evidence that was injected, with no new search and no other
-//! task's scope. Ported from the first case of packages/coding-agent/test/ultron-memory-inspection.test.ts over the
-//! Rust `MemoryService` with the same in-memory backend. Not ported: the second case needs the session-control
-//! inspector (`createSessionControl().inspect`, refusing non-inspection requests), which Rust does not have.
+//! A29: the memory inspector shows the evidence that was injected, with no new search and no other task's scope, and
+//! refuses requests that would search or change state. Ported from packages/coding-agent/test/
+//! ultron-memory-inspection.test.ts: the first case over the Rust `MemoryService` with the same in-memory backend,
+//! the second over the session inspector (`session_core::inspect`, TS `createSessionControl().inspect`) with a
+//! recording runtime, as the TS case records its `inspect` option. The same inspector answers RPC `inspect` and the
+//! TUI's `/memory`, `/agents`, ... commands (crates/daemon worker, `Op::Inspect`).
 
 use kernel::Signal;
 use kernel_apis::memory::MemoryBackend;
@@ -115,4 +117,41 @@ fn acceptance_a29_why_shows_injected_evidence_without_a_new_search_or_other_scop
     assert!(!text.contains("project"));
     assert!(!text.contains("launcher path"));
     assert!(!text.contains("secret project detail"));
+}
+
+#[test]
+fn acceptance_a29_the_inspector_refuses_requests_that_would_search_or_change_state() {
+    let requests = Arc::new(Mutex::new(Vec::<String>::new()));
+    let seen = requests.clone();
+    let runtime = move |kind: &str, _: Map<String, Value>, _: &Signal| -> Result<Value, String> {
+        seen.lock().unwrap().push(kind.to_string());
+        Ok(json!([]))
+    };
+    let runtime: &dyn kernel::HostHandler = &runtime;
+    let signal = Signal::new();
+    for request in [
+        "memory.prepare",
+        "memory.forget",
+        "memory.get",
+        "agents.spawn",
+        "refinements.activate",
+    ] {
+        let refused = session_core::inspect::inspect(Some(runtime), request, json!({}), &signal);
+        assert_eq!(refused, Err(format!("Not an inspection request: {request}")));
+    }
+    assert_eq!(
+        session_core::inspect::inspect(Some(runtime), "memory.why", json!({"taskId": "task-a"}), &signal),
+        Ok(json!([]))
+    );
+    assert_eq!(*requests.lock().unwrap(), ["memory.why"]);
+    // Without a runtime, and with a payload that is not an object (TS: "Inspection payload must be an object").
+    assert_eq!(
+        session_core::inspect::inspect(None, "memory.why", json!({}), &signal),
+        Err("This Session has no Ultron runtime to inspect".into())
+    );
+    assert_eq!(
+        session_core::inspect::inspect(Some(runtime), "memory.list", json!([1]), &signal),
+        Err("Inspection payload must be an object".into())
+    );
+    assert_eq!(*requests.lock().unwrap(), ["memory.why"]);
 }

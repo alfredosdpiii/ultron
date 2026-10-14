@@ -7,6 +7,7 @@ use crate::compose::{Config, Runtime, RuntimeEvents, Stack};
 use crate::{ModelFlags, RunEnv as Env};
 use agent::{AgentTool, AgentToolResult, StreamFn, ToolUpdate};
 use ai::http::{BoxFuture, ReqwestTransport};
+use ai::model_registry::ModelRegistry;
 use ai::{
     AbortSignal, AssistantMessage, EventSink, Message, Model, SimpleStreamOptions, StopReason, TextContent, Tool,
     TranscriptContext, Transport, UserContent, UserMessage, UserMessageContent,
@@ -179,6 +180,17 @@ pub fn system_prompt(
     loki_root: Option<&Path>,
     extensions: Option<&str>,
 ) -> Result<String, String> {
+    system_prompt_with_guide(env, cwd, loki_root, extensions, &Default::default())
+}
+
+/// [`system_prompt`] whose runtime guide gets `guide` (the REPL's extension tools and MCP servers).
+pub fn system_prompt_with_guide(
+    env: &Env,
+    cwd: &str,
+    loki_root: Option<&Path>,
+    extensions: Option<&str>,
+    guide: &resources::runtime_guide::RuntimeGuideOptions,
+) -> Result<String, String> {
     use resources::system_prompt::{BuildOptions, build_system_prompt};
     let agent_dir = env.agent_dir().display().to_string();
     let bundled = config::paths::normalize(&env.docs.join("../skills"))
@@ -192,7 +204,7 @@ pub fn system_prompt(
     })
     .skills;
     skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
-    let runtime = resources::runtime_guide::rlm_runtime_prompt(&["rlm"], &Default::default()).unwrap_or_default();
+    let runtime = resources::runtime_guide::rlm_runtime_prompt(&["rlm"], guide).unwrap_or_default();
     // loki.ts `readContext`: a policy the engine cannot read gives no note (the guard still runs and reports it).
     let loki_note = loki_root
         .and_then(|root| loki::config::load_config(root).ok())
@@ -215,66 +227,283 @@ pub fn system_prompt(
     build_system_prompt(&options, None)
 }
 
-/// `models.json` `providers.<provider>.baseUrl` applied to a built-in model.
-fn apply_models_json(mut model: Model, env: &Env) -> Result<Model, String> {
-    let models_json = config::paths::AgentPaths::new(env.agent_dir()).models();
-    if let Ok(text) = std::fs::read_to_string(&models_json) {
-        let value: Value = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", models_json.display()))?;
-        if let Some(url) = value["providers"][&model.provider]["baseUrl"].as_str() {
-            model.base_url = url.to_string();
+/// The profile's models.json over the built-in catalog (custom providers and models, overrides, keys, headers).
+/// The registry also restores stored catalogs (models-store.json beside models.json) and imports a Radius provider's
+/// legacy credential catalog on first sight (`ModelRuntime.create`'s offline refresh).
+pub fn registry(env: &Env) -> ModelRegistry {
+    let paths = config::paths::AgentPaths::new(env.agent_dir());
+    let models = paths.models();
+    let mut registry = ModelRegistry::load(&models, &env.home);
+    if let Some(credentials) = std::fs::read_to_string(paths.auth())
+        .ok()
+        .and_then(|text| config::json::parse(text.trim_start_matches('\u{feff}')).ok())
+    {
+        let store = config::models_store::ModelsStore::new(models.with_file_name("models-store.json"));
+        registry.import_legacy_radius(&credentials, &store, now_ms());
+    }
+    registry
+}
+
+/// The model `provider`/`id` (built-in or from models.json), ready for requests.
+pub fn catalog_model(provider: &str, id: &str, env: &Env) -> Result<Model, String> {
+    let registry = registry(env);
+    let model = registry
+        .find(provider, id)
+        .ok_or_else(|| format!("Model \"{provider}/{id}\" not found"))?;
+    Ok(for_requests(&registry, model, env))
+}
+
+/// `model` ready for requests: models.json headers resolved per request, and the base URL of the provider's stored
+/// OAuth credential (GitHub Copilot's token endpoint) read per request, over the catalog's or models.json's.
+pub fn for_requests(registry: &ModelRegistry, model: Model, env: &Env) -> Model {
+    let oauth = stored_oauth(env, &model.provider);
+    prepare(registry, model, env, oauth)
+}
+
+/// Whether the provider's stored credential is an OAuth one.
+fn stored_oauth(env: &Env, provider: &str) -> bool {
+    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    config::auth::read_stored_credential(&auth, provider)
+        .is_some_and(|c| c.get("type").and_then(Value::as_str) == Some("oauth"))
+}
+
+fn prepare(registry: &ModelRegistry, model: Model, env: &Env, oauth: bool) -> Model {
+    let mut model = registry.for_requests(model, env.var.clone());
+    if oauth {
+        let (env, provider) = (env.clone(), model.provider.clone());
+        model.request.get_or_insert_default().stored_auth = Some(Arc::new(move || {
+            crate::stored_auth::oauth_request_auth(&env, &provider)
+        }));
+    }
+    model
+}
+
+/// `--provider`/`--model` against the built-in catalog and models.json (`resolveCliModel`: fuzzy ids, `provider/`
+/// prefixes, `<pattern>:<thinking>`, the custom-id fallback), ready for requests; without `--model`, the initial
+/// model of a new session.
+pub fn resolve_model(flags: &ModelFlags, env: &Env) -> Result<Model, String> {
+    resolve_choice(flags, env, false).map(|choice| choice.model)
+}
+
+/// The model a session starts on and the thinking level its choice names explicitly (a `:<thinking>` suffix, a
+/// scoped pattern's level); `None` leaves the level to the settings (sdk.ts: per-model level, default, medium).
+#[derive(Clone, Debug)]
+pub struct ModelChoice {
+    pub model: Model,
+    pub thinking: Option<String>,
+    /// `resolveCliModel`'s warning (an invalid suffix, a custom model id).
+    pub warning: Option<String>,
+}
+
+/// `resolveCliModel({cliProvider, cliModel, modelRuntime})` over the profile's models; the model as listed, not
+/// prepared for requests. With `authenticated`, the providers that have configured credentials break ties
+/// (`hasConfiguredAuth`); without, none do (a runtime created without its first refresh has no configured providers
+/// yet, as `ultron auth check`'s).
+pub fn resolve_cli_model(
+    env: &Env,
+    provider: Option<&str>,
+    model: &str,
+    authenticated: bool,
+) -> ai::model_resolver::CliModel {
+    let registry = registry(env);
+    let configured = if authenticated {
+        configured_providers(env, &registry)
+    } else {
+        Vec::new()
+    };
+    registry.resolve_cli(provider, model, None, &|p: &str| configured.iter().any(|c| c == p))
+}
+
+/// [`resolve_model`] with the thinking level the choice carries. `continuing`: the session already has history,
+/// so scoped models (`--models`, `enabledModels`) do not pick its model.
+pub fn resolve_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Result<ModelChoice, String> {
+    let Some(spec) = flags.model.as_deref() else {
+        return initial_choice(flags, env, continuing)
+            .ok_or_else(|| "No model selected: pass --model <provider>/<id>".to_string());
+    };
+    let registry = registry(env);
+    let configured = configured_providers(env, &registry);
+    let has_auth = |p: &str| configured.iter().any(|c| c == p);
+    let resolved = registry.resolve_cli(flags.provider.as_deref(), spec, flags.thinking.as_deref(), &has_auth);
+    let model = match (resolved.model, resolved.error) {
+        (Some(model), _) => model,
+        (None, error) => return Err(error.unwrap_or_else(|| format!("Model \"{spec}\" not found"))),
+    };
+    Ok(ModelChoice {
+        model: for_requests(&registry, model, env),
+        thinking: resolved.thinking_level,
+        warning: resolved.warning,
+    })
+}
+
+/// `defaultModelPerProvider` of model-resolver.ts.
+pub use ai::model_resolver::DEFAULT_MODEL_PER_PROVIDER;
+
+/// The model a session starts on without `--model` (`findInitialModel` of model-resolver.ts with Pi's
+/// `buildSessionOptions` scope rule): a new session with scoped models (`--models`, else settings `enabledModels`,
+/// resolved against the available models) starts on the saved default when it is in scope, else the first scoped
+/// model, with that pattern's thinking level; otherwise the settings' `defaultProvider`/`defaultModel` when its
+/// provider has credentials, else an available model preferring a known provider's default. Claude Code CLI models
+/// never drive a root lane, so they are skipped.
+pub fn initial_model(env: &Env) -> Option<Model> {
+    initial_choice(&ModelFlags::default(), env, false).map(|choice| choice.model)
+}
+
+fn initial_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Option<ModelChoice> {
+    let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
+    let all = settings.settings();
+    let text = |v: Option<Value>| v.and_then(|v| v.as_str().map(str::to_string));
+    let registry = registry(env);
+    let available = available_models(env);
+    let patterns: Vec<String> = match &flags.models {
+        Some(patterns) => patterns.clone(),
+        None => all
+            .get("enabledModels")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
+            .unwrap_or_default(),
+    };
+    let (default_provider, default_model) = (text(settings.default_provider()), text(settings.default_model()));
+    let choice = |model: Model, thinking: Option<String>| ModelChoice {
+        model: for_requests(&registry, model, env),
+        thinking,
+        warning: None,
+    };
+    if !continuing && !patterns.is_empty() {
+        let (scoped, _) = ai::model_resolver::resolve_model_scope(&patterns, &available);
+        // `buildSessionOptions`: the saved default when it is in scope, else the first scoped model.
+        let saved = scoped.iter().find(|s| {
+            default_provider.as_deref() == Some(s.model.provider.as_str())
+                && default_model.as_deref() == Some(s.model.id.as_str())
+        });
+        if let Some(pick) = saved.or(scoped.first()) {
+            return Some(choice(pick.model.clone(), pick.thinking_level.clone()));
         }
     }
-    Ok(model)
-}
-
-/// The model of `provider`/`id` from the built-in catalog, with `models.json` `providers.<name>.baseUrl` applied.
-pub fn catalog_model(provider: &str, id: &str, env: &Env) -> Result<Model, String> {
-    let model = ai::models::builtin_model(provider, id)
-        .cloned()
-        .ok_or_else(|| format!("Model \"{provider}/{id}\" not found"))?;
-    apply_models_json(model, env)
-}
-
-/// `--provider`/`--model` (`provider/id` or a bare id with `--provider`) against the built-in catalog, with
-/// `models.json` `providers.<name>.baseUrl` applied.
-pub fn resolve_model(flags: &ModelFlags, env: &Env) -> Result<Model, String> {
-    let spec = flags
-        .model
-        .as_deref()
-        .ok_or("No model selected: pass --model <provider>/<id>")?;
-    let (provider, id) = match (flags.provider.as_deref(), spec.split_once('/')) {
-        (Some(p), _) => (p, spec),
-        (None, Some((p, id))) => (p, id),
-        (None, None) => return Err(format!("Model \"{spec}\" needs a provider: use <provider>/<id>")),
-    };
-    catalog_model(provider, id, env)
-}
-
-/// The model runtime's available snapshot: built-in models whose provider has credentials, `models.json` base
-/// URLs applied.
-pub fn available_models(env: &Env) -> Vec<Model> {
-    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
-    let source = ai::env::EnvSource {
-        lookup: &*env.var,
-        exists: &|p: &Path| p.exists(),
-        home: Some(env.home.clone()),
-    };
-    ai::models::builtin_providers()
-        .filter(|p| {
-            ai::env::env_api_key_in(p, &source).is_some() || config::auth::read_stored_credential(&auth, p).is_some()
+    let levels = all
+        .get("modelThinkingLevels")
+        .and_then(Value::as_object)
+        .map(|m| {
+            m.iter()
+                .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
+                .collect()
         })
-        .flat_map(ai::models::builtin_models)
-        .filter_map(|m| apply_models_json(m.clone(), env).ok())
+        .unwrap_or_default();
+    let initial = ai::model_resolver::InitialSettings {
+        default_provider,
+        default_model_id: default_model,
+        default_thinking_level: all
+            .get("defaultThinkingLevel")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        model_thinking_levels: levels,
+    };
+    let configured: Vec<String> = available.iter().map(|m| m.provider.clone()).collect();
+    let has_auth = |p: &str| configured.iter().any(|c| c == p);
+    let mut models = registry.all_models();
+    // A saved default on the dynamic claude-subscription catalog lists no models of its own.
+    if let (Some(p), Some(id)) = (&initial.default_provider, &initial.default_model_id)
+        && let Some(found) = registry.find(p, id)
+        && !models.iter().any(|m| m.provider == found.provider && m.id == found.id)
+    {
+        models.push(found);
+    }
+    // sdk.ts takes only the model: its thinking level comes from the settings, as for any other start.
+    let (model, _) = ai::model_resolver::find_initial_model(&[], continuing, &initial, &models, &available, &has_auth);
+    model.map(|model| choice(model, None))
+}
+
+/// The thinking level a session starts with when nothing names one: the settings' level for `model`
+/// (`modelThinkingLevels`), else `defaultThinkingLevel`, else medium.
+fn initial_level(all: &serde_json::Map<String, Value>, model: &Model) -> String {
+    all.get("modelThinkingLevels")
+        .and_then(|levels| levels.get(format!("{}/{}", model.provider, model.id)))
+        .and_then(Value::as_str)
+        .or_else(|| all.get("defaultThinkingLevel").and_then(Value::as_str))
+        .unwrap_or(ai::model_resolver::DEFAULT_THINKING_LEVEL)
+        .to_string()
+}
+
+/// The thinking level a session starts with when `--thinking` is not given: the settings' level for `model`
+/// (`modelThinkingLevels`), else `defaultThinkingLevel`, else medium. Stored as chosen, like TS: requests clamp it
+/// to what the model supports.
+pub fn initial_thinking(model: &Model, env: &Env) -> String {
+    let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
+    initial_level(settings.settings(), model)
+}
+
+/// The providers with credentials (`hasConfiguredAuth`): a stored credential, the models.json key, or the built-in
+/// provider's environment key.
+fn configured_providers(env: &Env, registry: &ModelRegistry) -> Vec<String> {
+    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    registry
+        .provider_ids()
+        .into_iter()
+        .filter(|p| {
+            config::auth::read_stored_credential(&auth, p).is_some()
+                || registry.auth_configured(p, &*env.var, env_api_key_with(env, registry, p).is_some())
+        })
         .collect()
 }
 
-/// `--api-key`, else the provider's key from the environment.
-pub fn api_key(flags: &ModelFlags, env: &Env, provider: &str) -> Option<String> {
-    flags.api_key.clone().or_else(|| env_api_key(env, provider))
+/// The model runtime's available snapshot: the models of providers with credentials (a stored credential, the
+/// models.json key, or the built-in provider's environment key), ready for requests.
+pub fn available_models(env: &Env) -> Vec<Model> {
+    let registry = registry(env);
+    configured_providers(env, &registry)
+        .into_iter()
+        .flat_map(|p| {
+            let oauth = stored_oauth(env, &p);
+            let registry = &registry;
+            registry
+                .models(&p)
+                .into_iter()
+                .map(move |m| prepare(registry, m, env, oauth))
+        })
+        .collect()
 }
 
-/// The provider's key from the environment and the profile's credential files.
+/// The key a request of `provider` carries (`ModelRuntime.getAuth`): `--api-key` (a runtime key), else the auth.json
+/// credential (an api key, or an OAuth access token; a stored credential owns the provider), else the models.json
+/// key, else the environment; `None` when there is none or the configured one does not resolve.
+pub fn api_key(flags: &ModelFlags, env: &Env, provider: &str) -> Option<String> {
+    request_key(flags, env, provider).ok().flatten()
+}
+
+/// [`api_key`] with the error of a key that does not resolve (a models.json `$VAR` unset, `!command` failing, an
+/// unreadable auth.json, a failed OAuth refresh).
+pub fn request_key(flags: &ModelFlags, env: &Env, provider: &str) -> Result<Option<String>, String> {
+    if let Some(key) = flags.api_key.as_deref() {
+        return Ok(Some(key.to_string()));
+    }
+    match crate::stored_auth::stored_key(env, provider)? {
+        crate::stored_auth::Stored::Owns(key) => Ok(key),
+        crate::stored_auth::Stored::Nothing => {
+            let registry = registry(env);
+            let inherited = env_api_key_with(env, &registry, provider);
+            registry.api_key(provider, None, &*env.var, inherited)
+        }
+    }
+}
+
+/// Whether `provider`'s stored OAuth credential authenticates requests by its headers alone (Kimi For Coding's
+/// `Authorization: Bearer`, `toAuth` with no key): `getAuth` resolves, so a request needs no API key.
+pub fn header_auth(env: &Env, provider: &str) -> bool {
+    crate::stored_auth::oauth_request_auth(env, provider).is_some_and(|auth| auth.headers.is_some())
+}
+
+/// The provider's key from the environment and the profile's credential files. A models.json Radius provider
+/// inherits the built-in Radius key (`RADIUS_API_KEY`).
 pub fn env_api_key(env: &Env, provider: &str) -> Option<String> {
+    env_api_key_with(env, &registry(env), provider)
+}
+
+fn env_api_key_with(env: &Env, registry: &ModelRegistry, provider: &str) -> Option<String> {
+    let provider = if registry.radius_gateway(provider).is_some() {
+        "radius"
+    } else {
+        provider
+    };
     let source = ai::env::EnvSource {
         lookup: &*env.var,
         exists: &|p: &Path| p.exists(),
@@ -287,7 +516,7 @@ pub fn env_api_key(env: &Env, provider: &str) -> Option<String> {
 pub fn api_supported(api: &str) -> bool {
     matches!(
         api,
-        "anthropic-messages" | "openai-completions" | "openai-responses" | "google-generative-ai"
+        "anthropic-messages" | "openai-completions" | "openai-responses" | "google-generative-ai" | "pi-messages"
     )
 }
 
@@ -364,6 +593,14 @@ impl StreamFn for Provider {
             } else {
                 options
             };
+            // A stored OAuth credential may name the request's base URL (Copilot's token endpoint) and headers
+            // (Kimi's bearer); models.json headers (and `authHeader`'s bearer) go out over them, under the caller's.
+            let (routed, prepared) = match ai::model_registry::prepare_request(model, options) {
+                Ok(prepared) => prepared,
+                Err(error) => return error_message(model, error),
+            };
+            let model = routed.as_ref().unwrap_or(model);
+            let options = prepared.as_ref().unwrap_or(options);
             let transport = &*self.transport;
             let result = match model.api.as_str() {
                 "anthropic-messages" => ai::anthropic::stream_simple(model, context, options, transport, sink).await,
@@ -374,6 +611,8 @@ impl StreamFn for Provider {
                     ai::openai_responses::stream_simple(model, context, options, transport, sink).await
                 }
                 "google-generative-ai" => ai::google::stream_simple(model, context, options, transport, sink).await,
+                // Radius gateways (the built-in provider and models.json `"oauth": "radius"` providers).
+                "pi-messages" => Ok(ai::pi_messages::stream_simple(model, context, options, transport, sink).await),
                 "claude-subscription" => Ok(self.router.stream(model, context, options, transport, sink).await),
                 api => Err(format!("API \"{api}\" is not ported to the Rust build yet")),
             };
@@ -419,13 +658,32 @@ pub struct Rlm {
     tool: Tool,
     lanes: Lanes,
     lane: String,
-    masker: OutputMasker,
+    /// The session's masker: values MCP servers resolve (env, headers) are registered in it.
+    masker: Arc<OutputMasker>,
     mask_secrets: Option<String>,
     max_bytes: usize,
     spill_dir: PathBuf,
+    /// Situational hints (`ULTRON_HINTS=on`): one `[hint:<tag>]` line at the end of a cell's result.
+    hints: Option<Arc<kernel_apis::cell_hints::CellHints>>,
 }
 
 impl Rlm {
+    /// The hint the cell earned with this result text (or error message), if any.
+    fn hint(&self, text: &str, ename: Option<&str>) -> Option<String> {
+        let outcome = kernel_apis::cell_hints::CellOutcome { text, ename };
+        self.hints
+            .as_ref()
+            .and_then(|hints| hints.end_cell(&self.lane, &outcome))
+    }
+
+    /// The cell's result text (or error message) with the hint its cell earned, if any.
+    fn with_hint(&self, text: String, ename: Option<&str>) -> String {
+        match self.hint(&text, ename) {
+            Some(hint) => format!("{text}\n{hint}"),
+            None => text,
+        }
+    }
+
     /// The cell `lane` is running now.
     fn running_cell(&self) -> Option<String> {
         self.lanes.list().as_array().and_then(|lanes| {
@@ -450,6 +708,9 @@ impl AgentTool for Rlm {
     ) -> BoxFuture<'a, Result<AgentToolResult, String>> {
         Box::pin(async move {
             let code = args["code"].as_str().ok_or("rlm needs a `code` string")?.to_string();
+            if let Some(hints) = &self.hints {
+                hints.begin_cell(&self.lane, &code);
+            }
             let (lanes, lane) = (self.lanes.clone(), self.lane.clone());
             let mut cell = tokio::task::spawn_blocking(move || lanes.run(&lane, &code, CELL_BUDGET));
             let outcome = match until_aborted(&mut cell, signal).await {
@@ -467,7 +728,7 @@ impl AgentTool for Rlm {
                 return Err(ABORT_REQUESTED.into());
             }
             let result = match outcome {
-                CellOutcome::Done(result) => result?,
+                CellOutcome::Done(result) => result.map_err(|e| self.with_hint(e, Some("Error")))?,
                 CellOutcome::Running { cell, parked } => {
                     if !parked {
                         self.lanes.detach(&cell)?;
@@ -488,11 +749,14 @@ impl AgentTool for Rlm {
                 max_bytes: self.max_bytes,
                 spill_dir: Some(&self.spill_dir),
             };
-            let output = cell_output(&result, &format).map_err(|failure| failure.message)?;
-            let text = if output.text.is_empty() {
-                "(no result)".to_string()
-            } else {
-                output.text
+            let output = cell_output(&result, &format)
+                .map_err(|failure| self.with_hint(failure.message, Some(&failure.ename)))?;
+            // Only a hint is appended: output that itself starts with a newline stays as it is.
+            let text = match (output.text.is_empty(), self.hint(&output.text, None)) {
+                (true, None) => "(no result)".to_string(),
+                (true, Some(hint)) => format!("(no result)\n{hint}"),
+                (false, Some(hint)) => format!("{}\n{hint}", output.text),
+                (false, None) => output.text,
             };
             Ok(AgentToolResult {
                 content: vec![text_block(text)],
@@ -563,13 +827,24 @@ impl Lane {
     pub fn shutdown(&self) {
         self.stack.close();
     }
+
+    /// Shut down for a successor worker: shell jobs keep running for it.
+    pub fn hand_over(&self) {
+        self.stack.hand_over();
+    }
 }
 
 /// The root lane's name.
 pub const MAIN: &str = "main";
 
 /// The `rlm` tool for `lane` of `lanes`.
-pub(crate) fn rlm_over(config: &Config, lanes: Lanes, lane: &str, spill_dir: PathBuf) -> Rlm {
+pub(crate) fn rlm_over(
+    config: &Config,
+    lanes: Lanes,
+    lane: &str,
+    spill_dir: PathBuf,
+    hints: Option<Arc<kernel_apis::cell_hints::CellHints>>,
+) -> Rlm {
     let mut tool = rlm_tool();
     // `codeSkillsToolSection`: the tool description lists the profile's active code skills.
     let listing = kernel_apis::CodeSkills::new(kernel_apis::CodeSkillsOptions::new(
@@ -584,9 +859,10 @@ pub(crate) fn rlm_over(config: &Config, lanes: Lanes, lane: &str, spill_dir: Pat
         tool,
         lanes,
         lane: lane.to_string(),
-        masker: OutputMasker::default(),
+        masker: config.masker.clone(),
         mask_secrets: config.mask_secrets.clone(),
         max_bytes: kernel::rlm_output_budget(config.output_bytes.as_deref()) as usize,
         spill_dir,
+        hints,
     }
 }

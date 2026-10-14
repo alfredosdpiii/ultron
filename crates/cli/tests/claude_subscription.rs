@@ -5,6 +5,7 @@
 //! result is replayed natively on the next call, and the advertised inventory is exactly `[rlm]` everywhere.
 
 mod common;
+mod executable_support;
 
 use common::{Naming, Sandbox, assert_private_home, mock_server};
 use serde_json::{Value, json};
@@ -74,13 +75,11 @@ fn cli_claude_subscription_turn_runs_rlm_in_the_host_and_replays_natively() {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../ai/fixtures/claude-subscription/claude.py");
     let wrapper = sandbox.root.join("fake-bin/claude");
     std::fs::create_dir_all(wrapper.parent().unwrap()).unwrap();
-    std::fs::write(
+    // Executed by path (ULTRON_CLAUDE_COMMAND), so written without a write descriptor in this process.
+    executable_support::install(
         &wrapper,
-        format!("#!/bin/sh\nexec {python} -I {} \"$@\"\n", fixture.display()),
-    )
-    .unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+        &format!("#!/bin/sh\nexec {python} -I {} \"$@\"\n", fixture.display()),
+    );
     let log = sandbox.root.join("claude-log.jsonl");
     let tmp = sandbox.root.join("tmp");
     std::fs::create_dir_all(&tmp).unwrap();

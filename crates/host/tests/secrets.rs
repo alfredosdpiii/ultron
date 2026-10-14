@@ -18,11 +18,6 @@ fn joined(value: &Value) -> String {
     value.as_array().unwrap().iter().map(|p| p.as_str().unwrap()).collect()
 }
 
-/// An expected text: plain, or in pieces when it holds a secret-looking string.
-fn text_or_joined(value: &Value) -> String {
-    value.as_str().map_or_else(|| joined(value), str::to_owned)
-}
-
 #[test]
 fn host_secrets_redaction_matches_typescript_corpus() {
     let data = fixture();
@@ -31,7 +26,7 @@ fn host_secrets_redaction_matches_typescript_corpus() {
     for case in data["cases"].as_array().unwrap() {
         let text = joined(&case["text"]);
         let (redacted, masked) = detector.redact_counted(&text);
-        let want = (text_or_joined(&case["redacted"]), case["masked"].as_u64().unwrap() as usize);
+        let want = (joined(&case["redacted"]), case["masked"].as_u64().unwrap() as usize);
         if (redacted.clone(), masked) != want {
             failures.push(format!("{text:?}: got {redacted:?}/{masked}, want {want:?}"));
         }

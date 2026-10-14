@@ -74,6 +74,16 @@ cd "$work"
 exec "$@"
 """
 
+#: The Docker client's stdin: a pipe nobody writes, open exactly as long as the client runs (the reader of
+#: `_DOCKER_TIED` sees end-of-input when the client is gone). `$$` is the shell that became the client.
+_DOCKER_CLIENT = 'exec "$@" < <(exec setpriv --pdeathsig KILL -- sleep infinity)'
+_DOCKER_CLIENT_POLLING = 'exec "$@" < <(while kill -0 $$ 2>/dev/null; do sleep 1; done)'
+#: Inside the container: the command runs with no stdin while a watcher reads the container's stdin (fd 3), which
+#: `docker run -i` closes when its client goes away; the watcher then kills the command, the shell exits, and with it
+#: `--init` and the whole container. A command that ends on its own ends the watcher.
+_DOCKER_TIED = ('exec 3<&0; "$@" </dev/null 3<&- & c=$!; { cat <&3 >/dev/null; kill -KILL $c 2>/dev/null; } & '
+                'w=$!; exec 3<&-; wait $c; s=$?; kill $w 2>/dev/null; exit $s')
+
 
 def sandbox_env(extra_path: str | None = None) -> dict[str, str]:
     """The whole environment of a sandboxed command, built from scratch: nothing of the caller's is inherited,
@@ -130,14 +140,20 @@ class Sandbox:
                     "--kill-child", "env", "-i", *(f"{name}={value}" for name, value in env.items()),
                     "sh", "-c", _UNSHARE_SCRIPT, "sandbox", workdir, *hidden, "--", *command]
         if self.mechanism == "docker":
-            argv = ["docker", "run", "--rm", "--network", "none", "--cap-drop", "ALL", "--security-opt",
-                    "no-new-privileges", "--pids-limit", "1024", "--user", f"{os.getuid()}:{os.getgid()}",
-                    "--tmpfs", "/tmp", "-v", f"{workdir}:{workdir}:rw", "-w", workdir]
+            # A container is not a process of ours: killing the `docker run` client (a timeout kills its process
+            # group) leaves it running. It is tied to the client (_DOCKER_CLIENT, _DOCKER_TIED), the client to its
+            # parent when setpriv is there, and the environment is set with `env -i` inside: `docker run -e` adds
+            # to the image's own ENV, which would reach the command.
+            setpriv = shutil.which("setpriv") is not None
+            argv = ["setpriv", "--pdeathsig", "KILL", "--"] if setpriv else []
+            argv += ["bash", "-c", _DOCKER_CLIENT if setpriv else _DOCKER_CLIENT_POLLING, "ultron-docker",
+                     "docker", "run", "--rm", "--init", "-i", "--network", "none", "--cap-drop", "ALL",
+                     "--security-opt", "no-new-privileges", "--pids-limit", "1024", "--user",
+                     f"{os.getuid()}:{os.getgid()}", "--tmpfs", "/tmp", "-v", f"{workdir}:{workdir}:rw", "-w", workdir]
             for source, target in binds:
                 argv += ["-v", f"{source}:{target}:ro"]
-            for name, value in env.items():
-                argv += ["-e", f"{name}={value}"]
-            return [*argv, str(self.image), *command]
+            return [*argv, str(self.image), "sh", "-c", _DOCKER_TIED, "sh", "env", "-i",
+                    *(f"{name}={value}" for name, value in env.items()), *command]
         raise ValueError(f"unknown sandbox mechanism {self.mechanism}")
 
     def describe(self) -> str:
@@ -148,7 +164,7 @@ class Sandbox:
             "unshare": "unshare: new user, mount, pid, ipc, uts and network namespaces; /home, /root, /run and the "
                        "user's home hidden under empty tmpfs mounts, a private /tmp; environment cleared",
             "docker": f"docker ({self.image}): no network, all capabilities dropped, no new privileges, only the "
-                      "exported commit mounted",
+                      "exported commit mounted; environment cleared; the container ends with its client",
         }[self.mechanism]
 
 

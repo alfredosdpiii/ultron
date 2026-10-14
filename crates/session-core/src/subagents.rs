@@ -10,7 +10,7 @@
 use crate::compose::{AgentStores, Stack, SubagentHost, child_setup};
 use crate::durable_store::{SharedSession, lock};
 use delegation::agents::{LaneReply, LaneRun, LaneRunner};
-use delegation::host::{ChildRun, ChildRunner, ChildWaiter, Delegation};
+use delegation::host::{ChildRun, ChildRunner, ChildWaiter};
 use delegation::task_store::TaskStore;
 use durable::{ConversationId, Cursor, ROOT_CONVERSATION_ID, TaskId, TaskQuery};
 use harness::chat::children::{CHILD_KIND, ChildInput, child_report, spawn_child};
@@ -20,6 +20,7 @@ use kernel::Signal;
 use serde_json::Value;
 use session_journal::Write;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError, Weak};
 use std::time::Duration;
 
@@ -36,6 +37,10 @@ pub struct SessionValueStore {
     pub session: SharedSession,
     pub namespace: &'static str,
     pub key: &'static str,
+    /// Set once the worker hands the session to a successor: the journal is the successor's from then on, so
+    /// what this worker's hosts would still record (a waiter's "Harness is closed" as the closing runtime fails its
+    /// wait) is dropped, and the successor finds its tasks unfinished and reattaches them.
+    pub handed_over: Option<Arc<AtomicBool>>,
 }
 
 impl TaskStore for SessionValueStore {
@@ -44,6 +49,9 @@ impl TaskStore for SessionValueStore {
     }
 
     fn write(&mut self, document: &Value) -> Result<(), String> {
+        if self.handed_over.as_ref().is_some_and(|h| h.load(Ordering::SeqCst)) {
+            return Ok(());
+        }
         lock(&self.session)
             .commit(&[Write::set(self.namespace, self.key, document.clone())])
             .map(drop)
@@ -111,6 +119,10 @@ pub struct DurableChildren {
     chat: OnceLock<ChatHarness>,
     /// The system prompt of each lane this process started (a worktree child's names its worktree).
     systems: Mutex<HashMap<String, String>>,
+    /// The usage root of the root turn in progress: a subagent it starts is charged to it.
+    root: Mutex<Option<String>>,
+    /// The worker handed the session over (`SessionValueStore::handed_over`).
+    handed_over: Arc<AtomicBool>,
 }
 
 impl DurableChildren {
@@ -118,9 +130,20 @@ impl DurableChildren {
         Arc::new(DurableChildren::default())
     }
 
+    /// The worker hands the session over: from now on its task journals are the successor's. Called before the
+    /// runtime closes, which ends every wait on it.
+    pub fn hand_over(&self) {
+        self.handed_over.store(true, Ordering::SeqCst);
+    }
+
     /// The runtime the children run in, once it is open.
     pub fn attach(&self, chat: ChatHarness) {
         let _ = self.chat.set(chat);
+    }
+
+    /// The runtime the children run in, once it is open.
+    pub fn chat(&self) -> Option<ChatHarness> {
+        self.chat.get().cloned()
     }
 
     /// The subagent host of a session: its journal in `session`, its children run durably.
@@ -132,6 +155,7 @@ impl DurableChildren {
                 session: session.clone(),
                 namespace,
                 key,
+                handed_over: Some(self.handed_over.clone()),
             }) as Box<dyn TaskStore>
         };
         SubagentHost {
@@ -147,6 +171,7 @@ impl DurableChildren {
                 lanes: Box::new(move |stack: Weak<Stack>| -> LaneRunner {
                     Arc::new(move |run: LaneRun| lanes.run_lane(&stack, run))
                 }),
+                frames: Arc::new(crate::frames::SessionTraceStore(session.clone())),
             }),
         }
     }
@@ -163,6 +188,11 @@ impl DurableChildren {
             model: Some(ModelRef::new(&setup.model.provider, &setup.model.id)),
             timeout_ms: Some(run.timeout_ms),
             keep: false,
+            thinking: run.thinking.clone(),
+            cwd: run.cwd.clone(),
+            env: run.env.clone(),
+            agent: false,
+            usage_root: lock_map(&self.root).clone(),
         };
         let task = chat
             .commit(|tx| spawn_child(tx, ROOT_CONVERSATION_ID, None, &input))
@@ -175,6 +205,12 @@ impl DurableChildren {
     fn run_lane(&self, stack: &Weak<Stack>, run: LaneRun) -> Result<LaneReply, String> {
         let chat = self.chat.get().cloned().ok_or("The durable runtime is not open")?;
         let stack = stack.upgrade().ok_or("The session is closed")?;
+        // A reused lane (a retained instance) continues its conversation.
+        if run.reuse
+            && let Some(conversation) = crate::lane_reuse::lane_conversation(&chat, &run.lane)?
+        {
+            return crate::lane_reuse::continue_lane(&chat, conversation, &run);
+        }
         lock_map(&self.systems).insert(run.lane.clone(), stack.system().to_string());
         let model = match run.model.as_deref().and_then(|spec| spec.split_once('/')) {
             Some((provider, id)) => ModelRef::new(provider, id),
@@ -185,7 +221,8 @@ impl DurableChildren {
             prompt: run.prompt.clone(),
             model: Some(model),
             timeout_ms: Some(run.timeout_ms),
-            keep: false,
+            agent: true,
+            ..ChildInput::default()
         };
         let task = chat
             .commit(|tx| spawn_child(tx, ROOT_CONVERSATION_ID, None, &input))
@@ -196,6 +233,87 @@ impl DurableChildren {
             text,
             ..LaneReply::default()
         })
+    }
+
+    /// The usage root of the root turn now running (`None`: the ledger's default root).
+    pub fn set_root(&self, root: Option<String>) {
+        *lock_map(&self.root) = root;
+    }
+
+    /// The usage root of the root turn running now (or last).
+    pub fn current_root(&self) -> Option<String> {
+        lock_map(&self.root).clone()
+    }
+
+    /// The input of the unfinished child task that runs `lane`, and its conversation once started.
+    fn child_of_lane(&self, lane: &str) -> Option<(ChildInput, Option<ConversationId>)> {
+        let chat = self.chat.get()?;
+        chat.commit(|tx| {
+            let query = TaskQuery {
+                kind: Some(CHILD_KIND.to_string()),
+                ..TaskQuery::default()
+            };
+            let mut cursor: Option<Cursor> = None;
+            loop {
+                let page = tx.scan_tasks(&query, 256, cursor.as_ref())?;
+                for task in page.items {
+                    if task.input["name"].as_str() != Some(lane) {
+                        continue;
+                    }
+                    let conversation = match &task.state {
+                        durable::TaskState::Running { checkpoint }
+                        | durable::TaskState::Pending { checkpoint }
+                        | durable::TaskState::Waiting { checkpoint, .. } => checkpoint["conversation"].as_u64(),
+                        _ => None,
+                    };
+                    let input = serde_json::from_value::<ChildInput>(task.input.clone()).ok();
+                    return Ok(input.map(|input| (input, conversation.map(ConversationId))));
+                }
+                match page.next {
+                    Some(next) => cursor = Some(next),
+                    None => return Ok(None),
+                }
+            }
+        })
+        .ok()
+        .flatten()
+    }
+
+    /// The conversation a child lane runs in, while its task is unfinished.
+    pub fn conversation_of_lane(&self, lane: &str) -> Option<ConversationId> {
+        self.child_of_lane(lane)?.1
+    }
+
+    /// The usage root of work started on a child lane: its task's (a typed agent's reservation, a subagent's root
+    /// turn), or the agents host's for a lane it runs.
+    pub fn usage_root_of_lane(&self, lane: &str, agents: &delegation::agents::Agents) -> Option<String> {
+        match self.child_of_lane(lane) {
+            Some((input, _)) if !input.agent => input.usage_root,
+            _ => agents.usage_root_for_lane(lane, ""),
+        }
+    }
+
+    /// The usage root a model turn of `conversation` (not the root conversation) is charged to, as
+    /// `usageRootForLane` charges every lane's responses: a typed agent's lane to its task's root, a subagent to the
+    /// root turn that started it, another root conversation to the ledger's default root.
+    pub fn usage_root(&self, conversation: ConversationId, agents: &delegation::agents::Agents) -> Option<String> {
+        let chat = self.chat.get()?;
+        let input = chat
+            .commit(|tx| {
+                let Some(owner) = tx.conversation(conversation)?.and_then(|record| record.owner) else {
+                    return Ok(None);
+                };
+                Ok(tx
+                    .task(owner.task_id)?
+                    .filter(|task| task.kind == CHILD_KIND)
+                    .and_then(|task| serde_json::from_value::<ChildInput>(task.input).ok()))
+            })
+            .ok()
+            .flatten()?;
+        if input.agent {
+            return agents.usage_root_for_lane(&input.name, "");
+        }
+        input.usage_root
     }
 
     /// The lane of a child conversation: the name of the child task that owns it.
@@ -225,22 +343,70 @@ impl DurableChildren {
     }
 
     /// Reopen the delegation host's tasks after a restart, reattaching every unfinished child the runtime still
-    /// holds. Returns the reattached task ids.
-    pub fn restore(&self, delegation: &Delegation, unfinished: &[String]) -> Result<Vec<String>, String> {
+    /// holds: its lane gets back its working directory (a worktree child's), environment and system prompt before
+    /// the runtime resumes it. Returns the reattached task ids.
+    ///
+    /// A typed agent's run (`agents.*`) is not reattached: as in TypeScript (`NativeRlmHost` reopens its journal
+    /// with every unfinished task `interrupted`, and its in-process lanes are gone), the agent task reads
+    /// `interrupted`, so the runtime's child conversation that ran it is aborted rather than left spending tokens
+    /// for a result nobody reads. So is any other unfinished subagent conversation the journal no longer runs.
+    pub fn restore(&self, stack: &Stack, unfinished: &[String]) -> Result<Vec<String>, String> {
         let Some(chat) = self.chat.get().cloned() else {
             return Ok(Vec::new());
         };
         let children = child_tasks(&chat)?;
-        delegation.restore(unfinished, |id| {
-            let task = *children.get(&format!("{LANE_PREFIX}{id}"))?;
+        let reattached = stack.delegation.restore(unfinished, |id| {
+            let (task, input, _) = children.get(&format!("{LANE_PREFIX}{id}"))?.clone();
+            if input.agent || input.keep {
+                return None;
+            }
+            self.restore_lane(stack, id, &input);
             let chat = chat.clone();
-            Some(Box::new(move |signal: Signal| wait_child(&chat, task, &signal)) as ChildWaiter)
-        })
+            let (lanes, lane) = (stack.lanes.clone(), input.name.clone());
+            Some(Box::new(move |signal: Signal| {
+                let reply = wait_child(&chat, task, &signal);
+                // The lane closes when its run ends, as a fresh child's does.
+                let _ = lanes.close_lane(&lane);
+                reply
+            }) as ChildWaiter)
+        })?;
+        for (name, (task, input, terminal)) in &children {
+            let ours = !terminal
+                && (input.agent
+                    || name
+                        .strip_prefix(LANE_PREFIX)
+                        .is_some_and(|id| !reattached.iter().any(|r| r == id)));
+            if ours && !input.keep {
+                let _ = chat.abort_task(*task, &Ctx::background());
+            }
+        }
+        Ok(reattached)
+    }
+
+    /// The lane setup a reattached child had in the worker that started it: its worktree (working directory and
+    /// environment), thinking level and system prompt naming that directory.
+    fn restore_lane(&self, stack: &Stack, id: &str, input: &ChildInput) {
+        let run = ChildRun {
+            task_id: id.to_string(),
+            lane_name: input.name.clone(),
+            prompt: input.prompt.clone(),
+            level: 1,
+            allowance: 0,
+            model: input.model.as_ref().map(|m| format!("{}/{}", m.provider, m.model_id)),
+            thinking: input.thinking.clone(),
+            timeout_ms: input.timeout_ms.unwrap_or_default(),
+            cwd: input.cwd.clone(),
+            env: input.env.clone(),
+            signal: Signal::new(),
+            host: stack.delegation.clone(),
+        };
+        let setup = child_setup(stack, &run);
+        lock_map(&self.systems).insert(input.name.clone(), setup.system);
     }
 }
 
-/// The runtime's child tasks by name.
-fn child_tasks(chat: &ChatHarness) -> Result<HashMap<String, TaskId>, String> {
+/// The runtime's child tasks by name, with their input and whether they ended.
+fn child_tasks(chat: &ChatHarness) -> Result<HashMap<String, (TaskId, ChildInput, bool)>, String> {
     chat.commit(|tx| {
         let query = TaskQuery {
             kind: Some(CHILD_KIND.to_string()),
@@ -251,8 +417,9 @@ fn child_tasks(chat: &ChatHarness) -> Result<HashMap<String, TaskId>, String> {
         loop {
             let page = tx.scan_tasks(&query, 256, cursor.as_ref())?;
             for task in page.items {
-                if let Some(name) = task.input["name"].as_str() {
-                    found.insert(name.to_string(), task.id);
+                let terminal = task.state.status() == durable::TaskStatus::Terminal;
+                if let Ok(input) = serde_json::from_value::<ChildInput>(task.input.clone()) {
+                    found.insert(input.name.clone(), (task.id, input, terminal));
                 }
             }
             match page.next {

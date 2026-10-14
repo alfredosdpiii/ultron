@@ -76,16 +76,9 @@ fn python() -> String {
 /// The fake `claude` answering with native's recorded usage-limit error; its runs are logged.
 fn fake_claude(dir: &Path) -> (Config, PathBuf) {
     let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../ai/fixtures/claude-subscription/claude.py");
-    let wrapper = dir.join("bin/claude");
-    std::fs::create_dir_all(wrapper.parent().unwrap()).unwrap();
+    // The interpreter runs the fixture: an executable written here could be exec'd while another test thread's
+    // fork still holds its write descriptor (ETXTBSY under parallel load).
     std::fs::create_dir_all(dir.join("tmp")).unwrap();
-    std::fs::write(
-        &wrapper,
-        format!("#!/bin/sh\nexec {} -I {} \"$@\"\n", python(), fixture.display()),
-    )
-    .unwrap();
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
     let log = dir.join("log.jsonl");
     let env = [
         ("PATH", "/usr/bin:/bin".to_string()),
@@ -97,7 +90,7 @@ fn fake_claude(dir: &Path) -> (Config, PathBuf) {
         ),
     ];
     let config = Config {
-        command: Some(vec![wrapper.display().to_string()]),
+        command: Some(vec![python(), "-I".into(), fixture.display().to_string()]),
         env: Some(env.into_iter().map(|(k, v)| (k.to_string(), v)).collect()),
         // Never started: the fake answers before any MCP handshake.
         inert_mcp: Some(vec!["/bin/false".into()]),

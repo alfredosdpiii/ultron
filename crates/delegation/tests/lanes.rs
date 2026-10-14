@@ -113,6 +113,7 @@ fn root_with_grace(collect: CollectMode, max_lanes: usize, cancel_grace: Duratio
         handlers: Arc::new(move |lane, signal, park| Arc::new(handlers_host.cell_handler(lane, signal, park))),
         max_lanes,
         cancel_grace,
+        pool: None,
     })
     .unwrap();
     lanes.open("main").unwrap();

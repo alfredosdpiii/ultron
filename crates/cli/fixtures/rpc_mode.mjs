@@ -60,7 +60,8 @@ function stepDone(step, lines) {
 	);
 }
 
-async function run(c) {
+/** Run one case. A reply is SSE text, or `{ status, contentType, body }` for a non-streaming (error) answer. */
+export async function run(c) {
 	const requests = [];
 	const server = createServer((req, res) => {
 		let body = "";
@@ -68,8 +69,10 @@ async function run(c) {
 		req.on("end", () => {
 			requests.push({ method: req.method, url: req.url, body: JSON.parse(body || "null") });
 			const reply = c.replies[requests.length - 1] ?? textReply("(no more replies)");
-			res.writeHead(200, { "content-type": "text/event-stream" });
-			res.end(reply);
+			const { status = 200, contentType = "text/event-stream", body: replyBody } =
+				typeof reply === "string" ? { body: reply } : reply;
+			res.writeHead(status, { "content-type": contentType });
+			res.end(replyBody);
 		});
 	});
 	await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -79,7 +82,8 @@ async function run(c) {
 	const cwd = join(tmp, "cwd");
 	mkdirSync(agentDir, { recursive: true });
 	mkdirSync(cwd);
-	writeFileSync(join(agentDir, "models.json"), JSON.stringify({ providers: { anthropic: { baseUrl: `http://127.0.0.1:${port}` } } }));
+	// `c.provider`: more of the provider's models.json configuration (`modelOverrides`).
+	writeFileSync(join(agentDir, "models.json"), JSON.stringify({ providers: { anthropic: { baseUrl: `http://127.0.0.1:${port}`, ...c.provider } } }));
 	const child = spawn(process.execPath, [join(root, "packages/coding-agent/src/cli.ts"), "--mode", "rpc", ...c.args], {
 		cwd,
 		env: { PATH: SYSTEM_PATH, HOME: tmp, ULTRON_CODING_AGENT_DIR: agentDir, ULTRON_SERVER_DIR: join(tmp, "server"), ANTHROPIC_API_KEY: "test-key", ULTRON_HINDSIGHT_URL: "off", PI_OFFLINE: "1", NO_COLOR: "1", TZ: "UTC" },

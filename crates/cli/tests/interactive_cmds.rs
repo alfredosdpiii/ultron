@@ -185,6 +185,7 @@ fn replay_full(name: &str, divergences: &[(&str, &str)], last: Option<&dyn Fn(&s
             compare(&got, want);
             continue;
         }
+        let got = tui.wait_screen(got, want);
         if got != want {
             let diff: Vec<String> = got
                 .lines()

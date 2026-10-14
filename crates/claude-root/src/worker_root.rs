@@ -1,7 +1,9 @@
 //! Claude Code lanes in the session worker (worker-root.ts): `ultron --claude`, `ULTRON_ROOT=claude` or the
-//! `claudeCode.root` setting run the root lane on Claude Code. Ported: the root model selection and the lane note.
-//! The tool runner that drives a lane's `claude -p` process (root-runner.ts) is not ported, so such a lane still
-//! fails with the claude-code provider's "does not support tool calling here" error.
+//! `claudeCode.root` setting run the root lane on Claude. [`prepare_claude_root`] is TypeScript's model selection
+//! (`claude-code/<id>`). The Rust build does not port TypeScript's lane tool runner (root-runner.ts, where Claude
+//! Code's own loop drives the lane through an MCP bridge); by the user's decision Claude runs on the
+//! `claude-subscription` provider, which keeps Ultron's harness as the agent loop with exactly `[rlm]`, so
+//! [`subscription_root`] maps the selection to `claude-subscription/<id>` (decisions.tsv, 2026-10-13 claude).
 
 use crate::claude_cli::DEFAULT_CLAUDE_MODEL;
 use crate::self_cmd::self_command;
@@ -94,4 +96,40 @@ pub fn prepare_claude_root(
         return Ok(done(None, format!("{CLAUDE_CODE_PROVIDER_ID}/{model}")));
     }
     Err(model_error(model))
+}
+
+pub const CLAUDE_SUBSCRIPTION_PROVIDER_ID: &str = ai::claude_subscription::PROVIDER;
+
+/// The root model of `--claude` in the Rust build: [`prepare_claude_root`]'s selection (which also takes
+/// `claude-subscription/<id>` and `--provider claude-subscription`) as `claude-subscription/<id>`. Fails for a model
+/// Claude Code does not serve or the subscription route table refuses.
+pub fn subscription_root(
+    provider: Option<&str>,
+    model: Option<&str>,
+    var: &dyn Fn(&str) -> Option<String>,
+) -> Result<ClaudeRoot, String> {
+    let subscription = |p: &str| p.trim() == CLAUDE_SUBSCRIPTION_PROVIDER_ID;
+    let provider = provider.map(|p| if subscription(p) { CLAUDE_CODE_PROVIDER_ID } else { p });
+    let rewritten = model.map(|m| {
+        m.trim()
+            .strip_prefix(&format!("{CLAUDE_SUBSCRIPTION_PROVIDER_ID}/"))
+            .map_or_else(|| m.to_string(), |id| format!("{CLAUDE_CODE_PROVIDER_ID}/{id}"))
+    });
+    let selected = prepare_claude_root(provider, rewritten.as_deref(), var)?;
+    let id = match selected.provider.as_deref() {
+        Some(_) => selected.model.clone(),
+        None => selected
+            .model
+            .strip_prefix(&format!("{CLAUDE_CODE_PROVIDER_ID}/"))
+            .unwrap_or(&selected.model)
+            .to_string(),
+    };
+    if ai::claude_subscription::catalog::model(&id).is_none() {
+        return Err(model_error(&format!("{CLAUDE_SUBSCRIPTION_PROVIDER_ID}/{id}")));
+    }
+    Ok(ClaudeRoot {
+        provider: None,
+        model: format!("{CLAUDE_SUBSCRIPTION_PROVIDER_ID}/{id}"),
+        env: selected.env,
+    })
 }

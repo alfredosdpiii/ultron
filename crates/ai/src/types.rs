@@ -511,6 +511,10 @@ pub struct Model {
     pub headers: Option<IndexMap<String, String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compat: Option<Map<String, Value>>,
+    /// What `models.json` adds to this model's requests (its provider and model `headers`, resolved, and
+    /// `authHeader`), attached when the model is resolved for use. Never serialized: header values may be secrets.
+    #[serde(skip)]
+    pub request: Option<crate::model_registry::RequestConfig>,
     /// Catalog fields the provider layer does not read (radius models carry `lab`, `enabled`, `providers`); kept so
     /// a model round-trips unchanged.
     #[serde(flatten)]

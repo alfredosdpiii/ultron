@@ -4,6 +4,8 @@
 //! started with, the JSON-RPC frames of `ultron mcp` sessions, control-socket answers, hook output and
 //! `ultron watch --list` must be equal after the generator's normalization.
 
+mod executable_support;
+
 use regex::Regex;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -47,9 +49,7 @@ impl Root {
         }
         let fake = std::fs::read_to_string(repo().join("crates/claude-root/fixtures/fake_claude.py")).unwrap();
         let claude = dir.path().join("bin/claude");
-        std::fs::write(&claude, format!("#!{} -I\n{fake}", python())).unwrap();
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&claude, std::fs::Permissions::from_mode(0o755)).unwrap();
+        executable_support::install(&claude, &format!("#!{} -I\n{fake}", python()));
         Root { dir }
     }
 

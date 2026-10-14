@@ -242,8 +242,8 @@ fn tui_status_line_path_display() {
     assert_eq!(display_path("/tmp", "/home/u", &opts), "/tmp");
     assert_eq!(display_path("/home/u/Projects", "/home/u", &opts), "~/Projects");
     assert_eq!(
-        display_path("/home/user2/x", "/home/u", &opts),
-        "/home/user2/x",
+        display_path("/home/someone/x", "/home/u", &opts),
+        "/home/someone/x",
         "a sibling prefix is not home"
     );
     let no_strip = PathOptions {

@@ -127,7 +127,8 @@ fn review_prepare_discovers_dependencies_like_prepare_ts() {
             env.insert("PATH".to_string(), path.replace("<root>", base));
         }
         let setting: Option<Mise> = from(&case["setting"]);
-        let found = find_mise(&env, &format!("{base}/home"), setting.as_ref()).map(|path| path.replace(base, "<root>"));
+        let found =
+            find_mise(&env, &format!("{base}/fakehome"), setting.as_ref()).map(|path| path.replace(base, "<root>"));
         assert_eq!(json(found), case["found"], "{case}");
     }
     let entries: Vec<ToolchainEntry> = serde_json::from_value(serde_json::json!([

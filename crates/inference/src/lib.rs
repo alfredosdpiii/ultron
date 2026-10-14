@@ -1,22 +1,30 @@
-//! Host side of `rlm.infer` (inference.ts): one private, bounded model call per frame over explicit context views,
-//! with `{calls, tokens, depth}` budget accounting, contract validation and bounded re-asks, and `Incomplete`
-//! observations when budget or repairs run out or `timeout_ms` passes. Also serves `rlm.load` (content-addressed
-//! handles under the session) and `rlm.frames` (frame traces); every other request goes to the inner handler.
+//! Host side of `rlm.infer` and `rlm.map` (inference.ts): one private, bounded model conversation per frame over
+//! explicit context views, with `{calls, tokens, depth}` budget accounting, contract validation and bounded re-asks,
+//! and `Incomplete` observations when budget or repairs run out or `timeout_ms` passes. Also serves `rlm.load`
+//! (content-addressed handles under the session) and `rlm.frames` (frame traces); every other request goes to the
+//! inner handler.
+//!
+//! A session's frames share one [`FrameSession`]: the budget ledger (a nested frame draws on its parent frame's
+//! pool), the traces (kept as session values, so `rlm.frames` reads them in any later cell), and the frames still
+//! running. With a task host ([`FrameTasks`]) every frame is an `rlm-frame@1` task: admitted under its caller,
+//! journaled, cancelled with the calling cell, charged to the usage ledger request by request; a frame with
+//! `budget.depth > 1` runs its conversation on a lane of its own with the `rlm` cell as its only tool.
 
 mod map;
 pub mod schema;
+mod session;
 mod trace;
 
 pub use map::{DEFAULT_MAP_TOKENS, Frames, INFERENCE_PROMPT, ModelSettings};
+pub use session::{FrameExecution, FrameSession, FrameTasks};
+pub use trace::{MemoryTraceStore, TRACE_NAMESPACE, TraceStore};
 
-use ai::{AssistantContent, AssistantMessage, Message, Model, SimpleStreamOptions, StopReason, Transport};
+use ai::{AssistantMessage, Message, Model, SimpleStreamOptions, Transport};
 use kernel::{HostHandler, Signal};
 use serde_json::{Map, Value, json};
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
-use trace::{Budget, Frame, Spec, Traces};
 
 const MAX_TRANCHE: u64 = 16_384;
 const MIN_TRANCHE: u64 = 32;
@@ -215,30 +223,59 @@ fn label_of(item: &Map<String, Value>, fallback: &str) -> String {
         .map_or_else(|| fallback.to_string(), |label| bounded(label, 200))
 }
 
-struct View {
+pub(crate) struct View {
     label: String,
+    /// Materialized text; empty for a handle passed by reference.
     text: String,
+    chars: u64,
+    by_reference: bool,
     digest: Option<String>,
     start: Option<Value>,
     end: Option<Value>,
 }
 
-fn frame_system_prompt() -> &'static str {
-    "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only. You have no tools."
+/// `frameSystemPrompt(depth)`: a frame with depth gets the `rlm` cell, one without has no tools.
+fn frame_system_prompt(depth: u64) -> String {
+    let base = "You are an inference frame inside Ultron: a private, bounded sub-call made by a program. You see only the task and the context views in the user message; there is no earlier conversation and no files. Answer from the views alone and never invent content that is not in them. When a contract (JSON schema) is given, reply with exactly one JSON value that satisfies it: no prose, no code fences. Without a contract, reply with the answer only.";
+    if depth > 1 {
+        format!(
+            "{base}\n\nYou have one tool, `rlm`: a Python cell. `h = await rlm.open(digest)` reopens a context handle listed in the message (then `h.slice`, `h.lines`, `h.search`, `h.chunks`), and `await rlm.infer(...)` / `await rlm.map(...)` delegate smaller frames within your remaining budget (depth {} below you). Read only what you need; finish with the answer as your reply.",
+            depth - 1
+        )
+    } else {
+        format!("{base} You have no tools.")
+    }
 }
 
+/// `framePrompt`: the task, the materialized views, the handles a code frame opens itself, and the contract.
 fn frame_prompt(task: &str, views: &[View], contract: Option<&Value>) -> String {
     let mut parts = vec![format!("Task:\n{task}")];
     if views.is_empty() {
         parts.push("Context: none.".into());
     }
-    for (index, view) in views.iter().enumerate() {
+    for (index, view) in views.iter().filter(|view| !view.by_reference).enumerate() {
         let n = index + 1;
         parts.push(format!(
             "--- view {n}: {} ({} chars) ---\n{}\n--- end of view {n} ---",
-            view.label,
-            js_len(&view.text),
-            view.text
+            view.label, view.chars, view.text
+        ));
+    }
+    let references: Vec<String> = views
+        .iter()
+        .filter(|view| view.by_reference)
+        .map(|view| {
+            format!(
+                "- {}: await rlm.open(\"{}\") ({} characters)",
+                view.label,
+                view.digest.as_deref().unwrap_or_default(),
+                view.chars
+            )
+        })
+        .collect();
+    if !references.is_empty() {
+        parts.push(format!(
+            "Handles (open them in the rlm tool):\n{}",
+            references.join("\n")
         ));
     }
     if let Some(contract) = contract {
@@ -320,33 +357,132 @@ fn parse_reply(text: &str, contract: &Value) -> Result<Value, String> {
     Err(errors.into_iter().take(3).collect::<Vec<_>>().join("; "))
 }
 
-enum Outcome {
+#[derive(Clone)]
+pub(crate) enum Outcome {
     Complete(Value),
     Incomplete(&'static str, String),
     Error(String),
 }
 
-struct Options {
+/// What one `rlm.infer` or `rlm.map` call asks of its frames.
+pub(crate) struct Options {
     contract: Option<Value>,
     max_repairs: u64,
     thinking: Option<String>,
-    /// Each frame's wall-clock limit from admission (the TS frame task's `timeoutMs`).
+    /// Each frame's wall-clock limit from admission (the frame task's `timeoutMs`).
     timeout: Duration,
+    /// Code-free (1) or with the `rlm` cell and that many levels of frames below it.
+    depth: u64,
+    /// The `provider/model` the call names (or the frame model it defaults to).
+    model: Option<String>,
 }
 
-/// Serves `rlm.infer` and `rlm.load`; everything else goes to `inner`.
-pub struct Inference {
-    inner: Arc<dyn HostHandler>,
+/// The model frames call and how: the session's model and key over this handler's transport.
+#[derive(Clone)]
+pub(crate) struct Engine {
     model: Model,
     api_key: Option<String>,
     transport: Arc<dyn Transport>,
+}
+
+impl Engine {
+    fn own_model(&self) -> String {
+        format!("{}/{}", self.model.provider, self.model.id)
+    }
+
+    fn options(&self, max_tokens: u64, thinking: Option<&str>) -> SimpleStreamOptions {
+        let mut options = SimpleStreamOptions::default();
+        options.base.api_key = self.api_key.clone();
+        options.base.max_tokens = Some(max_tokens);
+        options.reasoning = thinking.filter(|_| self.model.reasoning).map(str::to_string);
+        options
+    }
+
+    /// One provider stream through crates/ai; `None` when `signal` aborts or the deadline passes first.
+    async fn stream(
+        &self,
+        context: &ai::TranscriptContext,
+        options: &SimpleStreamOptions,
+        sink: &mut ai::EventSink<'_>,
+        deadline: Instant,
+        signal: &Signal,
+    ) -> Result<Option<AssistantMessage>, String> {
+        let transport = &*self.transport;
+        let model = &self.model;
+        // models.json headers (and `authHeader`'s bearer) go out under the frame's own.
+        let prepared = ai::model_registry::request_options(model, options)?;
+        let options = prepared.as_ref().unwrap_or(options);
+        let stream = async {
+            match model.api.as_str() {
+                "openai-completions" => {
+                    ai::openai_completions::stream_simple(model, context, options, transport, sink).await
+                }
+                "openai-responses" => {
+                    ai::openai_responses::stream_simple(model, context, options, transport, sink).await
+                }
+                "anthropic-messages" => ai::anthropic::stream_simple(model, context, options, transport, sink).await,
+                "claude-subscription" => Ok(ai::claude_subscription::fallback::stream_simple(
+                    model, context, options, transport, sink,
+                )
+                .await),
+                other => Err(format!("frames cannot call {other} models in this host yet")),
+            }
+        };
+        // The request ends at the deadline or as soon as the frame is cancelled (the root turn's abort cancels
+        // every in-flight frame); either way nothing is charged.
+        let mut stream = std::pin::pin!(stream);
+        loop {
+            if signal.is_aborted() {
+                return Ok(None);
+            }
+            let step = (Instant::now() + Duration::from_millis(20)).min(deadline);
+            match tokio::time::timeout_at(step.into(), &mut stream).await {
+                Ok(reply) => return reply.map(Some),
+                Err(_) if Instant::now() >= deadline => return Ok(None),
+                Err(_) => {}
+            }
+        }
+    }
+
+    /// One code-free request: the frame's system prompt and its private conversation so far.
+    fn request(
+        &self,
+        system: &str,
+        history: &[Message],
+        max_tokens: u64,
+        thinking: Option<&str>,
+        deadline: Instant,
+        signal: &Signal,
+    ) -> Result<Option<AssistantMessage>, String> {
+        let mut messages = vec![Message::System(
+            serde_json::from_value(json!({"role": "system", "content": system, "timestamp": 0}))
+                .map_err(|error| error.to_string())?,
+        )];
+        messages.extend(history.iter().cloned());
+        let context = ai::TranscriptContext { messages };
+        let options = self.options(max_tokens, thinking);
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| e.to_string())?;
+        let mut sink = |_: &ai::AssistantMessageEvent| {};
+        runtime.block_on(self.stream(&context, &options, &mut sink, deadline, signal))
+    }
+}
+
+/// Serves `rlm.infer`, `rlm.load` and `rlm.frames` for one lane; everything else goes to `inner`.
+pub struct Inference {
+    inner: Arc<dyn HostHandler>,
+    engine: Engine,
     context_dir: PathBuf,
-    labels: Mutex<HashMap<String, String>>,
-    traces: Mutex<Traces>,
+    session: Arc<FrameSession>,
+    /// The lane whose requests this handler serves (`main` unless set).
+    lane: String,
 }
 
 impl Inference {
-    /// Frames call `model` through `transport`; loaded handles live in `context_dir` (created on first load).
+    /// Frames call `model` through `transport`; loaded handles live in `context_dir` (created on first load). The
+    /// frames are this handler's own until [`Inference::with_session`] shares a session's.
     pub fn new(
         inner: Arc<dyn HostHandler>,
         model: Model,
@@ -356,13 +492,22 @@ impl Inference {
     ) -> Self {
         Self {
             inner,
-            model,
-            api_key,
-            transport,
+            engine: Engine {
+                model,
+                api_key,
+                transport,
+            },
             context_dir: context_dir.into(),
-            labels: Mutex::new(HashMap::new()),
-            traces: Mutex::new(Traces::default()),
+            session: FrameSession::new(Arc::new(MemoryTraceStore::default())),
+            lane: "main".into(),
         }
+    }
+
+    /// Serve `lane`'s requests over the session's frames (its ledger, traces, running frames and task host).
+    pub fn with_session(mut self, session: Arc<FrameSession>, lane: &str) -> Self {
+        self.session = session;
+        self.lane = lane.to_string();
+        self
     }
 
     fn load(&self, payload: &Map<String, Value>) -> Result<Value, String> {
@@ -371,10 +516,9 @@ impl Inference {
         let hex = digest_hex(payload.get("digest")).ok_or("digest must be sha256:<64 hex>")?;
         let path = self.context_dir.join(hex);
         let shown = path.to_string_lossy().into_owned();
-        let mut labels = self.labels.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if payload.get("size").is_none() {
             let meta = std::fs::metadata(&path).map_err(|_| format!("Unknown context handle {digest}"))?;
-            let label = labels.get(digest).cloned();
+            let label = self.session.label(digest);
             return Ok(json!({"path": shown, "stored": true, "label": label, "size": meta.len()}));
         }
         let size = optional_integer(payload.get("size"), "size", 0, MAX_SAFE_INTEGER)?.unwrap_or(0);
@@ -386,11 +530,12 @@ impl Inference {
             .map_or_else(|| "context".to_string(), |label| bounded(label, 200));
         create_private_dir(&self.context_dir)?;
         let stored = std::fs::metadata(&path).is_ok_and(|meta| meta.len() == size);
-        labels.insert(digest.to_string(), label);
+        self.session.set_label(digest, label);
         Ok(json!({"path": shown, "stored": stored}))
     }
 
-    fn views(&self, items: Option<&Value>) -> Result<Vec<View>, String> {
+    /// A frame's views; a frame that runs code (`depth > 1`) gets handles by reference, one that cannot their text.
+    fn views(&self, items: Option<&Value>, depth: u64) -> Result<Vec<View>, String> {
         let empty = Vec::new();
         let items = match items {
             None | Some(Value::Null) => &empty,
@@ -408,11 +553,14 @@ impl Inference {
                         .get("text")
                         .and_then(Value::as_str)
                         .ok_or("context text must be a string")?;
-                    total += js_len(text) as u64;
+                    let chars = trace::view_chars(text);
+                    total += chars;
                     let number = |key: &str| item.get(key).filter(|v| v.is_number()).cloned();
                     views.push(View {
                         label,
                         text: text.to_string(),
+                        chars,
+                        by_reference: false,
                         digest: item.get("digest").and_then(Value::as_str).map(str::to_string),
                         start: number("start"),
                         end: number("end"),
@@ -423,6 +571,19 @@ impl Inference {
                     let hex = digest_hex(item.get("digest")).ok_or("context handle digest must be sha256:<64 hex>")?;
                     let path = self.context_dir.join(hex);
                     let meta = std::fs::metadata(&path).map_err(|_| format!("Unknown context handle {digest}"))?;
+                    if depth > 1 {
+                        let chars = item.get("chars").and_then(Value::as_u64).unwrap_or(meta.len());
+                        views.push(View {
+                            label,
+                            text: String::new(),
+                            chars,
+                            by_reference: true,
+                            digest: Some(digest.to_string()),
+                            start: None,
+                            end: None,
+                        });
+                        continue;
+                    }
                     if meta.len() > MAX_FRAME_CONTEXT_CHARS * 4 {
                         return Err(format!(
                             "Context handle {label} is too large to give a frame whole; pass slices or chunks"
@@ -430,10 +591,13 @@ impl Inference {
                     }
                     let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
                     let text = String::from_utf8_lossy(&bytes).into_owned();
-                    total += js_len(&text) as u64;
+                    let chars = trace::view_chars(&text);
+                    total += chars;
                     views.push(View {
                         label,
                         text,
+                        chars,
+                        by_reference: false,
                         digest: Some(digest.to_string()),
                         start: None,
                         end: None,
@@ -450,20 +614,13 @@ impl Inference {
         Ok(views)
     }
 
-    fn infer(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
-        fields(
-            payload,
-            &[
-                "task",
-                "context",
-                "contract",
-                "budget",
-                "model",
-                "max_repairs",
-                "timeout_ms",
-                "thinking",
-            ],
-        )?;
+    /// `options`: the call's contract, budget node (under the calling frame's when the request comes from one),
+    /// depth, model, repairs, thinking and timeout. `default_tokens`: a top-level map's token limit when unset.
+    fn options(
+        &self,
+        payload: &Map<String, Value>,
+        default_tokens: Option<u64>,
+    ) -> Result<(Options, session::Admission), String> {
         let contract = payload
             .get("contract")
             .filter(|c| !c.is_null())
@@ -484,7 +641,7 @@ impl Inference {
         fields(budget, &["calls", "tokens", "depth"])?;
         let calls = optional_integer(budget.get("calls"), "budget.calls", 0, MAX_SAFE_INTEGER)?;
         let tokens = optional_integer(budget.get("tokens"), "budget.tokens", 0, MAX_SAFE_INTEGER)?;
-        let depth = optional_integer(budget.get("depth"), "budget.depth", 1, MAX_DEPTH)?.unwrap_or(1);
+        let requested_depth = optional_integer(budget.get("depth"), "budget.depth", 1, MAX_DEPTH)?;
         let model = match payload.get("model") {
             None | Some(Value::Null) => None,
             Some(Value::String(model)) if is_model_ref(model) => Some(model.clone()),
@@ -508,350 +665,65 @@ impl Inference {
                 None => return Err(format!("thinking must be one of {}", THINKING_LEVELS.join(", "))),
             },
         };
-        let task = payload
-            .get("task")
-            .and_then(Value::as_str)
-            .filter(|task| !js_trim(task).is_empty());
-        let task = task.ok_or("task must be a nonempty string")?;
-        if js_len(task) > MAX_TASK_CHARS {
-            return Err(format!(
-                "task exceeds {MAX_TASK_CHARS} characters; pass data as context"
-            ));
-        }
-        let views = self.views(payload.get("context"))?;
-        if depth > 1 {
-            return Err(format!(
-                "budget depth {depth} needs frames that run code (the rlm tool), which this host does not run yet"
-            ));
-        }
-
-        let mut ledger = Ledger::default();
-        let budget = Budget {
-            id: trace::uuid("budget"),
-            node: ledger.add(None, calls, tokens),
-            depth,
-            default_tokens: false,
-        };
-        let mut frame = Frame::new(&mut ledger, &budget, task, views);
+        let admission = self
+            .session
+            .admission(&self.lane, requested_depth, calls, tokens, default_tokens);
         let options = Options {
             contract,
             max_repairs,
             thinking,
             timeout: Duration::from_millis(timeout.unwrap_or(DEFAULT_TIMEOUT_MS)),
-        };
-        // The first request's call is claimed at admission.
-        let held = ledger.hold(budget.node, Kind::Calls, 1);
-        let ledger = Mutex::new(ledger);
-        let outcome = self.run_frame(&ledger, &mut frame, held, model.as_deref(), &options, signal);
-        let outcome = self.finish(&ledger, &budget, &frame, &options, model.as_deref(), outcome);
-        Ok(observation(&mut lock(&ledger), &frame, depth, outcome))
-    }
-
-    /// Run one admitted frame: refused when its call was not held, the cell is aborted or the model is not this
-    /// host's; otherwise its conversation, within the frame's timeout.
-    fn run_frame(
-        &self,
-        ledger: &Mutex<Ledger>,
-        frame: &mut Frame,
-        held: bool,
-        model: Option<&str>,
-        options: &Options,
-        signal: &Signal,
-    ) -> Outcome {
-        let deadline = Instant::now() + options.timeout;
-        let own = format!("{}/{}", self.model.provider, self.model.id);
-        if !held {
-            return Outcome::Incomplete("budget_exhausted", "no call left in the budget for this frame".into());
-        }
-        let refused = if signal.is_aborted() {
-            Some("cancelled: the calling cell was aborted".to_string())
-        } else {
-            model
-                .filter(|model| *model != own)
-                .map(|model| format!("Admission refused: model {model} is not available to this host"))
-        };
-        if let Some(error) = refused {
-            lock(ledger).release(frame.node, Kind::Calls, 1);
-            return Outcome::Error(error);
-        }
-        frame.model = Some(own);
-        self.converse(ledger, frame, options, signal, deadline)
-    }
-
-    /// Persist the finished frame's trace and summary; returns the outcome its observation reports.
-    fn finish(
-        &self,
-        ledger: &Mutex<Ledger>,
-        budget: &Budget,
-        frame: &Frame,
-        options: &Options,
-        model: Option<&str>,
-        outcome: Outcome,
-    ) -> Outcome {
-        let ended_at = trace::now_ms();
-        let spec = Spec {
-            contract: options.contract.as_ref(),
-            max_repairs: options.max_repairs,
-            depth: budget.depth,
+            depth: admission.depth,
             model,
         };
-        let mut ledger = lock(ledger);
-        let ledger = &mut *ledger;
-        let document = trace::trace(ledger, budget, frame, &spec, &outcome, ended_at);
-        let summary = trace::summary(ledger, budget, frame, &outcome, ended_at);
-        self.traces
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .write(&frame.id, document, summary);
-        match outcome {
-            Outcome::Incomplete("budget_exhausted", detail) if budget.default_tokens => Outcome::Incomplete(
-                "budget_exhausted",
-                format!(
-                    "{detail} (rlm.map's default budget is {} tokens; pass budget=Budget(tokens=...) to allow more)",
-                    ledger.nodes[budget.node].tokens.limit.unwrap_or_default()
-                ),
-            ),
-            other => other,
+        Ok((options, admission))
+    }
+
+    fn task_of(payload: &Map<String, Value>) -> Result<&str, String> {
+        let task = payload
+            .get("task")
+            .and_then(Value::as_str)
+            .filter(|task| !js_trim(task).is_empty())
+            .ok_or("task must be a nonempty string")?;
+        if js_len(task) > MAX_TASK_CHARS {
+            return Err(format!(
+                "task exceeds {MAX_TASK_CHARS} characters; pass data as context"
+            ));
         }
+        Ok(task)
     }
 
-    /// The frame's conversation: the seeded prompt, then re-asks within budget until the contract holds. A request
-    /// the provider does not answer before the deadline is cancelled and refunded.
-    fn converse(
-        &self,
-        ledger: &Mutex<Ledger>,
-        frame: &mut Frame,
-        options: &Options,
-        signal: &Signal,
-        deadline: Instant,
-    ) -> Outcome {
-        let system = frame_system_prompt();
-        let mut conversation_chars = js_len(system) as u64;
-        let mut message = frame_prompt(&frame.task, &frame.views, options.contract.as_ref());
-        let mut call_held = true;
-        let mut history: Vec<Message> = Vec::new();
-        for attempt in 0u64.. {
-            if signal.is_aborted() || Instant::now() >= deadline {
-                if call_held {
-                    lock(ledger).release(frame.node, Kind::Calls, 1);
-                }
-                return Outcome::Error("cancelled".into());
-            }
-            let estimate = (conversation_chars + js_len(&message) as u64).div_ceil(3) + REQUEST_OVERHEAD_TOKENS;
-            let window = self.model.context_window;
-            if window > 0 && estimate + MIN_TRANCHE > window {
-                if call_held {
-                    lock(ledger).release(frame.node, Kind::Calls, 1);
-                }
-                return Outcome::Error(format!(
-                    "context too large for {}/{}: about {estimate} tokens against a {window}-token window; pass smaller slices",
-                    self.model.provider, self.model.id
-                ));
-            }
-            let claimed = lock(ledger).claim(frame.node, estimate, self.model.max_tokens, call_held);
-            call_held = false;
-            let Some((held, tranche)) = claimed else {
-                let detail = if attempt == 0 {
-                    "the budget cannot cover the first request".to_string()
-                } else {
-                    format!("the budget ran out after {attempt} attempt(s) without a valid answer")
-                };
-                return Outcome::Incomplete("budget_exhausted", detail);
-            };
-            conversation_chars += js_len(&message) as u64;
-            history.push(user_message(&message));
-            let max_tokens = if self.model.max_tokens > 0 {
-                self.model.max_tokens.min(tranche)
-            } else {
-                tranche
-            };
-            let response = self.request(
-                system,
-                &history,
-                max_tokens,
-                options.thinking.as_deref(),
-                deadline,
-                signal,
-            );
-            // A failed or timed-out request is refunded; only a response is charged. One lock, so a concurrent frame
-            // never sees the hold released before the charge lands.
-            let charged = match &response {
-                Ok(Some(reply)) => charged_tokens(&reply.usage),
-                _ => 0,
-            };
-            {
-                let mut ledger = lock(ledger);
-                ledger.release(frame.node, Kind::Calls, 1);
-                ledger.release(frame.node, Kind::Tokens, held);
-                if let Ok(Some(_)) = &response {
-                    ledger.charge(frame.node, Kind::Calls, 1);
-                    ledger.charge(frame.node, Kind::Tokens, charged);
-                }
-            }
-            let reply = match response {
-                Ok(Some(reply)) => reply,
-                Ok(None) => return Outcome::Error("cancelled".into()),
-                Err(error) => return Outcome::Error(format!("frame request failed: {}", Value::String(error))),
-            };
-            frame.measured.0 += reply.usage.input;
-            frame.measured.1 += reply.usage.output;
-            frame.measured.2 += reply.usage.cost.total;
-            if frame.requests.len() < trace::TRACE_REQUEST_LIMIT {
-                frame.requests.push(json!({
-                    "at": trace::now_ms(), "tranche": tranche, "held": held, "charged": charged,
-                    "status": serde_json::to_value(reply.stop_reason).unwrap_or(Value::Null),
-                }));
-            }
-            if signal.is_aborted() {
-                return Outcome::Error("cancelled".into());
-            }
-            let limited = reply
-                .diagnostics
-                .iter()
-                .flatten()
-                .any(|d| d.kind == "provider_usage_limit");
-            if limited {
-                let detail = reply
-                    .error_message
-                    .clone()
-                    .unwrap_or("the provider's usage limit is reached".into());
-                return Outcome::Incomplete("usage_limit", detail);
-            }
-            if matches!(reply.stop_reason, StopReason::Error | StopReason::Aborted) {
-                let status = if reply.stop_reason == StopReason::Aborted {
-                    "aborted"
-                } else {
-                    "failed"
-                };
-                let error = reply.error_message.clone().unwrap_or_default();
-                return Outcome::Error(format!(
-                    "frame run did not complete: {status} ({})",
-                    json!({"message": error})
-                ));
-            }
-            let text: Vec<&str> = reply
-                .content
-                .iter()
-                .filter_map(|part| match part {
-                    AssistantContent::Text(text) => Some(text.text.as_str()),
-                    _ => None,
-                })
-                .collect();
-            let text = text.join("\n");
-            history.push(Message::Assistant(reply));
-            conversation_chars += js_len(&text) as u64;
-            let output = bounded(&text, OUTPUT_PREVIEW_CHARS);
-            frame.outputs.push(output.clone());
-            if frame.outputs.len() > LAST_OUTPUTS {
-                frame.outputs.remove(0);
-            }
-            let attempt_record = |error: Option<&str>| {
-                let mut record = json!({"attempt": attempt, "at": trace::now_ms(), "output": output});
-                if let Some(error) = error {
-                    record["error"] = error.into();
-                }
-                record
-            };
-            let error = if js_trim(&text).is_empty() {
-                "the reply is empty".to_string()
-            } else {
-                let parsed = match &options.contract {
-                    None => Ok(Value::String(text)),
-                    Some(contract) => parse_reply(&text, contract),
-                };
-                match parsed {
-                    Ok(value) => {
-                        frame.attempts.push(attempt_record(None));
-                        return Outcome::Complete(value);
-                    }
-                    Err(error) => error,
-                }
-            };
-            frame.attempts.push(attempt_record(Some(&error)));
-            if attempt >= options.max_repairs {
-                return Outcome::Incomplete(
-                    "contract_unmet",
-                    format!("no valid answer after {} attempt(s): {error}", attempt + 1),
-                );
-            }
-            let fallback = json!({"type": "string", "minLength": 1});
-            message = repair_prompt(&error, options.contract.as_ref().unwrap_or(&fallback));
+    fn infer(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        fields(
+            payload,
+            &[
+                "task",
+                "context",
+                "contract",
+                "budget",
+                "model",
+                "max_repairs",
+                "timeout_ms",
+                "thinking",
+            ],
+        )?;
+        let (options, admission) = self.options(payload, None)?;
+        let task = Self::task_of(payload)?;
+        let views = self.views(payload.get("context"), options.depth)?;
+        if options.depth > 1 && !self.session.has_tasks() {
+            return Err(format!(
+                "budget depth {} needs frames that run code (the rlm tool), which this host does not run yet",
+                options.depth
+            ));
         }
-        unreachable!("the attempt counter is unbounded")
+        let options = Arc::new(options);
+        let budget = Arc::new(self.session.budget(&admission));
+        let live = self
+            .session
+            .admit(&budget, &options, &self.engine, &admission, task, views, "infer", 1);
+        self.session.run_frame(&live, &self.lane, signal);
+        Ok(self.session.observation(&live))
     }
-
-    /// One provider request through crates/ai; `None` when the deadline passes first.
-    fn request(
-        &self,
-        system: &str,
-        history: &[Message],
-        max_tokens: u64,
-        thinking: Option<&str>,
-        deadline: Instant,
-        signal: &Signal,
-    ) -> Result<Option<AssistantMessage>, String> {
-        let mut messages = vec![Message::System(
-            serde_json::from_value(json!({"role": "system", "content": system, "timestamp": 0}))
-                .map_err(|error| error.to_string())?,
-        )];
-        messages.extend(history.iter().cloned());
-        let context = ai::TranscriptContext { messages };
-        let mut options = SimpleStreamOptions::default();
-        options.base.api_key = self.api_key.clone();
-        options.base.max_tokens = Some(max_tokens);
-        options.reasoning = thinking.filter(|_| self.model.reasoning).map(str::to_string);
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| e.to_string())?;
-        let transport = &*self.transport;
-        let mut sink = |_: &ai::AssistantMessageEvent| {};
-        let stream = async {
-            match self.model.api.as_str() {
-                "openai-completions" => {
-                    ai::openai_completions::stream_simple(&self.model, &context, &options, transport, &mut sink).await
-                }
-                "openai-responses" => {
-                    ai::openai_responses::stream_simple(&self.model, &context, &options, transport, &mut sink).await
-                }
-                "anthropic-messages" => {
-                    ai::anthropic::stream_simple(&self.model, &context, &options, transport, &mut sink).await
-                }
-                "claude-subscription" => Ok(ai::claude_subscription::fallback::stream_simple(
-                    &self.model,
-                    &context,
-                    &options,
-                    transport,
-                    &mut sink,
-                )
-                .await),
-                other => Err(format!("frames cannot call {other} models in this host yet")),
-            }
-        };
-        // The request ends at the deadline or as soon as the calling cell is aborted (the root turn's abort
-        // cancels every in-flight frame); either way nothing is charged.
-        runtime.block_on(async {
-            let mut stream = std::pin::pin!(stream);
-            loop {
-                if signal.is_aborted() {
-                    return Ok(None);
-                }
-                let step = (Instant::now() + std::time::Duration::from_millis(20)).min(deadline);
-                match tokio::time::timeout_at(step.into(), &mut stream).await {
-                    Ok(reply) => return reply.map(Some),
-                    Err(_) if Instant::now() >= deadline => return Ok(None),
-                    Err(_) => {}
-                }
-            }
-        })
-    }
-}
-
-fn user_message(text: &str) -> Message {
-    Message::User(ai::UserMessage {
-        content: ai::UserMessageContent::Text(text.to_string()),
-        timestamp: 0,
-    })
 }
 
 /// `^[^/\s]+\/[^/\s]+(?:\/[^/\s]+)*$`.
@@ -872,35 +744,8 @@ fn create_private_dir(dir: &Path) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+fn lock<T>(mutex: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-fn observation(ledger: &mut Ledger, frame: &Frame, depth: u64, outcome: Outcome) -> Value {
-    let mut out = Map::new();
-    match outcome {
-        Outcome::Complete(value) => {
-            out.insert("status".into(), "complete".into());
-            out.insert("value".into(), value);
-        }
-        Outcome::Incomplete(reason, detail) => {
-            out.insert("status".into(), "incomplete".into());
-            out.insert("reason".into(), reason.into());
-            out.insert("detail".into(), detail.into());
-        }
-        Outcome::Error(error) => {
-            out.insert("status".into(), "error".into());
-            out.insert("error".into(), error.into());
-        }
-    }
-    let complete = out["status"] == "complete";
-    out.insert("trace_id".into(), frame.id.clone().into());
-    out.insert("spent".into(), frame.spent(ledger));
-    out.insert("remaining".into(), frame.remaining(ledger, depth));
-    if !complete {
-        out.insert("last_outputs".into(), frame.outputs.clone().into());
-    }
-    Value::Object(out)
 }
 
 impl HostHandler for Inference {
@@ -908,11 +753,7 @@ impl HostHandler for Inference {
         match kind {
             "rlm.infer" => self.infer(&payload, signal),
             "rlm.load" => self.load(&payload),
-            "rlm.frames" => self
-                .traces
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .list(&payload),
+            "rlm.frames" => self.session.list(&payload),
             _ => self.inner.handle(kind, payload, signal),
         }
     }

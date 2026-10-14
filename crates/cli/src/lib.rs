@@ -6,7 +6,9 @@ pub use ai::claude_subscription::inert_mcp;
 pub use session_core::{compose, journal, lane, naming};
 
 pub mod args;
+pub mod assets;
 pub mod auth;
+pub mod autoreview_cli;
 pub mod export_html;
 pub mod instances;
 pub mod interactive;
@@ -22,6 +24,7 @@ pub mod rpc;
 pub mod sandbox_cli;
 pub mod session;
 pub mod setup;
+pub mod tui_login;
 pub mod usage;
 
 use args::{Args, DiagnosticKind, ListModels, normalize_session_name, parse_args};
@@ -73,6 +76,12 @@ pub fn instance(env: &Env, durable: bool) -> daemon::instance::Instance {
     daemon::instance::resolve(&*env.var, &env.home, &env.cwd, durable)
 }
 
+/// Make the package files under `env.docs`'s parent ready (installed and held in use) for a run that reads them;
+/// `--version`, `--help`, `--export` and the management subcommands never do (`cli::assets`).
+pub fn package_files(env: &Env) -> Result<(), String> {
+    assets::source(&*env.var, &env.home)?.ready().map(|_| ())
+}
+
 /// Run the CLI; returns the exit code.
 pub fn run(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> i32 {
     match run_inner(argv, env, out, err) {
@@ -90,6 +99,12 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
         Some("instances") => return instances::list(env, out),
         Some("durable") => return instances::durable(&argv[1..], env, out),
         _ => {}
+    }
+    if argv.first().is_some_and(|a| a == "autoreview") {
+        package_files(env)?;
+    }
+    if let Some(code) = autoreview_cli::run(argv, env, out, err) {
+        return Ok(code);
     }
     if let Some(code) = auth::run(argv, env, out, err) {
         return Ok(code);
@@ -113,6 +128,12 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
         return Ok(code);
     }
     // `ultron claude|mcp|hook|watch|guide` (bare `ultron mcp` is Ultron's own MCP server for Claude Code).
+    if argv
+        .first()
+        .is_some_and(|a| ["claude", "mcp", "hook", "watch", "guide"].contains(&a.as_str()))
+    {
+        package_files(env)?;
+    }
     if let Some(code) = claude_root::cli::run(argv, env, out, err) {
         return Ok(code);
     }
@@ -160,15 +181,22 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             ListModels::All => None,
             ListModels::Search(p) => Some(p.as_str()),
         };
+        if let Some(warning) = list_models::models_json_warning(env) {
+            err.write_all(warning.as_bytes()).map_err(io)?;
+        }
+        package_files(env)?;
         let models = list_models::available_models(env);
         out.write_all(list_models::render(&models, search, &env.docs).as_bytes())
             .map_err(io)?;
         return Ok(0);
     }
-    // `--claude`: the root lane runs on Claude Code (worker-root.ts `prepareClaudeRoot`).
+    // Everything below runs a session (or reads its files): the package files must exist from here on.
+    package_files(env)?;
+    // `--claude`: the root lane runs on Claude, through the claude-subscription provider (worker-root.ts
+    // `prepareClaudeRoot`'s selection; crates/claude-root `subscription_root`).
     let claude_setting = claude_root::settings::ClaudeCodeSettings::load(&env.cwd, &env.agent_dir()).root;
     if parsed.claude || claude_root::worker_root::claude_root_requested(&*env.var) || claude_setting {
-        match claude_root::worker_root::prepare_claude_root(
+        match claude_root::worker_root::subscription_root(
             parsed.provider.as_deref(),
             parsed.model.as_deref(),
             &*env.var,
@@ -231,6 +259,10 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
         let prompt = parsed.messages.join("\n\n");
         return match print_mode::run_prompt(&parsed, env, prompt, target) {
             Ok(prompted) => {
+                // A Claude turn that switched to API credits (or back) says so, beside the answer.
+                for notice in &prompted.notices {
+                    writeln!(err, "{notice}").map_err(io)?;
+                }
                 out.write_all(print_mode::render(json_mode, &prompted).as_bytes())
                     .map_err(io)?;
                 Ok(0)

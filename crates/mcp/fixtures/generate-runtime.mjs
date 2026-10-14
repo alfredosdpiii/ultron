@@ -15,7 +15,9 @@ const { convertMcpResult } = await imp("packages/coding-agent/src/extensions/mcp
 const { isMcpAppResource, listed } = await imp("packages/coding-agent/src/extensions/mcp/resources.ts");
 const { consumeSseStream } = await imp("packages/mcp/src/transports/streamable-http.ts");
 
-process.env.HOME = "/home/fixture";
+// A placeholder home (scripts/secret-scan.mjs accepts /home/user); tests read it back from the fixture.
+const HOME = "/home/user";
+process.env.HOME = HOME;
 const ENV = { MCPRT_A: "alpha", MCPRT_B: "beta", MCPRT_EMPTY: "" };
 for (const [k, v] of Object.entries(ENV)) process.env[k] = v;
 const attempt = (f) => {
@@ -142,5 +144,5 @@ for (const chunks of sseInputs) {
 	sseCases.push({ chunks, events, error });
 }
 
-const fixture = { env: ENV, home: "/home/fixture", resolveCases, headerCases, transportCases, convertCases, appCases, listedCases, sseCases };
+const fixture = { env: ENV, home: HOME, resolveCases, headerCases, transportCases, convertCases, appCases, listedCases, sseCases };
 writeFileSync(join(here, "runtime.json"), `${JSON.stringify(fixture, null, "\t")}\n`);

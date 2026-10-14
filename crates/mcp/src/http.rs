@@ -178,6 +178,45 @@ fn content_type(response: &Response) -> Option<String> {
     Some(value.split(';').next().unwrap_or_default().trim().to_lowercase())
 }
 
+/// What a 401 (or a 403 asking for more scope) hands to the [`AuthProvider`] (`UnauthorizedContext`).
+pub struct Unauthorized {
+    pub status: u16,
+    /// The `WWW-Authenticate` header.
+    pub challenge: Option<String>,
+    pub server_url: String,
+    /// The access token the rejected request carried.
+    pub token: Option<String>,
+}
+
+/// Supplies bearer tokens to the transport and may refresh them after a 401 (`AuthProvider`). The token is read for
+/// every request, so a provider's refreshed credential applies at once.
+pub trait AuthProvider: Send + Sync {
+    fn token(&self) -> Result<Option<String>, Error>;
+    /// After a rejected request: refresh (the request is then retried once), or fail with why not.
+    fn on_unauthorized(&self, _context: &Unauthorized) -> Result<(), Error> {
+        Err(Error::Other("no refresh".into()))
+    }
+    /// Whether [`AuthProvider::on_unauthorized`] is implemented: without it a 401 fails the request at once.
+    fn refreshes(&self) -> bool {
+        false
+    }
+}
+
+/// 401, or 403 with an `insufficient_scope` bearer challenge (step-up authorization).
+fn needs_authorization(response: &Response) -> bool {
+    match response.status().as_u16() {
+        401 => true,
+        403 => response
+            .headers()
+            .get("www-authenticate")
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|h| {
+                crate::oauth::parse_www_authenticate(Some(h)).error.as_deref() == Some("insufficient_scope")
+            }),
+        _ => false,
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct HttpOptions {
     pub url: String,
@@ -191,6 +230,7 @@ pub struct HttpOptions {
     pub reconnect_max_delay: Option<Duration>,
     /// Consecutive failed reconnects before giving up. Default 5.
     pub reconnect_max_retries: Option<u32>,
+    pub auth: Option<Arc<dyn AuthProvider>>,
 }
 
 #[derive(Default)]
@@ -241,7 +281,9 @@ impl Shared {
         }
     }
 
-    fn request(&self, method: reqwest::Method) -> RequestBuilder {
+    /// A request with the configured headers, the session headers and the provider's current token (and that
+    /// token, for a 401 handler).
+    fn request(&self, method: reqwest::Method) -> Result<(RequestBuilder, Option<String>), Error> {
         let mut builder = self.client.request(method, &self.options.url);
         for (name, value) in &self.options.headers {
             builder = builder.header(name, value);
@@ -253,7 +295,48 @@ impl Shared {
         if let Some(version) = &state.protocol_version {
             builder = builder.header("MCP-Protocol-Version", version);
         }
-        builder
+        drop(state);
+        let token = match &self.options.auth {
+            Some(auth) => auth.token()?,
+            None => None,
+        };
+        if let Some(token) = &token {
+            builder = builder.header("Authorization", format!("Bearer {token}"));
+        }
+        Ok((builder, token))
+    }
+
+    /// `authorizedFetch`: a 401 (or a 403 asking for more scope) goes to the auth provider once, and the request is
+    /// retried with whatever credentials it left behind.
+    fn authorized(
+        &self,
+        method: reqwest::Method,
+        prepare: &dyn Fn(RequestBuilder) -> RequestBuilder,
+    ) -> Result<Response, Error> {
+        let mut attempt = 0;
+        loop {
+            let (builder, token) = self.request(method.clone())?;
+            let response = prepare(builder).send().map_err(|e| network_error(&e))?;
+            let Some(auth) = self.options.auth.as_ref().filter(|a| a.refreshes()) else {
+                return Ok(response);
+            };
+            if attempt > 0 || !needs_authorization(&response) {
+                return Ok(response);
+            }
+            let context = Unauthorized {
+                status: response.status().as_u16(),
+                challenge: response
+                    .headers()
+                    .get("www-authenticate")
+                    .and_then(|v| v.to_str().ok())
+                    .map(String::from),
+                server_url: self.options.url.clone(),
+                token,
+            };
+            drop(response);
+            auth.on_unauthorized(&context)?;
+            attempt += 1;
+        }
     }
 
     fn capture_session(&self, response: &Response) {
@@ -361,11 +444,7 @@ impl Shared {
         let max_retries = self.options.reconnect_max_retries.unwrap_or(5);
         let mut attempt: u32 = 0;
         while !self.closed() {
-            let opened = self
-                .request(reqwest::Method::GET)
-                .header("accept", "text/event-stream")
-                .send()
-                .map_err(|e| network_error(&e));
+            let opened = self.authorized(reqwest::Method::GET, &|b| b.header("accept", "text/event-stream"));
             let outcome = opened.and_then(|response| {
                 if response.status().as_u16() == 405 {
                     return Ok(None);
@@ -452,13 +531,12 @@ impl Transport for HttpTransport {
                 return Err(Error::closed());
             }
         }
-        let response = shared
-            .request(reqwest::Method::POST)
-            .header("accept", "application/json, text/event-stream")
-            .header("content-type", "application/json")
-            .body(serde_json::to_string(message).unwrap_or_default())
-            .send()
-            .map_err(|e| network_error(&e))?;
+        let body = serde_json::to_string(message).unwrap_or_default();
+        let response = shared.authorized(reqwest::Method::POST, &|b| {
+            b.header("accept", "application/json, text/event-stream")
+                .header("content-type", "application/json")
+                .body(body.clone())
+        })?;
         let response = shared.check(response)?;
         shared.capture_session(&response);
         let status = response.status().as_u16();
@@ -543,11 +621,12 @@ impl Transport for HttpTransport {
             state.closed = true;
             (state.started, state.session_id.clone())
         };
-        if started && session.is_some() {
-            let _ = shared
-                .request(reqwest::Method::DELETE)
-                .timeout(Duration::from_secs(1))
-                .send();
+        // Resolving the auth header may fail; the session then expires on the server.
+        if started
+            && session.is_some()
+            && let Ok((request, _)) = shared.request(reqwest::Method::DELETE)
+        {
+            let _ = request.timeout(Duration::from_secs(1)).send();
         }
         shared.emit(Incoming::Closed);
     }

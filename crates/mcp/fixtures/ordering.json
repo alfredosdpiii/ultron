@@ -1,0 +1,203 @@
+{
+	"scenarios": [
+		{
+			"name": "detected",
+			"events": [
+				{
+					"op": "call",
+					"params": {
+						"server": "srv"
+					},
+					"text": "srv (1 tools)\nsrv_ping",
+					"details": {
+						"mode": "list",
+						"server": "srv",
+						"tools": [
+							"srv_ping"
+						],
+						"count": 1
+					}
+				},
+				{
+					"op": "restartFails"
+				},
+				{
+					"op": "die"
+				},
+				{
+					"op": "call",
+					"params": {},
+					"text": "MCP: 0/1 servers connected\nsrv: disconnected: Connection closed",
+					"details": {
+						"mode": "status",
+						"servers": [
+							{
+								"name": "srv",
+								"status": "disconnected",
+								"toolCount": null,
+								"transport": "stdio",
+								"scope": "session",
+								"error": "Connection closed"
+							}
+						]
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "srv_x"
+					},
+					"text": "MCP server \"srv\" could not be connected: MCP server \"srv\" failed to connect: spawn gw ENOENT",
+					"details": {
+						"server": "srv",
+						"error": "connect_failed"
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"text": "MCP: 0/1 servers connected\nsrv: failed: spawn gw ENOENT",
+					"details": {
+						"mode": "status",
+						"servers": [
+							{
+								"name": "srv",
+								"status": "failed",
+								"toolCount": null,
+								"transport": "stdio",
+								"scope": "session",
+								"error": "spawn gw ENOENT"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "undetected",
+			"events": [
+				{
+					"op": "call",
+					"params": {
+						"server": "srv"
+					},
+					"text": "srv (1 tools)\nsrv_ping",
+					"details": {
+						"mode": "list",
+						"server": "srv",
+						"tools": [
+							"srv_ping"
+						],
+						"count": 1
+					}
+				},
+				{
+					"op": "restartFails"
+				},
+				{
+					"op": "dieUnseen"
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "srv_x"
+					},
+					"text": "Tool \"srv_x\" not found. List tools with await mcp.tools(\"server\") or await mcp.search(\"words\").",
+					"details": {
+						"requestedTool": "srv_x",
+						"error": "tool_not_found"
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "srv_ping"
+					},
+					"text": "srv_ping\nServer: srv\n\n\n\nParameters (JSON schema):\n{\n  \"type\": \"object\"\n}",
+					"details": {
+						"mode": "describe",
+						"tool": {
+							"name": "srv_ping",
+							"originalName": "ping",
+							"description": "",
+							"inputSchema": {
+								"type": "object"
+							}
+						},
+						"server": "srv"
+					}
+				},
+				{
+					"op": "die"
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "srv_x"
+					},
+					"text": "MCP server \"srv\" could not be connected: MCP server \"srv\" failed to connect: spawn gw ENOENT",
+					"details": {
+						"server": "srv",
+						"error": "connect_failed"
+					}
+				}
+			]
+		},
+		{
+			"name": "refresh",
+			"events": [
+				{
+					"op": "call",
+					"params": {
+						"server": "srv"
+					},
+					"text": "srv (1 tools)\nsrv_ping",
+					"details": {
+						"mode": "list",
+						"server": "srv",
+						"tools": [
+							"srv_ping"
+						],
+						"count": 1
+					}
+				},
+				{
+					"op": "changeAndDieOnRefresh"
+				},
+				{
+					"op": "call",
+					"params": {},
+					"text": "MCP: 0/1 servers connected\nsrv: disconnected: Failed to refresh tools: MCP connection closed",
+					"details": {
+						"mode": "status",
+						"servers": [
+							{
+								"name": "srv",
+								"status": "disconnected",
+								"toolCount": null,
+								"transport": "stdio",
+								"scope": "session",
+								"error": "Failed to refresh tools: MCP connection closed"
+							}
+						]
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "srv"
+					},
+					"text": "srv (1 tools)\nsrv_ping",
+					"details": {
+						"mode": "list",
+						"server": "srv",
+						"tools": [
+							"srv_ping"
+						],
+						"count": 1
+					}
+				}
+			]
+		}
+	]
+}

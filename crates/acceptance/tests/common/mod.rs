@@ -161,6 +161,11 @@ fn content_text(content: &Value) -> String {
 pub enum Reply {
     Text(String),
     Rlm(String),
+    /// An `rlm` call with its own call id (tests that tell cells apart by their tool call ids).
+    RlmCall(String, String),
+    /// Hold the response until the client closes the connection (a request cancelled mid-flight); after the
+    /// [`HANG`] guard, answer with this text (the TS `delayMs` reply).
+    Hang(String),
 }
 
 /// An OpenAI-compatible chat-completions endpoint on 127.0.0.1 that answers each request with `script(request)`
@@ -209,7 +214,30 @@ impl Provider {
                         raw,
                     };
                     seen.lock().unwrap().push(request.clone());
-                    let sse = sse(script(&request));
+                    let reply = match script(&request) {
+                        Reply::Hang(text) => {
+                            let _ = stream.set_read_timeout(Some(HANG));
+                            let mut rest = [0u8; 256];
+                            loop {
+                                match reader.read(&mut rest) {
+                                    Ok(0) => return,
+                                    Ok(_) => continue,
+                                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                                    Err(e)
+                                        if matches!(
+                                            e.kind(),
+                                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                                        ) =>
+                                    {
+                                        break Reply::Text(text);
+                                    }
+                                    Err(_) => return,
+                                }
+                            }
+                        }
+                        reply => reply,
+                    };
+                    let sse = sse(reply);
                     let head = format!(
                         "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
                         sse.len()
@@ -248,21 +276,26 @@ fn chunk(delta: Value, finish: Value, usage: Option<Value>) -> String {
 
 fn sse(reply: Reply) -> String {
     let usage = json!({"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15});
-    let mut out = match reply {
+    let (id, code) = match reply {
         Reply::Text(text) => {
-            chunk(json!({"role": "assistant", "content": text}), Value::Null, None)
-                + &chunk(json!({}), json!("stop"), Some(usage))
+            let mut out = chunk(json!({"role": "assistant", "content": text}), Value::Null, None)
+                + &chunk(json!({}), json!("stop"), Some(usage));
+            out.push_str("data: [DONE]\n\n");
+            return out;
         }
-        Reply::Rlm(code) => {
-            let call = json!([{"index": 0, "id": "call_acceptance", "type": "function",
-                "function": {"name": "rlm", "arguments": json!({"code": code}).to_string()}}]);
-            chunk(
-                json!({"role": "assistant", "content": null, "tool_calls": call}),
-                Value::Null,
-                None,
-            ) + &chunk(json!({}), json!("tool_calls"), Some(usage))
+        Reply::Hang(_) => {
+            unreachable!("a held reply is answered by the connection thread")
         }
+        Reply::Rlm(code) => ("call_acceptance".to_string(), code),
+        Reply::RlmCall(id, code) => (id, code),
     };
+    let call = json!([{"index": 0, "id": id, "type": "function",
+        "function": {"name": "rlm", "arguments": json!({"code": code}).to_string()}}]);
+    let mut out = chunk(
+        json!({"role": "assistant", "content": null, "tool_calls": call}),
+        Value::Null,
+        None,
+    ) + &chunk(json!({}), json!("tool_calls"), Some(usage));
     out.push_str("data: [DONE]\n\n");
     out
 }

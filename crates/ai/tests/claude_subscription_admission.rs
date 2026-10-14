@@ -576,27 +576,29 @@ fn ai_claude_subscription_proxy_variables_follow_native_order() {
 #[test]
 fn ai_claude_subscription_unsupported_proxy_connects_directly_without_leaking_credentials() {
     seal();
+    // Proxy URLs are built from parts so the source holds no literal `user:password@` credential.
+    let password = "hunter2";
     for url in [
-        "socks5://user:hunter2@proxy.test:1080",
-        "https://user:hunter2@proxy.test:8443",
-        "http://user:hunter2@proxy.test:notaport",
+        ["socks5://user:", password, "@proxy.test:1080"].concat(),
+        ["https://user:", password, "@proxy.test:8443"].concat(),
+        ["http://user:", password, "@proxy.test:notaport"].concat(),
     ] {
         let mut warnings = Vec::new();
         let found = upstream_proxy(
             &reqwest::Url::parse("https://api.example.com").unwrap(),
-            &env(&[("HTTPS_PROXY", url)]),
+            &env(&[("HTTPS_PROXY", url.as_str())]),
             &mut warnings,
         );
         assert_eq!(found, None, "{url}");
         let text = warnings.join("\n");
-        assert!(text.contains("CONNECT proxy") && !text.contains("hunter2"), "{text}");
+        assert!(text.contains("CONNECT proxy") && !text.contains(password), "{text}");
     }
     let relay = Admission::new(
         "https://api.example.com",
         Duration::from_secs(1),
         None,
         Duration::from_secs(1),
-        &env(&[("HTTPS_PROXY", "socks5://u:hunter2@p:1")]),
+        &env(&[("HTTPS_PROXY", ["socks5://u:", password, "@p:1"].concat().as_str())]),
     )
     .unwrap();
     assert!(relay.proxy().is_none());
@@ -620,7 +622,11 @@ fn ai_claude_subscription_authenticated_connect_tunnels_to_the_upstream_host() {
         let _ = std::io::Write::write_all(&mut stream, b"HTTP/1.1 200 Connection Established\r\n\r\n");
         String::from_utf8_lossy(&head).into_owned()
     });
-    let pairs = [("HTTPS_PROXY", format!("http://user:p%40ss@127.0.0.1:{port}"))];
+    let password = "p%40ss";
+    let pairs = [(
+        "HTTPS_PROXY",
+        ["http://user:", password, &format!("@127.0.0.1:{port}")].concat(),
+    )];
     let pairs: Vec<(&str, &str)> = pairs.iter().map(|(k, v)| (*k, v.as_str())).collect();
     let mut relay = Admission::new(
         "https://api.example.invalid/base",

@@ -418,7 +418,9 @@ for (const [name, provider, answers, responses, options = {}] of cases) {
 	try {
 		result = await auths[provider].login(interaction);
 	} catch (e) {
-		error = e.message;
+		// The node stack TS appends to Anthropic error details holds machine paths; tests/oauth_login.rs compares only
+		// the text before `; stack=`, so the frames are not recorded.
+		error = e.message.replace(/; stack=[\s\S]*$/, "; stack=<omitted>");
 	}
 	await hitsDone;
 	out.push({

@@ -1,0 +1,1832 @@
+{
+ "overflow": [
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "prompt is too long: 213462 tokens > 200000 maximum",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"prompt is too long: 1213462 tokens > 1000000 maximum\"}}",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "413 {\"error\":{\"type\":\"request_too_large\",\"message\":\"Request exceeds the maximum size\"}}",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "amazon-bedrock",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Input is too long for requested model.",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Your input exceeds the context window of this model",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Requested token count exceeds the model's maximum context length of 131072 tokens",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Input length (265330) exceeds model's maximum context length (262144).",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "google",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "The input token count (1196265) exceeds the maximum number of tokens allowed (1048575)",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "xai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "This model's maximum prompt length is 131072 but the request contains 537812 tokens",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "groq",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Please reduce the length of the messages or completion",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openrouter",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "This endpoint's maximum context length is 200000 tokens. However, you requested about 250000 tokens",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openrouter",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Input length 300000 exceeds the maximum allowed input length of 262144 tokens.",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "together",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "The input (300000 tokens) is longer than the model's context length (131072 tokens).",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "llama.cpp",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "the request exceeds the available context size, try increasing it",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "lmstudio",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "tokens to keep from the initial prompt is greater than the context length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "github-copilot",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "prompt token count of 200000 exceeds the limit of 128000",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "minimax",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "invalid params, context window exceeds limit",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "kimi-coding",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Your request exceeded model token limit: 262144 (requested: 300000)",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "ds4",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Prompt has 300,000 tokens, but the configured context size is 262,144 tokens",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "mistral",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Prompt contains 300000 tokens and 0 draft tokens, too large for model with 262144 maximum context length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "zai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "{\"code\":\"1261\",\"message\":\"Prompt too long\"}",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "zai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "model_context_window_exceeded",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "ollama",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "prompt too long; exceeded max context length by 1200 tokens",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "dashscope",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Range of input length should be [1, 98304]",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "generic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "context_length_exceeded",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "generic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "too many tokens in the request",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "generic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "token limit exceeded",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "cerebras",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "400 status code (no body)",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "cerebras",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "413 (no body)",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "400 status code (no body)",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "amazon-bedrock",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "ThrottlingException: Too many tokens, please wait before trying again.",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "amazon-bedrock",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Throttling error: Too many tokens, please wait before trying again.",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "amazon-bedrock",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Service unavailable: prompt is too long",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Rate limit reached: too many tokens per minute",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "openai",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "429 Too Many Requests: context_length_exceeded",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "overloaded_error: Overloaded",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "Connection error.",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "errorMessage": "",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "errorMessage": "prompt is too long",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 200001,
+     "output": 5,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 200000,
+     "output": 5,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200005,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 150000,
+     "output": 5,
+     "cacheRead": 50001,
+     "cacheWrite": 0,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 200001,
+     "output": 5,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 200006,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1
+   },
+   "contextWindow": 0,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 198000,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 198000,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 197999,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 197999,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 199000,
+     "output": 1,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 199001,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 100000,
+     "output": 0,
+     "cacheRead": 98000,
+     "cacheWrite": 0,
+     "totalTokens": 198000,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 300000,
+     "output": 5,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 300005,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "toolUse",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 300000,
+     "output": 5,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 300005,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "timestamp": 1
+   },
+   "contextWindow": 200000,
+   "overflow": false
+  }
+ ],
+ "recoverable": [
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 100,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 110,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 64000,
+   "recoverable": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 64000,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 64010,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 64000,
+   "recoverable": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 10,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 0,
+   "recoverable": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 63999,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 64009,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 64000,
+   "recoverable": true
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 100,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 110,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 64000,
+   "recoverable": false
+  },
+  {
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m",
+    "usage": {
+     "input": 10,
+     "output": 100,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 110,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "timestamp": 1
+   },
+   "desiredMaxOutput": 64000,
+   "recoverable": false
+  }
+ ],
+ "threshold": [
+  {
+   "tokens": 983616,
+   "contextWindow": 1000000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": false
+  },
+  {
+   "tokens": 983617,
+   "contextWindow": 1000000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 990005,
+   "contextWindow": 1000000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 990005,
+   "contextWindow": 1000000,
+   "settings": {
+    "enabled": false,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": false
+  },
+  {
+   "tokens": 3616,
+   "contextWindow": 20000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": false
+  },
+  {
+   "tokens": 3617,
+   "contextWindow": 20000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 10,
+   "contextWindow": 8000,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 0,
+   "contextWindow": 0,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 1,
+   "contextWindow": 0,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 0,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  },
+  {
+   "tokens": 100,
+   "contextWindow": 100,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 0,
+    "keepRecentTokens": 20000
+   },
+   "compact": false
+  },
+  {
+   "tokens": 101,
+   "contextWindow": 100,
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 0,
+    "keepRecentTokens": 20000
+   },
+   "compact": true
+  }
+ ],
+ "settings": [
+  {
+   "configured": {},
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "enabled": false
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": false,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "reserveTokens": 8000,
+     "keepRecentTokens": 1000
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 8000,
+    "keepRecentTokens": 1000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "reserveTokens": 0
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 0,
+    "keepRecentTokens": 20000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "reserveTokens": 8000,
+     "modelOverrides": {
+      "anthropic/claude-sonnet-4-5": {
+       "reserveTokens": 30000
+      }
+     }
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 30000,
+    "keepRecentTokens": 20000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "modelOverrides": {
+      "anthropic/claude-sonnet-4-5": {
+       "keepRecentTokens": 5000
+      }
+     }
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 5000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "modelOverrides": {
+      "openai/gpt-5": {
+       "reserveTokens": 30000
+      }
+     }
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+   }
+  },
+  {
+   "configured": {
+    "compaction": {
+     "reserveTokens": -1
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "error": "Invalid compaction.reserveTokens setting: -1. Expected a non-negative safe integer."
+  },
+  {
+   "configured": {
+    "compaction": {
+     "reserveTokens": 1.5
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "error": "Invalid compaction.reserveTokens setting: 1.5. Expected a non-negative safe integer."
+  },
+  {
+   "configured": {
+    "compaction": {
+     "keepRecentTokens": "100"
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "error": "Invalid compaction.keepRecentTokens setting: 100. Expected a non-negative safe integer."
+  },
+  {
+   "configured": {
+    "compaction": {
+     "modelOverrides": {
+      "anthropic/claude-sonnet-4-5": 5
+     }
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "error": "Invalid compaction.modelOverrides[\"anthropic/claude-sonnet-4-5\"] setting: 5. Expected an object."
+  },
+  {
+   "configured": {
+    "compaction": {
+     "modelOverrides": {
+      "anthropic/claude-sonnet-4-5": {
+       "reserveTokens": -5
+      }
+     }
+    }
+   },
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5"
+   },
+   "error": "Invalid compaction.modelOverrides[\"anthropic/claude-sonnet-4-5\"].reserveTokens setting: -5. Expected a non-negative safe integer."
+  }
+ ]
+}

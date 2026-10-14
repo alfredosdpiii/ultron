@@ -144,6 +144,17 @@ pub fn estimate_context(view: &ContextView, extra: &[Message]) -> u64 {
     tokens
 }
 
+/// [`estimate_context`] of `view` followed by the messages of the `planned` entries.
+pub(crate) fn estimate_planned(view: &ContextView, planned: &[EntryDraft]) -> Result<u64> {
+    let mut extra = Vec::new();
+    for entry in planned {
+        for message in entry.model.iter().flatten() {
+            extra.push(super::context::message_of(message.clone())?);
+        }
+    }
+    Ok(estimate_context(view, &extra))
+}
+
 /// Which threshold compaction preparation starts (spec §8.3): blocking above `contextWindow - reserveTokens`,
 /// background above the background threshold, and only when range selection finds a cut.
 pub(crate) fn threshold_compaction(
@@ -155,13 +166,7 @@ pub(crate) fn threshold_compaction(
     if !policy.enabled || context_window == 0 {
         return Ok(None);
     }
-    let mut extra = Vec::new();
-    for entry in planned {
-        for message in entry.model.iter().flatten() {
-            extra.push(super::context::message_of(message.clone())?);
-        }
-    }
-    let tokens = estimate_context(view, &extra);
+    let tokens = estimate_planned(view, planned)?;
     let blocking = context_window.saturating_sub(policy.reserve_tokens);
     let background = blocking.saturating_sub(policy.background_tokens);
     let over = if tokens > blocking {
@@ -324,7 +329,8 @@ fn select_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -
         return finish(runtime, fail(message, "no_model"));
     };
     let view = runtime.read(|tx| read_context(tx, conversation_id, None))?;
-    let Some(cut) = select_cut(&view, settings.compaction.keep_recent_tokens) else {
+    let policy = services.compaction_policy(conversation_id, &settings);
+    let Some(cut) = select_cut(&view, policy.keep_recent_tokens) else {
         return finish(runtime, TaskOutcome::Completed { result: json!({}) });
     };
     let first_kept = view.entries[cut].id;
@@ -427,8 +433,14 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
         session_id: Some(session_id.as_str()),
         now_ms: runtime.now()? as i64,
     };
-    let summary_request =
-        compaction::history_summary_request(&messages, settings.compaction.reserve_tokens, None, &options);
+    let summary_request = compaction::history_summary_request(
+        &messages,
+        services
+            .compaction_policy(runtime.conversation_id(), &settings)
+            .reserve_tokens,
+        None,
+        &options,
+    );
     let mut stream_options = request.stream_options.clone();
     stream_options.remove("deferred");
     stream_options.insert("cacheRetention".into(), json!("none"));
@@ -437,6 +449,7 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
         options: stream_options,
         session_id: summary_request.session_id.clone(),
         reasoning: summary_request.reasoning.clone(),
+        conversation_id: Some(runtime.conversation_id()),
     };
     let message = services.models.stream(
         &model,

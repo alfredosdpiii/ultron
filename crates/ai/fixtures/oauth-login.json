@@ -406,7 +406,7 @@
 			],
 			"callbackResponses": [],
 			"result": null,
-			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}; stack=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}\n    at postJson (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:183:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:198:18)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=Error: HTTP request failed. status=400; url=https://platform.claude.com/v1/oauth/token; body={\"error\":\"invalid_grant\"}; stack=<omitted>"
 		},
 		{
 			"name": "anthropic exchange network error",
@@ -455,7 +455,7 @@
 			],
 			"callbackResponses": [],
 			"result": null,
-			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=TypeError: fetch failed; stack=TypeError: fetch failed\n    at globalThis.fetch (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:81:31)\n    at postJson (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:170:25)\n    at exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:198:24)\n    at Object.loginAnthropic [as login] (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:305:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+			"error": "Token exchange request failed. url=https://platform.claude.com/v1/oauth/token; redirect_uri=http://localhost:53692/callback; response_type=authorization_code; details=TypeError: fetch failed; stack=<omitted>"
 		},
 		{
 			"name": "anthropic exchange invalid json",
@@ -504,7 +504,7 @@
 			],
 			"callbackResponses": [],
 			"result": null,
-			"error": "Token exchange returned invalid JSON. url=https://platform.claude.com/v1/oauth/token; body=<html>; details=SyntaxError: Unexpected token '<', \"<html>\" is not valid JSON; stack=SyntaxError: Unexpected token '<', \"<html>\" is not valid JSON\n    at JSON.parse (<anonymous>)\n    at exchangeAuthorizationCode (file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/packages/ai/src/auth/oauth/anthropic.ts:218:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///home/bryan/Projects/personal/ultron-rust-wt/ai-auth/crates/ai/fixtures/generate-oauth-login.mjs:419:12"
+			"error": "Token exchange returned invalid JSON. url=https://platform.claude.com/v1/oauth/token; body=<html>; details=SyntaxError: Unexpected token '<', \"<html>\" is not valid JSON; stack=<omitted>"
 		},
 		{
 			"name": "anthropic callback server",

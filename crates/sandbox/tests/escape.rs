@@ -1,12 +1,15 @@
 //! Process tests that try real escapes under every backend available on this machine. A backend that is not
-//! installed or does not work here is skipped with the reason printed (Docker also needs a local image named by
-//! ULTRON_SANDBOX_TEST_IMAGE; images are never pulled).
+//! installed or does not work here is skipped with a `SKIPPED` line and the reason (`backends_support`: Docker runs
+//! on a local image, ULTRON_SANDBOX_TEST_IMAGE or a known base image already present; images are never pulled;
+//! ULTRON_SANDBOX_TEST_REQUIRE turns a skip into a failure).
 //!
 //! The scratch tree lives under the cargo target dir (inside /home on a usual checkout), not /tmp, so the read-only
 //! home and /home rules are exercised rather than hidden by a private /tmp:
-//!   base/home                fake HOME: notes.txt, .ssh/id_test and .netrc (secrets, hidden), .cache (writable)
-//!   base/home/work/project   the project (writable), with `link` -> base/outside
-//!   base/outside             a directory outside every writable path
+//!   base/fakehome                fake HOME: notes.txt, .ssh/id_test and .netrc (secrets, hidden), .cache (writable)
+//!   base/fakehome/work/project   the project (writable), with `link` -> base/outside
+//!   base/outside                 a directory outside every writable path
+
+mod backends_support;
 
 use sandbox::launcher::{Launcher, Mechanism, Policy};
 use sandbox::settings::{Mode, Settings};
@@ -27,7 +30,7 @@ fn tree() -> Tree {
         .tempdir_in(env!("CARGO_TARGET_TMPDIR"))
         .unwrap();
     let base = std::fs::canonicalize(dir.path()).unwrap();
-    let home = base.join("home");
+    let home = base.join("fakehome");
     let project = home.join("work/project");
     let outside = base.join("outside");
     for path in [&project, &outside, &home.join(".ssh"), &home.join(".cache")] {
@@ -53,7 +56,7 @@ fn policy(tree: &Tree, network: bool) -> Policy {
         hidden: vec!["~/.ssh".into(), "~/.netrc".into()],
         network,
         env: Vec::new(),
-        image: std::env::var("ULTRON_SANDBOX_TEST_IMAGE").ok(),
+        image: backends_support::docker_image().ok(),
     };
     let host_env: Vec<(String, String)> = vec![
         ("PATH".into(), std::env::var("PATH").unwrap_or_default()),
@@ -64,27 +67,12 @@ fn policy(tree: &Tree, network: bool) -> Policy {
     Policy::new(&settings, &tree.project, &tree.home, &[], None, &host_env)
 }
 
-/// The backends that work here; prints why the others are skipped.
+/// The backends this machine runs (probed with the bare tools, so a launcher bug fails instead of skipping).
 fn backends() -> Vec<Mechanism> {
-    let tree = tree();
-    let mut out = Vec::new();
-    for mechanism in Mechanism::STRONGEST_FIRST {
-        let policy = policy(&tree, false);
-        if mechanism == Mechanism::Docker && policy.image.is_none() {
-            println!("skip docker: no ULTRON_SANDBOX_TEST_IMAGE (a local image; never pulled)");
-            continue;
-        }
-        let launcher = Launcher::new(Mode::Required, policy);
-        if launcher.probe(mechanism) {
-            out.push(mechanism);
-        } else {
-            println!(
-                "skip {}: not installed or not permitted on this machine",
-                mechanism.name()
-            );
-        }
-    }
-    out
+    backends_support::machine_backends()
+        .into_iter()
+        .filter_map(Mechanism::parse)
+        .collect()
 }
 
 fn run(policy: &Policy, mechanism: Mechanism, script: &str) -> String {
@@ -171,7 +159,8 @@ fn sandbox_escape_hidden_credentials_and_variables_stay_out() {
 }
 
 /// A nested user and mount namespace gets full capabilities over its own copy of the mounts, but the mounts it
-/// inherited are locked: it can neither uncover a hidden path nor make the home writable.
+/// inherited are locked: it can neither uncover a hidden path nor make the home writable. Docker's seccomp profile
+/// refuses the nested namespace outright, which leaves the mounts as they are too.
 #[test]
 fn sandbox_escape_nested_namespaces_cannot_undo_the_mounts() {
     for mechanism in backends() {
@@ -191,10 +180,17 @@ echo done
         let output = run(&policy, mechanism, script);
         let name = mechanism.name();
         assert!(output.contains("done"), "{name}: {output}");
-        assert!(
-            output.contains("nested-uid=0"),
-            "{name}: the nested namespace was not entered: {output}"
-        );
+        if mechanism == Mechanism::Docker {
+            assert!(
+                output.contains("nested-uid=0") || output.contains("unshare failed: Operation not permitted"),
+                "{name}: neither entered nor refused: {output}"
+            );
+        } else {
+            assert!(
+                output.contains("nested-uid=0"),
+                "{name}: the nested namespace was not entered: {output}"
+            );
+        }
         assert!(!output.contains("SECRET-"), "{name}: {output}");
         assert!(!tree.home.join("nested.txt").exists(), "{name}: {output}");
     }
@@ -242,10 +238,10 @@ fn sandbox_escape_host_processes_and_tmp_are_invisible() {
 }
 
 /// The sandbox dies with its parent: killing the process that started the launcher (not its group) stops the
-/// sandboxed command.
+/// sandboxed command. For Docker that means the container, which is no process of ours, stops too.
 #[test]
 fn sandbox_escape_sandbox_dies_with_its_parent() {
-    for mechanism in backends().into_iter().filter(|m| *m != Mechanism::Docker) {
+    for mechanism in backends() {
         let tree = tree();
         let policy = policy(&tree, false);
         let launcher = Launcher::new(Mode::Required, policy.clone()).with_mechanism(Some(mechanism));
@@ -362,7 +358,7 @@ fn sandbox_escape_writable_dirs_inside_hidden_ones_stay_usable_and_siblings_hidd
             hidden: vec!["~/.ssh".into()],
             network: false,
             env: Vec::new(),
-            image: std::env::var("ULTRON_SANDBOX_TEST_IMAGE").ok(),
+            image: backends_support::docker_image().ok(),
         };
         let host_env = vec![("HOME".to_string(), tree.home.to_string_lossy().into_owned())];
         let policy = Policy::new(
@@ -396,4 +392,139 @@ ls -A "$HOME/.ssh""#,
             "{name}: {output}"
         );
     }
+}
+
+/// Under Docker the command's environment is the policy's allowlist only, not that plus the image's own ENV (the
+/// python images define GPG_KEY, PYTHON_VERSION, PYTHON_SHA256). Needs a local image that defines extra variables.
+#[test]
+fn sandbox_escape_docker_clears_the_images_environment() {
+    let image =
+        match backends_support::local_image(&["python:3.12-slim", "python:3.13-slim", "python:3.12", "python:3.13"]) {
+            Ok(image) => image,
+            Err(reason) => return backends_support::skip("docker", &reason),
+        };
+    let tree = tree();
+    let mut policy = policy(&tree, false);
+    policy.image = Some(image.clone());
+    if let Err(reason) = backends_support::machine_runs("docker", Some(&image)) {
+        return backends_support::skip("docker", &reason);
+    }
+    let output = run(&policy, Mechanism::Docker, "env | sed 's/=.*//' | sort");
+    let mut names: Vec<&str> = output
+        .lines()
+        .filter(|name| !["PWD", "SHLVL", "_"].contains(name))
+        .collect();
+    names.sort_unstable();
+    let mut want: Vec<&str> = policy.env.iter().map(|(name, _)| name.as_str()).collect();
+    want.sort_unstable();
+    assert_eq!(names, want, "{image}: {output}");
+}
+
+/// The real layout, with `which` answered from one directory: a machine whose PATH has no `setpriv`.
+struct PathLayout(PathBuf);
+impl sandbox::launcher::Layout for PathLayout {
+    fn entry(&self, path: &std::path::Path) -> sandbox::launcher::Entry {
+        sandbox::launcher::RealLayout.entry(path)
+    }
+    fn which(&self, name: &str) -> bool {
+        self.0.join(name).exists()
+    }
+}
+
+/// Wait until `tick` (rewritten every 50 ms while its loop lives) holds still for 400 ms (hang guard 120 s).
+fn wait_until_still(what: &str, tick: &std::path::Path) {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let before = std::fs::read_to_string(tick).unwrap_or_default();
+        std::thread::sleep(Duration::from_millis(400));
+        if before == std::fs::read_to_string(tick).unwrap_or_default() {
+            return;
+        }
+        assert!(Instant::now() < deadline, "{what}: the command outlived its stop");
+    }
+}
+
+/// Docker on a machine without `setpriv`: the client's stdin holder polls the client instead of dying with it. With
+/// a PATH holding only bash, docker and sleep, the command runs and keeps its exit status, a killed client's
+/// container stops, and the holder ends after its client.
+#[test]
+fn sandbox_escape_docker_without_setpriv_ties_the_container_to_its_client() {
+    let image = match backends_support::docker_image() {
+        Ok(image) => image,
+        Err(reason) => return backends_support::skip("docker", &reason),
+    };
+    if let Err(reason) = backends_support::machine_runs("docker", Some(&image)) {
+        return backends_support::skip("docker", &reason);
+    }
+    let tree = tree();
+    let bin = tree.outside.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    for tool in ["bash", "docker", "sleep"] {
+        let found = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+            .map(|dir| dir.join(tool))
+            .find(|path| path.is_file())
+            .unwrap_or_else(|| panic!("{tool} on PATH"));
+        std::os::unix::fs::symlink(found, bin.join(tool)).unwrap();
+    }
+    let layout = PathLayout(bin.clone());
+    let mut policy = policy(&tree, false);
+    policy.image = Some(image);
+    let run = |script: &str| {
+        let argv: Vec<String> = vec!["bash".into(), "-c".into(), script.into()];
+        let wrapped = policy.wrap(Mechanism::Docker, &layout, &argv, &policy.cwd);
+        assert!(!wrapped.iter().any(|part| part == "setpriv"), "{wrapped:?}");
+        let mut command = Command::new(&wrapped[0]);
+        command
+            .args(&wrapped[1..])
+            .env_clear()
+            .env("PATH", &bin)
+            .current_dir(&policy.cwd)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        command.spawn().unwrap()
+    };
+    // Runs to its end with its status; afterwards nothing of its process group is left: the stdin holder
+    // (`while kill -0 $$ ...`) saw its client gone and ended.
+    let mut client = run("sleep 1; echo done > done.txt; exit 6");
+    let group = client.id();
+    assert_eq!(client.wait().unwrap().code(), Some(6));
+    assert_eq!(
+        std::fs::read_to_string(tree.project.join("done.txt")).unwrap(),
+        "done\n"
+    );
+    let in_group = || {
+        std::fs::read_dir("/proc")
+            .unwrap()
+            .filter_map(|entry| entry.ok()?.file_name().to_str()?.parse::<u32>().ok())
+            .filter(|pid| {
+                // /proc/<pid>/stat: `pid (comm) state ppid pgrp ...`, skipping zombies.
+                let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+                let fields: Vec<&str> = stat
+                    .rsplit_once(')')
+                    .map_or("", |(_, rest)| rest)
+                    .split_whitespace()
+                    .collect();
+                fields.first() != Some(&"Z") && fields.get(2) == Some(&group.to_string().as_str())
+            })
+            .count()
+    };
+    let deadline = Instant::now() + Duration::from_secs(120);
+    while in_group() > 0 {
+        assert!(Instant::now() < deadline, "the stdin holder outlived its client");
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    // A killed client's container stops.
+    let mut client = run("while :; do date +%s%N > tick; sleep 0.05; done");
+    let tick = tree.project.join("tick");
+    let deadline = Instant::now() + Duration::from_secs(120);
+    while !tick.exists() {
+        assert!(Instant::now() < deadline, "the loop never ran");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let pid = rustix::process::Pid::from_raw(client.id() as i32).unwrap();
+    rustix::process::kill_process_group(pid, rustix::process::Signal::KILL).unwrap();
+    client.wait().unwrap();
+    wait_until_still("docker without setpriv", &tick);
 }

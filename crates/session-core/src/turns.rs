@@ -78,10 +78,34 @@ pub enum Request {
     /// A generation is about to request the model; `users` are the user messages placed since the previous one.
     Generation {
         users: Vec<Message>,
-        answer: Answer<Result<GenerationStart, String>>,
+        answer: Answer<Result<GenerationStart, StartError>>,
     },
     /// An agent-loop event of the running turn.
     Event(Box<AgentEvent>),
+    /// A response overflowed the context window (`crate::auto_compaction::overflowed`): the actor compacts and asks
+    /// for the request again, or settles it as the answer to commit.
+    Overflow {
+        message: Box<AssistantMessage>,
+        answer: Answer<Settled>,
+    },
+}
+
+/// Why the actor could not start a generation.
+pub enum StartError {
+    /// The request could not be built: the generation answers with this error.
+    Request(String),
+    /// The checkpoint before the request failed (an automatic compaction): the turn ends with this error.
+    Checkpoint(String),
+}
+
+/// What the actor makes of an overflowed response.
+pub enum Settled {
+    /// The runtime commits this answer: the error the overflow is committed as.
+    Answer(Box<AssistantMessage>),
+    /// The context was compacted: request again.
+    Retry,
+    /// The compaction failed after the overflowed answer was committed: the turn ends with this error.
+    Failed(String),
 }
 
 /// The actor's side of the bridge.
@@ -267,13 +291,18 @@ fn maybe_crash(point: &Option<(String, std::path::PathBuf)>, kind: &str) {
     }
 }
 
-/// The observer of the session's durable commits: root-conversation answers and cell results reach the actor.
-pub fn observer(bridge: Arc<Bridge>) -> Observer {
+/// Sees each entry of another conversation once it is durable (a subagent lane's context entries landing).
+pub type Committed = Arc<dyn Fn(&durable::EntryRecord) + Send + Sync>;
+
+/// The observer of the session's durable commits: root-conversation answers and cell results reach the actor;
+/// every other conversation's entries go to `committed`.
+pub fn observer(bridge: Arc<Bridge>, committed: Committed) -> Observer {
     let crash = crash_point();
     Arc::new(move |writes: &[StorageWrite]| {
         for write in writes {
             let StorageWrite::Entry { value } = write else { continue };
             if value.conversation_id != ROOT_CONVERSATION_ID {
+                committed(value);
                 continue;
             }
             let Some(message) = value.model.as_ref().and_then(|model| model.first()) else {
@@ -356,7 +385,19 @@ pub struct TurnModels {
     /// The root conversation's provider session ID: requests that carry it are the root's turns; every other
     /// conversation is a subagent's.
     pub root_session: Arc<std::sync::OnceLock<String>>,
+    /// Charges a response of another conversation (a subagent's, a typed agent's, another root conversation's) to
+    /// the usage ledger; the root's own turns are charged by the actor.
+    pub charge: Option<ChargeTurn>,
+    /// Changes a child conversation's request before it is sent (`transform_context`: what `ctx` kept across a
+    /// compaction).
+    pub transform_child: Option<TransformChild>,
 }
+
+/// Changes the messages of a child conversation's request.
+pub type TransformChild = Arc<dyn Fn(durable::ConversationId, &mut Vec<Message>) + Send + Sync>;
+
+/// Charges one response of a conversation to the usage ledger.
+pub type ChargeTurn = Arc<dyn Fn(durable::ConversationId, &AssistantMessage) + Send + Sync>;
 
 impl TurnModels {
     /// A subagent's request: its conversation's context as the runtime built it.
@@ -374,9 +415,22 @@ impl TurnModels {
         options.base.signal = Some(bridged.abort.clone());
         options.reasoning = request.reasoning.clone();
         let mut sink = |event: &AssistantMessageEvent| on_event(event);
+        let transformed;
+        let context = match (&self.transform_child, request.conversation_id) {
+            (Some(transform), Some(conversation)) => {
+                let mut messages = context.messages.clone();
+                transform(conversation, &mut messages);
+                transformed = ai::TranscriptContext { messages };
+                &transformed
+            }
+            _ => context,
+        };
         let message = runtime()?.block_on(self.provider.stream(model, context, &options, &mut sink));
         drop(bridged);
         signal.check()?;
+        if let (Some(charge), Some(conversation)) = (&self.charge, request.conversation_id) {
+            charge(conversation, &message);
+        }
         Ok(message)
     }
 }
@@ -410,6 +464,37 @@ impl Models for TurnModels {
         if self.root_session.get().map(String::as_str) != request.session_id.as_deref() {
             return self.stream_child(model, context, request, signal, on_event);
         }
+        loop {
+            let message = self.stream_root(model, context, request, signal, on_event)?;
+            // An overflow compacts the context and asks again (once per overflow; the actor decides).
+            if !crate::auto_compaction::overflowed(&message, model.context_window, model.max_tokens) {
+                return Ok(message);
+            }
+            let answer = Answer::default();
+            (self.bridge.to_actor)(Request::Overflow {
+                message: Box::new(message),
+                answer: answer.clone(),
+            });
+            match answer.wait(signal) {
+                Some(Settled::Retry) => continue,
+                Some(Settled::Answer(message)) => return Ok(*message),
+                Some(Settled::Failed(error)) => return Err(HarnessError::Error(error)),
+                None => return Err(signal.reason().unwrap_or_else(|| HarnessError::msg("cancelled"))),
+            }
+        }
+    }
+}
+
+impl TurnModels {
+    /// One root request: the actor builds it from the transcript; stream events reach the actor as they arrive.
+    fn stream_root(
+        &self,
+        model: &Model,
+        context: &ai::TranscriptContext,
+        request: &StreamRequest,
+        signal: &Cancel,
+        on_event: &mut (dyn FnMut(&AssistantMessageEvent) + Send),
+    ) -> harness::scheduler::Result<AssistantMessage> {
         let answer = Answer::default();
         (self.bridge.to_actor)(Request::Generation {
             users: trailing_users(&context.messages),
@@ -417,7 +502,8 @@ impl Models for TurnModels {
         });
         let start = match answer.wait(signal) {
             Some(Ok(start)) => start,
-            Some(Err(error)) => return Ok(crate::lane::error_message(model, error)),
+            Some(Err(StartError::Request(error))) => return Ok(crate::lane::error_message(model, error)),
+            Some(Err(StartError::Checkpoint(error))) => return Err(HarnessError::Error(error)),
             None => return Err(signal.reason().unwrap_or_else(|| HarnessError::msg("cancelled"))),
         };
         let bridged = Bridged::new(signal);
@@ -460,7 +546,9 @@ impl Models for TurnModels {
         };
         let message = runtime()?.block_on(self.provider.stream(model, &llm, &options, &mut sink));
         drop(bridged);
-        if !started {
+        // A request that failed before its stream started has no `message_start` (the harness reports only its
+        // committed answer); an aborted one is announced, so the actor can hide it.
+        if !started && message.stop_reason != StopReason::Error {
             self.bridge.send(AgentEvent::MessageStart {
                 message: Message::Assistant(message.clone()),
             });
@@ -476,6 +564,21 @@ impl Models for TurnModels {
             return Err(signal.reason().unwrap_or_else(|| HarnessError::msg("cancelled")));
         }
         Ok(message)
+    }
+}
+
+/// The host request runtime.py sends with what a running cell printed (`ULTRON_RLM_STREAM_OUTPUT`); nothing waits
+/// for its reply.
+pub const CELL_OUTPUT: &str = "cell.output";
+
+/// Append `text` (secrets masked, as the cell's result will be) to the running cell's durable partial output.
+pub fn publish_output(progress: &Mutex<Option<CellProgress>>, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+    let (masked, _) = host::secrets::OutputMasker::default().mask_counted(text, None);
+    if let Some(progress) = lock(progress).as_ref() {
+        progress.output(&masked);
     }
 }
 
@@ -559,7 +662,16 @@ impl CellExecutor for TurnCells {
         }
         let bridged = Bridged::new(signal);
         *lock(&self.progress) = Some(progress.clone());
+        // The root cell's start and end, on the cell's own thread: a task that ends while the cell runs is the
+        // cell's (collapse on return), whenever the actor gets to the cell's events.
+        let context = self.stack.context.get().cloned();
+        if let Some(context) = &context {
+            context.tool_start(crate::lane::MAIN, &call.name, &call.call_id);
+        }
         let executed = run_tool(self.tool.as_ref(), call, &bridged.abort);
+        if let Some(context) = &context {
+            context.tool_end(crate::lane::MAIN, &call.call_id);
+        }
         *lock(&self.progress) = None;
         drop(bridged);
         let (result, is_error) = executed?;

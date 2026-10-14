@@ -15,6 +15,11 @@ use session_file::current_system_message;
 use session_file::js::{nullish, truthy};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use crate::rpc::CancelToken;
+
+mod cancellable;
+pub use cancellable::Cancelled;
+
 /// One loaded extension as the router sees it.
 pub trait Endpoint: Send + Sync {
     /// The path errors are reported under (`ExtensionError.extensionPath`).
@@ -24,6 +29,13 @@ pub trait Endpoint: Send + Sync {
     /// Delivers one event and waits for the handler's result: `Ok(None)` is `undefined`/`null`, `Err` is the
     /// handler's error message (a thrown error, a timeout, or a dead process).
     fn dispatch(&self, event: &Value) -> Result<Option<Value>, String>;
+    /// As [`Endpoint::dispatch`] for an event that carries TypeScript's `signal`: when `cancel` fires the handler is
+    /// told (`notifications/cancelled`) and the dispatch ends at once (`Err`, `cancel` cancelled). An endpoint
+    /// without a way to stop its handler just dispatches.
+    fn dispatch_cancellable(&self, event: &Value, cancel: &CancelToken) -> Result<Option<Value>, String> {
+        let _ = cancel;
+        self.dispatch(event)
+    }
     /// Slash commands the extension registered, in registration order: (name, description).
     fn commands(&self) -> Vec<(String, Option<String>)> {
         Vec::new()
@@ -188,25 +200,7 @@ impl Router {
     /// `emit`: observe-only events, plus the cancellable `session_before_*` events where the first result with a
     /// truthy `cancel` stops the dispatch and the last truthy result is returned.
     pub fn emit(&self, event: &Value) -> Option<Value> {
-        let kind = event_type(event);
-        let cancellable = SESSION_BEFORE_EVENTS.contains(&kind);
-        let mut result = None;
-        for endpoint in self.subscribers(kind) {
-            match endpoint.dispatch(event) {
-                Ok(value) => {
-                    if cancellable && truthy(value.as_ref()) {
-                        let value = value.unwrap_or_default();
-                        let cancel = truthy(value.get("cancel"));
-                        result = Some(value);
-                        if cancel {
-                            return result;
-                        }
-                    }
-                }
-                Err(error) => self.report(&*endpoint, kind, error),
-            }
-        }
-        result
+        self.dispatch_all(event, None).ok().flatten()
     }
 
     /// `emitProjectTrustEvent`: the first `yes`/`no` wins, `undecided` falls through. Errors are returned, not

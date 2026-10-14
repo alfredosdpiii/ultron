@@ -213,8 +213,11 @@ Over the wire there is no object identity, so "unchanged" means "deep-equal".
 | `before_file_write` `{ path, content, cwd, lane }` | `{ block?, reason?, message? }` | First block wins (`reason` defaults to "blocked by an extension"); messages join with `\n`. Errors propagate. |
 | `after_cell_changes` `{ files, checked, deleted, complete, cwd, lane }` | `{ message? }` | All run; messages join with `\n`. |
 
-`AbortSignal` members (`signal` on `session_before_compact`/`_tree`) are not sent; an event that outlives
-`eventTimeoutMs` is cancelled with `notifications/cancelled`.
+`AbortSignal` members (`signal` on `session_before_compact`/`_tree`) are not sent: when the operation is aborted
+(the user's `abort` during a compaction) the host sends `notifications/cancelled` (`reason: "Aborted"`) for the
+event request, stops waiting for it and calls no further handler; a late response is ignored and the compaction
+ends aborted, as AgentSession ends it whatever a hook returns after the abort. An event that outlives
+`eventTimeoutMs` is cancelled with `notifications/cancelled` too.
 
 ## 6. Mapping from `ExtensionAPI` (`core/extensions/types.ts`)
 

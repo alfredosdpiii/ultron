@@ -193,6 +193,7 @@ pub fn model(id: &str) -> Option<Model> {
         sampling_params: None,
         headers: None,
         compat: None,
+        request: None,
         extra: Map::new(),
     })
 }

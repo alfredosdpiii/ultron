@@ -116,7 +116,7 @@ fn run_step(m: &mut SettingsManager, step: &Value, home: &Path, cwd: &Path) -> V
 fn config_settings_scenarios_match_typescript() {
     let fx = fixture();
     let root = root();
-    let home = root.path.join("home");
+    let home = root.path.join("fakehome");
     for (index, scenario) in fx["settings"].as_array().expect("settings").iter().enumerate() {
         let base = root.path.join(format!("settings-{index}"));
         let (agent, cwd) = (base.join("agent"), base.join("project"));
@@ -300,7 +300,7 @@ fn config_paths_match_typescript() {
     let fx = fixture();
     assert_eq!(fx["envAgentDir"], ENV_AGENT_DIR);
     let root = root();
-    let home = root.path.join("home");
+    let home = root.path.join("fakehome");
     for case in fx["paths"].as_array().expect("paths") {
         let env = case["env"].as_str().map(str::to_string);
         let dir = agent_dir(|name| if name == ENV_AGENT_DIR { env.clone() } else { None }, &home);

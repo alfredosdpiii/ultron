@@ -265,6 +265,7 @@ impl Faux {
             sampling_params: None,
             headers: None,
             compat: None,
+            request: None,
             extra: Map::new(),
         };
         Faux {

@@ -6,6 +6,7 @@
 //! The app only holds view state. Everything that touches the session goes through [`LaneClient`] and comes back as
 //! [`LaneEvent`]s, so handling a key or painting a frame never waits on the network or the disk.
 
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -45,6 +46,11 @@ use crate::settings_selector::{SettingsEvent, SettingsInput, SettingsSelector, f
 use crate::transcript_picker::{PickerEvent, PickerMode, PickerOptions, TranscriptPicker};
 use crate::tree_selector::{FilterMode, TreeAction, TreeSelector};
 
+/// The error a navigation answers when its branch summary was aborted (session-core `BRANCH_SUMMARY_ABORTED`).
+const BRANCH_SUMMARY_ABORTED: &str = "Branch summarization cancelled";
+/// The error a navigation answers when an extension cancelled it (session-core `NAVIGATION_CANCELLED`).
+const NAVIGATION_CANCELLED: &str = "Navigation cancelled";
+
 /// Pi exits on a second Ctrl-C within this window.
 const CTRL_C_EXIT_WINDOW: Duration = Duration::from_millis(500);
 
@@ -78,6 +84,17 @@ enum Purpose {
     Summarize(String),
     /// "Select authentication method": the options it chooses among (`None`: every provider).
     LoginMethod(Vec<crate::selectors::AuthProvider>, bool),
+    /// An extension's `select` (or, `confirm`, its Yes/No) dialog: the request id.
+    ExtensionSelect {
+        id: String,
+        confirm: bool,
+    },
+    /// "Switch to it?" after `/import`: the imported session's file, what was imported, and the Pi file it came from.
+    SwitchImported {
+        session_file: Option<String>,
+        imported: String,
+        source: String,
+    },
 }
 
 /// `THINKING_DESCRIPTIONS` of slash-commands-provider.ts.
@@ -108,6 +125,8 @@ enum Panel {
     HistorySearch(Box<PromptHistorySearch>),
     Tree(Box<TreeSelector>),
     Sessions(Box<SessionSelector>),
+    /// Pi's picker of its own sessions (`/import` without a path); a selection is imported, never changed.
+    PiSessions(Box<SessionSelector>),
     Settings(Box<SettingsSelector>),
     /// The full-screen RLM graph (`RlmGraphFocus`) in the editor's place.
     RlmFocus(Box<crate::rlm::RlmGraphFocus>),
@@ -118,10 +137,25 @@ enum Panel {
         Vec<crate::selectors::AuthProvider>,
         Option<String>,
     ),
+    /// `/scoped-models`: the Ctrl+P scope selector. `changed`: the user changed the selection since it opened;
+    /// `session_scope`: it opened on a session scope (not `enabledModels`).
+    ScopedModels {
+        selector: Box<crate::scoped_models::ScopedModelsSelector>,
+        changed: bool,
+        session_scope: bool,
+    },
+    /// The login dialog of a subscription (OAuth) login running in the client.
+    OAuthLogin(Box<crate::login_dialog::LoginDialog>),
     /// The login dialog's prompt for an API key.
     LoginPrompt {
         provider: crate::selectors::AuthProvider,
         method: String,
+        input: Box<tui::input::Input>,
+    },
+    /// An extension's `input` or `editor` dialog (`#showTextInput`): the request id and its title.
+    ExtensionInput {
+        id: String,
+        title: String,
         input: Box<tui::input::Input>,
     },
     /// A one-line text prompt (`#showTextEditor`): the custom branch summary instructions for `entry`.
@@ -131,8 +165,10 @@ enum Panel {
     },
 }
 
-/// `nextModel` (client-tui-actions.ts): the next model in the `enabledModels` scope when it matches any, else among
-/// all available models.
+/// `nextModel` (client-tui-actions.ts): the next model in the `enabledModels` scope when it selects any
+/// (`resolveModelScopeFromModels`: globs, fuzzy ids and names, `:<thinking>` suffixes accepted and not applied,
+/// Claude Code CLI models only by their full reference), kept in the available order; else among all available
+/// models.
 pub fn next_model<'a>(
     available: &'a [ModelInfo],
     current: &ModelInfo,
@@ -142,13 +178,10 @@ pub fn next_model<'a>(
     let mut candidates: Vec<&ModelInfo> = available.iter().collect();
     let mut scoped = false;
     if !enabled.is_empty() {
-        let in_scope: Vec<&ModelInfo> = available
-            .iter()
-            .filter(|m| enabled.iter().any(|p| model_matches(p, m)))
-            .collect();
+        let (in_scope, _) = model_scope::resolve_model_scope(enabled, available);
         if !in_scope.is_empty() {
             scoped = true;
-            candidates = in_scope;
+            candidates.retain(|m| in_scope.iter().any(|s| model_scope::same(s.model, *m)));
         }
     }
     if candidates.len() <= 1 {
@@ -164,29 +197,6 @@ pub fn next_model<'a>(
         .map_or(-1, |i| i as isize);
     let n = candidates.len() as isize;
     Ok(candidates[((index + direction + n) % n) as usize])
-}
-
-/// An `enabledModels` pattern against a model: `provider/id` or `id`, with `*` globs, case-insensitive.
-fn model_matches(pattern: &str, model: &ModelInfo) -> bool {
-    let pattern = pattern.to_lowercase();
-    let pattern = pattern.split(':').next().unwrap_or("");
-    let full = format!("{}/{}", model.provider, model.id).to_lowercase();
-    let id = model.id.to_lowercase();
-    glob(pattern, &full) || glob(pattern, &id)
-}
-
-fn glob(pattern: &str, text: &str) -> bool {
-    match pattern.split_once('*') {
-        None => pattern == text,
-        Some((head, rest)) => {
-            let Some(tail) = text.strip_prefix(head) else {
-                return false;
-            };
-            (0..=tail.len())
-                .filter(|i| tail.is_char_boundary(*i))
-                .any(|i| glob(rest, &tail[i..]))
-        }
-    }
 }
 
 struct Selection {
@@ -212,6 +222,8 @@ pub struct App {
     status: String,
     /// The running operation's id.
     operation: Option<String>,
+    /// A compaction is running (its indicator says Esc cancels it).
+    compacting: bool,
     selection: Option<Selection>,
     session_id: Option<String>,
     session_file: Option<String>,
@@ -249,6 +261,9 @@ pub struct App {
     panel: Option<Panel>,
     /// `enabledModels` (Ctrl+P's scope).
     enabled_models: Vec<String>,
+    /// The session-only Ctrl+P scope from `/scoped-models` (`provider/id` references); `None` follows
+    /// `enabled_models`, an empty list is every model.
+    scoped_ids: Option<Vec<String>>,
     overlay: Option<Overlay>,
     /// Esc-Esc on an idle, empty editor (the rewind selector).
     escapes: tui::qol_keys::DoubleTap,
@@ -265,8 +280,8 @@ pub struct App {
     tree_filter: FilterMode,
     /// `branchSummary.skipPrompt`: navigate without asking about a summary.
     skip_summary_prompt: bool,
-    /// The text a navigation puts back into an empty editor (a selected user message).
-    navigation_text: Option<String>,
+    /// The entry a navigation with a branch summary goes to, while the summary runs: Esc cancels it.
+    summarizing_branch: Option<String>,
     /// Usage of the path's branch summaries (`{input, output, cacheRead, cacheWrite, cost}`), in the footer's totals.
     path_usage: Value,
     /// `compaction.enabled` (the footer's `(auto)`).
@@ -281,9 +296,19 @@ pub struct App {
     cols: usize,
     /// The RLM panel shows (`app.rlm.toggle`).
     rlm_visible: bool,
+    /// Where `fd` is, for the editor's path completion (kept to rebuild the slash commands).
+    fd_path: Option<std::path::PathBuf>,
+    /// The session's extension commands that are slash commands of their own.
+    extension_commands: Vec<String>,
+    /// Their argument completions, as they arrive.
+    completions: crate::extension_commands::Completions,
     /// The last subagent listing (`rlm.list_subagents`).
     rlm_agents: Value,
     rlm_clock: crate::rlm::RlmClock,
+    /// Extension dialogs not shown yet: they share the selector, so they are answered in order.
+    extension_dialogs: std::collections::VecDeque<Value>,
+    /// An extension dialog is open.
+    extension_dialog_open: bool,
 }
 
 fn select_theme(t: &Rc<Theme>, scroll: &'static str, no_match: &'static str) -> SelectListTheme {
@@ -373,7 +398,66 @@ pub fn context_usage(transcript: &[Value], window: u64) -> Option<(u64, f64)> {
     Some((tokens, tokens as f64 / window as f64 * 100.0))
 }
 
+/// The editor's slash commands: the client TUI's, with each extension command after `/extension` (Pi exposes each
+/// extension command as its own slash command; built-ins keep their names) and `/model`'s completions.
+fn slash_commands(
+    models: &[ModelInfo],
+    extension: &[(String, Option<String>)],
+    completions: &crate::extension_commands::Completions,
+) -> Vec<SlashCommand> {
+    let direct: Vec<String> = crate::extension_commands::direct_extension_commands(extension)
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    let mut commands: Vec<SlashCommand> = crate::extension_commands::ordered(extension)
+        .into_iter()
+        .map(|(name, description, hint)| SlashCommand {
+            argument_completions: direct.contains(&name).then(|| completions.for_command(&name)),
+            name,
+            description: Some(description),
+            argument_hint: hint,
+        })
+        .collect();
+    let models = models.to_vec();
+    if let Some(model) = commands.iter_mut().find(|c| c.name == "model") {
+        model.argument_completions = Some(Box::new(move |prefix: &str| {
+            let normalized = prefix.to_lowercase();
+            Some(
+                models
+                    .iter()
+                    .filter(|m| {
+                        format!("{}/{} {}", m.provider, m.id, m.name)
+                            .to_lowercase()
+                            .contains(&normalized)
+                    })
+                    .map(|m| AutocompleteItem {
+                        value: format!("{}/{}", m.provider, m.id),
+                        label: m.id.clone(),
+                        description: Some(m.provider.clone()),
+                    })
+                    .collect(),
+            )
+        }));
+    }
+    commands
+}
+
 impl App {
+    /// The session's extension commands arrived: each becomes a slash command of its own.
+    fn set_extension_commands(&mut self, commands: Vec<(String, Option<String>)>) {
+        self.extension_commands = crate::extension_commands::direct_extension_commands(&commands)
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        self.editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
+            slash_commands(&self.models, &commands, &self.completions),
+            &self.cwd,
+            self.fd_path.clone(),
+            &self.models,
+            &self.qol,
+        ));
+    }
+
     pub fn new(options: AppOptions, client: Box<dyn LaneClient>) -> Self {
         let theme = options.theme;
         let mut editor = Editor::new(
@@ -383,42 +467,12 @@ impl App {
             1,
         );
         editor.set_select_list_theme(select_theme(&theme, "muted", "muted"));
-        let commands = COMMANDS
-            .iter()
-            .map(|c| SlashCommand {
-                name: c.name.to_string(),
-                description: Some(c.description.to_string()),
-                argument_hint: (!c.hint.is_empty()).then(|| c.hint.to_string()),
-                argument_completions: None,
-            })
-            .collect::<Vec<_>>();
-        let mut commands = commands;
         let qol = options.qol;
-        let models = options.models.clone();
-        if let Some(model) = commands.iter_mut().find(|c| c.name == "model") {
-            model.argument_completions = Some(Box::new(move |prefix: &str| {
-                let normalized = prefix.to_lowercase();
-                Some(
-                    models
-                        .iter()
-                        .filter(|m| {
-                            format!("{}/{} {}", m.provider, m.id, m.name)
-                                .to_lowercase()
-                                .contains(&normalized)
-                        })
-                        .map(|m| AutocompleteItem {
-                            value: format!("{}/{}", m.provider, m.id),
-                            label: m.id.clone(),
-                            description: Some(m.provider.clone()),
-                        })
-                        .collect(),
-                )
-            }));
-        }
+        let commands = slash_commands(&options.models, &[], &Default::default());
         editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
             commands,
             &options.cwd,
-            options.fd_path,
+            options.fd_path.clone(),
             &options.models,
             &qol,
         ));
@@ -461,6 +515,7 @@ impl App {
             thinking_level: options.thinking_level,
             status: "Starting Session…".into(),
             operation: None,
+            compacting: false,
             selection: None,
             session_id: None,
             session_file: None,
@@ -488,7 +543,10 @@ impl App {
             context_from: 0,
             compacted: false,
             panel: None,
+            extension_dialogs: std::collections::VecDeque::new(),
+            extension_dialog_open: false,
             enabled_models: Vec::new(),
+            scoped_ids: None,
             overlay: None,
             escapes: Default::default(),
             rewind_pending: false,
@@ -498,7 +556,7 @@ impl App {
             tree: None,
             tree_filter: FilterMode::Default,
             skip_summary_prompt: false,
-            navigation_text: None,
+            summarizing_branch: None,
             path_usage: Value::Null,
             auto_compact: true,
             external_editor: None,
@@ -506,6 +564,9 @@ impl App {
             input_gate: Arc::default(),
             cols: 80,
             rlm_visible: false,
+            fd_path: options.fd_path,
+            extension_commands: Vec::new(),
+            completions: Default::default(),
             rlm_agents: Value::Null,
             rlm_clock: crate::rlm::RlmClock::new(),
         }
@@ -858,9 +919,17 @@ impl App {
     pub fn fire_autocomplete(&mut self) -> bool {
         if self.editor.has_pending_autocomplete() {
             self.editor.fire_autocomplete_debounce();
+            self.ask_completions();
             return true;
         }
         false
+    }
+
+    /// Completions the editor asked for and nothing answered yet are fetched off the UI thread.
+    fn ask_completions(&mut self) {
+        for (name, prefix) in self.completions.take_wanted() {
+            self.client.extension_completions(&name, &prefix);
+        }
     }
 
     fn update_editor_border(&mut self) {
@@ -935,6 +1004,10 @@ impl App {
             LaneEvent::Streaming(message) => self.chat.set_streaming(&message),
             LaneEvent::Message(message) => {
                 self.chat.add_message(&message);
+                // A Claude turn that switched to API credits (or back) says so once, under its answer.
+                if let Some(notice) = crate::lane::route_notice(&message) {
+                    self.notice(&fg(&self.theme, "warning", &notice));
+                }
                 self.transcript.push(message);
             }
             LaneEvent::ToolStarted { id, name, args } => {
@@ -963,9 +1036,40 @@ impl App {
                 self.update_editor_border();
             }
             LaneEvent::Notice(text) => self.notice(&text),
+            LaneEvent::ExtensionCommands(commands) => self.set_extension_commands(commands),
+            LaneEvent::ExtensionCompletions { name, prefix, items } => {
+                self.completions.answer(&name, &prefix, items);
+                self.editor.refresh_autocomplete();
+                self.ask_completions();
+            }
+            LaneEvent::GoalReply(text) => self.notice(&fg(&self.theme, "dim", &text)),
             LaneEvent::BashDone(result) => self.bash_done(result),
-            LaneEvent::CompactionStarted => self.chat.set_compacting(true),
+            LaneEvent::CompactionStarted { reason } => {
+                self.compacting = true;
+                self.chat.set_compacting_for(&reason);
+            }
+            LaneEvent::CompactionEnded { status, error } => self.auto_compaction_ended(&status, error),
             LaneEvent::Compacted(result) => self.compacted(result),
+            // interactive-mode.ts: the error in the transcript and the retry countdown; the summary's own indicator
+            // again when the retry starts; the countdown cleared when the retries end.
+            LaneEvent::SummarizationRetryScheduled {
+                attempt,
+                max_attempts,
+                delay_ms,
+                error,
+            } => {
+                self.notice(&fg(&self.theme, "error", &format!("Error: {error}")));
+                self.chat.set_retry_indicator(attempt, max_attempts, delay_ms);
+            }
+            LaneEvent::SummarizationRetryStarted { branch_summary, reason } => {
+                self.chat.clear_retry_indicator();
+                if branch_summary {
+                    self.chat.set_branch_summary_indicator();
+                } else {
+                    self.chat.set_compacting_for(&reason);
+                }
+            }
+            LaneEvent::SummarizationRetryFinished => self.chat.clear_retry_indicator(),
             LaneEvent::Tree { tree, leaf } => self.show_tree(tree, leaf, None),
             LaneEvent::RlmStatus(listed) => self.rlm_agents = listed,
             LaneEvent::Settings {
@@ -990,6 +1094,7 @@ impl App {
                 self.editor.focused = false;
             }
             LaneEvent::LoginProviders { providers, query } => self.login(providers, &query),
+            LaneEvent::Login(step) => self.login_step(step),
             LaneEvent::Changelog(tokens) => {
                 let notice = crate::commands::LexedNotice {
                     theme: Rc::clone(&self.theme),
@@ -1037,6 +1142,7 @@ impl App {
                 }
                 self.models = models;
             }
+            LaneEvent::CatalogRefreshed(failed) => self.catalog_refreshed(failed),
             LaneEvent::SessionDeleted(result) => {
                 if let Some(Panel::Sessions(selector)) = self.panel.as_mut() {
                     match result {
@@ -1047,9 +1153,18 @@ impl App {
                 }
             }
             LaneEvent::Navigated(result) => {
-                let text = self.navigation_text.take();
+                let summarized = self.summarizing_branch.take();
                 match result {
-                    Ok(()) => {
+                    // An extension's `session_before_tree` cancelled it (interactive-mode.ts).
+                    Err(error) if error == NAVIGATION_CANCELLED => self.show_status(NAVIGATION_CANCELLED),
+                    // The summary was cancelled: the tree selector again, on the same entry (interactive-mode.ts).
+                    Err(error) if error == BRANCH_SUMMARY_ABORTED => {
+                        self.show_status(BRANCH_SUMMARY_ABORTED);
+                        if let (Some(entry), Some((tree, leaf))) = (summarized, self.tree.clone()) {
+                            self.show_tree(tree, leaf, Some(&entry));
+                        }
+                    }
+                    Ok(text) => {
                         if let Some(text) = text.filter(|t| !t.is_empty())
                             && self.editor.text().trim().is_empty()
                         {
@@ -1112,10 +1227,119 @@ impl App {
                 self.update_editor_border();
                 self.show_status(&status);
             }
+            LaneEvent::PiImported {
+                imported,
+                source,
+                session_file,
+                current,
+            } => {
+                if current {
+                    self.show_status(&format!("{imported} (the current session)"));
+                    return;
+                }
+                let items = ["Switch to the imported session", "Stay here"]
+                    .into_iter()
+                    .map(|choice| SelectItem {
+                        value: choice.into(),
+                        label: choice.into(),
+                        description: None,
+                    })
+                    .collect();
+                let title = format!("{imported}. Switch to it?");
+                self.open_selection(
+                    &title,
+                    items,
+                    None,
+                    Purpose::SwitchImported {
+                        session_file,
+                        imported,
+                        source,
+                    },
+                );
+            }
             LaneEvent::Sessions(sessions) => self.show_resume(sessions),
+            LaneEvent::PiSessions(sessions) => self.show_pi_sessions(sessions),
             LaneEvent::Status(text) => self.show_status(&text),
             LaneEvent::Error(text) => self.show_status(&format!("Error: {text}")),
+            LaneEvent::ExtensionUi(request) => self.extension_ui(request),
         }
+    }
+
+    /// `#serveExtensionUI`: dialogs open the selector or a text input (one at a time, in order), `notify` shows in
+    /// the status line, `set_editor_text` fills the editor.
+    fn extension_ui(&mut self, request: Value) {
+        match request["method"].as_str().unwrap_or_default() {
+            "select" | "confirm" | "input" | "editor" => {
+                self.extension_dialogs.push_back(request);
+                self.next_extension_dialog();
+            }
+            "notify" => self.show_status(request["message"].as_str().unwrap_or_default()),
+            "set_editor_text" => {
+                self.editor.set_text(request["text"].as_str().unwrap_or_default());
+                self.update_editor_border();
+            }
+            _ => {}
+        }
+    }
+
+    fn next_extension_dialog(&mut self) {
+        if self.extension_dialog_open {
+            return;
+        }
+        let Some(request) = self.extension_dialogs.pop_front() else {
+            return;
+        };
+        self.extension_dialog_open = true;
+        let id = request["id"].as_str().unwrap_or_default().to_string();
+        let title = request["title"].as_str().unwrap_or_default();
+        match request["method"].as_str().unwrap_or_default() {
+            "select" => {
+                let items = request["options"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(|o| SelectItem {
+                        value: o.into(),
+                        label: o.into(),
+                        description: None,
+                    })
+                    .collect();
+                self.open_selection(title, items, None, Purpose::ExtensionSelect { id, confirm: false });
+            }
+            "confirm" => {
+                let title = match request["message"].as_str().filter(|m| !m.is_empty()) {
+                    Some(message) => format!("{title}: {message}"),
+                    None => title.to_string(),
+                };
+                let item = |value: &str, label: &str| SelectItem {
+                    value: value.into(),
+                    label: label.into(),
+                    description: None,
+                };
+                let items = vec![item("yes", "Yes"), item("no", "No")];
+                self.open_selection(&title, items, None, Purpose::ExtensionSelect { id, confirm: true });
+            }
+            _ => {
+                let mut input = tui::input::Input::new(self.keys.clone());
+                if let Some(prefill) = request["prefill"].as_str() {
+                    input.set_value(prefill);
+                }
+                self.editor.focused = false;
+                self.panel = Some(Panel::ExtensionInput {
+                    id,
+                    title: title.to_string(),
+                    input: Box::new(input),
+                });
+            }
+        }
+    }
+
+    /// Answer the open extension dialog and show the next one.
+    fn answer_extension_dialog(&mut self, id: &str, answer: Value) {
+        self.client.extension_ui_respond(id, answer);
+        self.extension_dialog_open = false;
+        self.next_extension_dialog();
     }
 
     /// Turn bookkeeping of the additions: active time, the git refresh and the turn-end notification.
@@ -1165,6 +1389,11 @@ impl App {
     // ---- input ----
 
     pub fn handle_input(&mut self, data: &str) {
+        self.handle_key(data);
+        self.ask_completions();
+    }
+
+    fn handle_key(&mut self, data: &str) {
         if self.selection.is_some() {
             self.handle_select_input(data);
             return;
@@ -1344,6 +1573,18 @@ impl App {
             self.client.abort_bash();
             return;
         }
+        // A branch summary in progress: Esc cancels it (interactive-mode.ts `abortBranchSummary`).
+        if self.summarizing_branch.is_some() {
+            self.client.abort();
+            return;
+        }
+        // A manual compaction (no run): Esc cancels it (interactive-mode.ts `abortCompaction`). During a run the
+        // abort below cancels the run's compaction with the run.
+        if self.compacting && self.operation.is_none() {
+            self.status = "Cancelling compaction…".into();
+            self.client.abort();
+            return;
+        }
         if let Some(operation) = self.operation.clone() {
             self.restore_queued_to_editor();
             self.aborting = true;
@@ -1456,7 +1697,7 @@ impl App {
 
     fn execute_slash_command(&mut self, name: &str, args: &str) {
         self.editor.set_text("");
-        if !COMMANDS.iter().any(|c| c.name == name) {
+        if !COMMANDS.iter().any(|c| c.name == name) && !self.extension_commands.iter().any(|c| c == name) {
             self.status = format!("Unknown slash command: /{name}");
             return;
         }
@@ -1500,9 +1741,23 @@ impl App {
                 }
                 self.client.new_session();
             }
+            "scoped-models" => self.open_scoped_models(),
             "model" if self.qol.overlays && args.is_empty() => self.open_model_hub(),
             "model" => self.model_command(args),
             "resume" => self.client.list_sessions(),
+            "import" => match path_argument(args) {
+                Some(path) => {
+                    let path = if Path::new(&path).is_absolute() {
+                        path
+                    } else {
+                        Path::new(&self.cwd).join(path).display().to_string()
+                    };
+                    self.show_status(&format!("Importing {path}…"));
+                    self.client.import_pi(&path);
+                }
+                // Pi's picker of its own sessions for this project (client-tui-sessions.ts `showPiSessionPicker`).
+                None => self.client.list_pi_sessions(),
+            },
             "thinking" => self.thinking_command(args),
             "compact" => {
                 self.show_status("Compacting…");
@@ -1516,6 +1771,8 @@ impl App {
                 _ => self.toggle_rlm(),
             },
             "settings" => self.client.read_settings(),
+            // Extension commands run in the session's worker; their dialogs and notices come back as extension UI.
+            "mcp" => self.client.extension_command("mcp", args.trim()),
             "review" => {
                 self.show_status("Reviewing changes…");
                 if self.operation.is_some() {
@@ -1537,8 +1794,30 @@ impl App {
             }
             "export" => self.client.export(path_argument(args).as_deref()),
             "usage" => self.client.usage_report(),
+            "goal" => self.client.goal(args),
             // With the overlays, `/agents` opens the agent hub (the inspection text is the worker's, not ported).
             "agents" if self.qol.overlays && args.is_empty() => self.client.agents(),
+            // The inspection commands: one read-only host request each, answered as indented lines.
+            name if crate::inspection::INSPECTORS.contains(&name) => {
+                match crate::inspection::inspection_request(name, args.trim()) {
+                    Some(Ok((request, payload))) => {
+                        let title = format!("/{name} {args}");
+                        self.client.inspect(title.trim(), &request, payload);
+                    }
+                    Some(Err(usage)) => self.show_status(&format!("Error: {usage}")),
+                    None => {}
+                }
+            }
+            // `legacyExtensionCommand` of slash-commands-provider.ts.
+            "extension" => {
+                let (name, rest) = args.split_once(' ').unwrap_or((args, ""));
+                if name.is_empty() {
+                    self.show_status("Error: Usage: /extension <name> [args]");
+                } else {
+                    self.client.extension_command(name, rest);
+                }
+            }
+            name if self.extension_commands.iter().any(|c| c == name) => self.client.extension_command(name, args),
             other => self.show_status(&format!("Error: /{other} is not available in the Rust build yet")),
         }
     }
@@ -1566,8 +1845,30 @@ impl App {
         }
     }
 
-    fn compacted(&mut self, result: Result<Value, String>) {
+    /// After a compaction the run it happened in (if any) is still working.
+    fn compaction_over(&mut self) {
+        self.compacting = false;
         self.chat.set_compacting(false);
+        if self.operation.is_some() {
+            self.chat.set_working(true);
+        }
+    }
+
+    /// An automatic compaction ended without a compaction entry (interactive-mode.ts `compaction_end`): a failure is
+    /// shown in the transcript, a cancellation in the status line; a declined one (trimmed instead) shows nothing.
+    fn auto_compaction_ended(&mut self, status: &str, error: Option<String>) {
+        self.compaction_over();
+        match status {
+            "aborted" => self.status = "Auto-compaction cancelled".into(),
+            "failed" => {
+                let message = error.unwrap_or_else(|| "Auto-compaction failed".into());
+                self.notice(&fg(&self.theme, "error", &message));
+            }
+            _ => {}
+        }
+    }
+
+    fn compacted(&mut self, result: Result<Value, String>) {
         match result {
             Ok(entry) => {
                 // The lane's transcript restarts at the compaction entry (`#syncTranscript` diverged).
@@ -1584,9 +1885,15 @@ impl App {
                 } else {
                     error
                 };
-                self.status = format!("Operation rejected: {error}");
+                self.status = if error == "Compaction cancelled" {
+                    error
+                } else {
+                    format!("Operation rejected: {error}")
+                };
             }
         }
+        // After the transcript restarted (clearing it drops the indicator).
+        self.compaction_over();
     }
 
     /// Redraw the transcript from the lane's entries (`#syncTranscript` of a fresh snapshot): compactions with their
@@ -1692,7 +1999,8 @@ impl App {
 
     /// Pi's Ctrl+P / Shift+Ctrl+P.
     fn cycle_model(&mut self, direction: isize) {
-        let next = match next_model(&self.models, &self.model, direction, &self.enabled_models) {
+        let scope = self.scoped_ids.clone().unwrap_or_else(|| self.enabled_models.clone());
+        let next = match next_model(&self.models, &self.model, direction, &scope) {
             Ok(model) => model.clone(),
             Err(error) => {
                 self.show_status(error);
@@ -1758,6 +2066,18 @@ impl App {
                 }
                 None => {}
             },
+            Some(Panel::PiSessions(selector)) => match selector.handle_input(data) {
+                Some(SessionAction::Selected(path)) => {
+                    self.panel = None;
+                    self.show_status(&format!("Importing {path}…"));
+                    self.client.import_pi(&path);
+                }
+                Some(SessionAction::Cancelled) => self.panel = None,
+                Some(SessionAction::Delete(_) | SessionAction::Rename(..)) => {
+                    selector.set_status(true, "Pi sessions are read-only here", Duration::from_secs(3));
+                }
+                None => {}
+            },
             Some(Panel::Login(selector, options, auth_type)) => match selector.handle_input(data) {
                 Some(Ok((id, kind))) => {
                     let option = options.iter().find(|o| o.id == id && o.auth_type == kind).cloned();
@@ -1774,6 +2094,24 @@ impl App {
                     }
                 }
                 None => {}
+            },
+            Some(Panel::ScopedModels { selector, changed, .. }) => match selector.handle_input(data) {
+                crate::scoped_models::ScopedAction::Changed(enabled) => {
+                    *changed = true;
+                    self.update_session_models(enabled);
+                }
+                crate::scoped_models::ScopedAction::Persist(enabled) => self.persist_scope(enabled),
+                crate::scoped_models::ScopedAction::Cancel => self.panel = None,
+                crate::scoped_models::ScopedAction::None => {}
+            },
+            Some(Panel::OAuthLogin(dialog)) => match dialog.handle_input(data) {
+                crate::login_dialog::DialogAction::Answer(answer) => self.client.login_reply(Some(answer)),
+                crate::login_dialog::DialogAction::Cancel => {
+                    // Esc stops the login and closes its dialog silently (`Login cancelled`).
+                    self.panel = None;
+                    self.client.login_reply(None);
+                }
+                crate::login_dialog::DialogAction::None => {}
             },
             Some(Panel::LoginPrompt { provider, input, .. }) => {
                 if self.keys.matches(data, "tui.select.cancel") {
@@ -1863,6 +2201,19 @@ impl App {
                 Some(TreeAction::Label(entry, label)) => self.client.set_label(&entry, label.as_deref()),
                 None => {}
             },
+            Some(Panel::ExtensionInput { id, input, .. }) => {
+                if self.keys.matches(data, "tui.select.confirm") {
+                    let (id, value) = (id.clone(), input.value().to_string());
+                    self.panel = None;
+                    self.answer_extension_dialog(&id, serde_json::json!({ "value": value }));
+                } else if self.keys.matches(data, "tui.select.cancel") {
+                    let id = id.clone();
+                    self.panel = None;
+                    self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true }));
+                } else {
+                    input.handle_input(data);
+                }
+            }
             Some(Panel::Instructions { entry, input }) => {
                 if self.keys.matches(data, "tui.select.confirm") {
                     let text = input.value().to_string();
@@ -1993,9 +2344,140 @@ impl App {
         self.editor.focused = false;
     }
 
-    /// `startProviderLogin`: the login dialog's API-key prompt (subscription flows are not ported).
+    /// The `enabledModels` patterns as the selector shows them (`configuredEnabledIds`): the models they select, then
+    /// patterns that select none (shown as unavailable); `None` without patterns.
+    fn configured_enabled_ids(&self) -> Option<Vec<String>> {
+        if self.enabled_models.is_empty() {
+            return None;
+        }
+        let (scoped, diagnostics) = model_scope::resolve_model_scope(&self.enabled_models, &self.models);
+        let mut ids: Vec<String> = scoped
+            .iter()
+            .map(|s| format!("{}/{}", s.model.provider, s.model.id))
+            .collect();
+        for diagnostic in diagnostics {
+            if diagnostic.code == "no-match" && !ids.contains(&diagnostic.pattern) {
+                ids.push(diagnostic.pattern);
+            }
+        }
+        Some(ids)
+    }
+
+    /// Pi's `/scoped-models` (`showScopedModelsSelector`): the session scope, else `enabledModels`; the catalogs refresh
+    /// while it is open.
+    fn open_scoped_models(&mut self) {
+        let session_scope = self.scoped_ids.as_ref().is_some_and(|ids| !ids.is_empty());
+        let enabled = if session_scope {
+            self.scoped_ids.clone()
+        } else {
+            self.configured_enabled_ids()
+        };
+        let selector = crate::scoped_models::ScopedModelsSelector::new(
+            Rc::clone(&self.theme),
+            self.keys.clone(),
+            &self.models,
+            enabled,
+            Some("Refreshing model catalogs…"),
+        );
+        self.panel = Some(Panel::ScopedModels {
+            selector: Box::new(selector),
+            changed: false,
+            session_scope,
+        });
+        self.editor.focused = false;
+        self.client.refresh_catalog();
+    }
+
+    /// The catalogs refreshed (or timed out, or failed): the open selector shows the catalog it has now.
+    fn catalog_refreshed(&mut self, refresh: crate::lane::CatalogRefresh) {
+        use crate::lane::CatalogRefresh;
+        let configured = self.configured_enabled_ids();
+        let models = self.models.clone();
+        if let Some(Panel::ScopedModels {
+            selector,
+            changed,
+            session_scope,
+        }) = self.panel.as_mut()
+        {
+            let enabled = (!*changed && !*session_scope).then_some(configured);
+            selector.update_models(&models, enabled);
+            match refresh {
+                CatalogRefresh::TimedOut => {
+                    selector.set_refresh_status("Model refresh timed out; showing cached models.", "warning");
+                }
+                CatalogRefresh::Failed(error) => {
+                    selector.set_refresh_status(&format!("Could not refresh model catalogs: {error}"), "warning");
+                }
+                CatalogRefresh::Done(failed) if !failed.is_empty() => selector.set_refresh_status(
+                    &format!("Could not refresh {}; showing cached models.", failed.join(", ")),
+                    "warning",
+                ),
+                CatalogRefresh::Done(_) => selector.set_refresh_status("Model catalogs refreshed.", "success"),
+            }
+        }
+    }
+
+    /// `updateSessionModels`: the session scope Ctrl+P uses; every model when the selection covers them all or none
+    /// is available.
+    fn update_session_models(&mut self, enabled: Option<Vec<String>>) {
+        let available: Vec<String> = self.models.iter().map(|m| format!("{}/{}", m.provider, m.id)).collect();
+        self.scoped_ids = Some(match enabled {
+            Some(ids)
+                if ids.iter().any(|id| available.contains(id)) && !available.iter().all(|id| ids.contains(id)) =>
+            {
+                ids
+            }
+            _ => Vec::new(),
+        });
+    }
+
+    /// `onPersist`: the selection saved to `enabledModels` (removed when it is every model).
+    fn persist_scope(&mut self, enabled: Option<Vec<String>>) {
+        let available: Vec<String> = self.models.iter().map(|m| format!("{}/{}", m.provider, m.id)).collect();
+        let patterns =
+            enabled.filter(|ids| !(ids.len() == available.len() && ids.iter().all(|id| available.contains(id))));
+        let value = patterns
+            .as_ref()
+            .map_or(serde_json::Value::Null, |p| serde_json::json!(p));
+        self.client.save_setting("enabledModels", value);
+        self.enabled_models = patterns.unwrap_or_default();
+        self.show_status("Model selection saved to settings");
+    }
+
+    /// A step of the subscription login running in the client (`runProviderLogin`'s dialog).
+    fn login_step(&mut self, step: crate::lane::LoginStep) {
+        use crate::lane::LoginStep;
+        match step {
+            LoginStep::Started { name, reach } => {
+                let dialog = crate::login_dialog::LoginDialog::new(self.keys.clone(), &name, &reach);
+                self.panel = Some(Panel::OAuthLogin(Box::new(dialog)));
+                self.editor.focused = false;
+            }
+            LoginStep::Event(event) => {
+                if let Some(Panel::OAuthLogin(dialog)) = self.panel.as_mut() {
+                    dialog.show_event(&self.theme, &event);
+                }
+            }
+            LoginStep::Prompt(prompt) => {
+                if let Some(Panel::OAuthLogin(dialog)) = self.panel.as_mut() {
+                    dialog.show_prompt(&self.theme, &prompt);
+                }
+            }
+            LoginStep::Finished => {
+                if matches!(self.panel, Some(Panel::OAuthLogin(_))) {
+                    self.panel = None;
+                }
+            }
+        }
+    }
+
+    /// `startProviderLogin`: the login dialog (a subscription login runs in the client; an API key is prompted for).
     fn start_login(&mut self, option: crate::selectors::AuthProvider) {
         if option.auth_type == "oauth" {
+            // The flow runs in the client; its dialog opens with its first step (`LoginStep::Started`).
+            if self.client.oauth_login(&option.id, &option.name) {
+                return;
+            }
             self.show_status(&format!(
                 "Error: Failed to login to {}: signing in with an account is not available in the Rust build yet; use an API key",
                 option.name
@@ -2207,18 +2689,6 @@ impl App {
         self.editor.focused = false;
     }
 
-    fn tree_entry(&self, id: &str) -> Option<Value> {
-        let (tree, _) = self.tree.as_ref()?;
-        let mut stack: Vec<&Value> = tree.as_array()?.iter().collect();
-        while let Some(node) = stack.pop() {
-            if node["entry"]["id"] == id {
-                return Some(node["entry"].clone());
-            }
-            stack.extend(node["children"].as_array().into_iter().flatten());
-        }
-        None
-    }
-
     /// `#navigateTree`: the summary choice, then the move.
     fn tree_selected(&mut self, entry: String) {
         let leaf = self.tree.as_ref().and_then(|(_, leaf)| leaf.clone());
@@ -2249,35 +2719,14 @@ impl App {
         if self.operation.is_some() {
             self.client.abort();
         }
-        // A selected user (or custom) message goes back into the editor; the session continues from before it.
-        let entry = self.tree_entry(entry_id);
-        let (target, text) = match &entry {
-            Some(e) if e["type"] == "message" && e["message"]["role"] == "user" => (
-                e["parentId"].as_str().map(str::to_string),
-                Some(user_message_text(&e["message"])),
-            ),
-            Some(e) if e["type"] == "custom_message" => (
-                e["parentId"].as_str().map(str::to_string),
-                Some(match &e["content"] {
-                    Value::String(s) => s.clone(),
-                    other => other
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .filter(|p| p["type"] == "text")
-                        .filter_map(|p| p["text"].as_str())
-                        .collect(),
-                }),
-            ),
-            _ => (Some(entry_id.to_string()), None),
-        };
-        self.navigation_text = text;
+        self.summarizing_branch = summarize.then(|| entry_id.to_string());
         self.show_status(if summarize {
             "Summarizing branch… (Esc to cancel)"
         } else {
             "Navigating…"
         });
-        self.client.navigate(target.as_deref(), summarize, instructions);
+        // The session resolves the selection (AgentSession `navigateTree`) and answers the editor's text.
+        self.client.navigate(Some(entry_id), summarize, instructions);
     }
 
     /// Pi's prompt-history search (`app.history.search`, Alt+R).
@@ -2605,6 +3054,24 @@ impl App {
         self.editor.focused = false;
     }
 
+    /// `/import` without a path: Pi's session selector over Pi's sessions of this project (`showPiSessionPicker`).
+    /// Nothing in it is the attached session, and Pi's files are read-only here.
+    fn show_pi_sessions(&mut self, sessions: Vec<SessionListing>) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        let selector = SessionSelector::new(
+            Rc::clone(&self.theme),
+            self.keys.clone(),
+            sessions,
+            None,
+            self.home.as_deref().unwrap_or(""),
+            now,
+        );
+        self.panel = Some(Panel::PiSessions(Box::new(selector)));
+        self.editor.focused = false;
+    }
+
     fn open_selection(&mut self, title: &str, items: Vec<SelectItem>, selected: Option<&str>, purpose: Purpose) {
         let index = selected.and_then(|v| items.iter().position(|i| i.value == v));
         let mut list = SelectList::new(
@@ -2658,24 +3125,52 @@ impl App {
                         }
                         choice => self.navigate(&entry, choice == "Summarize", None),
                     },
+                    Purpose::SwitchImported {
+                        session_file,
+                        imported,
+                        source,
+                    } => match (item.value.as_str(), session_file) {
+                        ("Switch to the imported session", Some(file)) => {
+                            self.client.resume(&file);
+                            self.show_status(&format!("Session imported from: {source}"));
+                        }
+                        _ => self.show_status(&format!("{imported}. Use /resume to open it.")),
+                    },
                     Purpose::Thinking => {
                         let level = item.value.clone();
                         self.set_thinking(&level);
                         self.status = format!("Thinking level: {level}.");
                     }
+                    Purpose::ExtensionSelect { id, confirm } => {
+                        let answer = if confirm {
+                            serde_json::json!({ "confirmed": item.value == "yes" })
+                        } else {
+                            serde_json::json!({ "value": item.value })
+                        };
+                        self.answer_extension_dialog(&id, answer);
+                    }
                 }
             }
-            Some(SelectEvent::Cancelled) => {
+            Some(SelectEvent::Cancelled) => match self.selection.take() {
                 // Esc on the summary choice returns to the tree with the same selection.
-                if let Some(Selection {
+                Some(Selection {
                     purpose: Purpose::Summarize(entry),
                     ..
-                }) = self.selection.take()
-                    && let Some((tree, leaf)) = self.tree.clone()
-                {
-                    self.show_tree(tree, leaf, Some(&entry));
+                }) => {
+                    if let Some((tree, leaf)) = self.tree.clone() {
+                        self.show_tree(tree, leaf, Some(&entry));
+                    }
                 }
-            }
+                Some(Selection {
+                    purpose: Purpose::SwitchImported { imported, .. },
+                    ..
+                }) => self.show_status(&format!("{imported}. Use /resume to open it.")),
+                Some(Selection {
+                    purpose: Purpose::ExtensionSelect { id, .. },
+                    ..
+                }) => self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true })),
+                _ => {}
+            },
             _ => {}
         }
     }
@@ -2872,6 +3367,8 @@ impl App {
             (None, Some(Panel::Settings(selector))) => selector.render(width),
             (None, Some(Panel::Logout(selector))) => selector.render(width),
             (None, Some(Panel::Login(selector, ..))) => selector.render(width),
+            (None, Some(Panel::OAuthLogin(dialog))) => dialog.render(&self.theme, width),
+            (None, Some(Panel::ScopedModels { selector, .. })) => selector.render(width),
             (
                 None,
                 Some(Panel::LoginPrompt {
@@ -2913,7 +3410,17 @@ impl App {
                 lines.push(border);
                 lines
             }
-            (None, Some(Panel::Sessions(selector))) => selector.render(width),
+            (None, Some(Panel::Sessions(selector) | Panel::PiSessions(selector))) => selector.render(width),
+            (None, Some(Panel::ExtensionInput { title, input, .. })) => {
+                let mut lines = Text::new(&bold(title), 1, 1, None).render(width);
+                lines.extend(
+                    input
+                        .render(width.saturating_sub(1))
+                        .into_iter()
+                        .map(|l| format!(" {l}")),
+                );
+                lines
+            }
             (None, Some(Panel::Instructions { input, .. })) => {
                 let mut lines = Text::new(&bold("Custom summarization instructions"), 1, 1, None).render(width);
                 lines.extend(

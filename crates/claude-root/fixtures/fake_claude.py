@@ -29,6 +29,36 @@ if args == ["auth", "status", "--json"]:
         print(json.dumps({"loggedIn": False}))
     sys.exit(0)
 
+if "--output-format" in args and args[args.index("--output-format") + 1] == "stream-json":
+    # A Claude Code subagent (`claude -p --output-format stream-json`): the brief on stdin. It relays its verdict
+    # to the parent server like `rlm.finish` in its own `ultron mcp --child` would, then streams a reply.
+    import socket
+    brief = sys.stdin.read()
+    config = json.loads(args[args.index("--mcp-config") + 1])
+    server = config["mcpServers"]["ultron"]
+    server_args = server["args"]
+    parent = server_args[server_args.index("--parent-socket") + 1]
+    reply = None
+    if "verdict" in brief:
+        conn = socket.socket(socket.AF_UNIX)
+        conn.connect(parent)
+        payload = {"status": "passed", "summary": "relayed verdict", "evidence": ["python3 -c pass: exit 0"], "changed_files": []}
+        conn.sendall((json.dumps({"id": 1, "op": "child.finish", "token": server["env"]["ULTRON_PARENT_TOKEN"],
+                                  "payload": payload}) + "\n").encode())
+        reply = json.loads(conn.makefile().readline())
+        conn.close()
+    with open(os.environ["FAKE_CHILD_LOG"], "a", encoding="utf-8") as log:
+        log.write(json.dumps({"args": args, "brief": brief, "env_has_session": "CLAUDE_CODE_SESSION_ID" in os.environ,
+                              "finish": reply}) + "\n")
+    for line in [
+        {"type": "system", "subtype": "init", "model": "claude-opus-5-5"},
+        {"type": "assistant", "message": {"id": "m1", "content": [{"type": "text", "text": "child did: " + brief.strip()}]}},
+        {"type": "result", "subtype": "success", "is_error": False, "result": "child did: " + brief.strip(),
+         "num_turns": 1, "usage": {"input_tokens": 3, "output_tokens": 2}, "total_cost_usd": 0},
+    ]:
+        print(json.dumps(line), flush=True)
+    sys.exit(0)
+
 files = {}
 for flag in ("--mcp-config", "--settings", "--system-prompt-file"):
     if flag in args:

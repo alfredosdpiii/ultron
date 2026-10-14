@@ -11,8 +11,13 @@
 //! - Cancelling a cell first aborts its host waits (a parked `rlm.collect` raises in Python and the cell ends with
 //!   its kernel and variables intact); only a cell still running after the grace period has its kernel killed (its
 //!   Python state is lost and the lane's next cell starts a fresh kernel).
+//! - Live kernels are bounded by a [`KernelPool`] (`kernel-pool.ts`, as the TS session's rlm tool uses it): a cell
+//!   leases its lane's kernel, an idle unpinned kernel is snapshotted and evicted to make room (or after its idle
+//!   TTL), and the lane's next cell starts a kernel that restores that snapshot. When every live kernel is running or
+//!   pinned, opening or running another lane is refused with the pool's capacity error. `rlm.pool` reports it.
 
 use crate::host::Park;
+use crate::kernel_pool::{KernelPool, KernelPoolOptions, Lease, PoolableKernel};
 use kernel::{ExecutionResult, HostHandler, Kernel, Signal};
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, HashMap};
@@ -34,6 +39,54 @@ pub struct LanesOptions {
     pub max_lanes: usize,
     /// How long a cancelled cell may take to end after its host waits are aborted before its kernel is killed.
     pub cancel_grace: Duration,
+    /// Bounds on live kernels; `None`: every open lane keeps its kernel (at most `max_lanes`), none is evicted.
+    pub pool: Option<PoolLimits>,
+}
+
+/// Where a lane's snapshot goes before its kernel is evicted (the lane kernel's own snapshot path, so the next
+/// kernel restores it at startup); `None` evicts without one.
+pub type SnapshotPathFn = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+/// The session's kernel pool (`createUltronRlmTool`: `maxLive` 16, `maxPinned` half of it, 30 min idle TTL).
+#[derive(Clone)]
+pub struct PoolLimits {
+    pub max_live: usize,
+    pub max_pinned: Option<usize>,
+    pub idle_ttl: Duration,
+    pub snapshot_path: Option<SnapshotPathFn>,
+}
+
+impl PoolLimits {
+    /// The TS defaults for `max_live` kernels: half of them pinnable, a 30 minute idle TTL.
+    pub fn new(max_live: usize, snapshot_path: Option<SnapshotPathFn>) -> PoolLimits {
+        PoolLimits {
+            max_live,
+            max_pinned: Some(max_live / 2),
+            idle_ttl: Duration::from_secs(30 * 60),
+            snapshot_path,
+        }
+    }
+}
+
+/// A lane's kernel in the pool. A kernel that never started has nothing to save: its eviction leaves the lane's
+/// snapshot as it is (writing one would replace the state the kernel would have restored with an empty namespace).
+struct LaneKernel(Arc<Kernel>);
+
+impl PoolableKernel for LaneKernel {
+    fn snapshot(&mut self, path: &str) -> Result<Vec<String>, String> {
+        if self.0.pid().is_none() {
+            return Ok(Vec::new());
+        }
+        let reply = self
+            .0
+            .snapshot(Some(std::path::Path::new(path)))
+            .map_err(|error| error.to_string())?;
+        crate::kernel_pool::snapshot_outcome(&serde_json::to_value(&reply).map_err(|error| error.to_string())?)
+    }
+
+    fn shutdown(&mut self) {
+        self.0.shutdown();
+    }
 }
 
 /// How [`Lanes::run`] returned.
@@ -56,6 +109,8 @@ pub struct CellEnd {
 
 struct Cell {
     lane: String,
+    /// The lane kernel's lease, released when the cell ends.
+    lease: Option<Lease>,
     /// Aborted when the cell ends or is cancelled: ends its host waits.
     waits: Signal,
     /// Aborted to kill the kernel when a cancelled cell does not end.
@@ -67,7 +122,6 @@ struct Cell {
 }
 
 struct Lane {
-    kernel: Arc<Kernel>,
     busy: Option<String>,
 }
 
@@ -83,6 +137,8 @@ struct Inner {
     state: Mutex<State>,
     changed: Condvar,
     events: Mutex<Sender<CellEnd>>,
+    /// Live kernels (taken after `state`, never the other way round).
+    pool: Mutex<KernelPool<LaneKernel>>,
     options: LanesOptions,
 }
 
@@ -105,7 +161,8 @@ struct CellHandler {
 
 impl HostHandler for CellHandler {
     fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
-        if kind.starts_with("rlm.lane") || kind.starts_with("rlm.cell") || kind == "rlm.recovery" {
+        if kind.starts_with("rlm.lane") || kind.starts_with("rlm.cell") || kind == "rlm.recovery" || kind == "rlm.pool"
+        {
             return self.lanes.request(kind, payload, Some(&self.cell));
         }
         self.inner.handle(kind, payload, signal)
@@ -117,6 +174,23 @@ impl Lanes {
         if options.max_lanes < 1 {
             return Err("max_lanes must be a positive integer".into());
         }
+        let limits = options.pool.clone();
+        let snapshot_path = limits.as_ref().and_then(|l| l.snapshot_path.clone());
+        let pool = KernelPool::new(KernelPoolOptions {
+            // Kernels are created by `Lanes` (fallibly) and handed to the pool; this one is never called.
+            create: Box::new(|lane: &str| -> LaneKernel { unreachable!("lane {lane} kernels are created by Lanes") }),
+            max_live: limits.as_ref().map_or(options.max_lanes, |l| l.max_live),
+            idle_ttl_ms: limits.as_ref().map_or(f64::MAX, |l| l.idle_ttl.as_secs_f64() * 1000.0),
+            max_pinned: limits.as_ref().and_then(|l| l.max_pinned),
+            snapshot_path: snapshot_path
+                .map(|path| Box::new(move |lane: &str| path(lane)) as crate::kernel_pool::SnapshotPath),
+            now: Box::new(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as f64)
+                    .unwrap_or(0.0)
+            }),
+        })?;
         let (sender, receiver) = channel();
         Ok((
             Lanes {
@@ -124,11 +198,47 @@ impl Lanes {
                     state: Mutex::new(State::default()),
                     changed: Condvar::new(),
                     events: Mutex::new(sender),
+                    pool: Mutex::new(pool),
                     options,
                 }),
             },
             receiver,
         ))
+    }
+
+    fn pool(&self) -> MutexGuard<'_, KernelPool<LaneKernel>> {
+        self.inner.pool.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Lease `lane`'s kernel, starting a new one (which restores the lane's snapshot) when it has none live. Idle
+    /// kernels past their TTL go first.
+    fn lease(&self, lane: &str) -> Result<(Lease, Arc<Kernel>), String> {
+        let mut pool = self.pool();
+        pool.sweep();
+        let create = self.inner.options.create.clone();
+        let lease = pool.acquire_with(lane, || create(lane).map(|kernel| LaneKernel(Arc::new(kernel))))?;
+        let kernel = pool
+            .kernel(lease)
+            .map(|k| k.0.clone())
+            .ok_or("leased kernel vanished")?;
+        Ok((lease, kernel))
+    }
+
+    /// Keeps `lane`'s kernel live for `holder` (a retained instance); false when the pool has no pin left.
+    pub fn pin(&self, lane: &str, holder: &str) -> bool {
+        lock(&self.inner.state).closed.then_some(()).is_none() && self.pool().pin(lane, holder).is_ok()
+    }
+
+    pub fn unpin(&self, lane: &str, holder: &str) {
+        self.pool().unpin(lane, holder);
+    }
+
+    /// `rlm.pool`: live kernels, their leases, pins and idle time, and how many evictions happened.
+    pub fn pool_stats(&self) -> Value {
+        let pool = self.pool();
+        let mut stats = pool.stats();
+        stats["evictions"] = json!(pool.evictions().iter().filter(|r| r["evicted"] == true).count());
+        stats
     }
 
     /// Opens a lane (idempotent); its kernel starts with its first cell.
@@ -150,50 +260,51 @@ impl Lanes {
                 self.inner.options.max_lanes
             ));
         }
-        let kernel = (self.inner.options.create)(lane)?;
-        state.lanes.insert(
-            lane.to_string(),
-            Lane {
-                kernel: Arc::new(kernel),
-                busy: None,
-            },
-        );
+        // The lane's kernel is admitted now (it starts with its first cell): past the pool's capacity the lane is
+        // refused.
+        let (lease, _) = self.lease(lane)?;
+        self.pool().release(lease);
+        state.lanes.insert(lane.to_string(), Lane { busy: None });
         Ok(())
     }
 
     /// Closes an idle lane and shuts its kernel down.
     pub fn close_lane(&self, lane: &str) -> Result<(), String> {
-        let kernel = {
-            let mut state = lock(&self.inner.state);
-            match state.lanes.get(lane) {
-                None => return Err(format!("Unknown REPL lane: {lane}")),
-                Some(Lane { busy: Some(cell), .. }) => {
-                    return Err(format!("REPL lane {lane} is running {cell}; cancel it first"));
-                }
-                Some(_) => state.lanes.remove(lane).map(|l| l.kernel),
+        let mut state = lock(&self.inner.state);
+        match state.lanes.get(lane) {
+            None => return Err(format!("Unknown REPL lane: {lane}")),
+            Some(Lane { busy: Some(cell), .. }) => {
+                return Err(format!("REPL lane {lane} is running {cell}; cancel it first"));
             }
+            Some(_) => state.lanes.remove(lane),
         };
-        if let Some(kernel) = kernel {
-            kernel.shutdown();
-        }
+        // A closed lane's kernel goes, pinned or not (its continuity checkpoint is already written).
+        self.pool().discard(lane);
         Ok(())
     }
 
     /// Open lanes: name, running cell (or null) and kernel pid (or null before its first cell).
     pub fn list(&self) -> Value {
         let state = lock(&self.inner.state);
+        let mut pool = self.pool();
         Value::from(
             state
                 .lanes
                 .iter()
-                .map(|(name, lane)| json!({ "lane": name, "cell": lane.busy, "pid": lane.kernel.pid() }))
+                .map(|(name, lane)| {
+                    let pid = pool.live(name).and_then(|kernel| kernel.0.pid());
+                    json!({ "lane": name, "cell": lane.busy, "pid": pid })
+                })
                 .collect::<Vec<_>>(),
         )
     }
 
-    /// The kernel of an open lane.
+    /// The live kernel of an open lane (none while it is evicted).
     pub fn kernel(&self, lane: &str) -> Option<Arc<Kernel>> {
-        lock(&self.inner.state).lanes.get(lane).map(|l| l.kernel.clone())
+        if !lock(&self.inner.state).lanes.contains_key(lane) {
+            return None;
+        }
+        self.pool().live(lane).map(|kernel| kernel.0.clone())
     }
 
     /// Runs a cell in `lane`, returning within `budget` (see [`CellOutcome`]). A lane still running a cell refuses.
@@ -214,13 +325,18 @@ impl Lanes {
                     "REPL lane {lane} is still running {cell}: cancel it, wait for its end, or run in another lane"
                 ));
             }
-            entry.busy = Some(id.clone());
-            let kernel = entry.kernel.clone();
+            // The lane's kernel for this cell: its live one, or a new one restoring its snapshot. Past the pool's
+            // capacity the cell is refused before it is admitted.
+            let (lease, kernel) = self.lease(lane)?;
+            if let Some(entry) = state.lanes.get_mut(lane) {
+                entry.busy = Some(id.clone());
+            }
             let (waits, kill) = (Signal::new(), Signal::new());
             state.cells.insert(
                 id.clone(),
                 Cell {
                     lane: lane.to_string(),
+                    lease: Some(lease),
                     waits: waits.clone(),
                     kill: kill.clone(),
                     parked: 0,
@@ -292,6 +408,9 @@ impl Lanes {
             };
             cell.waits.abort("cell ended");
             cell.outcome = Some(outcome.clone());
+            if let Some(lease) = cell.lease.take() {
+                self.pool().release(lease);
+            }
             let lane = cell.lane.clone();
             let event = (cell.detached && !cell.cancelled).then(|| CellEnd {
                 cell: id.to_string(),
@@ -378,7 +497,7 @@ impl Lanes {
     }
 
     /// The lane API a cell reaches through `rlm.host_request` (and the runtime's `rlm.lanes()`, `rlm.lane.open()`,
-    /// `rlm.lane.close()`, `rlm.cells()`, `rlm.cell.cancel()`, `rlm.recovery()`): `rlm.lanes`,
+    /// `rlm.lane.close()`, `rlm.cells()`, `rlm.cell.cancel()`, `rlm.recovery()`), plus `rlm.pool`: `rlm.lanes`,
     /// `rlm.lane.open {lane}`, `rlm.lane.close {lane}`, `rlm.cells`, `rlm.cell.cancel {cell}` and `rlm.recovery`
     /// (the requesting cell's lane kernel's latest [`kernel::ContinuityReport`], or null). `own` is the requesting
     /// cell, which cannot cancel itself.
@@ -432,6 +551,10 @@ impl Lanes {
                     Err(error) => json!({ "cancelled": true, "status": "error", "error": error }),
                 })
             }
+            "rlm.pool" => {
+                only(&[])?;
+                Ok(self.pool_stats())
+            }
             "rlm.recovery" => {
                 only(&[])?;
                 let lane = own
@@ -446,24 +569,20 @@ impl Lanes {
 
     /// Cancels every running cell and shuts every lane down.
     pub fn close(&self) {
-        let (cells, kernels): (Vec<String>, Vec<Arc<Kernel>>) = {
+        let cells: Vec<String> = {
             let mut state = lock(&self.inner.state);
             state.closed = true;
-            (
-                state
-                    .cells
-                    .iter()
-                    .filter(|(_, c)| c.outcome.is_none())
-                    .map(|(id, _)| id.clone())
-                    .collect(),
-                state.lanes.values().map(|l| l.kernel.clone()).collect(),
-            )
+            state
+                .cells
+                .iter()
+                .filter(|(_, c)| c.outcome.is_none())
+                .map(|(id, _)| id.clone())
+                .collect()
         };
         for cell in cells {
             let _ = self.cancel(&cell, "REPL lanes closed");
         }
-        for kernel in kernels {
-            kernel.shutdown();
-        }
+        // Every kernel goes, the idle ones after their snapshot.
+        self.pool().close();
     }
 }

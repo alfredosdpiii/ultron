@@ -381,6 +381,38 @@ fn ai_claude_subscription_fallback_without_an_api_key_returns_the_error_with_the
     assert!(oauth.api.requests().is_empty());
 }
 
+/// Without an explicit API URL the fallback goes to models.json's `anthropic` baseUrl, never past it to the public
+/// API (a print-mode test once reached api.anthropic.com this way).
+#[test]
+fn ai_claude_subscription_fallback_goes_to_the_models_json_anthropic_base_url() {
+    seal();
+    let rig = make_rig(NO_UPSTREAM, &[("FAKE_NATIVE_ERROR", HIT_LIMIT)], &keyed(), true);
+    std::fs::write(
+        rig.agent.path().join("models.json"),
+        json!({"providers": {"anthropic": {"baseUrl": rig.api.url()}}}).to_string(),
+    )
+    .unwrap();
+    let env: HashMap<String, String> = keyed().iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+    let router = Router::new(RouterOptions {
+        clock: Arc::new(|| NOW),
+        env: Arc::new(move |name| env.get(name).cloned()),
+        agent_dir: Some(rig.agent.path().to_path_buf()),
+        subscription: Some(rig.fake.config(NO_UPSTREAM, &[("FAKE_NATIVE_ERROR", HIT_LIMIT)])),
+        api_base_url: None,
+    });
+    let events = Mutex::new(Vec::new());
+    let mut sink = |event: &AssistantMessageEvent| events.lock().unwrap().push(event.clone());
+    let message = runtime().block_on(router.stream(
+        &opus(),
+        &first_turn(),
+        &SimpleStreamOptions::default(),
+        &transport(),
+        &mut sink,
+    ));
+    assert_eq!(text_of(&message), "from api");
+    assert_eq!(rig.api.requests().len(), 1);
+}
+
 #[test]
 fn ai_claude_subscription_fallback_uses_the_auth_store_api_key() {
     seal();
@@ -651,18 +683,31 @@ fn ai_claude_subscription_fallback_env_key_wins_and_never_reaches_the_cli() {
 #[test]
 fn ai_claude_subscription_fallback_model_missing_from_the_api_catalog_thinks_adaptively() {
     seal();
-    // `claude-sonnet-5-5` is served by the subscription but not yet in the generated Anthropic catalog.
-    assert!(ai::models::builtin_model("anthropic", "claude-sonnet-5-5").is_none());
+    // `claude-sonnet-5-5` is in the Anthropic catalog: the fallback takes its entry (price and limits from
+    // https://platform.claude.com/docs/en/models/sonnet-5-5/overview).
     let sonnet = model("sonnet");
     let api = fallback::api_model(&sonnet);
     assert_eq!(api.id, "claude-sonnet-5-5");
     assert!(api.reasoning);
     assert_eq!(api.compat.as_ref().unwrap()["forceAdaptiveThinking"], true);
     assert_eq!(api.thinking_level_map.as_ref().unwrap()["off"], None);
-    // The family's catalog entry is the template for limits and price.
+    assert_eq!(
+        (
+            api.cost.input,
+            api.cost.output,
+            api.cost.cache_read,
+            api.cost.cache_write
+        ),
+        (2.0, 10.0, 0.1, 2.5)
+    );
+    assert_eq!((api.context_window, api.max_tokens), (1_000_000, 128_000));
+    // A model of a known family the catalog does not list yet takes the family's entry as its template.
+    let next = fallback::api_model(&model("claude-sonnet-5-9"));
     let family = ai::models::builtin_model("anthropic", "claude-sonnet-5").unwrap();
-    assert_eq!(api.cost, family.cost);
-    assert_eq!(api.max_tokens, family.max_tokens);
+    assert_eq!(next.id, "claude-sonnet-5-9");
+    assert_eq!(next.cost, family.cost);
+    assert_eq!(next.max_tokens, family.max_tokens);
+    assert_eq!(next.compat.as_ref().unwrap()["forceAdaptiveThinking"], true);
     // An adaptive family with no catalog entry at all still thinks adaptively on the API.
     assert!(ai::models::builtin_models("anthropic").all(|m| !m.id.contains("mythos")));
     let mythos = fallback::api_model(&model("claude-mythos-5-1"));
@@ -687,8 +732,9 @@ fn ai_claude_subscription_fallback_model_missing_from_the_api_catalog_thinks_ada
     assert_eq!(requests.len(), 2);
     let (off, high) = (requests[0].json(), requests[1].json());
     assert_eq!(off["model"], "claude-sonnet-5-5");
-    // Sonnet 5.5 rejects `thinking: disabled`, so thinking off sends no thinking field at all.
-    assert_eq!(off.get("thinking"), None, "{off}");
+    // Sonnet 5.5 rejects `thinking: disabled`: its catalog entry maps `off` to unsupported, so a request without a
+    // level thinks adaptively, as Opus 5.5's does.
+    assert_eq!(off["thinking"]["type"], "adaptive", "{off}");
     assert_eq!(high["thinking"]["type"], "adaptive", "{high}");
 }
 

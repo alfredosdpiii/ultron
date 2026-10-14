@@ -36,6 +36,9 @@ impl LaneClient for Recorder {
         self.push(format!("follow_up {text}"));
         "f1".into()
     }
+    fn inspect(&self, title: &str, request: &str, payload: serde_json::Value) {
+        self.push(format!("inspect {title} {request} {payload}"));
+    }
     fn cancel_queued(&self, id: &str) {
         self.push(format!("cancel {id}"));
     }
@@ -50,6 +53,9 @@ impl LaneClient for Recorder {
     }
     fn list_sessions(&self) {
         self.push("list".into());
+    }
+    fn list_pi_sessions(&self) {
+        self.push("list_pi".into());
     }
     fn set_name(&self, name: &str) {
         self.push(format!("name {name}"));
@@ -84,6 +90,9 @@ impl LaneClient for Recorder {
     fn usage_report(&self) {
         self.push("usage".into());
     }
+    fn goal(&self, args: &str) {
+        self.push(format!("goal {args}"));
+    }
     fn save_setting(&self, key: &str, value: Value) {
         self.push(format!("setting {key}={value}"));
     }
@@ -98,6 +107,9 @@ impl LaneClient for Recorder {
     }
     fn set_label(&self, entry_id: &str, label: Option<&str>) {
         self.push(format!("label {entry_id} {label:?}"));
+    }
+    fn import_pi(&self, path: &str) {
+        self.push(format!("import {path}"));
     }
     fn delete_session(&self, path: &str) {
         self.push(format!("delete {path}"));
@@ -305,7 +317,9 @@ fn interactive_commands_compaction_redraws_transcript_and_unknown_context() {
     submit(&mut app, "/compact keep it short");
     assert_eq!(calls(&c), ["compact Some(\"keep it short\")"]);
     assert!(screen(&mut app).contains("Compacting…"));
-    app.apply(LaneEvent::CompactionStarted);
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "manual".into(),
+    });
     assert!(screen(&mut app).contains("Compacting context... (escape to cancel)"));
     app.apply(LaneEvent::Compacted(Ok(json!({
         "type": "compaction", "tokensBefore": 15,
@@ -318,6 +332,152 @@ fn interactive_commands_compaction_redraws_transcript_and_unknown_context() {
     // A measured reply after the compaction counts again.
     app.apply(LaneEvent::Message(json!({"role": "assistant", "content": [{"type": "text", "text": "After."}], "stopReason": "stop", "usage": {"input": 20, "output": 5, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 25, "cost": {"total": 0}}})));
     assert!(screen(&mut app).contains("2.5%/1.0k"), "{}", screen(&mut app));
+}
+
+/// Esc during a manual compaction cancels it (interactive-mode.ts `abortCompaction`): the session is asked to abort,
+/// and the compaction's cancelled answer clears the indicator with "Compaction cancelled", no rejection.
+#[test]
+fn interactive_commands_escape_cancels_a_manual_compaction() {
+    let (mut app, c) = app();
+    submit(&mut app, "/compact");
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "manual".into(),
+    });
+    assert!(screen(&mut app).contains("Compacting context... (escape to cancel)"));
+    app.handle_input("\x1b");
+    assert_eq!(calls(&c).last().unwrap(), "abort");
+    app.apply(LaneEvent::Compacted(Err("Compaction cancelled".into())));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Compaction cancelled") && !s.contains("Operation rejected"),
+        "{s}"
+    );
+    assert!(!s.contains("Compacting context"), "{s}");
+    // Idle again: Esc no longer aborts anything.
+    let before = calls(&c).len();
+    app.handle_input("\x1b");
+    assert!(!calls(&c)[before..].contains(&"abort".to_string()), "{:?}", calls(&c));
+}
+
+/// A summary's retry (interactive-mode.ts `summarization_retry_*`): `Error: <provider error>` in the transcript and
+/// the `RetryStatusIndicator` countdown; when the retry starts, the compaction's indicator for its reason (or the
+/// branch summary's) replaces it; `summarization_retry_finished` clears only a retry countdown.
+#[test]
+fn interactive_commands_summarization_retry_shows_like_interactive_mode() {
+    let (mut app, _) = app();
+    submit(&mut app, "/compact");
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "manual".into(),
+    });
+    app.apply(LaneEvent::SummarizationRetryScheduled {
+        attempt: 1,
+        max_attempts: 3,
+        delay_ms: 2000,
+        error: "Overloaded".into(),
+    });
+    let s = screen(&mut app);
+    assert!(s.contains("Error: Overloaded"), "{s}");
+    assert!(s.contains("Retrying (1/3) in 2s... (escape to cancel)"), "{s}");
+    assert!(!s.contains("Compacting context"), "{s}");
+    app.apply(LaneEvent::SummarizationRetryStarted {
+        branch_summary: false,
+        reason: "manual".into(),
+    });
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Compacting context... (escape to cancel)") && !s.contains("Retrying"),
+        "{s}"
+    );
+    // The compaction's own indicator stays when the retries end.
+    app.apply(LaneEvent::SummarizationRetryFinished);
+    assert!(screen(&mut app).contains("Compacting context... (escape to cancel)"));
+    // A countdown cleared by the end of the retries; an overflow compaction's and a branch summary's indicators.
+    app.apply(LaneEvent::SummarizationRetryScheduled {
+        attempt: 2,
+        max_attempts: 3,
+        delay_ms: 4001,
+        error: "Overloaded".into(),
+    });
+    assert!(screen(&mut app).contains("Retrying (2/3) in 5s..."));
+    app.apply(LaneEvent::SummarizationRetryFinished);
+    assert!(!screen(&mut app).contains("Retrying"));
+    app.apply(LaneEvent::SummarizationRetryStarted {
+        branch_summary: false,
+        reason: "overflow".into(),
+    });
+    assert!(screen(&mut app).contains("Context overflow detected, Auto-compacting... (escape to cancel)"));
+    app.apply(LaneEvent::SummarizationRetryStarted {
+        branch_summary: true,
+        reason: "manual".into(),
+    });
+    assert!(screen(&mut app).contains("Summarizing branch... (escape to cancel)"));
+}
+
+/// An automatic compaction during a run (interactive-mode.ts `CompactionStatusIndicator`): its own status line by
+/// reason, then the run's working indicator again; a failed one is shown in the transcript.
+#[test]
+fn interactive_commands_auto_compaction_status_line_then_working_again() {
+    let (mut app, _) = app();
+    app.apply(LaneEvent::OperationStarted("run-1".into()));
+    assert!(screen(&mut app).contains("Working... (escape to abort)"));
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "threshold".into(),
+    });
+    let s = screen(&mut app);
+    assert!(s.contains("Auto-compacting... (escape to cancel)"), "{s}");
+    assert!(!s.contains("Working..."), "{s}");
+    app.apply(LaneEvent::Compacted(Ok(json!({
+        "type": "compaction", "tokensBefore": 990005, "retainedTail": [{"role": "user", "content": "hello"}],
+    }))));
+    let s = screen(&mut app);
+    assert!(s.contains("[compaction] compacted from 990005 tokens"), "{s}");
+    assert!(
+        s.contains("Working... (escape to abort)") && !s.contains("Auto-compacting"),
+        "{s}"
+    );
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "overflow".into(),
+    });
+    assert!(
+        screen(&mut app).contains("Context overflow detected, Auto-compacting... (escape to cancel)"),
+        "{}",
+        screen(&mut app)
+    );
+    app.apply(LaneEvent::CompactionEnded {
+        status: "failed".into(),
+        error: Some("Context overflow recovery failed: summary failed".into()),
+    });
+    let s = screen(&mut app);
+    assert!(s.contains("Context overflow recovery failed: summary failed"), "{s}");
+    assert!(
+        s.contains("Working... (escape to abort)") && !s.contains("Auto-compacting"),
+        "{s}"
+    );
+    // Declined (trimmed instead): back to working, nothing else shown.
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "threshold".into(),
+    });
+    app.apply(LaneEvent::CompactionEnded {
+        status: "declined".into(),
+        error: None,
+    });
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Working... (escape to abort)") && !s.contains("Auto-compacting"),
+        "{s}"
+    );
+    // After the run, a compaction leaves no indicator.
+    app.apply(LaneEvent::OperationEnded { error: None });
+    app.apply(LaneEvent::CompactionStarted {
+        reason: "manual".into(),
+    });
+    app.apply(LaneEvent::CompactionEnded {
+        status: "aborted".into(),
+        error: None,
+    });
+    let s = screen(&mut app);
+    assert!(!s.contains("Working...") && !s.contains("Compacting"), "{s}");
+    assert!(s.contains("Auto-compaction cancelled"), "{s}");
 }
 
 #[test]
@@ -596,10 +756,15 @@ fn interactive_commands_rewind_forks_before_the_picked_user_turn() {
 
 #[test]
 fn interactive_commands_agents_opens_the_hub_with_overlays_only() {
+    // Without the overlays `/agents` is the inspection command (inspection-commands.ts): `agents.status`.
     let (mut app, c) = app();
     submit(&mut app, "/agents");
-    assert!(calls(&c).is_empty());
-    assert!(screen(&mut app).contains("/agents is not available in the Rust build yet"));
+    assert_eq!(calls(&c), ["inspect /agents agents.status {}"]);
+    submit(&mut app, "/agents task-1");
+    assert_eq!(calls(&c)[1], r#"inspect /agents task-1 agents.inspect {"id":"task-1"}"#);
+    submit(&mut app, "/progress");
+    assert_eq!(calls(&c).len(), 2);
+    assert!(screen(&mut app).contains("Usage: /progress <task-id>"));
     let (mut app, c) = app_with(
         interactive::qol::QolSettings::default(),
         vec![model("a", true), model("b", true)],
@@ -841,12 +1006,20 @@ fn interactive_commands_tree_navigates_before_a_user_message() {
     assert!(screen(&mut app).contains("› • user: first ask"));
     app.handle_input("\r");
     app.handle_input("\r");
-    assert_eq!(calls(&c).last().unwrap(), "navigate None false None");
-    app.apply(LaneEvent::Navigated(Ok(())));
+    // The selected entry goes to the session (AgentSession `navigateTree` resolves it), which answers the text.
+    assert_eq!(calls(&c).last().unwrap(), "navigate Some(\"u1\") false None");
+    app.apply(LaneEvent::Navigated(Ok(Some("first ask".into()))));
     assert_eq!(app.editor_text(), "first ask");
     assert!(screen(&mut app).contains("Navigated to selected point"));
     app.apply(LaneEvent::Navigated(Err("boom".into())));
     assert!(screen(&mut app).contains("Error: boom"));
+    // An extension's `session_before_tree` cancelled it: Pi's status, not an error.
+    app.apply(LaneEvent::Navigated(Err("Navigation cancelled".into())));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Navigation cancelled") && !s.contains("Error: Navigation"),
+        "{s}"
+    );
 }
 
 #[test]
@@ -881,6 +1054,55 @@ fn interactive_commands_tree_summarize_and_filters() {
     assert!(screen(&mut app).contains("No entries found"));
 }
 
+/// Esc while a navigation's branch summary runs cancels it (interactive-mode.ts: `onEscape` is
+/// `abortBranchSummary` while summarizing); the cancelled navigation shows "Branch summarization cancelled" and the
+/// tree selector again on the same entry. Esc no longer aborts once the navigation answered.
+#[test]
+fn interactive_commands_escape_cancels_a_branch_summary() {
+    let (mut app, c) = app();
+    let tree = json!([{"entry": entry("u1", None, "user", "ask"), "children": [
+        {"entry": entry("a1", Some("u1"), "assistant", "One."), "children": [
+            {"entry": entry("u2", Some("a1"), "user", "later"), "children": []}]}]}]);
+    app.apply(LaneEvent::Tree {
+        tree,
+        leaf: Some("u2".into()),
+    });
+    app.handle_input("\x1b[A");
+    app.handle_input("\r");
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    assert_eq!(calls(&c).last().unwrap(), "navigate Some(\"a1\") true None");
+    assert!(screen(&mut app).contains("Summarizing branch… (Esc to cancel)"));
+    app.handle_input("\x1b");
+    assert_eq!(calls(&c).last().unwrap(), "abort");
+    app.apply(LaneEvent::Navigated(Err("Branch summarization cancelled".into())));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Branch summarization cancelled") && !s.contains("Error:"),
+        "{s}"
+    );
+    assert!(s.contains("Session Tree") && s.contains("› • assistant: One."), "{s}");
+    // The selector's Esc closes it; nothing is aborted any more.
+    let before = calls(&c).len();
+    app.handle_input("\x1b");
+    app.handle_input("\x1b");
+    assert!(!calls(&c)[before..].contains(&"abort".to_string()), "{:?}", calls(&c));
+    // A navigation without a summary is not cancelled by Esc.
+    app.apply(LaneEvent::Tree {
+        tree: json!([{"entry": entry("u1", None, "user", "ask"), "children": [
+            {"entry": entry("a1", Some("u1"), "assistant", "One."), "children": [
+                {"entry": entry("u2", Some("a1"), "user", "later"), "children": []}]}]}]),
+        leaf: Some("u2".into()),
+    });
+    app.handle_input("\x1b[A");
+    app.handle_input("\r");
+    app.handle_input("\r");
+    assert_eq!(calls(&c).last().unwrap(), "navigate Some(\"a1\") false None");
+    let before = calls(&c).len();
+    app.handle_input("\x1b");
+    assert!(!calls(&c)[before..].contains(&"abort".to_string()), "{:?}", calls(&c));
+}
+
 fn listing(path: &str, name: Option<&str>, first: &str, modified: i64) -> interactive::lane::SessionListing {
     interactive::lane::SessionListing {
         path: path.into(),
@@ -889,6 +1111,7 @@ fn listing(path: &str, name: Option<&str>, first: &str, modified: i64) -> intera
         modified,
         message_count: 2,
         first_message: first.into(),
+        all_messages_text: first.into(),
         cwd: "/p".into(),
     }
 }
@@ -956,6 +1179,21 @@ fn interactive_commands_session_search_regex_and_phrase() {
     typed(&mut app, "\"parser bug\"");
     let s = screen(&mut app);
     assert!(s.contains("fix the parser bug") && !s.contains("write docs"), "{s}");
+    app.handle_input("\r");
+    assert_eq!(calls(&c).last().unwrap(), "resume /s/a");
+}
+
+/// Pi's selector searches `allMessagesText`: a word only a later message holds finds its session, while the row
+/// still shows the first message.
+#[test]
+fn interactive_commands_session_search_finds_a_word_from_a_later_message() {
+    let (mut app, c) = app();
+    let mut later = listing("/s/a", None, "fix the parser", 2);
+    later.all_messages_text = "fix the parser Done. now the kestrel lexer Kestrel lexer fixed.".into();
+    app.apply(LaneEvent::Sessions(vec![later, listing("/s/b", None, "write docs", 1)]));
+    typed(&mut app, "kestrel");
+    let s = screen(&mut app);
+    assert!(s.contains("fix the parser") && !s.contains("write docs"), "{s}");
     app.handle_input("\r");
     assert_eq!(calls(&c).last().unwrap(), "resume /s/a");
 }
@@ -1139,4 +1377,151 @@ fn interactive_commands_rlm_panel_and_focus() {
     assert!(s.contains("RLM graph") && s.contains("escape/q back"), "{s}");
     app.handle_input("\x1b");
     assert!(!screen(&mut app).contains("RLM graph"));
+}
+
+/// `/goal ...` goes to the session goal's command with its arguments (client-tui-commands.ts `goal`), and the reply
+/// text is shown as a notice; the reply's absence reads "No goal reply" there (cli/src/interactive.rs).
+#[test]
+fn interactive_commands_goal_reaches_the_session_goal_and_shows_its_reply() {
+    let (mut app, c) = app();
+    submit(&mut app, "/goal ship the parser");
+    submit(&mut app, "/goal pause");
+    submit(&mut app, "/goal");
+    assert_eq!(calls(&c), ["goal ship the parser", "goal pause", "goal "]);
+    assert!(!screen(&mut app).contains("not available in the Rust build"));
+    app.apply(LaneEvent::GoalReply("Goal set: ship the parser".into()));
+    assert!(screen(&mut app).contains(" Goal set: ship the parser"));
+}
+
+/// An assistant message whose route changed (the Claude subscription limit) shows its notice once in the transcript.
+#[test]
+fn interactive_commands_a_claude_route_notice_is_shown_under_its_answer() {
+    let (mut app, _) = app();
+    let notice = "Claude subscription limit reached; using API credits until 2026-09-21T15:13:20.000Z";
+    let message = json!({
+        "role": "assistant",
+        "content": [{"type": "text", "text": "from the api"}],
+        "api": "anthropic-messages", "provider": "anthropic", "model": "claude-opus-5-5",
+        "usage": {"input": 1, "output": 1, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 2,
+            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}},
+        "stopReason": "stop", "timestamp": 1,
+        "diagnostics": [{"type": "claude_subscription_route", "timestamp": 1,
+            "details": {"route": "api", "notice": notice}}],
+    });
+    assert_eq!(interactive::lane::route_notice(&message).as_deref(), Some(notice));
+    app.apply(LaneEvent::Message(message.clone()));
+    let shown = screen(&mut app);
+    // The notice wraps at the terminal width.
+    let flat = shown.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(flat.contains(notice), "{shown}");
+    assert_eq!(shown.matches("using API credits").count(), 1, "{shown}");
+    // Without the diagnostic (or on a user message) nothing is added.
+    let mut plain = message;
+    plain["diagnostics"] = json!([]);
+    assert_eq!(interactive::lane::route_notice(&plain), None);
+    assert_eq!(
+        interactive::lane::route_notice(
+            &json!({"role": "user", "diagnostics": [{"type": "claude_subscription_route", "details": {"notice": "x"}}]})
+        ),
+        None
+    );
+}
+
+/// Pi's `/import [path]` (client-tui-sessions.ts `handleImport`/`importPiSessionFile`): the path is resolved against
+/// the working directory and imported through the server; the answer offers to switch, and either choice says
+/// where the session is.
+#[test]
+fn interactive_commands_import_resolves_the_path_imports_and_offers_to_switch() {
+    let (mut app, c) = app();
+    submit(&mut app, "/import pi/session.jsonl");
+    submit(&mut app, "/import \"/abs/a b.jsonl\"");
+    assert_eq!(calls(&c), ["import /p/pi/session.jsonl", "import /abs/a b.jsonl"]);
+    assert!(screen(&mut app).contains("Importing /abs/a b.jsonl…"));
+
+    let imported = |current: bool, file: Option<&str>| LaneEvent::PiImported {
+        imported: "Imported 2 entries from /p/a.jsonl as session s-1".into(),
+        source: "/p/a.jsonl".into(),
+        session_file: file.map(str::to_string),
+        current,
+    };
+    app.apply(imported(false, Some("/sessions/s-1.jsonl")));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Imported 2 entries from /p/a.jsonl as session s-1. Switch to it?"),
+        "{s}"
+    );
+    assert!(
+        s.contains("Switch to the imported session") && s.contains("Stay here"),
+        "{s}"
+    );
+    app.handle_input("\r");
+    assert_eq!(calls(&c).last().unwrap(), "resume /sessions/s-1.jsonl");
+    assert!(screen(&mut app).contains("Session imported from: /p/a.jsonl"));
+
+    // "Stay here", and Escape, leave the session where it is and say how to open it.
+    app.apply(imported(false, Some("/sessions/s-1.jsonl")));
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    let stay = "Imported 2 entries from /p/a.jsonl as session s-1. Use /resume to open it.";
+    assert!(screen(&mut app).contains(stay));
+    app.apply(imported(false, Some("/sessions/s-1.jsonl")));
+    app.handle_input("\x1b");
+    assert!(screen(&mut app).contains(stay));
+    assert_eq!(calls(&c).iter().filter(|call| call.starts_with("resume")).count(), 1);
+
+    // The current session is not offered.
+    app.apply(imported(true, None));
+    assert!(screen(&mut app).contains("Imported 2 entries from /p/a.jsonl as session s-1 (the current session)"));
+    assert!(!screen(&mut app).contains("Switch to it?"));
+}
+
+/// Pi's `/import` without a path (client-tui-sessions.ts `showPiSessionPicker`): Pi's session selector over Pi's
+/// sessions of this project; a selection is imported (`importPiSessionFile`), deleting or renaming a Pi session is
+/// refused ("Pi sessions are read-only here"), Escape closes it.
+#[test]
+fn interactive_commands_import_without_a_path_picks_a_pi_session_read_only() {
+    let (mut app, c) = app();
+    submit(&mut app, "/import");
+    assert_eq!(calls(&c), ["list_pi"]);
+    app.apply(LaneEvent::PiSessions(vec![
+        listing("/pi/old.jsonl", Some("Pi named"), "old pi ask", 1),
+        listing("/pi/new.jsonl", None, "new pi ask", 3),
+    ]));
+    let s = screen(&mut app);
+    assert!(s.contains("› new pi ask") && s.contains("  Pi named"), "{s}");
+    // Pi's files are only read: a confirmed delete and a rename are refused, nothing is sent.
+    app.handle_input("\x04");
+    assert!(screen(&mut app).contains("Delete session?"));
+    app.handle_input("\r");
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Pi sessions are read-only here") && s.contains("new pi ask"),
+        "{s}"
+    );
+    app.handle_input("\x12");
+    typed(&mut app, "X");
+    app.handle_input("\r");
+    assert!(screen(&mut app).contains("Pi sessions are read-only here"));
+    assert_eq!(calls(&c), ["list_pi"]);
+    // Choosing one imports it through the server, as `/import <path>` does.
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    assert_eq!(calls(&c), ["list_pi", "import /pi/old.jsonl"]);
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Importing /pi/old.jsonl…") && !s.contains("old pi ask"),
+        "{s}"
+    );
+    // Escape closes the picker without importing.
+    submit(&mut app, "/import");
+    app.apply(LaneEvent::PiSessions(vec![listing(
+        "/pi/new.jsonl",
+        None,
+        "new pi ask",
+        3,
+    )]));
+    assert!(screen(&mut app).contains("new pi ask"));
+    app.handle_input("\x1b");
+    assert!(!screen(&mut app).contains("new pi ask"));
+    assert_eq!(calls(&c), ["list_pi", "import /pi/old.jsonl", "list_pi"]);
 }

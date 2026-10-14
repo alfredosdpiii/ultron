@@ -264,7 +264,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"sessionId": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
 				"reasoningEffort": "high",
@@ -1004,7 +1004,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -1284,7 +1284,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"sessionId": "sess-fb"
 			},
 			"responses": [
@@ -1602,7 +1602,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -1760,7 +1760,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"sessionId": "sess-fb",
 				"transport": "websocket"
 			},
@@ -1979,7 +1979,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -2137,7 +2137,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "websocket-cached",
 				"cacheRetention": "none",
 				"sessionId": "ignored"
@@ -2457,7 +2457,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -2568,7 +2568,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"serviceTier": "flex"
 			},
@@ -2785,7 +2785,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -2901,7 +2901,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -3117,7 +3117,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -3272,7 +3272,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -3488,7 +3488,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -3643,7 +3643,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"reasoningEffort": "none",
 				"reasoningSummary": null
@@ -3861,7 +3861,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -4020,7 +4020,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"reasoningEffort": "none"
 			},
@@ -4237,7 +4237,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -4393,7 +4393,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"reasoningEffort": "low",
 				"reasoningSummary": "off"
@@ -4611,7 +4611,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -4770,7 +4770,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -4986,7 +4986,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -5144,7 +5144,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -5360,7 +5360,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -5648,7 +5648,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ4In0.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ4In0.example-sig",
 				"transport": "sse"
 			},
 			"responses": [],
@@ -5923,7 +5923,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -5999,7 +5999,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -6154,7 +6154,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"maxRetries": 2
 			},
@@ -6231,7 +6231,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -6386,7 +6386,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -6462,7 +6462,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -6617,7 +6617,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -6693,7 +6693,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -6848,7 +6848,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"maxRetries": 1
 			},
@@ -7075,7 +7075,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -7156,7 +7156,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -7311,7 +7311,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"maxRetries": 1,
 				"maxRetryDelayMs": 1000
@@ -7390,7 +7390,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -7545,7 +7545,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"maxRetries": 1
 			},
@@ -7771,7 +7771,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -7852,7 +7852,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -8007,7 +8007,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -8077,7 +8077,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -8232,7 +8232,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -8444,7 +8444,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -8599,7 +8599,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -8697,7 +8697,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -8852,7 +8852,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -8950,7 +8950,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -9105,7 +9105,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -9203,7 +9203,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -9358,7 +9358,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -9456,7 +9456,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -9611,7 +9611,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -9827,7 +9827,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -9982,7 +9982,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -10196,7 +10196,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -10351,7 +10351,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -10563,7 +10563,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -10718,7 +10718,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -10935,7 +10935,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -11090,7 +11090,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -11309,7 +11309,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -11464,7 +11464,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -11566,7 +11566,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -11721,7 +11721,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -11819,7 +11819,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -11974,7 +11974,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -12368,7 +12368,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -12523,7 +12523,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse"
 			},
 			"responses": [
@@ -12703,7 +12703,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",
@@ -12858,7 +12858,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"websocketConnectTimeoutMs": -1
 			},
@@ -13001,7 +13001,7 @@
 				]
 			},
 			"options": {
-				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+				"apiKey": "eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 				"transport": "sse",
 				"reasoning": "max",
 				"toolChoice": "none",
@@ -13220,7 +13220,7 @@
 					"method": "POST",
 					"headers": {
 						"accept": "text/event-stream",
-						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.sig",
+						"authorization": "Bearer eyJhbGciOiJub25lIn0.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjLTEyMyJ9fQ.example-sig",
 						"chatgpt-account-id": "acc-123",
 						"content-type": "application/json",
 						"openai-beta": "responses=experimental",

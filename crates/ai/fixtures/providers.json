@@ -7165,7 +7165,7 @@
 				"env": {
 					"PI_CACHE_RETENTION": "unset"
 				},
-				"apiKey": "sk-ant-oat01-test",
+				"apiKey": "sk-ant-oat01-example",
 				"thinkingEnabled": false
 			},
 			"responses": [
@@ -7419,7 +7419,7 @@
 						"anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
 						"anthropic-dangerous-direct-browser-access": "true",
 						"anthropic-version": "2023-06-01",
-						"authorization": "Bearer sk-ant-oat01-test",
+						"authorization": "Bearer sk-ant-oat01-example",
 						"content-type": "application/json",
 						"user-agent": "claude-cli/2.1.280",
 						"x-app": "cli"

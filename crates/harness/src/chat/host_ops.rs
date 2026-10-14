@@ -145,6 +145,8 @@ impl HostOps {
                 .map(|ms| ms.ceil() as u64),
             keep: options.get("keep").and_then(Value::as_bool).unwrap_or(false)
                 || payload.get("keep").and_then(Value::as_bool).unwrap_or(false),
+            thinking: options.get("thinking").and_then(Value::as_str).map(str::to_owned),
+            ..ChildInput::default()
         };
         let conversation = call.conversation_id;
         let cell = call.task_id;

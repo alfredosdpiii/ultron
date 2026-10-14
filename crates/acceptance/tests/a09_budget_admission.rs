@@ -22,6 +22,8 @@ struct Budget {
     fixture: Fixture,
     usage: UsageLedger,
     gate: Signal,
+    /// Released once every parent is admitted: a parent's children never race a sibling parent's admission.
+    parents: Signal,
     nested: Arc<Mutex<Vec<Result<Value, String>>>>,
     peak: Arc<AtomicUsize>,
 }
@@ -29,6 +31,8 @@ struct Budget {
 fn budget(limits: UsageLimits) -> Budget {
     let usage = UsageLedger::in_memory(limits);
     let gate = Signal::new();
+    let parents = Signal::new();
+    let admitted = parents.clone();
     let nested: Arc<Mutex<Vec<Result<Value, String>>>> = Arc::default();
     let running = Arc::new(AtomicUsize::new(0));
     let peak = Arc::new(AtomicUsize::new(0));
@@ -42,6 +46,7 @@ fn budget(limits: UsageLimits) -> Budget {
                 if let Some(count) = prompt.strip_prefix("parent:") {
                     // A child lane spawns its own children through the same host, as its kernel would.
                     let count: usize = count.parse().unwrap();
+                    assert!(admitted.wait(WAIT), "the parents were never all admitted");
                     let spawns: Vec<_> = (0..count)
                         .map(|_| {
                             let (host, lane, signal) = (host.clone(), lane.to_string(), signal.clone());
@@ -74,6 +79,7 @@ fn budget(limits: UsageLimits) -> Budget {
         fixture,
         usage,
         gate,
+        parents,
         nested,
         peak,
     }
@@ -132,6 +138,7 @@ fn acceptance_a09_nested_children_spawned_from_child_lanes_share_the_root_tree_b
     let run = budget(limits(Some(4), None));
     let agents = run.fixture.agents.clone();
     let parents: Vec<Value> = burst(2, move |_| spawn(&agents, "parent:3", None).unwrap());
+    run.parents.abort("admitted");
     wait_for("six nested spawns", WAIT, || lock(&run.nested).len() == 6);
     let nested = lock(&run.nested).clone();
     assert_eq!(nested.iter().filter(|r| r.is_ok()).count(), 2);
@@ -323,4 +330,44 @@ fn acceptance_a09_later_tasks_with_the_default_timeout_are_capped_to_the_remaini
     assert_eq!(second.deadline_at(), first.deadline_at());
     let untimed = ledger.reserve(&ReserveRequest::task("c")).unwrap();
     assert_eq!(untimed.deadline_at(), first.deadline_at());
+}
+
+/// The load race behind `the_root_wall_deadline_caps_child_deadlines...`: a cancelled task's result was published
+/// while its run thread still held the model reservation, so `activeReservations` read 1 until the run unwound.
+/// Here the run ignores its abort until released, which makes that window deterministic.
+#[test]
+fn acceptance_a09_a_cancelled_task_settles_its_model_reservation_before_its_result_is_published() {
+    let usage = UsageLedger::in_memory(UsageLimits::default());
+    let (entered, release) = (Signal::new(), Signal::new());
+    let (started, held) = (entered.clone(), release.clone());
+    let fixture = fixture(Options {
+        usage: Some(usage.clone()),
+        script: Some(Arc::new(move |_lane, _prompt, _signal, _host| {
+            started.abort("running");
+            assert!(held.wait(WAIT), "the run was never released");
+            Ok("done".to_string())
+        })),
+        ..Options::default()
+    });
+    let task = spawn(&fixture.agents, "hold", None).unwrap();
+    assert!(entered.wait(WAIT), "the run never started");
+    assert_eq!(usage.status(None).unwrap()["activeReservations"], 2);
+    assert_eq!(
+        fixture.call("agents.cancel", json!({ "id": task["id"] })).unwrap(),
+        json!({ "cancelled": true })
+    );
+    assert_eq!(
+        fixture.call("agents.result", json!({ "id": task["id"] })).unwrap()["status"],
+        "cancelled"
+    );
+    let status = usage.status(None).unwrap();
+    assert_eq!(status["activeReservations"], 0);
+    assert_eq!(status["usage"]["taskCalls"], 1);
+    assert_eq!(status["usage"]["modelCalls"], 1);
+    release.abort("released");
+    wait_for("the run unwound", WAIT, || fixture.prompt_count() == 1);
+    // The run's own settle after the task ended is a no-op: still one model call.
+    fixture.agents.close();
+    assert_eq!(usage.status(None).unwrap()["usage"]["modelCalls"], 1);
+    assert_eq!(usage.status(None).unwrap()["activeReservations"], 0);
 }

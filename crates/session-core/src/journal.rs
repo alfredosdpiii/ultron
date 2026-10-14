@@ -27,13 +27,19 @@ impl RunJournal {
         prompt: Value,
         model: (u64, u64),
     ) -> Result<Self, String> {
+        Self::admit_with_settings(session, config, prompt, model, session_journal::run::default_settings())
+    }
+
+    /// [`RunJournal::admit`] with the operation's `settings` (its compaction settings as the run uses them).
+    pub fn admit_with_settings(
+        session: Option<&mut Session>,
+        config: Value,
+        prompt: Value,
+        model: (u64, u64),
+        settings: Value,
+    ) -> Result<Self, String> {
         let run = match session {
-            Some(session) => Some(Run::admit(
-                session,
-                config,
-                session_journal::run::default_settings(),
-                prompt,
-            )?),
+            Some(session) => Some(Run::admit(session, config, settings, prompt)?),
             None => None,
         };
         Ok(RunJournal {
@@ -162,6 +168,100 @@ impl RunJournal {
         match (self.run, session) {
             (Some(run), Some(session)) => run.finish(session, failure),
             _ => Ok(()),
+        }
+    }
+
+    /// The run's next answer is an overflow that starts a compaction (see [`Run::compact_with_answer`]).
+    pub fn compact_with_answer(&mut self, session: &Session, prepared: Value) {
+        if let Some(run) = self.run.as_mut() {
+            run.compact_with_answer(session, prepared);
+        }
+    }
+
+    /// A compaction starts at the current checkpoint (see [`Run::begin_compaction`]).
+    pub fn begin_compaction(
+        &mut self,
+        session: &mut Session,
+        reason: &str,
+        prepared: Value,
+        resume_after: Option<Value>,
+    ) {
+        self.apply(session, |run, s| {
+            run.begin_compaction(s, reason, prepared, resume_after)
+        });
+    }
+
+    /// The summary request: returns the compaction entry's id (none without a journal or after a write error).
+    pub fn compaction_request(
+        &mut self,
+        session: &mut Session,
+        retry: &crate::compaction_op::SummaryRetry,
+    ) -> Option<String> {
+        let mut id = None;
+        self.apply(session, |run, s| {
+            id = Some(run.compaction_request(s, retry)?);
+            Ok(())
+        });
+        id
+    }
+
+    /// The task id of the compaction in progress (the harness's retry `step`).
+    pub fn compaction_task_id(&self) -> Option<String> {
+        self.run.as_ref()?.compaction_task_id()
+    }
+
+    /// See [`Run::compaction_retry_wait`].
+    pub fn compaction_retry_wait(
+        &mut self,
+        session: &mut Session,
+        usage: Option<&Value>,
+        error: &str,
+        not_before: i64,
+    ) {
+        self.apply(session, |run, s| run.compaction_retry_wait(s, usage, error, not_before));
+    }
+
+    /// See [`Run::compaction_retry`].
+    pub fn compaction_retry(&mut self, session: &mut Session) {
+        self.apply(session, |run, s| run.compaction_retry(s));
+    }
+
+    pub fn compaction_usage(&mut self, session: &mut Session, usage: &Value) {
+        self.apply(session, |run, s| run.compaction_usage(s, usage));
+    }
+
+    pub fn complete_compaction(&mut self, session: &mut Session, id: &str, entry: serde_json::Map<String, Value>) {
+        self.apply(session, |run, s| run.complete_compaction(s, id, entry));
+    }
+
+    /// See [`Run::complete_compaction_from_hook`]: the compaction entry's id (none after a write error).
+    pub fn complete_compaction_from_hook(
+        &mut self,
+        session: &mut Session,
+        entry: serde_json::Map<String, Value>,
+        usage: Option<Value>,
+    ) -> Option<String> {
+        let mut id = None;
+        self.apply(session, |run, s| {
+            id = Some(run.complete_compaction_from_hook(s, entry, usage)?);
+            Ok(())
+        });
+        id
+    }
+
+    /// See [`Run::decline_compaction`]; false also without a journal or after a write error.
+    pub fn decline_compaction(&mut self, session: &mut Session, placement: Vec<session_journal::Write>) -> bool {
+        let mut resumed = false;
+        self.apply(session, |run, s| {
+            resumed = run.decline_compaction(s, placement)?;
+            Ok(())
+        });
+        resumed
+    }
+
+    pub fn abandon_compaction(&mut self) {
+        if let Some(run) = self.run.as_mut() {
+            run.abandon_compaction();
         }
     }
 

@@ -1,0 +1,397 @@
+{
+	"config": {
+		"mcpServers": {
+			"issues": {
+				"url": "<ORIGIN>/mcp"
+			},
+			"eager-issues": {
+				"url": "<ORIGIN>/mcp",
+				"lifecycle": "eager"
+			},
+			"prov": {
+				"url": "<ORIGIN>/prov-mcp",
+				"auth": {
+					"provider": "fakeprov"
+				}
+			},
+			"keyed": {
+				"url": "<ORIGIN>/mcp",
+				"headers": {
+					"Authorization": "Bearer nope"
+				}
+			}
+		}
+	},
+	"events": [
+		{
+			"op": "start",
+			"notices": [
+				{
+					"message": "MCP server \"eager-issues\" requires sign-in. Run /mcp to sign in.",
+					"level": "warning"
+				}
+			]
+		},
+		{
+			"op": "call",
+			"params": {
+				"server": "issues"
+			},
+			"text": "MCP server \"issues\" requires sign-in. Run /mcp to sign in.",
+			"details": {
+				"server": "issues",
+				"error": "auth_required"
+			}
+		},
+		{
+			"op": "call",
+			"params": {},
+			"text": "MCP: 0/4 servers connected\nissues: needs sign-in\neager-issues: needs sign-in\nprov: not connected\nkeyed: not connected",
+			"details": {
+				"mode": "status",
+				"servers": [
+					{
+						"name": "issues",
+						"status": "needs sign-in",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "eager-issues",
+						"status": "needs sign-in",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "prov",
+						"status": "not connected",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "keyed",
+						"status": "not connected",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					}
+				]
+			}
+		},
+		{
+			"op": "command",
+			"args": "login issues",
+			"notices": [
+				{
+					"message": "Sign in to MCP server \"issues\" in your browser:\nhttp://127.0.0.1:<PORT>/authorize?response_type=code&client_id=client-1&code_challenge=<CHALLENGE>&code_challenge_method=S256&redirect_uri=http%3A%2F%2F127.0.0.1%3A<CB>%2Fcallback&state=<STATE>&resource=http%3A%2F%2F127.0.0.1%3A<PORT>%2Fmcp",
+					"level": "info"
+				},
+				{
+					"message": "Signed in to \"issues\" (1 tools).",
+					"level": "info"
+				}
+			],
+			"prompts": [
+				{
+					"title": "MCP sign-in for issues: paste the redirect URL, or wait for the browser. If the browser ends on a page that can't be reached (localhost refused to connect), copy that page's full address from the address bar and paste it here.",
+					"placeholder": "http://127.0.0.1/callback?code=..."
+				}
+			],
+			"opened": [
+				"http://127.0.0.1:<PORT>/authorize?response_type=code&client_id=client-1&code_challenge=<CHALLENGE>&code_challenge_method=S256&redirect_uri=http%3A%2F%2F127.0.0.1%3A<CB>%2Fcallback&state=<STATE>&resource=http%3A%2F%2F127.0.0.1%3A<PORT>%2Fmcp"
+			]
+		},
+		{
+			"op": "call",
+			"params": {
+				"tool": "issues_whoami"
+			},
+			"text": "token access-1",
+			"details": {
+				"mode": "call",
+				"server": "issues",
+				"tool": "whoami"
+			}
+		},
+		{
+			"op": "authFile",
+			"content": {
+				"mcp__issues|http://127.0.0.1:<PORT>/mcp": {
+					"serverUrl": "http://127.0.0.1:<PORT>/mcp",
+					"discovery": {
+						"authorizationServerUrl": "http://127.0.0.1:<PORT>",
+						"authorizationServerMetadata": {
+							"issuer": "http://127.0.0.1:<PORT>",
+							"authorization_endpoint": "http://127.0.0.1:<PORT>/authorize",
+							"token_endpoint": "http://127.0.0.1:<PORT>/token",
+							"registration_endpoint": "http://127.0.0.1:<PORT>/register",
+							"response_types_supported": [
+								"code"
+							],
+							"code_challenge_methods_supported": [
+								"S256"
+							],
+							"token_endpoint_auth_methods_supported": [
+								"none"
+							]
+						},
+						"resourceMetadata": {
+							"resource": "http://127.0.0.1:<PORT>/mcp",
+							"authorization_servers": [
+								"http://127.0.0.1:<PORT>"
+							]
+						},
+						"resourceMetadataUrl": "http://127.0.0.1:<PORT>/.well-known/oauth-protected-resource/mcp"
+					},
+					"clientInformation": {
+						"client_name": "ultron",
+						"redirect_uris": [
+							"http://127.0.0.1:<CB>/callback"
+						],
+						"grant_types": [
+							"authorization_code",
+							"refresh_token"
+						],
+						"response_types": [
+							"code"
+						],
+						"token_endpoint_auth_method": "none",
+						"client_id": "client-1"
+					},
+					"oauthState": "<STATE>",
+					"codeVerifier": "<VERIFIER>",
+					"tokens": {
+						"access_token": "access-1",
+						"token_type": "Bearer",
+						"expires_in": 3600,
+						"refresh_token": "refresh-1"
+					},
+					"tokensExpireAt": "<EXPIRES>"
+				}
+			}
+		},
+		{
+			"op": "expire"
+		},
+		{
+			"op": "call",
+			"params": {
+				"tool": "issues_whoami"
+			},
+			"text": "token access-2",
+			"details": {
+				"mode": "call",
+				"server": "issues",
+				"tool": "whoami"
+			}
+		},
+		{
+			"op": "authFile",
+			"content": {
+				"mcp__issues|http://127.0.0.1:<PORT>/mcp": {
+					"serverUrl": "http://127.0.0.1:<PORT>/mcp",
+					"discovery": {
+						"authorizationServerUrl": "http://127.0.0.1:<PORT>",
+						"authorizationServerMetadata": {
+							"issuer": "http://127.0.0.1:<PORT>",
+							"authorization_endpoint": "http://127.0.0.1:<PORT>/authorize",
+							"token_endpoint": "http://127.0.0.1:<PORT>/token",
+							"registration_endpoint": "http://127.0.0.1:<PORT>/register",
+							"response_types_supported": [
+								"code"
+							],
+							"code_challenge_methods_supported": [
+								"S256"
+							],
+							"token_endpoint_auth_methods_supported": [
+								"none"
+							]
+						},
+						"resourceMetadata": {
+							"resource": "http://127.0.0.1:<PORT>/mcp",
+							"authorization_servers": [
+								"http://127.0.0.1:<PORT>"
+							]
+						},
+						"resourceMetadataUrl": "http://127.0.0.1:<PORT>/.well-known/oauth-protected-resource/mcp"
+					},
+					"clientInformation": {
+						"client_name": "ultron",
+						"redirect_uris": [
+							"http://127.0.0.1:<CB>/callback"
+						],
+						"grant_types": [
+							"authorization_code",
+							"refresh_token"
+						],
+						"response_types": [
+							"code"
+						],
+						"token_endpoint_auth_method": "none",
+						"client_id": "client-1"
+					},
+					"oauthState": "<STATE>",
+					"codeVerifier": "<VERIFIER>",
+					"tokens": {
+						"refresh_token": "refresh-2",
+						"access_token": "access-2",
+						"token_type": "Bearer",
+						"expires_in": 3600
+					},
+					"tokensExpireAt": "<EXPIRES>"
+				}
+			}
+		},
+		{
+			"op": "command",
+			"args": "logout issues",
+			"notices": [
+				{
+					"message": "Signed out of \"issues\".",
+					"level": "info"
+				}
+			],
+			"prompts": [],
+			"opened": []
+		},
+		{
+			"op": "call",
+			"params": {},
+			"text": "MCP: 0/4 servers connected\nissues: needs sign-in\neager-issues: needs sign-in\nprov: not connected\nkeyed: not connected",
+			"details": {
+				"mode": "status",
+				"servers": [
+					{
+						"name": "issues",
+						"status": "needs sign-in",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "eager-issues",
+						"status": "needs sign-in",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "prov",
+						"status": "not connected",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					},
+					{
+						"name": "keyed",
+						"status": "not connected",
+						"toolCount": null,
+						"transport": "http",
+						"scope": "global"
+					}
+				]
+			}
+		},
+		{
+			"op": "command",
+			"args": "logout issues",
+			"notices": [
+				{
+					"message": "No stored credentials for \"issues\".",
+					"level": "info"
+				}
+			],
+			"prompts": [],
+			"opened": []
+		},
+		{
+			"op": "call",
+			"params": {
+				"tool": "prov_whoami"
+			},
+			"text": "token prov-1",
+			"details": {
+				"mode": "call",
+				"server": "prov",
+				"tool": "whoami"
+			}
+		},
+		{
+			"op": "providerToken",
+			"token": "prov-2"
+		},
+		{
+			"op": "call",
+			"params": {
+				"tool": "prov_whoami"
+			},
+			"text": "token prov-2",
+			"details": {
+				"mode": "call",
+				"server": "prov",
+				"tool": "whoami"
+			}
+		},
+		{
+			"op": "call",
+			"params": {
+				"server": "keyed"
+			},
+			"text": "MCP server \"keyed\" could not be connected: MCP server \"keyed\" failed to connect: MCP server requires authentication",
+			"details": {
+				"server": "keyed",
+				"error": "connect_failed"
+			}
+		},
+		{
+			"op": "command",
+			"args": "login prov",
+			"notices": [
+				{
+					"message": "MCP server \"prov\" uses the fakeprov login: run /login fakeprov.",
+					"level": "info"
+				}
+			],
+			"prompts": [],
+			"opened": []
+		},
+		{
+			"op": "command",
+			"args": "login keyed",
+			"notices": [
+				{
+					"message": "MCP server \"keyed\" does not use OAuth sign-in.",
+					"level": "info"
+				}
+			],
+			"prompts": [],
+			"opened": []
+		},
+		{
+			"op": "serverLog",
+			"log": [
+				"401 none",
+				"401 none",
+				"401 none",
+				"metadata resource",
+				"metadata authorization server",
+				"register {\"client_name\": \"ultron\", \"grant_types\": [\"authorization_code\", \"refresh_token\"], \"redirect_uris\": [\"http://127.0.0.1:<PORT>/callback\"], \"response_types\": [\"code\"], \"token_endpoint_auth_method\": \"none\"}",
+				"authorize {\"client_id\": \"client-1\", \"code_challenge_method\": \"S256\", \"redirect_uri\": \"http://127.0.0.1:<PORT>/callback\", \"resource\": \"http://127.0.0.1:<PORT>/mcp\", \"response_type\": \"code\", \"state\": \"<set>\"}",
+				"token code {\"client_id\": \"client-1\", \"code\": \"code-1\", \"grant_type\": \"authorization_code\", \"redirect_uri\": \"http://127.0.0.1:<PORT>/callback\", \"resource\": \"http://127.0.0.1:<PORT>/mcp\"}",
+				"call access-1",
+				"401 access-1",
+				"token refresh {\"client_id\": \"client-1\", \"grant_type\": \"refresh_token\", \"refresh_token\": \"refresh-1\", \"resource\": \"http://127.0.0.1:<PORT>/mcp\"}",
+				"call access-2",
+				"call prov-1",
+				"call prov-2",
+				"401 nope"
+			]
+		},
+		{
+			"op": "shutdown"
+		}
+	]
+}

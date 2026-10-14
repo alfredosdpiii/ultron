@@ -2584,7 +2584,7 @@ INV-coding-agent-env-CI	coding-agent	env	CI	packages/coding-agent/src/core/bug-r
 INV-coding-agent-env-CLAUDE_CODE_SESSION_ID	coding-agent	env	CLAUDE_CODE_SESSION_ID	packages/coding-agent/src/ultron/claude/watch.ts:178
 INV-coding-agent-env-COLORTERM	coding-agent	env	COLORTERM	packages/coding-agent/src/core/bug-report.ts:81
 INV-coding-agent-env-DISPLAY	coding-agent	env	DISPLAY	packages/coding-agent/src/utils/clipboard.ts:59
-INV-coding-agent-env-DOCKER_HOST	coding-agent	env	DOCKER_HOST	packages/coding-agent/src/ultron/rlm/autoreview_tests.py:187
+INV-coding-agent-env-DOCKER_HOST	coding-agent	env	DOCKER_HOST	packages/coding-agent/src/ultron/rlm/autoreview_tests.py:203
 INV-coding-agent-env-EDITOR	coding-agent	env	EDITOR	packages/coding-agent/src/core/settings-manager.ts:1273
 INV-coding-agent-env-GIT_AUTHOR_EMAIL	coding-agent	env	GIT_AUTHOR_EMAIL	packages/coding-agent/src/ultron/rlm/worktrees.ts:245
 INV-coding-agent-env-GIT_AUTHOR_NAME	coding-agent	env	GIT_AUTHOR_NAME	packages/coding-agent/src/ultron/rlm/worktrees.ts:241
@@ -2597,7 +2597,7 @@ INV-coding-agent-env-LOKI_ALLOW_PROTECTED	coding-agent	env	LOKI_ALLOW_PROTECTED	
 INV-coding-agent-env-LOKI_DAEMON	coding-agent	env	LOKI_DAEMON	packages/coding-agent/src/ultron/loki-engine/loki.py:8308
 INV-coding-agent-env-LOKI_PYTHON	coding-agent	env	LOKI_PYTHON	packages/coding-agent/src/ultron/loki-engine/loki.py:767
 INV-coding-agent-env-LOKI_STRICT	coding-agent	env	LOKI_STRICT	packages/coding-agent/src/ultron/loki-engine/loki.py:6370
-INV-coding-agent-env-PATH	coding-agent	env	PATH	packages/coding-agent/src/ultron/rlm/autoreview_tests.py:187
+INV-coding-agent-env-PATH	coding-agent	env	PATH	packages/coding-agent/src/ultron/rlm/autoreview_tests.py:203
 INV-coding-agent-env-PI_CLEAR_ON_SHRINK	coding-agent	env	PI_CLEAR_ON_SHRINK	packages/coding-agent/src/core/settings-manager.ts:1812
 INV-coding-agent-env-PI_CODING_AGENT	coding-agent	env	PI_CODING_AGENT	packages/coding-agent/src/cli/setup.ts:6
 INV-coding-agent-env-PI_EXPERIMENTAL	coding-agent	env	PI_EXPERIMENTAL	packages/coding-agent/src/core/experimental.ts:2

@@ -363,23 +363,24 @@ const pkg = (source, baseDir, entry = "extensions/index.ts") => {
 };
 const local = (path, extra = {}) => ({ path, resolvedPath: path, sourceInfo: { path, source: "local", scope: "user", origin: "top-level", baseDir: dirname(path) }, ...extra });
 const single = (name) => ({ path: `/plugins/${name}.ts`, resolvedPath: `/plugins/${name}.ts`, sourceInfo: { path: `/plugins/${name}.ts`, source: `/plugins/${name}.ts`, scope: "user", origin: "package", baseDir: "/plugins" } });
+// Home directories use placeholder user names (user, someone), never a reporter's real one.
 const stackCases = [
 	{
-		stack: "TypeError: Cannot read properties of undefined (reading 'runtime')\n    at streamSimple (file:///home/fedora/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-CMRUVXTE.js:1093:16944)\n    at /home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/src/agents/worker-stream.ts:43:45",
-		extensions: [pkg("npm:pi-observational-memory", "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory"), pkg("npm:unrelated", "/home/fedora/.pi/agent/npm/node_modules/unrelated")],
+		stack: "TypeError: Cannot read properties of undefined (reading 'runtime')\n    at streamSimple (file:///home/user/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-CMRUVXTE.js:1093:16944)\n    at /home/user/.pi/agent/npm/node_modules/pi-observational-memory/src/agents/worker-stream.ts:43:45",
+		extensions: [pkg("npm:pi-observational-memory", "/home/user/.pi/agent/npm/node_modules/pi-observational-memory"), pkg("npm:unrelated", "/home/user/.pi/agent/npm/node_modules/unrelated")],
 	},
 	{
-		stack: "Error: broken\n    at run (c:\\users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory\\src\\worker.ts:4:2)",
+		stack: "Error: broken\n    at run (c:\\users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory\\src\\worker.ts:4:2)",
 		extensions: [
-			pkg("npm:@scope/memory", "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory", "extensions/first.ts"),
-			pkg("npm:@scope/memory", "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory", "extensions/second.ts"),
+			pkg("npm:@scope/memory", "C:\\Users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory", "extensions/first.ts"),
+			pkg("npm:@scope/memory", "C:\\Users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory", "extensions/second.ts"),
 		],
 	},
 	{ stack: "Error: broken\n    at run (file:///plugins/b.ts:4:2)", extensions: [single("a"), single("b")] },
 	{ stack: "Error: Failed to read /tmp/node_modules/memory/extensions/index.ts\n    at run (file:///opt/pi/dist/core.js:4:2)", extensions: [pkg("npm:memory", "/tmp/node_modules/memory")] },
 	{
-		stack: "Error: progress 100%\n    at run (file:///Users/reporter/.pi/agent/extensions/local%20memory/worker.ts:4:2)",
-		extensions: [local("/Users/reporter/.pi/agent/extensions/local memory/index.ts")],
+		stack: "Error: progress 100%\n    at run (file:///Users/someone/.pi/agent/extensions/local%20memory/worker.ts:4:2)",
+		extensions: [local("/Users/someone/.pi/agent/extensions/local memory/index.ts")],
 	},
 	{
 		stack: "Error\n    at a (/x/one.ts:1:1)\n    at b (/x/one.tsx:2:2)\n    at c /x/two.ts\n  at d (/x/three.ts)\n\tat e (/x/four.ts\tmore)\n    at f (/x/bad%E0%A4%A.ts:1:1)\n    at g (/x/five.ts%3A1)\n    not a frame /x/six.ts",

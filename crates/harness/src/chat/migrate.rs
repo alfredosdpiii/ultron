@@ -78,6 +78,7 @@ pub fn import_task_journal(tx: &mut Tx<'_>, conversation_id: ConversationId, doc
             model: None,
             timeout_ms: None,
             keep: false,
+            ..ChildInput::default()
         });
         let mut legacy = task.to_json();
         if let Some(legacy) = legacy.as_object_mut() {

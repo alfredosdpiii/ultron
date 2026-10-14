@@ -4,7 +4,7 @@
 		"MCPRT_B": "beta",
 		"MCPRT_EMPTY": ""
 	},
-	"home": "/home/fixture",
+	"home": "/home/user",
 	"resolveCases": [
 		{
 			"value": "plain",
@@ -138,14 +138,14 @@
 				}
 			},
 			"ok": {
-				"command": "/home/fixture/bin/server",
+				"command": "/home/user/bin/server",
 				"args": [
-					"/home/fixture",
-					"/home/fixture/data",
+					"/home/user",
+					"/home/user/data",
 					"x~/y",
 					"~user"
 				],
-				"cwd": "/home/fixture/work",
+				"cwd": "/home/user/work",
 				"env": {
 					"TOKEN": "alpha"
 				},
@@ -187,7 +187,7 @@
 				"command": "~"
 			},
 			"ok": {
-				"command": "/home/fixture",
+				"command": "/home/user",
 				"cwd": "/proj/root",
 				"env": {},
 				"stderr": "pipe"

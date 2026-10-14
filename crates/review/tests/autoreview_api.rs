@@ -75,7 +75,7 @@ fn review_autoreview_load_guides_matches_python() {
                 diff --git a/web/App.TSX b/web/App.TSX\n--- a/web/App.TSX\n+++ b/web/App.TSX\n@@ -1 +1 @@\n-a\n+b\n";
     let files = parse_diff(diff);
     assert_eq!(files.len() as u64, fx["guide_diff_files"].as_u64().expect("count"));
-    let home = root_path.join("home");
+    let home = root_path.join("fakehome");
     for case in fx["guides"].as_array().expect("guides") {
         let paths: Value = serde_json::from_str(&case["paths"].to_string().replace("<root>", &root)).expect("paths");
         let with = if case["with_files"].as_bool().expect("flag") {

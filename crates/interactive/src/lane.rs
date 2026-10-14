@@ -17,6 +17,22 @@ pub struct ModelInfo {
     pub thinking_levels: Vec<String>,
 }
 
+impl model_scope::ScopeModel for ModelInfo {
+    fn provider(&self) -> &str {
+        &self.provider
+    }
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    /// The Claude Code CLI provider's models (`claude-code`, all on its `claude-code-cli` API).
+    fn is_claude_code(&self) -> bool {
+        self.provider == "claude-code"
+    }
+}
+
 impl ModelInfo {
     /// The model's thinking levels: its own, else `off` for a model without reasoning, else Pi's five.
     pub fn levels(&self) -> Vec<String> {
@@ -74,6 +90,9 @@ pub struct SessionListing {
     pub modified: i64,
     pub message_count: usize,
     pub first_message: String,
+    /// Every user and assistant message's text, joined by spaces (`SessionInfo.allMessagesText`); the selector
+    /// searches it.
+    pub all_messages_text: String,
     /// The session's working directory.
     pub cwd: String,
 }
@@ -86,6 +105,68 @@ pub struct SessionOpened {
     pub name: Option<String>,
     /// Transcript messages (Pi JSON), oldest first.
     pub messages: Vec<Value>,
+}
+
+/// What a login flow reported (`AuthEvent`), as the dialog shows it.
+/// How a `/scoped-models` catalog refresh ended.
+#[derive(Clone, Debug, PartialEq)]
+pub enum CatalogRefresh {
+    /// Finished; the providers that could not be refreshed (`result.errors`).
+    Done(Vec<String>),
+    /// The 15 s budget ran out (`result.aborted && timedOut`).
+    TimedOut,
+    /// The refresh itself failed (the `.catch` branch).
+    Failed(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginEvent {
+    AuthUrl {
+        url: String,
+        instructions: Option<String>,
+    },
+    DeviceCode {
+        user_code: String,
+        verification_uri: String,
+    },
+    /// A message and its links (`label`, `url`).
+    Info {
+        message: String,
+        links: Vec<(Option<String>, String)>,
+    },
+    Progress(String),
+}
+
+/// What a login flow asks (`AuthPrompt`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginPrompt {
+    /// Choose one option (`id`, `label`).
+    Select {
+        message: String,
+        options: Vec<(String, String)>,
+    },
+    /// Paste the authorization code or redirect URL.
+    ManualCode { message: String },
+    /// A text or secret answer.
+    Text {
+        message: String,
+        placeholder: Option<String>,
+        secret: bool,
+    },
+}
+
+/// One step of a subscription login.
+#[derive(Clone, Debug, PartialEq)]
+pub enum LoginStep {
+    /// The dialog opens (`reach`: `browserReach()`, `local`, `container` or `ssh`).
+    Started {
+        name: String,
+        reach: String,
+    },
+    Event(LoginEvent),
+    Prompt(LoginPrompt),
+    /// The flow ended (success, failure or cancel); its outcome arrives as statuses.
+    Finished,
 }
 
 /// Lane to TUI.
@@ -116,28 +197,49 @@ pub enum LaneEvent {
     Model(ModelInfo),
     /// The sessions of this working directory, newest first.
     Sessions(Vec<SessionListing>),
+    /// Pi's own sessions of this working directory (`/import` without a path), newest first.
+    PiSessions(Vec<SessionListing>),
     /// A line for the status area (`showStatus`).
     Status(String),
     /// A failure outside a turn.
     Error(String),
     /// Command output for the transcript (`host.notice(new Text(text, 1, 0))`).
     Notice(String),
+    /// The session goal's reply to `/goal` (shown dim, as client-tui-commands.ts does).
+    GoalReply(String),
     /// A `!` command finished (its message follows as [`LaneEvent::Message`] with role `bashExecution`), or failed
     /// to run.
     BashDone(Result<BashResult, String>),
-    /// A manual compaction started (`compaction_start`).
-    CompactionStarted,
+    /// A compaction started (`compaction_start`): `reason` is `manual`, or `threshold` / `overflow` for one the
+    /// session runs on its own during a run.
+    CompactionStarted { reason: String },
+    /// An automatic compaction ended without a compaction entry (`compaction_end`): `declined` (a hook trimmed the
+    /// context instead), `failed` with its error, or `aborted`.
+    CompactionEnded { status: String, error: Option<String> },
     /// A compaction ended: `Ok` with the compaction entry (`entry_added` of a `compaction` entry), else why it was
     /// rejected.
     Compacted(Result<Value, String>),
+    /// A compaction's or branch summary's request failed and is retried (`summarization_retry_scheduled`): the
+    /// retry's number, the retries allowed, the delay and the provider's error.
+    SummarizationRetryScheduled {
+        attempt: u64,
+        max_attempts: u64,
+        delay_ms: u64,
+        error: String,
+    },
+    /// The retry starts (`summarization_retry_attempt_start`): of a branch summary, or of a compaction for `reason`.
+    SummarizationRetryStarted { branch_summary: bool, reason: String },
+    /// The summary's retries ended (`summarization_retry_finished`).
+    SummarizationRetryFinished,
     /// The session's thinking level changed.
     Thinking(String),
     /// The user messages `/fork` offers (every branch), oldest first.
     ForkMessages(Vec<ForkMessage>),
     /// The session tree (Pi's `getTree()` nodes, labels resolved) and its current leaf, for `/tree`.
     Tree { tree: Value, leaf: Option<String> },
-    /// A tree navigation ended (after the session reopened at its new position).
-    Navigated(Result<(), String>),
+    /// A tree navigation ended (after the session reopened at its new position), with the selected user or custom
+    /// message's text for the editor (AgentSession `navigateTree`'s `editorText`).
+    Navigated(Result<Option<String>, String>),
     /// A session was deleted (`Err`: why not); a fresh [`LaneEvent::Sessions`] follows.
     SessionDeleted(Result<(), String>),
     /// The settings `/settings` shows: the merged settings document, the model settings environment variables
@@ -155,10 +257,24 @@ pub enum LaneEvent {
         providers: Vec<crate::selectors::AuthProvider>,
         query: String,
     },
+    /// The session's extension commands (`LegacyExtensionCommands.list`): invocation name and description, in
+    /// load order; each becomes a slash command of its own.
+    ExtensionCommands(Vec<(String, Option<String>)>),
+    /// An extension command's argument completions for `prefix`: `(value, label, description)` items, or `None`
+    /// when it offers none.
+    ExtensionCompletions {
+        name: String,
+        prefix: String,
+        items: Option<Vec<(String, String, Option<String>)>>,
+    },
+    /// A subscription login's progress (the flow runs in the client process).
+    Login(LoginStep),
     /// What `/changelog` shows, lexed off the UI thread ([`crate::changelog::changelog_tokens`]).
     Changelog(Vec<tui::markdown::Token>),
     /// The models the session can use now (after a login or logout).
     Catalog(Vec<ModelInfo>),
+    /// The model catalogs refreshed ([`LaneClient::refresh_catalog`]), or why not.
+    CatalogRefreshed(CatalogRefresh),
     /// The session's subagents for the RLM views (`rlm.list_subagents`: `{subagents: [...]}`).
     RlmStatus(Value),
     /// The session's subagents, for the agent hub.
@@ -166,6 +282,17 @@ pub enum LaneEvent {
     /// The TUI moved to a fork or clone of the session (after [`LaneEvent::Opened`]): the editor text it starts with
     /// and the status to show.
     Forked { editor_text: String, status: String },
+    /// `/import` imported a Pi session (`imported`: what to say about it, e.g. "Imported 16 entries from ... as session
+    /// <id>"): `session_file` is the native session to switch to, `current` when that is the attached session.
+    PiImported {
+        imported: String,
+        source: String,
+        session_file: Option<String>,
+        current: bool,
+    },
+    /// A dialog or notification of the session's extensions (`/mcp`), in Pi's RPC wire format
+    /// (`extension_ui_request`: `select`, `confirm`, `input`, `editor`, `notify`, `set_editor_text`, ...).
+    ExtensionUi(Value),
 }
 
 /// An image attached to a prompt (`ImageContent`: base64 data and MIME type).
@@ -177,6 +304,8 @@ pub struct PromptImage {
 
 /// TUI to lane. Every call returns at once; results arrive as [`LaneEvent`]s.
 pub trait LaneClient {
+    /// Answer an extension dialog (`ultron.extension-ui.respond`): `{value}`, `{confirmed}` or `{cancelled: true}`.
+    fn extension_ui_respond(&self, _id: &str, _answer: Value) {}
     /// Start a turn. The first prompt of an unnamed session also names it (shown at once, refined in the
     /// background), unless the user names it first.
     fn prompt(&self, text: &str);
@@ -205,6 +334,14 @@ pub trait LaneClient {
     fn abort(&self);
     /// Start a new session.
     fn new_session(&self);
+    /// `/import <path>`: import the Pi session file at `path` through the server ([`LaneEvent::PiImported`] or a
+    /// [`LaneEvent::Status`] error answers).
+    fn import_pi(&self, path: &str) {
+        let _ = path;
+    }
+    /// `/import` without a path: list Pi's sessions of this working directory for Pi's picker
+    /// ([`LaneEvent::PiSessions`]). Pi's files are only read.
+    fn list_pi_sessions(&self) {}
     /// Switch to a stored session.
     fn resume(&self, path: &str);
     /// List the sessions of this working directory ([`LaneEvent::Sessions`]).
@@ -242,9 +379,15 @@ pub trait LaneClient {
     }
     /// The session report (`/usage`), as a [`LaneEvent::Notice`].
     fn usage_report(&self) {}
+    /// `/goal [objective | pause | resume | clear | check <command>]`: the session goal's command
+    /// ([`LaneEvent::GoalReply`] answers).
+    fn goal(&self, args: &str) {
+        let _ = args;
+    }
     /// Read the session tree ([`LaneEvent::Tree`]).
     fn tree(&self) {}
-    /// Move the session to `target` (`None`: the root), optionally summarizing the branch it leaves
+    /// Navigate to the selected tree entry `target` (AgentSession `navigateTree`: before a user or custom message,
+    /// else onto the entry; `None`: the root), optionally summarizing the branch it leaves
     /// ([`LaneEvent::Navigated`]).
     fn navigate(&self, target: Option<&str>, summarize: bool, instructions: Option<&str>) {
         let _ = (target, summarize, instructions);
@@ -255,6 +398,11 @@ pub trait LaneClient {
     }
     /// List the session's subagents ([`LaneEvent::Agents`]).
     fn agents(&self) {}
+    /// A read-only inspection request (`/memory list`, `/agents <id>`, ...); its answer, rendered under `title`
+    /// ([`crate::inspection::format_inspection`]), arrives as a [`LaneEvent::Status`].
+    fn inspect(&self, title: &str, request: &str, payload: Value) {
+        let _ = (title, request, payload);
+    }
     /// Poll the session's subagents for the RLM views ([`LaneEvent::RlmStatus`]).
     fn rlm_status(&self) {}
     /// Read the settings for `/settings` ([`LaneEvent::Settings`]).
@@ -263,12 +411,36 @@ pub trait LaneClient {
     fn login_providers(&self, query: &str) {
         let _ = query;
     }
+    /// Start a subscription (OAuth) login for `provider` (`name` is what the dialog says): [`LaneEvent::Login`]
+    /// steps, then statuses and a fresh [`LaneEvent::Catalog`] answer. `false` when this client cannot sign in to
+    /// that provider with an account.
+    fn oauth_login(&self, provider: &str, name: &str) -> bool {
+        let _ = (provider, name);
+        false
+    }
+    /// Refresh the model catalogs (`models.refresh`): a fresh [`LaneEvent::Catalog`], then
+    /// [`LaneEvent::CatalogRefreshed`].
+    fn refresh_catalog(&self) {}
+    /// The answer to the login's pending prompt; `None` cancels the login.
+    fn login_reply(&self, answer: Option<String>) {
+        let _ = answer;
+    }
     /// Save an API key for a provider; statuses and a fresh [`LaneEvent::Catalog`] answer.
     fn save_api_key(&self, provider: &str, key: &str) {
         let _ = (provider, key);
     }
     /// Read the changelog ([`LaneEvent::Changelog`]).
     fn changelog(&self) {}
+    /// Run an extension's command `/name args` (`LegacyExtensionCommands.run`); statuses answer. `/mcp`'s dialogs
+    /// and notices arrive as [`LaneEvent::ExtensionUi`].
+    fn extension_command(&self, name: &str, args: &str) {
+        let _ = (name, args);
+    }
+    /// Ask for an extension command's argument completions for `prefix` (`commands/complete`);
+    /// [`LaneEvent::ExtensionCompletions`] answers.
+    fn extension_completions(&self, name: &str, prefix: &str) {
+        let _ = (name, prefix);
+    }
     /// `/share`: export the session and upload it as a secret gist with `gh`; statuses answer.
     fn share(&self) {}
     /// List the stored credentials ([`LaneEvent::Credentials`]).
@@ -294,4 +466,22 @@ pub trait LaneClient {
     fn save_setting(&self, key: &str, value: Value) {
         let _ = (key, value);
     }
+}
+
+/// The diagnostic the Claude subscription router puts on the message where it switched routes
+/// (`ai::claude_subscription::fallback::ROUTE_DIAGNOSTIC`).
+pub const ROUTE_DIAGNOSTIC: &str = "claude_subscription_route";
+
+/// The route notice an assistant message carries (`details.notice` of its `claude_subscription_route` diagnostic):
+/// "Claude subscription limit reached; using API credits until <time>", or the switch back.
+pub fn route_notice(message: &Value) -> Option<String> {
+    if message["role"] != "assistant" {
+        return None;
+    }
+    message["diagnostics"]
+        .as_array()?
+        .iter()
+        .find(|d| d["type"] == ROUTE_DIAGNOSTIC || d["kind"] == ROUTE_DIAGNOSTIC)
+        .and_then(|d| d["details"]["notice"].as_str())
+        .map(str::to_string)
 }

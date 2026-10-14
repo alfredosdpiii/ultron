@@ -122,6 +122,21 @@ impl<K: PoolableKernel> KernelPool<K> {
 
     /// Lease a lane's kernel, creating it (and evicting idle lanes to make room) when needed.
     pub fn acquire(&mut self, lane: &str) -> Result<Lease, String> {
+        self.acquire_inner(lane, None)
+    }
+
+    /// [`KernelPool::acquire`] whose new kernel comes from `create` (which may fail: nothing is admitted then)
+    /// instead of the pool's own factory.
+    pub fn acquire_with(&mut self, lane: &str, create: impl FnOnce() -> Result<K, String>) -> Result<Lease, String> {
+        self.acquire_inner(lane, Some(Box::new(create)))
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn acquire_inner(
+        &mut self,
+        lane: &str,
+        create: Option<Box<dyn FnOnce() -> Result<K, String> + '_>>,
+    ) -> Result<Lease, String> {
         if self.closed {
             return Err("RLM kernel pool is closed".into());
         }
@@ -134,7 +149,10 @@ impl<K: PoolableKernel> KernelPool<K> {
                     return Err(capacity_error(self.entries.len(), self.options.max_live));
                 }
             }
-            let kernel = (self.options.create)(lane);
+            let kernel = match create {
+                Some(create) => create()?,
+                None => (self.options.create)(lane),
+            };
             let last_used = (self.options.now)();
             self.entries.push((
                 lane.to_string(),
@@ -267,6 +285,17 @@ impl<K: PoolableKernel> KernelPool<K> {
         let (_, mut entry) = self.entries.remove(index);
         entry.kernel.shutdown();
         self.record(result)
+    }
+
+    /// Drop a lane's kernel without a snapshot (its lane is closed for good), pins and all; false when it had none.
+    pub fn discard(&mut self, lane: &str) -> bool {
+        self.pins.remove(lane);
+        let Some(index) = self.entries.iter().position(|(l, _)| l == lane) else {
+            return false;
+        };
+        let (_, mut entry) = self.entries.remove(index);
+        entry.kernel.shutdown();
+        true
     }
 
     /// Evict every idle, unpinned kernel whose idle time reached the TTL.

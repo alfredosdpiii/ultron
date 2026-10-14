@@ -11,6 +11,9 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
+/// How long [`RpcClient::stop`] waits for the agent to exit before killing it: a hang guard, not a grace period.
+pub const STOP_HANG_GUARD: Duration = Duration::from_secs(120);
+
 /// `RpcClientOptions`; `program` runs with `program_args`, then `--mode rpc`, the model and `args`.
 #[derive(Clone, Debug, Default)]
 pub struct RpcClientOptions {
@@ -261,10 +264,12 @@ impl RpcClient {
         self.call(json!({"type": "get_commands"}))
     }
 
-    /// `stop()`: close stdin and wait for the exit (killed after a grace period).
+    /// `stop()`: close stdin and wait for the exit. The agent exits on its own once its input closes; the kill after
+    /// [`STOP_HANG_GUARD`] only guards a hung agent. (A 10 s grace killed agents still flushing on a loaded machine,
+    /// so a clean exit read as `None`.)
     pub fn stop(mut self) -> Option<i32> {
         drop(self.stdin.take());
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + STOP_HANG_GUARD;
         loop {
             if let Ok(Some(status)) = self.child.try_wait() {
                 return status.code();

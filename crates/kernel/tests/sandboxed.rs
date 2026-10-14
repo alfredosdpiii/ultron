@@ -3,11 +3,11 @@
 //! is checked only for how it is refused.
 //!
 //! The scratch tree lives under the cargo target dir (inside /home on a usual checkout), never the real home:
-//!   base/home                      fake HOME: notes.txt, .ssh/id_test (hidden), .ultron (hidden agent dir)
-//!   base/home/.ultron/sessions/s1  the session dir (snapshots), writable although inside the hidden .ultron
-//!   base/home/.ultron/spill        the spill dir (ULTRON_RLM_SPILL_DIR), writable likewise
-//!   base/home/work/project         the project (writable, the kernel's cwd)
-//!   base/outside                   outside every writable path
+//!   base/fakehome                      fake HOME: notes.txt, .ssh/id_test (hidden), .ultron (hidden agent dir)
+//!   base/fakehome/.ultron/sessions/s1  the session dir (snapshots), writable although inside the hidden .ultron
+//!   base/fakehome/.ultron/spill        the spill dir (ULTRON_RLM_SPILL_DIR), writable likewise
+//!   base/fakehome/work/project         the project (writable, the kernel's cwd)
+//!   base/outside                       outside every writable path
 
 use kernel::{ContinuityPolicy, ExecutionResult, HostHandler, Kernel, KernelOptions, LimitOverrides, Signal, Status};
 use sandbox::launcher::{Launcher, Mechanism, Policy};
@@ -47,7 +47,7 @@ fn tree_in(base: &Path) -> Tree {
         .tempdir_in(base)
         .unwrap();
     let base = std::fs::canonicalize(dir.path()).unwrap();
-    let home = base.join("home");
+    let home = base.join("fakehome");
     let project = home.join("work/project");
     let outside = base.join("outside");
     let session = home.join(".ultron/sessions/s1");

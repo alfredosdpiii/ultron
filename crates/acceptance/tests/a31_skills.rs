@@ -1,20 +1,21 @@
-//! A31 (partial): skill selection is version-pinned, explainable, and cannot grant capabilities.
+//! A31: skill selection is version-pinned, explainable, and cannot grant capabilities.
 //! Ported from packages/coding-agent/test/ultron-skills.test.ts with literal expectations: the real
 //! `kernel_apis::SkillsModule` over the same three-skill catalog, a changeable loader and a fixed clock, called with
-//! the caller identity the TS `fakeHost` derives from the lane (`ultron.rlm-child.parent-task` → `parent-task`).
-//! Ported whole: list, select, why, version-pinned load (including the stale `skills.invoke`), disabled invocation,
-//! strict payloads, durable state. Ported in part: capability frontmatter (the load report; not the spawned child's
-//! request) and the concurrency race (loads, selects and refreshes; not the invokes).
-//! Not ported: every case that needs `skills.invoke` to spawn the skill's `rlm-child@1` task — Rust's
-//! `skills.invoke` validates and then fails ("needs task spawning", crates/kernel-apis/src/skills.rs), so "invoke
-//! through the real host keeps the child's model and tools and links the parent" and the spawned-request halves of
-//! the capability and concurrency cases have no Rust counterpart.
+//! the caller identity the TS `fakeHost` derives from the lane (`ultron.rlm-child.parent-task` → `parent-task`), its
+//! spawns recorded as the TS `fakeHost` records them. "invoke through the real host" runs over the Rust typed-agent
+//! host (`agents_support`, `delegation::agents::Agents`) as the TS case runs over `NativeRlmHost`: the module is
+//! served for a background job's lane through `KernelApis` with the host as its `TaskHost`.
+//! The exact spawned request (the `rlm-child@1` prompt, key and parent) is replayed against the TypeScript module in
+//! crates/kernel-apis/tests/skills_invoke.rs.
 
-use kernel::Signal;
+mod agents_support;
+
+use kernel::{HostHandler, Signal};
 use kernel_apis::skills::{SkillSource, SkillsModule};
-use kernel_apis::{DocumentStore, MemoryDocumentStore};
+use kernel_apis::{ApiModule, DocumentStore, KernelApis, MemoryDocumentStore, TaskHost};
 use serde_json::{Map, Value, json};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 /// `createHash("sha256").update(text).digest("hex")` (the workspace's sha2, as the module's own versions use).
 fn sha(text: &str) -> String {
@@ -59,10 +60,49 @@ impl Catalog {
     }
 }
 
+/// The TS `fakeHost`: identity from the lane, every spawn recorded and answered `task-N`.
+#[derive(Default)]
+struct FakeHost {
+    spawned: Mutex<Vec<(Value, Option<String>)>>,
+}
+
+impl TaskHost for FakeHost {
+    fn caller_task_id(&self, lane: &str) -> Option<String> {
+        (lane == PARENT_LANE).then(|| "parent-task".into())
+    }
+    fn task_lane(&self, _: &str) -> Option<String> {
+        None
+    }
+    fn strategy(&self, _: &str) -> Result<String, String> {
+        Ok("rlm".into())
+    }
+    fn tasks(&self) -> Result<Vec<Value>, String> {
+        Ok(Vec::new())
+    }
+    fn spawn(&self, request: &Value, parent: Option<&str>, _: &Signal) -> Result<Value, String> {
+        let mut spawned = self.spawned.lock().unwrap();
+        spawned.push((request.clone(), parent.map(String::from)));
+        Ok(json!({"id": format!("task-{}", spawned.len()), "definition": request["definition"], "state": "queued"}))
+    }
+    fn result(&self, _: &str) -> Result<Value, String> {
+        Err("unused".into())
+    }
+    fn cancel(&self, _: &str, _: &str) -> Result<Value, String> {
+        Err("unused".into())
+    }
+    fn steer(&self, _: &str, _: &str, _: &Signal) -> Result<bool, String> {
+        Ok(false)
+    }
+    fn now(&self) -> i64 {
+        0
+    }
+}
+
 struct Setup {
     skills: Catalog,
     module: SkillsModule,
     store: Arc<MemoryDocumentStore>,
+    host: FakeHost,
 }
 
 fn setup(store: Option<Arc<MemoryDocumentStore>>) -> Setup {
@@ -75,16 +115,22 @@ fn setup(store: Option<Arc<MemoryDocumentStore>>) -> Setup {
         Arc::new(|| 1000),
         None,
     );
-    Setup { skills, module, store }
+    Setup {
+        skills,
+        module,
+        store,
+        host: FakeHost::default(),
+    }
 }
 
 const PARENT_LANE: &str = "ultron.rlm-child.parent-task";
 
 impl Setup {
     fn call_as(&self, kind: &str, payload: Value, lane: &str) -> Result<Value, String> {
-        let caller = (lane == PARENT_LANE).then_some("parent-task");
+        let caller = self.host.caller_task_id(lane);
         let payload: Map<String, Value> = payload.as_object().cloned().unwrap_or_default();
-        self.module.handle(kind, &payload, caller, &Signal::new())
+        self.module
+            .handle_with_host(kind, &payload, caller.as_deref(), &self.host, &Signal::new())
     }
     fn call(&self, kind: &str, payload: Value) -> Result<Value, String> {
         self.call_as(kind, payload, "main")
@@ -258,7 +304,7 @@ fn acceptance_a31_version_pinned_load_succeeds_and_a_stale_version_is_rejected()
 }
 
 #[test]
-fn acceptance_a31_capability_granting_frontmatter_is_reported_and_never_reaches_the_spawned_child_ported_part() {
+fn acceptance_a31_capability_granting_frontmatter_is_reported_and_never_reaches_the_spawned_child() {
     let s = setup(None);
     let loaded = s.ok("skills.load", json!({"name": "deploy"}));
     assert_eq!(
@@ -266,10 +312,97 @@ fn acceptance_a31_capability_granting_frontmatter_is_reported_and_never_reaches_
         json!({"allowed-tools": ["bash", "write"], "tools": ["*"], "grants": {"network": true},
             "permissions": "admin", "model": "anthropic/claude-opus"})
     );
+    let invoked = s
+        .call_as(
+            "skills.invoke",
+            json!({"name": "deploy", "version": sha(DEPLOY), "input": {"tag": "v1"}}),
+            PARENT_LANE,
+        )
+        .unwrap();
+    assert_eq!(
+        (&invoked["task_id"], &invoked["name"], &invoked["version"]),
+        (&json!("task-1"), &json!("deploy"), &json!(sha(DEPLOY)))
+    );
+    let spawned = s.host.spawned.lock().unwrap().clone();
+    assert_eq!(spawned.len(), 1);
+    let (request, parent) = &spawned[0];
+    assert_eq!(parent.as_deref(), Some("parent-task"));
+    let mut keys: Vec<&String> = request.as_object().unwrap().keys().collect();
+    keys.sort();
+    assert_eq!(keys, ["definition", "input", "key"]);
+    assert_eq!(request["definition"], "rlm-child@1");
+    let input_keys: Vec<&String> = request["input"].as_object().unwrap().keys().collect();
+    assert_eq!(input_keys, ["prompt"]);
+    let prompt = request["input"]["prompt"].as_str().unwrap();
+    assert!(prompt.contains("Run the release script. Review the changelog first."));
+    assert!(prompt.contains(&format!("Skill version: {}", sha(DEPLOY))));
+    assert!(prompt.contains(r#"{"tag":"v1"}"#));
+    assert!(!prompt.contains("allowed-tools"));
 }
 
 #[test]
-fn acceptance_a31_concurrent_loads_and_selects_each_observe_one_catalog_snapshot_while_content_changes_ported_part() {
+fn acceptance_a31_invoke_through_the_real_host_keeps_the_childs_model_and_tools_and_links_the_parent() {
+    // Every lane prompt waits until its task is cancelled (the TS lane's prompt never resolves).
+    let fixture = agents_support::fixture(agents_support::Options {
+        script: Some(Arc::new(|_, _, signal, _| agents_support::aborted(signal))),
+        ..Default::default()
+    });
+    let catalog = Catalog::new();
+    let skills: Arc<dyn ApiModule> = Arc::new(SkillsModule::new(
+        Arc::new(MemoryDocumentStore::default()),
+        Arc::new(move || Ok(catalog.0.lock().unwrap().clone())),
+        Arc::new(|| 1000),
+        None,
+    ));
+    let parent = fixture.call("background.start", json!({"prompt": "wait"})).unwrap();
+    let parent = parent["id"].as_str().unwrap().to_string();
+    let child_lane = format!("ultron.background-job.{parent}");
+    agents_support::wait_for("the background job's lane", Duration::from_secs(120), || {
+        fixture.agents.caller_task(&child_lane).is_some()
+    });
+    // The module served for the background job's lane, as its kernel's requests are.
+    let inner: Arc<dyn HostHandler> = Arc::new(fixture.agents.handler(&child_lane, Arc::new(Unused)));
+    let apis = KernelApis::new(inner)
+        .with_host(Arc::new(fixture.agents.clone()), child_lane.clone())
+        .with(skills);
+    let payload = json!({"name": "deploy", "version": sha(DEPLOY), "input": {}});
+    let invoked = apis
+        .handle("skills.invoke", payload.as_object().unwrap().clone(), &Signal::new())
+        .unwrap();
+    let task_id = invoked["task_id"].as_str().unwrap().to_string();
+    agents_support::wait_for("the skill's lane prompt", Duration::from_secs(120), || {
+        agents_support::lock(&fixture.prompts)
+            .iter()
+            .any(|(_, prompt)| prompt.contains("Run the release script."))
+    });
+    let tasks = fixture.call("agents.tasks", json!({})).unwrap();
+    let task = tasks["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == task_id.as_str())
+        .unwrap()
+        .clone();
+    assert_eq!(
+        (&task["definition"], &task["parentId"]),
+        (&json!("rlm-child@1"), &json!(parent))
+    );
+    // The skill's `model` frontmatter never reaches the child's lane.
+    assert!(agents_support::lock(&fixture.models).is_empty());
+    fixture.agents.close();
+}
+
+/// Requests outside the typed-agent host (none are expected).
+struct Unused;
+
+impl HostHandler for Unused {
+    fn handle(&self, kind: &str, _: Map<String, Value>, _: &Signal) -> Result<Value, String> {
+        Err(format!("unexpected host request: {kind}"))
+    }
+}
+
+#[test]
+fn acceptance_a31_concurrent_loads_selects_and_invokes_each_observe_one_catalog_snapshot_while_content_changes() {
     let s = Arc::new(setup(None));
     s.ok("skills.list", json!({}));
     let mut versions = vec![REVIEW.to_string()];
@@ -287,6 +420,8 @@ fn acceptance_a31_concurrent_loads_and_selects_each_observe_one_catalog_snapshot
             }));
         }
         for pinned in [REVIEW.to_string(), versions[round - 1].clone()] {
+            let invoke_version = sha(&pinned);
+            let invoker = s.clone();
             let s = s.clone();
             jobs.push(std::thread::spawn(move || {
                 match s.call("skills.load", json!({"name": "review", "version": sha(&pinned)})) {
@@ -300,6 +435,16 @@ fn acceptance_a31_concurrent_loads_and_selects_each_observe_one_catalog_snapshot
                         Some("stale")
                     }
                 }
+            }));
+            jobs.push(std::thread::spawn(move || {
+                let invoked = invoker.call(
+                    "skills.invoke",
+                    json!({"name": "review", "version": invoke_version, "input": {"round": round}}),
+                );
+                if let Err(error) = invoked {
+                    assert!(error.starts_with("Stale skill version"), "{error}");
+                }
+                None
             }));
         }
         {
@@ -333,6 +478,17 @@ fn acceptance_a31_concurrent_loads_and_selects_each_observe_one_catalog_snapshot
     // The race is real: some pinned loads win against a refresh and some lose.
     assert!(outcomes.contains(&"loaded"));
     assert!(outcomes.contains(&"stale"));
+    // Every spawned child got the body of exactly the version its prompt names.
+    let spawned = s.host.spawned.lock().unwrap().clone();
+    assert!(!spawned.is_empty());
+    for (request, _) in &spawned {
+        let prompt = request["input"]["prompt"].as_str().unwrap();
+        let at = prompt.find("Skill version: ").unwrap() + "Skill version: ".len();
+        let version = &prompt[at..at + 64];
+        let content = versions.iter().find(|c| sha(c) == version).unwrap();
+        let body = &content[content[3..].find("---\n").unwrap() + 3 + 4..];
+        assert!(prompt.contains(body.trim()), "{prompt}");
+    }
     s.skills.set(source(
         "review",
         "Review a diff for correctness bugs",

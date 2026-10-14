@@ -445,3 +445,50 @@ fn cli_daemon_new_server_adopts_a_busy_orphan_worker() {
     drop(first);
     assert_no_processes(&home.root, Duration::from_secs(120));
 }
+
+/// `pi.session-management.describe` carries `allMessagesText` (what Pi's selector searches): the text of every user
+/// and assistant message, for a session file the server lists (recorded in session-journal's all-messages fixture).
+#[test]
+fn cli_daemon_describe_lists_all_messages_text() {
+    let fixture: Value =
+        serde_json::from_str(include_str!("../../session-journal/fixtures/all-messages.json")).unwrap();
+    let case = fixture
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "later-messages-are-searched")
+        .unwrap();
+    let provider = provider(vec![], Duration::ZERO);
+    let home = Home::new(provider.port);
+    let folder = home.sessions().join("--work-project--");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(
+        folder.join("2026-09-21T14-13-20-000Z_11111111-aaaa.jsonl"),
+        case["nativeText"].as_str().unwrap(),
+    )
+    .unwrap();
+    let server = start_server(&home, common::SERVER_ID);
+    let route = server.route();
+    let connection = Connection::connect(&route.path, &route.server_id).unwrap();
+    let listed = connection
+        .call(
+            connection.server_target(),
+            "pi.session-management",
+            "describe",
+            json!([{}]),
+        )
+        .unwrap()
+        .unwrap();
+    let listing = listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["sessionId"] == "11111111-aaaa")
+        .unwrap_or_else(|| panic!("{listed}"));
+    assert_eq!(listing["firstMessage"], "fix the parser");
+    assert_eq!(listing["allMessagesText"], case["allMessagesText"]);
+    assert_eq!(listing["messageCount"], 4);
+    connection.disconnect();
+    drop(server);
+    assert_no_processes(&home.root, Duration::from_secs(120));
+}

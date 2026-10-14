@@ -1,0 +1,192 @@
+{
+	"calls": [
+		[
+			"main",
+			{
+				"name": "deploy",
+				"version": "5928e130560246293bda760a365821072e0f509b042cb2f48b61aa2e38861ea9",
+				"input": {
+					"tag": "v1"
+				}
+			}
+		],
+		[
+			"ultron.rlm-child.parent-task",
+			{
+				"name": "review",
+				"version": "80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff",
+				"input": [
+					1,
+					"two",
+					{
+						"three": null
+					}
+				]
+			}
+		],
+		[
+			"main",
+			{
+				"name": "nested",
+				"version": "aa3cf3e6b319118e5d8ab9c5817c2474816db3a795c833c29552addaf9aab962",
+				"input": "plain"
+			}
+		],
+		[
+			"main",
+			{
+				"name": "review",
+				"version": "80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff",
+				"input": null
+			},
+			"fail"
+		],
+		[
+			"main",
+			{
+				"name": "private",
+				"version": "f6e5372cd95d86c1410eeac6d4c047a7b81fbd482e0466723babf909c81e6f84",
+				"input": {}
+			}
+		],
+		[
+			"main",
+			{
+				"name": "review",
+				"version": "0000000000000000000000000000000000000000000000000000000000000000",
+				"input": {}
+			}
+		]
+	],
+	"results": [
+		{
+			"ok": {
+				"invocation_id": "uuid-1",
+				"task_id": "task-1",
+				"name": "deploy",
+				"version": "5928e130560246293bda760a365821072e0f509b042cb2f48b61aa2e38861ea9",
+				"ignored_capability_requests": {
+					"allowed-tools": [
+						"bash",
+						"write"
+					],
+					"tools": [
+						"*"
+					],
+					"grants": {
+						"network": true
+					},
+					"permissions": "admin",
+					"model": "anthropic/claude-opus"
+				}
+			}
+		},
+		{
+			"ok": {
+				"invocation_id": "uuid-2",
+				"task_id": "task-2",
+				"name": "review",
+				"version": "80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff",
+				"ignored_capability_requests": {}
+			}
+		},
+		{
+			"ok": {
+				"invocation_id": "uuid-3",
+				"task_id": "task-3",
+				"name": "nested",
+				"version": "aa3cf3e6b319118e5d8ab9c5817c2474816db3a795c833c29552addaf9aab962",
+				"ignored_capability_requests": {}
+			}
+		},
+		{
+			"error": "admission refused: budget exhausted"
+		},
+		{
+			"error": "Skill private disables model invocation"
+		},
+		{
+			"error": "Stale skill version: review@0000000000000000000000000000000000000000000000000000000000000000 was requested but the catalog has review@80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff; select or load again"
+		}
+	],
+	"spawned": [
+		{
+			"request": {
+				"definition": "rlm-child@1",
+				"input": {
+					"prompt": "<skill name=\"deploy\" location=\"/skills/deploy/SKILL.md\">\nReferences are relative to /skills/deploy.\n\nRun the release script. Review the changelog first.\n</skill>\n\nSkill version: 5928e130560246293bda760a365821072e0f509b042cb2f48b61aa2e38861ea9\n\nInput (JSON):\n{\"tag\":\"v1\"}"
+				},
+				"key": "skills.invoke:uuid-1"
+			},
+			"parent": null
+		},
+		{
+			"request": {
+				"definition": "rlm-child@1",
+				"input": {
+					"prompt": "<skill name=\"review\" location=\"/skills/review/SKILL.md\">\nReferences are relative to /skills/review.\n\nRead the diff, then report bugs with file and line.\n</skill>\n\nSkill version: 80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff\n\nInput (JSON):\n[1,\"two\",{\"three\":null}]"
+				},
+				"key": "skills.invoke:uuid-2"
+			},
+			"parent": "parent-task"
+		},
+		{
+			"request": {
+				"definition": "rlm-child@1",
+				"input": {
+					"prompt": "<skill name=\"nested\" location=\"relative.md\">\nReferences are relative to ..\n\nBody with \"quotes\" & <tags>.\n</skill>\n\nSkill version: aa3cf3e6b319118e5d8ab9c5817c2474816db3a795c833c29552addaf9aab962\n\nInput (JSON):\n\"plain\""
+				},
+				"key": "skills.invoke:uuid-3"
+			},
+			"parent": null
+		},
+		{
+			"request": {
+				"definition": "rlm-child@1",
+				"input": {
+					"prompt": "<skill name=\"review\" location=\"/skills/review/SKILL.md\">\nReferences are relative to /skills/review.\n\nRead the diff, then report bugs with file and line.\n</skill>\n\nSkill version: 80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff\n\nInput (JSON):\nnull"
+				},
+				"key": "skills.invoke:uuid-4"
+			},
+			"parent": null
+		}
+	],
+	"invocations": [
+		{
+			"id": "uuid-1",
+			"at": 1000,
+			"name": "deploy",
+			"version": "5928e130560246293bda760a365821072e0f509b042cb2f48b61aa2e38861ea9",
+			"caller_task_id": null,
+			"state": "spawned",
+			"task_id": "task-1"
+		},
+		{
+			"id": "uuid-2",
+			"at": 1000,
+			"name": "review",
+			"version": "80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff",
+			"caller_task_id": "parent-task",
+			"state": "spawned",
+			"task_id": "task-2"
+		},
+		{
+			"id": "uuid-3",
+			"at": 1000,
+			"name": "nested",
+			"version": "aa3cf3e6b319118e5d8ab9c5817c2474816db3a795c833c29552addaf9aab962",
+			"caller_task_id": null,
+			"state": "spawned",
+			"task_id": "task-3"
+		},
+		{
+			"id": "uuid-4",
+			"at": 1000,
+			"name": "review",
+			"version": "80b4671e5787b472bc122a02a227f113037ab9e9b5f1fb93d1e49dfdbe0572ff",
+			"caller_task_id": null,
+			"state": "failed",
+			"error": "admission refused: budget exhausted"
+		}
+	]
+}

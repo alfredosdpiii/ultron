@@ -1,0 +1,2273 @@
+{
+	"env": {
+		"GW_SECRET_SRC": "fixture-not-a-secret-0001",
+		"GW_HTTP_TOKEN": "fixture-http-token-0002"
+	},
+	"config": {
+		"global": {
+			"mcpServers": {
+				"alpha": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"alpha",
+						"<LOG_ALPHA>"
+					],
+					"env": {
+						"GW_TOKEN": "${GW_SECRET_SRC}"
+					},
+					"description": "Alpha test server",
+					"timeout": 1.5,
+					"toolExposure": {
+						"hidden_tool": "hidden"
+					}
+				},
+				"beta-srv": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"beta",
+						"-"
+					],
+					"lifecycle": "eager"
+				},
+				"plain": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"plain",
+						"-"
+					]
+				},
+				"dies": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"dies",
+						"-"
+					]
+				},
+				"missing": {
+					"command": "/nonexistent/gw-server"
+				},
+				"off": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"beta",
+						"-"
+					],
+					"enabled": false
+				},
+				"beta_srv": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"beta",
+						"-"
+					]
+				},
+				"web": {
+					"url": "http://127.0.0.1:<PORT>/mcp",
+					"headers": {
+						"Authorization": "Bearer ${GW_HTTP_TOKEN}"
+					}
+				}
+			}
+		},
+		"project": {
+			"mcpServers": {
+				"plain": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"plain",
+						"-"
+					],
+					"description": "Project plain"
+				},
+				"bad name!": {
+					"command": "<PY>",
+					"args": [
+						"<SERVER>",
+						"beta",
+						"-"
+					]
+				}
+			}
+		}
+	},
+	"scenarios": [
+		{
+			"name": "main",
+			"trusted": true,
+			"events": [
+				{
+					"op": "tool",
+					"tool": {
+						"name": "mcp",
+						"label": "MCP",
+						"description": "MCP gateway: server status, tool listing, description and search, resources, and MCP tool calls.\n\nServers: alpha, beta-srv, plain, dies, missing, web\n\nFrom Python use the mcp namespace: await mcp.servers(), mcp.tools(\"server\"), mcp.describe(\"tool\"), mcp.search(\"query\"), mcp.call(\"tool\", key=value).",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"tool": {
+									"type": "string",
+									"description": "MCP tool to call"
+								},
+								"args": {
+									"anyOf": [
+										{
+											"type": "string"
+										},
+										{
+											"type": "object",
+											"additionalProperties": true
+										}
+									],
+									"description": "Tool arguments as a JSON object, or as a JSON string encoding one"
+								},
+								"connect": {
+									"type": "string",
+									"description": "Server to connect (or reconnect)"
+								},
+								"describe": {
+									"type": "string",
+									"description": "Tool to describe"
+								},
+								"instructions": {
+									"type": "string",
+									"description": "Server whose usage instructions to return"
+								},
+								"search": {
+									"type": "string",
+									"description": "Words to find tools by"
+								},
+								"limit": {
+									"type": "number"
+								},
+								"server": {
+									"type": "string",
+									"description": "Server name: lists its tools, or narrows the other modes"
+								},
+								"resources": {
+									"description": "true (or a server name) lists resources"
+								},
+								"read": {
+									"type": "string",
+									"description": "URI of a resource to read; needs server"
+								}
+							}
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 0/7 servers connected\nalpha: not connected\nbeta-srv: not connected\nplain: not connected\ndies: not connected\nmissing: not connected\noff: disabled\nweb: not connected"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server"
+								},
+								{
+									"name": "beta-srv",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "missing",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "http",
+									"scope": "global"
+								}
+							]
+						}
+					}
+				},
+				{
+					"op": "serverLog",
+					"lines": []
+				},
+				{
+					"op": "start",
+					"notices": [
+						{
+							"message": "MCP configuration:\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")",
+							"level": "warning"
+						}
+					]
+				},
+				{
+					"op": "waitConnected",
+					"server": "beta-srv",
+					"status": "connected"
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 1/7 servers connected\nalpha: not connected\nbeta-srv: connected (2 tools)\nplain: not connected\ndies: not connected\nmissing: not connected\noff: disabled\nweb: not connected\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server"
+								},
+								{
+									"name": "beta-srv",
+									"status": "connected",
+									"toolCount": 2,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "missing",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "http",
+									"scope": "global"
+								}
+							],
+							"configErrors": [
+								"<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+								"<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							]
+						}
+					}
+				},
+				{
+					"op": "serverLog",
+					"lines": []
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha (16 tools)\nalpha_echo\nalpha_add\nalpha_structured\nalpha_fails\nalpha_fails_text\nalpha_image\nalpha_link\nalpha_blob\nalpha_jsonblob\nalpha_env\nalpha_cwd\nalpha_log\nalpha_change\nalpha_crash\nalpha_hang\nalpha_quit"
+							}
+						],
+						"details": {
+							"mode": "list",
+							"server": "alpha",
+							"tools": [
+								"alpha_echo",
+								"alpha_add",
+								"alpha_structured",
+								"alpha_fails",
+								"alpha_fails_text",
+								"alpha_image",
+								"alpha_link",
+								"alpha_blob",
+								"alpha_jsonblob",
+								"alpha_env",
+								"alpha_cwd",
+								"alpha_log",
+								"alpha_change",
+								"alpha_crash",
+								"alpha_hang",
+								"alpha_quit"
+							],
+							"count": 16
+						}
+					}
+				},
+				{
+					"op": "serverLog",
+					"lines": [
+						"initialize",
+						"resources/list",
+						"resources/list",
+						"resources/templates/list",
+						"tools/list"
+					]
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha (16 tools)\nalpha_echo\nalpha_add\nalpha_structured\nalpha_fails\nalpha_fails_text\nalpha_image\nalpha_link\nalpha_blob\nalpha_jsonblob\nalpha_env\nalpha_cwd\nalpha_log\nalpha_change\nalpha_crash\nalpha_hang\nalpha_quit"
+							}
+						],
+						"details": {
+							"mode": "list",
+							"server": "alpha",
+							"tools": [
+								"alpha_echo",
+								"alpha_add",
+								"alpha_structured",
+								"alpha_fails",
+								"alpha_fails_text",
+								"alpha_image",
+								"alpha_link",
+								"alpha_blob",
+								"alpha_jsonblob",
+								"alpha_env",
+								"alpha_cwd",
+								"alpha_log",
+								"alpha_change",
+								"alpha_crash",
+								"alpha_hang",
+								"alpha_quit"
+							],
+							"count": 16
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 2/7 servers connected\nalpha: connected (16 tools)\nbeta-srv: connected (2 tools)\nplain: not connected\ndies: not connected\nmissing: not connected\noff: disabled\nweb: not connected\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "connected",
+									"toolCount": 16,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server"
+								},
+								{
+									"name": "beta-srv",
+									"status": "connected",
+									"toolCount": 2,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "missing",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "not connected",
+									"toolCount": null,
+									"transport": "http",
+									"scope": "global"
+								}
+							],
+							"configErrors": [
+								"<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+								"<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "alpha_echo"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha_echo\nServer: alpha\n\nEcho the text back\nSecond line of the description\n\nParameters (JSON schema):\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"text\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"text\"\n  ]\n}"
+							}
+						],
+						"details": {
+							"mode": "describe",
+							"tool": {
+								"name": "alpha_echo",
+								"originalName": "echo",
+								"description": "Echo the text back\nSecond line of the description",
+								"inputSchema": {
+									"type": "object",
+									"properties": {
+										"text": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"text"
+									]
+								}
+							},
+							"server": "alpha"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "echo"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha_echo\nServer: alpha\n\nEcho the text back\nSecond line of the description\n\nParameters (JSON schema):\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"text\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"text\"\n  ]\n}"
+							}
+						],
+						"details": {
+							"mode": "describe",
+							"tool": {
+								"name": "alpha_echo",
+								"originalName": "echo",
+								"description": "Echo the text back\nSecond line of the description",
+								"inputSchema": {
+									"type": "object",
+									"properties": {
+										"text": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"text"
+									]
+								}
+							},
+							"server": "alpha"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "echo",
+						"server": "beta-srv"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "beta-srv_echo\nServer: beta-srv\n\nBeta echo\n\nParameters (JSON schema):\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"text\": {\n      \"type\": \"string\"\n    }\n  }\n}"
+							}
+						],
+						"details": {
+							"mode": "describe",
+							"tool": {
+								"name": "beta-srv_echo",
+								"originalName": "echo",
+								"description": "Beta echo",
+								"inputSchema": {
+									"type": "object",
+									"properties": {
+										"text": {
+											"type": "string"
+										}
+									}
+								}
+							},
+							"server": "beta-srv"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "mcp__beta_srv__echo"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "beta-srv_echo\nServer: beta-srv\n\nBeta echo\n\nParameters (JSON schema):\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"text\": {\n      \"type\": \"string\"\n    }\n  }\n}"
+							}
+						],
+						"details": {
+							"mode": "describe",
+							"tool": {
+								"name": "beta-srv_echo",
+								"originalName": "echo",
+								"description": "Beta echo",
+								"inputSchema": {
+									"type": "object",
+									"properties": {
+										"text": {
+											"type": "string"
+										}
+									}
+								}
+							},
+							"server": "beta-srv"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "alpha_add"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha_add\nServer: alpha\n\nAdd two numbers\n\nParameters (JSON schema):\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"a\": {\n      \"type\": \"number\"\n    },\n    \"b\": {\n      \"type\": \"number\"\n    }\n  }\n}"
+							}
+						],
+						"details": {
+							"mode": "describe",
+							"tool": {
+								"name": "alpha_add",
+								"originalName": "add",
+								"description": "Add two numbers",
+								"inputSchema": {
+									"type": "object",
+									"properties": {
+										"a": {
+											"type": "number"
+										},
+										"b": {
+											"type": "number"
+										}
+									}
+								},
+								"outputSchema": {
+									"type": "object",
+									"properties": {
+										"sum": {
+											"type": "number"
+										}
+									}
+								}
+							},
+							"server": "alpha"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "nope"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Tool \"nope\" not found. List tools with await mcp.tools(\"server\") or await mcp.search(\"words\")."
+							}
+						],
+						"details": {
+							"requestedTool": "nope",
+							"error": "tool_not_found"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "dies_x"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"dies\" could not be connected: MCP server \"dies\" failed to connect: MCP connection closed\nfatal: cannot start"
+							}
+						],
+						"details": {
+							"server": "dies",
+							"error": "connect_failed"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"describe": "missing_x"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"missing\" could not be connected: MCP server \"missing\" failed to connect: spawn /nonexistent/gw-server ENOENT"
+							}
+						],
+						"details": {
+							"server": "missing",
+							"error": "connect_failed"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_echo",
+						"args": {
+							"text": "hi"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "hi"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "echo",
+						"args": "{\"text\":\"json string\"}"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "json string"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "beta-srv_echo",
+						"args": {
+							"text": "b"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "beta:b"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "beta-srv",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_echo",
+						"args": "[1]"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Invalid args: expected a JSON object"
+							}
+						],
+						"details": {
+							"error": "invalid_args"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_echo",
+						"args": ""
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "None"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_add",
+						"args": {
+							"a": 2,
+							"b": 3
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "{\"sum\": 5}"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "add",
+							"structuredContent": {
+								"sum": 5
+							}
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_structured"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "{\n  \"items\": [\n    1,\n    2\n  ],\n  \"ok\": true\n}"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "structured",
+							"structuredContent": {
+								"items": [
+									1,
+									2
+								],
+								"ok": true
+							}
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_fails"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP tool alpha/fails returned an error"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "fails",
+							"error": "tool_error"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_fails_text"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "bad input: x"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "fails_text",
+							"error": "tool_error"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_image"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "an image:"
+							},
+							{
+								"type": "image",
+								"data": "iVBORw0KGgo=",
+								"mimeType": "image/png"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "image"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_link"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "[Resource file:///notes.txt \"notes\" (text/plain, 2.0KB): Some notes. Read it with await mcp.read(\"alpha\", uri)]"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "link"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_blob"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "[Binary resource file:///out/report.pdf (application/pdf, 6B) saved to <SAVED>.pdf]"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "blob"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_jsonblob"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "{\"k\": 1}"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "jsonblob"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_env"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "token=fixture-not-a-secret-0001"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "env"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_cwd"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "<CWD>"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "cwd"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_hidden_tool"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Tool \"alpha_hidden_tool\" not found. List tools with await mcp.tools(\"server\") or await mcp.search(\"words\")."
+							}
+						],
+						"details": {
+							"requestedTool": "alpha_hidden_tool",
+							"error": "tool_not_found"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "beta_only",
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Tool \"beta_only\" not found on server \"alpha\". List tools with await mcp.tools(\"server\") or await mcp.search(\"words\")."
+							}
+						],
+						"details": {
+							"requestedTool": "beta_only",
+							"error": "tool_not_found"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "web_echo",
+						"args": {
+							"text": "over http"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "over http"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "web",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "web"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "web (1 tools)\nweb_echo"
+							}
+						],
+						"details": {
+							"mode": "list",
+							"server": "web",
+							"tools": [
+								"web_echo"
+							],
+							"count": 1
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "echo"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 3 tools\nalpha_echo: Echo the text back\nbeta-srv_echo: Beta echo\nweb_echo: "
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [
+								{
+									"server": "alpha",
+									"tool": "alpha_echo",
+									"score": 2,
+									"description": "Echo the text back"
+								},
+								{
+									"server": "beta-srv",
+									"tool": "beta-srv_echo",
+									"score": 2,
+									"description": "Beta echo"
+								},
+								{
+									"server": "web",
+									"tool": "web_echo",
+									"score": 2,
+									"description": ""
+								}
+							],
+							"count": 3
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "ECHO text"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 1 tools\nalpha_echo: Echo the text back"
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [
+								{
+									"server": "alpha",
+									"tool": "alpha_echo",
+									"score": 3,
+									"description": "Echo the text back"
+								}
+							],
+							"count": 1
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "",
+						"limit": 3
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 19 tools\nalpha_add: Add two numbers\nalpha_blob: Returns a binary resource\nalpha_change: Changes the tool list"
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [
+								{
+									"server": "alpha",
+									"tool": "alpha_add",
+									"score": 1,
+									"description": "Add two numbers"
+								},
+								{
+									"server": "alpha",
+									"tool": "alpha_blob",
+									"score": 1,
+									"description": "Returns a binary resource"
+								},
+								{
+									"server": "alpha",
+									"tool": "alpha_change",
+									"score": 1,
+									"description": "Changes the tool list"
+								}
+							],
+							"count": 19
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "add",
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 1 tools\nalpha_add: Add two numbers"
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [
+								{
+									"server": "alpha",
+									"tool": "alpha_add",
+									"score": 2,
+									"description": "Add two numbers"
+								}
+							],
+							"count": 1
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "zzz"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 0 tools"
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [],
+							"count": 0
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"search": "only"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Found 2 tools\nbeta-srv_beta_only: Only on beta: search words\nalpha_structured: Only structured content"
+							}
+						],
+						"details": {
+							"mode": "search",
+							"matches": [
+								{
+									"server": "beta-srv",
+									"tool": "beta-srv_beta_only",
+									"score": 2,
+									"description": "Only on beta: search words"
+								},
+								{
+									"server": "alpha",
+									"tool": "alpha_structured",
+									"score": 1,
+									"description": "Only structured content"
+								}
+							],
+							"count": 2
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"instructions": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Alpha: call echo first."
+							}
+						],
+						"details": {
+							"mode": "instructions",
+							"server": "alpha"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"instructions": "beta-srv"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"beta-srv\" has no instructions."
+							}
+						],
+						"details": {
+							"mode": "instructions",
+							"server": "beta-srv"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"instructions": "nope"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "No MCP server \"nope\". Servers: alpha, beta-srv, plain, dies, missing, off, web"
+							}
+						],
+						"details": {
+							"error": "server_not_found"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"resources": true
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "5 resources, 2 resource templates"
+							}
+						],
+						"details": {
+							"mode": "resources",
+							"resources": [
+								{
+									"server": "alpha",
+									"uri": "file:///notes.txt",
+									"name": "notes",
+									"mimeType": "text/plain"
+								},
+								{
+									"server": "alpha",
+									"uri": "file:///data.bin",
+									"name": "data",
+									"mimeType": "application/octet-stream"
+								},
+								{
+									"server": "beta-srv",
+									"uri": "file:///notes.txt",
+									"name": "notes",
+									"mimeType": "text/plain"
+								},
+								{
+									"server": "beta-srv",
+									"uri": "file:///data.bin",
+									"name": "data",
+									"mimeType": "application/octet-stream"
+								},
+								{
+									"server": "plain",
+									"uri": "file:///plain.txt",
+									"name": "plain"
+								}
+							],
+							"resourceTemplates": [
+								{
+									"server": "alpha",
+									"uriTemplate": "repo://{name}",
+									"name": "repo"
+								},
+								{
+									"server": "beta-srv",
+									"uriTemplate": "repo://{name}",
+									"name": "repo"
+								}
+							],
+							"errors": [
+								{
+									"server": "dies",
+									"error": "MCP server \"dies\" could not be connected: MCP server \"dies\" failed to connect: MCP connection closed\nfatal: cannot start"
+								},
+								{
+									"server": "missing",
+									"error": "MCP server \"missing\" could not be connected: MCP server \"missing\" failed to connect: spawn /nonexistent/gw-server ENOENT"
+								},
+								{
+									"server": "web",
+									"error": "MCP server requires authentication"
+								}
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"resources": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "2 resources, 1 resource templates"
+							}
+						],
+						"details": {
+							"mode": "resources",
+							"resources": [
+								{
+									"server": "alpha",
+									"uri": "file:///notes.txt",
+									"name": "notes",
+									"mimeType": "text/plain"
+								},
+								{
+									"server": "alpha",
+									"uri": "file:///data.bin",
+									"name": "data",
+									"mimeType": "application/octet-stream"
+								}
+							],
+							"resourceTemplates": [
+								{
+									"server": "alpha",
+									"uriTemplate": "repo://{name}",
+									"name": "repo"
+								}
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"resources": true,
+						"server": "plain"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "1 resources, 0 resource templates"
+							}
+						],
+						"details": {
+							"mode": "resources",
+							"resources": [
+								{
+									"server": "plain",
+									"uri": "file:///plain.txt",
+									"name": "plain"
+								}
+							],
+							"resourceTemplates": []
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"resources": "dies"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "0 resources, 0 resource templates"
+							}
+						],
+						"details": {
+							"mode": "resources",
+							"resources": [],
+							"resourceTemplates": [],
+							"errors": [
+								{
+									"server": "dies",
+									"error": "MCP server \"dies\" could not be connected: MCP server \"dies\" failed to connect: MCP connection closed\nfatal: cannot start"
+								}
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"read": "file:///notes.txt",
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "hello notes"
+							}
+						],
+						"details": {
+							"mode": "read",
+							"server": "alpha",
+							"uri": "file:///notes.txt"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"read": "file:///data.bin",
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "[Binary resource file:///data.bin (application/octet-stream, 4B) saved to <SAVED>.bin]"
+							}
+						],
+						"details": {
+							"mode": "read",
+							"server": "alpha",
+							"uri": "file:///data.bin"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"read": "file:///missing",
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Error: Resource not found: file:///missing"
+							}
+						],
+						"details": {
+							"error": "error"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"read": "file:///notes.txt"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Reading a resource needs the server name"
+							}
+						],
+						"details": {
+							"error": "invalid_args"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"connect": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Connected to alpha (16 tools)."
+							}
+						],
+						"details": {
+							"mode": "connect",
+							"server": "alpha"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"connect": "off"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"off\" is disabled. Enable it with /mcp."
+							}
+						],
+						"details": {
+							"error": "server_disabled"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "off"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"off\" is disabled. Enable it with /mcp."
+							}
+						],
+						"details": {
+							"error": "server_disabled"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "echo",
+						"server": "off"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"off\" is disabled. Enable it with /mcp."
+							}
+						],
+						"details": {
+							"error": "server_disabled"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "nope"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "No MCP server \"nope\". Servers: alpha, beta-srv, plain, dies, missing, off, web"
+							}
+						],
+						"details": {
+							"error": "server_not_found"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_log"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "logged"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "log"
+						}
+					}
+				},
+				{
+					"op": "log",
+					"text": "<TIME> [alpha] warning gw: first line\n    second line\n<TIME> [alpha] info {\"n\":1}\n"
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_hang"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Error: MCP request timed out after 1500ms"
+							}
+						],
+						"details": {
+							"error": "error"
+						}
+					}
+				},
+				{
+					"op": "cancel",
+					"params": {
+						"tool": "alpha_hang"
+					},
+					"threw": "MCP request aborted"
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_crash"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Error: MCP connection closed"
+							}
+						],
+						"details": {
+							"error": "error"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 3/7 servers connected\nalpha: disconnected: Connection closed\ncrashing now\nbeta-srv: connected (2 tools)\nplain: connected (0 tools)\ndies: failed: MCP connection closed\nfatal: cannot start\nmissing: failed: spawn /nonexistent/gw-server ENOENT\noff: disabled\nweb: connected (1 tools)\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "disconnected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server",
+									"error": "Connection closed\ncrashing now"
+								},
+								{
+									"name": "beta-srv",
+									"status": "connected",
+									"toolCount": 2,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "connected",
+									"toolCount": 0,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "failed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "MCP connection closed\nfatal: cannot start"
+								},
+								{
+									"name": "missing",
+									"status": "failed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "spawn /nonexistent/gw-server ENOENT"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "connected",
+									"toolCount": 1,
+									"transport": "http",
+									"scope": "global"
+								}
+							],
+							"configErrors": [
+								"<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+								"<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_echo",
+						"args": {
+							"text": "back"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "back"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_quit"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Error: MCP connection closed"
+							}
+						],
+						"details": {
+							"error": "error"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 3/7 servers connected\nalpha: disconnected: Connection closed\nbeta-srv: connected (2 tools)\nplain: connected (0 tools)\ndies: failed: MCP connection closed\nfatal: cannot start\nmissing: failed: spawn /nonexistent/gw-server ENOENT\noff: disabled\nweb: connected (1 tools)\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "disconnected",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server",
+									"error": "Connection closed"
+								},
+								{
+									"name": "beta-srv",
+									"status": "connected",
+									"toolCount": 2,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "connected",
+									"toolCount": 0,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "failed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "MCP connection closed\nfatal: cannot start"
+								},
+								{
+									"name": "missing",
+									"status": "failed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "spawn /nonexistent/gw-server ENOENT"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "connected",
+									"toolCount": 1,
+									"transport": "http",
+									"scope": "global"
+								}
+							],
+							"configErrors": [
+								"<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+								"<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							]
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_echo",
+						"args": {
+							"text": "again"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "again"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "echo"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {
+						"tool": "alpha_change"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "changed"
+							}
+						],
+						"details": {
+							"mode": "call",
+							"server": "alpha",
+							"tool": "change"
+						}
+					}
+				},
+				{
+					"op": "waitTool",
+					"server": "alpha",
+					"tool": "alpha_added",
+					"found": true
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "alpha (17 tools)\nalpha_echo\nalpha_add\nalpha_structured\nalpha_fails\nalpha_fails_text\nalpha_image\nalpha_link\nalpha_blob\nalpha_jsonblob\nalpha_env\nalpha_cwd\nalpha_log\nalpha_change\nalpha_crash\nalpha_hang\nalpha_quit\nalpha_added"
+							}
+						],
+						"details": {
+							"mode": "list",
+							"server": "alpha",
+							"tools": [
+								"alpha_echo",
+								"alpha_add",
+								"alpha_structured",
+								"alpha_fails",
+								"alpha_fails_text",
+								"alpha_image",
+								"alpha_link",
+								"alpha_blob",
+								"alpha_jsonblob",
+								"alpha_env",
+								"alpha_cwd",
+								"alpha_log",
+								"alpha_change",
+								"alpha_crash",
+								"alpha_hang",
+								"alpha_quit",
+								"alpha_added"
+							],
+							"count": 17
+						}
+					}
+				},
+				{
+					"op": "mask",
+					"text": "env fixture-not-a-secret-0001 and fixture-http-token-0002 and Bearer fixture-http-token-0002",
+					"masked": "env [REDACTED:known_secret] and [REDACTED:known_secret] and Bearer [REDACTED:known_secret]"
+				},
+				{
+					"op": "shutdown"
+				},
+				{
+					"op": "serverLog",
+					"lines": [
+						"cancelled 7",
+						"cancelled 8",
+						"eof",
+						"eof",
+						"initialize",
+						"initialize",
+						"initialize",
+						"initialize",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/list",
+						"resources/read",
+						"resources/read",
+						"resources/read",
+						"resources/templates/list",
+						"resources/templates/list",
+						"resources/templates/list",
+						"resources/templates/list",
+						"resources/templates/list",
+						"resources/templates/list",
+						"tools/call add",
+						"tools/call blob",
+						"tools/call change",
+						"tools/call crash",
+						"tools/call cwd",
+						"tools/call echo",
+						"tools/call echo",
+						"tools/call echo",
+						"tools/call echo",
+						"tools/call echo",
+						"tools/call env",
+						"tools/call fails",
+						"tools/call fails_text",
+						"tools/call hang",
+						"tools/call hang",
+						"tools/call image",
+						"tools/call jsonblob",
+						"tools/call link",
+						"tools/call log",
+						"tools/call quit",
+						"tools/call structured",
+						"tools/list",
+						"tools/list",
+						"tools/list",
+						"tools/list",
+						"tools/list"
+					]
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "alpha"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP server \"alpha\" could not be connected: MCP server \"alpha\" is shut down"
+							}
+						],
+						"details": {
+							"server": "alpha",
+							"error": "connect_failed"
+						}
+					}
+				},
+				{
+					"op": "call",
+					"params": {},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "MCP: 0/7 servers connected\nalpha: closed\nbeta-srv: closed\nplain: closed\ndies: closed: MCP connection closed\nfatal: cannot start\nmissing: closed: spawn /nonexistent/gw-server ENOENT\noff: disabled\nweb: closed\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"\n<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							}
+						],
+						"details": {
+							"mode": "status",
+							"servers": [
+								{
+									"name": "alpha",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"description": "Alpha test server"
+								},
+								{
+									"name": "beta-srv",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global"
+								},
+								{
+									"name": "plain",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "project",
+									"description": "Project plain"
+								},
+								{
+									"name": "dies",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "MCP connection closed\nfatal: cannot start"
+								},
+								{
+									"name": "missing",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"error": "spawn /nonexistent/gw-server ENOENT"
+								},
+								{
+									"name": "off",
+									"status": "disabled",
+									"toolCount": null,
+									"transport": "stdio",
+									"scope": "global",
+									"disabled": true
+								},
+								{
+									"name": "web",
+									"status": "closed",
+									"toolCount": null,
+									"transport": "http",
+									"scope": "global"
+								}
+							],
+							"configErrors": [
+								"<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+								"<CWD>/.pi/mcp.json: invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "untrusted",
+			"trusted": false,
+			"events": [
+				{
+					"op": "tool",
+					"tool": {
+						"name": "mcp",
+						"label": "MCP",
+						"description": "MCP gateway: server status, tool listing, description and search, resources, and MCP tool calls.\n\nServers: alpha, beta-srv, plain, dies, missing, web\n\nFrom Python use the mcp namespace: await mcp.servers(), mcp.tools(\"server\"), mcp.describe(\"tool\"), mcp.search(\"query\"), mcp.call(\"tool\", key=value).",
+						"parameters": {
+							"type": "object",
+							"properties": {
+								"tool": {
+									"type": "string",
+									"description": "MCP tool to call"
+								},
+								"args": {
+									"anyOf": [
+										{
+											"type": "string"
+										},
+										{
+											"type": "object",
+											"additionalProperties": true
+										}
+									],
+									"description": "Tool arguments as a JSON object, or as a JSON string encoding one"
+								},
+								"connect": {
+									"type": "string",
+									"description": "Server to connect (or reconnect)"
+								},
+								"describe": {
+									"type": "string",
+									"description": "Tool to describe"
+								},
+								"instructions": {
+									"type": "string",
+									"description": "Server whose usage instructions to return"
+								},
+								"search": {
+									"type": "string",
+									"description": "Words to find tools by"
+								},
+								"limit": {
+									"type": "number"
+								},
+								"server": {
+									"type": "string",
+									"description": "Server name: lists its tools, or narrows the other modes"
+								},
+								"resources": {
+									"description": "true (or a server name) lists resources"
+								},
+								"read": {
+									"type": "string",
+									"description": "URI of a resource to read; needs server"
+								}
+							}
+						}
+					}
+				},
+				{
+					"op": "start",
+					"notices": [
+						{
+							"message": "MCP configuration:\n<AGENT>/mcp.json: server \"beta_srv\" conflicts with \"beta-srv\"",
+							"level": "warning"
+						}
+					]
+				},
+				{
+					"op": "call",
+					"params": {
+						"server": "plain"
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "plain (0 tools)\n"
+							}
+						],
+						"details": {
+							"mode": "list",
+							"server": "plain",
+							"tools": [],
+							"count": 0
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "empty",
+			"trusted": true,
+			"events": [
+				{
+					"op": "tool",
+					"tool": null
+				}
+			]
+		}
+	]
+}

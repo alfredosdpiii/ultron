@@ -157,6 +157,9 @@ impl LaneClient for Recorder {
     fn list_sessions(&self) {
         self.0.0.borrow_mut().push("list".into());
     }
+    fn goal(&self, args: &str) {
+        self.0.0.borrow_mut().push(format!("goal {args}"));
+    }
     fn set_name(&self, name: &str) {
         self.0.0.borrow_mut().push(format!("name {name}"));
     }
@@ -337,7 +340,15 @@ fn interactive_slash_commands() {
     assert_eq!(calls(&c)[calls(&c).len() - 2..], ["new", "list"]);
     typed(&mut app, "/goal");
     app.handle_input("\r");
-    assert!(screen(&mut app).contains(" Error: /goal is not available in the Rust build yet"));
+    assert_eq!(calls(&c).last().unwrap(), "goal ");
+    typed(&mut app, "/goals");
+    app.handle_input("\r");
+    // `/goals` is an inspection command now (its request is asserted in tests/commands.rs).
+    let s = screen(&mut app);
+    assert!(
+        !s.contains("/goals is not available") && !s.contains("Unknown slash command: /goals"),
+        "{s}"
+    );
     typed(&mut app, "/bogus");
     app.handle_input("\r");
     assert!(screen(&mut app).contains(" Unknown slash command: /bogus"));

@@ -67,9 +67,19 @@ pub type BeforeRequest = Arc<dyn Fn(Vec<Message>) -> Vec<Message> + Send + Sync>
 /// `afterResponse`: observe a terminal provider message.
 pub type AfterResponse = Arc<dyn Fn(&AssistantMessage) + Send + Sync>;
 
+/// The compaction policy of one conversation, instead of the settings' (`None`: the settings').
+pub type CompactionFor = Arc<dyn Fn(ConversationId) -> Option<CompactionPolicy> + Send + Sync>;
+/// `before_compaction` of a blocking threshold compaction: `(conversation, estimated context tokens, threshold)`;
+/// entries (`EntryDraft` JSON, as a write takes) to append instead of compacting, or none to compact.
+pub type BeforeCompaction = Arc<dyn Fn(ConversationId, u64, u64) -> Vec<Value> + Send + Sync>;
+
 /// Generation hooks (spec §7.2), as plain callbacks.
 #[derive(Clone, Default)]
 pub struct Hooks {
+    /// A conversation's own compaction policy.
+    pub compaction: Option<CompactionFor>,
+    /// Asked before a blocking threshold compaction; its entries decline it.
+    pub before_compaction: Option<BeforeCompaction>,
     /// After a final answer: user content to continue the run with, instead of yielding. The first one wins.
     pub on_yield: Option<OnYield>,
     /// Replace the messages of one request (not stored).
@@ -86,6 +96,17 @@ pub(crate) struct Services {
     pub(crate) sections: Option<SectionSource>,
     pub(crate) hooks: Hooks,
     pub(crate) children: children::ChildServices,
+}
+
+impl Services {
+    /// The compaction policy of `conversation`: its own ([`Hooks::compaction`]), else the settings'.
+    pub(crate) fn compaction_policy(&self, conversation: ConversationId, settings: &Settings) -> CompactionPolicy {
+        self.hooks
+            .compaction
+            .as_ref()
+            .and_then(|policy| policy(conversation))
+            .unwrap_or(settings.compaction)
+    }
 }
 
 /// Options of [`ChatHarness::open`]. `registry` is the application's; the built-in tasks are installed into it as

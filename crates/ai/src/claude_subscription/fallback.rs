@@ -52,7 +52,8 @@ pub struct RouterOptions {
     pub agent_dir: Option<PathBuf>,
     /// The subscription's config; else [`super::config_for`] per call.
     pub subscription: Option<Config>,
-    /// The API's base URL; else the Anthropic model's.
+    /// The API's base URL; else `providers.anthropic.baseUrl` of the agent directory's models.json; else the
+    /// Anthropic model's.
     pub api_base_url: Option<String>,
 }
 
@@ -291,6 +292,18 @@ impl Router {
         })
     }
 
+    /// `providers.anthropic.baseUrl` of the agent directory's models.json: the fallback goes where every other
+    /// `anthropic` call goes (a proxy, a gateway, a test's stub), never past that override to the public API.
+    fn configured_base_url(&self) -> Option<String> {
+        let path = config::paths::AgentPaths::new(self.agent_dir()).models();
+        crate::model_config::ModelConfig::load(Some(&path.to_string_lossy()))
+            .provider("anthropic")?
+            .get("baseUrl")?
+            .as_str()
+            .filter(|url| !url.trim().is_empty())
+            .map(str::to_string)
+    }
+
     /// `claude.apiFallback` of the global settings (default on).
     fn enabled(&self, agent_dir: &std::path::Path) -> bool {
         config::settings::SettingsManager::create(agent_dir, agent_dir, false).claude_api_fallback()
@@ -407,8 +420,8 @@ impl Router {
         switched: Option<Switch>,
     ) -> AssistantMessage {
         let mut api_model = api_model(model);
-        if let Some(base) = &self.options.api_base_url {
-            api_model.base_url = base.clone();
+        if let Some(base) = self.options.api_base_url.clone().or_else(|| self.configured_base_url()) {
+            api_model.base_url = base;
         }
         let mut request = options.clone();
         request.base.api_key = Some(key.to_string());

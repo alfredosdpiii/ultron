@@ -1,0 +1,12 @@
+[package]
+name = "model-scope"
+version = "0.1.0"
+description = "Model patterns as the TypeScript resolver reads them (model-resolver.ts): minimatch globs, localeCompare, parseModelPattern and resolveModelScopeFromModels over any model record; shared by the provider layer and the TUI"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

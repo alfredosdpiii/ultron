@@ -411,7 +411,7 @@ const anthropicScenarios = [
 		name: "anthropic/oauth-claude-code",
 		model: aModel,
 		context: { messages: [system("Project rules", { toolsAdded: [{ ...tools[0], name: "bash" }, { ...tools[0], name: "todowrite" }] }), user("go"), assistant(aModel, [{ type: "toolCall", id: "t1", name: "todowrite", arguments: {} }], { stopReason: "toolUse" }), toolResult("t1", "todowrite", [{ type: "text", text: "ok" }])] },
-		options: { apiKey: "sk-ant-oat01-test", thinkingEnabled: false },
+		options: { apiKey: "sk-ant-oat01-example", thinkingEnabled: false },
 		responses: [ok(sse([aStart(), block(0, { type: "tool_use", id: "toolu_2", name: "Bash", input: {} }), delta(0, { type: "input_json_delta", partial_json: '{"path":"p"}' }), blockStop(0), aDelta("tool_use"), aStop]))],
 	},
 	{

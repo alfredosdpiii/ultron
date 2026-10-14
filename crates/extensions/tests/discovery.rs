@@ -41,8 +41,9 @@ fn extensions_discovery_follows_package_manager_order_and_trust() {
 
     let trusted = discover(&cwd, &agent, &home, &global, &project, true);
     let names: Vec<&str> = trusted.manifests.iter().map(|m| m.name.as_str()).collect();
-    // Project entries, global entries, project auto dir, user auto dir; user-auto keeps its first (entry) position.
-    assert_eq!(names, ["proj-entry", "user-entry", "tilde", "user-auto", "proj-auto"]);
+    // Pi's precedence (session-core/fixtures/extension-commands.json, recorded from TS): project entries, project
+    // auto dir, global entries, user auto dir; user-auto keeps its first (entry) position.
+    assert_eq!(names, ["proj-entry", "proj-auto", "user-entry", "tilde", "user-auto"]);
     assert!(trusted.diagnostics.is_empty(), "{:?}", trusted.diagnostics);
     assert_eq!(trusted.manifests[0].dir, cwd.join(".pi/local/proj-entry"));
 

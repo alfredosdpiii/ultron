@@ -12,7 +12,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "config-fixture-")));
-process.env.HOME = join(root, "home");
+// Not "home": a recorded `<root>/home/<dir>/` path reads as a real home directory to scripts/secret-scan.mjs.
+process.env.HOME = join(root, "fakehome");
 process.env.ULTRON_CODING_AGENT_DIR = join(root, "agent");
 mkdirSync(process.env.HOME, { recursive: true });
 const src = (path) => import(pathToFileURL(join(repo, "packages/coding-agent/src", path)).href);

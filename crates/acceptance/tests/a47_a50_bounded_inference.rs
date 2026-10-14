@@ -9,9 +9,10 @@
 //! session's host stack (`inference::Frames` over `inference::Inference`) and the provider over real HTTP. The
 //! provider records every request and can hold one open, fail it with HTTP 500, or report usage with cache reads.
 //!
-//! Not ported (no Rust subsystem yet): frames journaled as `rlm-frame@1` tasks and RPC `inspect` (`agents.status`,
-//! `rlm.frames`), the usage ledger's reservations and model-call count, and nested frames (`budget.depth > 1`).
-//! Frame traces are read with `rlm.frames` from the same cell instead of RPC `inspect`.
+//! Frames are `rlm-frame@1` tasks of the session's typed-agent host, read back over RPC `inspect` (`agents.status`,
+//! `rlm.frames`) as the TS tests do; their traces are session values, so a later cell still reads them. Nested
+//! frames (`budget.depth > 1`) run their own `rlm` cell on the frame task's lane. The host-level cases with the
+//! journal and usage ledger in view are in a47_a50_frame_tasks.rs.
 
 mod common;
 
@@ -379,6 +380,26 @@ fn run_cells(
 /// A cell prefix: `raw(type, payload)` sends a host request exactly as written (what the TS tests pass to the host).
 const RAW: &str = "import json\nraw = rlm.infer.__self__._bridge.request\n";
 
+/// RPC `inspect` (rpc-native.ts): a read-only request through the session's inspector.
+fn inspect(client: &mut RpcClient, request: &str, payload: Value) -> Value {
+    let response = client
+        .send(json!({"type": "inspect", "request": request, "payload": payload}))
+        .unwrap();
+    assert_eq!(response["success"], true, "inspect {request}: {response}");
+    response["data"].clone()
+}
+
+/// The `rlm-frame@1` tasks of the session's journal, by `agents.status`.
+fn frame_tasks(client: &mut RpcClient) -> Vec<Value> {
+    inspect(client, "agents.status", json!({}))["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|task| task["definition"] == "rlm-frame@1")
+        .cloned()
+        .collect()
+}
+
 fn view_of(message: &str) -> &str {
     let Some(start) = message.find("--- view 1: ") else {
         return "";
@@ -475,7 +496,7 @@ fn large_input() -> (Harness, usize) {
 }
 
 #[test]
-fn acceptance_a47_input_larger_than_the_window_is_counted_exactly_through_bounded_frames_ported_part() {
+fn acceptance_a47_input_larger_than_the_window_is_counted_exactly_through_bounded_frames() {
     let (harness, errors) = large_input();
     let input_chars = std::fs::metadata(harness.project().join("big.log")).unwrap().len() as usize;
     assert!(input_chars / 4 > 4 * WINDOW_TOKENS);
@@ -512,11 +533,24 @@ fn acceptance_a47_input_larger_than_the_window_is_counted_exactly_through_bounde
     }
     let messages = serde_json::to_string(&client.get_messages().unwrap()).unwrap();
     assert!(messages.contains(&format!("[rlm.map] {frames} frames")));
-    // Frame traces (read with rlm.frames in the cell; RPC inspect is not in the Rust build).
+    // Frame traces, read in the cell.
     let listed = tagged(&mut client, "FRAMES ").remove(0);
     let listed = listed["frames"].as_array().unwrap();
     assert_eq!(listed.len(), 5);
     assert!(listed.iter().all(|frame| frame["status"] == "complete"));
+    // Every frame is journaled as an rlm-frame task and traced (RPC inspect, after the turn).
+    let tasks = frame_tasks(&mut client);
+    assert_eq!(tasks.len() as u64, frames);
+    assert!(tasks.iter().all(|task| task["state"] == "completed"), "{tasks:?}");
+    let listed = inspect(&mut client, "rlm.frames", json!({"limit": 5}));
+    let listed = listed["frames"].as_array().unwrap();
+    assert_eq!(listed.len(), 5);
+    assert!(listed.iter().all(|frame| frame["status"] == "complete"));
+    assert!(
+        listed
+            .iter()
+            .all(|frame| tasks.iter().any(|task| task["id"] == frame["taskId"]))
+    );
     client.finish(common::HANG);
 
     let provider = &harness.provider;
@@ -564,6 +598,12 @@ fn acceptance_a48_end_to_end_repair_is_valid_exhaustion_is_incomplete_and_the_tu
     assert_eq!(trace["id"], trace_id);
     assert_eq!(trace["status"], "incomplete");
     assert_eq!(trace["reason"], "contract_unmet");
+    // The same trace over RPC inspect, after the cell ended.
+    let inspected = inspect(&mut client, "rlm.frames", json!({"id": trace_id}));
+    assert_eq!(
+        (&inspected["id"], &inspected["status"], &inspected["reason"]),
+        (&json!(trace_id), &json!("incomplete"), &json!("contract_unmet"))
+    );
     client.finish(common::HANG);
     let repaired: Vec<_> = harness
         .provider
@@ -576,7 +616,7 @@ fn acceptance_a48_end_to_end_repair_is_valid_exhaustion_is_incomplete_and_the_tu
 }
 
 #[test]
-fn acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_within_2s_ported_part() {
+fn acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_within_2s() {
     let (harness, _) = large_input();
     let mut client = harness.client();
     let frames = 6;
@@ -603,6 +643,11 @@ fn acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_
     });
     let closed = harness.provider.closed.lock().unwrap().clone();
     assert!(closed.iter().all(|(task, _)| task.contains("SLOW:")));
+    // Every frame task is cancelled in the journal (RPC inspect `agents.status`).
+    common::wait_until("six cancelled frame tasks", || {
+        let tasks = frame_tasks(&mut client);
+        tasks.len() == frames && tasks.iter().all(|task| task["state"] == "cancelled")
+    });
     client
         .wait_for(&|line| line["type"] == "agent_settled", common::HANG)
         .unwrap();
@@ -876,7 +921,7 @@ fn acceptance_a49_a_provider_failure_refunds_its_tranche_and_cache_reads_are_dis
 // A50 cancellation.
 
 #[test]
-fn acceptance_a50_aborting_the_root_cancels_every_in_flight_frame_within_2s_ported_part() {
+fn acceptance_a50_aborting_the_root_cancels_every_in_flight_frame_within_2s() {
     let cell = format!(
         "{RAW}r = await raw('rlm.map', {{'frames': [{{'task': f'Wait {{i}}.', 'context': []}} for i in range(4)], 'contract': {{'type': 'integer'}}}})\nprint('RESULT ' + json.dumps(r))"
     );
@@ -905,8 +950,131 @@ fn acceptance_a50_aborting_the_root_cancels_every_in_flight_frame_within_2s_port
     let mut sent: Vec<String> = harness.provider.frames().iter().map(Request::first_user).collect();
     sent.sort();
     assert_eq!(tasks, sent);
+    // The journal records every frame task cancelled, and each frame's trace keeps its per-item error.
+    common::wait_until("four cancelled frame tasks", || {
+        let tasks = frame_tasks(&mut client);
+        tasks.len() == 4 && tasks.iter().all(|task| task["state"] == "cancelled")
+    });
     client
         .wait_for(&|line| line["type"] == "agent_settled", common::HANG)
         .unwrap();
+    common::wait_until("four traced per-item errors", || {
+        let listed = inspect(&mut client, "rlm.frames", json!({}));
+        let listed = listed["frames"].as_array().cloned().unwrap_or_default();
+        listed.len() == 4 && listed.iter().all(|frame| frame["status"] == "error")
+    });
     client.finish(common::HANG);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Frame traces outlive their cell; nested frames run code on their own lanes (A47, A49).
+
+#[test]
+fn acceptance_a47_a_frame_trace_is_read_by_a_later_cell_and_over_rpc_after_the_turn() {
+    let first = format!(
+        "{RAW}r = await raw('rlm.infer', {{'task': 'first', 'context': [{{'kind': 'text', 'label': 'literal', 'text': 'a'}}], 'contract': {{'type': 'integer'}}}})\nprint('RESULT ' + json.dumps(r))"
+    );
+    // A later cell: the frame's cell has ended; its trace is a session value.
+    let second = format!(
+        "{RAW}listed = await raw('rlm.frames', {{}})\nprint('RESULT ' + json.dumps(listed))\nprint('RESULT ' + json.dumps(await raw('rlm.frames', {{'id': listed['frames'][0]['id']}})))"
+    );
+    let (_harness, out, last) = run_cells(vec![first, second], |_, _| text("42"));
+    assert_eq!(last, "DONE");
+    let (reply, listed, trace) = (&out[0], &out[1], &out[2]);
+    assert_eq!(reply["status"], "complete");
+    assert_eq!(listed["frames"].as_array().unwrap().len(), 1);
+    assert_eq!(listed["frames"][0]["id"], reply["trace_id"]);
+    assert_eq!(
+        (&trace["id"], &trace["status"], &trace["task"], &trace["value"]),
+        (&reply["trace_id"], &json!("complete"), &json!("first"), &json!("42"))
+    );
+    assert_eq!(trace["taskId"], reply["task_id"]);
+    assert!(!trace.to_string().contains("\"text\""));
+}
+
+/// The frame code an outer frame with depth runs in its own `rlm` cell: a nested frame.
+const NESTED_CELL: &str = "import json\nraw = rlm.infer.__self__._bridge.request\nr = await raw('rlm.infer', {'task': 'inner task', 'context': [], 'budget': {'depth': 4}})\nprint('INNER ' + json.dumps(r))";
+
+#[test]
+fn acceptance_a49_nested_frames_draw_on_their_parents_pool_and_one_level_less_depth() {
+    let cell = format!(
+        "{RAW}r = await raw('rlm.infer', {{'task': 'outer task', 'context': [], 'budget': {{'calls': 3, 'depth': 2}}}})\nprint('RESULT ' + json.dumps(r))"
+    );
+    let (harness, out, last) = run_cells(vec![cell], |request, _| {
+        if request.first_user().contains("inner task") {
+            return text("5");
+        }
+        // The outer frame: a cell that starts a nested frame, then its answer.
+        if request.turn() == 0 {
+            rlm(NESTED_CELL)
+        } else {
+            text("outer done")
+        }
+    });
+    assert_eq!(last, "DONE");
+    let outer = &out[0];
+    assert_eq!(
+        (&outer["status"], &outer["value"]),
+        (&json!("complete"), &json!("outer done"))
+    );
+    let frames = harness.provider.frames();
+    let outer_requests: Vec<&Request> = frames
+        .iter()
+        .filter(|r| r.first_user().contains("outer task"))
+        .collect();
+    let inner_requests: Vec<&Request> = frames
+        .iter()
+        .filter(|r| r.first_user().contains("inner task"))
+        .collect();
+    assert_eq!((outer_requests.len(), inner_requests.len()), (2, 1));
+    // A frame with depth gets the rlm cell (and only it); the nested frame (depth 1) has no tools.
+    for request in &outer_requests {
+        assert_eq!(request.tools(), 1);
+        assert_eq!(request.body["tools"][0]["function"]["name"], "rlm");
+        assert!(request.system().contains("You have one tool, `rlm`"));
+        assert!(request.system().contains("depth 1 below you"));
+    }
+    assert_eq!(inner_requests[0].tools(), 0);
+    assert!(inner_requests[0].system().contains("You have no tools."));
+    // The nested frame's observation, as the outer frame's cell printed it: its parent's pool, one level less depth.
+    let printed = outer_requests[1].messages("tool").join("\n");
+    let line = printed
+        .lines()
+        .find_map(|line| line.strip_prefix("INNER "))
+        .unwrap_or_else(|| panic!("{printed}"));
+    let inner: Value = serde_json::from_str(line).unwrap();
+    assert_eq!((&inner["status"], &inner["value"]), (&json!("complete"), &json!("5")));
+    assert_eq!(inner["remaining"]["calls"], 1);
+    assert_eq!(inner["remaining"]["depth"], 1);
+    // Three calls of the outer pool: the outer frame's two requests and the nested frame's one.
+    assert_eq!(outer["spent"]["calls"], 3);
+    assert_eq!(outer["remaining"]["calls"], 0);
+}
+
+#[test]
+fn acceptance_a49_a_follow_up_request_the_budget_cannot_cover_is_refused_before_it_is_sent() {
+    let cell = format!(
+        "{RAW}r = await raw('rlm.infer', {{'task': 'Count.', 'context': [{{'kind': 'text', 'label': 'literal', 'text': '{}'}}], 'contract': {{'type': 'integer'}}, 'budget': {{'calls': 1, 'depth': 2}}}})\nprint('RESULT ' + json.dumps(r))",
+        "z".repeat(600)
+    );
+    let (harness, out, _) = run_cells(vec![cell], |request, _| {
+        // The frame's first reply is a tool round (an `rlm` cell), which needs a second request.
+        if request.turn() == 0 {
+            rlm("print(1)")
+        } else {
+            text("2")
+        }
+    });
+    let reply = &out[0];
+    assert_eq!(
+        (&reply["status"], &reply["reason"]),
+        (&json!("incomplete"), &json!("budget_exhausted"))
+    );
+    assert_eq!(
+        reply["detail"],
+        "budget exhausted before a follow-up request (a retry or tool round)"
+    );
+    // Only the first request went out; the tool round was refused, not aborted mid-flight.
+    assert_eq!(harness.provider.frames().len(), 1);
+    assert_eq!(reply["spent"]["calls"], 1);
 }

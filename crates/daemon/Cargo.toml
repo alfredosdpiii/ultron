@@ -20,6 +20,7 @@ host = { path = "../host" }
 inference = { path = "../inference" }
 kernel = { path = "../kernel" }
 loki = { path = "../loki" }
+mcp = { path = "../mcp" }
 nix = { version = "=0.31.3", features = ["signal"] }
 protocol = { path = "../protocol" }
 resources = { path = "../resources" }

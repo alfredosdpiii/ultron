@@ -1,4 +1,4 @@
-//! A56 (partial): long-running work does not block the turn.
+//! A56: long-running work does not block the turn.
 //! Ported from packages/coding-agent/test/ultron-shell-jobs.test.ts with its literal expectations: the real
 //! runtime.py under the Rust kernel supervisor, its host requests served by `host::Host` (host-owned shell jobs and
 //! the blocking bash), as session-worker.ts routes them.
@@ -9,9 +9,8 @@
 //! process dies with the worker. A TypeScript journal's running job still reads as `interrupted`
 //! (crates/host/tests/durable_jobs.rs), and a SIGKILLed worker's jobs report their real state there too.
 //!
-//! Not ported (no Rust counterpart yet): job end reporting (`ShellJobs.onEnd`, the `awaited` / `rootAborted` flags
-//! and `jobSummary` that feed `job_done` events), root ids and `cancelRoot`, per-lane job visibility (every job
-//! reports lane "main"), a configurable retention cap (fixed at 4 MiB).
+//! Job end reporting (`ShellJobs.onEnd`: `awaited`, `rootAborted`, `jobSummary`), root ids and `cancelRoot`, and
+//! per-lane job visibility are in a56_shell_job_ends.rs. Not ported: a configurable retention cap (fixed at 4 MiB).
 
 mod common;
 

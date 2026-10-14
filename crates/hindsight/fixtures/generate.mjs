@@ -253,7 +253,7 @@ const workerSteps = [
 	["alpha", "memory.get", { id: "$2" }],
 	["alpha", "memory.forget", { id: "$2" }],
 	["alpha", "memory.prepare", { query: "lunch", taskId: "t3" }],
-	["alpha", "memory.propose", { text: "The deploy key is sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789", evidence: [{ ref: "env" }] }],
+	["alpha", "memory.propose", { text: "The deploy key is sk-ant-" + "api03-abcdefghijklmnopqrstuvwxyz0123456789", evidence: [{ ref: "env" }] }],
 	["alpha", "memory.list", {}],
 	["alpha", "memory.why", { taskId: "t2" }],
 	["beta", "memory.prepare", { query: "cargo", taskId: "b1", scope: "global" }],

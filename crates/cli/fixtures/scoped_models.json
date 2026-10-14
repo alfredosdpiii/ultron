@@ -1,0 +1,107 @@
+{
+ "cols": 100,
+ "rows": 30,
+ "scenarios": [
+  {
+   "name": "scoped-models",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/scoped-models",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Model catalogs refreshed."
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "(unsaved)"
+    },
+    {
+     "keys": [
+      "C-x"
+     ],
+     "wait": "0/17 enabled"
+    },
+    {
+     "type": "opus-5",
+     "wait": "claude-opus-5-5"
+    },
+    {
+     "keys": [
+      "C-a"
+     ],
+     "wait": "8/17 enabled"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "Model Configuration"
+    },
+    {
+     "keys": [
+      "C-p"
+     ],
+     "wait": "Switched to Claude Sonnet 4.5 ("
+    },
+    {
+     "keys": [
+      "C-p"
+     ],
+     "wait": "Switched to Claude Sonnet 5 ("
+    },
+    {
+     "type": "/scoped-models",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Model catalogs refreshed."
+    },
+    {
+     "keys": [
+      "C-s"
+     ],
+     "wait": "Model selection saved to settings"
+    },
+    {
+     "keys": [
+      "C-a"
+     ],
+     "wait": "all enabled (unsaved)"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "Model Configuration"
+    }
+   ],
+   "artifacts": {
+    "agent/settings.json": "{\n  \"defaultProvider\": \"anthropic\",\n  \"defaultModel\": \"claude-sonnet-5\",\n  \"enabledModels\": [\n    \"anthropic/claude-opus-5\",\n    \"anthropic/claude-opus-5-5\",\n    \"anthropic/claude-opus-4-5\",\n    \"anthropic/claude-opus-4-5-20251101\",\n    \"anthropic/claude-sonnet-5\",\n    \"anthropic/claude-sonnet-5-5\",\n    \"anthropic/claude-sonnet-4-5\",\n    \"anthropic/claude-sonnet-4-5-20250929\"\n  ]\n}"
+   },
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→ ✓ claude-fable-5 [anthropic]\n  ✓ claude-fable-5-1 [anthropic]\n  ✓ claude-haiku-4-5 [anthropic]\n  ✓ claude-haiku-4-5-20251001 [anthropic]\n  ✓ claude-haiku-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-opus-4-6 [anthropic]\n  (1/17)\n\n  Model Name: Claude Fable 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· all enabled\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→ ✓ claude-fable-5-1 [anthropic]\n  ✓ claude-haiku-4-5 [anthropic]\n  ✓ claude-haiku-4-5-20251001 [anthropic]\n  ✓ claude-haiku-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-opus-4-6 [anthropic]\n  ✓ claude-opus-4-7 [anthropic]\n  (1/17)\n\n  Model Name: Claude Fable 5.1\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 16/17 enabled (unsaved)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→   claude-fable-5 [anthropic]\n    claude-fable-5-1 [anthropic]\n    claude-haiku-4-5 [anthropic]\n    claude-haiku-4-5-20251001 [anthropic]\n    claude-haiku-5-5 [anthropic]\n    claude-opus-4-5 [anthropic]\n    claude-opus-4-5-20251101 [anthropic]\n    claude-opus-4-6 [anthropic]\n  (1/17)\n\n  Model Name: Claude Fable 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 0/17 enabled (unsaved)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n> opus-5\n\n→   claude-opus-5 [anthropic]\n    claude-opus-5-5 [anthropic]\n    claude-opus-4-5 [anthropic]\n    claude-opus-4-5-20251101 [anthropic]\n    claude-sonnet-5 [anthropic]\n    claude-sonnet-5-5 [anthropic]\n    claude-sonnet-4-5 [anthropic]\n    claude-sonnet-4-5-20250929 [anthropic]\n\n  Model Name: Claude Opus 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 0/17 enabled (unsaved)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n> opus-5\n\n→ ✓ claude-opus-5 [anthropic]\n  ✓ claude-opus-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-sonnet-5 [anthropic]\n  ✓ claude-sonnet-5-5 [anthropic]\n  ✓ claude-sonnet-4-5 [anthropic]\n  ✓ claude-sonnet-4-5-20250929 [anthropic]\n\n  Model Name: Claude Opus 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 8/17 enabled (unsaved)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Switched to Claude Sonnet 4.5 (thinking: medium)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                 claude-sonnet-4-5-20250929 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Switched to Claude Sonnet 5 (thinking: medium)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                            claude-sonnet-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n Switched to Claude Sonnet 5 (thinking: medium)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→ ✓ claude-opus-5 [anthropic]\n  ✓ claude-opus-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-sonnet-5 [anthropic]\n  ✓ claude-sonnet-5-5 [anthropic]\n  ✓ claude-sonnet-4-5 [anthropic]\n  ✓ claude-sonnet-4-5-20250929 [anthropic]\n  (1/17)\n\n  Model Name: Claude Opus 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 8/17 enabled\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                            claude-sonnet-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n Model selection saved to settings\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→ ✓ claude-opus-5 [anthropic]\n  ✓ claude-opus-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-sonnet-5 [anthropic]\n  ✓ claude-sonnet-5-5 [anthropic]\n  ✓ claude-sonnet-4-5 [anthropic]\n  ✓ claude-sonnet-4-5-20250929 [anthropic]\n  (1/17)\n\n  Model Name: Claude Opus 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· 8/17 enabled\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                            claude-sonnet-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n Model selection saved to settings\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nModel Configuration\nSession-only. Ctrl+S to save to settings.\n\n>\n\n→ ✓ claude-fable-5 [anthropic]\n  ✓ claude-fable-5-1 [anthropic]\n  ✓ claude-haiku-4-5 [anthropic]\n  ✓ claude-haiku-4-5-20251001 [anthropic]\n  ✓ claude-haiku-5-5 [anthropic]\n  ✓ claude-opus-4-5 [anthropic]\n  ✓ claude-opus-4-5-20251101 [anthropic]\n  ✓ claude-opus-4-6 [anthropic]\n  (1/17)\n\n  Model Name: Claude Fable 5\n\n  Model catalogs refreshed.\n  Enter toggle · Ctrl+A all · Ctrl+X clear · Ctrl+P provider · Alt+Up/Alt+Down reorder · Ctrl+S save\n· all enabled (unsaved)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                            claude-sonnet-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Model selection saved to settings\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                            claude-sonnet-5 • medium\n"
+   ],
+   "opened": 0
+  }
+ ]
+}

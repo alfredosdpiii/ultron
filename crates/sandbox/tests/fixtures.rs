@@ -19,7 +19,8 @@ fn load(name: &str) -> Value {
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
-struct FakeLayout(Map<String, Value>);
+/// The recorder's fake layout, and whether `setpriv` is on its PATH.
+struct FakeLayout(Map<String, Value>, bool);
 impl Layout for FakeLayout {
     fn entry(&self, path: &Path) -> Entry {
         match self.0.get(path.to_str().unwrap()).and_then(Value::as_str) {
@@ -28,8 +29,8 @@ impl Layout for FakeLayout {
             _ => Entry::Missing,
         }
     }
-    fn which(&self, _: &str) -> bool {
-        false
+    fn which(&self, name: &str) -> bool {
+        name == "setpriv" && self.1
     }
 }
 
@@ -55,10 +56,13 @@ fn env_pairs(value: &Value) -> Vec<(String, String)> {
 #[test]
 fn sandbox_review_wrap_matches_autoreview_argv() {
     let fixture = load("autoreview-argv.json");
-    let layout = FakeLayout(fixture["layout"].as_object().unwrap().clone());
     let wraps = fixture["wraps"].as_array().unwrap();
-    assert_eq!(wraps.len(), 12);
+    assert_eq!(wraps.len(), 16);
     for case in wraps {
+        let layout = FakeLayout(
+            fixture["layout"].as_object().unwrap().clone(),
+            case["setpriv"].as_bool().unwrap(),
+        );
         let review = Review {
             mechanism: Mechanism::parse(case["mechanism"].as_str().unwrap()).unwrap(),
             image: case["image"].as_str().map(str::to_owned),

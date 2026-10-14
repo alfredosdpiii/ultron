@@ -3439,7 +3439,7 @@
 			"responses": [
 				[
 					200,
-					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig\",\"refresh_token\":\"r2\",\"expires_in\":864000}"
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.example-sig\",\"refresh_token\":\"r2\",\"expires_in\":864000}"
 				]
 			],
 			"requests": [
@@ -3454,7 +3454,7 @@
 			],
 			"result": {
 				"type": "oauth",
-				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.example-sig",
 				"refresh": "r2",
 				"expires": 1768089600000,
 				"accountId": "acct_123"
@@ -3474,7 +3474,7 @@
 			"responses": [
 				[
 					200,
-					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiIn19.sig\",\"refresh_token\":\"r2\",\"expires_in\":10}"
+					"{\"access_token\":\"eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiIn19.example-sig\",\"refresh_token\":\"r2\",\"expires_in\":10}"
 				]
 			],
 			"requests": [
@@ -4058,13 +4058,13 @@
 			"credential": {
 				"type": "oauth",
 				"refresh": "r",
-				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig",
+				"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.example-sig",
 				"expires": 0
 			},
 			"responses": [],
 			"requests": [],
 			"result": {
-				"apiKey": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.sig"
+				"apiKey": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjdF8xMjMifSwic3ViIjoidSJ9.example-sig"
 			},
 			"error": null
 		}

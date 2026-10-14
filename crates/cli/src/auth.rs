@@ -2,9 +2,12 @@
 //! `cli/credential-print.ts`): whether a provider has usable credentials, and the credential itself.
 //!
 //! Credentials come from `auth.json` (an `api_key` or an `oauth` entry) and the provider's environment variables, as
-//! `resolveProviderAuth` reads them. Not ported: refreshing an OAuth token that expires within the requested window
-//! (a network call; reported as a failed resolution), `--model` resolution, `models.json` and extension providers,
-//! and the `claude-code` provider's CLI probe.
+//! `resolveProviderAuth` reads them, through the session's request auth: built-in and models.json providers, keys
+//! from auth.json, models.json (literal, `$VAR`, `!command`) or the environment, and stored OAuth tokens refreshed
+//! through the provider (Anthropic, OpenAI Codex, GitHub Copilot, xAI, Kimi For Coding, Meta, OpenRouter, Radius)
+//! when they expire within the requested window. `--model` resolves as `resolveCliModel` does: under `--provider`,
+//! or alone across the providers with stored credentials. Not ported: extension providers (the Rust extension
+//! protocol registers no model providers) and the `claude-code` provider's CLI probe.
 
 use crate::Env;
 use crate::args::{Args, parse_args};
@@ -34,17 +37,6 @@ const HELP: &str = "Usage:
 
 Auth commands require at least one of --provider or --model. Checks refresh expired OAuth credentials by default; --no-refresh prevents this. --credentials emits the credential, or includes it in JSON output.";
 
-/// Providers with an OAuth login (`provider.auth.oauth`).
-const OAUTH_PROVIDERS: [&str; 8] = [
-    "anthropic",
-    "github-copilot",
-    "kimi-coding",
-    "meta",
-    "openai-codex",
-    "openrouter",
-    "radius",
-    "xai",
-];
 /// Providers without API-key auth.
 const NO_API_KEY: [&str; 1] = ["openai-codex"];
 const DEFAULT_BEARER_TOKEN_MIN_EXPIRY_MS: f64 = 30.0 * 60_000.0;
@@ -177,11 +169,24 @@ struct Unsupported;
 struct Credentials<'a> {
     env: &'a Env,
     storage: config::auth::AuthStorage,
+    /// How OAuth refreshes reach their provider.
+    options: &'a session_core::stored_auth::OAuthOptions,
 }
 
 impl Credentials<'_> {
-    fn known(provider: &str) -> bool {
-        ai::models::builtin_providers().any(|p| p == provider) || provider == "claude-code"
+    /// `modelRuntime.getProvider`: a built-in provider, the Claude Code CLI, or one models.json defines.
+    fn known(&self, provider: &str) -> bool {
+        ai::models::builtin_providers().any(|p| p == provider)
+            || provider == "claude-code"
+            || session_core::lane::registry(self.env)
+                .config()
+                .provider(provider)
+                .is_some()
+    }
+
+    /// The provider signs in with an account (`provider.auth.oauth`).
+    fn oauth(&self, provider: &str) -> bool {
+        session_core::stored_auth::oauth_handler_with(self.env, provider, self.options).is_some()
     }
 
     fn read(&mut self, provider: &str) -> Result<Option<Value>, Unsupported> {
@@ -192,45 +197,33 @@ impl Credentials<'_> {
         self.storage.list().map_err(|_| Unsupported)
     }
 
-    fn env_key(&self, provider: &str) -> Option<String> {
-        let source = ai::env::EnvSource {
-            lookup: &*self.env.var,
-            exists: &|p: &std::path::Path| p.exists(),
-            home: Some(self.env.home.clone()),
-        };
-        ai::env::env_api_key_in(provider, &source)
-    }
-
-    /// `resolveProviderAuth`: the credential and its kind (`api_key` or `oauth`).
+    /// `getAuth`: the credential and its kind (`api_key` or `oauth`). A stored OAuth token is refreshed through the
+    /// provider when it has less than `min_validity` (at least five minutes) left; otherwise the key the provider
+    /// resolves (stored, models.json, the environment). A resolution that fails is [`Unsupported`].
     fn resolve(
         &mut self,
         provider: &str,
         min_validity: Option<f64>,
     ) -> Result<Option<(String, &'static str)>, Unsupported> {
-        let oauth = OAUTH_PROVIDERS.contains(&provider);
-        let api_key = !NO_API_KEY.contains(&provider) && provider != "claude-code";
-        match self.read(provider)? {
-            Some(stored) => match stored.get("type").and_then(Value::as_str) {
-                Some("oauth") if oauth => {
-                    let expires = stored.get("expires").and_then(Value::as_f64).unwrap_or(0.0);
-                    let minimum = MIN_OAUTH_VALIDITY_MS.max(min_validity.unwrap_or(0.0));
-                    if now_ms() + minimum >= expires {
-                        return Err(Unsupported);
-                    }
-                    Ok(stored
-                        .get("access")
-                        .and_then(Value::as_str)
-                        .map(|a| (a.to_string(), "oauth")))
+        if provider == "claude-code" {
+            return Ok(None);
+        }
+        let stored = self.read(provider)?;
+        match stored.as_ref().and_then(|s| s.get("type")).and_then(Value::as_str) {
+            Some("oauth") => {
+                if !self.oauth(provider) {
+                    return Ok(None);
                 }
-                Some("api_key") if api_key => Ok(stored
-                    .get("key")
-                    .and_then(Value::as_str)
-                    .filter(|k| !k.is_empty())
-                    .map(|k| (k.to_string(), "api_key"))),
-                _ => Ok(None),
-            },
-            None if api_key => Ok(self.env_key(provider).map(|k| (k, "api_key"))),
-            None => Ok(None),
+                let minimum = MIN_OAUTH_VALIDITY_MS.max(min_validity.unwrap_or(0.0));
+                session_core::stored_auth::oauth_access_with(self.env, provider, Some(minimum), self.options)
+                    .map(|access| access.map(|a| (a, "oauth")))
+                    .map_err(|_| Unsupported)
+            }
+            Some("api_key") if NO_API_KEY.contains(&provider) => Ok(None),
+            Some(other) if other != "api_key" => Ok(None),
+            _ => session_core::lane::request_key(&session_core::ModelFlags::default(), self.env, provider)
+                .map(|key| key.filter(|k| !k.is_empty()).map(|k| (k, "api_key")))
+                .map_err(|_| Unsupported),
         }
     }
 
@@ -239,41 +232,68 @@ impl Credentials<'_> {
         if let Some(stored) = self.read(provider)?
             && stored.get("type").and_then(Value::as_str) == Some("oauth")
         {
-            return Ok(OAUTH_PROVIDERS.contains(&provider).then_some("oauth"));
+            return Ok(self.oauth(provider).then_some("oauth"));
         }
-        Ok(self.resolve(provider, None)?.map(|(_, kind)| kind))
+        if provider == "claude-code" {
+            return Ok(None);
+        }
+        // `apiKey.check`: a stored key, else a models.json key that is a command or whose variables are all set,
+        // else the provider's own environment key; nothing is resolved (a failing command is found by `getAuth`).
+        let stored_key = self.read(provider)?.is_some_and(|s| {
+            s.get("type").and_then(Value::as_str) == Some("api_key")
+                && s.get("key").and_then(Value::as_str).is_some_and(|k| !k.is_empty())
+        });
+        let registry = session_core::lane::registry(self.env);
+        let inherited = session_core::lane::env_api_key(self.env, provider).is_some();
+        let configured = !NO_API_KEY.contains(&provider)
+            && (stored_key || registry.auth_configured(provider, &*self.env.var, inherited));
+        Ok(configured.then_some("api_key"))
     }
 }
 
-fn now_ms() -> f64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0.0, |d| d.as_millis() as f64)
-}
-
-fn check(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<(Value, Option<String>), String> {
+fn check(
+    command: &AuthCommand,
+    parsed: &Args,
+    env: &Env,
+    options: &session_core::stored_auth::OAuthOptions,
+) -> Result<(Value, Option<String>), String> {
     let (provider, model) = validate(parsed, Kind::Check)?;
     let invalid = |p: &str| json!({"status": "invalid", "provider": p, "reason": "invalid_state"});
-    if model.is_some() {
-        // ponytail: resolveCliModel is not ported; a --model check reports the state as unusable.
-        return Ok((invalid(model.as_deref().unwrap_or_default()), None));
-    }
-    let provider = provider.unwrap_or_default();
+    // What a failure before the provider is known reports: the requested provider, else the model.
+    let requested = provider.clone().or_else(|| model.clone()).unwrap_or_default();
     let path = config::paths::AgentPaths::new(env.agent_dir()).auth();
     if command.no_refresh
         && let Ok(content) = std::fs::read_to_string(&path)
         && config::auth::validate_auth_file(&content).is_err()
     {
-        return Ok((invalid(&provider), None));
+        return Ok((invalid(&requested), None));
     }
     let mut credentials = Credentials {
         env,
         storage: config::auth::AuthStorage::create(path),
+        options,
     };
     if credentials.list().is_err() {
+        return Ok((invalid(&requested), None));
+    }
+    let provider = match &model {
+        // `resolveCliModel`, once the runtime exists: the model's provider is checked; a model that does not
+        // resolve throws, and the check reports the requested provider (else the model) as invalid.
+        Some(model) => {
+            // `createAuthCheckModelRuntime` does not refresh on create: no provider counts as configured yet.
+            let resolved = session_core::lane::resolve_cli_model(env, provider.as_deref(), model, false);
+            match resolved.model {
+                Some(found) if resolved.error.is_none() => found.provider,
+                _ => return Ok((invalid(&requested), None)),
+            }
+        }
+        None => requested,
+    };
+    // `modelRuntime.getError()`: models.json that does not load or compose leaves every check invalid.
+    if session_core::lane::registry(env).error().is_some() {
         return Ok((invalid(&provider), None));
     }
-    if !Credentials::known(&provider) {
+    if !credentials.known(&provider) {
         return Ok((
             json!({"status": "not_ready", "provider": provider, "reason": "provider_not_found"}),
             None,
@@ -313,7 +333,12 @@ fn check(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<(Value, Opti
     Ok(outcome.unwrap_or_else(|Unsupported| (invalid(&provider), None)))
 }
 
-fn print_credential(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<String, String> {
+fn print_credential(
+    command: &AuthCommand,
+    parsed: &Args,
+    env: &Env,
+    options: &session_core::stored_auth::OAuthOptions,
+) -> Result<String, String> {
     let kind = command.kind;
     let (provider, model) = validate(parsed, kind)?;
     let failed = |Unsupported| "Failed to resolve credential".to_string();
@@ -321,6 +346,7 @@ fn print_credential(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<S
     let mut credentials = Credentials {
         env,
         storage: config::auth::AuthStorage::create(path),
+        options,
     };
     let types: Vec<(String, Value)> = credentials.list().map_err(failed)?;
     let type_of = |id: &str| {
@@ -329,45 +355,90 @@ fn print_credential(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<S
             .find(|(p, _)| p == id)
             .and_then(|(_, t)| t.as_str().map(str::to_string))
     };
-    let Some(provider) = provider else {
-        // ponytail: resolving --model across providers needs resolveCliModel, which is not ported.
-        return Err(format!(
-            "Model \"{}\" not found. Use --list-models to see available models.",
-            model.unwrap_or_default()
-        ));
+    // The providers whose credential is printed: `--provider` (its `--model` must resolve there), else every provider
+    // with a stored credential where `--model` resolves to a listed model (not the custom-id fallback).
+    let providers: Vec<String> = match &provider {
+        Some(provider) => {
+            if !credentials.known(provider) {
+                return Err(format!(
+                    "Unknown provider \"{provider}\". Use --list-models to see available providers."
+                ));
+            }
+            if let Some(model) = &model {
+                let resolved = session_core::lane::resolve_cli_model(env, Some(provider), model, true);
+                if resolved.model.is_none() || resolved.error.is_some() {
+                    return Err(resolved
+                        .error
+                        .unwrap_or_else(|| "Unable to resolve the requested provider/model".into()));
+                }
+            }
+            vec![provider.clone()]
+        }
+        None => {
+            let model = model.clone().unwrap_or_default();
+            let matched: Vec<String> = session_core::lane::registry(env)
+                .provider_ids()
+                .into_iter()
+                .filter(|id| type_of(id).is_some())
+                .filter(|id| {
+                    let resolved = session_core::lane::resolve_cli_model(env, Some(id), &model, true);
+                    resolved.model.is_some()
+                        && resolved.error.is_none()
+                        && !resolved
+                            .warning
+                            .as_deref()
+                            .is_some_and(|w| w.contains("Using custom model id"))
+                })
+                .collect();
+            if matched.is_empty() {
+                return Err(format!(
+                    "Model \"{model}\" not found. Use --list-models to see available models."
+                ));
+            }
+            matched
+        }
     };
-    if !Credentials::known(&provider) {
-        return Err(format!(
-            "Unknown provider \"{provider}\". Use --list-models to see available providers."
-        ));
-    }
-    if model.is_some() {
-        return Err("Unable to resolve the requested provider/model".into());
-    }
-    let credential_type = type_of(&provider);
-    let mut found = None;
-    let skip = match kind {
-        Kind::ApiKey => credential_type.as_deref() == Some("oauth"),
-        _ => credential_type.as_deref() != Some("oauth"),
-    };
-    if !skip {
+    let mut found: Vec<(String, String)> = Vec::new();
+    for id in &providers {
+        let credential_type = type_of(id);
+        let skip = match kind {
+            Kind::ApiKey => credential_type.as_deref() == Some("oauth"),
+            _ => credential_type.as_deref() != Some("oauth"),
+        };
+        if skip {
+            continue;
+        }
         let min =
             (kind == Kind::BearerToken).then_some(command.min_expiry_ms.unwrap_or(DEFAULT_BEARER_TOKEN_MIN_EXPIRY_MS));
-        found = credentials
-            .resolve(&provider, min)
+        if let Some(value) = credentials
+            .resolve(id, min)
             .map_err(failed)?
             .map(|(c, _)| c)
-            .filter(|c| c != "<authenticated>");
+            .filter(|c| c != "<authenticated>")
+        {
+            found.push((id.clone(), value));
+        }
     }
-    if let Some(value) = found {
+    if found.len() > 1 {
+        let ids: Vec<&str> = found.iter().map(|(id, _)| id.as_str()).collect();
+        return Err(format!(
+            "Multiple configured providers matched ({}). Specify --provider.",
+            ids.join(", ")
+        ));
+    }
+    if let Some((_, value)) = found.pop() {
         return Ok(value);
     }
-    if kind == Kind::ApiKey && credential_type.as_deref() == Some("oauth") {
+    let first = providers[0].clone();
+    let credential_type = type_of(&first);
+    let named = provider.is_some();
+    let provider = first;
+    if named && kind == Kind::ApiKey && credential_type.as_deref() == Some("oauth") {
         return Err(format!(
             "Provider \"{provider}\" is configured with OAuth, not an API key"
         ));
     }
-    if kind == Kind::BearerToken && credential_type.as_deref() != Some("oauth") {
+    if named && kind == Kind::BearerToken && credential_type.as_deref() != Some("oauth") {
         return Err(format!(
             "Provider \"{provider}\" is not configured with an OAuth bearer token"
         ));
@@ -384,6 +455,17 @@ fn print_credential(command: &AuthCommand, parsed: &Args, env: &Env) -> Result<S
 
 /// Handle `auth ...`; None when `argv` is not an auth command, else the exit code.
 pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut dyn std::io::Write) -> Option<i32> {
+    run_with(argv, env, out, err, &session_core::stored_auth::OAuthOptions::default())
+}
+
+/// [`run`] with OAuth refreshes going through `options` (tests answer the providers' endpoints).
+pub fn run_with(
+    argv: &[String],
+    env: &Env,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+    options: &session_core::stored_auth::OAuthOptions,
+) -> Option<i32> {
     if is_help(argv) {
         let _ = writeln!(out, "{HELP}");
         return Some(0);
@@ -408,7 +490,7 @@ pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut d
         return Some(fail_code);
     }
     if command.kind != Kind::Check {
-        return Some(match print_credential(&command, &parsed, env) {
+        return Some(match print_credential(&command, &parsed, env, options) {
             Ok(value) => {
                 let _ = writeln!(out, "{value}");
                 0
@@ -419,7 +501,7 @@ pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut d
             }
         });
     }
-    match check(&command, &parsed, env) {
+    match check(&command, &parsed, env, options) {
         Ok((mut result, credential)) => {
             let status = result["status"].as_str().unwrap_or_default().to_string();
             let output = if command.json {

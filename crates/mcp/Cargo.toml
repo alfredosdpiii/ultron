@@ -7,6 +7,13 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+ai = { path = "../ai" }
+config = { path = "../config" }
+fancy-regex = "=0.19.2"
+icu_normalizer = "=2.3.0"
+regex = "=1.13.1"
+sha2 = "=0.10.9"
+session-file = { path = "../session-file" }
 rustix = { version = "=1.1.5", features = ["process", "std"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 url = "=2.5.8"

@@ -13,6 +13,7 @@
 //! requesting cell is cancelled (TS: the request context's abort); `agents.result` ends with an error then (TS keeps
 //! waiting). The model's tool list is untouched: these are kernel APIs (`agents_api.py`).
 
+use crate::contract::Brief;
 use crate::definitions::{Definition, DefinitionRegistry, Strategy, is_model};
 use crate::schema::json_equal;
 use crate::task_store::{TaskJournal, TaskStore, task_fingerprint, uuid_v4};
@@ -87,6 +88,24 @@ pub struct LaneReply {
 
 pub type LaneRunner = Arc<dyn Fn(LaneRun) -> Result<LaneReply, String> + Send + Sync>;
 
+/// One `rlm-frame@1` task run (`NativeFrameRun`): bounded inference owns its prompts, repairs and budget. The
+/// frame's value succeeds the task; an error fails it (cancelled once the task's signal is aborted).
+pub struct FrameRun {
+    pub task_id: String,
+    pub input: Value,
+    /// The lane the frame acts as (`ultron.rlm-frame.<task id>`): its kernel's requests resolve to this task.
+    pub lane: String,
+    pub model: Option<String>,
+    /// The usage root the task's admission was charged to.
+    pub usage_root: Option<String>,
+    pub deadline_at: Option<f64>,
+    pub timeout_ms: u64,
+    /// Aborted when the task is cancelled or times out.
+    pub signal: Signal,
+}
+
+pub type FrameRunner = Arc<dyn Fn(FrameRun) -> Result<Value, String> + Send + Sync>;
+
 /// A detached task reached its durable terminal result (`DetachedTaskEnd`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct TaskEnd {
@@ -124,6 +143,8 @@ pub struct AgentsOptions {
     pub deterministic: Option<Adapter>,
     pub predict: Option<Adapter>,
     pub lanes: Option<LaneRunner>,
+    /// Runs `rlm-frame@1` tasks (bounded inference frames); without it they fail.
+    pub frames: Option<FrameRunner>,
     /// Best-effort abort of a task's lane (the lane's own `abort`).
     pub abort_lane: Option<LaneHook>,
     /// Before a task runs on a reused lane (clears per-invocation scratch).
@@ -153,6 +174,7 @@ impl AgentsOptions {
             deterministic: None,
             predict: None,
             lanes: None,
+            frames: None,
             abort_lane: None,
             before_lane_reuse: None,
             refinements: None,
@@ -184,6 +206,8 @@ struct TaskRequest {
     workflow: Option<Value>,
     untimed: bool,
     usage_root: Option<String>,
+    /// The delegation brief (role, instruction, contract, hop) whose contract the result must meet.
+    brief: Option<Brief>,
 }
 
 #[derive(Default)]
@@ -203,6 +227,8 @@ struct Task {
     lane: Option<String>,
     reservation: Option<Reservation>,
     usage_settled: bool,
+    /// Model reservations of the task's run; the task's end settles any its run has not.
+    model_reservations: Vec<Reservation>,
     notify: Option<&'static str>,
     waiters: usize,
     started_at: Option<f64>,
@@ -255,6 +281,7 @@ struct Inner {
     deterministic: Option<Adapter>,
     predict: Option<Adapter>,
     lanes: Option<LaneRunner>,
+    frames: Option<FrameRunner>,
     abort_lane: Option<LaneHook>,
     before_lane_reuse: Option<LaneCheck>,
     refinements: Option<RefinementsHook>,
@@ -490,6 +517,8 @@ struct Node {
     model: Option<String>,
     key: Option<String>,
     timeout_ms: u64,
+    /// The node's brief as written (its hop is the workflow caller's plus one).
+    brief: Option<Value>,
 }
 
 impl Agents {
@@ -520,6 +549,7 @@ impl Agents {
                 deterministic: options.deterministic,
                 predict: options.predict,
                 lanes: options.lanes,
+                frames: options.frames,
                 abort_lane: options.abort_lane,
                 before_lane_reuse: options.before_lane_reuse,
                 refinements: options.refinements,
@@ -666,8 +696,8 @@ impl Agents {
     }
 
     /// `request(payload)` of `agents.spawn` / `agents.invoke`.
-    fn request(&self, payload: &Map<String, Value>) -> Result<TaskRequest, String> {
-        fields(payload, &["definition", "input", "model", "key", "timeout_ms"])?;
+    fn request(&self, payload: &Map<String, Value>, parent: Option<&str>) -> Result<TaskRequest, String> {
+        fields(payload, &["definition", "input", "model", "key", "timeout_ms", "brief"])?;
         let definition = definition_key(payload.get("definition"))?;
         let Some(input) = payload.get("input") else {
             return Err("Agent input is not JSON".into());
@@ -680,14 +710,31 @@ impl Agents {
             }
         }
         let (model, key, timeout_ms) = task_options(payload)?;
+        let brief = match payload.get("brief") {
+            None | Some(Value::Null) => None,
+            Some(brief) => Some(Brief::parse(brief, Some(self.hop_below(parent)))?),
+        };
         Ok(TaskRequest {
             definition,
             input: input.clone(),
             model,
             key,
             timeout_ms,
+            brief,
             ..TaskRequest::default()
         })
+    }
+
+    /// The hop of a task `parent` starts: one more than the delegations above it (the root's children are hop 1).
+    fn hop_below(&self, parent: Option<&str>) -> u32 {
+        let state = self.state();
+        let mut hop = 1;
+        let mut current = parent.map(str::to_string);
+        while let Some(id) = current {
+            hop += 1;
+            current = state.parent_of(&id);
+        }
+        hop
     }
 
     /// `spawnTask`: idempotent admission under the usage ledger, then the run starts on a thread of its own.
@@ -705,10 +752,15 @@ impl Agents {
         if let Some(reason) = cell.and_then(Signal::reason) {
             return Err(reason);
         }
-        let fingerprint = task_fingerprint(&json!({
+        let mut fingerprinted = json!({
             "definition": request.definition, "input": request.input, "model": request.model,
             "timeout_ms": request.timeout_ms,
-        }));
+        });
+        // A brief is part of what was asked: a retried key with another contract is another task.
+        if let Some(brief) = &request.brief {
+            fingerprinted["brief"] = brief.to_value();
+        }
+        let fingerprint = task_fingerprint(&fingerprinted);
         let key = request.key.clone().unwrap_or_else(uuid_v4);
         // An idempotent retry resolves to the existing task before any budget is touched.
         if request.key.is_some() {
@@ -861,6 +913,11 @@ impl Agents {
             Ok(true) => {
                 let result = self.execute(id, &request);
                 let result = self.with_limit_reason(id, result);
+                // The host verifies the brief's contract before the result is committed or seen.
+                let result = match &request.brief {
+                    Some(brief) => brief.verify(result),
+                    None => result,
+                };
                 let _ = self.finish(id, result);
             }
             Err(error) => {
@@ -911,26 +968,35 @@ impl Agents {
         let Some(usage) = &self.inner.usage else {
             return Ok(None);
         };
-        let (root, deadline) = {
-            let state = self.state();
-            let reservation = state.task(id).and_then(|t| t.reservation.clone());
-            (
-                reservation.as_ref().map(|r| r.root_id().to_string()),
-                reservation.as_ref().and_then(Reservation::deadline_at),
-            )
-        };
-        usage
-            .reserve(&ReserveRequest {
-                kind: "model".into(),
-                root_id: root,
-                parent_task_id: Some(id.into()),
-                task_id: Some(id.into()),
-                request_key: Some(request_key),
-                timeout_ms: (deadline.is_none() && !request.untimed).then_some(request.timeout_ms as f64),
-                deadline_at: deadline,
-                ..ReserveRequest::default()
-            })
-            .map(Some)
+        // Reserved under the task lock, so a model reservation is never admitted for a task that has
+        // already ended (TS passes the task signal to `reserve`); `commit` settles the ones still open.
+        let mut state = self.state();
+        let task = state.task(id).ok_or("Unknown Ultron task")?;
+        if let Some(reason) = task.signal.reason() {
+            return Err(reason);
+        }
+        if task.outcome.is_some() || task.finishing {
+            return Err("Ultron task already ended".into());
+        }
+        let reservation = task.reservation.clone();
+        let (root, deadline) = (
+            reservation.as_ref().map(|r| r.root_id().to_string()),
+            reservation.as_ref().and_then(Reservation::deadline_at),
+        );
+        let reservation = usage.reserve(&ReserveRequest {
+            kind: "model".into(),
+            root_id: root,
+            parent_task_id: Some(id.into()),
+            task_id: Some(id.into()),
+            request_key: Some(request_key),
+            timeout_ms: (deadline.is_none() && !request.untimed).then_some(request.timeout_ms as f64),
+            deadline_at: deadline,
+            ..ReserveRequest::default()
+        })?;
+        if let Some(task) = state.task_mut(id) {
+            task.model_reservations.push(reservation.clone());
+        }
+        Ok(Some(reservation))
     }
 
     /// `execute`: the strategy's work; every failure is a typed result, never a success.
@@ -1054,7 +1120,7 @@ impl Agents {
         signal: &Signal,
     ) -> Result<Value, String> {
         if definition.id() == "rlm-frame" {
-            return Err("rlm-frame@1 tasks are started by rlm.infer and rlm.map only".into());
+            return self.run_frame(id, request, signal);
         }
         let runner = self
             .inner
@@ -1102,6 +1168,10 @@ impl Agents {
             .and_then(|hook| hook(definition.id()).ok())
             .unwrap_or_default();
         signal.reason().map_or(Ok(()), Err)?;
+        let base = match &request.brief {
+            Some(brief) => brief.prompt(&base),
+            None => base,
+        };
         let prompt = if refinements.is_empty() {
             base
         } else {
@@ -1181,6 +1251,40 @@ impl Agents {
         if !state.registry.is_valid_output(definition, &value) {
             return Err(state.registry.validation_error(definition, &value, "output"));
         }
+        Ok(succeeded(value))
+    }
+
+    /// An `rlm-frame@1` task: its lane acts for it, and the frame runner does the work.
+    fn run_frame(&self, id: &str, request: &TaskRequest, signal: &Signal) -> Result<Value, String> {
+        let runner = self
+            .inner
+            .frames
+            .clone()
+            .ok_or("rlm-frame@1 tasks are started by rlm.infer and rlm.map only")?;
+        let lane = format!("ultron.rlm-frame.{id}");
+        let (usage_root, deadline_at) = {
+            let mut state = self.state();
+            state.lane_tasks.insert(lane.clone(), id.into());
+            let task = state.task_mut(id).ok_or("Unknown Ultron task")?;
+            task.lane = Some(lane.clone());
+            task.model = request.model.as_deref().map(|m| preview(&json!(m), 80));
+            let reservation = task.reservation.as_ref();
+            (
+                reservation.map(|r| r.root_id().to_string()),
+                reservation.and_then(Reservation::deadline_at),
+            )
+        };
+        signal.reason().map_or(Ok(()), Err)?;
+        let value = runner(FrameRun {
+            task_id: id.into(),
+            input: request.input.clone(),
+            lane,
+            model: request.model.clone(),
+            usage_root,
+            deadline_at,
+            timeout_ms: request.timeout_ms,
+            signal: signal.clone(),
+        })?;
         Ok(succeeded(value))
     }
 
@@ -1265,7 +1369,16 @@ impl Agents {
             return;
         }
         task.usage_settled = true;
-        if let (Some(usage), Some(reservation)) = (&self.inner.usage, task.reservation.clone()) {
+        let Some(usage) = &self.inner.usage else {
+            return;
+        };
+        // A run cut short (cancel, root deadline) has not settled its model call: it ends with its task,
+        // before the result is published, as TS settles it when the aborted prompt unwinds. Settling a
+        // reservation the run already settled is a no-op.
+        for reservation in std::mem::take(&mut task.model_reservations) {
+            let _ = usage.settle(&reservation, Some(status), None);
+        }
+        if let Some(reservation) = task.reservation.clone() {
             let _ = usage.settle(&reservation, Some(status), None);
         }
     }
@@ -1598,7 +1711,7 @@ impl Agents {
             }
             "agents.spawn" | "agents.invoke" => {
                 let spawn = kind == "agents.spawn";
-                let request = self.request(&payload)?;
+                let request = self.request(&payload, parent)?;
                 let id = self.spawn_task(request, cell, parent, spawn.then_some("task_done"))?;
                 if spawn {
                     let record = self.record(&id);
@@ -1633,6 +1746,23 @@ impl Agents {
             }
             other => Err(format!("Ultron RLM host request is not wired: {other}")),
         }
+    }
+
+    /// Admit an `rlm-frame@1` task for `lane` (as `agents.spawn` with this payload, under the lane's task) without
+    /// a completion notice: inference waits for its result itself. Returns the task id.
+    pub fn spawn_frame(&self, lane: &str, payload: Value) -> Result<String, String> {
+        let Value::Object(payload) = payload else {
+            return Err("Host payload must be a JSON object".into());
+        };
+        self.load()?;
+        let parent = self.caller_task(lane);
+        let request = self.request(&payload, parent.as_deref())?;
+        self.spawn_task(request, None, parent.as_deref(), None)
+    }
+
+    /// Cancel task `id` and its subtree with `reason` (inference cancels its frame tasks with the calling cell).
+    pub fn cancel_task(&self, id: &str, reason: &str) -> Result<Value, String> {
+        self.cancel(id, reason)
     }
 
     fn is_live(&self, id: &str) -> bool {
@@ -1857,6 +1987,7 @@ impl Agents {
                     "join",
                     "revise",
                     "worktree",
+                    "brief",
                 ],
             )?;
             let id = nonempty_string(node.get("id"), "Workflow node ID")?;
@@ -1991,7 +2122,15 @@ impl Agents {
                 }
             }
             let (model, key, timeout_ms) = task_options(node)?;
+            let brief = match node.get("brief") {
+                None | Some(Value::Null) => None,
+                Some(brief) => {
+                    Brief::parse(brief, None).map_err(|error| format!("Workflow node {id}: {error}"))?;
+                    Some(brief.clone())
+                }
+            };
             nodes.push(Node {
+                brief,
                 key: key.or_else(|| workflow_key.as_ref().map(|k| format!("{k}:{id}"))),
                 id,
                 definition,
@@ -2149,6 +2288,16 @@ impl Agents {
                 ));
             }
         }
+        let brief = match &node.brief {
+            None => None,
+            Some(brief) => match Brief::parse(brief, Some(self.hop_below(parent))) {
+                Ok(brief) => Some(brief),
+                Err(error) => {
+                    signal_admitted();
+                    return failed(format!("Admission refused: {error}"));
+                }
+            },
+        };
         let request = TaskRequest {
             definition: node.definition.clone(),
             input,
@@ -2157,6 +2306,7 @@ impl Agents {
             timeout_ms: node.timeout_ms,
             workflow: Some(json!({ "run": run, "node": node.id, "dependsOn": node.depends_on,
                                    "join": if node.join_any { "any" } else { "all" } })),
+            brief,
             ..TaskRequest::default()
         };
         let spawned = self.spawn_task(request, cell, parent, None);

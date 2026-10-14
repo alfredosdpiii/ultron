@@ -245,7 +245,9 @@ impl TempDir {
             let seed = std::process::id() as u64 * 7919 + n * 104_729 + Instant::now().elapsed().as_nanos() as u64;
             let suffix: String = (0..6)
                 .map(|k| {
-                    let alphabet = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                    // Digits only: the session selector searches the session's cwd, so random letters could make
+                    // every session match a typed query ("alp" matched all three when the suffix held a, l, p).
+                    let alphabet = b"0123456789";
                     alphabet[((seed >> (k * 5)) as usize + k * 13) % alphabet.len()] as char
                 })
                 .collect();
@@ -281,6 +283,19 @@ impl Tui {
 
     /// Start in an existing temp root (kept by the caller), e.g. to run twice over the same sessions.
     pub fn start_at(root: &Path, port: u16, cols: u64, rows: u64, args: &[&str], env: &[(&str, &str)]) -> Tui {
+        let models = format!(r#"{{"providers":{{"anthropic":{{"baseUrl":"http://127.0.0.1:{port}"}}}}}}"#);
+        Self::start_with_models(root, &models, cols, rows, args, env)
+    }
+
+    /// [`Tui::start_at`] with the agent dir's `models.json` given whole.
+    pub fn start_with_models(
+        root: &Path,
+        models: &str,
+        cols: u64,
+        rows: u64,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Tui {
         assert!(
             Command::new("tmux")
                 .arg("-V")
@@ -293,11 +308,7 @@ impl Tui {
         std::fs::create_dir_all(&agent).unwrap();
         std::fs::create_dir_all(root.join("cwd")).unwrap();
         std::fs::create_dir_all(root.join("server")).unwrap();
-        std::fs::write(
-            agent.join("models.json"),
-            format!(r#"{{"providers":{{"anthropic":{{"baseUrl":"http://127.0.0.1:{port}"}}}}}}"#),
-        )
-        .unwrap();
+        std::fs::write(agent.join("models.json"), models).unwrap();
         let quote = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
         let mut vars: Vec<(String, String)> = vec![
             ("PATH".into(), "/usr/bin:/bin".into()),
@@ -326,8 +337,6 @@ impl Tui {
             ),
         )
         .unwrap();
-        #[cfg(unix)]
-        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
         // The tmux server's socket lives in the temp dir, so nothing is left behind.
         let socket = root.join("tmux.sock").display().to_string();
         let started = Instant::now();
@@ -346,7 +355,9 @@ impl Tui {
             &cols.to_string(),
             "-y",
             &rows.to_string(),
-            &format!("{}; echo '<exited>'; sleep 60", script.display()),
+            // Read by `sh`, never executed by path: an exec of a file this process just wrote can fail with
+            // ETXTBSY while another test thread's fork still holds the write descriptor.
+            &format!("sh {}; echo '<exited>'; sleep 60", quote(&script.display().to_string())),
         ]);
         tui
     }
@@ -408,6 +419,18 @@ impl Tui {
         self.settle(screen)
     }
 
+    /// From `screen`, wait until the screen equals `want` (hang guard 120 s); returns the last screen seen. A screen
+    /// that `settle` saw quiet for 400 ms can still be mid-redraw on a loaded machine, so a comparison against a
+    /// recorded capture waits for the capture itself; a real difference still fails, after the guard.
+    pub fn wait_screen(&self, mut screen: String, want: &str) -> String {
+        let deadline = Instant::now() + Duration::from_secs(120);
+        while screen != want && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
+            screen = self.capture();
+        }
+        screen
+    }
+
     /// Wait until the screen shows `text`, then until it is unchanged for 400 ms; returns it.
     pub fn wait(&self, text: &str) -> String {
         let deadline = Instant::now() + Duration::from_secs(120);
@@ -434,32 +457,45 @@ impl Drop for Tui {
             }
             std::thread::sleep(Duration::from_millis(20));
         }
+        // Whatever outlived the guard (a session daemon that never saw its last client leave) is killed, so no test
+        // leaves processes behind.
+        for pid in pids_in(&self.root) {
+            let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+        }
     }
 }
 
 /// Whether a live (non-zombie) process other than this one has its working directory under `root`.
 fn processes_in(root: &Path) -> bool {
+    !pids_in(root).is_empty()
+}
+
+/// Live (non-zombie) processes, other than this one, whose working directory is under `root`.
+fn pids_in(root: &Path) -> Vec<u32> {
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let Ok(entries) = std::fs::read_dir("/proc") else {
-        return false;
+        return Vec::new();
     };
-    entries.flatten().any(|entry| {
-        let Ok(pid) = entry.file_name().to_string_lossy().parse::<u32>() else {
-            return false;
-        };
-        if pid == std::process::id() {
-            return false;
-        }
-        let stat = std::fs::read_to_string(entry.path().join("stat")).unwrap_or_default();
-        if stat
-            .rsplit_once(')')
-            .and_then(|(_, rest)| rest.split_whitespace().next())
-            == Some("Z")
-        {
-            return false;
-        }
-        std::fs::read_link(entry.path().join("cwd")).is_ok_and(|cwd| cwd.starts_with(&root))
-    })
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let pid = entry.file_name().to_string_lossy().parse::<u32>().ok()?;
+            if pid == std::process::id() {
+                return None;
+            }
+            let stat = std::fs::read_to_string(entry.path().join("stat")).unwrap_or_default();
+            if stat
+                .rsplit_once(')')
+                .and_then(|(_, rest)| rest.split_whitespace().next())
+                == Some("Z")
+            {
+                return None;
+            }
+            std::fs::read_link(entry.path().join("cwd"))
+                .is_ok_and(|cwd| cwd.starts_with(&root))
+                .then_some(pid)
+        })
+        .collect()
 }
 
 pub fn replies(scenario: &Value) -> Vec<Reply> {

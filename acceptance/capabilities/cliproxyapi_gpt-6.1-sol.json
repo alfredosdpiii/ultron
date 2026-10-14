@@ -1,0 +1,149 @@
+{
+  "suiteVersion": 1,
+  "model": "cliproxyapi/gpt-6.1-sol",
+  "runner": "rust",
+  "trialsPerCase": 2,
+  "passThreshold": 2,
+  "recordedAt": "2026-10-14T14:16:29.643Z",
+  "summary": [
+    {
+      "case": "large-object-inspection",
+      "passes": 2,
+      "infrastructure": 0,
+      "trials": 2,
+      "outcome": "qualified"
+    },
+    {
+      "case": "exact-typed-return",
+      "passes": 2,
+      "infrastructure": 0,
+      "trials": 2,
+      "outcome": "qualified"
+    },
+    {
+      "case": "programmatic-fan-out",
+      "passes": 2,
+      "infrastructure": 0,
+      "trials": 2,
+      "outcome": "qualified"
+    },
+    {
+      "case": "event-retrieval",
+      "passes": 2,
+      "infrastructure": 0,
+      "trials": 2,
+      "outcome": "qualified"
+    },
+    {
+      "case": "honest-failed-child",
+      "passes": 2,
+      "infrastructure": 0,
+      "trials": 2,
+      "outcome": "qualified"
+    }
+  ],
+  "trials": [
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "large-object-inspection",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "24645201",
+      "expected": "24645201",
+      "durationMs": 14130
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "large-object-inspection",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "24645201",
+      "expected": "24645201",
+      "durationMs": 9553
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "exact-typed-return",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"answer\": 17, \"label\": \"typed\"}",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 12083
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "exact-typed-return",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"answer\":17,\"label\":\"typed\"}",
+      "expected": "{\"answer\": 17, \"label\": \"typed\"}",
+      "durationMs": 10573
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "programmatic-fan-out",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"n\":3}",
+      "expected": "{\"n\": 3}",
+      "durationMs": 16342
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "programmatic-fan-out",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "{\"n\":3}",
+      "expected": "{\"n\": 3}",
+      "durationMs": 20245
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "event-retrieval",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "3",
+      "expected": "the recorded count of completed identity@1 tasks (>= 3)",
+      "durationMs": 13942,
+      "recordedCompletedIdentityTasks": 3
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "event-retrieval",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "3",
+      "expected": "the recorded count of completed identity@1 tasks (>= 3)",
+      "durationMs": 19103,
+      "recordedCompletedIdentityTasks": 3
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "honest-failed-child",
+      "trial": 1,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "FAILED",
+      "expected": "FAILED",
+      "durationMs": 7959
+    },
+    {
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "case": "honest-failed-child",
+      "trial": 2,
+      "passed": true,
+      "usedRlm": true,
+      "answer": "FAILED",
+      "expected": "FAILED",
+      "durationMs": 8258
+    }
+  ]
+}

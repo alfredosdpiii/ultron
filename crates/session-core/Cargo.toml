@@ -22,10 +22,12 @@ inference = { path = "../inference" }
 kernel = { path = "../kernel" }
 kernel-apis = { path = "../kernel-apis" }
 loki = { path = "../loki" }
+mcp = { path = "../mcp" }
 resources = { path = "../resources" }
 sandbox = { path = "../sandbox" }
 session-file = { path = "../session-file" }
 session-journal = { path = "../session-journal" }
+services = { path = "../services" }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 tokio = { version = "=1.53.2", features = ["rt", "time"] }
 

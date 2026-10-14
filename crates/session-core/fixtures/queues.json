@@ -1,0 +1,153 @@
+{
+ "scenarios": [
+  {
+   "name": "steer_and_follow_up_at_a_final_answer",
+   "prompt": "first",
+   "answers": [
+    "A.",
+    "B.",
+    "C."
+   ],
+   "steers": [
+    "steer me"
+   ],
+   "followUps": [
+    "follow me"
+   ],
+   "followUpFirst": false,
+   "requests": [
+    [
+     "first"
+    ],
+    [
+     "first",
+     "steer me"
+    ],
+    [
+     "first",
+     "steer me",
+     "follow me"
+    ]
+   ],
+   "transcript": [
+    "user: first",
+    "assistant: A.",
+    "user: steer me",
+    "assistant: B.",
+    "user: follow me",
+    "assistant: C."
+   ]
+  },
+  {
+   "name": "follow_up_queued_before_steer",
+   "prompt": "first",
+   "answers": [
+    "A.",
+    "B.",
+    "C."
+   ],
+   "steers": [
+    "steer me"
+   ],
+   "followUps": [
+    "follow me"
+   ],
+   "followUpFirst": true,
+   "requests": [
+    [
+     "first"
+    ],
+    [
+     "first",
+     "steer me"
+    ],
+    [
+     "first",
+     "steer me",
+     "follow me"
+    ]
+   ],
+   "transcript": [
+    "user: first",
+    "assistant: A.",
+    "user: steer me",
+    "assistant: B.",
+    "user: follow me",
+    "assistant: C."
+   ]
+  },
+  {
+   "name": "two_steers_two_follow_ups",
+   "prompt": "first",
+   "answers": [
+    "A.",
+    "B.",
+    "C."
+   ],
+   "steers": [
+    "s1",
+    "s2"
+   ],
+   "followUps": [
+    "f1",
+    "f2"
+   ],
+   "followUpFirst": false,
+   "requests": [
+    [
+     "first"
+    ],
+    [
+     "first",
+     "s1",
+     "s2"
+    ],
+    [
+     "first",
+     "s1",
+     "s2",
+     "f1",
+     "f2"
+    ]
+   ],
+   "transcript": [
+    "user: first",
+    "assistant: A.",
+    "user: s1",
+    "user: s2",
+    "assistant: B.",
+    "user: f1",
+    "user: f2",
+    "assistant: C."
+   ]
+  },
+  {
+   "name": "follow_up_only",
+   "prompt": "first",
+   "answers": [
+    "A.",
+    "B."
+   ],
+   "steers": [],
+   "followUps": [
+    "follow me"
+   ],
+   "followUpFirst": false,
+   "requests": [
+    [
+     "first"
+    ],
+    [
+     "first",
+     "follow me"
+    ]
+   ],
+   "transcript": [
+    "user: first",
+    "assistant: A.",
+    "user: follow me",
+    "assistant: B."
+   ]
+  }
+ ]
+}

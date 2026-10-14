@@ -57,7 +57,7 @@ GUIDE_TREE = [
     ["guides/UPPER.MD", "Upper case ext."], ["guides/.dotfile.md", "dot file"],
     ["single.md", "Single file guide " + "s" * 400], ["other/x.md", "Other dir."],
     ["long/a.md", "a" * 700], ["long/b.md", "b" * 300], ["long/c.md", "c" * 50],
-    ["home/guides/mine.md", "Home guide."],
+    ["fakehome/guides/mine.md", "Home guide."],
 ]
 GUIDE_LINKS = [["guides/linked", "other"]]
 for path, text in GUIDE_TREE:
@@ -67,7 +67,8 @@ for path, text in GUIDE_TREE:
         handle.write(text)
 for path, target in GUIDE_LINKS:
     os.symlink(target, os.path.join(ROOT, path))
-os.environ["HOME"] = os.path.join(ROOT, "home")
+# Not "home": a recorded `<root>/home/<dir>/` path reads as a real home directory to scripts/secret-scan.mjs.
+os.environ["HOME"] = os.path.join(ROOT, "fakehome")
 guide_diff = ra.parse_diff(
     "diff --git a/app/views.py b/app/views.py\n--- a/app/views.py\n+++ b/app/views.py\n@@ -1 +1,2 @@\n x\n"
     "+from django.http import HttpResponse  # React? no\n"

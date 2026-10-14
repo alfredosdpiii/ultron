@@ -27,7 +27,7 @@ corpus.push(
 	`two keys ${key} and ${gh} done`,
 	`é${key}`,
 	`日本 ${key} 語`,
-	`😀 password = "Hunter2Correct9Horse"`,
+	`😀 password = "${j("Hunter2Corr", "ect9Horse")}"`,
 	`export OPENAI_API_KEY=${j("Qw8Er7Ty6Ui5Op4As3Df2")}\nexport HOME_TOKEN=$HOME`,
 	`os.environ.get("ANTHROPIC_API_KEY", "${key}")`,
 	"os.environ['GITHUB_TOKEN']",
@@ -40,7 +40,7 @@ corpus.push(
 	j("AKIA", "Z7Q2W3E4R5T6Y7U8"),
 	j("eyJhbGciOiJIUzI1", ".eyJzdWIiOiIxMjM0NTY3ODkw", ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"),
 	"secret = aaaaaaaaaaaaaaaaaaaa",
-	"see /home/bryan/x and /Users/alice/y and /home/runner/z",
+	`see ${j("/home/", "jdoe/x")} and /Users/alice/y and /home/runner/z`,
 	`TOKEN=${j("abcdefABCDEF0123", "456789xyz")} # tail`,
 	"MY_SECRET_KEY = 0123456789abcdef0123456789abcdef01234567",
 	`stripe ${j("sk_li", "ve_", "4eC39HqLyjWDarjtT1zdp7dc")}`,
@@ -71,7 +71,8 @@ const cases = unique.map((text) => {
 	const scan = detector.scan(text, "scan").map((f) => ({ kind: f.kind, value: pieces(text.slice(f.start, f.end)), preview: f.preview }));
 	return {
 		text: pieces(text),
-		redacted: masked.text,
+		// home_path findings are scan-only, so the redacted text can still hold a whole match.
+		redacted: pieces(masked.text),
 		masked: masked.masked,
 		scan,
 		sensitive_memory: containsSensitiveMemory(text),

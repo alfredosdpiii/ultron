@@ -1,7 +1,7 @@
 //! The `ultron` binary: composition root over the `cli` library and the daemon's internal processes
 //! (`ultron __internal <role>`: the coordinator, a server generation, a session worker).
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn main() {
     // Before any thread starts: SIGINT/SIGTERM/SIGHUP are read on a thread of their own (crates/daemon `signals`);
@@ -10,8 +10,6 @@ fn main() {
         eprintln!("Signal handling unavailable: {error}");
     }
     let argv: Vec<String> = std::env::args().skip(1).collect();
-    let docs =
-        config::paths::normalize(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/coding-agent/docs"));
     // The claude-subscription provider's inert MCP inventory server (Claude Code spawns it; it executes nothing).
     if let [internal, role, args @ ..] = &argv[..]
         && internal == "__internal"
@@ -23,6 +21,23 @@ fn main() {
         }
         std::process::exit(0);
     }
+    // The package files (runtime.py and its modules, skills, docs): embedded, installed where first needed
+    // (cli::assets). Here only their location is known; a session worker always needs them.
+    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    let source = match cli::assets::source(&|k| std::env::var(k).ok(), &home) {
+        Ok(source) => source,
+        Err(message) => {
+            eprintln!("{message}");
+            std::process::exit(1);
+        }
+    };
+    let ready_docs = || match source.ready() {
+        Ok(dir) => dir.join("docs"),
+        Err(message) => {
+            eprintln!("{message}");
+            std::process::exit(1);
+        }
+    };
     match daemon::process::role(&argv) {
         Err(message) => {
             eprintln!("{message}");
@@ -32,7 +47,7 @@ fn main() {
             let result = match role {
                 daemon::process::Role::Coordinator => daemon::coordinator::run(args).map_err(|e| e.to_string()),
                 daemon::process::Role::Server => daemon::server::run_server_process(args),
-                daemon::process::Role::SessionWorker => daemon::worker::run(args, docs),
+                daemon::process::Role::SessionWorker => daemon::worker::run(args, ready_docs()),
             };
             if let Err(message) = result {
                 eprintln!("{message}");
@@ -44,9 +59,9 @@ fn main() {
     }
     let env = cli::Env {
         cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        home: std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default(),
         var: std::sync::Arc::new(|k| std::env::var(k).ok()),
-        docs,
+        docs: source.dir().join("docs"),
+        home,
     };
     // Unlocked handles: threads of the interactive TUI (its terminal writer) and of RPC mode write too.
     let code = cli::run(&argv, &env, &mut std::io::stdout(), &mut std::io::stderr());

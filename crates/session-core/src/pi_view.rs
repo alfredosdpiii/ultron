@@ -26,7 +26,7 @@ fn with_base(base: &Map<String, Value>, rest: Vec<(&str, Value)>) -> Value {
 }
 
 /// `nativeToPiEntry` for every entry type but compaction.
-fn native_to_pi_entry(entry: &Value, base: &Map<String, Value>) -> Value {
+pub(crate) fn native_to_pi_entry(entry: &Value, base: &Map<String, Value>) -> Value {
     let optional = |key: &'static str| entry.get(key).filter(|v| !v.is_null()).map(|v| (key, v.clone()));
     match str_of(entry, "type") {
         Some("message") => {
@@ -165,6 +165,22 @@ fn compaction_to_pi(entry: &Value, base: &Map<String, Value>, branch: &[Value]) 
 
 /// A format-4 session's tree as Pi entries, and the Pi id of the `main` tip.
 pub fn native_entries_to_pi(session: &Session) -> (Vec<Value>, Option<String>) {
+    let converted = native_session_as_pi(session, "main");
+    (converted.entries, converted.leaf_id)
+}
+
+/// `NativeSessionAsPi`: every native entry as the Pi entries that represent it.
+pub(crate) struct NativeAsPi {
+    pub entries: Vec<Value>,
+    /// The Pi id of the lane's tip.
+    pub leaf_id: Option<String>,
+    pub tip_id: Option<String>,
+    /// The Pi entries each exported native entry produced, by native id.
+    pub produced: HashMap<String, Vec<Value>>,
+}
+
+/// `nativeSessionEntriesToPi` of `lane`.
+pub(crate) fn native_session_as_pi(session: &Session, lane: &str) -> NativeAsPi {
     let state = session.state();
     let natives = state.entries();
     let original: HashMap<String, Value> = state
@@ -229,8 +245,13 @@ pub fn native_entries_to_pi(session: &Session) -> (Vec<Value>, Option<String>) {
         .filter_map(|e| str_of(e, "id"))
         .flat_map(|id| produced.get(id).cloned().unwrap_or_default())
         .collect();
-    let tip = session.branch_tip("main").flatten();
-    (entries, pi_id_of(&produced, tip.as_deref()))
+    let tip = session.branch_tip(lane).flatten();
+    NativeAsPi {
+        entries,
+        leaf_id: pi_id_of(&produced, tip.as_deref()),
+        tip_id: tip,
+        produced,
+    }
 }
 
 /// `PiSessionView`'s manager: the converted entries in an in-memory Pi session, its leaf at the `main` tip.

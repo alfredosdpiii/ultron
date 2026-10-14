@@ -5,6 +5,7 @@
 
 pub mod agents;
 pub mod child;
+pub mod contract;
 pub mod definitions;
 pub mod host;
 pub mod kernel_pool;

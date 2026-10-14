@@ -12,6 +12,24 @@ use crate::markdown::{ListItem, Token, trim_partial_closing_fences};
 
 type Caps<'t> = Captures<'t, str>;
 
+thread_local! {
+    static WORK: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Charge `units` of scanning work to this thread's counter (see [`lex_work`]).
+fn work(units: usize) {
+    WORK.with(|w| w.set(w.get() + units as u64 + 1));
+}
+
+/// A deterministic measure of the lexer's work on this thread so far, for complexity tests (no clocks): one unit
+/// per rule call plus the bytes it can scan. An anchored rule is charged its match length (the bytes it consumed;
+/// a failed one only its call), an unanchored search, replace or iteration the whole haystack it was given (the
+/// most it can read), a substring search the bytes up to where it stopped. A lexer that rescans the rest of the
+/// document per token shows up here as quadratic growth, whatever the machine load.
+pub fn lex_work() -> u64 {
+    WORK.with(std::cell::Cell::get)
+}
+
 fn re(s: &str) -> Regex {
     Regex::new(s).expect("marked rule")
 }
@@ -209,21 +227,26 @@ fn item_rule(bull: &str) -> &'static Regex {
 /// anchors a pattern on its own when it is a single `^…` sequence without a trailing lookahead, and otherwise retries
 /// at every later position of `s`, which made each call cost the length of the unlexed rest of the document.
 fn exec<'t>(r: &Regex, s: &'t str) -> Option<Caps<'t>> {
-    r.captures_input(RegexInput::new(s).anchored(true)).ok().flatten()
+    let caps = r.captures_input(RegexInput::new(s).anchored(true)).ok().flatten();
+    work(caps.as_ref().and_then(|c| c.get(0)).map_or(0, |m| m.end()));
+    caps
 }
 
 /// `rule.test(s)` for a rule whose every branch starts with `^` (see [`exec`]).
 fn test(r: &Regex, s: &str) -> bool {
+    work(0);
     r.is_match_input(RegexInput::new(s).anchored(true)).unwrap_or(false)
 }
 
 /// Unanchored `rule.exec(s)`.
 fn search<'t>(r: &Regex, s: &'t str) -> Option<Caps<'t>> {
+    work(s.len());
     r.captures(s).ok().flatten()
 }
 
 /// Unanchored `rule.test(s)`.
 fn contains(r: &Regex, s: &str) -> bool {
+    work(s.len());
     r.is_match(s).unwrap_or(false)
 }
 
@@ -236,6 +259,7 @@ fn g(c: &Caps, i: usize) -> String {
 }
 
 fn replace(r: &Regex, s: &str, with: &str) -> String {
+    work(s.len());
     r.replace_all(s, with).into_owned()
 }
 
@@ -417,6 +441,7 @@ fn find_closing_delimiter(s: &str, closing: &str, start: usize) -> Option<usize>
             .and_then(|r| r.find(closing))
             .map(|j| j + i + closing.len());
     }
+    work(index.unwrap_or(s.len()).saturating_sub(start));
     index
 }
 
@@ -472,6 +497,7 @@ impl NextAt {
         if !self.searched || self.at.is_some_and(|a| a < start) {
             self.searched = true;
             self.at = find(&whole[start..]).map(|i| i + start);
+            work(self.at.unwrap_or(whole.len()) - start);
         }
         self.at
     }
@@ -995,6 +1021,7 @@ impl Lexer {
         if !self.links.is_empty() && masked.contains('[') {
             masked = self.mask_reflinks(&masked);
         }
+        work(masked.len());
         masked = rules::ANY_PUNCT
             .replace_all(&masked, |c: &Caps| "+".repeat(c[0].len()))
             .into_owned();
@@ -1002,6 +1029,7 @@ impl Lexer {
     }
 
     fn mask_reflinks(&self, s: &str) -> String {
+        work(s.len());
         rules::REFLINK_SEARCH
             .replace_all(s, |c: &Caps| {
                 let a = &c[0];
@@ -1024,7 +1052,9 @@ impl Lexer {
         if !s.contains('[') {
             return false;
         }
+        work(2 * s.len());
         for m in rules::BLOCK_SKIP.find_iter(s).flatten() {
+            work(0);
             if test(&rules::LINK, m.as_str()) && (m.start() == 0 || s.as_bytes()[m.start() - 1] != b'!') {
                 return true;
             }
@@ -1175,7 +1205,7 @@ impl Lexer {
             if let Some(at) = inline_latex_start(whole, src, &mut latex_start) {
                 cut = &src[..at];
             }
-            if let Some(n) = inline_text_len(cut) {
+            if let Some(n) = inline_text_len(cut).inspect(|&n| work(n)) {
                 let raw = cut[..n].to_string();
                 src = &src[n..];
                 if !raw.ends_with('_') {
@@ -1293,8 +1323,6 @@ impl Lexer {
         let l_len = m[0].chars().count() - 1;
         let delim = m[0].as_bytes()[0];
         let same_prev = prev_char.as_bytes() == [delim];
-        let mut left = l_len as isize;
-        let mut mid = 0isize;
         let hay_start = masked.len() - src.len() + l_len;
         let runs = runs.get(masked, delim);
         // marked's emStrongRDelim regex starts with a branch anchored at the search start that skips one delimiter.
@@ -1308,49 +1336,26 @@ impl Lexer {
         )
         .map_or(0, |c| c[0].len());
         let first = runs.runs.partition_point(|r| r.start < hay_start + skip_to.max(1));
-        let mut i = first;
-        loop {
-            // Runs that can only open (branches 3 and 4) just raise `left`; add them in one step and stop at the
-            // next run that can close.
-            let j = runs.next_closer[i];
-            let Some(run) = runs.runs.get(j) else { break };
-            left += (runs.opener_len[j] - runs.opener_len[i]) as isize;
-            i = j + 1;
-            let class = run.class.unwrap_or(0);
-            let mut r_len = run.len as isize;
-            if class == 5 || class == 6 {
-                if l_len % 3 != 0 && (l_len as isize + r_len) % 3 == 0 {
-                    mid += r_len;
-                    continue;
-                }
-                if same_prev {
-                    break;
-                }
-            }
-            left -= r_len;
-            if left > 0 {
-                continue;
-            }
-            r_len = r_len.min(r_len + left + mid);
-            let raw = &src[..l_len + (run.start - hay_start) + r_len as usize];
-            if l_len.min(r_len as usize) % 2 == 1 {
-                let text = &raw[1..raw.len() - 1];
-                return Some((
-                    raw.len(),
-                    Token::Em {
-                        tokens: self.inline_tokens(text),
-                    },
-                ));
-            }
-            let text = &raw[2..raw.len() - 2];
+        let (j, left, mid) = runs.close(first, l_len, same_prev)?;
+        let run = runs.runs[j];
+        let r_len = (run.len as isize).min(run.len as isize + left + mid);
+        let raw = &src[..l_len + (run.start - hay_start) + r_len as usize];
+        if l_len.min(r_len as usize) % 2 == 1 {
+            let text = &raw[1..raw.len() - 1];
             return Some((
                 raw.len(),
-                Token::Strong {
+                Token::Em {
                     tokens: self.inline_tokens(text),
                 },
             ));
         }
-        None
+        let text = &raw[2..raw.len() - 2];
+        Some((
+            raw.len(),
+            Token::Strong {
+                tokens: self.inline_tokens(text),
+            },
+        ))
     }
 }
 
@@ -1367,6 +1372,7 @@ fn mask_block_skip(s: &str) -> String {
             .find_input(RegexInput::new(s).from_pos(at).anchored(true))
             .ok()
             .flatten();
+        work(off + m.as_ref().map_or(0, |m| m.end() - at));
         match m {
             Some(m) => {
                 out.push_str(&s[copied..at]);
@@ -1404,6 +1410,7 @@ impl RunEnd {
         if !(self.start..self.end).contains(&i) {
             self.start = i;
             self.end = i + b[i..].iter().take_while(|&&c| f(c)).count();
+            work(self.end - i);
         }
         self.end
     }
@@ -1481,19 +1488,102 @@ struct DelimiterRuns {
 }
 
 impl DelimiterRuns {
-    fn get(&mut self, masked: &str, delim: u8) -> &RunTable {
+    fn get(&mut self, masked: &str, delim: u8) -> &mut RunTable {
         let slot = if delim == b'*' { &mut self.ast } else { &mut self.und };
         slot.get_or_insert_with(|| RunTable::new(delimiter_runs(masked, delim)))
     }
 }
 
-/// A source's runs with what lets the emStrong scan skip runs that can only open: `opener_len[i]` sums the lengths
-/// of opener-only runs (branches 3 and 4) before run `i`, and `next_closer[i]` is the first run at or after `i` that
-/// can close (branches 1, 2, 5 and 6), `runs.len()` when none.
+/// A source's runs with what lets the emStrong scan find an opener's closing run without walking the runs between:
+/// `opener_len[i]` sums the lengths of opener-only runs (branches 3 and 4) before run `i`, and `searches` hold the
+/// prefix sums and trees of [`CloserSearch`].
 struct RunTable {
     runs: Vec<Run>,
     opener_len: Vec<usize>,
-    next_closer: Vec<usize>,
+    /// The closing searches per (opener length mod 3, previous character is the delimiter), built on first use.
+    searches: [Option<CloserSearch>; 6],
+}
+
+/// Where a closing search from run `first` ends, for one (opener length mod 3, same previous character) variant,
+/// without walking the runs in between.
+///
+/// The walk ([`RunTable::close_by_walk`], marked's emStrongRDelim loop) keeps `left` (open delimiters): opener-only
+/// runs add their length, closing runs subtract theirs, and the first closing run that brings `left` to 0 or below
+/// closes. A closing run of branch 5 or 6 instead adds to `mid` when the rule of 3 applies (`skip`), and otherwise
+/// ends the search with no match when the previous character is the delimiter (`stop`). Walking from every opener
+/// made a paragraph with many unmatched openers quadratic (each walks to its end). With prefix sums `left` after a
+/// subtracting run `j` is `l_len + opener_len[j] - opener_len[first] - (sub[j + 1] - sub[first])`, so the closing
+/// run is the first subtracting `j` in `[first, next_stop[first])` with `q[j] = opener_len[j] - sub[j + 1]` at most
+/// `opener_len[first] - sub[first] - l_len`: a minimum segment tree over `q` finds it in O(log n).
+struct CloserSearch {
+    /// Sum of the lengths of subtracting runs before run `i`.
+    sub: Vec<isize>,
+    /// Sum of the lengths of `skip` runs before run `i`.
+    skip: Vec<isize>,
+    /// The first `stop` run at or after `i` (`runs.len()` when none).
+    next_stop: Vec<usize>,
+    /// Minimum segment tree over `q` (`isize::MAX` for runs that do not subtract), leaves from `size`.
+    tree: Vec<isize>,
+    size: usize,
+}
+
+impl CloserSearch {
+    fn new(table: &RunTable, l_mod: usize, same_prev: bool) -> Self {
+        let runs = &table.runs;
+        let n = runs.len();
+        let (mut sub, mut skip) = (vec![0isize; n + 1], vec![0isize; n + 1]);
+        let mut next_stop = vec![n; n + 1];
+        let size = n.max(1).next_power_of_two();
+        let mut tree = vec![isize::MAX; 2 * size];
+        let mut kinds = vec![0u8; n];
+        for (i, run) in runs.iter().enumerate() {
+            let r_len = run.len as isize;
+            // 0: neither, 1: subtracts, 2: skip (adds to `mid`), 3: stop.
+            kinds[i] = match run.class {
+                Some(5 | 6) if l_mod != 0 && (l_mod as isize + r_len) % 3 == 0 => 2,
+                Some(5 | 6) if same_prev => 3,
+                Some(1 | 2 | 5 | 6) => 1,
+                _ => 0,
+            };
+            sub[i + 1] = sub[i] + if kinds[i] == 1 { r_len } else { 0 };
+            skip[i + 1] = skip[i] + if kinds[i] == 2 { r_len } else { 0 };
+            if kinds[i] == 1 {
+                tree[size + i] = table.opener_len[i] as isize - sub[i + 1];
+            }
+        }
+        for i in (0..n).rev() {
+            next_stop[i] = if kinds[i] == 3 { i } else { next_stop[i + 1] };
+        }
+        for i in (1..size).rev() {
+            tree[i] = tree[2 * i].min(tree[2 * i + 1]);
+        }
+        work(n);
+        CloserSearch {
+            sub,
+            skip,
+            next_stop,
+            tree,
+            size,
+        }
+    }
+
+    /// The first leaf in `[lo, hi)` whose value is at most `t`.
+    fn first_at_most(&self, lo: usize, hi: usize, t: isize) -> Option<usize> {
+        self.descend(1, 0, self.size, lo, hi, t)
+    }
+
+    fn descend(&self, node: usize, a: usize, b: usize, lo: usize, hi: usize, t: isize) -> Option<usize> {
+        work(0);
+        if b <= lo || hi <= a || self.tree[node] > t {
+            return None;
+        }
+        if b - a == 1 {
+            return Some(a);
+        }
+        let m = (a + b) / 2;
+        self.descend(2 * node, a, m, lo, hi, t)
+            .or_else(|| self.descend(2 * node + 1, m, b, lo, hi, t))
+    }
 }
 
 impl RunTable {
@@ -1502,19 +1592,50 @@ impl RunTable {
         for (i, r) in runs.iter().enumerate() {
             opener_len[i + 1] = opener_len[i] + if matches!(r.class, Some(3 | 4)) { r.len } else { 0 };
         }
-        let mut next_closer = vec![runs.len(); runs.len() + 1];
-        for i in (0..runs.len()).rev() {
-            next_closer[i] = if matches!(runs[i].class, Some(1 | 2 | 5 | 6)) {
-                i
-            } else {
-                next_closer[i + 1]
-            };
-        }
         RunTable {
             runs,
             opener_len,
-            next_closer,
+            searches: Default::default(),
         }
+    }
+
+    /// The run that closes an opener of length `l_len` whose search starts at run `first`, with `left` (0 or below)
+    /// and `mid` at that run; None when no run closes it. Same result as [`RunTable::close_by_walk`], in O(log n).
+    fn close(&mut self, first: usize, l_len: usize, same_prev: bool) -> Option<(usize, isize, isize)> {
+        let variant = l_len % 3 * 2 + usize::from(same_prev);
+        if self.searches[variant].is_none() {
+            self.searches[variant] = Some(CloserSearch::new(self, l_len % 3, same_prev));
+        }
+        let search = self.searches[variant].as_ref()?;
+        let first = first.min(self.runs.len());
+        let target = self.opener_len[first] as isize - search.sub[first] - l_len as isize;
+        let j = search.first_at_most(first, search.next_stop[first], target)?;
+        let left = l_len as isize + (self.opener_len[j] - self.opener_len[first]) as isize
+            - (search.sub[j + 1] - search.sub[first]);
+        Some((j, left, search.skip[j] - search.skip[first]))
+    }
+
+    /// marked's emStrongRDelim loop over the runs from `first`, one run at a time: the reference for
+    /// [`RunTable::close`].
+    #[cfg(test)]
+    fn close_by_walk(&self, first: usize, l_len: usize, same_prev: bool) -> Option<(usize, isize, isize)> {
+        let (mut left, mut mid) = (l_len as isize, 0isize);
+        for (j, run) in self.runs.iter().enumerate().skip(first) {
+            let r_len = run.len as isize;
+            match run.class {
+                Some(3 | 4) => left += r_len,
+                Some(5 | 6) if !l_len.is_multiple_of(3) && (l_len as isize + r_len) % 3 == 0 => mid += r_len,
+                Some(5 | 6) if same_prev => return None,
+                Some(1 | 2 | 5 | 6) => {
+                    left -= r_len;
+                    if left <= 0 {
+                        return Some((j, left, mid));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
     }
 }
 
@@ -1575,6 +1696,7 @@ fn classify_und(c: char, d: Option<char>) -> Option<u8> {
 
 /// Every maximal `delim` run of `masked`, classified as [`Run`] describes.
 fn delimiter_runs(masked: &str, delim: u8) -> Vec<Run> {
+    work(masked.len());
     let b = masked.as_bytes();
     let mut runs = Vec::new();
     let mut i = 0;
@@ -1745,6 +1867,34 @@ mod tests {
             .filter(|r| r.start >= hay_start + skip_to.max(1))
             .filter_map(|r| r.class.map(|c| (c, r.start, r.len)))
             .collect()
+    }
+
+    /// The closing search by prefix sums and segment tree ends where marked's one-run-at-a-time walk does, from
+    /// every start run, for every opener length and previous character, on generated delimiter-heavy sources.
+    #[test]
+    fn tui_marked_closing_search_matches_the_walk() {
+        let mut next = xorshift(0x5eed_1234_abcd_0001);
+        let alphabet = [
+            "*", "_", "**", "__", "***", " ", "a", "b", ".", ",", "!", "~", "\n", "é",
+        ];
+        for _ in 0..3000 {
+            let masked = generated(&mut next, &alphabet, 40);
+            for delim in *b"*_" {
+                let mut table = RunTable::new(delimiter_runs(&masked, delim));
+                for first in 0..=table.runs.len() {
+                    for l_len in 1..=3 {
+                        for same_prev in [false, true] {
+                            assert_eq!(
+                                table.close(first, l_len, same_prev),
+                                table.close_by_walk(first, l_len, same_prev),
+                                "{masked:?} delim {} first {first} l_len {l_len} same_prev {same_prev}",
+                                delim as char
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn xorshift(mut seed: u64) -> impl FnMut() -> usize {

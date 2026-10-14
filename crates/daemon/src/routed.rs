@@ -442,18 +442,52 @@ impl Hub {
                     .is_none_or(|w| config::paths::normalize(std::path::Path::new(&m.cwd)) == *w)
             })
             .map(|m| {
-                let (name, first, count) = catalog::details(&m);
+                let details = catalog::details(&m);
                 let mut listing = m.summary(&self.server_id);
                 listing["cwd"] = json!(m.cwd);
                 listing["sessionFile"] = json!(m.path.display().to_string());
-                listing["name"] = json!(name);
-                listing["firstMessage"] = json!(first);
-                listing["messageCount"] = json!(count);
+                listing["name"] = json!(details.name);
+                listing["firstMessage"] = json!(details.first_message);
+                listing["allMessagesText"] = json!(details.all_messages_text);
+                listing["messageCount"] = json!(details.message_count);
                 listing["parentSessionId"] = json!(m.parent_session_id);
                 listing
             })
             .collect();
         Ok(Some(Value::Array(listings)))
+    }
+
+    /// `importPi`: the client sends the Pi file's text (it may live on another machine); it is imported into this
+    /// server's session store. A session imported before is answered as `alreadyImported`, nothing written.
+    fn import_pi(&self, content: &str) -> ServiceResult {
+        let directory = private_temp_dir("ultron-pi-import-")
+            .map_err(|e| ServiceError::internal(format!("Pi import directory: {e}")))?;
+        let source = directory.join("session.jsonl");
+        let written = {
+            use std::os::unix::fs::OpenOptionsExt;
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(&source)
+                .and_then(|mut file| file.write_all(content.as_bytes()))
+        };
+        let imported = written
+            .map_err(|e| e.to_string())
+            .map(|()| session_core::migration::import_pi_session(&source, &self.session_dir));
+        let _ = std::fs::remove_dir_all(&directory);
+        let (session_id, already, count) = match imported.map_err(ServiceError::internal)? {
+            Ok(result) => (result.session_id, false, result.imported),
+            Err(session_core::migration::ImportError::AlreadyImported { session_id, .. }) => (session_id, true, 0),
+            Err(error) => return Err(ServiceError::internal(error.to_string())),
+        };
+        self.refresh();
+        let meta = self.resolve(&session_id)?;
+        Ok(Some(json!({
+            "session": meta.summary(&self.server_id),
+            "alreadyImported": already,
+            "imported": count,
+        })))
     }
 
     fn server_services(&self, conn: &Arc<Conn>) -> Provider {
@@ -476,6 +510,7 @@ impl Hub {
             hub.clone(),
         );
         let (c1, c2) = (conn_of.clone(), conn_of);
+        let h8 = hub.clone();
         let management = Service::new("pi.session-management")
             .method("attach", move |args| {
                 let (hub, conn) = (h1()?, c1()?);
@@ -495,7 +530,15 @@ impl Hub {
                 hub.serialized(|| hub.detach(&conn));
                 Ok(None)
             })
-            .unported("importPi")
+            .method("importPi", move |args| {
+                let hub = h8()?;
+                let content = args
+                    .first()
+                    .and_then(|s| s["content"].as_str())
+                    .unwrap_or_default()
+                    .to_string();
+                hub.serialized(|| hub.import_pi(&content))
+            })
             .method("remove", move |args| {
                 let hub = h5()?;
                 let id = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
@@ -853,4 +896,20 @@ fn respond(conn: &Arc<Conn>, id: &str, subscription: Option<&str>, result: Servi
         }
     }
     subscriptions.insert(subscription.to_string(), Subscription::Ready(encoder));
+}
+
+/// A new private (0700) directory under the system temp directory.
+fn private_temp_dir(prefix: &str) -> std::io::Result<PathBuf> {
+    use std::os::unix::fs::DirBuilderExt;
+    loop {
+        let mut bytes = [0u8; 6];
+        getrandom::fill(&mut bytes).map_err(|e| std::io::Error::other(e.to_string()))?;
+        let suffix: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+        let path = std::env::temp_dir().join(format!("{prefix}{suffix}"));
+        match std::fs::DirBuilder::new().mode(0o700).create(&path) {
+            Ok(()) => return Ok(path),
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    }
 }

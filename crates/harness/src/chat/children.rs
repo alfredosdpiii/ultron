@@ -26,7 +26,7 @@ use crate::scheduler::{Cancel, Ctx, HarnessError, NextState, Result, Task, TaskR
 pub const CHILD_KIND: &str = "ultron.child";
 
 /// What spawns a child.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChildInput {
     pub name: String,
@@ -38,6 +38,21 @@ pub struct ChildInput {
     /// A persistent child: it stays alive after its first answer and takes follow-up questions.
     #[serde(default)]
     pub keep: bool,
+    /// The child's thinking level (`rlm.spawn(thinking=...)`), set on its conversation's agent when it starts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
+    /// Where the child's lane works when not in the session's directory (a worktree child), and the extra
+    /// environment of its processes: kept with the task so a restarted worker resumes it there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub env: Vec<(String, String)>,
+    /// The run of a typed agent (`agents.*`) rather than an `rlm.spawn` subagent.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub agent: bool,
+    /// The usage root the child's model turns are charged to (the root turn that started it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage_root: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -136,6 +151,13 @@ fn start_phase(_services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -
         create_documents(tx, conversation, false)?;
         if let Some(model) = &model {
             configure(tx, conversation, &AgentChange::model(model.clone()))?;
+        }
+        if let Some(level) = &input.thinking {
+            let change = AgentChange {
+                model: None,
+                thinking_level: Some(Some(level.clone())),
+            };
+            configure(tx, conversation, &change)?;
         }
         let submission = place_initial_input(tx, conversation, &json!(input.prompt), now)?;
         // The registry learns what the child holds: its brief is its first work.

@@ -8,7 +8,7 @@ use ai::http::{AbortSignal, BoxFuture, HttpRequest, HttpResponse, Transport};
 use ai::{Model, TranscriptContext};
 use serde_json::json;
 use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 fn cc_model() -> Model {
@@ -99,34 +99,20 @@ fn ai_claude_code_cli_second_request_takes_the_warm_spare() {
 }
 
 /// The page the browser thread read back from the callback server, once it has read it (hang guard 120 s).
-fn served_page(pages: &Mutex<Vec<String>>) -> String {
-    let deadline = Instant::now() + Duration::from_secs(120);
-    loop {
-        let page = pages.lock().unwrap().join("");
-        if !page.is_empty() || Instant::now() >= deadline {
-            return page;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+fn served_page(pages: &mpsc::Receiver<String>) -> String {
+    pages
+        .recv_timeout(Duration::from_secs(120))
+        .expect("the browser read no page within 120 s")
 }
 
-/// Both callback tests bind 127.0.0.1:1456.
-/// Holds the fixed OAuth callback port (1456) for one test, across every test process on the machine (an exclusive
-/// lock on a file beside the port; the product must use 1456, the registered redirect URI). When something else
-/// still has the port, login falls back to the manual prompt, which these fake browsers never answer: fail with the
-/// reason instead of hanging.
-fn callback_port() -> std::fs::File {
-    let lock = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(std::env::temp_dir().join("ultron-test-oauth-callback-1456.lock"))
-        .unwrap();
-    lock.lock().unwrap();
-    if let Err(error) = std::net::TcpListener::bind(("127.0.0.1", 1456)) {
-        panic!("OAuth callback port 1456 is held by a process outside these tests ({error}); they need it free");
-    }
-    lock
+/// A Radius login whose callback server listens on a free port the system picks, not the registered 1456.
+///
+/// 1456 is one port for the whole machine: other worktrees' test runs (older copies that do not take the shared port
+/// lock) and a real login bind it too. One that bound it between this test's probe and its login's bind made the
+/// login fall back to the pasted URL, and the browser's call reached no server ("port 1456 taken?"). A port of its
+/// own leaves nothing to share; the redirect URI names the bound port (`with_callback_port(0)`).
+fn radius(transport: Arc<GatewayTransport>) -> ai::oauth_radius::RadiusOAuth {
+    ai::oauth_radius::RadiusOAuth::new("Radius", "gateway.example.com", transport, now).with_callback_port(0)
 }
 
 /// Runs a login with a 120 s hang guard.
@@ -167,10 +153,18 @@ impl Transport for GatewayTransport {
 }
 
 /// Chooses the browser login, never answers the manual prompt, and calls the callback URL like a browser would.
+/// When the call reaches no callback server of this login (the port was refused, or another login's server
+/// answered), the login has fallen back to the manual prompt: the prompt then fails with that reason, so the test
+/// fails at once instead of waiting out its hang guard.
 struct Browser {
-    pages: Arc<Mutex<Vec<String>>>,
+    pages: mpsc::Sender<String>,
     query: fn(&str) -> String,
+    lost: AbortSignal,
+    /// The callback server's port, from the "Listening for OAuth callback on ..." progress line.
+    port: Mutex<Option<u16>>,
 }
+
+const LOST: &str = "the browser's callback reached no callback server of this login";
 
 impl AuthInteraction for Browser {
     fn prompt<'a>(&'a self, prompt: AuthPrompt, cancel: Option<AbortSignal>) -> BoxFuture<'a, Result<String, String>> {
@@ -179,14 +173,22 @@ impl AuthInteraction for Browser {
                 AuthPrompt::Select { .. } => Ok("browser".into()),
                 _ => {
                     // The manual prompt is withdrawn once the callback wins.
-                    cancel.expect("manual prompt is cancellable").cancelled().await;
-                    Err("cancelled".into())
+                    let cancel = cancel.expect("manual prompt is cancellable");
+                    tokio::select! {
+                        () = cancel.cancelled() => Err("cancelled".into()),
+                        () = self.lost.cancelled() => Err(LOST.into()),
+                    }
                 }
             }
         })
     }
 
     fn notify(&self, event: AuthEvent) {
+        if let AuthEvent::Progress { message } = &event
+            && let Some(url) = message.strip_prefix("Listening for OAuth callback on ")
+        {
+            *self.port.lock().unwrap() = reqwest::Url::parse(url).unwrap().port();
+        }
         if let AuthEvent::AuthUrl { url, .. } = event {
             let state = reqwest::Url::parse(&url)
                 .unwrap()
@@ -196,17 +198,30 @@ impl AuthInteraction for Browser {
                 .unwrap();
             let query = (self.query)(&state);
             let pages = self.pages.clone();
+            let lost = self.lost.clone();
+            let port = self
+                .port
+                .lock()
+                .unwrap()
+                .expect("the callback server's port precedes the URL");
             std::thread::spawn(move || {
-                let mut stream =
-                    std::net::TcpStream::connect(("127.0.0.1", 1456)).expect("connect to the callback server");
-                write!(
-                    stream,
-                    "GET /oauth/callback?{query} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
-                )
-                .unwrap();
-                let mut page = String::new();
-                stream.read_to_string(&mut page).unwrap();
-                pages.lock().unwrap().push(page);
+                let call = || -> std::io::Result<String> {
+                    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port))?;
+                    write!(
+                        stream,
+                        "GET /oauth/callback?{query} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+                    )?;
+                    let mut page = String::new();
+                    stream.read_to_string(&mut page)?;
+                    Ok(page)
+                };
+                let page = call().unwrap_or_else(|error| format!("{LOST}: {error}"));
+                // This login's server always answers, and checks the state it generated: no answer, or a state
+                // mismatch, came from no server or another login's.
+                if !page.starts_with("HTTP/1.1 ") || page.contains("OAuth state mismatch") {
+                    lost.abort();
+                }
+                let _ = pages.send(page);
             });
         }
     }
@@ -222,52 +237,60 @@ fn now() -> i64 {
 
 #[test]
 fn ai_oauth_radius_browser_login_completes_through_the_loopback_callback() {
-    // Held until the end of the test, after the runtime (and its callback listener) is dropped.
-    let _port = callback_port();
     let transport = Arc::new(GatewayTransport(Mutex::default()));
-    let radius = ai::oauth_radius::RadiusOAuth::new("Radius", "gateway.example.com", transport.clone(), now);
+    let radius = radius(transport.clone());
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
-    let pages = Arc::new(Mutex::new(Vec::new()));
+    let (pages, served) = mpsc::channel();
     let browser = Browser {
-        pages: pages.clone(),
+        pages,
+        lost: AbortSignal::new(),
+        port: Mutex::default(),
         query: |state| format!("code=browser-code&state={state}"),
     };
     let credential = login(&runtime, radius.login(&browser)).expect("login");
     assert_eq!(credential.access, "from-callback");
+    let port = browser.port.lock().unwrap().expect("a listening line");
+    assert_ne!(
+        port, 1456,
+        "the test's server must not share the machine-wide registered port"
+    );
     assert_eq!(credential.expires, 1_767_225_600_000.0);
     let token = &transport.0.lock().unwrap()[1];
     assert!(token.body.contains("code=browser-code"), "{}", token.body);
     assert!(token.body.contains("grant_type=authorization_code"));
-    let page = served_page(&pages);
+    // The redirect URI names the port the test's server listened on.
+    assert!(
+        token.body.contains(&format!(
+            "redirect_uri=http%3A%2F%2F127.0.0.1%3A{port}%2Foauth%2Fcallback"
+        )),
+        "{}",
+        token.body
+    );
+    let page = served_page(&served);
     assert!(page.starts_with("HTTP/1.1 200 OK"), "{page}");
     assert!(page.contains("Signed in to Radius. You may now close this page."));
 }
 
 #[test]
 fn ai_oauth_radius_browser_denial_ends_the_login() {
-    // Held until the end of the test, after the runtime (and its callback listener) is dropped.
-    let _port = callback_port();
-    let radius = ai::oauth_radius::RadiusOAuth::new(
-        "Radius",
-        "gateway.example.com",
-        Arc::new(GatewayTransport(Mutex::default())),
-        now,
-    );
+    let radius = radius(Arc::new(GatewayTransport(Mutex::default())));
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
-    let pages = Arc::new(Mutex::new(Vec::new()));
+    let (pages, served) = mpsc::channel();
     let browser = Browser {
-        pages: pages.clone(),
+        pages,
+        lost: AbortSignal::new(),
+        port: Mutex::default(),
         query: |state| format!("error=access_denied&error_description=User+said+no&state={state}"),
     };
     let error = login(&runtime, radius.login(&browser)).unwrap_err();
     assert_eq!(error, "OAuth callback did not complete.");
-    let page = served_page(&pages);
+    let page = served_page(&served);
     assert!(page.starts_with("HTTP/1.1 400 Bad Request"), "{page}");
     assert!(page.contains("User said no"));
 }

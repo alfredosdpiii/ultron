@@ -499,11 +499,21 @@ fn package_command(o: &Options, env: &Env, io: &mut Io) -> i32 {
         return usage_error(io, &format!("Missing {} source.", command.name()), command.usage());
     }
     if o.update_target == Some(UpdateTarget::Models) {
-        let _ = writeln!(
-            io.err,
-            "Error: `ultron update --models` is not implemented in the Rust build yet"
-        );
-        return 1;
+        // `refreshModelCatalogs`: every provider with a credential refreshes its stored catalog.
+        return match session_core::model_refresh::refresh_model_catalogs(
+            env,
+            ai::model_refresh::DEFAULT_CATALOG_BASE_URL,
+            &ai::model_refresh::management_user_agent(&crate::version()),
+        ) {
+            Ok(()) => {
+                let _ = writeln!(io.out, "Model catalogs refreshed");
+                0
+            }
+            Err(error) => {
+                let _ = writeln!(io.err, "Error: {error}");
+                1
+            }
+        };
     }
     let writes_project = matches!(command, Command::Install | Command::Remove) && o.local;
     let settings = settings_manager(env, o.trust_override, command == Command::Update);

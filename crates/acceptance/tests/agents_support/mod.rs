@@ -5,7 +5,9 @@
 //! recorded.
 #![allow(dead_code)]
 
-use delegation::agents::{Adapter, AdapterRequest, Agents, AgentsOptions, LaneReply, LaneRun, TaskEnd};
+use delegation::agents::{
+    Adapter, AdapterRequest, Agents, AgentsOptions, LaneCheck, LaneMessage, LaneRelease, LaneReply, LaneRun, TaskEnd,
+};
 use delegation::task_store::TaskStore;
 use delegation::usage::{Measurement, UsageLedger};
 use kernel::Signal;
@@ -85,6 +87,11 @@ pub struct Options {
     pub predict: Option<Adapter>,
     /// Usage measured for each lane run (by lane name).
     pub metered: Option<Metered>,
+    /// Before a task reuses a lane (`beforeLaneReuse`).
+    pub before_lane_reuse: Option<LaneCheck>,
+    /// Lane pins (`pin` / `unpin` of the session's kernel pool).
+    pub pin_lane: Option<LaneMessage>,
+    pub unpin_lane: Option<LaneRelease>,
 }
 
 pub struct Fixture {
@@ -121,6 +128,9 @@ pub fn fixture_with_stores(options: Options, tasks: Box<dyn TaskStore>, definiti
     agent_options.usage = options.usage;
     agent_options.deterministic = options.deterministic;
     agent_options.predict = options.predict;
+    agent_options.before_lane_reuse = options.before_lane_reuse;
+    agent_options.pin_lane = options.pin_lane;
+    agent_options.unpin_lane = options.unpin_lane;
     let script = options
         .script
         .unwrap_or_else(|| Arc::new(|_, _, _, _| Ok("unused".into())));

@@ -102,3 +102,10 @@ impl HindsightLessons {
         Ok(())
     }
 }
+
+/// The reviewer's lesson memory (`LessonMemory` of autoreview/reviewer.ts): a failed retain is logged, never fatal.
+impl review::reviewer::LessonMemory for HindsightLessons {
+    fn retain(&self, repo: &str, fates: &[Fate], lessons: &[Lesson]) -> Result<(), String> {
+        HindsightLessons::retain(self, repo, fates, lessons).map_err(|error| error.to_string())
+    }
+}

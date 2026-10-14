@@ -1,0 +1,136 @@
+{
+ "cols": 100,
+ "rows": 30,
+ "scenarios": [
+  {
+   "name": "device-code-login",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login gw",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select authentication method for My Radius:"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Sign in to My Radius:"
+    },
+    {
+     "keys": [
+      "Down"
+     ],
+     "wait": "→ Sign in with device code"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Enter code: WXYZ-1234"
+    },
+    {
+     "release": true,
+     "wait": "/model switches to My Radius's models"
+    }
+   ],
+   "artifacts": {
+    "agent/auth.json": "{\n  \"gw\": {\n    \"type\": \"oauth\",\n    \"access\": \"radius-access\",\n    \"refresh\": \"radius-refresh\",\n    \"expires\":0\n  }\n}"
+   },
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Select authentication method for My Radius:\n\n→ Sign in with an account\n  Sign in with an API key\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n Sign in to My Radius:\n\n → Sign in with browser (recommended)\n   Sign in with device code (when signing in from another device)\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n Sign in to My Radius:\n\n   Sign in with browser (recommended)\n → Sign in with device code (when signing in from another device)\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to My Radius\n\n http://127.0.0.1:<port>/device\n Ctrl+click to open\n\n Enter code: WXYZ-1234\n\n Waiting for authentication...\n (escape/ctrl+c to cancel)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Logged in to My Radius. Credentials saved to <TMP>/agent/auth.json. The Session\n still uses anthropic/claude-sonnet-4-5; /model switches to My Radius's models\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/v1/oauth/device",
+     "body": {
+      "client_id": "pi-gateway",
+      "scope": "gateway offline_access"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/v1/oauth/token",
+     "body": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+      "client_id": "pi-gateway",
+      "device_code": "dev-1"
+     }
+    }
+   ]
+  },
+  {
+   "name": "device-code-cancel",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login gw",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select authentication method for My Radius:"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Sign in to My Radius:"
+    },
+    {
+     "keys": [
+      "Down",
+      "Enter"
+     ],
+     "wait": "Enter code: WXYZ-1234"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:"
+    }
+   ],
+   "artifacts": {
+    "agent/auth.json": "{}"
+   },
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Select authentication method for My Radius:\n\n→ Sign in with an account\n  Sign in with an API key\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n Sign in to My Radius:\n\n → Sign in with browser (recommended)\n   Sign in with device code (when signing in from another device)\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to My Radius\n\n http://127.0.0.1:<port>/device\n Ctrl+click to open\n\n Enter code: WXYZ-1234\n\n Waiting for authentication...\n (escape/ctrl+c to cancel)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "requests": [
+    {
+     "method": "POST",
+     "path": "/v1/oauth/device",
+     "body": {
+      "client_id": "pi-gateway",
+      "scope": "gateway offline_access"
+     }
+    },
+    {
+     "method": "POST",
+     "path": "/v1/oauth/token",
+     "body": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+      "client_id": "pi-gateway",
+      "device_code": "dev-1"
+     }
+    }
+   ]
+  }
+ ]
+}

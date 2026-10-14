@@ -11,14 +11,21 @@
 
 pub mod client;
 pub mod config;
+pub mod connection;
 pub mod content;
 pub mod edit;
+pub mod formats;
+pub mod gateway;
 pub mod http;
+pub mod js_json;
 pub mod jsonrpc;
+pub mod log;
+pub mod oauth;
 pub mod resolve;
 pub mod results;
 pub mod runtime;
 pub mod stdio;
+pub mod validation;
 
 pub use client::{CancelToken, Client, ClientOptions, ConnState, RequestOptions};
 pub use jsonrpc::Error;

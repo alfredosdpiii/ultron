@@ -43,7 +43,9 @@ pub const RESTART_EXIT_CODE: i32 = 75;
 /// Operations that wait on a run (or a long poll) execute off the command reader, so it keeps serving the rest.
 /// The others run in order on one operation thread; the reader itself only dispatches, so it always answers the
 /// server's heartbeat.
-const LONG_OPERATIONS: [(&str, &str); 9] = [
+const LONG_OPERATIONS: [(&str, &str); 10] = [
+    // `/mcp` may wait on the client's dialogs (its menu, a sign-in's redirect prompt).
+    ("pi.legacy-extension-commands", "run"),
     ("pi.agent-controller", "prompt"),
     ("pi.agent-controller", "resume"),
     ("pi.agent-controller", "compact"),
@@ -77,6 +79,8 @@ pub struct WorkerOptions {
     pub mode: String,
     /// `noNaming`: the session is not named.
     pub no_naming: bool,
+    /// `noExtensions` (Pi `--no-extensions`): no extensions, and no MCP servers.
+    pub no_extensions: bool,
 }
 
 pub fn parse_options(argument: &str) -> Result<WorkerOptions, String> {
@@ -104,9 +108,12 @@ pub fn parse_options(argument: &str) -> Result<WorkerOptions, String> {
             model: text("model"),
             api_key: std::env::var(API_KEY_ENV).ok(),
             thinking: text("thinking"),
+            // The worker protocol carries no `--models` (as TypeScript's); the settings' `enabledModels` apply.
+            models: None,
         },
         mode: text("extensionMode").unwrap_or_else(|| "interactive".into()),
         no_naming: options["noNaming"] == true,
+        no_extensions: options["noExtensions"] == true,
     })
 }
 
@@ -180,6 +187,18 @@ impl Shared {
     }
 
     /// A run started or ended (it holds retirement while it runs), or a stuck run moved again.
+    /// `holdActivity`: detached work is active (held as an operation) or no longer.
+    fn activity(&self, active: bool) {
+        let Some(lifecycle) = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner()).clone() else {
+            return;
+        };
+        if active {
+            lifecycle.operation_started("activity", "main", "detached");
+        } else if lifecycle.busy() {
+            lifecycle.operation_stopped("activity", "main", "detached");
+        }
+    }
+
     fn progress_changed(&self, change: Change) {
         let lifecycle = self.lifecycle.lock().unwrap_or_else(|e| e.into_inner()).clone();
         match (&change, &lifecycle) {
@@ -210,11 +229,26 @@ impl Shared {
 
     /// `closeAndExit`: stop the session (kernel, session file) and exit.
     fn close_and_exit(&self, code: i32) -> ! {
+        self.exit_with(code, false)
+    }
+
+    /// Stop and exit leaving the session to a successor worker (a signal, or the lost server: the run stays open
+    /// in the journal and the next worker recovers it): running shell jobs keep running for it to follow.
+    fn hand_over_and_exit(&self, code: i32) -> ! {
+        self.exit_with(code, true)
+    }
+
+    fn exit_with(&self, code: i32, hand_over: bool) -> ! {
         let first = !std::mem::replace(&mut *self.closing.lock().unwrap_or_else(|e| e.into_inner()), true);
         if first {
             self.remove_subscriptions(|_| true);
             let (done, wait) = mpsc::channel();
-            if self.core.send(Input::Close(done)).is_ok() {
+            let input = if hand_over {
+                Input::HandOver(done)
+            } else {
+                Input::Close(done)
+            };
+            if self.core.send(input).is_ok() {
                 let _ = wait.recv_timeout(Duration::from_secs(10));
             }
             self._lock.lock().unwrap_or_else(|e| e.into_inner()).take();
@@ -257,6 +291,12 @@ struct Watch {
     shared: Arc<OnceLock<Weak<Shared>>>,
 }
 
+/// The session's extension UI and its MCP gateway (once the session's stack opened it).
+struct Extensions {
+    ui: Arc<crate::extension_ui::ExtensionUiBridge>,
+    mcp: Arc<OnceLock<Arc<mcp::gateway::Gateway>>>,
+}
+
 fn services(
     lane: &Lane,
     models_state: Arc<crate::chord::State>,
@@ -264,6 +304,7 @@ fn services(
     core: Sender<Input>,
     lifecycle: LifecycleRef,
     watch: Watch,
+    extensions: Extensions,
 ) -> Provider {
     let navigate_core = core.clone();
     let (prompt_core, abort_core, steer_core, follow_core, cancel_core, compact_core) = (
@@ -305,6 +346,7 @@ fn services(
                     target_id: request["targetId"].as_str().map(str::to_string),
                     summarize: request["summarize"] == true,
                     instructions: request["customInstructions"].as_str().map(str::to_string),
+                    label: request["label"].as_str().map(str::to_string),
                 },
             )
         })
@@ -341,9 +383,39 @@ fn services(
             )
         });
     let plugins = Service::new("pi.session-plugins").method("reload", |_| Ok(None));
+    // The extension processes' commands (session_core::extension_commands) and `/mcp`, the built-in MCP extension's
+    // command (extensions/mcp): `/mcp` runs here, its dialogs and notices go to the client through the extension UI.
+    let (list_core, run_core) = (core.clone(), core.clone());
+    let (list_mcp, run_mcp, run_ui) = (extensions.mcp.clone(), extensions.mcp.clone(), extensions.ui.clone());
     let legacy = Service::new("pi.legacy-extension-commands")
-        .method("list", |_| Ok(Some(json!([]))))
-        .method("run", |_| Ok(Some(json!({"notifications": []}))));
+        .method("list", move |_| {
+            let commands = call_core(&list_core, Op::Commands)?.unwrap_or_default();
+            let listed =
+                session_core::extension_commands::from_listing(commands.as_array().map_or(&[][..], Vec::as_slice));
+            let has_mcp = list_mcp.get().is_some();
+            Ok(Some(
+                listed
+                    .iter()
+                    .filter(|c| has_mcp || c.name != "mcp")
+                    .map(session_core::extension_commands::command_info)
+                    .collect(),
+            ))
+        })
+        .method("run", move |args| {
+            let text = |i: usize| args.get(i).and_then(Value::as_str).map(str::to_string);
+            let (Some(name), Some(args)) = (text(0), text(1)) else {
+                return Err(ServiceError::internal("Extension command service is unavailable"));
+            };
+            if name == "mcp"
+                && let Some(gateway) = run_mcp.get()
+            {
+                gateway.run_command(&args, &crate::extension_ui::BridgeUi(run_ui.clone()));
+                return Ok(Some(json!({"notifications": []})));
+            }
+            // A command's failure is a plain error of the service, as TypeScript's `runCommand` throws it (it crosses
+            // the wire as an internal error).
+            session_core::core::call(&run_core, Op::ExtensionCommand { name, args }).map_err(ServiceError::internal)
+        });
     let (stuck_core, health_progress) = (core.clone(), watch.progress.clone());
     let (op_core, bash_core, abort_bash_core, name_core, forked_core, tree_core, inspect_core) = (
         core.clone(),
@@ -354,6 +426,7 @@ fn services(
         core.clone(),
         core.clone(),
     );
+    let commands_core = core.clone();
     let mut control = Service::new("ultron.session-control")
         .method("abortBash", move |_| call_core(&abort_bash_core, Op::AbortBash))
         .method("bash", move |args| {
@@ -372,17 +445,16 @@ fn services(
         })
         .method("inspect", move |args| match args.first().and_then(Value::as_str) {
             // Root-owned work whose completion may still re-invoke the root: the running run.
-            Some("async.pending") => {
-                let state = call_core(&inspect_core, Op::State)?.unwrap_or_default();
-                let running = usize::from(state["isStreaming"] == true);
-                Ok(Some(
-                    json!({"pending": running > 0, "jobs": 0, "tools": 0, "tasks": 0, "events": 0, "running": running}),
-                ))
-            }
-            other => Err(ServiceError::internal(format!(
-                "Inspection {} is not available in the Rust build yet",
-                other.unwrap_or_default()
-            ))),
+            Some("async.pending") => call_core(&inspect_core, Op::AsyncPending),
+            // Every other request through the session's inspector (session-core `inspect`), which refuses anything
+            // that is not a read-only inspection.
+            other => call_core(
+                &inspect_core,
+                Op::Inspect {
+                    request: other.unwrap_or_default().to_string(),
+                    payload: args.get(1).cloned().unwrap_or(Value::Null),
+                },
+            ),
         })
         .method("readTree", move |_| {
             let entries = call_core(&tree_core, Op::Entries { since: None })?.unwrap_or_default();
@@ -393,12 +465,18 @@ fn services(
         .method("setName", move |args| {
             let name = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
             call_core(&name_core, Op::SetName { name })
+        })
+        .method("listCommands", move |_| {
+            let commands = call_core(&commands_core, Op::Commands)?.unwrap_or_default();
+            let commands = commands.as_array().map_or(&[][..], Vec::as_slice);
+            Ok(Some(
+                session_core::extension_commands::session_command_infos(commands).into(),
+            ))
         });
     for name in [
         "beforeFork",
         "debugInfo",
         "getSettings",
-        "listCommands",
         "readSettings",
         "reloadAuth",
         "setAutoCompaction",
@@ -411,14 +489,19 @@ fn services(
     ] {
         control = control.unported(name);
     }
+    let (poll_ui, respond_ui) = (extensions.ui.clone(), extensions.ui);
     let extension_ui = Service::new("ultron.extension-ui")
-        .method("poll", |args| {
-            // No extension raises dialogs in the Rust build: wait as asked, then report none.
-            let wait = args.get(1).and_then(Value::as_u64).unwrap_or(0).min(30_000);
-            std::thread::sleep(Duration::from_millis(wait));
-            Ok(Some(json!({"cursor": 0, "requests": []})))
+        .method("poll", move |args| {
+            let after = args.first().and_then(Value::as_u64);
+            let wait = args.get(1).and_then(Value::as_u64).unwrap_or(0);
+            Ok(Some(poll_ui.poll(after, Duration::from_millis(wait))))
         })
-        .method("respond", |_| Ok(None));
+        .method("respond", move |args| {
+            if let (Some(id), Some(answer)) = (args.first().and_then(Value::as_str), args.get(1)) {
+                respond_ui.respond(id, answer.clone());
+            }
+            Ok(None)
+        });
     let (cycle_core, levels_core, select_core, thinking_core) = (core.clone(), core.clone(), core.clone(), core);
     let (select_state, thinking_state) = (models_state.clone(), models_state.clone());
     let models = Service::new("pi.models")
@@ -541,7 +624,7 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     let path = PathBuf::from(metadata["path"].as_str().unwrap_or_default());
     let session_id = metadata["id"].as_str().unwrap_or_default().to_string();
     // One writer per session file, across every server and instance: a live owner refuses this worker at once.
-    let owner_lock = durable::owner::OwnerLock::acquire(&path).map_err(|error| match error {
+    let owner_lock = acquire_owner(&path).map_err(|error| match error {
         durable::owner::OwnerError::InUse { pid } => {
             fail_coded(Some("service_invalid_value"), session_in_use(&session_id, pid))
         }
@@ -561,13 +644,27 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     // The actor reports no event while it opens; the transcript state starts at its snapshot.
     let lane_slot: Arc<std::sync::OnceLock<Arc<Mutex<Lane>>>> = Arc::new(std::sync::OnceLock::new());
     let sink_lane = lane_slot.clone();
+    // The client this worker is started for serves the extension UI (Pi's `extensionMode` tui or rpc).
+    let ui =
+        crate::extension_ui::ExtensionUiBridge::new(matches!(options.mode.as_str(), "interactive" | "tui" | "rpc"));
+    let gateway_slot: Arc<OnceLock<Arc<mcp::gateway::Gateway>>> = Arc::new(OnceLock::new());
+    let (notice_ui, slot) = (ui.clone(), gateway_slot.clone());
     let open = OpenOptions {
         env,
         flags: options.session.clone(),
         session_root,
         metadata: session_metadata,
         mode: options.mode.clone(),
-        services: Services::default(),
+        services: Services {
+            on_mcp: Some(Arc::new(move |gateway: &Arc<mcp::gateway::Gateway>| {
+                let _ = slot.set(gateway.clone());
+            })),
+            mcp_notices: Some(Arc::new(move |message: &str, level: &str| {
+                mcp::gateway::CommandUi::notify(&crate::extension_ui::BridgeUi(notice_ui.clone()), message, level);
+            })),
+            no_extensions: options.no_extensions,
+            ..Services::default()
+        },
         auto_name: !options.no_naming,
     };
     let name_state = crate::chord::State::new(json!({"name": null}));
@@ -580,6 +677,14 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     let (core, _actor, summary) = session_core::core::spawn(
         open,
         Box::new(move |event| {
+            if event["type"] == "activity" {
+                // Detached work (jobs, subagents, pending events) holds retirement as a run does; it is not a run's
+                // progress (the stuck-run watchdog never sees it).
+                if let Some(shared) = sink_shared.get().and_then(Weak::upgrade) {
+                    shared.activity(event["active"] == true);
+                }
+                return;
+            }
             let change = sink_progress.event(&event, session_core::lane::now_ms());
             if change != Change::None
                 && let Some(shared) = sink_shared.get().and_then(Weak::upgrade)
@@ -624,6 +729,10 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         core.clone(),
         lifecycle_slot.clone(),
         watch,
+        Extensions {
+            ui: ui.clone(),
+            mcp: gateway_slot,
+        },
     ));
     let (jobs, queue) = mpsc::channel::<Box<dyn FnOnce() + Send>>();
     std::thread::spawn(move || {
@@ -680,7 +789,7 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     let signalled = Arc::downgrade(&shared);
     crate::signals::set_handler(Arc::new(move |_| {
         if let Some(shared) = signalled.upgrade() {
-            shared.close_and_exit(0);
+            shared.hand_over_and_exit(0);
         }
         std::process::exit(0);
     }));
@@ -693,7 +802,8 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     loop {
         let message = match reader.read_value() {
             Ok(Some(message)) => message,
-            _ => shared.close_and_exit(0),
+            // The server (or its coordinator) is gone; a new one starts a successor for the session.
+            _ => shared.hand_over_and_exit(0),
         };
         handle_input(&shared, &message, discovery_grace);
     }
@@ -865,6 +975,24 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
         std::thread::spawn(execute);
     } else {
         let _ = jobs.send(Box::new(execute));
+    }
+}
+
+/// Own `path`'s storage, or name its live owner. An owner records its pid just after it takes the lock;
+/// `OwnerLock::acquire` gives that record a short grace, which a loaded machine can outlast (the refusal then named
+/// no pid). Until the owner's record appears, or the owner lets go (then this worker owns the file), ask again,
+/// bounded by a hang guard.
+fn acquire_owner(path: &std::path::Path) -> Result<durable::owner::OwnerLock, durable::owner::OwnerError> {
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        match durable::owner::OwnerLock::acquire(path) {
+            Err(durable::owner::OwnerError::InUse { pid: None }) if std::time::Instant::now() < deadline => {
+                if let Some(pid) = durable::owner::recorded_owner(path) {
+                    return Err(durable::owner::OwnerError::InUse { pid: Some(pid) });
+                }
+            }
+            other => return other,
+        }
     }
 }
 

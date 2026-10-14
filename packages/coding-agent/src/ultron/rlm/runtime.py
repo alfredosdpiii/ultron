@@ -2044,6 +2044,9 @@ async def execute_cell(request_id: str, source: str) -> None:
         spill_dir = _spill_dir()
         stdout = _MiddleTextIO(budget, "stdout", spill_dir)
         stderr = _MiddleTextIO(budget, "stderr", spill_dir)
+        # With a host that keeps partial output (ULTRON_RLM_STREAM_OUTPUT), what the cell prints also reaches it
+        # while the cell runs, so a cell whose worker dies keeps its print output, not only its shell output.
+        live = _LiveOutput.open(request_id)
         _STATE.namespace.pop("_rlm_result", None)
         try:
             compiled, note = _prepare_code(source)
@@ -2052,7 +2055,8 @@ async def execute_cell(request_id: str, source: str) -> None:
             _arm_cpu_limit()
             _STATE.cell_active = True
             try:
-                with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                with contextlib.redirect_stdout(_LiveOutput.tee(live, stdout, "stdout")), \
+                        contextlib.redirect_stderr(_LiveOutput.tee(live, stderr, "stderr")):
                     agent_class_api.begin_cell(source)
                     try:
                         result = eval(compiled, _STATE.namespace, _STATE.namespace)
@@ -2074,11 +2078,13 @@ async def execute_cell(request_id: str, source: str) -> None:
                     result_text = ""
             finally:
                 _STATE.cell_active = False
+                _LiveOutput.close(live)
             emit("stdout", id=request_id, text=stdout.getvalue())
             emit("stderr", id=request_id, text=stderr.getvalue())
             emit("result", id=request_id, result=result_text)
             emit("done", id=request_id, status="ok", flush=_flush_raw_output(request_id))
         except BaseException as error:
+            _LiveOutput.close(live)
             try:
                 emit("stdout", id=request_id, text=stdout.getvalue())
                 emit("stderr", id=request_id, text=stderr.getvalue())
@@ -2161,6 +2167,121 @@ async def main() -> None:
             return
         except Exception as error:
             emit("error", **_error_preview(error))
+
+
+# Frames are written from the cell's thread and from the live-output timer: one line at a time.
+_FRAME_LOCK = threading.Lock()
+_write_frame_unlocked = _write_frame
+
+
+def _write_frame(line: str) -> None:  # noqa: F811 - serializes the protocol writer defined above
+    with _FRAME_LOCK:
+        _write_frame_unlocked(line)
+
+
+# How often a running cell's new output is sent, and the most one send carries (the newest bytes; older ones are
+# replaced by a marker). The host keeps a bounded tail of it as the cell's durable partial output.
+_LIVE_INTERVAL = 0.2
+_LIVE_MAX_CHARS = 16 * 1024
+
+
+def _live_output_enabled() -> bool:
+    value = os.environ.get("ULTRON_RLM_STREAM_OUTPUT", "").strip().lower()
+    return value not in ("", "0", "off", "false", "no")
+
+
+class _LiveOutput:
+    """A running cell's printed output, sent to the host as it is written (`cell.output` host requests that nothing
+    waits on), at most every _LIVE_INTERVAL seconds from a timer thread, so output before a long blocking call is
+    sent too. The cell's own result still carries its whole captured output."""
+
+    def __init__(self, request_id: str) -> None:
+        self._request_id = request_id
+        self._lock = threading.Lock()
+        self._pending: list[str] = []
+        self._size = 0
+        self._dropped = 0
+        self._timer: threading.Timer | None = None
+        self._closed = False
+        self._sent = 0
+
+    @staticmethod
+    def open(request_id: str) -> "_LiveOutput | None":
+        return _LiveOutput(request_id) if _live_output_enabled() and _PROTOCOL_OUT is not None else None
+
+    @staticmethod
+    def tee(live: "_LiveOutput | None", capture: io.TextIOBase, name: str) -> io.TextIOBase:
+        return capture if live is None else _LiveTee(capture, live)
+
+    @staticmethod
+    def close(live: "_LiveOutput | None") -> None:
+        if live is not None:
+            live._close()
+
+    def add(self, text: str) -> None:
+        if not text:
+            return
+        with self._lock:
+            if self._closed:
+                return
+            self._pending.append(text)
+            self._size += len(text)
+            while self._size > _LIVE_MAX_CHARS and len(self._pending) > 1:
+                dropped = self._pending.pop(0)
+                self._size -= len(dropped)
+                self._dropped += len(dropped)
+            if self._timer is None:
+                self._timer = threading.Timer(_LIVE_INTERVAL, self._flush)
+                self._timer.daemon = True
+                self._timer.start()
+
+    def _flush(self) -> None:
+        with self._lock:
+            self._timer = None
+            if self._closed or not self._pending:
+                return
+            text = "".join(self._pending)
+            dropped = self._dropped + max(0, len(text) - _LIVE_MAX_CHARS)
+            text = text[-_LIVE_MAX_CHARS:]
+            self._pending, self._size, self._dropped = [], 0, 0
+            self._sent += 1
+            frame_id = f"out-{self._request_id}-{self._sent}"
+        if dropped:
+            text = f"[... {dropped} characters not sent ...]\n" + text
+        payload = {"text": text.encode("utf-8", errors="backslashreplace").decode("utf-8")}
+        try:
+            _write_frame(_encode_frame({"event": "host_request", "id": frame_id, "type": "cell.output",
+                                        "payload": payload}))
+        except BaseException:
+            pass
+
+    def _close(self) -> None:
+        with self._lock:
+            self._closed = True
+            timer, self._timer = self._timer, None
+            self._pending = []
+        if timer is not None:
+            timer.cancel()
+
+
+class _LiveTee(io.TextIOBase):
+    """Writes to the cell's capture and to its live output."""
+
+    def __init__(self, capture: io.TextIOBase, live: _LiveOutput) -> None:
+        super().__init__()
+        self._capture = capture
+        self._live = live
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, text: str) -> int:
+        written = self._capture.write(text)
+        self._live.add(text)
+        return written
+
+    def getvalue(self) -> str:
+        return self._capture.getvalue()  # type: ignore[attr-defined]
 
 
 if __name__ == "__main__":

@@ -860,12 +860,11 @@ fn oauth_flow(name: &str, transport: Arc<dyn Transport>) -> Box<dyn ai::auth::OA
             transport,
             clock: oauth_clock,
         }),
-        "radius" => Box::new(ai::oauth_radius::RadiusOAuth::new(
-            "Radius",
-            "gateway.example.com/",
-            transport,
-            oauth_clock,
-        )),
+        // A system-chosen callback port: the replay names it as the recording's registered 1456 (`registered_port`).
+        "radius" => Box::new(
+            ai::oauth_radius::RadiusOAuth::new("Radius", "gateway.example.com/", transport, oauth_clock)
+                .with_callback_port(0),
+        ),
         other => panic!("unknown flow {other}"),
     }
 }
@@ -921,9 +920,11 @@ fn oauth_differences(scenario: &Value) -> Vec<String> {
             json!({"url": r.url, "method": r.method, "headers": r.headers, "body": body})
         })
         .collect();
-    let requests: Value = serde_json::from_str(&mask_random(&json!(requests).to_string())).unwrap();
-    let events: Value =
-        serde_json::from_str(&mask_random(&json!(*interaction.events.lock().unwrap()).to_string())).unwrap();
+    let events_text = json!(*interaction.events.lock().unwrap()).to_string();
+    let port = registered_port(&events_text);
+    let requests: Value = serde_json::from_str(&port(&mask_random(&json!(requests).to_string()))).unwrap();
+    let events: Value = serde_json::from_str(&port(&mask_random(&events_text))).unwrap();
+    let prompts: Value = serde_json::from_str(&port(&json!(*interaction.prompts.lock().unwrap()).to_string())).unwrap();
     let mut diffs = Vec::new();
     let mut check = |what: &str, expected: &Value, actual: &Value| {
         if normalize_numbers(expected.clone()) != normalize_numbers(actual.clone()) {
@@ -931,11 +932,7 @@ fn oauth_differences(scenario: &Value) -> Vec<String> {
         }
     };
     check("requests", &scenario["requests"], &requests);
-    check(
-        "prompts",
-        &scenario["prompts"],
-        &json!(*interaction.prompts.lock().unwrap()),
-    );
+    check("prompts", &scenario["prompts"], &prompts);
     check("events", &scenario["events"], &events);
     check("result", &scenario["result"], &result);
     check("thrown", &scenario["thrown"], &thrown);
@@ -943,8 +940,26 @@ fn oauth_differences(scenario: &Value) -> Vec<String> {
     diffs
 }
 
+/// The Radius browser login listens on a port the system chose (`with_callback_port(0)`), named in its "Listening"
+/// notice: the comparison names it as the recording's registered 1456, plain and URL-encoded.
+fn registered_port(events: &str) -> impl Fn(&str) -> String {
+    const PREFIX: &str = "Listening for OAuth callback on http://127.0.0.1:";
+    let port = events
+        .find(PREFIX)
+        .map(|at| &events[at + PREFIX.len()..])
+        .and_then(|rest| rest.split('/').next())
+        .map(str::to_string);
+    move |text: &str| match &port {
+        Some(port) => text
+            .replace(&format!("127.0.0.1:{port}/"), "127.0.0.1:1456/")
+            .replace(&format!("127.0.0.1%3A{port}%2F"), "127.0.0.1%3A1456%2F"),
+        None => text.to_string(),
+    }
+}
+
 #[test]
 fn ai_oauth_xai_kimi_meta_radius_replay_recorded_typescript_flows() {
+    // Radius browser scenarios bind a system-chosen port, so no machine-wide port is held.
     let mut failures = Vec::new();
     for scenario in OAUTH["scenarios"].as_array().unwrap() {
         failures.extend(oauth_differences(scenario));

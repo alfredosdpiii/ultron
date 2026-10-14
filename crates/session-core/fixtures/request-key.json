@@ -1,0 +1,467 @@
+[
+	{
+		"name": "nothing configured",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": null,
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": null
+	},
+	{
+		"name": "environment only",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": null,
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "env-key"
+	},
+	{
+		"name": "stored api key beats environment",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "stored-key"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "stored-key"
+	},
+	{
+		"name": "stored api key alone",
+		"provider": "openai",
+		"id": "gpt-4o",
+		"models": null,
+		"auth": {
+			"openai": {
+				"type": "api_key",
+				"key": "stored-openai"
+			}
+		},
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": "stored-openai"
+	},
+	{
+		"name": "models.json key beats environment",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": null,
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "json-key"
+	},
+	{
+		"name": "stored key beats models.json key",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "stored-key"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "stored-key"
+	},
+	{
+		"name": "flag beats everything",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "stored-key"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": "flag-key",
+		"apiKey": "flag-key"
+	},
+	{
+		"name": "flag beats oauth",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "oauth",
+				"access": "sk-ant-oat-stored",
+				"refresh": "r",
+				"expires": 4102444800000
+			}
+		},
+		"env": {},
+		"apiKeyFlag": "flag-key",
+		"apiKey": "flag-key"
+	},
+	{
+		"name": "stored template from credential env",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "$STORED_VAR",
+				"env": {
+					"STORED_VAR": "from-credential-env"
+				}
+			}
+		},
+		"env": {
+			"STORED_VAR": "from-process"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "from-credential-env"
+	},
+	{
+		"name": "stored template from process env",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "pre-${STORED_VAR}"
+			}
+		},
+		"env": {
+			"STORED_VAR": "process"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "pre-process"
+	},
+	{
+		"name": "stored template unset falls to environment",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "$UNSET_VAR"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "env-key"
+	},
+	{
+		"name": "stored credential without key falls to environment",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": {
+			"anthropic": {
+				"type": "api_key"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "env-key"
+	},
+	{
+		"name": "stored oauth token for anthropic",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "oauth",
+				"access": "sk-ant-oat-stored",
+				"refresh": "r",
+				"expires": 4102444800000
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "sk-ant-oat-stored"
+	},
+	{
+		"name": "stored oauth beats models.json key",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": {
+			"anthropic": {
+				"type": "oauth",
+				"access": "sk-ant-oat-stored",
+				"refresh": "r",
+				"expires": 4102444800000
+			}
+		},
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": "sk-ant-oat-stored"
+	},
+	{
+		"name": "oauth for a provider without oauth owns it",
+		"provider": "openai",
+		"id": "gpt-4o",
+		"models": null,
+		"auth": {
+			"openai": {
+				"type": "oauth",
+				"access": "tok",
+				"refresh": "r",
+				"expires": 4102444800000
+			}
+		},
+		"env": {
+			"OPENAI_API_KEY": "env-openai"
+		},
+		"apiKeyFlag": null,
+		"apiKey": null
+	},
+	{
+		"name": "unknown credential type",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "token",
+				"key": "x"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": null
+	},
+	{
+		"name": "stored key of another provider",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": null,
+		"auth": {
+			"openai": {
+				"type": "api_key",
+				"key": "stored-openai"
+			}
+		},
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "env-key"
+	},
+	{
+		"name": "malformed auth.json fails the request",
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5",
+		"models": {
+			"anthropic": {
+				"apiKey": "json-key"
+			}
+		},
+		"auth": "{not json",
+		"env": {
+			"ANTHROPIC_API_KEY": "env-key"
+		},
+		"apiKeyFlag": null,
+		"error": "Credential store read failed for anthropic: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+	},
+	{
+		"name": "custom provider stored key beats models.json key",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "$STUB_KEY"
+			}
+		},
+		"auth": {
+			"stubproxy": {
+				"type": "api_key",
+				"key": "stored-stub"
+			}
+		},
+		"env": {
+			"STUB_KEY": "json-stub"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "stored-stub"
+	},
+	{
+		"name": "custom provider stored key with unset models.json variable",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "$STUB_KEY"
+			}
+		},
+		"auth": {
+			"stubproxy": {
+				"type": "api_key",
+				"key": "stored-stub"
+			}
+		},
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": "stored-stub"
+	},
+	{
+		"name": "custom provider models.json key",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "$STUB_KEY"
+			}
+		},
+		"auth": null,
+		"env": {
+			"STUB_KEY": "json-stub"
+		},
+		"apiKeyFlag": null,
+		"apiKey": "json-stub"
+	},
+	{
+		"name": "custom provider unset models.json variable",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "$STUB_KEY"
+			}
+		},
+		"auth": null,
+		"env": {},
+		"apiKeyFlag": null,
+		"error": "API key auth failed for provider stubproxy: Failed to resolve API key for provider \"stubproxy\" from environment variable: STUB_KEY"
+	},
+	{
+		"name": "custom provider stored credential without key",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "json-literal"
+			}
+		},
+		"auth": {
+			"stubproxy": {
+				"type": "api_key"
+			}
+		},
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": null
+	},
+	{
+		"name": "custom provider stored key only",
+		"provider": "stubproxy",
+		"id": "sol",
+		"models": {
+			"stubproxy": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"models": [
+					{
+						"id": "sol"
+					}
+				],
+				"apiKey": "json-literal"
+			}
+		},
+		"auth": {
+			"stubproxy": {
+				"type": "api_key",
+				"key": "stored-stub"
+			}
+		},
+		"env": {},
+		"apiKeyFlag": null,
+		"apiKey": "stored-stub"
+	}
+]

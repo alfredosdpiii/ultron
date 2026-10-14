@@ -1,0 +1,698 @@
+{
+	"cases": [
+		{
+			"name": "paste redirect url",
+			"answer": "{callback}?code=pasted-code",
+			"hits": [],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"pasted-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		},
+		{
+			"name": "paste bare code",
+			"answer": "  bare-code  ",
+			"hits": [],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"bare-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		},
+		{
+			"name": "paste query string",
+			"answer": "code=query-code&other=1",
+			"hits": [],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"query-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		},
+		{
+			"name": "paste empty",
+			"answer": "   ",
+			"hits": [],
+			"responses": [],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [],
+			"result": null,
+			"error": "Missing authorization code"
+		},
+		{
+			"name": "exchange http error",
+			"answer": "the-code",
+			"hits": [],
+			"responses": [
+				[
+					401,
+					"{\"error\":{\"message\":\"Invalid code\"}}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"the-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenRouter OAuth key exchange failed (HTTP 401): Invalid code"
+		},
+		{
+			"name": "exchange http error without detail",
+			"answer": "the-code",
+			"hits": [],
+			"responses": [
+				[
+					500,
+					"<html>"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"the-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenRouter OAuth key exchange failed (HTTP 500)"
+		},
+		{
+			"name": "exchange without key",
+			"answer": "the-code",
+			"hits": [],
+			"responses": [
+				[
+					200,
+					"{\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"the-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenRouter OAuth response carries no \"key\""
+		},
+		{
+			"name": "exchange invalid json",
+			"answer": "the-code",
+			"hits": [],
+			"responses": [
+				[
+					200,
+					"<html>"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"the-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "OpenRouter OAuth returned invalid JSON"
+		},
+		{
+			"name": "exchange network error",
+			"answer": "the-code",
+			"hits": [],
+			"responses": [
+				[
+					0,
+					""
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"the-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [],
+			"result": null,
+			"error": "fetch failed"
+		},
+		{
+			"name": "callback completes",
+			"answer": null,
+			"hits": [
+				"code=browser-code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"browser-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [
+				{
+					"status": 200,
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>Signed in to OpenRouter. You may now close this page.</p>\n    \n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		},
+		{
+			"name": "callback denied",
+			"answer": null,
+			"hits": [
+				"error=access_denied&error_description=No+thanks"
+			],
+			"responses": [],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [],
+			"callbackResponses": [
+				{
+					"status": 400,
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>OpenRouter authorization was denied.</p>\n    <div class=\"details\">No thanks</div>\n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": null,
+			"error": "OpenRouter authorization failed: No thanks"
+		},
+		{
+			"name": "callback without code then paste",
+			"answer": "late-code",
+			"hits": [
+				"state=x"
+			],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				},
+				{
+					"type": "progress",
+					"message": "Exchanging authorization code for an API key..."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"late-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [
+				{
+					"status": 400,
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>OpenRouter returned no authorization code.</p>\n    \n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		},
+		{
+			"name": "callback wrong route then completes",
+			"answer": null,
+			"hits": [
+				"@/elsewhere",
+				"code=browser-code"
+			],
+			"responses": [
+				[
+					200,
+					"{\"key\":\"sk-or-v1-from-oauth\",\"user_id\":\"u\"}"
+				]
+			],
+			"prompts": [
+				{
+					"type": "manual_code",
+					"message": "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+					"placeholder": "http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				}
+			],
+			"events": [
+				{
+					"type": "progress",
+					"message": "Listening for OpenRouter OAuth callback on http://127.0.0.1:<port>/oauth/callback/20212223-2425-4627-a829-2a2b2c2d2e2f"
+				},
+				{
+					"type": "auth_url",
+					"url": "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A<port>%2Foauth%2Fcallback%2F20212223-2425-4627-a829-2a2b2c2d2e2f&code_challenge=6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A&code_challenge_method=S256",
+					"instructions": "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
+				}
+			],
+			"requests": [
+				{
+					"url": "https://openrouter.ai/api/v1/auth/keys",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"code\":\"browser-code\",\"code_verifier\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"code_challenge_method\":\"S256\"}"
+				}
+			],
+			"callbackResponses": [
+				{
+					"status": 404,
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>OAuth callback route not found.</p>\n    \n  </main>\n</body>\n</html>"
+				},
+				{
+					"status": 200,
+					"body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>Signed in to OpenRouter. You may now close this page.</p>\n    \n  </main>\n</body>\n</html>"
+				}
+			],
+			"result": {
+				"credential": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				},
+				"toAuth": {
+					"apiKey": "sk-or-v1-from-oauth"
+				},
+				"refreshed": {
+					"type": "oauth",
+					"access": "sk-or-v1-from-oauth",
+					"refresh": "",
+					"expires": 9007199254740991
+				}
+			},
+			"error": null
+		}
+	]
+}

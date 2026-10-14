@@ -93,7 +93,7 @@ fn search_text(s: &SessionListing) -> String {
         "{} {} {} {}",
         s.id,
         s.name.as_deref().unwrap_or(""),
-        s.first_message,
+        s.all_messages_text,
         s.cwd
     )
 }

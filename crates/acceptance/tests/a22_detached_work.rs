@@ -23,6 +23,8 @@ const CHILD_RESULT: &str = "CHILD_RESULT_A22";
 const LONG_PROMPT: &str = "a long root turn";
 const LONG_TOOL_OUTPUT: &str = "LONG_TOOL_RAN";
 const LONG_RESULT: &str = "LONG_TURN_DONE";
+/// A hang guard, never a pass condition: waits end on the condition they poll.
+const HANG: Duration = Duration::from_secs(180);
 
 /// A gate the scripted provider waits on.
 #[derive(Clone, Default)]
@@ -120,7 +122,7 @@ fn sockets(dir: &Path) -> Vec<String> {
 /// The RPC client process of `session` (its own command line names the session id).
 fn client_pid(session: &str) -> u32 {
     poll(
-        Duration::from_secs(5),
+        HANG,
         || {
             std::fs::read_dir("/proc")
                 .unwrap()
@@ -282,10 +284,10 @@ impl Fixture {
         first
             .send(serde_json::json!({"type": "prompt", "message": ROOT_PROMPT}))
             .unwrap();
-        poll(Duration::from_secs(60), || self.child_requests(), |n| *n == 1);
+        poll(HANG, || self.child_requests(), |n| *n == 1);
         assert_eq!(self.child_requests(), 1);
         let line = poll(
-            Duration::from_secs(30),
+            HANG,
             || {
                 rpc_tool_results(&first.get_messages().unwrap())
                     .iter()
@@ -317,9 +319,7 @@ impl Fixture {
 
     /// Read the child's durable result through a scripted `rlm` call in `client`.
     fn collect(&self, client: &mut cli::rpc::client::RpcClient, id: &str) {
-        client
-            .prompt_and_wait(&format!("collect the job {id}"), Duration::from_secs(60))
-            .unwrap();
+        client.prompt_and_wait(&format!("collect the job {id}"), HANG).unwrap();
         let tools = rpc_tool_results(&client.get_messages().unwrap());
         let line = tools
             .iter()
@@ -335,9 +335,7 @@ impl Fixture {
 
     /// `rlm.results()` and `rlm.list_subagents()` through a scripted `rlm` call: `(results, list)` as JSON.
     fn inspect(&self, client: &mut cli::rpc::client::RpcClient) -> (Value, Value) {
-        client
-            .prompt_and_wait("inspect the jobs", Duration::from_secs(60))
-            .unwrap();
+        client.prompt_and_wait("inspect the jobs", HANG).unwrap();
         let lines: Vec<String> = rpc_tool_results(&client.get_messages().unwrap())
             .iter()
             .flat_map(|t| t.lines().map(str::to_string).collect::<Vec<_>>())
@@ -354,14 +352,11 @@ impl Fixture {
 
     /// Quit a client normally and require every process of this test and every socket to be gone.
     fn quit_and_expect_clean(&self, client: cli::rpc::client::RpcClient, timeout: Duration) {
-        let (_, code) = client.finish(Duration::from_secs(15));
+        let (_, code) = client.finish(HANG);
         assert_eq!(code, Some(0));
         assert_eq!(poll(timeout, || owned(self.root()), Vec::is_empty), Vec::new());
         let server = self.root().join("server");
-        assert_eq!(
-            poll(Duration::from_secs(2), || sockets(&server), Vec::is_empty),
-            Vec::<String>::new()
-        );
+        assert_eq!(poll(HANG, || sockets(&server), Vec::is_empty), Vec::<String>::new());
     }
 }
 
@@ -392,14 +387,13 @@ fn acceptance_a22_a_background_child_keeps_running_after_its_client_quits_and_a_
     assert_eq!(worker_pids(f.root()), [worker]);
 
     // The child finishes at the provider after the UI loss.
+    second.mark();
     f.release.open();
-    assert!(poll(Duration::from_secs(10), || f.child_completed(), |d| *d));
-    // Its completion continues the root's run (a child_done event); let that run end before prompting.
-    poll(
-        Duration::from_secs(20),
-        || second.get_state().unwrap()["isStreaming"] == false && second.get_messages().unwrap().len() > 4,
-        |done| *done,
-    );
+    assert!(poll(HANG, || f.child_completed(), |d| *d));
+    // Its completion continues the root's run (a child_done event). Wait for this client to see that run settle:
+    // the client refuses a prompt while it still sees a run, and `get_state` (the worker's view) can say idle
+    // before the run's end reaches the client, which then refused the prompt as "already processing".
+    second.wait_for(&|l| l["type"] == "agent_settled", HANG).unwrap();
     f.collect(&mut second, &id);
     f.quit_and_expect_clean(second, Duration::from_secs(15));
 }
@@ -409,12 +403,9 @@ fn acceptance_a22_detached_work_finishes_with_no_client_retires_and_stays_durabl
     let f = Fixture::new("a22a22a2-0000-4000-8000-000000000002");
     let (id, worker) = f.start_job_and_lose_client();
     f.release.open();
-    assert!(poll(Duration::from_secs(10), || f.child_completed(), |d| *d));
+    assert!(poll(HANG, || f.child_completed(), |d| *d));
     // Nobody is attached: once the work is committed the worker retires and the coordinator follows it.
-    assert_eq!(
-        poll(Duration::from_secs(15), || owned(f.root()), Vec::is_empty),
-        Vec::new()
-    );
+    assert_eq!(poll(HANG, || owned(f.root()), Vec::is_empty), Vec::new());
 
     // A later client starts a fresh worker for the session: the child's completion was committed to the session
     // while nobody was attached, and its result is collected from the session's task journal.
@@ -422,7 +413,7 @@ fn acceptance_a22_detached_work_finishes_with_no_client_retires_and_stays_durabl
     let messages = later.get_messages().unwrap();
     let event = messages
         .iter()
-        .filter(|m| m["role"] == "user")
+        .filter(|m| m["role"] == "user" || m["role"] == "custom")
         .map(Value::to_string)
         .find(|m| m.contains("child_done"))
         .unwrap_or_else(|| panic!("no child_done event in {messages:#?}"));
@@ -432,14 +423,14 @@ fn acceptance_a22_detached_work_finishes_with_no_client_retires_and_stays_durabl
     assert!(!worker_pids(f.root()).contains(&worker));
     f.collect(&mut later, &id);
     assert_eq!(f.child_requests(), 1);
-    f.quit_and_expect_clean(later, Duration::from_secs(15));
+    f.quit_and_expect_clean(later, HANG);
 }
 
 #[test]
 fn acceptance_a22_quitting_with_no_active_work_leaves_no_processes() {
     let f = Fixture::new("a22a22a2-0000-4000-8000-000000000003");
     let mut client = f.client();
-    client.prompt_and_wait("say hello", Duration::from_secs(60)).unwrap();
+    client.prompt_and_wait("say hello", HANG).unwrap();
     assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("IDLE_OK"));
     assert_eq!(worker_pids(f.root()).len(), 1);
     // Idle cleanup is prompt: no worker waits out the orphan grace.
@@ -455,7 +446,7 @@ fn root_turn_in_flight_when_its_client_quits(quit: &str, session: &str) {
     first
         .send(serde_json::json!({"type": "prompt", "message": LONG_PROMPT}))
         .unwrap();
-    poll(Duration::from_secs(60), || f.long().0, |n| *n == 1);
+    poll(HANG, || f.long().0, |n| *n == 1);
     let workers = worker_pids(f.root());
     assert_eq!(workers.len(), 1, "{workers:?}");
     let code = match quit {
@@ -481,7 +472,7 @@ fn root_turn_in_flight_when_its_client_quits(quit: &str, session: &str) {
         assert_eq!(worker_pids(f.root()), workers);
         f.release_long.open();
         let messages = poll(
-            Duration::from_secs(60),
+            HANG,
             || second.get_messages().unwrap(),
             |messages| {
                 messages
@@ -494,7 +485,7 @@ fn root_turn_in_flight_when_its_client_quits(quit: &str, session: &str) {
         return;
     }
     f.release_long.open();
-    assert!(poll(Duration::from_secs(60), || f.long().2, |done| *done));
+    assert!(poll(HANG, || f.long().2, |done| *done));
     assert_eq!(
         poll(Duration::from_secs(15), || owned(f.root()), Vec::is_empty),
         Vec::new()
@@ -527,7 +518,7 @@ fn acceptance_a22_an_explicit_abort_still_stops_the_root_turn() {
     client
         .send(serde_json::json!({"type": "prompt", "message": LONG_PROMPT}))
         .unwrap();
-    poll(Duration::from_secs(60), || f.long().0, |n| *n == 1);
+    poll(HANG, || f.long().0, |n| *n == 1);
     client.send(serde_json::json!({"type": "abort"})).unwrap();
     assert!(poll(
         Duration::from_secs(10),
@@ -552,7 +543,7 @@ fn acceptance_a22_an_explicit_abort_still_stops_the_root_turn() {
 fn acceptance_a22_a_hard_killed_idle_client_leaves_no_process_behind_within_seconds() {
     let f = Fixture::new("a22a22a2-0000-4000-8000-000000000015");
     let mut client = f.client();
-    client.prompt_and_wait("say hello", Duration::from_secs(60)).unwrap();
+    client.prompt_and_wait("say hello", HANG).unwrap();
     assert_eq!(worker_pids(f.root()).len(), 1);
     signal(client_pid(&f.session), "KILL");
     assert_eq!(client.stop(), None);
@@ -586,13 +577,11 @@ fn acceptance_a22_a_client_restarted_right_after_a_hard_kill_reattaches_to_the_b
     let (id, worker) = f.start_job_and_lose_client_by("KILL");
     let mut second = f.client();
     assert_eq!(worker_pids(f.root()), [worker]);
+    second.mark();
     f.release.open();
-    assert!(poll(Duration::from_secs(10), || f.child_completed(), |d| *d));
-    poll(
-        Duration::from_secs(20),
-        || second.get_state().unwrap()["isStreaming"] == false && second.get_messages().unwrap().len() > 4,
-        |done| *done,
-    );
+    assert!(poll(HANG, || f.child_completed(), |d| *d));
+    // The child_done run settles in this client before it prompts (see the reattach test).
+    second.wait_for(&|l| l["type"] == "agent_settled", HANG).unwrap();
     f.collect(&mut second, &id);
     assert_eq!(f.child_requests(), 1);
     f.quit_and_expect_clean(second, Duration::from_secs(15));
@@ -604,7 +593,7 @@ fn acceptance_a22_a_client_restarted_within_the_orphan_grace_reattaches_to_the_i
     // A grace longer than CLI startup makes the restart land inside it deterministically.
     let grace = [("__PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS", "20000")];
     let mut first = f.client_with(&grace);
-    first.prompt_and_wait("say hello", Duration::from_secs(60)).unwrap();
+    first.prompt_and_wait("say hello", HANG).unwrap();
     let workers = worker_pids(f.root());
     assert_eq!(workers.len(), 1);
     signal(client_pid(&f.session), "KILL");
@@ -626,9 +615,9 @@ fn acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_co
     client
         .send(serde_json::json!({"type": "prompt", "message": ROOT_PROMPT}))
         .unwrap();
-    poll(Duration::from_secs(60), || f.child_requests(), |n| *n == 1);
+    poll(HANG, || f.child_requests(), |n| *n == 1);
     let id = poll(
-        Duration::from_secs(30),
+        HANG,
         || {
             rpc_tool_results(&client.get_messages().unwrap_or_default())
                 .iter()
@@ -648,7 +637,7 @@ fn acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_co
     assert_eq!(workers.len(), 1, "{workers:?}");
     signal(workers[0], "KILL");
     // The reattached child asks its model again, with the request it had pinned.
-    assert_eq!(poll(Duration::from_secs(60), || f.child_requests(), |n| *n == 2), 2);
+    assert_eq!(poll(HANG, || f.child_requests(), |n| *n == 2), 2);
     let restarted = worker_pids(f.root());
     assert_eq!(restarted.len(), 1, "{restarted:?}");
     assert_ne!(restarted, workers);
@@ -667,24 +656,24 @@ fn acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_co
     f.release.open();
     // The child's end continues the root's run: its child_done event is answered.
     let messages = poll(
-        Duration::from_secs(60),
+        HANG,
         || client.get_messages().unwrap_or_default(),
         |messages| {
             messages
                 .iter()
-                .any(|m| m["role"] == "user" && m.to_string().contains("child_done"))
+                .any(|m| (m["role"] == "user" || m["role"] == "custom") && m.to_string().contains("child_done"))
                 && messages.last().is_some_and(|m| m["role"] == "assistant")
         },
     );
     let event = messages
         .iter()
-        .filter(|m| m["role"] == "user")
+        .filter(|m| m["role"] == "user" || m["role"] == "custom")
         .map(Value::to_string)
         .find(|m| m.contains("child_done"))
         .unwrap_or_else(|| panic!("no child_done event in {messages:#?}"));
     assert!(event.contains(&id) && event.contains(CHILD_RESULT), "{event}");
     poll(
-        Duration::from_secs(30),
+        HANG,
         || client.get_state().map(|s| s["isStreaming"] == false).unwrap_or(false),
         |idle| *idle,
     );

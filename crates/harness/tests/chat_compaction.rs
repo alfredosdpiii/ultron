@@ -846,3 +846,53 @@ fn harness_chat_compaction_recovery_repeats_nothing_after_reopen_once_the_summar
         chat.chat.close().unwrap();
     }
 }
+
+/// TypeScript keeps a compaction's retained tail as the model saw it (`prepareCompaction` applies context edits
+/// before choosing it): an edit of a kept entry still applies after the summary, and the summarizer never sees what
+/// an edit removed. Here an edit is an entry placed after its targets, as every edit is (ctx's, a trim's, a
+/// system baseline's), so whatever keeps its target keeps the edit too: the range after a summary starts at the
+/// first kept entry, at or before every kept target.
+#[test]
+fn harness_chat_compaction_keeps_the_edits_of_kept_entries() {
+    let chat = open_new(100_000);
+    history(&chat);
+    let entries = chat.root.entries().unwrap();
+    let id_of = |label: &str| {
+        entries
+            .iter()
+            .find(|record| user_text(first_message(record).as_ref()).starts_with(label))
+            .unwrap()
+            .id
+            .0
+    };
+    let (u2, u3) = (id_of("u2"), id_of("u3"));
+    let edit = chat
+        .root
+        .append(durable::EntryDraft {
+            edits: Some(vec![
+                json!({ "target": u3, "action": "replace", "messages": [user("u3 EDITED")] }),
+                json!({ "target": u2, "action": "omit" }),
+            ]),
+            ..durable::EntryDraft::new("ultron.custom")
+        })
+        .unwrap();
+    chat.faux.summary(step(text_message("SUMMARY")));
+    let id = chat.root.compact(None).unwrap();
+    let outcome = js(&chat.chat.wait_for_task(id, &bg()).unwrap().state)["outcome"].clone();
+    let submission = durable::SubmissionId(outcome["result"]["submissionId"].as_u64().unwrap());
+    chat.chat.submission(submission).unwrap().unwrap().wait(&bg()).unwrap();
+    let marker = chat.root.entries().unwrap().last().unwrap().clone();
+    assert_eq!(marker.kind, "pi.compaction");
+    let head = marker.head.unwrap().0;
+    assert!(head <= u3 && head < edit.id.0, "kept from {head}");
+    let view = chat.root.context(None).unwrap();
+    let texts: Vec<String> = view.messages.iter().map(|m| user_text(Some(m))).collect();
+    assert!(texts.contains(&"u3 EDITED".to_string()), "{texts:?}");
+    assert!(
+        !texts.iter().any(|t| t.starts_with("u3 x") || t.starts_with("u2 ")),
+        "{texts:?}"
+    );
+    let prompt = user_text(chat.faux.summary_requests()[0].messages.get(1));
+    assert!(!prompt.contains("u2 "), "{prompt}");
+    chat.chat.close().unwrap();
+}

@@ -9,16 +9,28 @@
 //! - [`pi_view`] / [`view`]: the session as Pi entries and Pi's read views (tree, messages, stats);
 //! - [`core`]: the session actor that owns all of it and reports lane-watch events.
 
+pub mod async_events;
+pub mod auto_compaction;
+pub mod commands;
 pub mod compaction_op;
 pub mod compose;
 pub mod core;
 pub mod durable_store;
+pub mod extension_commands;
+pub mod extension_tools;
+pub mod frames;
+pub mod inspect;
 pub mod journal;
 pub mod lane;
+pub mod lane_reuse;
+pub mod migration;
+pub mod model_refresh;
 pub mod naming;
 pub mod op_journal;
 pub mod pi_view;
 pub mod recovery;
+pub mod session_tools;
+pub mod stored_auth;
 pub mod subagents;
 pub mod turns;
 pub mod view;
@@ -35,7 +47,9 @@ pub struct RunEnv {
     pub cwd: PathBuf,
     pub home: PathBuf,
     pub var: VarLookup,
-    /// `getDocsPath()`: packages/coding-agent/docs of the checkout this binary was built from.
+    /// `getDocsPath()`: the `docs/` directory of the package files (`cli::assets`): the embedded files installed under
+    /// `<agent dir>/runtime/<version>-<hash>/`, or a live checkout in dev builds (`ULTRON_DEV_ASSETS`). Its parent holds
+    /// `skills/`, `src/ultron/rlm/runtime.py` and `CHANGELOG.md`; the CLI makes it ready before a session reads it.
     pub docs: PathBuf,
 }
 
@@ -55,11 +69,13 @@ impl RunEnv {
     }
 }
 
-/// The model flags a session starts with (`--provider`, `--model`, `--api-key`, `--thinking`).
+/// The model flags a session starts with (`--provider`, `--model`, `--api-key`, `--thinking`, `--models`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelFlags {
     pub provider: Option<String>,
     pub model: Option<String>,
     pub api_key: Option<String>,
     pub thinking: Option<String>,
+    /// `--models`: the scoped model patterns (None: the settings' `enabledModels`).
+    pub models: Option<Vec<String>>,
 }

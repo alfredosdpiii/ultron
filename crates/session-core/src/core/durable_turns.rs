@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::durable_store::JournalStorage;
-use crate::turns::{Answer, Bridge, GenerationStart, Request, TurnCells, TurnModels};
+use crate::turns::{Answer, Bridge, GenerationStart, Request, StartError, TurnCells, TurnModels};
 use agent::AgentToolResult;
 use durable::{ROOT_CONVERSATION_ID, SubmissionId, SubmissionStatus};
 use harness::chat::{
@@ -31,6 +31,8 @@ pub(super) struct Durable {
     pub auto_retry: Arc<AtomicBool>,
     /// Cancelled when the session closes: idle waiters stop.
     pub stop: Cancel,
+    /// The subagents running as child conversations (their usage root follows the root turn).
+    pub children: Arc<crate::subagents::DurableChildren>,
 }
 
 fn harness_error(error: harness::scheduler::HarnessError) -> String {
@@ -48,13 +50,16 @@ pub(super) fn open_durable(
     flags: &ModelFlags,
     queues: Arc<Mutex<Queues>>,
     children: Arc<crate::subagents::DurableChildren>,
+    child_context: Arc<super::context_children::ChildContext>,
 ) -> Result<Durable, String> {
     let to_actor = tx.clone();
     let to_actor = Mutex::new(to_actor);
     let bridge = Bridge::new(Arc::new(move |request| {
         let _ = lock(&to_actor).send(Input::Turn(request));
     }));
-    let storage = JournalStorage::open(session.clone(), Some(crate::turns::observer(bridge.clone())))
+    let observed = child_context.clone();
+    let committed: crate::turns::Committed = Arc::new(move |entry| observed.committed(entry));
+    let storage = JournalStorage::open(session.clone(), Some(crate::turns::observer(bridge.clone(), committed)))
         .map_err(|e| e.message().to_string())?;
     let auto_retry = Arc::new(AtomicBool::new(true));
     let retry = auto_retry.clone();
@@ -78,6 +83,8 @@ pub(super) fn open_durable(
             tool_execution: ToolExecution::Parallel,
             steering_mode: mode(steering),
             follow_up_mode: mode(follow_up),
+            // As the TypeScript agent loop: a steer continues the run before any follow-up is taken.
+            follow_up_after_steer: true,
             ..Settings::default()
         }
     });
@@ -90,6 +97,13 @@ pub(super) fn open_durable(
         resolve: Arc::new(move |provider, id| lane::catalog_model(provider, id, &catalog_env).ok()),
         api_key: Arc::new(move |provider| lane::api_key(&key_flags, &key_env, provider)),
         root_session: root_session.clone(),
+        charge: Some(charge_turns(children.clone(), lane.stack.clone())),
+        transform_child: Some({
+            let context = child_context.clone();
+            Arc::new(move |conversation, messages: &mut Vec<ai::Message>| {
+                context.transform_request(conversation, messages)
+            })
+        }),
     };
     let cells = TurnCells {
         bridge: bridge.clone(),
@@ -99,7 +113,7 @@ pub(super) fn open_durable(
         children: children.clone(),
     };
     // A child conversation's system prompt is its subagent's (the root's request is built by the actor).
-    let (section_children, root_system) = (children, lane.stack.system().to_string());
+    let (section_children, root_system) = (children.clone(), lane.stack.system().to_string());
     let sections: harness::chat::SectionSource = Arc::new(move |conversation, _| {
         let mut sections = indexmap::IndexMap::new();
         if conversation != ROOT_CONVERSATION_ID {
@@ -114,6 +128,19 @@ pub(super) fn open_durable(
     let mut options = ChatOptions::new(Registry::new(), Arc::new(models), Arc::new(cells));
     options.settings = Some(settings);
     options.sections = Some(sections);
+    // A child conversation compacts at its threshold as a TypeScript lane does (the harness's default policy; the
+    // root's compactions are the actor's), and `ctx` may trim instead (`before_compaction`).
+    options.hooks.compaction = Some(Arc::new(|conversation| {
+        Some(CompactionPolicy {
+            enabled: conversation != ROOT_CONVERSATION_ID,
+            background_tokens: 0,
+            ..CompactionPolicy::default()
+        })
+    }));
+    let trims = child_context.clone();
+    options.hooks.before_compaction = Some(Arc::new(move |conversation, tokens, threshold| {
+        trims.before_compaction(conversation, tokens, threshold)
+    }));
     let chat = ChatHarness::open(storage, options).map_err(harness_error)?;
     let root = chat.root(None).map_err(harness_error)?;
     let provider_session = chat
@@ -131,6 +158,25 @@ pub(super) fn open_durable(
         bridge,
         auto_retry,
         stop: Cancel::new(),
+        children,
+    })
+}
+
+/// Every model response of a subagent, typed agent or other root conversation is charged to the usage ledger
+/// (`recordTurn(usageRootForLane(lane, runId))` in session-worker.ts's `after_response` hook), so per-root turn,
+/// token and cost limits count the whole tree.
+fn charge_turns(
+    children: Arc<crate::subagents::DurableChildren>,
+    stack: Arc<crate::compose::Stack>,
+) -> crate::turns::ChargeTurn {
+    Arc::new(move |conversation, message| {
+        let root = children.usage_root(conversation, &stack.agents);
+        let usage = serde_json::to_value(&message.usage).unwrap_or(Value::Null);
+        let _ = stack.usage.record_turn(
+            root.as_deref(),
+            usage["totalTokens"].as_f64(),
+            usage["cost"]["total"].as_f64(),
+        );
     })
 }
 
@@ -270,10 +316,13 @@ impl Core {
         });
     }
 
-    /// The runtime is idle: unless it has work again, wait (in the host) for what the turn started that still
-    /// runs (subagents, detached cells), whose ends continue the turn; else the turn ends.
+    /// The runtime is idle: unless it has work again, the turn ends. What the turn started that still runs
+    /// (subagents, shell jobs, detached cells) reports its end as a completion event (crate::async_events), which
+    /// re-invokes the idle root as a run of its own, as the TypeScript dispatcher does.
     pub(super) fn harness_idle(&mut self) {
-        let Some(run) = self.run.as_ref() else { return };
+        if self.run.is_none() {
+            return;
+        }
         let live = self.durable.chat.live(ROOT_CONVERSATION_ID).unwrap_or(Value::Null);
         let queued = self
             .durable
@@ -285,34 +334,35 @@ impl Core {
             self.spawn_waiter();
             return;
         }
-        let (events, signal, tx) = (self.lane.events.clone(), run.signal.clone(), self.tx.clone());
-        std::thread::spawn(move || {
-            let messages = events.next_message(&signal);
-            let _ = tx.send(Input::RuntimeMessages(messages));
-        });
+        // The run may finish: its last checkpoint compacts first when the context crossed the threshold.
+        if self.may_finish() {
+            let _ = self.checkpoint_compaction();
+        }
+        self.run_end();
     }
 
-    /// Completions of work the turn started: each continues the turn as input; none ends it.
-    pub(super) fn runtime_messages(&mut self, messages: Vec<Message>) {
-        if self.run.is_none() {
-            return;
+    /// The run's operation is at a checkpoint that may finish it (its last answer committed without an error).
+    fn may_finish(&self) -> bool {
+        let Some(run) = self.run.as_ref() else {
+            return false;
+        };
+        if run.cancelled || run.error.is_some() {
+            return false;
         }
-        if messages.is_empty() || self.run.as_ref().is_some_and(|r| r.cancelled) {
-            return self.run_end();
-        }
-        for message in messages {
-            let content = serde_json::to_value(&message).map(|v| v["content"].clone());
-            let draft = SubmissionDraft::Input {
-                content: content.unwrap_or(Value::Null),
-                when_busy: WhenBusy::FollowUp,
-                request_id: None,
-            };
-            if let Err(error) = self.durable.root.submit(draft) {
-                self.fail_run(harness_error(error));
-                return self.run_end();
-            }
-        }
-        self.spawn_waiter();
+        let Some(operation) = run.journal.run().map(|r| r.operation_id().to_string()) else {
+            return false;
+        };
+        // At the checkpoint, or in a compaction there that a dead worker left (it compacts again).
+        lock_session(&self.session)
+            .value(session_journal::run::OP_STATE, &operation)
+            .is_some_and(|state| {
+                let continuation = match state["at"].as_str() {
+                    Some("checkpoint") => &state["continuation"],
+                    Some(at) if at.starts_with("summary.") => &state["task"]["boundary"]["resumeAfter"]["continuation"],
+                    _ => return false,
+                };
+                continuation["kind"] == "may_finish"
+            })
     }
 
     /// The error the turn's prompt ended with when the runtime left it unanswered (faults; model errors and aborts
@@ -355,29 +405,73 @@ impl Core {
         });
     }
 
-    /// The transcript messages of the run in progress, from its prompt (`fromTipId` to the tip).
-    fn run_messages(&self, source_tip: Option<&str>) -> Result<(Vec<Value>, Vec<Value>), String> {
+    /// The branch's context entries (from the newest compaction), and how many of them come before the run in
+    /// progress (`fromTipId`): the run is split by entry, so a context edit that omits or replaces an entry on
+    /// either side never moves the boundary.
+    fn context_entries(&self, source_tip: Option<&str>) -> Result<(Vec<Value>, usize), String> {
         let session = lock_session(&self.session);
-        let before = session_journal::context::build_session_context(&session.state().branch_path(source_tip)?);
-        let all = session.context_messages(LANE)?;
-        let run = all.get(before.len()..).map(<[Value]>::to_vec).unwrap_or_default();
-        Ok((before, run))
+        let before: std::collections::HashSet<String> = session
+            .state()
+            .branch_path(source_tip)?
+            .iter()
+            .filter_map(|entry| entry["id"].as_str().map(str::to_string))
+            .collect();
+        let entries = session_journal::context::build_context_entries(&session.branch_entries(LANE)?);
+        let mut split = entries
+            .iter()
+            .take_while(|entry| entry["id"].as_str().is_some_and(|id| before.contains(id)))
+            .count();
+        // A compaction during the run: its summary and kept messages are the history, the run goes on after it.
+        if split == 0 && entries.first().is_some_and(|entry| entry["type"] == "compaction") {
+            split = 1;
+        }
+        Ok((entries, split))
+    }
+
+    /// The transcript messages of the run in progress, from its prompt, as committed: no context edits and no
+    /// projected custom entries, so they match the durable runtime's own messages one to one.
+    fn run_messages(&self, source_tip: Option<&str>) -> Result<Vec<Value>, String> {
+        let (entries, split) = self.context_entries(source_tip)?;
+        Ok(entries[split..]
+            .iter()
+            .flat_map(session_journal::context::entry_context_messages)
+            .collect())
+    }
+
+    /// The branch's context messages as committed (from the newest compaction, its kept messages included).
+    fn context_messages(&self, source_tip: Option<&str>) -> Result<Vec<Value>, String> {
+        let (entries, _) = self.context_entries(source_tip)?;
+        Ok(entries
+            .iter()
+            .flat_map(session_journal::context::entry_context_messages)
+            .collect())
     }
 
     /// The request the agent loop would send now: the system message, the history before the run's prompt with
-    /// its clock lines, then the run's messages.
+    /// its clock lines, then the run's messages; context edits applied across both, notes projected, and the notes
+    /// and pinned items a compaction cut off shown again after its summary.
     fn request_messages(&self, source_tip: Option<&str>) -> Result<Vec<Message>, String> {
-        let (mut history, run) = self.run_messages(source_tip)?;
-        let Some(prompt) = run.first() else {
-            return Err("The run has no prompt".into());
-        };
-        history.push(prompt.clone());
+        let (entries, split) = self.context_entries(source_tip)?;
+        let applied = session_journal::context::apply_context_edits(&entries);
+        let project =
+            |entries: &[Value]| session_journal::context::project_context_entries(entries, context_lane::PROJECTORS);
+        let mut history = project(&applied[..split]);
+        let run = project(&applied[split..]);
+        if let Ok(Some(kept)) = self.context.transform_context(LANE, &history) {
+            history = kept;
+        }
+        // The clock lines are placed over the history and the run's first message (a compaction during the run
+        // leaves the run nothing before its next answer).
+        let first = run.first().cloned();
+        history.extend(first.clone());
         if lane::clock_enabled(&self.env)
             && let Some(lined) = lane::with_clock_lines(&history)
         {
             history = lined;
         }
-        history.pop();
+        if first.is_some() {
+            history.pop();
+        }
         let mut messages: Vec<Message> = self.lane.system_message(&self.runtime.system).into_iter().collect();
         messages.extend(lane::to_llm(&history));
         messages.extend(lane::to_llm(&run));
@@ -386,16 +480,31 @@ impl Core {
 
     /// A generation is about to request the model: the turn's `turn_start`, the user messages it takes (queued ones
     /// commit with its `assistant.ready`), and the request it sends.
-    pub(super) fn generation(&mut self, users: Vec<Message>, answer: Answer<Result<GenerationStart, String>>) {
+    pub(super) fn generation(&mut self, users: Vec<Message>, answer: Answer<Result<GenerationStart, StartError>>) {
         let Some(run) = self.run.as_ref() else {
-            return answer.give(Err("No run is in progress".into()));
+            return answer.give(Err(StartError::Request("No run is in progress".into())));
+        };
+        // The run's prompt (admitted with the run) is announced first, then the checkpoint before the request
+        // compacts when due (crate::core::auto_compact).
+        if run.prompt_pending
+            && let Ok(message) = serde_json::from_value::<Message>(run.prompt.clone())
+        {
+            self.on_agent_event(AgentEvent::MessageStart {
+                message: message.clone(),
+            });
+            self.on_agent_event(AgentEvent::MessageEnd { message });
+        }
+        if let Err(error) = self.checkpoint_compaction() {
+            return answer.give(Err(StartError::Checkpoint(error)));
+        }
+        let Some(run) = self.run.as_ref() else {
+            return answer.give(Err(StartError::Request("No run is in progress".into())));
         };
         let source_tip = run.journal.run().and_then(|r| r.source_tip().map(str::to_string));
-        let prompt_pending = run.prompt_pending;
-        let prompt = run.prompt.clone();
-        // Placed users the transcript already holds (the prompt, or what an earlier attempt of this request took).
-        let mut committed: Vec<String> = match self.run_messages(source_tip.as_deref()) {
-            Ok((_, messages)) => {
+        // Placed users the transcript already holds (the prompt, or what an earlier attempt of this request took),
+        // also when a compaction during the run keeps them in its retained tail (a retried request).
+        let mut committed: Vec<String> = match self.context_messages(source_tip.as_deref()) {
+            Ok(messages) => {
                 let start = messages
                     .iter()
                     .rposition(|m| m["role"] == "assistant" || m["role"] == "toolResult")
@@ -431,12 +540,7 @@ impl Core {
             }
         }
         self.on_agent_event(AgentEvent::TurnStart);
-        let mut announced = Vec::new();
-        if prompt_pending && let Ok(message) = serde_json::from_value::<Message>(prompt) {
-            announced.push(message);
-        }
-        announced.extend(fresh);
-        for message in announced {
+        for message in fresh {
             self.on_agent_event(AgentEvent::MessageStart {
                 message: message.clone(),
             });
@@ -447,7 +551,8 @@ impl Core {
             .map(|messages| GenerationStart {
                 messages,
                 api_key: self.api_key(),
-            });
+            })
+            .map_err(StartError::Request);
         answer.give(start);
     }
 
@@ -455,6 +560,7 @@ impl Core {
         match request {
             Request::Generation { users, answer } => self.generation(users, answer),
             Request::Event(event) => self.on_agent_event(*event),
+            Request::Overflow { message, answer } => self.overflow(*message, answer),
         }
     }
 
@@ -481,6 +587,10 @@ impl Core {
             .map(|entry| entry["message"].clone())
             .unwrap_or(Value::Null);
         let cancelled = state["control"]["status"] == "cancel_requested";
+        // An overflow compaction the worker died in compacts again at the next checkpoint, before the request.
+        let resume_overflow = crate::op_journal::Run::open_compaction(&lock_session(&self.session), operation_id)
+            .filter(|open| open.reason == "overflow")
+            .map(|open| open.resume_after);
         journal.ledger_counts_turns();
         let mut random = [0u8; 16];
         let _ = getrandom_fill(&mut random);
@@ -493,6 +603,10 @@ impl Core {
             .commit(|tx| Ok(tx.submission_by_request(ROOT_CONVERSATION_ID, &prompt_entry)?))
             .map_err(harness_error)?;
         self.lane.stack.agents.begin_root_turn(operation_id);
+        self.durable
+            .children
+            .set_root(self.lane.stack.agents.usage_root_for_lane(LANE, operation_id));
+        self.branches.run_started();
         self.run = Some(Running {
             id: id.clone(),
             signal: AbortSignal::new(),
@@ -505,6 +619,8 @@ impl Core {
             cancelled,
             prompt: prompt.clone(),
             submission: submission.as_ref().map(|s| s.id),
+            compaction_failed: false,
+            resume_overflow,
         });
         self.emit(event(vec![
             ("type", json!("run_start")),
@@ -551,7 +667,7 @@ impl Core {
             .iter()
             .filter_map(|e| Some((e.kind.clone(), e.model.as_ref()?.first()?.clone())))
             .collect();
-        let (_, transcript) = self.run_messages(source_tip)?;
+        let transcript = self.run_messages(source_tip)?;
         let bridge = self.durable.bridge.clone();
         let mut position = 0;
         let mut pending_users: Vec<Message> = Vec::new();

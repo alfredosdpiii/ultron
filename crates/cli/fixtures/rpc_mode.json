@@ -18385,6 +18385,59 @@
          }
         }
        }
+      },
+      {
+       "id": "claude-sonnet-5-5",
+       "name": "Claude Sonnet 5.5",
+       "api": "anthropic-messages",
+       "provider": "anthropic",
+       "baseUrl": "http://127.0.0.1:<PORT>",
+       "reasoning": true,
+       "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+       },
+       "input": [
+        "text",
+        "image"
+       ],
+       "cost": {
+        "input": 2,
+        "output": 10,
+        "cacheRead": 0.1,
+        "cacheWrite": 2.5
+       },
+       "contextWindow": 1000000,
+       "maxTokens": 128000,
+       "compat": {
+        "supportsMidConvoEffort": true,
+        "supportsMidConvoSystemMessages": true,
+        "supportsMidConvoToolChanges": true,
+        "forceAdaptiveThinking": true,
+        "supportsTemperature": false,
+        "supportsStrictTools": true
+       },
+       "promptCache": {
+        "short": 300,
+        "long": 3600
+       },
+       "inputLimits": {
+        "maxRequestBytes": 33554432,
+        "images": {
+         "maxPerRequest": 600,
+         "resize": {
+          "maxWidth": 2000,
+          "maxHeight": 2000,
+          "maxBytes": 4718592,
+          "jpegQuality": 80
+         }
+        }
+       }
       }
      ]
     }

@@ -142,7 +142,8 @@ pub enum Op {
     },
     /// The whole session as the TUI shows it: `{sessionId, sessionFile, name, messages, model, thinkingLevel}`.
     Describe,
-    /// Sessions of this working directory, newest first (`{path, id, name, modified, messageCount, firstMessage}`).
+    /// Sessions of this working directory, newest first (`{path, id, name, modified, messageCount, firstMessage,
+    /// allMessagesText, cwd}`).
     ListSessions,
     /// Continue what a dead worker left (crate::recovery): the first queued message runs, else an interrupted run
     /// continues. Answers `{resumed, runId, reason, recovered}`; nothing starts while a run is in progress.
@@ -150,11 +151,13 @@ pub enum Op {
     /// The subagents of the root lane (`rlm.list_subagents` as the root sees them: `{subagents: [...]}`), for the
     /// TUI's agent hub.
     Agents,
-    /// Move `main`'s tip to `target_id` (`None`: the root), optionally summarizing the branch left (`/tree`).
+    /// Move `main`'s tip to `target_id` (`None`: the root), optionally summarizing the branch left (`/tree`), and
+    /// label the target (or the branch summary).
     Navigate {
         target_id: Option<String>,
         summarize: bool,
         instructions: Option<String>,
+        label: Option<String>,
     },
     /// Label a tree entry (`None` removes the label).
     SetLabel {
@@ -182,6 +185,28 @@ pub enum Op {
     /// Conversation `id`: `{id, busy, messages: [{role, text}]}`; without an id, every root conversation's.
     Conversations {
         id: Option<u64>,
+    },
+    /// Root-owned work whose completion may still re-invoke the root (`async.pending`): running jobs and subagents
+    /// of the root lane, events waiting for delivery, a run in progress.
+    AsyncPending,
+    /// A read-only inspection request (crate::inspect: `agents.status`, `memory.list`, `rlm.frames`, ...) answered
+    /// by the session's host stack as the root lane's; anything else is refused.
+    Inspect {
+        request: String,
+        payload: Value,
+    },
+    /// The session's slash commands (RPC `get_commands`: crate::commands).
+    Commands,
+    /// Runs an extension's command `/name args` (`pi.legacy-extension-commands.run`), answered when its handler
+    /// returned; the actor goes on meanwhile.
+    ExtensionCommand {
+        name: String,
+        args: String,
+    },
+    /// An extension command's argument completions for `prefix` (`commands/complete`), off the actor.
+    ExtensionCompletions {
+        name: String,
+        prefix: String,
     },
 }
 
@@ -265,6 +290,7 @@ impl Op {
                 target_id: text("targetId"),
                 summarize: value["summarize"] == true,
                 instructions: text("customInstructions"),
+                label: text("label"),
             },
             "killAgent" => Op::KillAgent { id: need("id")? },
             "goal" => Op::Goal {
@@ -279,6 +305,20 @@ impl Op {
             },
             "conversations" => Op::Conversations {
                 id: value["id"].as_u64(),
+            },
+            "asyncPending" => Op::AsyncPending,
+            "commands" => Op::Commands,
+            "extensionCompletions" => Op::ExtensionCompletions {
+                name: need("name")?,
+                prefix: value["prefix"].as_str().unwrap_or_default().to_string(),
+            },
+            "extensionCommand" => Op::ExtensionCommand {
+                name: need("name")?,
+                args: value["args"].as_str().unwrap_or_default().to_string(),
+            },
+            "inspect" => Op::Inspect {
+                request: need("request")?,
+                payload: value.get("payload").cloned().unwrap_or(Value::Null),
             },
             other => return Err(format!("Unknown session operation: {other}")),
         })
@@ -337,14 +377,22 @@ impl Op {
                 target_id,
                 summarize,
                 instructions,
+                label,
             } => {
-                json!({"op": "navigate", "targetId": target_id, "summarize": summarize, "customInstructions": instructions})
+                json!({"op": "navigate", "targetId": target_id, "summarize": summarize, "customInstructions": instructions, "label": label})
             }
             Op::KillAgent { id } => json!({"op": "killAgent", "id": id}),
             Op::Goal { args } => json!({"op": "goal", "args": args}),
             Op::StartConversation { message } => json!({"op": "startConversation", "message": message}),
             Op::ConversationInput { id, message } => json!({"op": "conversationInput", "id": id, "message": message}),
             Op::Conversations { id } => json!({"op": "conversations", "id": id}),
+            Op::AsyncPending => json!({"op": "asyncPending"}),
+            Op::Inspect { request, payload } => json!({"op": "inspect", "request": request, "payload": payload}),
+            Op::Commands => json!({"op": "commands"}),
+            Op::ExtensionCommand { name, args } => json!({"op": "extensionCommand", "name": name, "args": args}),
+            Op::ExtensionCompletions { name, prefix } => {
+                json!({"op": "extensionCompletions", "name": name, "prefix": prefix})
+            }
         }
     }
 }
@@ -364,12 +412,18 @@ pub enum Input {
     },
     /// Stop the lane; the sender is told when done.
     Close(std::sync::mpsc::Sender<()>),
+    /// Stop the lane for a successor worker (its shell jobs keep running for it); the sender is told when done.
+    HandOver(std::sync::mpsc::Sender<()>),
+    /// The completion-event dispatcher's question about the root lane (crate::async_events).
+    EventLane(event_lanes::LaneCall, std::sync::mpsc::Sender<event_lanes::LaneAnswer>),
+    /// Report whether detached work is active (the worker keeps itself alive while it is).
+    ActivityTick,
     /// The durable runtime running the turn (crate::turns).
     Turn(crate::turns::Request),
     /// The durable runtime has no work for the root conversation.
     HarnessIdle,
-    /// Completions of work the turn started that outlived it (empty: nothing is running).
-    RuntimeMessages(Vec<Message>),
+    /// A compaction's work off the actor ended (core::compacting).
+    Woken,
 }
 
 /// Where lane-watch events go.
@@ -425,6 +479,11 @@ struct Running {
     waiter: Option<Reply>,
     /// A client aborted the run (it ends `aborted`, whatever its last response says).
     cancelled: bool,
+    /// An automatic compaction failed: the run ends with its error and compacts no more.
+    compaction_failed: bool,
+    /// The worker died during an overflow compaction of this run: the next checkpoint compacts first, resuming
+    /// this `resumeAfter` (crate::core::auto_compact).
+    resume_overflow: Option<Value>,
 }
 
 /// How a session is opened.
@@ -476,9 +535,33 @@ pub struct Core {
     durable: durable_turns::Durable,
     /// The run reopened from a dead worker's journal and resumed in the durable runtime.
     resumed: Option<String>,
+    /// Completions of detached work, delivered to the lanes that own it (crate::async_events).
+    events: Arc<crate::async_events::Dispatcher>,
+    /// Model-owned context (`ctx.*`) and collapse on return on `main` (core::context_lane).
+    context: Arc<kernel_apis::ContextControl>,
+    branches: Arc<context_lane::RootBranches>,
+    /// The actor's input, while `run_loop` serves it (a compaction's work reads it too, core::compacting).
+    inputs: Option<std::sync::mpsc::Receiver<Input>>,
+    /// Inputs that arrived during a compaction and wait for its end, in order.
+    deferred: std::collections::VecDeque<Input>,
+    /// The compaction or branch summary in progress (manual or automatic): `abort` cancels it, `state` reports it
+    /// (`isCompacting`).
+    compacting: Option<AbortSignal>,
+    /// The `session_before_compact` dispatch in flight: `abort` gives it up (the hooks' `signal`).
+    hook: Option<extensions::CancelToken>,
+    /// A tree navigation's branch summary is in progress (core::navigate).
+    navigating: bool,
+    /// What waits for the run in progress to end: a manual `compact` aborts the run first (AgentSession `compact`
+    /// awaits `abort()`), then runs.
+    after_run: Vec<Input>,
 }
 
+mod auto_compact;
+mod compacting;
+mod context_children;
+mod context_lane;
 mod durable_turns;
+pub mod event_lanes;
 
 /// A user message with text and images, as the transcript stores it.
 pub fn user_message(text: String, images: Vec<Value>) -> Value {
@@ -508,11 +591,26 @@ fn event(fields: Vec<(&str, Value)>) -> Value {
 /// The lane configuration a session runs with: the session's own for a resumed session without model flags, else
 /// the flags' (written for a new session). Returns the stored configuration and the model it names.
 pub fn lane_config(flags: &ModelFlags, env: &RunEnv, session: Option<&mut Session>) -> Result<(Value, Model), String> {
-    let flag_model = lane::resolve_model(flags, env);
-    let thinking = flags.thinking.clone().unwrap_or_else(|| "medium".into());
     let stored = session
         .as_ref()
         .and_then(|s| s.value(session_journal::session::LANE_CONFIG, "main").cloned());
+    // Without --model a resumed session restores its own model; a new one starts on the settings' default
+    // (sdk.ts: restore from the session first, then `findInitialModel`).
+    // A `--model <pattern>:<thinking>` suffix or a scoped pattern's level names the thinking level unless
+    // `--thinking` does; otherwise the settings' level for the model.
+    let choice = match (&flags.model, &stored) {
+        (None, Some(_)) => Err("No model selected: pass --model <provider>/<id>".to_string()),
+        _ => lane::resolve_choice(flags, env, stored.is_some()),
+    };
+    let thinking = match (&flags.thinking, &choice) {
+        (Some(level), _) => level.clone(),
+        (None, Ok(choice)) => choice
+            .thinking
+            .clone()
+            .unwrap_or_else(|| lane::initial_thinking(&choice.model, env)),
+        (None, Err(_)) => "medium".into(),
+    };
+    let flag_model = choice.map(|choice| choice.model);
     let wanted = match (&flag_model, stored) {
         (Ok(m), _) => run::lane_config(&m.provider, &m.id, &thinking, &["rlm"]),
         (Err(_), Some(mut stored)) => {
@@ -579,7 +677,14 @@ impl Core {
         let open_operation = session
             .value(LANE_STATE, LANE)
             .and_then(|state| state["currentOperationId"].as_str().map(str::to_string));
-        let durable_records = crate::durable_store::has_records(&session);
+        // Only a run resumes in the durable runtime; another operation a dead worker left (a manual compaction, a
+        // navigation) is settled as interrupted.
+        let durable_records = crate::durable_store::has_records(&session)
+            && open_operation.as_ref().is_none_or(|operation| {
+                session
+                    .value(session_journal::run::OP_META, operation)
+                    .is_none_or(|meta| meta["intent"]["kind"].as_str().is_none_or(|kind| kind == "run"))
+            });
         let recovered = match &open_operation {
             Some(_) if !durable_records => crate::recovery::settle(&mut session)?,
             _ => crate::recovery::Recovered {
@@ -606,6 +711,17 @@ impl Core {
             &session_id,
             Some(children.host(session.clone())),
         )?;
+        let branches = Arc::new(context_lane::RootBranches::new(session.clone()));
+        // One module answers `ctx.*` from every lane's kernel; each lane edits its own branch.
+        let child_context = Arc::new(context_children::ChildContext::new(children.clone(), session.clone()));
+        let context = Arc::new(kernel_apis::ContextControl::new(Arc::new(
+            context_children::LaneBranches {
+                root: branches.clone(),
+                children: child_context.clone(),
+            },
+        )));
+        child_context.observe(&context, runtime.extensions.clone());
+        let _ = lane.stack.context.set(context.clone());
         let provider = Arc::new(Provider::with_idle_timeout(ai::http::http_idle_timeout(
             runtime.config.settings.get("httpIdleTimeoutMs"),
         )));
@@ -636,9 +752,21 @@ impl Core {
             &flags,
             queues.clone(),
             children.clone(),
+            child_context,
         )?;
         children.attach(durable.chat.clone());
-        children.restore(&lane.stack.delegation, &unfinished)?;
+        children.restore(&lane.stack, &unfinished)?;
+        let events = event_lanes::install(
+            &lane,
+            &env,
+            tx.clone(),
+            durable.chat.clone(),
+            children.clone(),
+            durable.stop.clone(),
+        );
+        event_lanes::tick_activity(tx.clone(), durable.stop.clone());
+        // `compaction.enabled` (default on); `set_auto_compaction` changes it for the session.
+        let auto_compaction = runtime.config.settings["compaction"]["enabled"] != false;
         let mut core = Core {
             thinking: config["thinkingLevel"].as_str().unwrap_or("medium").to_string(),
             models: lane::available_models(&env),
@@ -655,7 +783,7 @@ impl Core {
             run: None,
             hiding: false,
             queues,
-            auto_compaction: true,
+            auto_compaction,
             auto_retry: true,
             bash: None,
             announced_usage,
@@ -666,9 +794,22 @@ impl Core {
             recovered: Some(recovered),
             durable,
             resumed: None,
+            events,
+            context,
+            branches,
+            inputs: None,
+            deferred: std::collections::VecDeque::new(),
+            compacting: None,
+            hook: None,
+            navigating: false,
+            after_run: Vec::new(),
         };
         if let Some(operation) = resume {
             core.resumed = Some(core.reopen_run(&operation)?);
+        } else {
+            // Context entries a dead worker's run left waiting join the branch now; a resumed run places them at
+            // its next boundary.
+            core.branches.place(true)?;
         }
         // Whatever else the runtime holds (subagents, background work) continues now.
         core.durable.chat.resume().map_err(|e| e.to_string())?;
@@ -712,7 +853,8 @@ impl Core {
 
     /// Serve inputs until a close (or the input ends).
     pub fn run_loop(mut self, inputs: std::sync::mpsc::Receiver<Input>) {
-        for input in inputs {
+        self.inputs = Some(inputs);
+        while let Some(input) = self.next_input() {
             match input {
                 Input::Op(op, reply) => self.op(op, reply),
                 Input::Agent(event) => self.on_agent_event(*event),
@@ -724,7 +866,6 @@ impl Core {
                 Input::RunEnd => self.run_end(),
                 Input::Turn(request) => self.on_turn(request),
                 Input::HarnessIdle => self.harness_idle(),
-                Input::RuntimeMessages(messages) => self.runtime_messages(messages),
                 Input::BashDone {
                     command,
                     exclude,
@@ -736,9 +877,26 @@ impl Core {
                     let _ = done.send(());
                     return;
                 }
+                Input::HandOver(done) => {
+                    self.close_for_successor();
+                    let _ = done.send(());
+                    return;
+                }
+                Input::EventLane(call, reply) => self.event_lane(call, reply),
+                Input::ActivityTick => self.report_activity(),
+                // A compaction's wake-up is read by the compaction itself.
+                Input::Woken => {}
             }
         }
         self.close();
+    }
+
+    /// What waited for a compaction first, then the actor's input.
+    fn next_input(&mut self) -> Option<Input> {
+        if let Some(input) = self.deferred.pop_front() {
+            return Some(input);
+        }
+        self.inputs.as_ref()?.recv().ok()
     }
 
     fn emit(&mut self, value: Value) {
@@ -766,6 +924,12 @@ impl Core {
         let entries: Vec<Value> = lock_session(&self.session).state().entries()[self.announced..].to_vec();
         self.announced += entries.len();
         for entry in entries {
+            // A context edit that lands on the branch is published to extensions (`pi.events`).
+            if let Some(edit) = self.context.entry_added(LANE, &entry)
+                && let Some(host) = &self.runtime.extensions
+            {
+                host.publish(kernel_apis::context_control::CONTEXT_EDIT_EVENT, &edit);
+            }
             self.emit(event(vec![
                 ("type", json!("entry_added")),
                 ("lane", json!(LANE)),
@@ -959,6 +1123,7 @@ impl Core {
                     None
                 };
                 let was_queued = delivered.is_some();
+                let answered = value["role"] == "assistant";
                 if value["role"] == "user" {
                     let first = self
                         .run
@@ -989,6 +1154,10 @@ impl Core {
                 self.announce();
                 if was_queued {
                     self.queue_update();
+                }
+                // Once the model answered after a cell's output that returned finished tasks, it collapses.
+                if answered {
+                    let _ = self.context.message_end(LANE, "assistant");
                 }
             }
             AgentEvent::ToolExecutionStart {
@@ -1070,8 +1239,9 @@ impl Core {
             .filter(|q| q.turn <= turn && !self.taken.contains(&q.entry_id))
             .cloned()
             .collect();
-        let mut writes = Vec::new();
-        let mut parent = self.tip();
+        // Context entries appended since the last boundary join the branch first, in the same transaction.
+        let tip = self.tip();
+        let (mut writes, mut parent) = context_lane::placement(&lock_session(&self.session), tip.clone());
         for queued in &taken {
             let mut entry = Map::new();
             entry.insert("id".into(), queued.entry_id.clone().into());
@@ -1083,8 +1253,8 @@ impl Core {
             parent = Some(queued.entry_id.clone());
         }
         let trigger = taken.last().map(|q| q.entry_id.clone());
-        if let Some(tip) = &trigger {
-            writes.push(Write::set(BRANCH_TIP, LANE, tip.clone().into()));
+        if let Some(placed) = parent.filter(|placed| Some(placed) != tip.as_ref()) {
+            writes.push(Write::set(BRANCH_TIP, LANE, placed.into()));
         }
         let mut inbox = self.lane_state()["inbox"].clone();
         if let Some(items) = inbox.as_array_mut() {
@@ -1107,25 +1277,44 @@ impl Core {
     }
 
     fn run_end(&mut self) {
-        if let Some(operation) = self.operation_id() {
-            self.lane.stack.agents.end_root_turn(&operation);
+        let operation = self.operation_id();
+        if let Some(operation) = &operation {
+            self.lane.stack.agents.end_root_turn(operation);
         }
         let Some(mut run) = self.run.take() else { return };
         if !run.cancelled && run.error.is_none() {
             run.error = self.unanswered(run.submission);
+        }
+        // The run's last boundary: collapse what the model answered after, then place what is still waiting.
+        let _ = self.context.run_end(LANE);
+        let waiting = context_lane::pending_count(&lock_session(&self.session));
+        if let Err(error) = self.branches.place(true) {
+            run.error.get_or_insert(error);
+        }
+        self.announce();
+        // Entries that waited for the boundary left the lane's queue.
+        if waiting > 0 {
+            self.queue_update();
         }
         self.durable.bridge.set_user_abort(false);
         let aborted = run.cancelled;
         let finished = if aborted {
             run.journal.finish_aborted(&mut lock_session(&self.session))
         } else {
-            let failure = run.error.as_deref().map(|m| ("assistant_error", m));
+            let code = if run.compaction_failed {
+                "summarization_failed"
+            } else {
+                "assistant_error"
+            };
+            let failure = run.error.as_deref().map(|m| (code, m));
             run.journal.finish(Some(&mut lock_session(&self.session)), failure)
         };
         let mut error = if aborted { None } else { run.error.clone() };
         if let Err(write) = finished {
             error.get_or_insert(write);
         }
+        // An error answer commits with the run's terminal transaction.
+        self.announce();
         self.taken.clear();
         lock(&self.queues).delivered.clear();
         let status = if aborted {
@@ -1135,6 +1324,8 @@ impl Core {
         } else {
             "completed"
         };
+        // Detached work the run leaves running keeps the worker alive: reported before the run's end is.
+        self.report_activity();
         let mut fields = vec![
             ("type", json!("run_end")),
             ("lane", json!(LANE)),
@@ -1150,11 +1341,21 @@ impl Core {
             ("endedAt", json!(now_ms())),
         ]);
         self.emit(event(fields));
+        // The dispatcher's `run_end`: an aborted root never restarts work; unconsumed steers are taken back.
+        if let Some(operation) = &operation {
+            self.events.run_ended(LANE, operation, aborted);
+        }
+        // Failure streaks of the hints' loop detector start over with the next run.
+        self.lane.stack.cell_hints().run_ended(LANE);
         if let Some(waiter) = run.waiter {
             let error = error.map_or(Value::Null, |m| json!({"code": "run_failed", "message": m}));
             waiter(Ok(Some(
                 json!({"accepted": true, "operationId": run.id, "error": error}),
             )));
+        }
+        // What waited for the run's end runs next, before any other input.
+        for input in std::mem::take(&mut self.after_run).into_iter().rev() {
+            self.deferred.push_front(input);
         }
     }
 
@@ -1211,8 +1412,22 @@ impl Core {
 
     /// Stop the lane (kernels, subagents, extensions).
     pub fn close(&mut self) {
+        self.stop(false);
+    }
+
+    /// As [`Core::close`] when a successor worker takes the session over: shell jobs keep running for it.
+    pub fn close_for_successor(&mut self) {
+        self.stop(true);
+    }
+
+    fn stop(&mut self, hand_over: bool) {
         if let Some(run) = &self.run {
             run.signal.abort();
+        }
+        // A successor takes the session: what this worker's hosts would still journal (a subagent's wait failing
+        // as the runtime closes) is dropped, so its tasks stay unfinished for the successor to reattach.
+        if hand_over {
+            self.durable.children.hand_over();
         }
         // The durable runtime stops without settling anything: a run in progress resumes when the session opens.
         self.durable.stop.abort();
@@ -1220,10 +1435,15 @@ impl Core {
         if let Some(signal) = &self.bash {
             signal.abort("closing");
         }
-        self.lane.shutdown();
+        if hand_over {
+            self.lane.hand_over();
+        } else {
+            self.lane.shutdown();
+        }
         if let Some(host) = &self.runtime.extensions {
             host.shutdown();
         }
+        self.events.close();
     }
 
     /// The Pi view of the session the read operations use.
@@ -1258,6 +1478,20 @@ impl Core {
                 }
             }
             bash @ Op::Bash { .. } => self.bash(bash, reply),
+            // AgentSession `compact`: `await this.abort()` first, then compact once the session is idle.
+            compact @ Op::Compact { .. } if self.run.is_some() => {
+                self.abort();
+                self.after_run.push(Input::Op(compact, reply));
+            }
+            Op::ExtensionCommand { name, args } => {
+                // A command may prompt and has no timeout: it runs off the actor.
+                let stack = self.lane.stack.clone();
+                std::thread::spawn(move || reply(stack.run_extension_command(&name, &args).map(Some)));
+            }
+            Op::ExtensionCompletions { name, prefix } => {
+                let stack = self.lane.stack.clone();
+                std::thread::spawn(move || reply(stack.complete_extension_command(&name, &prefix).map(Some)));
+            }
             Op::Recover => {
                 let result = self.recover();
                 reply(result);
@@ -1271,7 +1505,12 @@ impl Core {
 
     fn sync_op(&mut self, op: Op) -> OpResult {
         match op {
-            Op::Prompt { .. } | Op::PromptAndWait { .. } | Op::Bash { .. } | Op::Recover => {
+            Op::Prompt { .. }
+            | Op::PromptAndWait { .. }
+            | Op::Bash { .. }
+            | Op::Recover
+            | Op::ExtensionCommand { .. }
+            | Op::ExtensionCompletions { .. } => {
                 unreachable!("answered in op")
             }
             Op::Enqueue {
@@ -1289,14 +1528,7 @@ impl Core {
             }
             Op::ClearQueue => Ok(Some(self.clear_queue())),
             Op::Abort => {
-                if let Some(run) = self.run.as_mut()
-                    && !run.signal.aborted()
-                {
-                    run.signal.abort();
-                    run.cancelled = true;
-                    run.journal.request_cancel(&mut lock_session(&self.session), now_ms());
-                    self.abort_turn();
-                }
+                self.abort();
                 Ok(None)
             }
             Op::State => Ok(Some(self.state())),
@@ -1444,7 +1676,10 @@ impl Core {
                 target_id,
                 summarize,
                 instructions,
-            } => self.navigate(target_id, summarize, instructions.as_deref()).map(Some),
+                label,
+            } => self
+                .navigate(target_id, summarize, instructions.as_deref(), label)
+                .map(Some),
             Op::SetLabel { entry_id, label } => self.set_label(&entry_id, label.as_deref()).map(|()| None),
             Op::Agents => self
                 .lane
@@ -1461,6 +1696,14 @@ impl Core {
             Op::StartConversation { message } => self.start_conversation(&message).map(Some),
             Op::ConversationInput { id, message } => self.conversation_input(id, &message).map(|()| None),
             Op::Conversations { id } => self.conversations(id).map(Some),
+            Op::AsyncPending => Ok(Some(self.async_pending())),
+            Op::Commands => Ok(Some(Value::Array(self.lane.stack.commands()))),
+            // Root-owned work whose completion may still re-invoke the root, asked through the inspector.
+            Op::Inspect { request, .. } if request == "async.pending" => Ok(Some(self.async_pending())),
+            Op::Inspect { request, payload } => {
+                let runtime = self.lane.stack.cell_handler(LANE, None);
+                crate::inspect::inspect(Some(&*runtime), &request, payload, &kernel::Signal::new()).map(Some)
+            }
             Op::Goal { args } => self
                 .lane
                 .stack
@@ -1476,7 +1719,8 @@ impl Core {
                         .map(|s| {
                             json!({"path": s.metadata.path.display().to_string(), "id": s.metadata.id, "name": s.name,
                                 "modified": s.metadata.modified_at as i64, "messageCount": s.message_count,
-                                "firstMessage": s.first_message, "cwd": s.metadata.cwd})
+                                "firstMessage": s.first_message, "allMessagesText": s.all_messages_text,
+                                "cwd": s.metadata.cwd})
                         })
                         .collect(),
                 )))
@@ -1518,7 +1762,7 @@ impl Core {
         state.insert("model".into(), serde_json::to_value(&self.model).unwrap_or(Value::Null));
         state.insert("thinkingLevel".into(), self.thinking.clone().into());
         state.insert("isStreaming".into(), self.run.is_some().into());
-        state.insert("isCompacting".into(), false.into());
+        state.insert("isCompacting".into(), self.compacting.is_some().into());
         let mode = |all: bool| if all { "all" } else { "one-at-a-time" };
         state.insert("steeringMode".into(), mode(queues.steering_all).into());
         state.insert("followUpMode".into(), mode(queues.follow_up_all).into());
@@ -1551,16 +1795,20 @@ impl Core {
                 None => Err((error, Box::new(|_| {}))),
             }
         };
-        let Some(api_key) = self.api_key() else {
+        // A stored OAuth credential may authenticate by header alone (Kimi's bearer): no key, but `getAuth` resolves.
+        let api_key = self.api_key();
+        if api_key.is_none() && !lane::header_auth(&self.env, &self.model.provider) {
             return fail(format!("No API key found for {}", self.model.provider), waiter);
-        };
+        }
         let text = message_text(&prompt);
         let continuation = prompt.get(crate::recovery::RECOVERY_DEPTH).is_some();
         // Name a new conversation from its first prompt; the model's title may replace it before the run ends.
         let mut naming_request = None;
         // RPC clients see the session as TypeScript's RPC mode does: unnamed until they name it.
+        // A completion event's run (a custom message) never names the session.
         let auto_name = self.auto_name
             && !continuation
+            && prompt["role"] != "custom"
             && self.runtime.mode != "rpc"
             && !(self.env.var)("ULTRON_AUTO_NAME")
                 .is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
@@ -1574,11 +1822,24 @@ impl Core {
                 self.name_changed();
                 let naming = naming::naming_settings(&self.runtime.config.settings);
                 if naming.enabled {
-                    let naming_model = naming::naming_model(naming.model.as_deref(), &self.model, &api_supported);
+                    // A `provider/id` setting names a built-in or models.json model; else the provider's
+                    // cheapest, which models.json may override (its URL, headers).
+                    let named = naming
+                        .model
+                        .as_deref()
+                        .and_then(|spec| spec.split_once('/'))
+                        .and_then(|(provider, id)| lane::catalog_model(provider, id, &self.env).ok());
+                    let naming_model = named.unwrap_or_else(|| {
+                        let chosen = naming::naming_model(naming.model.as_deref(), &self.model, &api_supported);
+                        if chosen.provider == self.model.provider && chosen.id == self.model.id {
+                            return self.model.clone();
+                        }
+                        lane::catalog_model(&chosen.provider, &chosen.id, &self.env).unwrap_or(chosen)
+                    });
                     let key = if naming_model.provider == self.model.provider {
-                        Some(api_key)
+                        api_key.clone()
                     } else {
-                        lane::env_api_key(&self.env, &naming_model.provider)
+                        lane::api_key(&ModelFlags::default(), &self.env, &naming_model.provider)
                     };
                     naming_request = Some((naming_model, key, text));
                 }
@@ -1594,11 +1855,13 @@ impl Core {
             .cloned()
             .unwrap_or(Value::Null);
         let started_tip = self.tip().map_or(Value::Null, Value::from);
-        let mut journal = match RunJournal::admit(
+        let settings = self.run_settings();
+        let mut journal = match RunJournal::admit_with_settings(
             Some(&mut lock_session(&self.session)),
             lane_config,
             prompt.clone(),
             (self.model.max_tokens, self.model.context_window),
+            settings,
         ) {
             Ok(journal) => journal,
             Err(error) => return fail(error, waiter),
@@ -1623,6 +1886,9 @@ impl Core {
         journal.ledger_counts_turns();
         if let Some(run) = journal.run() {
             self.lane.stack.agents.begin_root_turn(run.operation_id());
+            self.durable
+                .children
+                .set_root(self.lane.stack.agents.usage_root_for_lane(LANE, run.operation_id()));
         }
         // The turn runs in the durable runtime; its prompt is the entry the run just admitted.
         let prompt_entry = self.tip().unwrap_or_default();
@@ -1637,6 +1903,7 @@ impl Core {
         let mut random = [0u8; 16];
         let _ = getrandom_fill(&mut random);
         let id = self.run_ids.next(now_ms(), random);
+        self.branches.run_started();
         self.run = Some(Running {
             id: id.clone(),
             signal,
@@ -1649,6 +1916,8 @@ impl Core {
             error: None,
             waiter,
             cancelled: false,
+            compaction_failed: false,
+            resume_overflow: None,
         });
         self.emit(event(vec![
             ("type", json!("run_start")),
@@ -1819,156 +2088,6 @@ impl Core {
                 reply,
             });
         });
-    }
-
-    async fn summarize(&self, request: compaction::SummaryRequest) -> AssistantMessage {
-        let options = SimpleStreamOptions {
-            base: StreamOptions {
-                api_key: self.api_key(),
-                max_tokens: Some(request.max_tokens),
-                cache_retention: Some(ai::CacheRetention::None),
-                session_id: request.session_id.clone(),
-                ..Default::default()
-            },
-            reasoning: request.reasoning.clone(),
-            ..Default::default()
-        };
-        let mut sink = |_: &ai::AssistantMessageEvent| {};
-        self.provider
-            .stream(&self.model, &request.context, &options, &mut sink)
-            .await
-    }
-
-    /// A manual compaction: `compaction_start`, the journaled operation, the entry, `compaction_end`; answers Pi's
-    /// `CompactionResult` fields of the compaction entry.
-    fn compact(&mut self, instructions: Option<&str>) -> Result<Value, String> {
-        self.idle()?;
-        let lane = json!(LANE);
-        self.emit(event(vec![
-            ("type", json!("compaction_start")),
-            ("lane", lane.clone()),
-            ("reason", json!("manual")),
-        ]));
-        let id = match self.compact_now(instructions) {
-            Ok(id) => id,
-            Err(error) => {
-                self.emit(event(vec![
-                    ("type", json!("compaction_end")),
-                    ("lane", lane),
-                    ("reason", json!("manual")),
-                    ("status", json!("failed")),
-                    ("error", json!({"message": error})),
-                ]));
-                return Err(error);
-            }
-        };
-        self.announce();
-        self.emit(event(vec![
-            ("type", json!("compaction_end")),
-            ("lane", lane),
-            ("reason", json!("manual")),
-            ("status", json!("completed")),
-        ]));
-        let pi = self.pi();
-        let entry = pi
-            .entry(&id)
-            .filter(|e| e["type"] == "compaction")
-            .ok_or("Compaction produced no compaction entry")?;
-        let mut data = Map::new();
-        for key in ["summary", "firstKeptEntryId", "tokensBefore", "usage", "details"] {
-            if let Some(value) = entry.get(key).filter(|v| !v.is_null()) {
-                data.insert(key.into(), value.clone());
-            }
-        }
-        Ok(Value::Object(data))
-    }
-
-    /// Summarize the current path and commit the native compaction entry (its retained tail is the kept messages)
-    /// through a journaled compaction operation ([`CompactionOp`]); returns its id. Nothing to cut keeps the whole
-    /// path after an (empty-conversation) summary, as the native harness does.
-    fn compact_now(&mut self, custom_instructions: Option<&str>) -> Result<String, String> {
-        let pi = self.pi();
-        let path: Vec<Value> = pi.branch_entries(None).into_iter().cloned().collect();
-        let settings = compaction::CompactionSettings::default();
-        let preparation = match compaction::prepare_compaction(&path, settings) {
-            Some(preparation) => preparation,
-            None => {
-                if path.last().is_some_and(|e| e["type"] == "compaction") {
-                    return Err("Already compacted".into());
-                }
-                let first = path
-                    .first()
-                    .and_then(|e| e["id"].as_str())
-                    .ok_or("Nothing to compact (session too small)")?;
-                let projection = pi.build_session_projection();
-                let tokens = compaction::estimate_projected_context_tokens(&projection, &path).tokens;
-                compaction::CompactionPreparation {
-                    first_kept_entry_id: first.to_string(),
-                    messages_to_summarize: Vec::new(),
-                    turn_prefix_messages: Vec::new(),
-                    is_split_turn: false,
-                    tokens_before: tokens,
-                    previous_summary: None,
-                    file_ops: Default::default(),
-                    settings,
-                }
-            }
-        };
-        // The messages of the kept entries, from the first kept one to the branch's end.
-        let kept_from = path
-            .iter()
-            .position(|e| e["id"] == preparation.first_kept_entry_id.as_str())
-            .unwrap_or(path.len());
-        let retained_tail: Vec<Value> = path[kept_from..]
-            .iter()
-            .filter(|e| e["type"] != "compaction")
-            .flat_map(|e| match e["type"].as_str() {
-                Some("message") => vec![e["message"].clone()],
-                _ => session_journal::context::entry_context_messages(e),
-            })
-            .collect();
-        let op = CompactionOp::begin(
-            &mut lock_session(&self.session),
-            &preparation,
-            &retained_tail,
-            custom_instructions,
-        )?;
-        let thinking = self.thinking.clone();
-        let session_id = lock_session(&self.session).id().to_string();
-        let options = compaction::CompactOptions {
-            model: &self.model,
-            custom_instructions,
-            thinking_level: Some(&thinking),
-            session_id: Some(&session_id),
-            now_ms: now_ms(),
-        };
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| e.to_string())?;
-        let result = match runtime.block_on(compaction::compact(&preparation, &options, async |request| {
-            self.summarize(request).await
-        })) {
-            Ok(result) => result,
-            Err(error) => {
-                op.fail(&mut lock_session(&self.session), &error)?;
-                return Err(error);
-            }
-        };
-        let usage = serde_json::to_value(&result.usage).map_err(|e| e.to_string())?;
-        op.record_usage(&mut lock_session(&self.session), &usage)?;
-        let mut entry = Map::new();
-        entry.insert("type".into(), "compaction".into());
-        entry.insert("summary".into(), result.summary.clone().into());
-        entry.insert("retainedTail".into(), Value::Array(retained_tail));
-        entry.insert("tokensBefore".into(), result.tokens_before.into());
-        entry.insert(
-            "details".into(),
-            json!({"readFiles": result.read_files, "modifiedFiles": result.modified_files}),
-        );
-        entry.insert("usage".into(), usage);
-        entry.insert("fromHook".into(), false.into());
-        op.complete(&mut lock_session(&self.session), entry)
     }
 }
 

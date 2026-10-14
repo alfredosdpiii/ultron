@@ -2159,28 +2159,28 @@
 	],
 	"stackCases": [
 		{
-			"stack": "TypeError: Cannot read properties of undefined (reading 'runtime')\n    at streamSimple (file:///home/fedora/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-CMRUVXTE.js:1093:16944)\n    at /home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/src/agents/worker-stream.ts:43:45",
+			"stack": "TypeError: Cannot read properties of undefined (reading 'runtime')\n    at streamSimple (file:///home/user/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-CMRUVXTE.js:1093:16944)\n    at /home/user/.pi/agent/npm/node_modules/pi-observational-memory/src/agents/worker-stream.ts:43:45",
 			"extensions": [
 				{
-					"path": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
-					"resolvedPath": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+					"path": "/home/user/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+					"resolvedPath": "/home/user/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
 					"sourceInfo": {
-						"path": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
+						"path": "/home/user/.pi/agent/npm/node_modules/pi-observational-memory/extensions/index.ts",
 						"source": "npm:pi-observational-memory",
 						"scope": "user",
 						"origin": "package",
-						"baseDir": "/home/fedora/.pi/agent/npm/node_modules/pi-observational-memory"
+						"baseDir": "/home/user/.pi/agent/npm/node_modules/pi-observational-memory"
 					}
 				},
 				{
-					"path": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
-					"resolvedPath": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+					"path": "/home/user/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+					"resolvedPath": "/home/user/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
 					"sourceInfo": {
-						"path": "/home/fedora/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
+						"path": "/home/user/.pi/agent/npm/node_modules/unrelated/extensions/index.ts",
 						"source": "npm:unrelated",
 						"scope": "user",
 						"origin": "package",
-						"baseDir": "/home/fedora/.pi/agent/npm/node_modules/unrelated"
+						"baseDir": "/home/user/.pi/agent/npm/node_modules/unrelated"
 					}
 				}
 			],
@@ -2189,28 +2189,28 @@
 			]
 		},
 		{
-			"stack": "Error: broken\n    at run (c:\\users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory\\src\\worker.ts:4:2)",
+			"stack": "Error: broken\n    at run (c:\\users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory\\src\\worker.ts:4:2)",
 			"extensions": [
 				{
-					"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
-					"resolvedPath": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+					"path": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+					"resolvedPath": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
 					"sourceInfo": {
-						"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
+						"path": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/first.ts",
 						"source": "npm:@scope/memory",
 						"scope": "user",
 						"origin": "package",
-						"baseDir": "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
+						"baseDir": "C:\\Users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
 					}
 				},
 				{
-					"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
-					"resolvedPath": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+					"path": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+					"resolvedPath": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
 					"sourceInfo": {
-						"path": "C:/Users/reporter/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
+						"path": "C:/Users/someone/.pi/agent/npm/node_modules/@scope/memory/extensions/second.ts",
 						"source": "npm:@scope/memory",
 						"scope": "user",
 						"origin": "package",
-						"baseDir": "C:\\Users\\reporter\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
+						"baseDir": "C:\\Users\\someone\\.pi\\agent\\npm\\node_modules\\@scope\\memory"
 					}
 				}
 			],
@@ -2266,22 +2266,22 @@
 			"matches": []
 		},
 		{
-			"stack": "Error: progress 100%\n    at run (file:///Users/reporter/.pi/agent/extensions/local%20memory/worker.ts:4:2)",
+			"stack": "Error: progress 100%\n    at run (file:///Users/someone/.pi/agent/extensions/local%20memory/worker.ts:4:2)",
 			"extensions": [
 				{
-					"path": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
-					"resolvedPath": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
+					"path": "/Users/someone/.pi/agent/extensions/local memory/index.ts",
+					"resolvedPath": "/Users/someone/.pi/agent/extensions/local memory/index.ts",
 					"sourceInfo": {
-						"path": "/Users/reporter/.pi/agent/extensions/local memory/index.ts",
+						"path": "/Users/someone/.pi/agent/extensions/local memory/index.ts",
 						"source": "local",
 						"scope": "user",
 						"origin": "top-level",
-						"baseDir": "/Users/reporter/.pi/agent/extensions/local memory"
+						"baseDir": "/Users/someone/.pi/agent/extensions/local memory"
 					}
 				}
 			],
 			"matches": [
-				"/Users/reporter/.pi/agent/extensions/local memory/index.ts"
+				"/Users/someone/.pi/agent/extensions/local memory/index.ts"
 			]
 		},
 		{

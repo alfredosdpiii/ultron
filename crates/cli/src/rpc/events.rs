@@ -53,6 +53,9 @@ pub enum LaneEvent {
     },
     EntryAdded(Value),
     ThinkingLevel(String),
+    /// AgentSession's `summarization_retry_scheduled` / `_attempt_start` / `_finished` (a compaction's or branch
+    /// summary's retry), as the RPC stream carries them.
+    SummarizationRetry(Value),
 }
 
 impl LaneEvent {
@@ -116,6 +119,11 @@ impl LaneEvent {
             },
             "entry_added" => LaneEvent::EntryAdded(event["entry"].clone()),
             "config_update" if event["property"] == "thinkingLevel" => LaneEvent::ThinkingLevel(text("value")),
+            "summarization_retry_scheduled" | "summarization_retry_attempt_start" | "summarization_retry_finished" => {
+                let mut shown = event.as_object().cloned().unwrap_or_default();
+                shown.remove("lane");
+                LaneEvent::SummarizationRetry(Value::Object(shown))
+            }
             _ => return None,
         })
     }
@@ -228,6 +236,7 @@ impl RpcEventTranslator {
             }
             LaneEvent::EntryAdded(entry) => vec![json!({"type": "entry_appended", "entry": entry})],
             LaneEvent::ThinkingLevel(level) => vec![json!({"type": "thinking_level_changed", "level": level})],
+            LaneEvent::SummarizationRetry(event) => vec![event],
         }
     }
 

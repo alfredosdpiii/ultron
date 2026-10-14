@@ -20,7 +20,7 @@ use crate::{Ctx, UsageError};
 use ai::AbortSignal;
 use serde_json::{Map, Value, json};
 use session_core::RunEnv;
-use session_core::compose::{Runtime, Services};
+use session_core::compose::{Runtime, Services, SubagentHost};
 use session_core::lane::{Lane, MAIN};
 use session_journal::SessionRepo;
 use session_journal::repo::Metadata;
@@ -293,6 +293,7 @@ fn open_runtime(
     env: &RunEnv,
     claude_session_id: Option<&str>,
     resolved: &Resolved,
+    subagents: Option<SubagentHost>,
 ) -> Result<Opened, String> {
     let agent_dir = env.agent_dir();
     let cwd = env.cwd.display().to_string();
@@ -335,13 +336,13 @@ fn open_runtime(
         }
     };
     let model = frame_model(&resolved.frame_model, env)?;
-    let api_key = session_core::lane::env_api_key(env, &model.provider);
+    let api_key = session_core::lane::api_key(&session_core::ModelFlags::default(), env, &model.provider);
     let sessions_dir = session_root.join(session_core::lane::session_directory_name(&metadata.cwd));
     let runtime = Runtime::new(env, "print", sessions_dir, Services::default())?;
     for diagnostic in &runtime.diagnostics {
         eprintln!("Warning: {diagnostic}");
     }
-    let lane = Arc::new(Lane::open(&runtime, &model, api_key, &metadata.id)?);
+    let lane = Arc::new(Lane::open_with(&runtime, &model, api_key, &metadata.id, subagents)?);
     let loki_context = runtime
         .config
         .loki_root
@@ -482,6 +483,8 @@ pub struct Server {
     ready: Condvar,
     cells: Mutex<(u64, Vec<CellRecord>)>,
     hints: bool,
+    /// Tokens of running Claude Code subagents: a verdict is accepted only from the child holding its token.
+    child_tokens: ChildTokens,
 }
 
 impl Server {
@@ -565,7 +568,29 @@ impl Server {
                 };
                 self.hook(&event)
             }
-            "child.finish" => Err("rlm.finish: unknown subagent".into()),
+            "child.finish" => {
+                let lane = request
+                    .get("token")
+                    .and_then(Value::as_str)
+                    .and_then(|token| {
+                        self.child_tokens
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .get(token)
+                            .cloned()
+                    })
+                    .ok_or("rlm.finish: unknown subagent")?;
+                let payload = match request.get("payload") {
+                    Some(Value::Object(payload)) => payload.clone(),
+                    _ => Map::new(),
+                };
+                let opened = self.runtime()?;
+                opened
+                    .lane
+                    .stack
+                    .cell_handler(&lane, None)
+                    .handle("rlm.finish", payload, &kernel::Signal::new())
+            }
             other => Err(format!("unknown control op: {other}")),
         }
     }
@@ -802,15 +827,23 @@ pub fn run(
         startup: Mutex::default(),
         ready: Condvar::new(),
         cells: Mutex::default(),
+        child_tokens: ChildTokens::default(),
     });
+    // `--children claude` (the default when `claude` is installed): each `rlm.spawn` child is a Claude Code process
+    // attached to its own `ultron mcp --child` server.
+    let claude = resolve_claude_binary(&*var).filter(|_| resolved.children == "claude");
     let starter = server.clone();
     std::thread::spawn(move || {
-        let outcome = open_runtime(
-            &starter.args,
-            &starter.env,
-            starter.claude_session_id.as_deref(),
-            &starter.resolved,
-        );
+        let subagents = claude.map(|claude| claude_subagents(&starter, claude));
+        let outcome = subagents.transpose().and_then(|subagents| {
+            open_runtime(
+                &starter.args,
+                &starter.env,
+                starter.claude_session_id.as_deref(),
+                &starter.resolved,
+                subagents,
+            )
+        });
         let mut startup = starter.startup.lock().unwrap_or_else(PoisonError::into_inner);
         match outcome {
             Ok(opened) => startup.opened = Some(Arc::new(opened)),
@@ -832,4 +865,88 @@ pub fn run(
         opened.close();
     }
     Ok(0)
+}
+
+/// Child tokens of running Claude Code subagents, by token: their lane.
+type ChildTokens = Arc<Mutex<std::collections::HashMap<String, String>>>;
+
+/// The subagent host of a `--children claude` server: each child runs as `claude -p` on its own `ultron mcp
+/// --child` server (child.ts `runClaudeChild`), its verdict relayed back over this server's control socket
+/// (`child.finish`, checked against its one-time token).
+fn claude_subagents(server: &Arc<Server>, claude: String) -> Result<SubagentHost, String> {
+    let var = server.env.var.clone();
+    let self_cmd = crate::self_cmd::self_command(&*var)?;
+    let settings = crate::settings::ClaudeCodeSettings::load(&server.env.cwd, &server.env.agent_dir());
+    let skip = crate::child::child_skip_permissions(&*var, settings.skip_permissions);
+    let flags = crate::guide::ResourceFlags {
+        no_context_files: server.args.no_context_files,
+        no_skills: server.args.no_skills,
+    };
+    let ctx = crate::Ctx {
+        env: server.env.clone(),
+    };
+    let bundled = ctx.bundled_skills();
+    let agent_dir = server.env.agent_dir();
+    // Subagents get the context files and skills native Ultron loads here, read once.
+    let resources = crate::guide::load_prompt_resources(&ctx.resource_dirs(&agent_dir, bundled.as_deref()), flags);
+    let server = server.clone();
+    Ok(SubagentHost {
+        store: Box::new(delegation::task_store::MemoryStore::default()),
+        runner: Box::new(move |_stack| {
+            Arc::new(move |run: delegation::host::ChildRun| {
+                let cwd = run.cwd.clone().unwrap_or_else(|| server.env.cwd.display().to_string());
+                let system_prompt = claude_system_prompt(
+                    Audience::ClaudeChild,
+                    &GuideOptions {
+                        cwd: Some(cwd.clone()),
+                        platform: Some(crate::guide::platform().into()),
+                        date: Some(crate::guide::utc_date()),
+                        allowance: Some(u64::from(run.allowance)),
+                        resources: Some(&resources),
+                        bundled_skills: bundled.as_deref(),
+                    },
+                    server.hints,
+                );
+                let token = crate::random_hex(24);
+                server
+                    .child_tokens
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .insert(token.clone(), run.lane_name.clone());
+                let options = crate::child::ChildOptions {
+                    claude: &claude,
+                    server: crate::child::ChildServer {
+                        self_cmd: &self_cmd,
+                        parent_socket: &server.record.socket,
+                        parent_name: &server.name,
+                        frame_model: Some(&server.resolved.frame_model),
+                        no_context_files: flags.no_context_files,
+                        no_skills: flags.no_skills,
+                    },
+                    cwd: &cwd,
+                    model: &server.resolved.child_model,
+                    system_prompt,
+                    skip_permissions: skip.clone(),
+                    var: &*var,
+                };
+                let child = crate::child::ChildRun {
+                    lane_name: run.lane_name.clone(),
+                    prompt: run.prompt.clone(),
+                    level: u64::from(run.level),
+                    allowance: u64::from(run.allowance),
+                    model: run.model.clone(),
+                    cwd: run.cwd.clone(),
+                    env: run.env.clone(),
+                };
+                let result = crate::child::run_claude_child(&options, &child, &token, &run.signal, &|_| {});
+                server
+                    .child_tokens
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .remove(&token);
+                result.map(|done| done.text)
+            }) as delegation::host::ChildRunner
+        }),
+        agents: None,
+    })
 }

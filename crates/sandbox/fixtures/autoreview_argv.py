@@ -8,6 +8,7 @@ Usage: /usr/bin/python3 crates/sandbox/fixtures/autoreview_argv.py
 """
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -23,6 +24,11 @@ os.readlink = lambda p: LAYOUT[p][len("link:"):]
 os.getuid = lambda: 1234
 os.getgid = lambda: 5678
 HOME = "/home/tester"
+# Whether setpriv is on PATH (Docker's client is tied to its parent with it): scripted per case.
+SETPRIV = {"present": True}
+real_which = shutil.which
+shutil.which = lambda name, *a, **k: ("/usr/bin/setpriv" if SETPRIV["present"] else None) if name == "setpriv" \
+    else real_which(name, *a, **k)
 
 ENVS = {
     "sandbox": at.sandbox_env(),
@@ -41,13 +47,15 @@ WRAPS = [
 out = {"layout": LAYOUT, "uid": 1234, "gid": 5678, "home": HOME,
        "envs": {name: [list(item) for item in env.items()] for name, env in ENVS.items()}, "wraps": [], "describe": {},
        "detect": []}
-for mechanism in ("bwrap", "unshare", "docker"):
+for mechanism, setpriv in (("bwrap", True), ("unshare", True), ("docker", True), ("docker", False)):
+    SETPRIV["present"] = setpriv
     sandbox = at.Sandbox(mechanism, "img:1" if mechanism == "docker" else None, home=HOME)
     out["describe"][mechanism] = sandbox.describe()
     for case in WRAPS:
         binds = [tuple(b) if isinstance(b, list) else b for b in (case["ro_binds"] or [])] if case["ro_binds"] is not None else None
         argv = sandbox.wrap(list(case["command"]), case["workdir"], ENVS[case["env"]], binds, case["cwd"])
-        out["wraps"].append({"mechanism": mechanism, "image": sandbox.image, **case, "argv": argv})
+        out["wraps"].append({"mechanism": mechanism, "image": sandbox.image, "setpriv": setpriv, **case, "argv": argv})
+SETPRIV["present"] = True
 
 # detect_sandbox: which binaries exist, which probes succeed, whether an image is configured, `only`.
 DETECT = [
@@ -63,8 +71,10 @@ for case in DETECT:
     probes = []
 
     def executor(argv, cwd, env, timeout, case=case, probes=probes):
-        probes.append(argv[0])
-        return (0, "") if argv[0] in case["working"] else (1, "nope")
+        # The launcher is the first mechanism named (Docker's argv starts with its setpriv/bash wrapper).
+        launcher = next(part for part in argv if part in ("bwrap", "unshare", "docker"))
+        probes.append(launcher)
+        return (0, "") if launcher in case["working"] else (1, "nope")
 
     found = at.detect_sandbox(image=case["image"], which=lambda name, case=case: f"/usr/bin/{name}" if name in case["present"] else None,
                               executor=executor, only=case["only"])

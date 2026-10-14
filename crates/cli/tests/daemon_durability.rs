@@ -451,6 +451,19 @@ fn cli_durable_two_servers_racing_for_one_session_one_is_refused() {
     let outcomes: Vec<Result<(), CallError>> = racers.into_iter().map(|t| t.join().unwrap()).collect();
     let refused: Vec<&CallError> = outcomes.iter().filter_map(|o| o.as_ref().err()).collect();
     assert_eq!(refused.len(), 1, "exactly one attach is refused: {outcomes:?}");
+    // The refused worker reports its refusal and then exits: the refusal can reach this client first, so the
+    // loser may still be alive here (on a loaded machine, for a while). Wait for it to be gone before naming the
+    // owner, or `worker_pid` may pick the loser.
+    let workers = || -> Vec<u32> {
+        processes_mentioning(&home.root)
+            .into_iter()
+            .filter(|pid| {
+                std::fs::read(format!("/proc/{pid}/cmdline"))
+                    .is_ok_and(|c| String::from_utf8_lossy(&c).contains("session-worker"))
+            })
+            .collect()
+    };
+    wait_until(HANG_GUARD, "the refused worker exits", || workers().len() == 1);
     let owner = worker_pid(&home, &id).expect("the winner's worker runs");
     match refused[0] {
         CallError::Server(error) => {
@@ -464,14 +477,7 @@ fn cli_durable_two_servers_racing_for_one_session_one_is_refused() {
         }
         other => panic!("refused with {other:?}"),
     }
-    let workers: Vec<u32> = processes_mentioning(&home.root)
-        .into_iter()
-        .filter(|pid| {
-            std::fs::read(format!("/proc/{pid}/cmdline"))
-                .is_ok_and(|c| String::from_utf8_lossy(&c).contains("session-worker"))
-        })
-        .collect();
-    assert_eq!(workers, [owner], "one worker owns the session");
+    assert_eq!(workers(), [owner], "one worker owns the session");
     ca.disconnect();
     cb.disconnect();
     drop(a);
@@ -864,6 +870,108 @@ fn cli_durable_kill_during_a_cell_reports_it_interrupted_with_its_partial_output
     assert_no_processes(&home.root, HANG_GUARD);
 }
 
+/// Kill point: during a cell that printed (Python `print`, no shell). runtime.py streams what a running cell prints
+/// to the host, so the reopened runtime's `interrupted` result carries the printed line, not only shell output.
+#[test]
+fn cli_durable_kill_during_a_cell_keeps_its_printed_output() {
+    let code = "open('runs', 'a').write('x')\nprint('printed-' + str(40 + 2))\nimport sys\nprint('err-' + str(6 * 7), file=sys.stderr)\nimport time\ntime.sleep(3600)";
+    let provider = provider(vec![
+        (tool_reply("toolu_print", code), Duration::ZERO),
+        (text_reply("Saw the printed output."), Duration::ZERO),
+    ]);
+    let home = Home::new(provider.port);
+    let run = prompted(&home, &[], "start the printing cell");
+    provider.wait_for(1, "the turn reached the provider");
+    wait_until(HANG_GUARD, "the cell's printed output is committed", || {
+        let text = std::fs::read_dir(home.sessions())
+            .ok()
+            .into_iter()
+            .flatten()
+            .flatten()
+            .flat_map(|d| std::fs::read_dir(d.path()).into_iter().flatten().flatten())
+            .filter_map(|f| std::fs::read_to_string(f.path()).ok())
+            .find(|t| t.lines().next().is_some_and(|l| l.contains(&run.id)))
+            .unwrap_or_default();
+        text.contains("printed-42") && text.contains("err-42")
+    });
+    let worker = worker_pid(&home, &run.id).expect("the worker runs");
+    signal(worker, rustix::process::Signal::KILL);
+    provider.wait_for(2, "the turn continued after the restart");
+    wait_idle(&run.connection, &run.id);
+    let requests = provider.requests.lock().unwrap().clone();
+    let result = tool_result_text(&requests[1]);
+    assert!(result.starts_with("printed-42\nerr-42"), "{result}");
+    assert!(
+        result.contains("[error] Tool rlm was interrupted and may have partially run"),
+        "{result}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(home.cwd().join("runs")).unwrap(),
+        "x",
+        "the cell ran once"
+    );
+    let lines = transcript(&session_file(&home, &run.id));
+    assert_eq!(lines.len(), 4, "{lines:?}");
+    assert!(lines[2].starts_with("toolResult: printed-42"), "{lines:?}");
+    assert_eq!(lines[3], "assistant: Saw the printed output.");
+    run.connection.disconnect();
+    drop(run.server);
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
+/// A signalled worker (SIGTERM) leaves its session to a successor: `DurableWork::hand_over` keeps its running shell
+/// job running and journaled, so the restarted worker follows it to its real end (not `cancelled` by the old
+/// worker's shutdown). Shell sandboxing is off: a sandboxed job dies with the thread that launched it.
+#[test]
+fn cli_durable_a_signalled_worker_hands_its_running_shell_job_to_its_successor() {
+    let start = "job = await bash('while [ ! -e release ]; do sleep 0.05; done; echo job-done-$((40+2))', yield_after=0)\nprint('JOB ' + job.status)";
+    let check = "j = (await rlm.jobs())[0]\nawait j.result()\nprint('STATUS ' + j.status + ' ' + j.text.strip())";
+    let provider = provider(vec![
+        (tool_reply("toolu_start", start), Duration::ZERO),
+        (text_reply("Started."), Duration::ZERO),
+        (tool_reply("toolu_check", check), Duration::ZERO),
+        (text_reply("Checked."), Duration::ZERO),
+    ]);
+    let home = Home::new(provider.port);
+    std::fs::write(
+        home.agent().join("settings.json"),
+        r#"{"sessionNaming":{"enabled":false},"sandbox":{"mode":"off"}}"#,
+    )
+    .unwrap();
+    // Completion events would start a run of their own when the job ends; this test reads the job itself.
+    let run = prompted(&home, &[("ULTRON_ASYNC_EVENTS", "off")], "start the job");
+    provider.wait_for(2, "the job was started");
+    wait_idle(&run.connection, &run.id);
+    assert!(tool_result_text(&provider.requests.lock().unwrap()[1]).contains("JOB running"));
+    let worker = worker_pid(&home, &run.id).expect("the worker runs");
+    signal(worker, rustix::process::Signal::TERM);
+    wait_until(HANG_GUARD, "a successor worker runs", || {
+        worker_pid(&home, &run.id).is_some_and(|pid| pid != worker)
+    });
+    wait_idle(&run.connection, &run.id);
+    // The job still runs: it ends only now, followed by the successor.
+    std::fs::write(home.cwd().join("release"), "").unwrap();
+    let session = run.connection.session_target().unwrap();
+    let checking = run
+        .connection
+        .start(
+            session,
+            "pi.agent-controller",
+            "prompt",
+            json!([{"message": "check the job", "images": null}]),
+        )
+        .unwrap();
+    let _ = run.connection.wait(&checking);
+    provider.wait_for(4, "the job was checked");
+    wait_idle(&run.connection, &run.id);
+    let result = tool_result_text(&provider.requests.lock().unwrap()[3]);
+    // (The restarted kernel's continuity note follows the cell's output.)
+    assert!(result.starts_with("STATUS completed job-done-42\n"), "{result}");
+    run.connection.disconnect();
+    drop(run.server);
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
 /// Kill point: after the answer is committed, before anything acknowledged it (the transcript, the client). The
 /// reopened session projects the committed answer once and asks the model nothing more.
 #[test]
@@ -924,6 +1032,142 @@ fn cli_durable_kill_after_a_cell_result_commits_keeps_it_once() {
         ]
     );
     assert_eq!(results(&file), [("completed".to_string(), None)]);
+    run.connection.disconnect();
+    drop(run.server);
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
+/// An Anthropic SSE answer that reports `input` prompt tokens (claude-sonnet-4-5's window is 1,000,000).
+fn text_reply_using(text: &str, input: u64) -> String {
+    common::sse(&[
+        json!({"type": "message_start", "message": {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-sonnet-4-5", "content": [], "stop_reason": null, "usage": {"input_tokens": input, "output_tokens": 1}}}),
+        json!({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+        json!({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": text}}),
+        json!({"type": "content_block_stop", "index": 0}),
+        json!({"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}}),
+        json!({"type": "message_stop"}),
+    ])
+}
+
+/// Anthropic's stream error for a request over the window.
+fn overflow_reply() -> String {
+    common::sse(&[json!({"type": "error", "error": {"type": "invalid_request_error",
+        "message": "prompt is too long: 1213462 tokens > 1000000 maximum"}})])
+}
+
+/// The summaries of the session's compaction entries, in commit order.
+fn compactions(path: &Path) -> Vec<String> {
+    writes(path)
+        .iter()
+        .filter(|w| w["kind"] == "entry" && w["type"] == "compaction")
+        .map(|e| e["summary"].as_str().unwrap_or_default().to_string())
+        .collect()
+}
+
+/// Compaction preparations (`pi.op.preparation`) written and not removed again.
+fn open_preparations(path: &Path) -> usize {
+    let ops: Vec<Value> = writes(path)
+        .iter()
+        .filter(|w| w["namespace"] == "pi.op.preparation")
+        .map(|w| w["op"].clone())
+        .collect();
+    ops.iter().filter(|op| *op == "set").count() - ops.iter().filter(|op| *op == "delete").count()
+}
+
+/// Whether a request is a compaction's summary request.
+fn summary_request(body: &Value) -> bool {
+    body["system"].to_string().contains("context summarization assistant")
+}
+
+/// Kill point: during a threshold auto-compaction (its summary request in flight). The run's operation was inside
+/// the compaction; the restarted worker reopens it at the checkpoint it started from and compacts again there: one
+/// compaction entry (the second summary), the answer kept once and never asked for again, the run completed and no
+/// preparation left behind.
+#[test]
+fn cli_durable_kill_during_auto_compaction_compacts_again_after_the_restart() {
+    let provider = provider(vec![
+        (text_reply_using("Over the threshold.", 990_000), Duration::ZERO),
+        (text_reply("## Goal\nLost summary."), STALL),
+        (text_reply("## Goal\nSummary after the restart."), Duration::ZERO),
+    ]);
+    let home = Home::new(provider.port);
+    let run = prompted(&home, &[], "first");
+    provider.wait_for(2, "the compaction's summary request");
+    assert!(summary_request(&provider.requests.lock().unwrap()[1]));
+    let file = session_file(&home, &run.id);
+    assert!(compactions(&file).is_empty(), "killed before the compaction committed");
+    let worker = worker_pid(&home, &run.id).expect("the worker runs");
+    signal(worker, rustix::process::Signal::KILL);
+    assert!(
+        run.connection.wait(&run.prompting).is_err(),
+        "the prompt in flight is lost"
+    );
+    provider.wait_for(3, "the restarted worker summarized again");
+    wait_idle(&run.connection, &run.id);
+    wait_until(HANG_GUARD, "the run settled", || !results(&file).is_empty());
+    assert_eq!(provider.count(), 3, "the answer is never requested again");
+    assert!(summary_request(&provider.requests.lock().unwrap()[2]));
+    assert_eq!(transcript(&file), ["user: first", "assistant: Over the threshold."]);
+    assert_eq!(compactions(&file), ["## Goal\nSummary after the restart."]);
+    assert_eq!(results(&file), [("completed".to_string(), None)]);
+    assert_eq!(open_preparations(&file), 0);
+    run.connection.disconnect();
+    drop(run.server);
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
+/// Kill point: during an overflow compaction (the overflowed answer committed, its summary request in flight). The
+/// restarted worker's generation resumes the compaction before asking again: one compaction after the error, then
+/// the retried request (the summary and the prompt, not the error), answered once; the run completes.
+#[test]
+fn cli_durable_kill_during_overflow_compaction_compacts_and_retries_after_the_restart() {
+    let provider = provider(vec![
+        (overflow_reply(), Duration::ZERO),
+        (text_reply("## Goal\nLost summary."), STALL),
+        (text_reply("## Goal\nSummary after the restart."), Duration::ZERO),
+        (text_reply("Retried."), Duration::ZERO),
+    ]);
+    let home = Home::new(provider.port);
+    let run = prompted(&home, &[], "first");
+    provider.wait_for(2, "the overflow compaction's summary request");
+    assert!(summary_request(&provider.requests.lock().unwrap()[1]));
+    let worker = worker_pid(&home, &run.id).expect("the worker runs");
+    signal(worker, rustix::process::Signal::KILL);
+    assert!(
+        run.connection.wait(&run.prompting).is_err(),
+        "the prompt in flight is lost"
+    );
+    provider.wait_for(4, "the restarted worker compacted and retried");
+    wait_idle(&run.connection, &run.id);
+    let file = session_file(&home, &run.id);
+    wait_until(HANG_GUARD, "the run settled", || !results(&file).is_empty());
+    let requests = provider.requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 4);
+    assert!(summary_request(&requests[2]));
+    assert!(!summary_request(&requests[3]));
+    let retried = requests[3]["messages"].to_string();
+    assert!(retried.contains("Summary after the restart."), "{retried}");
+    assert_eq!(user_texts(&requests[3]).last().map(String::as_str), Some("first"));
+    assert!(!retried.contains("prompt is too long"), "{retried}");
+    let lines = transcript(&file);
+    assert_eq!(lines.len(), 3, "{lines:?}");
+    assert_eq!(lines[0], "user: first");
+    assert!(
+        lines[1].starts_with("assistant:  [") && lines[1].contains("prompt is too long"),
+        "{lines:?}"
+    );
+    assert_eq!(lines[2], "assistant: Retried.");
+    assert_eq!(compactions(&file), ["## Goal\nSummary after the restart."]);
+    // It keeps what the compaction the overflow started would have: the branch before the overflowed answer.
+    let kept: Vec<Value> = writes(&file)
+        .iter()
+        .filter(|w| w["kind"] == "entry" && w["type"] == "compaction")
+        .flat_map(|e| e["retainedTail"].as_array().cloned().unwrap_or_default())
+        .collect();
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(kept[0]["role"], "user");
+    assert_eq!(results(&file), [("completed".to_string(), None)]);
+    assert_eq!(open_preparations(&file), 0);
     run.connection.disconnect();
     drop(run.server);
     assert_no_processes(&home.root, HANG_GUARD);

@@ -1,0 +1,4004 @@
+{
+ "git_env": {
+  "GIT_AUTHOR_NAME": "Ultron Fixture",
+  "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+  "GIT_COMMITTER_NAME": "Ultron Fixture",
+  "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+  "GIT_AUTHOR_DATE": "2026-02-01T00:00:00+0000",
+  "GIT_COMMITTER_DATE": "2026-02-01T00:00:00+0000",
+  "GIT_CONFIG_NOSYSTEM": "1",
+  "GIT_CONFIG_GLOBAL": "/dev/null",
+  "LC_ALL": "C",
+  "TZ": "UTC"
+ },
+ "steps": [
+  [
+   "git",
+   "init",
+   "-q",
+   "-b",
+   "main"
+  ],
+  [
+   "write",
+   "pytest.ini",
+   "[pytest]\n"
+  ],
+  [
+   "write",
+   "src/util.py",
+   "def clamp(value, low, high):\n    return max(low, min(value, high))\n"
+  ],
+  [
+   "write",
+   "src/app.py",
+   "from util import clamp\n\nKINDS = [\"a\", \"b\"]\n\n\ndef page(items, size):\n    return items[: clamp(size, 1, 50)]\n"
+  ],
+  [
+   "write",
+   "tests/test_app.py",
+   "from app import page\n\n\ndef test_page():\n    assert page([1, 2, 3], 2) == [1, 2]\n"
+  ],
+  [
+   "write",
+   "web/format.ts",
+   "export function fmt(value: number): string {\n  return value.toFixed(2);\n}\n"
+  ],
+  [
+   "write",
+   "web/main.ts",
+   "import { fmt } from \"./format\";\n\nexport function show(n: number): string {\n  return fmt(n);\n}\n"
+  ],
+  [
+   "write",
+   "web/format.test.ts",
+   "import { fmt } from \"./format\";\n\ntest(\"fmt\", () => {\n  expect(fmt(1)).toBe(\"1.00\");\n});\n"
+  ],
+  [
+   "write",
+   "NOTES.txt",
+   "Kinds: a, b ... cut for brevity\n"
+  ],
+  [
+   "write",
+   "README.md",
+   "# glue\n\n`page(items, size)` pages a list.\n"
+  ],
+  [
+   "git",
+   "add",
+   "-A"
+  ],
+  [
+   "git",
+   "commit",
+   "-qm",
+   "base: paging"
+  ],
+  [
+   "git",
+   "tag",
+   "base"
+  ],
+  [
+   "date",
+   "2026-02-02T00:00:00+0000"
+  ],
+  [
+   "write",
+   "src/app.py",
+   "import os\n\nfrom util import clamp\n\nKINDS = [\"a\", \"b\", \"c\"]\n\n\ndef page(items, size=None, start=0):\n    # Pages are capped at 50 items.\n    size = size or int(os.environ[\"PAGE_SIZE\"])\n    return items[start: start + clamp(size, 1, 50)]\n\n\ndef first(items):\n    return page(items, 1)\n"
+  ],
+  [
+   "write",
+   "tests/test_app.py",
+   "from app import page\n\n\ndef test_page():\n    assert page([1, 2, 3], 2) == [1, 2]\n\n\ndef test_size():\n    assert page([1, 2, 3], 2, 1) == [2, 3]\n"
+  ],
+  [
+   "write",
+   "web/format.ts",
+   "export function fmt(value: number, digits = 2): string {\n  return value.toFixed(digits);\n}\n\nexport const UNITS = [\"kb\", \"mb\", \"gb\"];\n"
+  ],
+  [
+   "write",
+   "README.md",
+   "# glue\n\n`page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n"
+  ],
+  [
+   "git",
+   "add",
+   "-A"
+  ],
+  [
+   "git",
+   "commit",
+   "-qm",
+   "Page from an offset\n\nThe size defaults to PAGE_SIZE from the environment."
+  ],
+  [
+   "git",
+   "tag",
+   "head"
+  ],
+  [
+   "write",
+   "secret.txt",
+   "hunter2\n"
+  ]
+ ],
+ "revs": {
+  "base": "5378913672a0a0e09f633ebd9a3a86af0028b59f",
+  "head": "f60b06ddb8434b18d1e7912c05458c05c7458bad"
+ },
+ "diff": "diff --git a/README.md b/README.md\nindex 7c49aa3..22e5367 100644\n--- a/README.md\n+++ b/README.md\n@@ -1,3 +1,3 @@\n # glue\n \n-`page(items, size)` pages a list.\n+`page(items, size)` pages a list; the size defaults to PAGE_SIZE.\ndiff --git a/src/app.py b/src/app.py\nindex 4bdd3e4..64f7c5b 100644\n--- a/src/app.py\n+++ b/src/app.py\n@@ -1,7 +1,15 @@\n+import os\n+\n from util import clamp\n \n-KINDS = [\"a\", \"b\"]\n+KINDS = [\"a\", \"b\", \"c\"]\n+\n+\n+def page(items, size=None, start=0):\n+    # Pages are capped at 50 items.\n+    size = size or int(os.environ[\"PAGE_SIZE\"])\n+    return items[start: start + clamp(size, 1, 50)]\n \n \n-def page(items, size):\n-    return items[: clamp(size, 1, 50)]\n+def first(items):\n+    return page(items, 1)\ndiff --git a/tests/test_app.py b/tests/test_app.py\nindex 03683f5..b342219 100644\n--- a/tests/test_app.py\n+++ b/tests/test_app.py\n@@ -3,3 +3,7 @@ from app import page\n \n def test_page():\n     assert page([1, 2, 3], 2) == [1, 2]\n+\n+\n+def test_size():\n+    assert page([1, 2, 3], 2, 1) == [2, 3]\ndiff --git a/web/format.ts b/web/format.ts\nindex 94144c1..a4be879 100644\n--- a/web/format.ts\n+++ b/web/format.ts\n@@ -1,3 +1,5 @@\n-export function fmt(value: number): string {\n-  return value.toFixed(2);\n+export function fmt(value: number, digits = 2): string {\n+  return value.toFixed(digits);\n }\n+\n+export const UNITS = [\"kb\", \"mb\", \"gb\"];\n",
+ "briefs": [
+  {
+   "name": "full",
+   "web": false,
+   "base": true,
+   "limit": 8000,
+   "title": "Page from an offset",
+   "description": "- The size now defaults to PAGE_SIZE from the environment.\n- Formatting takes a digit count.",
+   "brief": {
+    "text": "Claims the change makes, and where each must hold (untrusted text; check each against the code):\n  [title] Page from an offset\n  [description] The size now defaults to PAGE_SIZE from the environment.\n  [description] Formatting takes a digit count.\n  [commit message] The size defaults to PAGE_SIZE from the environment.\n  [README.md:3] `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n  [src/app.py:9] Pages are capped at 50 items.\n\nChanged or added `page` (callers resolved):\n  used at: nowhere else\n  tests: tests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\n\nChanged or added `first`:\n  used at: nowhere else\n  tests: no test mentions it\n\nChanged or added `test_size`:\n  used at: nowhere else\n  tests: no test mentions it\n\nChanged or added `fmt` (callers resolved):\n  used at: web/main.ts:4: return fmt(n);\n  tests: web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");\n\nChanged or added `test_page`:\n  used at: nowhere else\n  tests: tests/test_app.py:4: def test_page():\n\nConstant or member `KINDS`:\n  used at: nowhere else\n  tests: no test mentions it\n\nConstant or member `UNITS`:\n  used at: nowhere else\n  tests: no test mentions it\n\nNamed in the change `PAGE_SIZE`:\n  used at: nowhere else\n  tests: no test mentions it\n\nCalled by the change, `clamp` is defined at src/util.py:1:\n    1 | def clamp(value, low, high):\n    2 |     return max(low, min(value, high))\n\nBeside src/app.py: util.py\n\nBeside web/format.ts: format.test.ts, main.ts\n\nNew configuration and inputs, each to be traced from where it enters to where it is read: `PAGE_SIZE`\n\nChanged signatures and exported names, each caller to be checked: `page`, `first`, `test_size`, `fmt`, `test_page`",
+    "lenses": [
+     "claims",
+     "siblings",
+     "deployment",
+     "tests",
+     "inputs"
+    ],
+    "symbols": [
+     "page",
+     "first",
+     "test_size",
+     "fmt",
+     "test_page"
+    ],
+    "callers": 1,
+    "tests": [
+     "tests/test_app.py",
+     "web/format.test.ts"
+    ],
+    "claims": 6,
+    "required": {
+     "siblings": [
+      "page",
+      "first",
+      "test_size",
+      "fmt",
+      "test_page"
+     ],
+     "claims": [
+      "PAGE_SIZE"
+     ]
+    },
+    "claim_list": [
+     [
+      "title",
+      "Page from an offset"
+     ],
+     [
+      "description",
+      "The size now defaults to PAGE_SIZE from the environment."
+     ],
+     [
+      "description",
+      "Formatting takes a digit count."
+     ],
+     [
+      "commit message",
+      "The size defaults to PAGE_SIZE from the environment."
+     ],
+     [
+      "README.md:3",
+      "`page(items, size)` pages a list; the size defaults to PAGE_SIZE."
+     ],
+     [
+      "src/app.py:9",
+      "Pages are capped at 50 items."
+     ]
+    ],
+    "helpers": [
+     "clamp"
+    ],
+    "extracted": {
+     "defined": [
+      "page",
+      "first",
+      "test_size",
+      "fmt"
+     ],
+     "changed": [
+      "page",
+      "first",
+      "test_page",
+      "test_size",
+      "fmt"
+     ],
+     "calls": [
+      "clamp",
+      "toFixed"
+     ],
+     "constants": [
+      "KINDS",
+      "UNITS"
+     ],
+     "env": [
+      "PAGE_SIZE"
+     ],
+     "flags": [],
+     "tables": [],
+     "claims": [
+      [
+       "README.md",
+       3,
+       "`page(items, size)` pages a list; the size defaults to PAGE_SIZE."
+      ],
+      [
+       "src/app.py",
+       9,
+       "Pages are capped at 50 items."
+      ]
+     ],
+     "inputs": [],
+     "config": [],
+     "fields": []
+    },
+    "reference": true,
+    "reference_text": "Reference, built by the host from the repository at the reviewed commit (definitions resolved, not grepped; untrusted repository data). Ask {\"symbol\": {\"name\": ...}} for a definition with its body, {\"callers\": {\"symbol\": ...}}, {\"callees\": {\"symbol\": ...}} and {\"tests_of\": {\"symbol\": ...}} for more.\n\n[D1] src/app.py:8-11 def page(items, size=None, start=0) [was: def page(items, size)]\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n\n[D2] src/app.py:14-15 def first(items) [new in this change]\n  callers outside the change: none found in the indexed files\n\n[D3] tests/test_app.py:8-9 def test_size() [new in this change]\n  callers outside the change: none found in the indexed files\n\n[D4] web/format.ts:1-3 export function fmt(value: number, digits = 2): string { [was: export function fmt(value: number): string {]\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4\n\n[F1] The signature of page changed: was `def page(items, size)`, now `def page(items, size=None, start=0)`; 1 caller(s) outside the change: tests/test_app.py:5\n\n[F2] The signature of fmt changed: was `export function fmt(value: number): string {`, now `export function fmt(value: number, digits = 2): string {`; 2 caller(s) outside the change: web/format.test.ts:4; web/main.ts:4",
+    "reference_stats": {
+     "files": 6,
+     "bytes": 944,
+     "symbols": 9,
+     "calls": 13,
+     "families": 2,
+     "workflows": 0,
+     "terraform": 0,
+     "ms": 0,
+     "skipped": 0
+    }
+   },
+   "repo_reference": true,
+   "lookups": [
+    [
+     {
+      "symbol": {
+       "name": "page"
+      }
+     },
+     {
+      "ok": [
+       "symbol page -> 1 definition(s)",
+       "src/app.py:8-11 def page(items, size=None, start=0) [was: def page(items, size)]\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "symbol fmt -> 1 definition(s)",
+       "web/format.ts:1-3 export function fmt(value: number, digits = 2): string { [was: export function fmt(value: number): string {]\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4\n    1 | export function fmt(value: number, digits = 2): string {\n    2 | return value.toFixed(digits);\n    3 | }"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "callers clamp -> 1 call sites",
+       "src/app.py:11 in page (resolved): return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "callers fmt -> 2 call sites",
+       "web/format.test.ts:4 (resolved): expect(fmt(1)).toBe(\"1.00\");\nweb/main.ts:4 in show (resolved): return fmt(n);"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "callees of page -> 2 calls",
+       "src/app.py:10: int(...) (unresolved)\nsrc/app.py:11: clamp(...) -> src/util.py::clamp"
+      ]
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "tests_of page -> 2 test(s)",
+       "tests/test_app.py:5 test_page\ntests/test_app.py:9 test_size"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "definition clamp -> 0 matches",
+       "src/util.py:1-2 def clamp(value, low, high)\n  callers outside the change: none found in the indexed files\n    1 | def clamp(value, low, high):\n    2 | return max(low, min(value, high))"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "definition page -> 0 matches",
+       "src/app.py:8-11 def page(items, size=None, start=0) [was: def page(items, size)]\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "references clamp -> 3 matches",
+       "Call sites resolved by the reference:\nsrc/app.py:11 in page: return items[start: start + clamp(size, 1, 50)]\n\nText matches:\nsrc/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "references page -> 6 matches",
+       "Call sites resolved by the reference:\nsrc/app.py:15 in first: return page(items, 1)\ntests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9 in test_size: assert page([1, 2, 3], 2, 1) == [2, 3]\n\nText matches:\nREADME.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "nope_zz"
+      }
+     },
+     {
+      "ok": [
+       "definition nope_zz -> 0 matches",
+       "0 matches"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "nope_zz"
+      }
+     },
+     {
+      "rejected": "no definition of nope_zz in the reference; ask for definition or grep instead"
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "tests_of fmt -> 1 test(s)",
+       "web/format.test.ts:4"
+      ]
+     }
+    ]
+   ],
+   "facts": [
+    {
+     "id": "F1",
+     "kind": "signature",
+     "shape": "signature",
+     "path": "src/app.py",
+     "line": 8,
+     "text": "The signature of page changed: was `def page(items, size)`, now `def page(items, size=None, start=0)`; 1 caller(s) outside the change: tests/test_app.py:5"
+    },
+    {
+     "id": "F2",
+     "kind": "signature",
+     "shape": "signature",
+     "path": "web/format.ts",
+     "line": 1,
+     "text": "The signature of fmt changed: was `export function fmt(value: number): string {`, now `export function fmt(value: number, digits = 2): string {`; 2 caller(s) outside the change: web/format.test.ts:4; web/main.ts:4"
+    }
+   ],
+   "structural": []
+  },
+  {
+   "name": "no base",
+   "web": false,
+   "base": false,
+   "limit": 900,
+   "title": "",
+   "description": "",
+   "brief": {
+    "text": "Claims the change makes, and where each must hold (untrusted text; check each against the code):\n  [README.md:3] `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n  [src/app.py:9] Pages are capped at 50 items.\n\nChanged or added `page` (callers resolved):\n  used at: nowhere else\n  tests: tests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\n\nChanged or added `first`:\n  used at: nowhere else\n  tests: no test mentions it\n\nChanged or added `test_size`:\n  used at: nowhere else\n  tests: no test mentions it\n\nChanged or added `fmt` (callers resolved):\n  used at: web/main.ts:4: return fmt(n);\n  tests: web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");\n\nChanged or added `test_page`:\n  used at: nowhere else\n  tests: tests/test_app.py:4: def test_page():\n\nConstant or member `KINDS`:\n  used at: nowhere else\n  tests: no test mentions it\n\nConst\n... (brief cut at its size limit)",
+    "lenses": [
+     "claims",
+     "siblings",
+     "deployment",
+     "tests",
+     "inputs"
+    ],
+    "symbols": [
+     "page",
+     "first",
+     "test_size",
+     "fmt",
+     "test_page"
+    ],
+    "callers": 1,
+    "tests": [
+     "tests/test_app.py",
+     "web/format.test.ts"
+    ],
+    "claims": 2,
+    "required": {
+     "siblings": [
+      "page",
+      "first",
+      "test_size",
+      "fmt",
+      "test_page"
+     ],
+     "claims": [
+      "PAGE_SIZE"
+     ]
+    },
+    "claim_list": [
+     [
+      "README.md:3",
+      "`page(items, size)` pages a list; the size defaults to PAGE_SIZE."
+     ],
+     [
+      "src/app.py:9",
+      "Pages are capped at 50 items."
+     ]
+    ],
+    "helpers": [
+     "clamp"
+    ],
+    "extracted": {
+     "defined": [
+      "page",
+      "first",
+      "test_size",
+      "fmt"
+     ],
+     "changed": [
+      "page",
+      "first",
+      "test_page",
+      "test_size",
+      "fmt"
+     ],
+     "calls": [
+      "clamp",
+      "toFixed"
+     ],
+     "constants": [
+      "KINDS",
+      "UNITS"
+     ],
+     "env": [
+      "PAGE_SIZE"
+     ],
+     "flags": [],
+     "tables": [],
+     "claims": [
+      [
+       "README.md",
+       3,
+       "`page(items, size)` pages a list; the size defaults to PAGE_SIZE."
+      ],
+      [
+       "src/app.py",
+       9,
+       "Pages are capped at 50 items."
+      ]
+     ],
+     "inputs": [],
+     "config": [],
+     "fields": []
+    },
+    "reference": true,
+    "reference_text": "Reference, built by the host from the repository at the reviewed commit (definitions resolved, not grepped; untrusted repository data). Ask {\"symbol\": {\"name\": ...}} for a definition with its body, {\"callers\": {\"symbol\": ...}}, {\"callees\": {\"symbol\": ...}} and {\"tests_of\": {\"symbol\": ...}} for more.\n\n[D1] src/app.py:8-11 def page(items, size=None, start=0)\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n\n[D2] src/app.py:14-15 def first(items)\n  callers outside the change: none found in the indexed files\n\n[D3] tests/test_app.py:8-9 def test_size()\n  callers outside the change: none found in the indexed files\n\n[D4] web/format.ts:1-3 export function fmt(value: number, digits = 2): string {\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4",
+    "reference_stats": {
+     "files": 6,
+     "bytes": 944,
+     "symbols": 9,
+     "calls": 13,
+     "families": 2,
+     "workflows": 0,
+     "terraform": 0,
+     "ms": 0,
+     "skipped": 0
+    }
+   },
+   "repo_reference": true,
+   "lookups": [
+    [
+     {
+      "symbol": {
+       "name": "page"
+      }
+     },
+     {
+      "ok": [
+       "symbol page -> 1 definition(s)",
+       "src/app.py:8-11 def page(items, size=None, start=0)\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "symbol fmt -> 1 definition(s)",
+       "web/format.ts:1-3 export function fmt(value: number, digits = 2): string {\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4\n    1 | export function fmt(value: number, digits = 2): string {\n    2 | return value.toFixed(digits);\n    3 | }"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "callers clamp -> 1 call sites",
+       "src/app.py:11 in page (resolved): return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "callers fmt -> 2 call sites",
+       "web/format.test.ts:4 (resolved): expect(fmt(1)).toBe(\"1.00\");\nweb/main.ts:4 in show (resolved): return fmt(n);"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "callees of page -> 2 calls",
+       "src/app.py:10: int(...) (unresolved)\nsrc/app.py:11: clamp(...) -> src/util.py::clamp"
+      ]
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "tests_of page -> 2 test(s)",
+       "tests/test_app.py:5 test_page\ntests/test_app.py:9 test_size"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "definition clamp -> 0 matches",
+       "src/util.py:1-2 def clamp(value, low, high)\n  callers outside the change: none found in the indexed files\n    1 | def clamp(value, low, high):\n    2 | return max(low, min(value, high))"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "definition page -> 0 matches",
+       "src/app.py:8-11 def page(items, size=None, start=0)\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "references clamp -> 3 matches",
+       "Call sites resolved by the reference:\nsrc/app.py:11 in page: return items[start: start + clamp(size, 1, 50)]\n\nText matches:\nsrc/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "references page -> 6 matches",
+       "Call sites resolved by the reference:\nsrc/app.py:15 in first: return page(items, 1)\ntests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9 in test_size: assert page([1, 2, 3], 2, 1) == [2, 3]\n\nText matches:\nREADME.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "nope_zz"
+      }
+     },
+     {
+      "ok": [
+       "definition nope_zz -> 0 matches",
+       "0 matches"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "nope_zz"
+      }
+     },
+     {
+      "rejected": "no definition of nope_zz in the reference; ask for definition or grep instead"
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "tests_of fmt -> 1 test(s)",
+       "web/format.test.ts:4"
+      ]
+     }
+    ]
+   ],
+   "facts": [],
+   "structural": []
+  },
+  {
+   "name": "web",
+   "web": true,
+   "base": true,
+   "limit": 8000,
+   "title": "",
+   "description": "",
+   "brief": {
+    "text": "Claims the change makes, and where each must hold (untrusted text; check each against the code):\n  [commit message] Page from an offset\n  [commit message] The size defaults to PAGE_SIZE from the environment.\n\nChanged or added `fmt` (callers resolved):\n  used at: web/main.ts:4: return fmt(n);\n  tests: web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");\n\nConstant or member `UNITS`:\n  used at: nowhere else\n  tests: no test mentions it\n\nBeside web/format.ts: format.test.ts, main.ts\n\nChanged signatures and exported names, each caller to be checked: `fmt`",
+    "lenses": [
+     "claims",
+     "siblings",
+     "tests"
+    ],
+    "symbols": [
+     "fmt"
+    ],
+    "callers": 1,
+    "tests": [
+     "web/format.test.ts"
+    ],
+    "claims": 2,
+    "required": {
+     "siblings": [
+      "fmt"
+     ],
+     "claims": []
+    },
+    "claim_list": [
+     [
+      "commit message",
+      "Page from an offset"
+     ],
+     [
+      "commit message",
+      "The size defaults to PAGE_SIZE from the environment."
+     ]
+    ],
+    "helpers": [],
+    "extracted": {
+     "defined": [
+      "fmt"
+     ],
+     "changed": [
+      "fmt"
+     ],
+     "calls": [
+      "toFixed"
+     ],
+     "constants": [
+      "UNITS"
+     ],
+     "env": [],
+     "flags": [],
+     "tables": [],
+     "claims": [],
+     "inputs": [],
+     "config": [],
+     "fields": []
+    },
+    "reference": true,
+    "reference_text": "Reference, built by the host from the repository at the reviewed commit (definitions resolved, not grepped; untrusted repository data). Ask {\"symbol\": {\"name\": ...}} for a definition with its body, {\"callers\": {\"symbol\": ...}}, {\"callees\": {\"symbol\": ...}} and {\"tests_of\": {\"symbol\": ...}} for more.\n\n[D1] web/format.ts:1-3 export function fmt(value: number, digits = 2): string { [was: export function fmt(value: number): string {]\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4\n\n[F1] The signature of fmt changed: was `export function fmt(value: number): string {`, now `export function fmt(value: number, digits = 2): string {`; 2 caller(s) outside the change: web/format.test.ts:4; web/main.ts:4",
+    "reference_stats": {
+     "files": 3,
+     "bytes": 312,
+     "symbols": 3,
+     "calls": 6,
+     "families": 1,
+     "workflows": 0,
+     "terraform": 0,
+     "ms": 0,
+     "skipped": 0
+    }
+   },
+   "repo_reference": true,
+   "lookups": [
+    [
+     {
+      "symbol": {
+       "name": "page"
+      }
+     },
+     {
+      "ok": [
+       "definition page -> 1 matches",
+       "src/app.py:\n    8 | def page(items, size=None, start=0):\n    9 |     # Pages are capped at 50 items.\n   10 |     size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 |     return items[start: start + clamp(size, 1, 50)]\n   12 | \n   13 | \n   14 | def first(items):\n   15 |     return page(items, 1)"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "symbol fmt -> 1 definition(s)",
+       "web/format.ts:1-3 export function fmt(value: number, digits = 2): string { [was: export function fmt(value: number): string {]\n  callers outside the change (2): web/format.test.ts:4: expect(fmt(1)).toBe(\"1.00\");; web/main.ts:4 in show: return fmt(n);\n  tests calling it: web/format.test.ts:4\n    1 | export function fmt(value: number, digits = 2): string {\n    2 | return value.toFixed(digits);\n    3 | }"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "references clamp -> 3 matches",
+       "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+      ]
+     }
+    ],
+    [
+     {
+      "callers": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "callers fmt -> 2 call sites",
+       "web/format.test.ts:4 (resolved): expect(fmt(1)).toBe(\"1.00\");\nweb/main.ts:4 in show (resolved): return fmt(n);"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "page"
+      }
+     },
+     {
+      "rejected": "no definition of page in the reference; ask for definition or grep instead"
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "references page -> 6 matches",
+       "README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "definition clamp -> 1 matches",
+       "src/util.py:\n    1 | def clamp(value, low, high):\n    2 |     return max(low, min(value, high))"
+      ]
+     }
+    ],
+    [
+     {
+      "definition": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "definition page -> 1 matches",
+       "src/app.py:\n    8 | def page(items, size=None, start=0):\n    9 |     # Pages are capped at 50 items.\n   10 |     size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 |     return items[start: start + clamp(size, 1, 50)]\n   12 | \n   13 | \n   14 | def first(items):\n   15 |     return page(items, 1)"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "ok": [
+       "references clamp -> 3 matches",
+       "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+      ]
+     }
+    ],
+    [
+     {
+      "references": {
+       "symbol": "page"
+      }
+     },
+     {
+      "ok": [
+       "references page -> 6 matches",
+       "README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]"
+      ]
+     }
+    ],
+    [
+     {
+      "symbol": {
+       "name": "nope_zz"
+      }
+     },
+     {
+      "ok": [
+       "definition nope_zz -> 0 matches",
+       "0 matches"
+      ]
+     }
+    ],
+    [
+     {
+      "callees": {
+       "symbol": "nope_zz"
+      }
+     },
+     {
+      "rejected": "no definition of nope_zz in the reference; ask for definition or grep instead"
+     }
+    ],
+    [
+     {
+      "tests_of": {
+       "symbol": "fmt"
+      }
+     },
+     {
+      "ok": [
+       "tests_of fmt -> 1 test(s)",
+       "web/format.test.ts:4"
+      ]
+     }
+    ]
+   ],
+   "facts": [
+    {
+     "id": "F1",
+     "kind": "signature",
+     "shape": "signature",
+     "path": "web/format.ts",
+     "line": 1,
+     "text": "The signature of fmt changed: was `export function fmt(value: number): string {`, now `export function fmt(value: number, digits = 2): string {`; 2 caller(s) outside the change: web/format.test.ts:4; web/main.ts:4"
+    }
+   ],
+   "structural": []
+  }
+ ],
+ "starts": [
+  {
+   "name": "no tests",
+   "tests": null,
+   "web": false,
+   "started": {
+    "mechanism": null,
+    "note": null,
+    "observed": [],
+    "shown": [],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": null
+  },
+  {
+   "name": "no sandbox",
+   "tests": {
+    "sandbox": null
+   },
+   "web": false,
+   "started": {
+    "mechanism": null,
+    "note": "tests not run: no sandbox available",
+    "observed": [],
+    "shown": [],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": null
+  },
+  {
+   "name": "nothing detected",
+   "tests": {
+    "detect": "none"
+   },
+   "web": false,
+   "started": {
+    "mechanism": null,
+    "note": "tests not run: no sandbox available",
+    "observed": [],
+    "shown": [],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": null
+  },
+  {
+   "name": "detected",
+   "tests": {
+    "detect": "bwrap",
+    "executor": "scripted",
+    "runs": 4,
+    "base": true
+   },
+   "web": false,
+   "started": {
+    "mechanism": "bwrap",
+    "note": null,
+    "observed": [
+     {
+      "file": "tests/test_app.py",
+      "line": 8,
+      "level": "high",
+      "severity": "major",
+      "finder_level": "high",
+      "category": "correctness",
+      "claim": "tests/test_app.py::test_size fails at this commit and passed at the base commit.",
+      "why": "The host ran the test at both commits in a sandbox. Failure: AssertionError: offset",
+      "scenario": "Running tests/test_app.py::test_size at the reviewed commit fails; at the base commit it passes.",
+      "suggested_fix": "",
+      "confidence": 0.95,
+      "reviewers": [
+       "deep:test-run"
+      ],
+      "source": "deep:test-run",
+      "citations": [],
+      "beyond_diff": true,
+      "host_confirmed": true,
+      "test_run": 1,
+      "evidence": "`python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` failed at the reviewed commit (run 1) and passed at the base commit (run 2): AssertionError: offset",
+      "how_verified": "the host ran it in a sandbox at the reviewed commit (failed, run 1) and at the base commit (passed, run 2)"
+     }
+    ],
+    "shown": [
+     "run 1 (automatic, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed",
+     "run 2 (base, at the base commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> passed (2 passed, 0 failed)"
+    ],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [
+     {
+      "n": 1,
+      "kind": "automatic",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "failed",
+        "detail": "AssertionError: offset"
+       }
+      ],
+      "passed": 1,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+     },
+     {
+      "n": 2,
+      "kind": "base",
+      "rev": "base",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "passed",
+      "exit": 0,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "passed"
+       }
+      ],
+      "passed": 2,
+      "failed": 0,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nPASSED tests/test_app.py::test_size\n2 passed\n"
+     }
+    ],
+    "limit": 4,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest in .: available (the automatic run failed)"
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "name": "regression",
+   "tests": {
+    "executor": "scripted",
+    "runs": 4,
+    "base": true
+   },
+   "web": false,
+   "started": {
+    "mechanism": "bwrap",
+    "note": null,
+    "observed": [
+     {
+      "file": "tests/test_app.py",
+      "line": 8,
+      "level": "high",
+      "severity": "major",
+      "finder_level": "high",
+      "category": "correctness",
+      "claim": "tests/test_app.py::test_size fails at this commit and passed at the base commit.",
+      "why": "The host ran the test at both commits in a sandbox. Failure: AssertionError: offset",
+      "scenario": "Running tests/test_app.py::test_size at the reviewed commit fails; at the base commit it passes.",
+      "suggested_fix": "",
+      "confidence": 0.95,
+      "reviewers": [
+       "deep:test-run"
+      ],
+      "source": "deep:test-run",
+      "citations": [],
+      "beyond_diff": true,
+      "host_confirmed": true,
+      "test_run": 1,
+      "evidence": "`python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` failed at the reviewed commit (run 1) and passed at the base commit (run 2): AssertionError: offset",
+      "how_verified": "the host ran it in a sandbox at the reviewed commit (failed, run 1) and at the base commit (passed, run 2)"
+     }
+    ],
+    "shown": [
+     "run 1 (automatic, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed",
+     "run 2 (base, at the base commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> passed (2 passed, 0 failed)"
+    ],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [
+     {
+      "n": 1,
+      "kind": "automatic",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "failed",
+        "detail": "AssertionError: offset"
+       }
+      ],
+      "passed": 1,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+     },
+     {
+      "n": 2,
+      "kind": "base",
+      "rev": "base",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "passed",
+      "exit": 0,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "passed"
+       }
+      ],
+      "passed": 2,
+      "failed": 0,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nPASSED tests/test_app.py::test_size\n2 passed\n"
+     }
+    ],
+    "limit": 4,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest in .: available (the automatic run failed)"
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "name": "one run left",
+   "tests": {
+    "executor": "scripted",
+    "runs": 1,
+    "base": true
+   },
+   "web": false,
+   "started": {
+    "mechanism": "bwrap",
+    "note": null,
+    "observed": [],
+    "shown": [
+     "run 1 (automatic, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed"
+    ],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [
+     {
+      "n": 1,
+      "kind": "automatic",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "failed",
+        "detail": "AssertionError: offset"
+       }
+      ],
+      "passed": 1,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+     }
+    ],
+    "limit": 1,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest in .: available (the automatic run failed)"
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "name": "no runs",
+   "tests": {
+    "executor": "scripted",
+    "runs": 0,
+    "base": true
+   },
+   "web": false,
+   "started": {
+    "mechanism": "bwrap",
+    "note": null,
+    "observed": [],
+    "shown": [],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [],
+    "limit": 0,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest (the repository's runner, pytest configuration): not tried yet"
+     ],
+     []
+    ]
+   }
+  },
+  {
+   "name": "unavailable",
+   "tests": {
+    "executor": "unavailable",
+    "runs": 4,
+    "base": true
+   },
+   "web": false,
+   "started": {
+    "mechanism": "bwrap",
+    "note": "tests could not run: missing dependencies (the sandbox has no network and installs nothing)",
+    "observed": [],
+    "shown": [
+     "run 1 (automatic, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> unavailable\n  the tests could not run (missing dependencies or nothing collected; the sandbox has no network and nothing is installed): this says nothing about the code\n  output (end):\n    ModuleNotFoundError: No module named 'app'"
+    ],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [
+     {
+      "n": 1,
+      "kind": "automatic",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "unavailable",
+      "exit": 4,
+      "tests": [],
+      "passed": 0,
+      "failed": 0,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "ModuleNotFoundError: No module named 'app'\n"
+     }
+    ],
+    "limit": 4,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest in .: unavailable (missing dependencies; run_tests and mutation_check on its files will not run: read the tests and ask instead)"
+     ],
+     [
+      [
+       "pytest",
+       "."
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "name": "no runner",
+   "tests": {
+    "executor": "scripted",
+    "runs": 4,
+    "base": true
+   },
+   "web": true,
+   "started": {
+    "mechanism": "bwrap",
+    "note": "tests not run: no test runner was recognized for web/format.test.ts",
+    "observed": [],
+    "shown": [],
+    "env": "none",
+    "toolchain": []
+   },
+   "session": {
+    "records": [],
+    "limit": 4,
+    "env": "none",
+    "runner": [
+     "pytest",
+     "pytest configuration"
+    ],
+    "availability": [
+     [
+      "pytest (the repository's runner, pytest configuration): not tried yet"
+     ],
+     []
+    ]
+   }
+  }
+ ],
+ "runs": [
+  {
+   "name": "lookups",
+   "program": {
+    "summary": "lookups",
+    "steps": [
+     {
+      "id": "g",
+      "op": "grep",
+      "args": {
+       "pattern": "clamp"
+      }
+     },
+     {
+      "id": "a1",
+      "op": "assert",
+      "step": "g",
+      "predicate": "count >= 2",
+      "expect": true,
+      "holds": "clamp is used {{g.count}} times"
+     },
+     {
+      "id": "r",
+      "op": "read",
+      "args": {
+       "path": "src/app.py",
+       "start": 1,
+       "end": 12
+      }
+     },
+     {
+      "id": "a2",
+      "op": "assert",
+      "step": "r",
+      "predicate": "contains PAGE_SIZE",
+      "expect": true,
+      "holds": "the size has a default"
+     },
+     {
+      "id": "ls",
+      "op": "list",
+      "args": {
+       "dir": "src"
+      }
+     },
+     {
+      "id": "d",
+      "op": "definition",
+      "args": {
+       "symbol": "page"
+      }
+     },
+     {
+      "id": "refs",
+      "op": "references",
+      "args": {
+       "symbol": "clamp"
+      }
+     },
+     {
+      "id": "h",
+      "op": "history",
+      "args": {
+       "path": "src/app.py"
+      }
+     },
+     {
+      "id": "b",
+      "op": "blame_range",
+      "args": {
+       "path": "src/app.py",
+       "start": 1,
+       "end": 3
+      }
+     },
+     {
+      "id": "p",
+      "op": "pickaxe",
+      "args": {
+       "string": "PAGE_SIZE"
+      }
+     },
+     {
+      "id": "bad",
+      "op": "read",
+      "args": {
+       "path": "secret.txt"
+      }
+     },
+     {
+      "id": "notes",
+      "op": "read",
+      "args": {
+       "path": "NOTES.txt"
+      }
+     },
+     {
+      "id": "an",
+      "op": "assert",
+      "step": "notes",
+      "predicate": "contains kinds c",
+      "expect": false
+     },
+     {
+      "id": "ab",
+      "op": "assert",
+      "step": "bad",
+      "predicate": "contains hunter2",
+      "expect": false
+     },
+     {
+      "id": "gc",
+      "op": "grep",
+      "args": {
+       "pattern": "clamp",
+       "count_only": true
+      }
+     },
+     {
+      "id": "ac",
+      "op": "assert",
+      "step": "gc",
+      "predicate": "count >= 2",
+      "expect": true
+     },
+     {
+      "id": "gbad",
+      "op": "grep",
+      "args": {
+       "pattern": "clamp",
+       "count_only": true,
+       "path_glob": "../x"
+      }
+     },
+     {
+      "id": "abad",
+      "op": "assert",
+      "step": "gbad",
+      "predicate": "count == 0",
+      "expect": true
+     },
+     {
+      "id": "fe",
+      "op": "for_each",
+      "over": "g",
+      "max_items": 2,
+      "steps": [
+       {
+        "id": "rr",
+        "op": "read",
+        "args": {
+         "path": "{{item.path}}",
+         "start": "{{item.line}}",
+         "end": "{{item.line}}"
+        }
+       },
+       {
+        "id": "ar",
+        "op": "assert",
+        "step": "rr",
+        "predicate": "contains clamp",
+        "expect": true
+       }
+      ]
+     },
+     {
+      "id": "skipped",
+      "op": "grep",
+      "args": {
+       "pattern": "x"
+      },
+      "when": {
+       "step": "a2",
+       "not": true
+      }
+     },
+     {
+      "id": "undecided",
+      "op": "grep",
+      "args": {
+       "pattern": "y"
+      },
+      "when": {
+       "step": "ab",
+       "not": false
+      }
+     },
+     {
+      "id": "q",
+      "op": "ask",
+      "question": "Is {{d.count}} definition of page bounded?",
+      "context": [
+       "r"
+      ]
+     },
+     {
+      "id": "aq",
+      "op": "assert",
+      "all": [
+       "q",
+       "a1"
+      ],
+      "expect": true
+     },
+     {
+      "id": "a3",
+      "op": "assert",
+      "step": "gc",
+      "predicate": "count == 0",
+      "expect": true
+     },
+     {
+      "id": "f1",
+      "op": "finding",
+      "when": {
+       "step": "ac",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of f1",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "gc"
+      ]
+     },
+     {
+      "id": "f2",
+      "op": "finding",
+      "when": {
+       "step": "aq",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of f2",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "q"
+      ]
+     },
+     {
+      "id": "f3",
+      "op": "finding",
+      "when": {
+       "step": "a3",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of f3",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "gc"
+      ]
+     },
+     {
+      "id": "f4",
+      "op": "finding",
+      "when": {
+       "step": "ac",
+       "not": true
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of f4",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "gc"
+      ]
+     },
+     {
+      "id": "f5",
+      "op": "finding",
+      "when": {
+       "step": "abad",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of f5",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "gbad"
+      ]
+     }
+    ]
+   },
+   "session": null,
+   "unavailable_before": [],
+   "records": [
+    {
+     "id": "g",
+     "op": "grep",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"pattern\": \"clamp\"}",
+     "output": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+    },
+    {
+     "id": "r",
+     "op": "read",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"start\": 1, \"end\": 12}",
+     "output": "    1 | import os\n    2 | \n    3 | from util import clamp\n    4 | \n    5 | KINDS = [\"a\", \"b\", \"c\"]\n    6 | \n    7 | \n    8 | def page(items, size=None, start=0):\n    9 |     # Pages are capped at 50 items.\n   10 |     size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 |     return items[start: start + clamp(size, 1, 50)]\n   12 | "
+    },
+    {
+     "id": "ls",
+     "op": "list",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"dir\": \"src\"}",
+     "output": "app.py\nutil.py"
+    },
+    {
+     "id": "d",
+     "op": "definition",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"symbol\": \"page\"}",
+     "output": "src/app.py:8-11 def page(items, size=None, start=0) [was: def page(items, size)]\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]"
+    },
+    {
+     "id": "refs",
+     "op": "references",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"symbol\": \"clamp\"}",
+     "output": "Call sites resolved by the reference:\nsrc/app.py:11 in page: return items[start: start + clamp(size, 1, 50)]\n\nText matches:\nsrc/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+    },
+    {
+     "id": "h",
+     "op": "history",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\"}",
+     "output": "f60b06d 2026-02-02 Page from an offset\n5378913 2026-02-01 base: paging"
+    },
+    {
+     "id": "b",
+     "op": "blame_range",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"start\": 1, \"end\": 3}",
+     "output": "f60b06d 2026-02-02 Page from an offset\n5378913 2026-02-01 base: paging"
+    },
+    {
+     "id": "p",
+     "op": "pickaxe",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"string\": \"PAGE_SIZE\"}",
+     "output": "f60b06d 2026-02-02 Page from an offset"
+    },
+    {
+     "id": "bad",
+     "op": "read",
+     "status": "failed",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"secret.txt\"}",
+     "output": "read",
+     "detail": "secret.txt is not a tracked file at the reviewed commit"
+    },
+    {
+     "id": "notes",
+     "op": "read",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"NOTES.txt\"}",
+     "output": "    1 | Kinds: a, b ... cut for brevity"
+    },
+    {
+     "id": "gc",
+     "op": "grep",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"pattern\": \"clamp\", \"count_only\": true}",
+     "output": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+    },
+    {
+     "id": "gbad",
+     "op": "grep",
+     "status": "failed",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"pattern\": \"clamp\", \"count_only\": true, \"path_glob\": \"../x\"}",
+     "output": "grep",
+     "detail": "path_glob must be a relative glob inside the repository"
+    },
+    {
+     "id": "a1",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"count >= 2\"",
+     "output": "holds",
+     "detail": "count is 3"
+    },
+    {
+     "id": "a2",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"contains PAGE_SIZE\"",
+     "output": "holds",
+     "detail": "'PAGE_SIZE' is in the result"
+    },
+    {
+     "id": "an",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"contains kinds c\"",
+     "output": "unknown ('kinds c' is not in the result, which is truncated)",
+     "detail": "'kinds c' is not in the result, which is truncated"
+    },
+    {
+     "id": "ab",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"contains hunter2\"",
+     "output": "unknown (bad did not run)",
+     "detail": "bad did not run"
+    },
+    {
+     "id": "ac",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"count >= 2\"",
+     "output": "holds",
+     "detail": "count is 3"
+    },
+    {
+     "id": "abad",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"count == 0\"",
+     "output": "unknown (gbad did not run)",
+     "detail": "gbad did not run"
+    },
+    {
+     "id": "a3",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"count == 0\"",
+     "output": "does not hold (count is 3); contradicts the expectation",
+     "detail": "count is 3"
+    },
+    {
+     "id": "q",
+     "op": "ask",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"Question: Is 0 definition of page bounded?\"",
+     "output": "answer: yes\nquote: def page\nwhy: bounded"
+    },
+    {
+     "id": "skipped",
+     "op": "grep",
+     "status": "skipped",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "grep",
+     "detail": "its condition a2 does not hold"
+    },
+    {
+     "id": "undecided",
+     "op": "grep",
+     "status": "skipped",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "grep",
+     "detail": "its condition ab did not decide"
+    },
+    {
+     "id": "aq",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"all\": [\"q\", \"a1\"], \"any\": null}",
+     "output": "holds",
+     "detail": "q=True, a1=True"
+    },
+    {
+     "id": "f1",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "finding emitted",
+     "detail": "emitted by the caller"
+    },
+    {
+     "id": "f4",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "gate false",
+     "detail": "ac does not hold (no finding)"
+    },
+    {
+     "id": "fe[0].rr",
+     "op": "read",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"start\": \"3\", \"end\": \"3\"}",
+     "output": "    3 | from util import clamp"
+    },
+    {
+     "id": "fe[1].rr",
+     "op": "read",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"start\": \"11\", \"end\": \"11\"}",
+     "output": "   11 |     return items[start: start + clamp(size, 1, 50)]"
+    },
+    {
+     "id": "f3",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: against the planner's expectation",
+     "detail": "deferred: against the planner's expectation"
+    },
+    {
+     "id": "f5",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: unknown",
+     "detail": "deferred: unknown"
+    },
+    {
+     "id": "f2",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "finding emitted",
+     "detail": "emitted by the caller"
+    },
+    {
+     "id": "fe[0].ar",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"contains clamp\"",
+     "output": "holds",
+     "detail": "'clamp' is in the result"
+    },
+    {
+     "id": "fe[1].ar",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"contains clamp\"",
+     "output": "holds",
+     "detail": "'clamp' is in the result"
+    },
+    {
+     "id": "fe",
+     "op": "for_each",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"over\": \"g\", \"instances\": 4}",
+     "output": "for_each",
+     "detail": "0 finding(s) emitted, 2 assert(s) held"
+    }
+   ],
+   "results": {
+    "g": {
+     "op": "grep",
+     "status": "ok",
+     "title": "grep 'clamp' -> 3 matches",
+     "text": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):",
+     "count": 3,
+     "items": [
+      {
+       "path": "src/app.py",
+       "line": 3,
+       "text": "from util import clamp"
+      },
+      {
+       "path": "src/app.py",
+       "line": 11,
+       "text": "return items[start: start + clamp(size, 1, 50)]"
+      },
+      {
+       "path": "src/util.py",
+       "line": 1,
+       "text": "def clamp(value, low, high):"
+      }
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "grep 'clamp' -> 3 matches: src/app.py:3; src/app.py:11; src/util.py:1"
+    },
+    "r": {
+     "op": "read",
+     "status": "ok",
+     "title": "read src/app.py:1-12 (of 15 lines)",
+     "text": "    1 | import os\n    2 | \n    3 | from util import clamp\n    4 | \n    5 | KINDS = [\"a\", \"b\", \"c\"]\n    6 | \n    7 | \n    8 | def page(items, size=None, start=0):\n    9 |     # Pages are capped at 50 items.\n   10 |     size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 |     return items[start: start + clamp(size, 1, 50)]\n   12 | ",
+     "count": 12,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "summary": "read src/app.py:1-12 (of 15 lines)"
+    },
+    "ls": {
+     "op": "list",
+     "status": "ok",
+     "title": "list src (2 entries)",
+     "text": "app.py\nutil.py",
+     "count": 2,
+     "items": [
+      "app.py",
+      "util.py"
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "list src (2 entries): app.py; util.py"
+    },
+    "d": {
+     "op": "definition",
+     "status": "ok",
+     "title": "definition page -> 0 matches",
+     "text": "src/app.py:8-11 def page(items, size=None, start=0) [was: def page(items, size)]\n  callers outside the change (1): tests/test_app.py:5 in test_page: assert page([1, 2, 3], 2) == [1, 2]\n  tests calling it: tests/test_app.py:5 test_page; tests/test_app.py:9 test_size\n    8 | def page(items, size=None, start=0):\n    9 | # Pages are capped at 50 items.\n   10 | size = size or int(os.environ[\"PAGE_SIZE\"])\n   11 | return items[start: start + clamp(size, 1, 50)]",
+     "count": 0,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "summary": "definition page -> 0 matches"
+    },
+    "refs": {
+     "op": "references",
+     "status": "ok",
+     "title": "references clamp -> 3 matches",
+     "text": "Call sites resolved by the reference:\nsrc/app.py:11 in page: return items[start: start + clamp(size, 1, 50)]\n\nText matches:\nsrc/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):",
+     "count": 3,
+     "items": [
+      {
+       "path": "src/app.py",
+       "line": 3,
+       "text": "from util import clamp"
+      },
+      {
+       "path": "src/app.py",
+       "line": 11,
+       "text": "return items[start: start + clamp(size, 1, 50)]"
+      },
+      {
+       "path": "src/util.py",
+       "line": 1,
+       "text": "def clamp(value, low, high):"
+      }
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "references clamp -> 3 matches: src/app.py:3; src/app.py:11; src/util.py:1"
+    },
+    "h": {
+     "op": "history",
+     "status": "ok",
+     "title": "history src/app.py -> 2 commits",
+     "text": "f60b06d 2026-02-02 Page from an offset\n5378913 2026-02-01 base: paging",
+     "count": 2,
+     "items": [
+      "f60b06d 2026-02-02 Page from an offset",
+      "5378913 2026-02-01 base: paging"
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "history src/app.py -> 2 commits: f60b06d 2026-02-02 Page from an offset; 5378913 2026-02-01 base: paging"
+    },
+    "b": {
+     "op": "blame_range",
+     "status": "ok",
+     "title": "blame_range src/app.py:1-3 -> 2 commits",
+     "text": "f60b06d 2026-02-02 Page from an offset\n5378913 2026-02-01 base: paging",
+     "count": 2,
+     "items": [
+      "f60b06d 2026-02-02 Page from an offset",
+      "5378913 2026-02-01 base: paging"
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "blame_range src/app.py:1-3 -> 2 commits: f60b06d 2026-02-02 Page from an offset; 5378913 2026-02-01 base: paging"
+    },
+    "p": {
+     "op": "pickaxe",
+     "status": "ok",
+     "title": "pickaxe 'PAGE_SIZE' -> 1 commits",
+     "text": "f60b06d 2026-02-02 Page from an offset",
+     "count": 1,
+     "items": [
+      "f60b06d 2026-02-02 Page from an offset"
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "pickaxe 'PAGE_SIZE' -> 1 commits: f60b06d 2026-02-02 Page from an offset"
+    },
+    "bad": {
+     "op": "read",
+     "status": "failed",
+     "detail": "secret.txt is not a tracked file at the reviewed commit",
+     "text": "",
+     "summary": "read"
+    },
+    "notes": {
+     "op": "read",
+     "status": "ok",
+     "title": "read NOTES.txt:1-1 (of 1 lines)",
+     "text": "    1 | Kinds: a, b ... cut for brevity",
+     "count": 1,
+     "items": [],
+     "capped": false,
+     "truncated": true,
+     "summary": "read NOTES.txt:1-1 (of 1 lines)"
+    },
+    "gc": {
+     "op": "grep",
+     "status": "ok",
+     "title": "grep 'clamp' -> 3 matches",
+     "text": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):",
+     "count": 3,
+     "items": [
+      {
+       "path": "src/app.py",
+       "line": 3,
+       "text": "from util import clamp"
+      },
+      {
+       "path": "src/app.py",
+       "line": 11,
+       "text": "return items[start: start + clamp(size, 1, 50)]"
+      },
+      {
+       "path": "src/util.py",
+       "line": 1,
+       "text": "def clamp(value, low, high):"
+      }
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "grep 'clamp' -> 3 matches: src/app.py:3; src/app.py:11; src/util.py:1"
+    },
+    "gbad": {
+     "op": "grep",
+     "status": "failed",
+     "detail": "path_glob must be a relative glob inside the repository",
+     "text": "",
+     "summary": "grep"
+    },
+    "a1": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "count is 3",
+     "holds": "clamp is used 3 times",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "a2": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "'PAGE_SIZE' is in the result",
+     "holds": "the size has a default",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "an": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "'kinds c' is not in the result, which is truncated",
+     "holds": "",
+     "text": "",
+     "expected": false,
+     "contradicted": false,
+     "summary": "unknown ('kinds c' is not in the result, which is truncated)"
+    },
+    "ab": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "bad did not run",
+     "holds": "",
+     "text": "",
+     "expected": false,
+     "contradicted": false,
+     "summary": "unknown (bad did not run)"
+    },
+    "ac": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "count is 3",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "abad": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "gbad did not run",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "unknown (gbad did not run)"
+    },
+    "a3": {
+     "op": "assert",
+     "status": "ok",
+     "value": false,
+     "detail": "count is 3",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": true,
+     "summary": "does not hold (count is 3); contradicts the expectation"
+    },
+    "q": {
+     "op": "ask",
+     "status": "ok",
+     "answer": "yes",
+     "quote": "def page",
+     "quote_ok": true,
+     "why": "bounded",
+     "detail": "",
+     "text": "answer: yes\nquote: def page\nwhy: bounded",
+     "summary": "answer yes (quote: def page)"
+    },
+    "skipped": {
+     "op": "grep",
+     "status": "skipped",
+     "detail": "its condition a2 does not hold",
+     "text": "",
+     "summary": "grep"
+    },
+    "undecided": {
+     "op": "grep",
+     "status": "skipped",
+     "detail": "its condition ab did not decide",
+     "text": "",
+     "summary": "grep"
+    },
+    "aq": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "q=True, a1=True",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "f1": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": true,
+     "text": "",
+     "detail": "emitted by the caller",
+     "summary": "finding emitted"
+    },
+    "f4": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "gate": "gate false",
+     "detail": "ac does not hold (no finding)",
+     "summary": "gate false"
+    },
+    "fe[0].rr": {
+     "op": "read",
+     "status": "ok",
+     "title": "read src/app.py:3-3 (of 15 lines)",
+     "text": "    3 | from util import clamp",
+     "count": 1,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "summary": "read src/app.py:3-3 (of 15 lines)"
+    },
+    "fe[1].rr": {
+     "op": "read",
+     "status": "ok",
+     "title": "read src/app.py:11-11 (of 15 lines)",
+     "text": "   11 |     return items[start: start + clamp(size, 1, 50)]",
+     "count": 1,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "summary": "read src/app.py:11-11 (of 15 lines)"
+    },
+    "f3": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: against the planner's expectation",
+     "summary": "deferred: against the planner's expectation"
+    },
+    "f5": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: unknown",
+     "summary": "deferred: unknown"
+    },
+    "f2": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": true,
+     "text": "",
+     "detail": "emitted by the caller",
+     "summary": "finding emitted"
+    },
+    "fe[0].ar": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "'clamp' is in the result",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "fe[1].ar": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "'clamp' is in the result",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "fe": {
+     "op": "for_each",
+     "status": "ok",
+     "count": 4,
+     "text": "",
+     "items": [],
+     "detail": "0 finding(s) emitted, 2 assert(s) held",
+     "summary": "for_each"
+    }
+   },
+   "asks": [
+    {
+     "id": "q",
+     "result": {
+      "op": "ask",
+      "status": "ok",
+      "answer": "yes",
+      "quote": "def page",
+      "quote_ok": true,
+      "why": "bounded",
+      "detail": "",
+      "text": "answer: yes\nquote: def page\nwhy: bounded"
+     },
+     "input": "Question: Is 0 definition of page bounded?"
+    }
+   ],
+   "truncated": [
+    "fe: 1 items beyond max_items were not visited"
+   ],
+   "expanded": 4,
+   "not_emitted": {
+    "gateFalse": 1,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [],
+   "session_records": null
+  },
+  {
+   "name": "tests",
+   "program": {
+    "summary": "tests",
+    "steps": [
+     {
+      "id": "t",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "at",
+      "op": "assert",
+      "step": "t",
+      "predicate": "status == failed",
+      "expect": true
+     },
+     {
+      "id": "ts",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ],
+       "select": "test_page"
+      }
+     },
+     {
+      "id": "m",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 11,
+       "replacement": "    MUTANT = 1",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "am",
+      "op": "assert",
+      "step": "m",
+      "predicate": "status == failed",
+      "expect": true
+     },
+     {
+      "id": "u",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "web/format.test.ts"
+       ]
+      }
+     },
+     {
+      "id": "au",
+      "op": "assert",
+      "step": "u",
+      "predicate": "status == passed",
+      "expect": true
+     },
+     {
+      "id": "bad",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 999,
+       "replacement": "x",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "ft",
+      "op": "finding",
+      "when": {
+       "step": "at",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of ft",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "t"
+      ]
+     },
+     {
+      "id": "fm",
+      "op": "finding",
+      "when": {
+       "step": "am",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of fm",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "m"
+      ]
+     },
+     {
+      "id": "fu",
+      "op": "finding",
+      "when": {
+       "step": "au",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of fu",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "u"
+      ]
+     }
+    ]
+   },
+   "session": "scripted",
+   "unavailable_before": [],
+   "records": [
+    {
+     "id": "t",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": "run 1 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed"
+    },
+    {
+     "id": "ts",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"], \"select\": \"test_page\"}",
+     "output": "run 2 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short -k test_page tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed"
+    },
+    {
+     "id": "m",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 11, \"replacement\": \"    MUTANT = 1\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": "run 3 (mutation, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (0 passed, 1 failed)\n  with src/app.py:11 changed from `    return items[start: start + clamp(size, 1, 50)]` to `    MUTANT = 1`: the tests caught it\n  failed: tests/test_app.py::test_page - AssertionError: mutant\n  output (end):\n    FAILED tests/test_app.py::test_page - AssertionError: mutant\n    1 failed"
+    },
+    {
+     "id": "u",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"web/format.test.ts\"]}",
+     "output": ": could_not_run",
+     "detail": "no test runner is known for web/format.test.ts"
+    },
+    {
+     "id": "bad",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 999, \"replacement\": \"x\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "src/app.py has no line 999"
+    },
+    {
+     "id": "at",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == failed\"",
+     "output": "holds",
+     "detail": "status is failed"
+    },
+    {
+     "id": "am",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == failed\"",
+     "output": "holds",
+     "detail": "status is failed"
+    },
+    {
+     "id": "au",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == passed\"",
+     "output": "unknown (u could not run)",
+     "detail": "u could not run"
+    },
+    {
+     "id": "ft",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "finding emitted",
+     "detail": "emitted by the caller"
+    },
+    {
+     "id": "fm",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "finding emitted",
+     "detail": "emitted by the caller"
+    },
+    {
+     "id": "fu",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: unknown",
+     "detail": "deferred: unknown"
+    }
+   ],
+   "results": {
+    "t": {
+     "op": "run_tests",
+     "status": "ok",
+     "title": "test run 1",
+     "text": "run 1 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed",
+     "count": null,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "run": {
+      "n": 1,
+      "kind": "run",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "failed",
+        "detail": "AssertionError: offset"
+       }
+      ],
+      "passed": 1,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+     },
+     "outcome": "failed",
+     "summary": "test run 1: failed"
+    },
+    "ts": {
+     "op": "run_tests",
+     "status": "ok",
+     "title": "test run 2",
+     "text": "run 2 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short -k test_page tests/test_app.py` -> failed (1 passed, 1 failed)\n  failed: tests/test_app.py::test_size - AssertionError: offset\n  output (end):\n    PASSED tests/test_app.py::test_page\n    FAILED tests/test_app.py::test_size - AssertionError: offset\n    1 failed, 1 passed",
+     "count": null,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "run": {
+      "n": 2,
+      "kind": "run",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short -k test_page tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "passed"
+       },
+       {
+        "id": "tests/test_app.py::test_size",
+        "status": "failed",
+        "detail": "AssertionError: offset"
+       }
+      ],
+      "passed": 1,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+     },
+     "outcome": "failed",
+     "summary": "test run 2: failed"
+    },
+    "m": {
+     "op": "mutation_check",
+     "status": "ok",
+     "title": "test run 3",
+     "text": "run 3 (mutation, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> failed (0 passed, 1 failed)\n  with src/app.py:11 changed from `    return items[start: start + clamp(size, 1, 50)]` to `    MUTANT = 1`: the tests caught it\n  failed: tests/test_app.py::test_page - AssertionError: mutant\n  output (end):\n    FAILED tests/test_app.py::test_page - AssertionError: mutant\n    1 failed",
+     "count": null,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "run": {
+      "n": 3,
+      "kind": "mutation",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "failed",
+      "exit": 1,
+      "tests": [
+       {
+        "id": "tests/test_app.py::test_page",
+        "status": "failed",
+        "detail": "AssertionError: mutant"
+       }
+      ],
+      "passed": 0,
+      "failed": 1,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "FAILED tests/test_app.py::test_page - AssertionError: mutant\n1 failed\n",
+      "mutation": {
+       "path": "src/app.py",
+       "line": 11,
+       "was": "    return items[start: start + clamp(size, 1, 50)]",
+       "replacement": "    MUTANT = 1"
+      },
+      "caught": true
+     },
+     "outcome": "failed",
+     "caught": true,
+     "summary": "test run 3: failed"
+    },
+    "u": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "no test runner is known for web/format.test.ts",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "bad": {
+     "op": "mutation_check",
+     "status": "ok",
+     "detail": "src/app.py has no line 999",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "at": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "status is failed",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "am": {
+     "op": "assert",
+     "status": "ok",
+     "value": true,
+     "detail": "status is failed",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "holds"
+    },
+    "au": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "u could not run",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "unknown (u could not run)"
+    },
+    "ft": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": true,
+     "text": "",
+     "detail": "emitted by the caller",
+     "summary": "finding emitted"
+    },
+    "fm": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": true,
+     "text": "",
+     "detail": "emitted by the caller",
+     "summary": "finding emitted"
+    },
+    "fu": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: unknown",
+     "summary": "deferred: unknown"
+    }
+   },
+   "asks": [],
+   "truncated": [],
+   "expanded": 0,
+   "not_emitted": {
+    "gateFalse": 0,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [],
+   "session_records": [
+    {
+     "n": 1,
+     "kind": "run",
+     "rev": "head",
+     "runner": "pytest",
+     "cwd": ".",
+     "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+     "paths": [
+      "tests/test_app.py"
+     ],
+     "status": "failed",
+     "exit": 1,
+     "tests": [
+      {
+       "id": "tests/test_app.py::test_page",
+       "status": "passed"
+      },
+      {
+       "id": "tests/test_app.py::test_size",
+       "status": "failed",
+       "detail": "AssertionError: offset"
+      }
+     ],
+     "passed": 1,
+     "failed": 1,
+     "ms": 0,
+     "environment": [],
+     "toolchain": [],
+     "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+    },
+    {
+     "n": 2,
+     "kind": "run",
+     "rev": "head",
+     "runner": "pytest",
+     "cwd": ".",
+     "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short -k test_page tests/test_app.py",
+     "paths": [
+      "tests/test_app.py"
+     ],
+     "status": "failed",
+     "exit": 1,
+     "tests": [
+      {
+       "id": "tests/test_app.py::test_page",
+       "status": "passed"
+      },
+      {
+       "id": "tests/test_app.py::test_size",
+       "status": "failed",
+       "detail": "AssertionError: offset"
+      }
+     ],
+     "passed": 1,
+     "failed": 1,
+     "ms": 0,
+     "environment": [],
+     "toolchain": [],
+     "output": "PASSED tests/test_app.py::test_page\nFAILED tests/test_app.py::test_size - AssertionError: offset\n1 failed, 1 passed\n"
+    },
+    {
+     "n": 3,
+     "kind": "mutation",
+     "rev": "head",
+     "runner": "pytest",
+     "cwd": ".",
+     "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+     "paths": [
+      "tests/test_app.py"
+     ],
+     "status": "failed",
+     "exit": 1,
+     "tests": [
+      {
+       "id": "tests/test_app.py::test_page",
+       "status": "failed",
+       "detail": "AssertionError: mutant"
+      }
+     ],
+     "passed": 0,
+     "failed": 1,
+     "ms": 0,
+     "environment": [],
+     "toolchain": [],
+     "output": "FAILED tests/test_app.py::test_page - AssertionError: mutant\n1 failed\n",
+     "mutation": {
+      "path": "src/app.py",
+      "line": 11,
+      "was": "    return items[start: start + clamp(size, 1, 50)]",
+      "replacement": "    MUTANT = 1"
+     },
+     "caught": true
+    }
+   ]
+  },
+  {
+   "name": "no session",
+   "program": {
+    "summary": "tests",
+    "steps": [
+     {
+      "id": "t",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "at",
+      "op": "assert",
+      "step": "t",
+      "predicate": "status == failed",
+      "expect": true
+     },
+     {
+      "id": "ts",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ],
+       "select": "test_page"
+      }
+     },
+     {
+      "id": "m",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 11,
+       "replacement": "    MUTANT = 1",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "am",
+      "op": "assert",
+      "step": "m",
+      "predicate": "status == failed",
+      "expect": true
+     },
+     {
+      "id": "u",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "web/format.test.ts"
+       ]
+      }
+     },
+     {
+      "id": "au",
+      "op": "assert",
+      "step": "u",
+      "predicate": "status == passed",
+      "expect": true
+     },
+     {
+      "id": "bad",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 999,
+       "replacement": "x",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "ft",
+      "op": "finding",
+      "when": {
+       "step": "at",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of ft",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "t"
+      ]
+     },
+     {
+      "id": "fm",
+      "op": "finding",
+      "when": {
+       "step": "am",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of fm",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "m"
+      ]
+     },
+     {
+      "id": "fu",
+      "op": "finding",
+      "when": {
+       "step": "au",
+       "not": false
+      },
+      "file": "src/app.py",
+      "line": 9,
+      "level": "medium",
+      "category": "bugs",
+      "claim": "claim of fu",
+      "why": "w",
+      "scenario": "s",
+      "evidence": [
+       "u"
+      ]
+     }
+    ]
+   },
+   "session": null,
+   "unavailable_before": [],
+   "records": [
+    {
+     "id": "t",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "tests are not run in this review"
+    },
+    {
+     "id": "ts",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"], \"select\": \"test_page\"}",
+     "output": ": could_not_run",
+     "detail": "tests are not run in this review"
+    },
+    {
+     "id": "m",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 11, \"replacement\": \"    MUTANT = 1\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "tests are not run in this review"
+    },
+    {
+     "id": "u",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"web/format.test.ts\"]}",
+     "output": ": could_not_run",
+     "detail": "tests are not run in this review"
+    },
+    {
+     "id": "bad",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 999, \"replacement\": \"x\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "tests are not run in this review"
+    },
+    {
+     "id": "at",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == failed\"",
+     "output": "unknown (t could not run)",
+     "detail": "t could not run"
+    },
+    {
+     "id": "am",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == failed\"",
+     "output": "unknown (m could not run)",
+     "detail": "m could not run"
+    },
+    {
+     "id": "au",
+     "op": "assert",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"status == passed\"",
+     "output": "unknown (u could not run)",
+     "detail": "u could not run"
+    },
+    {
+     "id": "ft",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: unknown",
+     "detail": "deferred: unknown"
+    },
+    {
+     "id": "fm",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: unknown",
+     "detail": "deferred: unknown"
+    },
+    {
+     "id": "fu",
+     "op": "finding",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "null",
+     "output": "deferred: unknown",
+     "detail": "deferred: unknown"
+    }
+   ],
+   "results": {
+    "t": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "tests are not run in this review",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "ts": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "tests are not run in this review",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "m": {
+     "op": "mutation_check",
+     "status": "ok",
+     "detail": "tests are not run in this review",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "u": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "tests are not run in this review",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "bad": {
+     "op": "mutation_check",
+     "status": "ok",
+     "detail": "tests are not run in this review",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "at": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "t could not run",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "unknown (t could not run)"
+    },
+    "am": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "m could not run",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "unknown (m could not run)"
+    },
+    "au": {
+     "op": "assert",
+     "status": "ok",
+     "value": null,
+     "detail": "u could not run",
+     "holds": "",
+     "text": "",
+     "expected": true,
+     "contradicted": false,
+     "summary": "unknown (u could not run)"
+    },
+    "ft": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: unknown",
+     "summary": "deferred: unknown"
+    },
+    "fm": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: unknown",
+     "summary": "deferred: unknown"
+    },
+    "fu": {
+     "op": "finding",
+     "status": "ok",
+     "emitted": false,
+     "text": "",
+     "detail": "deferred: unknown",
+     "summary": "deferred: unknown"
+    }
+   },
+   "asks": [],
+   "truncated": [],
+   "expanded": 0,
+   "not_emitted": {
+    "gateFalse": 0,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [],
+   "session_records": null
+  },
+  {
+   "name": "unavailable",
+   "program": {
+    "summary": "unavailable",
+    "steps": [
+     {
+      "id": "t1",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "t2",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      },
+      "needs": [
+       "t1"
+      ]
+     },
+     {
+      "id": "m2",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 11,
+       "replacement": "x",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      },
+      "needs": [
+       "t1"
+      ]
+     }
+    ]
+   },
+   "session": "unavailable",
+   "unavailable_before": [],
+   "records": [
+    {
+     "id": "t1",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": "run 1 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> unavailable\n  the tests could not run (missing dependencies or nothing collected; the sandbox has no network and nothing is installed): this says nothing about the code\n  output (end):\n    ModuleNotFoundError: No module named 'app'"
+    },
+    {
+     "id": "t2",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again"
+    },
+    {
+     "id": "m2",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 11, \"replacement\": \"x\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again"
+    }
+   ],
+   "results": {
+    "t1": {
+     "op": "run_tests",
+     "status": "ok",
+     "title": "test run 1",
+     "text": "run 1 (run, at the head commit, sandboxed, no network): `python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py` -> unavailable\n  the tests could not run (missing dependencies or nothing collected; the sandbox has no network and nothing is installed): this says nothing about the code\n  output (end):\n    ModuleNotFoundError: No module named 'app'",
+     "count": null,
+     "items": [],
+     "capped": false,
+     "truncated": false,
+     "run": {
+      "n": 1,
+      "kind": "run",
+      "rev": "head",
+      "runner": "pytest",
+      "cwd": ".",
+      "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+      "paths": [
+       "tests/test_app.py"
+      ],
+      "status": "unavailable",
+      "exit": 4,
+      "tests": [],
+      "passed": 0,
+      "failed": 0,
+      "ms": 0,
+      "environment": [],
+      "toolchain": [],
+      "output": "ModuleNotFoundError: No module named 'app'\n"
+     },
+     "outcome": "could_not_run",
+     "summary": "test run 1: could_not_run"
+    },
+    "t2": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "m2": {
+     "op": "mutation_check",
+     "status": "ok",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    }
+   },
+   "asks": [],
+   "truncated": [],
+   "expanded": 0,
+   "not_emitted": {
+    "gateFalse": 0,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [
+    [
+     "pytest",
+     "."
+    ]
+   ],
+   "session_records": [
+    {
+     "n": 1,
+     "kind": "run",
+     "rev": "head",
+     "runner": "pytest",
+     "cwd": ".",
+     "command": "python3 -m pytest -q -rA --no-header -p no:cacheprovider --tb=short tests/test_app.py",
+     "paths": [
+      "tests/test_app.py"
+     ],
+     "status": "unavailable",
+     "exit": 4,
+     "tests": [],
+     "passed": 0,
+     "failed": 0,
+     "ms": 0,
+     "environment": [],
+     "toolchain": [],
+     "output": "ModuleNotFoundError: No module named 'app'\n"
+    }
+   ]
+  },
+  {
+   "name": "seeded",
+   "program": {
+    "summary": "unavailable",
+    "steps": [
+     {
+      "id": "t1",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      }
+     },
+     {
+      "id": "t2",
+      "op": "run_tests",
+      "args": {
+       "paths": [
+        "tests/test_app.py"
+       ]
+      },
+      "needs": [
+       "t1"
+      ]
+     },
+     {
+      "id": "m2",
+      "op": "mutation_check",
+      "args": {
+       "path": "src/app.py",
+       "line": 11,
+       "replacement": "x",
+       "tests": [
+        "tests/test_app.py"
+       ]
+      },
+      "needs": [
+       "t1"
+      ]
+     }
+    ]
+   },
+   "session": "scripted",
+   "unavailable_before": [
+    [
+     "pytest",
+     "."
+    ]
+   ],
+   "records": [
+    {
+     "id": "t1",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again"
+    },
+    {
+     "id": "t2",
+     "op": "run_tests",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"paths\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again"
+    },
+    {
+     "id": "m2",
+     "op": "mutation_check",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"path\": \"src/app.py\", \"line\": 11, \"replacement\": \"x\", \"tests\": [\"tests/test_app.py\"]}",
+     "output": ": could_not_run",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again"
+    }
+   ],
+   "results": {
+    "t1": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "t2": {
+     "op": "run_tests",
+     "status": "ok",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    },
+    "m2": {
+     "op": "mutation_check",
+     "status": "ok",
+     "detail": "the pytest runner in . was unavailable in an earlier run (missing dependencies); not tried again",
+     "text": "",
+     "outcome": "could_not_run",
+     "summary": ": could_not_run"
+    }
+   },
+   "asks": [],
+   "truncated": [],
+   "expanded": 0,
+   "not_emitted": {
+    "gateFalse": 0,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [
+    [
+     "pytest",
+     "."
+    ]
+   ],
+   "session_records": []
+  },
+  {
+   "name": "stuck",
+   "program": {
+    "summary": "stuck",
+    "steps": [
+     {
+      "id": "g",
+      "op": "grep",
+      "args": {
+       "pattern": "clamp"
+      }
+     },
+     {
+      "id": "fe",
+      "op": "for_each",
+      "over": "g",
+      "max_items": 1,
+      "steps": [
+       {
+        "id": "q",
+        "op": "ask",
+        "question": "about {{item}}?",
+        "context": [
+         "g"
+        ]
+       }
+      ]
+     },
+     {
+      "id": "after",
+      "op": "grep",
+      "args": {
+       "pattern": "page"
+      },
+      "needs": [
+       "fe"
+      ]
+     }
+    ]
+   },
+   "session": null,
+   "unavailable_before": [],
+   "records": [
+    {
+     "id": "g",
+     "op": "grep",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"pattern\": \"clamp\"}",
+     "output": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):"
+    },
+    {
+     "id": "fe[0].q",
+     "op": "ask",
+     "status": "failed",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "\"Question: about src/app.py:3?\"",
+     "output": "answer None (quote: )",
+     "detail": "no reply"
+    },
+    {
+     "id": "fe",
+     "op": "for_each",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"over\": \"g\", \"instances\": 1}",
+     "output": "for_each",
+     "detail": "0 finding(s) emitted, 0 assert(s) held"
+    },
+    {
+     "id": "after",
+     "op": "grep",
+     "status": "ok",
+     "ms": 1000,
+     "tokens": 0,
+     "input": "{\"pattern\": \"page\"}",
+     "output": "README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:4: def test_page():\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]"
+    }
+   ],
+   "results": {
+    "g": {
+     "op": "grep",
+     "status": "ok",
+     "title": "grep 'clamp' -> 3 matches",
+     "text": "src/app.py:3: from util import clamp\nsrc/app.py:11: return items[start: start + clamp(size, 1, 50)]\nsrc/util.py:1: def clamp(value, low, high):",
+     "count": 3,
+     "items": [
+      {
+       "path": "src/app.py",
+       "line": 3,
+       "text": "from util import clamp"
+      },
+      {
+       "path": "src/app.py",
+       "line": 11,
+       "text": "return items[start: start + clamp(size, 1, 50)]"
+      },
+      {
+       "path": "src/util.py",
+       "line": 1,
+       "text": "def clamp(value, low, high):"
+      }
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "grep 'clamp' -> 3 matches: src/app.py:3; src/app.py:11; src/util.py:1"
+    },
+    "fe[0].q": {
+     "op": "ask",
+     "status": "failed",
+     "detail": "no reply",
+     "text": "",
+     "summary": "answer None (quote: )"
+    },
+    "fe": {
+     "op": "for_each",
+     "status": "ok",
+     "count": 1,
+     "text": "",
+     "items": [],
+     "detail": "0 finding(s) emitted, 0 assert(s) held",
+     "summary": "for_each"
+    },
+    "after": {
+     "op": "grep",
+     "status": "ok",
+     "title": "grep 'page' -> 7 matches",
+     "text": "README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\nsrc/app.py:8: def page(items, size=None, start=0):\nsrc/app.py:15: return page(items, 1)\ntests/test_app.py:1: from app import page\ntests/test_app.py:4: def test_page():\ntests/test_app.py:5: assert page([1, 2, 3], 2) == [1, 2]\ntests/test_app.py:9: assert page([1, 2, 3], 2, 1) == [2, 3]",
+     "count": 7,
+     "items": [
+      {
+       "path": "README.md",
+       "line": 3,
+       "text": "`page(items, size)` pages a list; the size defaults to PAGE_SIZE."
+      },
+      {
+       "path": "src/app.py",
+       "line": 8,
+       "text": "def page(items, size=None, start=0):"
+      },
+      {
+       "path": "src/app.py",
+       "line": 15,
+       "text": "return page(items, 1)"
+      },
+      {
+       "path": "tests/test_app.py",
+       "line": 1,
+       "text": "from app import page"
+      },
+      {
+       "path": "tests/test_app.py",
+       "line": 4,
+       "text": "def test_page():"
+      },
+      {
+       "path": "tests/test_app.py",
+       "line": 5,
+       "text": "assert page([1, 2, 3], 2) == [1, 2]"
+      },
+      {
+       "path": "tests/test_app.py",
+       "line": 9,
+       "text": "assert page([1, 2, 3], 2, 1) == [2, 3]"
+      }
+     ],
+     "capped": false,
+     "truncated": false,
+     "summary": "grep 'page' -> 7 matches: README.md:3; src/app.py:8; src/app.py:15; tests/test_app.py:1; tests/test_app.py:4 ..."
+    }
+   },
+   "asks": [
+    {
+     "id": "fe[0].q",
+     "result": {
+      "op": "ask",
+      "status": "failed",
+      "detail": "no reply",
+      "text": ""
+     },
+     "input": "Question: about src/app.py:3?"
+    }
+   ],
+   "truncated": [
+    "fe: 2 items beyond max_items were not visited"
+   ],
+   "expanded": 1,
+   "not_emitted": {
+    "gateFalse": 0,
+    "undecided": 0,
+    "askedNo": 0,
+    "askedUnclear": 0
+   },
+   "unavailable": [],
+   "session_records": null
+  }
+ ],
+ "intents": [
+  {
+   "context": {
+    "title": "Page from an offset",
+    "description": "Adds an offset.\r\nThe size defaults to PAGE_SIZE."
+   },
+   "spec": {
+    "repoDir": "<root>/glue",
+    "base": "5378913672a0a0e09f633ebd9a3a86af0028b59f",
+    "head": "f60b06ddb8434b18d1e7912c05458c05c7458bad"
+   },
+   "git": true,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nTitle: Page from an offset\nAdds an offset.\nThe size defaults to PAGE_SIZE.\nCommit messages:\n- Page from an offset The size defaults to PAGE_SIZE from the environment.\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "title": "  ",
+    "description": 7
+   },
+   "spec": {
+    "baseSha": "5378913672a0a0e09f633ebd9a3a86af0028b59f"
+   },
+   "git": true,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nCommit messages:\n- Page from an offset The size defaults to PAGE_SIZE from the environment.\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "title": "t"
+   },
+   "spec": {
+    "repoDir": "<root>/glue",
+    "base": "5378913672a0a0e09f633ebd9a3a86af0028b59f"
+   },
+   "git": true,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nTitle: t\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "title": "t"
+   },
+   "spec": {
+    "repoDir": "",
+    "base": "5378913672a0a0e09f633ebd9a3a86af0028b59f",
+    "baseSha": "-x"
+   },
+   "git": true,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nTitle: t\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "title": "t"
+   },
+   "spec": {
+    "baseSha": "5378913672a0a0e09f633ebd9a3a86af0028b59f"
+   },
+   "git": false,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nTitle: t\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "description": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+   },
+   "spec": {
+    "baseSha": "nope"
+   },
+   "git": true,
+   "diff": null,
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\u2026\nComments and documents the change adds:\n- README.md:3: `page(items, size)` pages a list; the size defaults to PAGE_SIZE.\n- src/app.py:9: Pages are capped at 50 items."
+  },
+  {
+   "context": {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "description": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+   },
+   "spec": {},
+   "git": true,
+   "diff": "diff --git a/notes.py b/notes.py\n--- a/notes.py\n+++ b/notes.py\n@@ -1,0 +1,12 @@\n+# Comment 0 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 1 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 2 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 3 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 4 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 5 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 6 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 7 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 8 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 9 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 10 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n+# Comment 11 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+   "out": "The author's stated intent (untrusted data; use it to tell intended changes and stated trade-offs from defects):\nTitle: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\u2026\nComments and documents the change adds:\n- notes.py:1: Comment 0 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:2: Comment 1 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:3: Comment 2 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:4: Comment 3 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:5: Comment 4 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:6: Comment 5 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026\n- notes.py:7: Comment 6 explains why the module pages this way, in some detail: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u2026"
+  },
+  {
+   "context": {},
+   "spec": {},
+   "git": true,
+   "diff": "",
+   "out": ""
+  }
+ ]
+}

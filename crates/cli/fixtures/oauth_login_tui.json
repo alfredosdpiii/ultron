@@ -1,0 +1,151 @@
+{
+ "cols": 100,
+ "rows": 30,
+ "scenarios": [
+  {
+   "name": "anthropic",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login anthropic",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select authentication method for Anthropic:"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "paste the authorization code"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "Login to"
+    }
+   ],
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Select authentication method for Anthropic:\n\n→ Sign in with an account\n  Sign in with an API key\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to Anthropic\n\n<url>\n<url>\n<url>\n<url>\n<url>\n Ctrl+click to open\n\n Complete login in your browser. If the browser is on another machine, paste the final redirect URL\n here.\n\n Complete login in your browser, or paste the authorization code / redirect URL here:\n If the browser ends on a page that can't be reached (localhost refused to connect), copy that\n page's full address from the address bar and paste it here.\n>\n (escape/ctrl+c to cancel)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "opened": 1
+  },
+  {
+   "name": "openai-codex",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login openai-codex",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select OpenAI Codex login method:"
+    },
+    {
+     "keys": [
+      "Down"
+     ],
+     "wait": "→ Device code login"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "login method"
+    }
+   ],
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n Select OpenAI Codex login method:\n\n → Browser login (default)\n   Device code login (headless)\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n Select OpenAI Codex login method:\n\n   Browser login (default)\n → Device code login (headless)\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "opened": 0
+  },
+  {
+   "name": "github-copilot",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login github-copilot",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select authentication method for GitHub Copilot:"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "GitHub Enterprise URL/domain"
+    },
+    {
+     "type": "company.ghe",
+     "wait": "company.ghe"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "Login to"
+    }
+   ],
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Select authentication method for GitHub Copilot:\n\n→ Sign in with an account\n  Sign in with an API key\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to GitHub Copilot\n\n GitHub Enterprise URL/domain (blank for github.com)\n e.g., company.ghe.com\n>\n (escape/ctrl+c to cancel, enter to submit)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to GitHub Copilot\n\n GitHub Enterprise URL/domain (blank for github.com)\n e.g., company.ghe.com\n> company.ghe\n (escape/ctrl+c to cancel, enter to submit)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "opened": 0
+  },
+  {
+   "name": "openrouter",
+   "steps": [
+    {
+     "wait": "Server:"
+    },
+    {
+     "type": "/login openrouter",
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Select authentication method for OpenRouter:"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "paste the authorization code"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Server:",
+     "gone": "Login to"
+    }
+   ],
+   "captures": [
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n Select authentication method for OpenRouter:\n\n→ Sign in with OpenRouter\n  Sign in with an API key\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Login to OpenRouter\n\n<url>\n<url>\n<url>\n Ctrl+click to open\n\n Complete sign-in in your browser. If the browser is on another machine, paste the final redirect\n URL here.\n\n Complete sign-in in your browser, or paste the authorization code / redirect URL here:\n If the browser ends on a page that can't be reached (localhost refused to connect), copy that\n page's full address from the address bar and paste it here.\n>\n (escape/ctrl+c to cancel)\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n",
+    " ultron v0.87.39\n escape interrupt · ctrl+c/ctrl+d clear/exit · up/alt+r history · / commands · ! bash · ctrl+o more\n Server: <ID>\n Session: <ID>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n~/cwd\n0.0%/1.0M (auto)                                                          claude-sonnet-4-5 • medium\n"
+   ],
+   "opened": 1
+  }
+ ]
+}

@@ -1,0 +1,514 @@
+{
+	"cases": [
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"gw\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1,
+			"requests": [],
+			"stored": null
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": null,
+			"env": {
+				"RADIUS_API_KEY": "env-key"
+			},
+			"stdout": "{\"status\":\"ready\",\"provider\":\"gw\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": null
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": null,
+			"env": {
+				"RADIUS_API_KEY": "env-key"
+			},
+			"stdout": "env-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": null
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius",
+						"apiKey": "models-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stdout": "models-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": null
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": null,
+			"env": {
+				"RADIUS_API_KEY": "env-key"
+			},
+			"stdout": "",
+			"stderr": "Error: Provider \"gw\" is not configured with an OAuth bearer token\n",
+			"code": 1,
+			"requests": [],
+			"stored": null
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "valid-access",
+					"refresh": "stored-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stdout": "{\"status\":\"ready\",\"provider\":\"gw\",\"authType\":\"oauth\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "valid-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json",
+				"--credentials"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "valid-access",
+					"refresh": "stored-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stdout": "{\"status\":\"ready\",\"provider\":\"gw\",\"authType\":\"oauth\",\"credentials\":\"valid-access\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "valid-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "valid-access",
+					"refresh": "stored-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stdout": "valid-access\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "valid-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "valid-access",
+					"refresh": "stored-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stdout": "",
+			"stderr": "Error: Provider \"gw\" is configured with OAuth, not an API key\n",
+			"code": 1,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "valid-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "old-access",
+					"refresh": "stored-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stdout": "{\"status\":\"ready\",\"provider\":\"gw\",\"authType\":\"oauth\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"path": "/v1/oauth/token",
+					"body": {
+						"grant_type": "refresh_token",
+						"client_id": "pi-gateway",
+						"refresh_token": "stored-refresh"
+					}
+				}
+			],
+			"stored": {
+				"type": "oauth",
+				"access": "refreshed-access",
+				"refresh": "refreshed-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"gw"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "old-access",
+					"refresh": "stored-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stdout": "refreshed-access\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"path": "/v1/oauth/token",
+					"body": {
+						"grant_type": "refresh_token",
+						"client_id": "pi-gateway",
+						"refresh_token": "stored-refresh"
+					}
+				}
+			],
+			"stored": {
+				"type": "oauth",
+				"access": "refreshed-access",
+				"refresh": "refreshed-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"gw",
+				"--json",
+				"--credentials",
+				"--no-refresh"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "old-access",
+					"refresh": "stored-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stdout": "{\"status\":\"ready\",\"provider\":\"gw\",\"authType\":\"oauth\",\"credentials\":\"old-access\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "old-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"gw",
+				"--min-expiry",
+				"2h"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "short-access",
+					"refresh": "stored-refresh",
+					"expires": "+1h"
+				}
+			},
+			"env": {},
+			"stdout": "",
+			"stderr": "Error: Failed to resolve credential\n",
+			"code": 1,
+			"requests": [
+				{
+					"method": "POST",
+					"path": "/v1/oauth/token",
+					"body": {
+						"grant_type": "refresh_token",
+						"client_id": "pi-gateway",
+						"refresh_token": "stored-refresh"
+					}
+				}
+			],
+			"stored": {
+				"type": "oauth",
+				"access": "refreshed-access",
+				"refresh": "refreshed-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"gw",
+				"--min-expiry",
+				"30m"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "short-access",
+					"refresh": "stored-refresh",
+					"expires": "+1h"
+				}
+			},
+			"env": {},
+			"stdout": "short-access\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"type": "oauth",
+				"access": "short-access",
+				"refresh": "stored-refresh"
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"nope",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"nope\",\"reason\":\"provider_not_found\"}\n",
+			"stderr": "",
+			"code": 1,
+			"requests": [],
+			"stored": null
+		}
+	]
+}

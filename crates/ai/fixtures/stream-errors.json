@@ -1,0 +1,747 @@
+{
+	"generator": "crates/ai/fixtures/generate-stream-errors.mjs",
+	"scenarios": [
+		{
+			"name": "anthropic/sse-error-overloaded",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "text/event-stream"
+					},
+					"body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_01\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"test-model\",\"content\":[],\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\nevent: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "anthropic/sse-error-first",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "text/event-stream"
+					},
+					"body": "event: error\ndata: {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}\n\n"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "anthropic/http-529",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 529,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "529 {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "anthropic/http-429",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 429,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Number of request tokens has exceeded your per-minute rate limit\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "429 {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"Number of request tokens has exceeded your per-minute rate limit\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "anthropic/http-500-json",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "500 {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "anthropic/http-500-text",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "anthropic-messages",
+				"provider": "anthropic",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "text/plain"
+					},
+					"body": "upstream exploded"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "500 upstream exploded"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-completions/http-429",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 429,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"error\":{\"message\":\"Rate limit reached\",\"type\":\"rate_limit_exceeded\",\"code\":\"rate_limit_exceeded\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "429: {\"message\":\"Rate limit reached\",\"type\":\"rate_limit_exceeded\",\"code\":\"rate_limit_exceeded\"}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-completions/http-500",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"error\":{\"message\":\"The server had an error\",\"type\":\"server_error\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "500: {\"message\":\"The server had an error\",\"type\":\"server_error\"}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-completions/stream-error-chunk",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-completions",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "text/event-stream"
+					},
+					"body": "data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"par\"}}]}\n\ndata: {\"error\":{\"message\":\"Provider overloaded\",\"code\":529}}\n\n"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "Provider overloaded"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-responses/http-500",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-responses",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 500,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"error\":{\"message\":\"The server had an error\",\"type\":\"server_error\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "OpenAI API error (500): {\"message\":\"The server had an error\",\"type\":\"server_error\"}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-responses/sse-error-event",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-responses",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "text/event-stream"
+					},
+					"body": "event: error\ndata: {\"type\":\"error\",\"code\":\"server_error\",\"message\":\"The model is overloaded\",\"sequence_number\":1}\n\n"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "Error Code server_error: The model is overloaded"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "openai-responses/response-failed",
+			"model": {
+				"id": "test-model",
+				"name": "Test Model",
+				"api": "openai-responses",
+				"provider": "openai",
+				"baseUrl": "{base}/v1",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "text/event-stream"
+					},
+					"body": "event: response.failed\ndata: {\"type\":\"response.failed\",\"sequence_number\":1,\"response\":{\"id\":\"resp_1\",\"status\":\"failed\",\"error\":{\"code\":\"server_error\",\"message\":\"Something went wrong\"},\"output\":[]}}\n\n"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "server_error: Something went wrong"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "google/http-503",
+			"model": {
+				"id": "gemini-test",
+				"name": "Test Model",
+				"api": "google-generative-ai",
+				"provider": "google",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 503,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"error\":{\"code\":503,\"message\":\"The model is overloaded. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "{\"error\":{\"code\":503,\"message\":\"The model is overloaded. Please try again later.\",\"status\":\"UNAVAILABLE\"}}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		},
+		{
+			"name": "mistral/http-429",
+			"model": {
+				"id": "mistral-test",
+				"name": "Test Model",
+				"api": "mistral-conversations",
+				"provider": "mistral",
+				"baseUrl": "{base}",
+				"reasoning": false,
+				"input": [
+					"text"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"apiKey": "test-key",
+				"maxRetries": 0,
+				"env": {
+					"PI_CACHE_RETENTION": "unset"
+				}
+			},
+			"responses": [
+				{
+					"status": 429,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"body": "{\"object\":\"error\",\"message\":\"Requests rate limit exceeded\",\"type\":\"rate_limited\",\"code\":\"1300\"}"
+				}
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "Mistral API error (429): {\"object\":\"error\",\"message\":\"Requests rate limit exceeded\",\"type\":\"rate_limited\",\"code\":\"1300\"}"
+			},
+			"thrown": null,
+			"unanswered": 0
+		}
+	]
+}

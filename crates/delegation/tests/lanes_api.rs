@@ -101,6 +101,7 @@ fn root(collect: CollectMode, max_lanes: usize, continuity: bool) -> Root {
         max_lanes,
         // No test step can outlast it, so "ended without the grace period" holds however slow the machine.
         cancel_grace: HANG_GUARD,
+        pool: None,
     })
     .unwrap();
     lanes.open("main").unwrap();

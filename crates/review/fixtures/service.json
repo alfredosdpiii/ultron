@@ -1,0 +1,591 @@
+{
+ "cases": [
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/bin"
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/usr/bin/ultron autoreview run\nEnvironment=PATH=/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/my bin",
+     "ULTRON_CODING_AGENT_DIR": "/home/me/agent dir",
+     "XDG_CONFIG_HOME": "  /cfg  "
+    }
+   },
+   "file": {
+    "path": "/cfg/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/usr/bin/ultron autoreview run\nEnvironment=\"PATH=/usr/bin:/my bin\"\nEnvironment=\"ULTRON_CODING_AGENT_DIR=/home/me/agent dir\"\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "XDG_CONFIG_HOME": "   ",
+     "ULTRON_CODING_AGENT_DIR": ""
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/usr/bin/ultron autoreview run\nEnvironment=PATH=/usr/local/bin:/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x",
+    "env": {
+     "PATH": "/bin"
+    }
+   },
+   "file": {
+    "path": "/Users/x/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/usr/bin/ultron</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ],
+    "disable": [
+     "launchctl unload -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x y",
+    "env": {
+     "PATH": "/a&b",
+     "ULTRON_CODING_AGENT_DIR": "/Users/x/<agent>"
+    }
+   },
+   "file": {
+    "path": "/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/usr/bin/ultron</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/a&amp;b</string>\n\t\t<key>ULTRON_CODING_AGENT_DIR</key><string>/Users/x/&lt;agent&gt;</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x y/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/it's",
+    "env": {}
+   },
+   "file": {
+    "path": "/Users/it's/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/usr/bin/ultron</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/usr/local/bin:/usr/bin:/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/it's/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "win32",
+    "home": "C:/Users/x",
+    "env": {}
+   },
+   "file": null
+  },
+  {
+   "self": {
+    "command": "/usr/bin/ultron",
+    "args": []
+   },
+   "target": {
+    "platform": "freebsd",
+    "home": "/home/x",
+    "env": {}
+   },
+   "file": null
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/bin"
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/opt/node --import \"/opt/x y/resolver.ts\" /opt/ultron/cli.js autoreview run\nEnvironment=PATH=/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/my bin",
+     "ULTRON_CODING_AGENT_DIR": "/home/me/agent dir",
+     "XDG_CONFIG_HOME": "  /cfg  "
+    }
+   },
+   "file": {
+    "path": "/cfg/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/opt/node --import \"/opt/x y/resolver.ts\" /opt/ultron/cli.js autoreview run\nEnvironment=\"PATH=/usr/bin:/my bin\"\nEnvironment=\"ULTRON_CODING_AGENT_DIR=/home/me/agent dir\"\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "XDG_CONFIG_HOME": "   ",
+     "ULTRON_CODING_AGENT_DIR": ""
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=/opt/node --import \"/opt/x y/resolver.ts\" /opt/ultron/cli.js autoreview run\nEnvironment=PATH=/usr/local/bin:/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x",
+    "env": {
+     "PATH": "/bin"
+    }
+   },
+   "file": {
+    "path": "/Users/x/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/opt/node</string>\n\t\t<string>--import</string>\n\t\t<string>/opt/x y/resolver.ts</string>\n\t\t<string>/opt/ultron/cli.js</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ],
+    "disable": [
+     "launchctl unload -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x y",
+    "env": {
+     "PATH": "/a&b",
+     "ULTRON_CODING_AGENT_DIR": "/Users/x/<agent>"
+    }
+   },
+   "file": {
+    "path": "/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/opt/node</string>\n\t\t<string>--import</string>\n\t\t<string>/opt/x y/resolver.ts</string>\n\t\t<string>/opt/ultron/cli.js</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/a&amp;b</string>\n\t\t<key>ULTRON_CODING_AGENT_DIR</key><string>/Users/x/&lt;agent&gt;</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x y/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/it's",
+    "env": {}
+   },
+   "file": {
+    "path": "/Users/it's/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/opt/node</string>\n\t\t<string>--import</string>\n\t\t<string>/opt/x y/resolver.ts</string>\n\t\t<string>/opt/ultron/cli.js</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/usr/local/bin:/usr/bin:/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/it's/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "win32",
+    "home": "C:/Users/x",
+    "env": {}
+   },
+   "file": null
+  },
+  {
+   "self": {
+    "command": "/opt/node",
+    "args": [
+     "--import",
+     "/opt/x y/resolver.ts",
+     "/opt/ultron/cli.js"
+    ]
+   },
+   "target": {
+    "platform": "freebsd",
+    "home": "/home/x",
+    "env": {}
+   },
+   "file": null
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/bin"
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=\"/home/me/my \\\"bin\\\"/ult\\\\ron\" \"a&b<c>d\" \"it's\" autoreview run\nEnvironment=PATH=/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "PATH": "/usr/bin:/my bin",
+     "ULTRON_CODING_AGENT_DIR": "/home/me/agent dir",
+     "XDG_CONFIG_HOME": "  /cfg  "
+    }
+   },
+   "file": {
+    "path": "/cfg/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=\"/home/me/my \\\"bin\\\"/ult\\\\ron\" \"a&b<c>d\" \"it's\" autoreview run\nEnvironment=\"PATH=/usr/bin:/my bin\"\nEnvironment=\"ULTRON_CODING_AGENT_DIR=/home/me/agent dir\"\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "linux",
+    "home": "/home/me",
+    "env": {
+     "XDG_CONFIG_HOME": "   ",
+     "ULTRON_CODING_AGENT_DIR": ""
+    }
+   },
+   "file": {
+    "path": "/home/me/.config/systemd/user/ultron-autoreview.service",
+    "content": "[Unit]\nDescription=Ultron automated pull-request reviewer\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nExecStart=\"/home/me/my \\\"bin\\\"/ult\\\\ron\" \"a&b<c>d\" \"it's\" autoreview run\nEnvironment=PATH=/usr/local/bin:/usr/bin:/bin\nRestart=always\nRestartSec=15\n\n[Install]\nWantedBy=default.target\n",
+    "enable": [
+     "systemctl --user daemon-reload",
+     "systemctl --user enable --now ultron-autoreview.service"
+    ],
+    "disable": [
+     "systemctl --user disable --now ultron-autoreview.service"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x",
+    "env": {
+     "PATH": "/bin"
+    }
+   },
+   "file": {
+    "path": "/Users/x/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/home/me/my \"bin\"/ult\\ron</string>\n\t\t<string>a&amp;b&lt;c&gt;d</string>\n\t\t<string>it's</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ],
+    "disable": [
+     "launchctl unload -w /Users/x/Library/LaunchAgents/com.ultron.autoreview.plist"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/x y",
+    "env": {
+     "PATH": "/a&b",
+     "ULTRON_CODING_AGENT_DIR": "/Users/x/<agent>"
+    }
+   },
+   "file": {
+    "path": "/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/home/me/my \"bin\"/ult\\ron</string>\n\t\t<string>a&amp;b&lt;c&gt;d</string>\n\t\t<string>it's</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/a&amp;b</string>\n\t\t<key>ULTRON_CODING_AGENT_DIR</key><string>/Users/x/&lt;agent&gt;</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/x y/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/x y/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "darwin",
+    "home": "/Users/it's",
+    "env": {}
+   },
+   "file": {
+    "path": "/Users/it's/Library/LaunchAgents/com.ultron.autoreview.plist",
+    "content": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key><string>com.ultron.autoreview</string>\n\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>/home/me/my \"bin\"/ult\\ron</string>\n\t\t<string>a&amp;b&lt;c&gt;d</string>\n\t\t<string>it's</string>\n\t\t<string>autoreview</string>\n\t\t<string>run</string>\n\t</array>\n\t<key>EnvironmentVariables</key>\n\t<dict>\n\t\t<key>PATH</key><string>/usr/local/bin:/usr/bin:/bin</string>\n\t</dict>\n\t<key>KeepAlive</key><true/>\n\t<key>RunAtLoad</key><true/>\n\t<key>StandardErrorPath</key><string>/Users/it's/Library/Logs/ultron-autoreview.log</string>\n</dict>\n</plist>\n",
+    "enable": [
+     "launchctl load -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ],
+    "disable": [
+     "launchctl unload -w '/Users/it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+    ]
+   }
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "win32",
+    "home": "C:/Users/x",
+    "env": {}
+   },
+   "file": null
+  },
+  {
+   "self": {
+    "command": "/home/me/my \"bin\"/ult\\ron",
+    "args": [
+     "a&b<c>d",
+     "it's"
+    ]
+   },
+   "target": {
+    "platform": "freebsd",
+    "home": "/home/x",
+    "env": {}
+   },
+   "file": null
+  }
+ ],
+ "quotes": [
+  {
+   "value": "simple",
+   "quoted": "launchctl load -w simple/Library/LaunchAgents/com.ultron.autoreview.plist"
+  },
+  {
+   "value": "with space",
+   "quoted": "launchctl load -w 'with space/Library/LaunchAgents/com.ultron.autoreview.plist'"
+  },
+  {
+   "value": "it's",
+   "quoted": "launchctl load -w 'it'\\''s/Library/LaunchAgents/com.ultron.autoreview.plist'"
+  },
+  {
+   "value": "",
+   "quoted": "launchctl load -w Library/LaunchAgents/com.ultron.autoreview.plist"
+  },
+  {
+   "value": "a/b:c,d@e%f+g=h.i_j-k",
+   "quoted": "launchctl load -w a/b:c,d@e%f+g=h.i_j-k/Library/LaunchAgents/com.ultron.autoreview.plist"
+  },
+  {
+   "value": "$HOME",
+   "quoted": "launchctl load -w '$HOME/Library/LaunchAgents/com.ultron.autoreview.plist'"
+  },
+  {
+   "value": "a\"b",
+   "quoted": "launchctl load -w 'a\"b/Library/LaunchAgents/com.ultron.autoreview.plist'"
+  }
+ ]
+}

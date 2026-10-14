@@ -125,6 +125,8 @@ pub struct ChatView {
     streaming: Option<usize>,
     queues: Vec<Queued>,
     indicator: Option<Loader>,
+    /// The indicator is a summary's retry countdown (`RetryStatusIndicator`): its message and when it started.
+    retry: Option<RetryCountdown>,
     pub tools_expanded: bool,
     pub hide_thinking: bool,
     /// Formatted `tui.select.cancel` key (the running `!` command's hint).
@@ -139,6 +141,7 @@ impl ChatView {
             streaming: None,
             queues: Vec::new(),
             indicator: None,
+            retry: None,
             tools_expanded: false,
             hide_thinking: false,
             cancel_key: "escape".into(),
@@ -354,6 +357,7 @@ impl ChatView {
     pub fn set_working(&mut self, working: bool) {
         if !working {
             self.indicator = None;
+            self.retry = None;
             return;
         }
         if self.indicator.is_none() {
@@ -368,18 +372,75 @@ impl ChatView {
         }
     }
 
-    /// Show or hide the compaction indicator (`Compacting context... (escape to cancel)`).
-    pub fn set_compacting(&mut self, compacting: bool) {
-        if !compacting {
-            self.indicator = None;
-            return;
-        }
+    /// A summary's retry countdown (`RetryStatusIndicator`): `Retrying (attempt/maxAttempts) in Ns... (escape to
+    /// cancel)`, counting down each second from `ceil(delayMs / 1000)` (`CountdownTimer`).
+    pub fn set_retry_indicator(&mut self, attempt: u64, max_attempts: u64, delay_ms: u64) {
+        let countdown = RetryCountdown {
+            attempt,
+            max_attempts,
+            seconds: delay_ms.div_ceil(1000),
+            started: std::time::Instant::now(),
+            interrupt_key: self.style.interrupt_key.clone(),
+        };
         let t = Rc::clone(&self.style.theme);
         let t2 = Rc::clone(&self.style.theme);
         self.indicator = Some(Loader::new(
+            Box::new(move |s| fg(&t, "warning", s)),
+            Box::new(move |s| fg(&t2, "muted", s)),
+            &countdown.message(countdown.seconds),
+            None,
+        ));
+        self.retry = Some(countdown);
+    }
+
+    /// `clearStatusIndicator("retry")`: only a retry countdown is cleared.
+    pub fn clear_retry_indicator(&mut self) {
+        if self.retry.take().is_some() {
+            self.indicator = None;
+            self.retry = None;
+        }
+    }
+
+    /// `BranchSummaryStatusIndicator`: `Summarizing branch... (escape to cancel)`.
+    pub fn set_branch_summary_indicator(&mut self) {
+        let label = format!("Summarizing branch... ({} to cancel)", self.style.interrupt_key);
+        let t = Rc::clone(&self.style.theme);
+        let t2 = Rc::clone(&self.style.theme);
+        self.retry = None;
+        self.indicator = Some(Loader::new(
             Box::new(move |s| fg(&t, "accent", s)),
             Box::new(move |s| fg(&t2, "muted", s)),
-            &format!("Compacting context... ({} to cancel)", self.style.interrupt_key),
+            &label,
+            None,
+        ));
+    }
+
+    /// Show or hide the compaction indicator (`Compacting context... (escape to cancel)`).
+    pub fn set_compacting(&mut self, compacting: bool) {
+        if compacting {
+            self.set_compacting_for("manual");
+        } else {
+            self.indicator = None;
+        }
+    }
+
+    /// Show the indicator of a compaction for `reason` (`CompactionStatusIndicator`): `Compacting context...` for
+    /// a manual one, `Auto-compacting...` for a threshold one, `Context overflow detected, Auto-compacting...` for
+    /// an overflow one.
+    pub fn set_compacting_for(&mut self, reason: &str) {
+        let cancel = format!("({} to cancel)", self.style.interrupt_key);
+        let label = match reason {
+            "manual" => format!("Compacting context... {cancel}"),
+            "overflow" => format!("Context overflow detected, Auto-compacting... {cancel}"),
+            _ => format!("Auto-compacting... {cancel}"),
+        };
+        let t = Rc::clone(&self.style.theme);
+        let t2 = Rc::clone(&self.style.theme);
+        self.retry = None;
+        self.indicator = Some(Loader::new(
+            Box::new(move |s| fg(&t, "accent", s)),
+            Box::new(move |s| fg(&t2, "muted", s)),
+            &label,
             None,
         ));
     }
@@ -415,6 +476,10 @@ impl ChatView {
     pub fn tick(&mut self) {
         if let Some(i) = &mut self.indicator {
             i.tick();
+            if let Some(retry) = &self.retry {
+                let elapsed = retry.started.elapsed().as_secs();
+                i.set_message(&retry.message(retry.seconds.saturating_sub(elapsed)));
+            }
         }
     }
 
@@ -442,6 +507,7 @@ impl ChatView {
         self.streaming = None;
         self.queues.clear();
         self.indicator = None;
+        self.retry = None;
     }
 
     pub fn render_transcript(&mut self, width: usize) -> Vec<String> {
@@ -556,6 +622,24 @@ impl ChatView {
 
     pub fn render_status(&mut self, width: usize) -> Vec<String> {
         self.indicator.as_mut().map(|i| i.render(width)).unwrap_or_default()
+    }
+}
+
+/// A summary retry's countdown (`RetryStatusIndicator` with its `CountdownTimer`).
+struct RetryCountdown {
+    attempt: u64,
+    max_attempts: u64,
+    seconds: u64,
+    started: std::time::Instant,
+    interrupt_key: String,
+}
+
+impl RetryCountdown {
+    fn message(&self, seconds: u64) -> String {
+        format!(
+            "Retrying ({}/{}) in {seconds}s... ({} to cancel)",
+            self.attempt, self.max_attempts, self.interrupt_key
+        )
     }
 }
 

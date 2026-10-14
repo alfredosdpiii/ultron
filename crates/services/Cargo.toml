@@ -1,0 +1,21 @@
+[package]
+name = "services"
+version = "0.1.0"
+description = "Ultron's local services as kernel-API host operations: refinements (lessons) and their review and activation flow, skill-proposal validation, experiment history, release gates, and documents kept as session values"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+delegation = { path = "../delegation" }
+kernel-apis = { path = "../kernel-apis" }
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+session-journal = { path = "../session-journal" }
+
+[dev-dependencies]
+fancy-regex = "=0.19.2"
+kernel = { path = "../kernel" }
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

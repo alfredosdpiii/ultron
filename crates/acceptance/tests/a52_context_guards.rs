@@ -1,18 +1,21 @@
-//! A52 (partial): `ctx.forget` never removes the current user turn or pinned items, an extension can observe the
-//! edit, and compaction keeps notes and pins.
-//! Ported from "history, summarize, guards, pin, note, and state follow the branch" of
+//! A52: `ctx.forget` never removes the current user turn or pinned items, an extension can observe the edit, and
+//! compaction keeps notes and pins.
+//! Ported from packages/coding-agent/test/ultron-a52-context-guards.test.ts through the `ultron` binary over RPC with
+//! the scripted provider: the model forgets an earlier user message through the kernel's `ctx` API in the root lane,
+//! the next request no longer carries it while the durable transcript does; forgetting the current user message
+//! and a pinned item is refused; an extension process subscribed to `ultron:context_edit` on the event bus
+//! (`pi.events`) receives the edit; after a compaction the note and the pinned item are still in the model's
+//! context, and neither the summarizer nor the model sees the forgotten message.
+//! Also "history, summarize, guards, pin, note, and state follow the branch" of
 //! packages/coding-agent/test/ultron-context-control.test.ts: the `ctx.*` calls run as cells in the real runtime.py
 //! kernel (crates/kernel) against `kernel_apis::ContextControl`, over a branch that stands in for the lane (prompts
 //! append the user and assistant entries a lane would), and the next request's context is the branch through
-//! `apply_context_edits`. Edit events are the module's `entry_added` observations.
-//! Not ported: the note projection into the next request ("Note (ctx.note): ...") and the `/rlm` context panel, and
-//! all of ultron-a52-context-guards.test.ts: `ContextControl` is not wired into the session's lanes
-//! (crates/session-core/src/compose.rs), extensions have no `pi.events` bus, and compaction does not call
-//! `kept_across_compaction`.
+//! `apply_context_edits`. Edit events are the module's `entry_added` observations. Not ported: the `/rlm` context
+//! panel.
 
 mod common;
 
-use common::{kernel_in, null_handler, run};
+use common::{HANG, Install, Provider, Reply, Request, kernel_in, null_handler, run, wait_until};
 use kernel::Status;
 use kernel_apis::KernelApis;
 use kernel_apis::context_control::{
@@ -209,4 +212,219 @@ fn acceptance_a52_ctx_history_summarize_guards_pin_note_and_state_follow_the_bra
         )),
         format!("[\"{second_a}\"]\n")
     );
+}
+
+// Built by concatenation in the model's code so the code itself never carries the secret.
+const SECRET: &str = "SECRET_ALPHA_4471";
+const PINNED: &str = "SECRET_BRAVO_9082";
+const NOTE: &str = "NOTE_TEXT_3350";
+const SUMMARY: &str = "SCRIPTED_COMPACTION_SUMMARY";
+
+const EDIT_CELL: &str = "h = await ctx.history(limit=50)
+items = h['items']
+secret = 'SECRET_' + 'ALPHA_4471'
+old = [i for i in items if i['kind'] == 'user' and secret in i['preview']][0]
+current = [i for i in items if i['kind'] == 'user'][-1]
+ack = [i for i in items if i['kind'] == 'assistant' and ('SECRET_' + 'BRAVO') in i['preview']][0]
+r = await ctx.forget([old['id']], 'no longer needed')
+print('FORGOT', r['forgotten'] == [old['id']], r['freed_bytes'] > 0)
+try:
+    await ctx.forget([current['id']], 'try the current turn')
+    print('CURRENT_FORGOTTEN')
+except Exception as e:
+    print('REFUSED_CURRENT', 'current user turn' in str(e))
+await ctx.pin(ack['id'])
+try:
+    await ctx.forget([ack['id']], 'try a pinned item')
+    print('PINNED_FORGOTTEN')
+except Exception as e:
+    print('REFUSED_PINNED', 'pinned' in str(e))
+await ctx.note('NOTE_' + 'TEXT_3350')
+after = {i['id']: i for i in (await ctx.history(limit=50))['items']}
+print('STATE', after[old['id']]['state'], after[ack['id']]['pinned'], after[current['id']]['protected'])
+full = await ctx.get(old['id'])
+print('DURABLE', secret in full['text'], full['visible_text'] is None)";
+
+/// An extension process (crates/extensions/PROTOCOL.md) subscribed to `ultron:context_edit` on the event bus: each
+/// message's data becomes a line of `events`.
+const OBSERVER: &str = r#"import json, sys
+EVENTS = sys.argv[1]
+def send(message):
+    sys.stdout.write(json.dumps(message) + "\n")
+    sys.stdout.flush()
+for line in sys.stdin:
+    message = json.loads(line)
+    method = message.get("method")
+    if method == "bus/message" and message["params"]["channel"] == "ultron:context_edit":
+        with open(EVENTS, "a") as out:
+            out.write(json.dumps(message["params"]["data"]) + "\n")
+    if "id" not in message or method is None:
+        continue
+    if method == "initialize":
+        send({"jsonrpc": "2.0", "id": message["id"], "result": {"protocolVersion": "2026-10-10",
+            "extensionInfo": {"name": "observe-context-edits"}, "capabilities": {"bus": ["ultron:context_edit"]}}})
+    elif method == "shutdown":
+        send({"jsonrpc": "2.0", "id": message["id"], "result": {}})
+        break
+    else:
+        send({"jsonrpc": "2.0", "id": message["id"], "error": {"code": -32601, "message": "Method not found"}})
+"#;
+
+/// The newest user prompt of the conversation (notes and other custom messages also arrive as user messages).
+fn latest_prompt(request: &Request) -> String {
+    request
+        .users()
+        .into_iter()
+        .rev()
+        .find(|text| text.starts_with('P') && text[1..].starts_with(|c: char| c.is_ascii_digit()))
+        .unwrap_or_default()
+}
+
+fn is_summarizer(request: &Request) -> bool {
+    request.system().contains("context summarization assistant")
+}
+
+fn a52_script(request: &Request) -> Reply {
+    if is_summarizer(request) {
+        return Reply::Text(SUMMARY.into());
+    }
+    let last = latest_prompt(request);
+    if last.starts_with("P1") {
+        return Reply::Text(format!("ACK1 {PINNED}"));
+    }
+    if last.starts_with("P2") {
+        return if request.tool_results().iter().any(|t| t.contains("REFUSED_CURRENT")) {
+            Reply::Text("DONE2".into())
+        } else {
+            Reply::RlmCall("call_a52_edit".into(), EDIT_CELL.into())
+        };
+    }
+    if last.starts_with("P3") {
+        return Reply::Text("ACK3".into());
+    }
+    if last.starts_with("P4") {
+        return Reply::Text("ACK4".into());
+    }
+    Reply::Text("unexpected".into())
+}
+
+#[test]
+fn acceptance_a52_forget_spares_the_current_turn_and_pins_extensions_observe_it_compaction_keeps_notes_and_pins() {
+    let provider = Provider::start(a52_script);
+    let install = Install::new(&provider);
+    let events_file = install.root.path().join("context-edits.jsonl");
+    let extension = install.agent().join("extensions").join("observe-context-edits");
+    std::fs::create_dir_all(&extension).unwrap();
+    std::fs::write(extension.join("observe.py"), OBSERVER).unwrap();
+    let python = std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| "/usr/bin/python3".into());
+    std::fs::write(
+        extension.join("extension.json"),
+        json!({"name": "observe-context-edits", "command": python,
+            "args": ["observe.py", events_file.display().to_string()]})
+        .to_string(),
+    )
+    .unwrap();
+    let mut client = install.rpc(&["--no-session"], &[]);
+    client.prompt_and_wait(&format!("P1 remember {SECRET}"), HANG).unwrap();
+    client.prompt_and_wait("P2 tidy your context", HANG).unwrap();
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("DONE2"));
+
+    let requests = provider.requests();
+    let after_edit = requests
+        .iter()
+        .find(|r| latest_prompt(r).starts_with("P2") && r.raw.contains("REFUSED_CURRENT"))
+        .expect("the request after the edit cell");
+    let output = after_edit
+        .tool_results()
+        .into_iter()
+        .find(|t| t.contains("REFUSED_CURRENT"))
+        .unwrap();
+    for line in [
+        "FORGOT True True",
+        "REFUSED_CURRENT True",
+        "REFUSED_PINNED True",
+        "STATE forgotten True True",
+        "DURABLE True True",
+    ] {
+        assert!(output.contains(line), "{line}: {output}");
+    }
+    assert!(
+        !output.contains("CURRENT_FORGOTTEN") && !output.contains("PINNED_FORGOTTEN"),
+        "{output}"
+    );
+    // The forgotten user message is out of the model's view; the pinned answer, the current turn, and the note are
+    // in it.
+    assert!(!after_edit.raw.contains(SECRET));
+    assert!(after_edit.raw.contains(PINNED));
+    assert!(after_edit.raw.contains("P2 tidy your context"));
+    assert!(after_edit.raw.contains(&format!("Note (ctx.note): {NOTE}")));
+    // Appended while the cell ran, the note waited for the turn's boundary: it follows the cell's result and never
+    // separates the call from it.
+    let roles: Vec<(String, String)> = after_edit.body["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            (
+                m["role"].as_str().unwrap_or_default().to_string(),
+                m["content"].to_string(),
+            )
+        })
+        .collect();
+    let at = |role: &str, needle: &str| roles.iter().position(|(r, c)| r == role && c.contains(needle)).unwrap();
+    assert_eq!(at("user", NOTE), at("tool", "REFUSED_CURRENT") + 1, "{roles:?}");
+    // The durable transcript still has it.
+    assert!(
+        serde_json::to_string(&client.get_messages().unwrap())
+            .unwrap()
+            .contains(SECRET)
+    );
+
+    // The extension observed exactly one model edit: the omission of the old user message.
+    let forgets = || -> Vec<Value> {
+        std::fs::read_to_string(&events_file)
+            .unwrap_or_default()
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .filter(|event| event["source"] == "ctx.forget")
+            .collect()
+    };
+    wait_until("the extension's ultron:context_edit event", || !forgets().is_empty());
+    let forgets = forgets();
+    assert_eq!(forgets.len(), 1, "{forgets:?}");
+    assert_eq!(
+        (&forgets[0]["lane"], &forgets[0]["reason"]),
+        (&json!("main"), &json!("no longer needed"))
+    );
+    let edits = forgets[0]["edits"].as_array().unwrap();
+    assert_eq!(edits.len(), 1);
+    assert!(edits[0]["targetId"].is_string());
+    assert_eq!(edits[0]["action"], "omit");
+
+    // Push the edited turns behind a compaction: the note and the pin survive it, the forgotten text does not.
+    client
+        .prompt_and_wait(&format!("P3 {}", "filler ".repeat(14_000)), HANG)
+        .unwrap();
+    let compacted = client.send(json!({"type": "compact"})).unwrap();
+    assert_eq!(compacted["success"], true, "{compacted}");
+    client.prompt_and_wait("P4 continue", HANG).unwrap();
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("ACK4"));
+    let (_, code) = client.finish(HANG);
+    assert_eq!(code, Some(0));
+
+    let requests = provider.requests();
+    let after_compaction = requests.last().unwrap();
+    assert_eq!(latest_prompt(after_compaction), "P4 continue");
+    assert!(after_compaction.raw.contains(SUMMARY));
+    assert!(!after_compaction.raw.contains("P2 tidy your context"));
+    assert!(after_compaction.raw.contains("kept across compaction"));
+    assert!(after_compaction.raw.contains(NOTE));
+    assert!(after_compaction.raw.contains(PINNED));
+    assert!(!after_compaction.raw.contains(SECRET));
+    // The summarizer never saw the forgotten message either.
+    let summarizer = requests
+        .iter()
+        .find(|r| is_summarizer(r))
+        .expect("a summarizer request");
+    assert!(!summarizer.raw.contains(SECRET));
 }

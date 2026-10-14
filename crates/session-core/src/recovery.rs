@@ -221,13 +221,29 @@ pub fn settle(session: &mut Session) -> Result<Recovered, String> {
                 tip = Some(result_id);
             }
         }
+        // A navigation without a summary that was admitted commits (`commitNavigation`: nothing external is
+        // repeated), unless it was cancelled.
+        "navigation.ready_to_commit" if !cancelled => {
+            tip = state["targetId"].as_str().map(str::to_string);
+            let labelled = state["labelEntryId"]
+                .as_str()
+                .map(str::to_string)
+                .or_else(|| tip.clone());
+            if let (Some(entry), Some(label)) = (labelled, state["label"].as_str()) {
+                writes.push(Write::set(crate::compaction_op::ENTRY_LABEL, &entry, json!(label)));
+            }
+            if tip.is_none() {
+                writes.push(Write::set(BRANCH_TIP, LANE, Value::Null));
+            }
+        }
         _ => {}
     }
     if let Some(tip) = &tip {
         writes.push(Write::set(BRANCH_TIP, LANE, json!(tip)));
     }
-    // A run whose last answer committed and may finish had nothing left to do.
-    let finished = at == "checkpoint" && state["continuation"]["kind"] == "may_finish";
+    // A run whose last answer committed and may finish had nothing left to do; so had an admitted navigation.
+    let finished =
+        (at == "checkpoint" && state["continuation"]["kind"] == "may_finish") || at == "navigation.ready_to_commit";
     let status = if cancelled {
         "aborted"
     } else if finished {
@@ -255,6 +271,18 @@ pub fn settle(session: &mut Session) -> Result<Recovered, String> {
         .iter()
         .map(|q| json!({"entryId": q.entry_id, "kind": q.kind}))
         .collect();
+    // A compaction's preparation goes with its operation (`operationCleanupWrites`).
+    let preparations: Vec<String> = session
+        .state()
+        .scan_values(crate::op_journal::OP_PREPARATION, &format!("{operation}:"))
+        .into_iter()
+        .map(|stored| stored.key.clone())
+        .collect();
+    writes.extend(
+        preparations
+            .iter()
+            .map(|key| Write::delete(crate::op_journal::OP_PREPARATION, key)),
+    );
     writes.extend([
         Write::delete(OP_META, &operation),
         Write::delete(OP_STATE, &operation),

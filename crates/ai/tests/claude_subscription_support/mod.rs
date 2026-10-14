@@ -1,5 +1,5 @@
 //! Shared fixtures of the claude-subscription tests: the fake `claude` (`fixtures/claude-subscription/claude.py`,
-//! run through a private wrapper script), a fake upstream Messages server and a raw HTTP client on loopback. No
+//! run by the interpreter), a fake upstream Messages server and a raw HTTP client on loopback. No
 //! test runs the real CLI, reads real credentials or reaches api.anthropic.com: every config injects a whole
 //! environment and a loopback upstream.
 #![allow(dead_code)]
@@ -33,28 +33,28 @@ pub fn inert_mcp() -> String {
     env!("CARGO_BIN_EXE_ultron-inert-mcp").to_string()
 }
 
-/// A private directory with the fake CLI's wrapper and its log.
+/// A private directory with the fake CLI's log and temp root.
+///
+/// The fake runs as `python -I claude.py`, never as an executable written here: a test thread that writes a file
+/// and then execs it races every other test thread's fork. A child forked while the write descriptor is open
+/// keeps a copy until its own exec, and an exec of the file in that window fails with ETXTBSY ("Text file busy"):
+/// the spawn failed, `auth status` read as logged out and discovery returned None under parallel load.
 pub struct Fake {
     pub dir: tempfile::TempDir,
-    pub wrapper: PathBuf,
     pub log: PathBuf,
 }
 
 impl Fake {
     pub fn new() -> Fake {
         let dir = tempfile::tempdir().unwrap();
-        let wrapper = dir.path().join("bin/claude");
-        std::fs::create_dir_all(wrapper.parent().unwrap()).unwrap();
         std::fs::create_dir_all(dir.path().join("tmp")).unwrap();
-        std::fs::write(
-            &wrapper,
-            format!("#!/bin/sh\nexec {} -I {} \"$@\"\n", python(), fixture().display()),
-        )
-        .unwrap();
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
         let log = dir.path().join("log.jsonl");
-        Fake { dir, wrapper, log }
+        Fake { dir, log }
+    }
+
+    /// The fake CLI's command line.
+    pub fn command(&self) -> Vec<String> {
+        vec![python(), "-I".into(), fixture().display().to_string()]
     }
 
     pub fn root(&self) -> &Path {
@@ -79,7 +79,7 @@ impl Fake {
 
     pub fn config(&self, upstream: &str, vars: &[(&str, &str)]) -> Config {
         Config {
-            command: Some(vec![self.wrapper.display().to_string()]),
+            command: Some(self.command()),
             env: Some(self.env(vars)),
             inert_mcp: Some(vec![inert_mcp()]),
             // Inputs not under test; long so a loaded machine never trips them.

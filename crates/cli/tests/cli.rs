@@ -129,29 +129,22 @@ fn cli_binary_matches_typescript_cli() {
 
 #[test]
 fn cli_prompt_and_subcommands_report_not_implemented() {
-    for (args, message) in [
-        (
-            vec!["hello"],
-            "Error: running a prompt or an interactive session is not implemented in the Rust build yet\n",
-        ),
-        // `ultron claude` is ported (crates/claude-root); `autoreview` still reports the stub.
-        (
-            vec!["autoreview"],
-            "Error: `ultron autoreview` is not implemented in the Rust build yet\n",
-        ),
-    ] {
-        let tmp = tempfile::tempdir().unwrap();
-        let output = Command::new(env!("CARGO_BIN_EXE_ultron"))
-            .args(&args)
-            .current_dir(tmp.path())
-            .env_clear()
-            .env("HOME", tmp.path())
-            .env("ULTRON_CODING_AGENT_DIR", tmp.path().join("agent"))
-            .output()
-            .unwrap();
-        assert_eq!(String::from_utf8_lossy(&output.stderr), message, "{args:?}");
-        assert_eq!(output.status.code(), Some(1));
-    }
+    // `ultron claude` (crates/claude-root) and `ultron autoreview` (tests/autoreview.rs) are ported; a bare prompt
+    // without a provider set up still reports this.
+    let tmp = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ultron"))
+        .arg("hello")
+        .current_dir(tmp.path())
+        .env_clear()
+        .env("HOME", tmp.path())
+        .env("ULTRON_CODING_AGENT_DIR", tmp.path().join("agent"))
+        .output()
+        .unwrap();
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "Error: running a prompt or an interactive session is not implemented in the Rust build yet\n"
+    );
+    assert_eq!(output.status.code(), Some(1));
 }
 
 #[test]

@@ -75,13 +75,48 @@ pub struct Host {
     shared: Arc<Shared>,
 }
 
-/// What job threads share with the host: the jobs, the journal they are written to, and whether the host released
-/// its jobs to a next owner.
+/// A job that ended, as `ShellJobs` `onEnd` reports it: its record, whether a caller was waiting on it (the result
+/// came inline, so nothing is announced) and whether its root turn's abort stopped it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct JobEnd {
+    pub record: JobRecord,
+    pub awaited: bool,
+    pub root_aborted: bool,
+}
+
+impl JobEnd {
+    /// The `job_done` event (`jobEvent`), unless the end was awaited or its root turn aborted.
+    pub fn event(&self) -> Option<Value> {
+        journal::job_event(&self.record, self.awaited, self.root_aborted)
+    }
+}
+
+/// Sees every job end (not those stopped by the host's shutdown).
+pub type JobEnds = Arc<dyn Fn(JobEnd) + Send + Sync>;
+/// The usage root a job started by `lane` belongs to (`host.rootOf(caller)`): the root turn running on the root
+/// lane, or the root of the task that owns another lane.
+pub type RootOf = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+/// Why a job was stopped.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum StopReason {
+    /// `job.cancel()`.
+    Cancelled,
+    /// Its root turn was aborted (Esc): stopped, and its end is not announced.
+    RootAborted,
+    /// The host shut down: nothing is reported.
+    Closed,
+}
+
+/// What job threads share with the host: the jobs, the journal they are written to, whether the host released
+/// its jobs to a next owner, and who hears of their ends.
 struct Shared {
     jobs: Mutex<Vec<Arc<Job>>>,
     journal: Mutex<Option<Arc<dyn JobJournal>>>,
     cwd: String,
     released: AtomicBool,
+    ends: Mutex<Option<JobEnds>>,
+    roots: Mutex<Option<RootOf>>,
 }
 
 impl Shared {
@@ -151,6 +186,9 @@ struct Record {
 
 struct Job {
     id: String,
+    /// The lane that started the job (it and the root lane see it) and that lane's root turn.
+    lane: String,
+    root_id: Option<String>,
     command: String,
     timeout: Option<f64>,
     /// The cleaned, bounded output the kernel reads.
@@ -166,23 +204,35 @@ struct Job {
     exited: Mutex<Option<Option<i32>>>,
     /// Cancel requested; its condvar wakes the follower (cancel, keeper exit, release).
     cancel: (Mutex<bool>, Condvar),
+    /// Why the first stop asked for it.
+    reason: Mutex<Option<StopReason>>,
     done: (Mutex<bool>, Condvar),
     waiters: AtomicUsize,
 }
 
 impl Job {
-    fn new(id: String, command: String, timeout: Option<f64>, jobs_dir: &Path, record: Record) -> Job {
+    fn new(
+        id: String,
+        (lane, root_id): (String, Option<String>),
+        command: String,
+        timeout: Option<f64>,
+        jobs_dir: &Path,
+        record: Record,
+    ) -> Job {
         Job {
             output_path: jobs_dir.join(format!("{id}.log")),
             raw_path: jobs_dir.join(format!("{id}.out")),
             exit_path: jobs_dir.join(format!("{id}.exit")),
             id,
+            lane,
+            root_id,
             command,
             timeout,
             record: Mutex::new(record),
             process: Mutex::new(None),
             exited: Mutex::new(None),
             cancel: (Mutex::new(false), Condvar::new()),
+            reason: Mutex::new(None),
             done: (Mutex::new(false), Condvar::new()),
             waiters: AtomicUsize::new(0),
         }
@@ -199,8 +249,8 @@ fn job_record(job: &Job, cwd: &str) -> JobRecord {
     let process = *lock(&job.process);
     JobRecord {
         id: job.id.clone(),
-        lane: "main".into(),
-        root_id: None,
+        lane: job.lane.clone(),
+        root_id: job.root_id.clone(),
         command: job.command.clone(),
         cwd: cwd.into(),
         timeout: job.timeout,
@@ -382,6 +432,8 @@ impl Host {
                 journal: Mutex::new(None),
                 cwd: cwd.to_string_lossy().into_owned(),
                 released: AtomicBool::new(false),
+                ends: Mutex::new(None),
+                roots: Mutex::new(None),
             }),
             cwd,
             jobs_dir,
@@ -404,6 +456,7 @@ impl Host {
             for saved in restored.records {
                 let job = Arc::new(Job::new(
                     saved.id.clone(),
+                    (saved.lane.clone(), saved.root_id.clone()),
                     saved.command.clone(),
                     saved.timeout,
                     // The record names its own spill file; the keeper's files sit next to it.
@@ -455,15 +508,75 @@ impl Host {
     }
 
     /// Stops every running job and waits until each has ended (worker shutdown). Dropping the host does the same
-    /// unless [`Host::release_jobs`] was called.
+    /// unless [`Host::release_jobs`] was called. Nothing is reported of them.
     pub fn stop_jobs(&self) {
         let jobs = lock(&self.shared.jobs).clone();
         for job in jobs {
-            cancel(&job);
+            cancel(&job, StopReason::Closed);
         }
     }
 
-    fn dispatch(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+    /// Who hears of every job's end (`onEnd`): the completion events of jobs nobody waited on.
+    pub fn on_job_end(&self, ends: JobEnds) {
+        *lock(&self.shared.ends) = Some(ends);
+    }
+
+    /// Where a new job's usage root comes from (`host.rootOf(caller)`).
+    pub fn set_roots(&self, roots: RootOf) {
+        *lock(&self.shared.roots) = Some(roots);
+    }
+
+    /// `cancelRoot`: Esc aborted a root turn: stop every job started under it (their ends are not announced).
+    pub fn cancel_root(&self, root: &str) {
+        let jobs: Vec<Arc<Job>> = lock(&self.shared.jobs)
+            .iter()
+            .filter(|job| job.root_id.as_deref() == Some(root))
+            .cloned()
+            .collect();
+        for job in jobs {
+            cancel(&job, StopReason::RootAborted);
+        }
+    }
+
+    /// How many callers are waiting on job `id` now (a waiter that sees the job end gets its result inline, so
+    /// the end is not announced).
+    pub fn job_waiters(&self, id: &str) -> usize {
+        lock(&self.shared.jobs)
+            .iter()
+            .find(|job| job.id == id)
+            .map_or(0, |job| job.waiters.load(Ordering::SeqCst))
+    }
+
+    /// Running jobs of every lane.
+    pub fn running_jobs(&self) -> usize {
+        lock(&self.shared.jobs)
+            .iter()
+            .filter(|job| lock(&job.record).status == Status::Running)
+            .count()
+    }
+
+    /// Running jobs of `lane` whose root `excluded` does not exclude (`running`).
+    pub fn running(&self, lane: &str, excluded: &dyn Fn(Option<&str>) -> bool) -> usize {
+        lock(&self.shared.jobs)
+            .iter()
+            .filter(|job| job.lane == lane && !excluded(job.root_id.as_deref()))
+            .filter(|job| lock(&job.record).status == Status::Running)
+            .count()
+    }
+
+    /// A request of `lane`'s kernel: its jobs belong to it (and to its root turn), and a lane other than the root's
+    /// sees only its own.
+    pub fn handle_lane(
+        &self,
+        lane: &str,
+        kind: &str,
+        payload: Map<String, Value>,
+        signal: &Signal,
+    ) -> Result<Value, String> {
+        self.dispatch(lane, kind, payload, signal)
+    }
+
+    fn dispatch(&self, lane: &str, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
         if kind == "files.before_write" {
             // session-worker.ts `proposedWrites`.
             let writes = match payload.get("writes") {
@@ -492,21 +605,21 @@ impl Host {
             return Err(format!("bash command was not run: {reason}"));
         }
         match kind {
-            "bash" if payload.contains_key("yield_after") => self.shell_bash(&payload, signal),
+            "bash" if payload.contains_key("yield_after") => self.shell_bash(lane, &payload, signal),
             "bash" => self.blocking_bash(&payload, signal),
-            "shell.bash" => self.shell_bash(&payload, signal),
+            "shell.bash" => self.shell_bash(lane, &payload, signal),
             "shell.run" => {
                 fields(&payload, &["command", "timeout", "yield_after"])?;
                 let command = command_of(&payload)?;
                 let timeout = timeout_of(payload.get("timeout"))?;
                 let yield_after = wait_seconds(payload.get("yield_after"), "yield_after")?.unwrap_or(0.0);
-                let job = self.start(command, timeout)?;
+                let job = self.start(lane, command, timeout)?;
                 wait(&job, Some(yield_after), signal);
                 Ok(snapshot(&job))
             }
             "shell.result" => {
                 fields(&payload, &["id", "wait"])?;
-                let job = self.find(payload.get("id"))?;
+                let job = self.find(lane, payload.get("id"))?;
                 // TS validates `wait` only while the job runs.
                 if lock(&job.record).status == Status::Running {
                     wait(&job, wait_seconds(payload.get("wait"), "wait")?, signal);
@@ -515,18 +628,18 @@ impl Host {
             }
             "shell.get" => {
                 fields(&payload, &["id"])?;
-                let job = self.find(payload.get("id"))?;
+                let job = self.find(lane, payload.get("id"))?;
                 Ok(snapshot(&job))
             }
             "shell.cancel" => {
                 fields(&payload, &["id"])?;
-                let job = self.find(payload.get("id"))?;
-                cancel(&job);
+                let job = self.find(lane, payload.get("id"))?;
+                cancel(&job, StopReason::Cancelled);
                 Ok(snapshot(&job))
             }
             "shell.read" => {
                 fields(&payload, &["id", "cursor", "max_bytes"])?;
-                let job = self.find(payload.get("id"))?;
+                let job = self.find(lane, payload.get("id"))?;
                 read_output(&job, payload.get("cursor"), payload.get("max_bytes"))
             }
             "shell.list" => {
@@ -535,6 +648,7 @@ impl Host {
                 Ok(Value::Array(
                     jobs.iter()
                         .rev()
+                        .filter(|job| visible(job, lane))
                         .map(|job| {
                             let mut snapshot = snapshot(job);
                             snapshot["text"] = Value::Null;
@@ -620,33 +734,34 @@ impl Host {
     }
 
     /// Plain `await bash(cmd)` with a yield_after: wait like the blocking bash, then leave a slow command running.
-    fn shell_bash(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+    fn shell_bash(&self, lane: &str, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
         fields(payload, &["command", "timeout", "yield_after"])?;
         let command = command_of(payload)?;
         let timeout = timeout_of(payload.get("timeout"))?;
         let yield_after = wait_seconds(payload.get("yield_after"), "yield_after")?;
-        let job = self.start(command, timeout)?;
+        let job = self.start(lane, command, timeout)?;
         wait(&job, yield_after, signal);
         if lock(&job.record).status == Status::Running && signal.is_aborted() {
             job.waiters.fetch_add(1, Ordering::SeqCst);
-            cancel(&job);
+            cancel(&job, StopReason::Cancelled);
             job.waiters.fetch_sub(1, Ordering::SeqCst);
         }
         bash_result(&job)
     }
 
-    fn find(&self, id: Option<&Value>) -> Result<Arc<Job>, String> {
+    fn find(&self, lane: &str, id: Option<&Value>) -> Result<Arc<Job>, String> {
         let Some(Value::String(id)) = id.filter(|id| id.as_str().is_some_and(|id| !id.is_empty())) else {
             return Err("job id must be a nonempty string".into());
         };
         lock(&self.shared.jobs)
             .iter()
-            .find(|job| &job.id == id)
+            .find(|job| &job.id == id && visible(job, lane))
             .cloned()
             .ok_or_else(|| format!("Unknown shell job {id}"))
     }
 
-    fn start(&self, command: String, timeout: Option<f64>) -> Result<Arc<Job>, String> {
+    fn start(&self, lane: &str, command: String, timeout: Option<f64>) -> Result<Arc<Job>, String> {
+        let root = lock(&self.shared.roots).clone().and_then(|roots| roots(lane));
         let mut jobs = lock(&self.shared.jobs);
         let running = |job: &Arc<Job>| lock(&job.record).status == Status::Running;
         if jobs.iter().filter(|job| running(job)).count() >= JOB_MAX_ACTIVE {
@@ -655,6 +770,7 @@ impl Host {
         let id = format!("job-{}", hex(4));
         let job = Arc::new(Job::new(
             id,
+            (lane.to_string(), root),
             command,
             timeout,
             &self.jobs_dir,
@@ -688,8 +804,8 @@ impl Host {
             keep
         });
         drop(jobs);
-        // The keeper is spawned on the thread that follows it: a sandbox launcher ties the command to its parent
-        // thread (PR_SET_PDEATHSIG), so the request thread that starts a job must not be its parent.
+        // The keeper is spawned on the thread that follows it (its waiter); its sandbox is persistent
+        // (`Launcher::command_persistent`), so neither that thread nor this worker ending stops it.
         let (started, spawned) = mpsc::channel();
         let (runner, shared, cwd, launcher) = (
             job.clone(),
@@ -739,7 +855,8 @@ fn spawn_keeper(job: &Job, cwd: &Path, launcher: Option<&sandbox::Launcher>) -> 
     let exit = create(&job.exit_path)?;
     let argv = ["bash".to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
     let mut process = match launcher {
-        Some(launcher) => launcher.command(&argv, cwd)?,
+        // A job outlives the worker that started it (a successor adopts it): its sandbox is not tied to us.
+        Some(launcher) => launcher.command_persistent(&argv, cwd)?,
         None => {
             let mut process = Command::new(&argv[0]);
             process.args(&argv[1..]).current_dir(cwd);
@@ -928,7 +1045,20 @@ fn follow(job: &Arc<Job>, child: Option<std::process::Child>, shared: &Shared) {
         }
     }
     shared.persist();
+    // `onEnd`, before the job's waiters wake: a caller still waiting gets the result inline, so nothing is announced.
+    let reason = *lock(&job.reason);
+    let end = JobEnd {
+        record: job_record(job, &shared.cwd),
+        awaited: job.waiters.load(Ordering::SeqCst) > 0,
+        root_aborted: reason == Some(StopReason::RootAborted),
+    };
+    let ends = lock(&shared.ends).clone();
     job.finished();
+    if reason != Some(StopReason::Closed)
+        && let Some(ends) = ends
+    {
+        ends(end);
+    }
 }
 
 /// A number as JS prints it in a template string (integers without a fraction).
@@ -966,10 +1096,11 @@ fn wait(job: &Job, seconds: Option<f64>, signal: &Signal) {
     job.waiters.fetch_sub(1, Ordering::SeqCst);
 }
 
-fn cancel(job: &Job) {
+fn cancel(job: &Job, reason: StopReason) {
     if *lock(&job.done.0) {
         return;
     }
+    lock(&job.reason).get_or_insert(reason);
     *lock(&job.cancel.0) = true;
     job.cancel.1.notify_all();
     let mut done = lock(&job.done.0);
@@ -1010,7 +1141,7 @@ fn snapshot(job: &Job) -> Value {
     let elapsed = record.ended_at.unwrap_or_else(now_ms).saturating_sub(record.started_at);
     json!({
         "id": job.id,
-        "lane": "main",
+        "lane": job.lane,
         "command": job.command,
         "status": record.status.name(),
         "running": record.status == Status::Running,
@@ -1076,8 +1207,13 @@ fn read_output(job: &Job, cursor: Option<&Value>, max_bytes: Option<&Value>) -> 
 
 impl HostHandler for Host {
     fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
-        self.dispatch(kind, payload, signal)
+        self.dispatch("main", kind, payload, signal)
     }
+}
+
+/// The root lane sees every job; a child lane sees its own.
+fn visible(job: &Job, lane: &str) -> bool {
+    lane == "main" || job.lane == lane
 }
 
 impl Drop for Host {

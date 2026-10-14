@@ -173,7 +173,37 @@ pub struct SessionListing {
     pub automatic_name: bool,
     /// Text of the first user message (text parts joined by spaces).
     pub first_message: String,
+    /// `SessionInfo.allMessagesText`: every user and assistant message's text, joined by spaces (what the
+    /// selector searches).
+    pub all_messages_text: String,
     pub message_count: usize,
+}
+
+/// What a session file says about itself (`nativeSessionDetails`, plus `allMessagesText`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SessionDetails {
+    pub name: Option<String>,
+    /// The name is the automatic one (the user never set it).
+    pub automatic_name: bool,
+    pub first_message: String,
+    pub all_messages_text: String,
+    pub message_count: usize,
+}
+
+/// `extractTextContent` of session-manager.ts's `buildSessionInfo`: a string content, or an array's `text` blocks
+/// joined by spaces (a block's `text` as `Array.join` renders it). Content upstream would throw on (not a string
+/// or array, or an array holding `null`) contributes nothing; upstream drops the whole file from its list.
+fn search_text(content: &Value) -> String {
+    match content {
+        Value::String(s) => s.clone(),
+        Value::Array(blocks) if !blocks.iter().any(Value::is_null) => blocks
+            .iter()
+            .filter(|b| b["type"] == "text")
+            .map(|b| js::join_string(b.get("text")))
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => String::new(),
+    }
 }
 
 fn content_text(content: &Value) -> String {
@@ -193,11 +223,13 @@ fn content_text(content: &Value) -> String {
     }
 }
 
-/// `nativeSessionDetails` of a file's text (format 4 or v3), plus whether the name is automatic.
-pub fn session_details(text: &str) -> (Option<String>, bool, String, usize) {
+/// `nativeSessionDetails` of a file's text (format 4 or v3), plus whether the name is automatic and
+/// `allMessagesText`.
+pub fn session_details(text: &str) -> SessionDetails {
     let mut name: Option<String> = None;
     let mut automatic: Option<String> = None;
     let mut first = String::new();
+    let mut all = Vec::new();
     let mut count = 0;
     for line in text.split('\n').filter(|l| !l.trim().is_empty()) {
         let Ok(parsed) = serde_json::from_str::<Value>(line) else {
@@ -238,23 +270,36 @@ pub fn session_details(text: &str) -> (Option<String>, bool, String, usize) {
                 if role == "user" && first.is_empty() {
                     first = content_text(&m["message"]["content"]);
                 }
+                // `isMessageWithContent`: only a message with a `content` field has text; empty text is skipped.
+                if let Some(content) = m["message"].get("content") {
+                    let text = search_text(content);
+                    if !text.is_empty() {
+                        all.push(text);
+                    }
+                }
             }
         }
     }
-    let is_auto = name.is_some() && name == automatic;
-    (name, is_auto, first, count)
+    SessionDetails {
+        automatic_name: name.is_some() && name == automatic,
+        name,
+        first_message: first,
+        all_messages_text: all.join(" "),
+        message_count: count,
+    }
 }
 
 /// The listing of one session file.
 pub fn listing(metadata: Metadata) -> SessionListing {
     let text = std::fs::read_to_string(&metadata.path).unwrap_or_default();
-    let (name, automatic_name, first_message, message_count) = session_details(&text);
+    let details = session_details(&text);
     SessionListing {
         metadata,
-        name,
-        automatic_name,
-        first_message,
-        message_count,
+        name: details.name,
+        automatic_name: details.automatic_name,
+        first_message: details.first_message,
+        all_messages_text: details.all_messages_text,
+        message_count: details.message_count,
     }
 }
 

@@ -140,7 +140,7 @@ fn ai_claude_subscription_setup_status_reports_login_and_models_from_the_cli() {
     assert_eq!(status.plan, "Claude Pro");
     assert_eq!(
         status.login_command.unwrap(),
-        [fake.wrapper.display().to_string(), "auth".into(), "login".into()]
+        [fake.command(), vec!["auth".into(), "login".into()]].concat()
     );
     let models = discover(pinned_picker());
     let ids: Vec<&str> = models.iter().map(|m| m.id.as_str()).collect();

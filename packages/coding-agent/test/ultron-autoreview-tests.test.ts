@@ -367,12 +367,21 @@ emit({"unshare": t.Sandbox("unshare", home="/home/someone").wrap(["make", "test"
 			"test",
 		]);
 		const docker = out.docker.join(" ");
-		expect(docker).toContain("docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges");
+		expect(docker).toContain(
+			"docker run --rm --init -i --network none --cap-drop ALL --security-opt no-new-privileges",
+		);
 		expect(out.docker.filter((part) => part === "-v")).toHaveLength(2);
 		expect(docker).toContain("-v /tmp/export-1:/tmp/export-1:rw");
 		expect(docker).toContain("-v /opt/venv:/opt/venv:ro");
 		expect(docker).not.toContain("docker.sock");
-		expect(docker).toMatch(/python:3\.12 make test$/);
+		// The environment is set inside with `env -i` (`-e` would add to the image's own ENV), and the command runs
+		// under the watcher that ends the container with its client.
+		expect(out.docker).not.toContain("-e");
+		const inside = out.docker.slice(out.docker.indexOf("python:3.12") + 1);
+		expect(inside.slice(0, 2)).toEqual(["sh", "-c"]);
+		expect(inside.slice(3, 6)).toEqual(["sh", "env", "-i"]);
+		expect(inside).toContain("HOME=/tmp/home");
+		expect(inside.slice(-2)).toEqual(["make", "test"]);
 	});
 
 	test("the strongest working mechanism is chosen; with none, there is no sandbox and tests are never run", () => {

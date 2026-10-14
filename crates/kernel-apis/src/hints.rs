@@ -137,6 +137,38 @@ impl HintsModule {
     }
 }
 
+impl HintsModule {
+    /// The first candidate `lane` has not muted or spent (`max` per tag), counted as fired and journaled, as its
+    /// hint line; `None` when every candidate is muted or spent. While the loop detector handles a stuck phase
+    /// (`stuck`), the narrower `repeated-failure` hint gives way.
+    pub fn fire(&self, lane: &str, candidates: &[(&'static str, String)], max: u64, stuck: bool) -> Option<String> {
+        let mut guard = lock(&self.lanes);
+        self.load(&mut guard).ok()?;
+        let lanes = guard.as_mut().expect("loaded");
+        let entry = lanes
+            .entry(lane.to_string())
+            .or_insert_with(|| json!({"muted": [], "fired": {}}));
+        let usable = |entry: &Value, tag: &str| {
+            let muted = entry["muted"].as_array().is_some_and(|m| m.iter().any(|t| t == tag));
+            !muted && entry["fired"][tag].as_u64().unwrap_or(0) < max
+        };
+        let stuck = stuck && usable(entry, "stuck-loop");
+        for (tag, text) in candidates {
+            if !usable(entry, tag) || (stuck && *tag == "repeated-failure") {
+                continue;
+            }
+            let fired = entry["fired"][*tag].as_u64().unwrap_or(0) + 1;
+            entry["fired"][*tag] = fired.into();
+            let document = json!({"version": 1, "lanes": lanes});
+            let _ = self.store.write(&document);
+            return Some(format!(
+                "[hint:{tag}] {text} (Mute this hint: `await hints.mute(\"{tag}\")`.)"
+            ));
+        }
+        None
+    }
+}
+
 impl crate::ApiModule for HintsModule {
     fn prefixes(&self) -> &[&str] {
         &["hints."]

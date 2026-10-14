@@ -106,6 +106,8 @@ const cases = [
 	["vertex whitespace env ignored", "google-vertex", null, { GOOGLE_CLOUD_API_KEY: "   " }, [], {}, []],
 ];
 
+const withoutStack = (message) => message.replace(/; stack=[\s\S]*$/, "; stack=<omitted>");
+
 const out = [];
 for (const [name, providerId, stored, env, files, overrides, responses] of cases) {
 	queue = [...responses];
@@ -124,7 +126,9 @@ for (const [name, providerId, stored, env, files, overrides, responses] of cases
 	try {
 		result = (await resolveProviderAuth(providers[providerId], credentials, authContext, overrides)) ?? null;
 	} catch (e) {
-		error = { name: e.name, code: e.code ?? null, message: e.message };
+		// The node stack TS appends to OAuth error details holds machine paths; tests/auth.rs compares only the text
+		// before `; stack=`, so the frames are not recorded.
+		error = { name: e.name, code: e.code ?? null, message: withoutStack(e.message) };
 	}
 	out.push({
 		name,

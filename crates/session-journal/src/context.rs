@@ -191,9 +191,32 @@ pub fn apply_context_edits(entries: &[Value]) -> Vec<Value> {
 
 /// `buildSessionContext` without entry projectors (custom entries contribute nothing).
 pub fn build_session_context(path: &[Value]) -> Vec<Value> {
-    apply_context_edits(&build_context_entries(path))
+    build_session_context_with(path, &[])
+}
+
+/// `EntryProjector`: the model messages of a custom entry of the type it is registered for.
+pub type EntryProjector = fn(&Value) -> Vec<Value>;
+
+/// `buildSessionContext` with `entryProjectors` (custom type, projector): a custom entry whose type has a projector
+/// contributes the projector's messages at its place in the branch. Edits apply first, so an omitted entry projects
+/// nothing.
+pub fn build_session_context_with(path: &[Value], projectors: &[(&str, EntryProjector)]) -> Vec<Value> {
+    project_context_entries(&apply_context_edits(&build_context_entries(path)), projectors)
+}
+
+/// The model messages of context entries (edits already applied), custom entries through `projectors`.
+pub fn project_context_entries(entries: &[Value], projectors: &[(&str, EntryProjector)]) -> Vec<Value> {
+    entries
         .iter()
-        .flat_map(entry_context_messages)
+        .flat_map(|entry| {
+            let projector = (str_of(entry, "type") == "custom")
+                .then(|| projectors.iter().find(|(kind, _)| *kind == str_of(entry, "customType")))
+                .flatten();
+            match projector {
+                Some((_, project)) => project(entry),
+                None => entry_context_messages(entry),
+            }
+        })
         .collect()
 }
 

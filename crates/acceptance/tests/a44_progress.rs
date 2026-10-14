@@ -6,9 +6,12 @@
 //! `identity@1` task), reporter identity and scope, strict validation and the receipt bound (on a background job
 //! instead of an `identity@1` task), budget extension denial, persistence and interrupted-verification settling,
 //! corrupt and newer-format documents.
-//! Not ported: "never verifies a completion claim without a passing verifier" needs `agents.register` and verifier
-//! runs of deterministic definitions (definition registry and deterministic adapters are not in Rust).
+//! "never verifies a completion claim without a passing verifier" runs over the Rust typed-agent host instead
+//! (`agents_support`: `delegation::agents::Agents` with its definition registry, `agents.register` and a
+//! deterministic adapter where "failing-check" throws "check exploded" and every other definition echoes its input,
+//! as the TS setup's adapter), with the module served through `KernelApis` for the calling lane.
 
+mod agents_support;
 mod g3_support;
 
 use g3_support::{Host, JournalStore, Tasks, lane_name, rejects};
@@ -369,4 +372,149 @@ fn acceptance_a44_rejects_a_corrupt_stored_document() {
 #[test]
 fn acceptance_a44_a_document_in_a_newer_format_fails_naming_its_namespace_and_version() {
     assert!(start_error(json!({"version": 2})).contains("ultron.module/progress has format version 2"));
+}
+
+/// Requests outside the typed-agent host (none are expected).
+struct Unused;
+
+impl kernel::HostHandler for Unused {
+    fn handle(&self, kind: &str, _: serde_json::Map<String, Value>, _: &kernel::Signal) -> Result<Value, String> {
+        Err(format!("unexpected host request: {kind}"))
+    }
+}
+
+#[test]
+fn acceptance_a44_never_verifies_a_completion_claim_without_a_passing_verifier() {
+    use kernel::HostHandler;
+    let fixture = agents_support::fixture(agents_support::Options {
+        // The background job's lane works until it is cancelled.
+        script: Some(Arc::new(|_, _, signal, _| agents_support::aborted(signal))),
+        deterministic: Some(agents_support::adapter(|id, input, _, _| {
+            if id == "failing-check" {
+                return Err("check exploded".into());
+            }
+            Ok(input.clone())
+        })),
+        ..Default::default()
+    });
+    let module: Arc<dyn ApiModule> = Arc::new(ProgressModule::with_limits(
+        Arc::new(MemoryDocumentStore::default()),
+        60_000,
+        1000,
+    ));
+    let call = |kind: &str, payload: Value, lane: &str| -> Result<Value, String> {
+        let inner: Arc<dyn HostHandler> = Arc::new(fixture.agents.handler(lane, Arc::new(Unused)));
+        kernel_apis::KernelApis::new(inner)
+            .with_host(Arc::new(fixture.agents.clone()), lane)
+            .with(module.clone())
+            .handle(
+                kind,
+                payload.as_object().cloned().unwrap_or_default(),
+                &kernel::Signal::new(),
+            )
+    };
+    let running = call("background.start", json!({"prompt": "work"}), "main").unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let worker_lane = format!("ultron.background-job.{running}");
+    agents_support::wait_for("the background job's lane", std::time::Duration::from_secs(120), || {
+        fixture.agents.caller_task(&worker_lane).is_some()
+    });
+    let register = json!({
+        "id": "failing-check", "version": "1", "strategy": "deterministic", "instructions": "Always fails.",
+        "inputSchema": {}, "outputSchema": {}, "maxRepairs": 0, "inputDescription": "any", "outputDescription": "any",
+    });
+    call("agents.register", json!({"definition": register}), "main").unwrap();
+    let done = call(
+        "agents.spawn",
+        json!({"definition": "identity@1", "input": {"answer": 42}}),
+        &worker_lane,
+    )
+    .unwrap();
+    let done = done["id"].as_str().unwrap().to_string();
+    call("agents.result", json!({"id": done}), "main").unwrap();
+    let claim = |extra: Value| -> Value {
+        let mut payload = json!({"task_id": done, "claim": "complete"});
+        for (key, value) in extra.as_object().unwrap() {
+            payload[key] = value.clone();
+        }
+        call("progress.reassess", payload, &worker_lane).unwrap()["claim"].clone()
+    };
+    let reason = |claim: &Value| claim["reason"].as_str().unwrap_or_default().to_string();
+
+    let none = claim(json!({}));
+    assert_eq!(none["decision"], "unverified");
+    assert!(reason(&none).contains("No verifier"), "{none}");
+
+    let unknown = claim(json!({"verifier": "no-such-check@1"}));
+    assert_eq!(unknown["decision"], "unverified");
+    assert!(reason(&unknown).contains("could not be started"), "{unknown}");
+
+    let failing = claim(json!({"verifier": "failing-check@1"}));
+    assert_eq!(
+        (&failing["decision"], &failing["verifier_status"]),
+        (&json!("unverified"), &json!("failed"))
+    );
+    assert!(reason(&failing).contains("check exploded"), "{failing}");
+
+    let not_passed = claim(json!({"verifier": "identity@1", "verifier_input": {"passed": false}}));
+    assert_eq!(
+        (&not_passed["decision"], &not_passed["verifier_status"]),
+        (&json!("unverified"), &json!("succeeded"))
+    );
+
+    let non_boolean = claim(json!({"verifier": "identity@1", "verifier_input": {"passed": "yes"}}));
+    assert_eq!(non_boolean["decision"], "unverified");
+    assert!(reason(&non_boolean).contains("boolean"), "{non_boolean}");
+
+    // Default verifier input carries the task result; identity echoes it without a passed field.
+    let default_input = claim(json!({"verifier": "identity@1"}));
+    assert_eq!(default_input["decision"], "unverified");
+
+    let verified = claim(json!({"verifier": "identity@1", "verifier_input": {"passed": true}}));
+    assert_eq!(
+        (&verified["decision"], &verified["verifier_status"]),
+        (&json!("verified"), &json!("succeeded"))
+    );
+    let tasks = call("agents.tasks", json!({}), "main").unwrap();
+    let verifier = tasks["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == verified["verifier_task_id"])
+        .unwrap()
+        .clone();
+    assert_eq!(verifier["parentId"], running.as_str());
+
+    let on_running = call(
+        "progress.reassess",
+        json!({"task_id": running, "claim": "complete", "verifier": "identity@1", "verifier_input": {"passed": true}}),
+        "main",
+    )
+    .unwrap()["claim"]
+        .clone();
+    assert_eq!(on_running["decision"], "rejected");
+    assert!(reason(&on_running).contains("running"), "{on_running}");
+
+    let history = call("progress.history", json!({"task_id": done}), &worker_lane).unwrap();
+    let decisions: Vec<Value> = history["decisions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["claim"]["decision"].clone())
+        .collect();
+    assert_eq!(
+        decisions,
+        [
+            "unverified",
+            "unverified",
+            "unverified",
+            "unverified",
+            "unverified",
+            "unverified",
+            "verified"
+        ]
+    );
+    fixture.agents.close();
 }

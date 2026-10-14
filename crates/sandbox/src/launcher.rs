@@ -272,21 +272,33 @@ impl Review {
                 argv
             }
             Mechanism::Docker => {
-                let mut argv: Vec<String> = [
-                    "docker",
-                    "run",
-                    "--rm",
-                    "--network",
-                    "none",
-                    "--cap-drop",
-                    "ALL",
-                    "--security-opt",
-                    "no-new-privileges",
-                    "--pids-limit",
-                    "1024",
-                ]
-                .map(s)
-                .to_vec();
+                // As autoreview_tests.py: tied to the client, the client to its parent (with setpriv), the
+                // environment set inside with `env -i` (see the interactive profile's Docker branch).
+                let setpriv = layout.which("setpriv");
+                let mut argv: Vec<String> = Vec::new();
+                if setpriv {
+                    argv.extend(["setpriv", "--pdeathsig", "KILL", "--"].map(s));
+                }
+                let client = if setpriv { DOCKER_CLIENT } else { DOCKER_CLIENT_POLLING };
+                argv.extend([s("bash"), s("-c"), s(client), s("ultron-docker")]);
+                argv.extend(
+                    [
+                        "docker",
+                        "run",
+                        "--rm",
+                        "--init",
+                        "-i",
+                        "--network",
+                        "none",
+                        "--cap-drop",
+                        "ALL",
+                        "--security-opt",
+                        "no-new-privileges",
+                        "--pids-limit",
+                        "1024",
+                    ]
+                    .map(s),
+                );
                 argv.extend([
                     s("--user"),
                     format!("{}:{}", self.uid, self.gid),
@@ -297,10 +309,9 @@ impl Review {
                 for (source, target) in binds {
                     argv.extend([s("-v"), format!("{source}:{target}:ro")]);
                 }
-                for (name, value) in env {
-                    argv.extend([s("-e"), format!("{name}={value}")]);
-                }
                 argv.push(self.image.clone().unwrap_or_else(|| s("None")));
+                argv.extend([s("sh"), s("-c"), s(DOCKER_TIED), s("sh"), s("env"), s("-i")]);
+                argv.extend(env.iter().map(|(name, value)| format!("{name}={value}")));
                 argv.extend(command);
                 argv
             }
@@ -316,7 +327,7 @@ impl Review {
                 "unshare: new user, mount, pid, ipc, uts and network namespaces; /home, /root, /run and the user's home hidden under empty tmpfs mounts, a private /tmp; environment cleared",
             ),
             Mechanism::Docker => format!(
-                "docker ({}): no network, all capabilities dropped, no new privileges, only the exported commit mounted",
+                "docker ({}): no network, all capabilities dropped, no new privileges, only the exported commit mounted; environment cleared; the container ends with its client",
                 self.image.as_deref().unwrap_or("None")
             ),
         }
@@ -391,6 +402,15 @@ umount -l "$stage"
 cd "$cwd"
 exec unshare --user --map-user="$uid" --map-group="$gid" -- "$@"
 "#;
+
+/// The Docker client's stdin: a pipe nobody writes, open exactly as long as the client runs (the reader of
+/// [`DOCKER_TIED`] inside sees end-of-input when the client is gone). `$$` is the shell that became the client.
+const DOCKER_CLIENT: &str = r#"exec "$@" < <(exec setpriv --pdeathsig KILL -- sleep infinity)"#;
+const DOCKER_CLIENT_POLLING: &str = r#"exec "$@" < <(while kill -0 $$ 2>/dev/null; do sleep 1; done)"#;
+/// Inside the container: the command runs with no stdin while a watcher reads the container's stdin (fd 3), which
+/// `docker run -i` closes when its client goes away; the watcher then kills the command, the shell exits, and with
+/// it `--init` and the whole container. A command that ends on its own ends the watcher.
+const DOCKER_TIED: &str = r#"exec 3<&0; "$@" </dev/null 3<&- & c=$!; { cat <&3 >/dev/null; kill -KILL $c 2>/dev/null; } & w=$!; exec 3<&-; wait $c; s=$?; kill $w 2>/dev/null; exit $s"#;
 
 /// Writable (true) and readable paths strictly inside a hidden one, with their index in their list: mounted again
 /// after the hidden ones, so the most specific rule wins (a session dir under a hidden `~/.ultron` stays usable).
@@ -508,6 +528,26 @@ impl Policy {
         }
     }
 
+    /// [`Policy::wrap`] for a process that must outlive the one starting it (a shell job a successor worker
+    /// adopts). bwrap's `--die-with-parent` and the `setpriv --pdeathsig` of unshare and the Docker client kill the
+    /// sandbox when its parent ends, and they stay: they are what makes killing the job's process group end every
+    /// process inside (the sandbox's pid-1 is in a session of its own; a container is not a process of ours at all).
+    /// The parent they watch becomes a small `sh` that is not tied to the starter, so the sandbox lives as long as
+    /// that `sh`: until the job ends or its process group is killed.
+    pub fn wrap_persistent(
+        &self,
+        mechanism: Mechanism,
+        layout: &dyn Layout,
+        argv: &[String],
+        cwd: &Path,
+    ) -> Vec<String> {
+        // `; exit $?` keeps the shell from replacing itself with the sandbox (it must stay its parent).
+        [s("sh"), s("-c"), s(r#""$@"; exit $?"#), s("ultron-job")]
+            .into_iter()
+            .chain(self.wrap(mechanism, layout, argv, cwd))
+            .collect()
+    }
+
     /// The command line running `argv` in `cwd` under `mechanism`.
     pub fn wrap(&self, mechanism: Mechanism, layout: &dyn Layout, argv: &[String], cwd: &Path) -> Vec<String> {
         let exists = |path: &PathBuf| layout.entry(path) != Entry::Missing;
@@ -591,7 +631,17 @@ impl Policy {
                 out
             }
             Mechanism::Docker => {
-                let mut out: Vec<String> = ["docker", "run", "--rm", "--init", "--pull", "never"].map(s).to_vec();
+                // A container is not a process of ours: killing the `docker run` client, or its process group, leaves
+                // it running. It is tied to the client instead (DOCKER_CLIENT, DOCKER_TIED), and the client to its
+                // parent as unshare is.
+                let mut out: Vec<String> = Vec::new();
+                let setpriv = layout.which("setpriv");
+                if setpriv {
+                    out.extend(["setpriv", "--pdeathsig", "KILL", "--"].map(s));
+                }
+                let client = if setpriv { DOCKER_CLIENT } else { DOCKER_CLIENT_POLLING };
+                out.extend([s("bash"), s("-c"), s(client), s("ultron-docker")]);
+                out.extend(["docker", "run", "--rm", "--init", "-i", "--pull", "never"].map(s));
                 if !self.network {
                     out.extend([s("--network"), s("none")]);
                 }
@@ -628,10 +678,11 @@ impl Policy {
                     }
                 }
                 out.extend([s("-w"), p(cwd)]);
-                for (name, value) in &self.env {
-                    out.extend([s("-e"), format!("{name}={value}")]);
-                }
                 out.push(self.image.clone().unwrap_or_default());
+                out.extend([s("sh"), s("-c"), s(DOCKER_TIED), s("sh")]);
+                // `env -i`, not `docker run -e`: `-e` adds to the image's own ENV, which then reaches the command.
+                out.extend([s("env"), s("-i")]);
+                out.extend(self.env.iter().map(|(name, value)| format!("{name}={value}")));
                 out.extend(argv.iter().cloned());
                 out
             }
@@ -648,7 +699,7 @@ impl Policy {
                 "unshare: new user, mount, pid, ipc and uts namespaces, {network}; /home and the home read-only with credentials hidden, the project and session directories writable, private /tmp, /var/tmp, /dev/shm and /run/user; capabilities dropped; environment cleared to an allowlist; dies with its parent"
             ),
             Some(Mechanism::Docker) => format!(
-                "docker ({}): {network}, all capabilities dropped, no new privileges, the home read-only with credentials hidden, the project and session directories writable",
+                "docker ({}): {network}, all capabilities dropped, no new privileges, the home read-only with credentials hidden, the project and session directories writable; environment cleared to an allowlist; dies with its parent",
                 self.image.as_deref().unwrap_or_default()
             ),
             None => s("none: commands run without isolation"),
@@ -755,6 +806,22 @@ impl Launcher {
             return Ok(command);
         };
         let wrapped = self.policy.wrap(mechanism, &RealLayout, argv, cwd);
+        let mut command = Command::new(&wrapped[0]);
+        command
+            .args(&wrapped[1..])
+            .env_clear()
+            .envs(launch_env())
+            .current_dir(cwd);
+        Ok(command)
+    }
+
+    /// [`Launcher::command`] for a process that outlives its starter ([`Policy::wrap_persistent`]): shell jobs,
+    /// which a successor worker adopts after a hand-over.
+    pub fn command_persistent(&self, argv: &[String], cwd: &Path) -> Result<Command, String> {
+        let Some(mechanism) = self.mechanism() else {
+            return self.command(argv, cwd);
+        };
+        let wrapped = self.policy.wrap_persistent(mechanism, &RealLayout, argv, cwd);
         let mut command = Command::new(&wrapped[0]);
         command
             .args(&wrapped[1..])

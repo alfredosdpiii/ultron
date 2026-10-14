@@ -16,7 +16,7 @@ use serde_json::{Map, Value, json};
 
 use super::Services;
 use super::cell::{CellResult, append_tool_result, cell_definition};
-use super::compaction::{Threshold, create_compaction, select_cut, threshold_compaction};
+use super::compaction::{Threshold, create_compaction, estimate_planned, select_cut, threshold_compaction};
 use super::context::read_context;
 use super::docs::{AGENT, LIVE, PROVIDER};
 use super::entries;
@@ -290,10 +290,25 @@ fn prepare_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) 
     };
     let tools = vec![services.cells.tool()];
     let planned = plan_system_entries(&view, &desired, &tools, runtime.now()?);
-    let threshold = match compacted {
+    let policy = services.compaction_policy(conversation_id, &settings);
+    let mut threshold = match compacted {
         Some(_) => None,
-        None => threshold_compaction(&view, &planned, model.context_window, &settings.compaction)?,
+        None => threshold_compaction(&view, &planned, model.context_window, &policy)?,
     };
+    // `before_compaction`: entries the hook gives decline a blocking threshold compaction (placed with this request).
+    let mut declined: Vec<EntryDraft> = Vec::new();
+    if threshold == Some(Threshold::Blocking)
+        && let Some(hook) = &services.hooks.before_compaction
+    {
+        let tokens = estimate_planned(&view, &planned)?;
+        let limit = model.context_window.saturating_sub(policy.reserve_tokens);
+        for entry in hook(conversation_id, tokens, limit) {
+            declined.push(super::inbox::entry_draft(&entry)?);
+        }
+        if !declined.is_empty() {
+            threshold = None;
+        }
+    }
     let task_id = runtime.task_id();
     if threshold == Some(Threshold::Blocking) {
         // Compact first and prepare again; the transcript is unchanged until the compaction appends.
@@ -318,6 +333,9 @@ fn prepare_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) 
             order: None,
         };
         let mut cutoff = tx.scan_entries(&query, 1, None)?.items.first().map(|entry| entry.id);
+        for entry in declined {
+            cutoff = Some(tx.append_entry(conversation_id, entry)?.id);
+        }
         for entry in planned {
             cutoff = Some(tx.append_entry(conversation_id, entry)?.id);
         }
@@ -385,6 +403,7 @@ fn request_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) 
         options: stream_options,
         session_id: Some(ensure_provider_session_id(runtime)?),
         reasoning: (thinking_level != "off").then_some(thinking_level),
+        conversation_id: Some(conversation_id),
     };
     let message = stream_response(services, runtime, &model, messages, &request, attempt)?;
     let request = Request {
@@ -531,9 +550,10 @@ fn classify(services: &Services, runtime: &TaskRuntime, request: Request, messag
     let settings = (services.settings)();
     let overflow = message.stop_reason == StopReason::Error && is_context_overflow(&message);
     let stored = strict(to_value(&message));
-    if overflow && compacted.is_none() && settings.compaction.enabled {
+    let policy = services.compaction_policy(conversation_id, &settings);
+    if overflow && compacted.is_none() && policy.enabled {
         let view = runtime.read(|tx| read_context(tx, conversation_id, Some(cutoff)))?;
-        if select_cut(&view, settings.compaction.keep_recent_tokens).is_some() {
+        if select_cut(&view, policy.keep_recent_tokens).is_some() {
             let text = message
                 .error_message
                 .clone()

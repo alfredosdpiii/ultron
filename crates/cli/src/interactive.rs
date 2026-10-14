@@ -13,8 +13,8 @@ use crate::print_mode::Target;
 use interactive::app::{App, AppOptions};
 use interactive::history::{PROMPT_HISTORY_FILE, PromptHistoryStore};
 use interactive::lane::{
-    BashResult, ForkMessage, LaneClient, LaneEvent, ModelInfo, PromptImage, QueueKind, Queued, SessionListing,
-    SessionOpened,
+    BashResult, CatalogRefresh, ForkMessage, LaneClient, LaneEvent, ModelInfo, PromptImage, QueueKind, Queued,
+    SessionListing, SessionOpened,
 };
 use interactive::run::{UiEvent, run_stdout, spawn_gated_input};
 use serde_json::{Value, json};
@@ -39,6 +39,8 @@ enum Command {
     NewSession,
     Resume(String),
     ListSessions,
+    /// `/import` without a path: Pi's sessions of this working directory.
+    ListPiSessions,
     SelectModel(String, String),
     /// The run ended: report the session's name (a model title may have replaced the automatic one).
     RefreshName,
@@ -50,23 +52,76 @@ enum Command {
     Clone,
     Export(Option<String>),
     Usage,
+    /// `/goal <args>`: the session goal's command; its reply text is shown as a notice.
+    Goal(String),
     SaveSetting(String, Value),
     Agents,
+    /// A read-only inspection request and the title its answer is rendered under.
+    Inspect(String, String, Value),
     KillAgent(String),
     ReadSettings,
     RlmStatus,
     Credentials,
     Logout(String, String),
     Changelog,
+    /// `/name args` of an extension command (`LegacyExtensionCommands.run`), `/mcp` included: run on its own
+    /// thread, its dialogs served meanwhile.
+    RunExtension(String, String),
+    /// An extension command's argument completions for a prefix (`commands/complete`).
+    CompleteExtension(String, String),
     Share,
     LoginProviders(String),
     SaveApiKey(String, String),
+    /// A subscription login saved its credential (provider, name): report it as `runLoginDialog` does.
+    LoginSaved(String, String),
+    /// Refresh the model catalogs (`/scoped-models`).
+    RefreshCatalog,
     DeleteSession(String),
     RenameSession(String, String),
+    /// `/import <path>`: a Pi session file to import through the server.
+    ImportPi(String),
     Tree,
     Navigate(Option<String>, bool, Option<String>),
     SetLabel(String, Option<String>),
+    /// The answer to an extension dialog.
+    ExtensionUiRespond(String, Value),
     Shutdown,
+}
+
+/// `importPiSessionFile` (client-tui-sessions.ts): this process reads the Pi file and the server imports its text
+/// (the server may run elsewhere); the answer says what was imported and where to switch.
+pub fn import_pi(link: &crate::link::Link, path: &str) -> LaneEvent {
+    let content = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) => {
+            let message = crate::usage::log::io_message(&error, "open", std::path::Path::new(path));
+            return LaneEvent::Status(format!("Error: Failed to import session: {message}"));
+        }
+    };
+    let result = match link.import_pi(path, &content) {
+        Ok(result) => result,
+        Err(error) => return LaneEvent::Status(format!("Error: Failed to import session: {error}")),
+    };
+    let session_id = result["session"]["sessionId"].as_str().unwrap_or_default().to_string();
+    let imported = if result["alreadyImported"] == true {
+        format!("Already imported as session {session_id}")
+    } else {
+        format!(
+            "Imported {} entries from {path} as session {session_id}",
+            result["imported"].as_u64().unwrap_or(0)
+        )
+    };
+    let current = session_id == link.session_id();
+    LaneEvent::PiImported {
+        imported,
+        source: path.to_string(),
+        session_file: if current {
+            None
+        } else {
+            link.session_file(&session_id).ok().flatten()
+        },
+        current,
+    }
 }
 
 /// Pi `ImageContent` blocks.
@@ -80,6 +135,10 @@ fn image_values(images: Vec<PromptImage>) -> Vec<Value> {
 /// The TUI's [`LaneClient`] over the link thread.
 struct DaemonLane {
     commands: mpsc::Sender<Command>,
+    env: Env,
+    ui: mpsc::Sender<UiEvent>,
+    /// The subscription login running now (its pending prompt).
+    login: Arc<crate::tui_login::LoginSlot>,
 }
 
 impl DaemonLane {
@@ -139,6 +198,9 @@ impl LaneClient for DaemonLane {
     fn list_sessions(&self) {
         self.send(Command::ListSessions);
     }
+    fn list_pi_sessions(&self) {
+        self.send(Command::ListPiSessions);
+    }
     fn set_name(&self, name: &str) {
         self.send(Command::Op(Op::SetName { name: name.to_string() }));
     }
@@ -172,11 +234,17 @@ impl LaneClient for DaemonLane {
     fn usage_report(&self) {
         self.send(Command::Usage);
     }
+    fn goal(&self, args: &str) {
+        self.send(Command::Goal(args.to_string()));
+    }
     fn save_setting(&self, key: &str, value: Value) {
         self.send(Command::SaveSetting(key.to_string(), value));
     }
     fn agents(&self) {
         self.send(Command::Agents);
+    }
+    fn inspect(&self, title: &str, request: &str, payload: Value) {
+        self.send(Command::Inspect(title.to_string(), request.to_string(), payload));
     }
     fn read_settings(&self) {
         self.send(Command::ReadSettings);
@@ -190,11 +258,46 @@ impl LaneClient for DaemonLane {
     fn changelog(&self) {
         self.send(Command::Changelog);
     }
+    fn extension_command(&self, name: &str, args: &str) {
+        self.send(Command::RunExtension(name.to_string(), args.to_string()));
+    }
+    fn extension_completions(&self, name: &str, prefix: &str) {
+        self.send(Command::CompleteExtension(name.to_string(), prefix.to_string()));
+    }
     fn login_providers(&self, query: &str) {
         self.send(Command::LoginProviders(query.to_string()));
     }
     fn save_api_key(&self, provider: &str, key: &str) {
         self.send(Command::SaveApiKey(provider.to_string(), key.to_string()));
+    }
+    fn oauth_login(&self, provider: &str, name: &str) -> bool {
+        if !crate::tui_login::supported(&self.env, provider) {
+            return false;
+        }
+        let ui = self.ui.clone();
+        let send: Arc<dyn Fn(LaneEvent) + Send + Sync> = Arc::new(move |event| {
+            let _ = ui.send(UiEvent::Lane(event));
+        });
+        let commands = self.commands.clone();
+        let (id, label) = (provider.to_string(), name.to_string());
+        let saved = Box::new(move || {
+            let _ = commands.send(Command::LoginSaved(id, label));
+        });
+        crate::tui_login::start(
+            self.env.clone(),
+            provider.to_string(),
+            name.to_string(),
+            send,
+            self.login.clone(),
+            saved,
+        );
+        true
+    }
+    fn login_reply(&self, answer: Option<String>) {
+        self.login.reply(answer);
+    }
+    fn refresh_catalog(&self) {
+        self.send(Command::RefreshCatalog);
     }
     fn share(&self) {
         self.send(Command::Share);
@@ -207,6 +310,9 @@ impl LaneClient for DaemonLane {
     }
     fn delete_session(&self, path: &str) {
         self.send(Command::DeleteSession(path.to_string()));
+    }
+    fn import_pi(&self, path: &str) {
+        self.send(Command::ImportPi(path.to_string()));
     }
     fn rename_session(&self, path: &str, name: &str) {
         self.send(Command::RenameSession(path.to_string(), name.to_string()));
@@ -223,6 +329,39 @@ impl LaneClient for DaemonLane {
     }
     fn kill_agent(&self, id: &str) {
         self.send(Command::KillAgent(id.to_string()));
+    }
+    fn extension_ui_respond(&self, id: &str, answer: Value) {
+        self.send(Command::ExtensionUiRespond(id.to_string(), answer));
+    }
+}
+
+/// The extension UI the worker raises (`#serveExtensionUI`): polled between the link's commands, without waiting, so
+/// a dialog shows within one tick. A different session starts again from its open dialogs.
+#[derive(Default)]
+struct ExtensionUiPoll {
+    session: Option<String>,
+    cursor: Option<u64>,
+}
+
+impl ExtensionUiPoll {
+    fn poll(&mut self, link: &Link, send: &dyn Fn(LaneEvent)) {
+        let session = link.session_id();
+        if self.session.as_deref() != Some(session.as_str()) {
+            self.session = Some(session);
+            self.cursor = None;
+        }
+        let connection = link.connection();
+        let polled = connection
+            .session_target()
+            .and_then(|target| connection.call(target, "ultron.extension-ui", "poll", json!([self.cursor, 0])));
+        let Ok(Some(result)) = polled else {
+            self.cursor = None;
+            return;
+        };
+        self.cursor = result["cursor"].as_u64();
+        for item in result["requests"].as_array().into_iter().flatten() {
+            send(LaneEvent::ExtensionUi(item["request"].clone()));
+        }
     }
 }
 
@@ -315,7 +454,27 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
                 .collect(),
         )],
         Some("session_name") => vec![LaneEvent::Name(event["name"].as_str().map(str::to_string))],
-        Some("compaction_start") => vec![LaneEvent::CompactionStarted],
+        Some("compaction_start") => vec![LaneEvent::CompactionStarted {
+            reason: event["reason"].as_str().unwrap_or("manual").to_string(),
+        }],
+        // A manual compaction's failure answers its operation; an automatic one that left no entry ends here.
+        Some("compaction_end") if event["reason"] != "manual" && event["status"] != "completed" => {
+            vec![LaneEvent::CompactionEnded {
+                status: event["status"].as_str().unwrap_or_default().to_string(),
+                error: event["error"]["message"].as_str().map(str::to_string),
+            }]
+        }
+        Some("summarization_retry_scheduled") => vec![LaneEvent::SummarizationRetryScheduled {
+            attempt: event["attempt"].as_u64().unwrap_or(0),
+            max_attempts: event["maxAttempts"].as_u64().unwrap_or(0),
+            delay_ms: event["delayMs"].as_u64().unwrap_or(0),
+            error: text("errorMessage"),
+        }],
+        Some("summarization_retry_attempt_start") => vec![LaneEvent::SummarizationRetryStarted {
+            branch_summary: event["source"] == "branchSummary",
+            reason: event["reason"].as_str().unwrap_or("manual").to_string(),
+        }],
+        Some("summarization_retry_finished") => vec![LaneEvent::SummarizationRetryFinished],
         Some("entry_added") if event["entry"]["type"] == "compaction" => {
             vec![LaneEvent::Compacted(Ok(event["entry"].clone()))]
         }
@@ -361,9 +520,47 @@ fn listings(value: Value) -> Vec<SessionListing> {
             modified: s["modified"].as_i64().unwrap_or(0),
             message_count: s["messageCount"].as_u64().unwrap_or(0) as usize,
             first_message: s["firstMessage"].as_str().unwrap_or_default().to_string(),
+            all_messages_text: s["allMessagesText"].as_str().unwrap_or_default().to_string(),
             cwd: s["cwd"].as_str().unwrap_or_default().to_string(),
         })
         .collect()
+}
+
+/// Pi's profile directory (read-only here): `PI_CODING_AGENT_DIR`, else `~/.pi/agent` (client-tui-sessions.ts
+/// `piAgentDir`).
+pub fn pi_agent_dir(env: &Env) -> String {
+    let dir =
+        (env.var)("PI_CODING_AGENT_DIR").unwrap_or_else(|| env.home.join(".pi").join("agent").display().to_string());
+    session_file::paths::resolve_path(&dir)
+}
+
+/// Pi's per-project session directory under `<piAgentDir>/sessions` (`piSessionDirForCwd`).
+pub fn pi_session_dir_for_cwd(cwd: &str, agent_dir: &str) -> String {
+    let resolved = session_file::paths::resolve_path(cwd);
+    let relative = resolved.strip_prefix(['/', '\\']).unwrap_or(&resolved);
+    format!("{agent_dir}/sessions/--{}--", relative.replace(['/', '\\', ':'], "-"))
+}
+
+/// `SessionManager.list(cwd, piSessionDirForCwd(cwd, piAgentDir))`: Pi's sessions of this project, newest first, as
+/// Pi's selector lists them. Pi's files are only read.
+pub fn pi_sessions(env: &Env) -> Result<Vec<SessionListing>, String> {
+    let cwd = env.cwd.display().to_string();
+    let dir = pi_session_dir_for_cwd(&cwd, &pi_agent_dir(env));
+    let sessions =
+        session_file::list_sessions(&session_file::SystemEnv, &cwd, Some(&dir)).map_err(|e| e.to_string())?;
+    Ok(sessions
+        .into_iter()
+        .map(|s| SessionListing {
+            path: s.path,
+            id: s.id,
+            name: s.name,
+            modified: s.modified.unwrap_or(0),
+            message_count: s.message_count,
+            first_message: s.first_message,
+            all_messages_text: s.all_messages_text,
+            cwd: s.cwd,
+        })
+        .collect())
 }
 
 /// The link thread: owns the link, runs the TUI's commands one at a time.
@@ -397,13 +594,23 @@ fn link_thread(
             send(LaneEvent::Opened(session));
             send(LaneEvent::Entries(entries));
             send(LaneEvent::Model(model));
+            // `LegacyExtensionCommands.list`: the session's extension commands become slash commands.
+            if let Ok(Some(commands)) = link.op(&Op::Commands) {
+                let listed =
+                    session_core::extension_commands::from_listing(commands.as_array().map_or(&[][..], Vec::as_slice));
+                send(LaneEvent::ExtensionCommands(
+                    listed.into_iter().map(|c| (c.name, c.description)).collect(),
+                ));
+            }
         }
         Err(error) => send(LaneEvent::Error(error)),
     };
     open(&link, &mut name);
     let mut last_recovery: Option<std::time::Instant> = None;
     let mut gave_up = false;
+    let mut extension_ui = ExtensionUiPoll::default();
     loop {
+        extension_ui.poll(&link, &send);
         let command = match commands.recv_timeout(std::time::Duration::from_millis(250)) {
             Ok(command) => command,
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -477,10 +684,26 @@ fn link_thread(
                 Ok(listed) => send(LaneEvent::Sessions(listings(listed.unwrap_or_default()))),
                 Err(error) => send(LaneEvent::Error(error)),
             },
-            Command::SelectModel(provider, model_id) => match link.op(&Op::SetModel { provider, model_id }) {
-                Ok(model) => send(LaneEvent::Model(model_info(&model.unwrap_or_default()))),
+            Command::ListPiSessions => match pi_sessions(&catalog_env) {
+                Ok(sessions) => send(LaneEvent::PiSessions(sessions)),
                 Err(error) => send(LaneEvent::Error(error)),
             },
+            Command::SelectModel(provider, model_id) => {
+                match link.op(&Op::SetModel {
+                    provider: provider.clone(),
+                    model_id: model_id.clone(),
+                }) {
+                    Ok(model) => {
+                        // `Models.select` (models-provider.ts): the selection becomes the saved default.
+                        let (cwd, agent_dir) = &settings_path;
+                        let mut settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                        settings.set_global("defaultProvider", Some(json!(provider)));
+                        settings.set_global("defaultModel", Some(json!(model_id)));
+                        send(LaneEvent::Model(model_info(&model.unwrap_or_default())));
+                    }
+                    Err(error) => send(LaneEvent::Error(error)),
+                }
+            }
             Command::Bash(command, exclude) => {
                 // Answered on its own thread, so Esc (abortBash) reaches the worker while it runs.
                 let started = start_call(&link, "ultron.session-control", "bash", json!([command, exclude]));
@@ -577,8 +800,72 @@ fn link_thread(
                 Ok(path) => format!("Session exported to: {path}"),
                 Err(error) => format!("Error: Failed to export session: {error}"),
             })),
+            Command::Inspect(title, request, payload) => {
+                send(LaneEvent::Status(match link.op(&Op::Inspect { request, payload }) {
+                    Ok(value) => interactive::inspection::format_inspection(&title, &value.unwrap_or(Value::Null)),
+                    Err(error) => format!("Error: {error}"),
+                }))
+            }
+            // A command runs until its handler returns (it may prompt): on its own thread, so the session's other
+            // commands go on meanwhile.
+            Command::CompleteExtension(name, prefix) => {
+                let (ops, ui) = (link.ops(), ui.clone());
+                std::thread::spawn(move || {
+                    let op = Op::ExtensionCompletions {
+                        name: name.clone(),
+                        prefix: prefix.clone(),
+                    };
+                    // A failed request offers nothing, as a command without completions does.
+                    let items = ops.op(&op).ok().flatten().and_then(|items| {
+                        items.as_array().map(|items| {
+                            items
+                                .iter()
+                                .filter_map(|item| {
+                                    let value = item["value"].as_str()?.to_string();
+                                    let label = item["label"].as_str().map_or_else(|| value.clone(), str::to_string);
+                                    Some((value, label, item["description"].as_str().map(str::to_string)))
+                                })
+                                .collect()
+                        })
+                    });
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::ExtensionCompletions { name, prefix, items }));
+                });
+            }
+            Command::RunExtension(name, args) => {
+                // Off the link thread: a command may run long, and its dialogs wait on this client, so the link
+                // keeps polling meanwhile. The worker dispatches `/mcp` to the gateway, the rest to their process.
+                let (connection, ui) = (link.connection(), ui.clone());
+                std::thread::spawn(move || {
+                    let send = |event| {
+                        let _ = ui.send(UiEvent::Lane(event));
+                    };
+                    let run = connection.session_target().and_then(|target| {
+                        connection.call(target, "pi.legacy-extension-commands", "run", json!([name, args]))
+                    });
+                    match run {
+                        Ok(result) => {
+                            let result = result.unwrap_or_default();
+                            for notification in result["notifications"].as_array().into_iter().flatten() {
+                                send(LaneEvent::Status(notification.as_str().unwrap_or_default().to_string()));
+                            }
+                        }
+                        Err(error) => send(LaneEvent::Status(format!("Error: {}", crate::link::fail(error)))),
+                    }
+                });
+            }
             Command::Usage => match usage_report(&link) {
                 Ok(text) => send(LaneEvent::Notice(text)),
+                Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
+            },
+            // The worker owns the goal and starts its rounds; only this command (a person) changes it.
+            Command::Goal(args) => match link.op(&Op::Goal { args }) {
+                Ok(reply) => send(LaneEvent::GoalReply(
+                    reply
+                        .as_ref()
+                        .and_then(Value::as_str)
+                        .unwrap_or("No goal reply")
+                        .to_string(),
+                )),
                 Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
             },
             Command::DeleteSession(path) => {
@@ -594,6 +881,7 @@ fn link_thread(
                     send(LaneEvent::Sessions(listings(listed.unwrap_or_default())));
                 }
             }
+            Command::ImportPi(path) => send(import_pi(&link, &path)),
             Command::RenameSession(path, new_name) => {
                 let id = session_journal::repo::read_metadata(std::path::Path::new(&path)).map(|m| m.id);
                 let renamed = match id {
@@ -639,7 +927,10 @@ fn link_thread(
                     // The transcript is the new position's path.
                     open(&link, &mut name);
                 }
-                send(LaneEvent::Navigated(result.map(|_| ())));
+                // AgentSession `navigateTree`'s `editorText`: the selected user or custom message's text.
+                send(LaneEvent::Navigated(result.map(|answer| {
+                    answer.and_then(|a| a["editorText"].as_str().map(str::to_string))
+                })));
             }
             Command::SetLabel(entry_id, label) => {
                 if let Err(error) = link.op(&Op::SetLabel { entry_id, label }) {
@@ -655,6 +946,12 @@ fn link_thread(
                 Ok(listed) => send(LaneEvent::Agents(agent_views(&listed.unwrap_or_default()))),
                 Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
             },
+            Command::ExtensionUiRespond(id, answer) => {
+                let connection = link.connection();
+                let _ = connection
+                    .session_target()
+                    .and_then(|target| connection.call(target, "ultron.extension-ui", "respond", json!([id, answer])));
+            }
             Command::KillAgent(id) => {
                 if let Err(error) = link.op(&Op::KillAgent { id }) {
                     send(LaneEvent::Status(format!("Error: {error}")));
@@ -711,26 +1008,46 @@ fn link_thread(
                     Err(error) => send(LaneEvent::Status(format!(
                         "Error: Failed to save API key for {name}: {error}"
                     ))),
-                    Ok(_) => {
-                        let done = format!("Saved API key for {name}. Credentials saved to {}", auth.display());
-                        send(LaneEvent::Status(format!(
-                            "{done}. Reloading the Session's credentials…"
-                        )));
-                        // The session reads credentials per request; the catalog follows the providers.
-                        send(LaneEvent::Catalog(catalog(&catalog_env)));
-                        let model = link.op(&Op::Describe).ok().flatten().map(|d| model_info(&d["model"]));
-                        let hint = match model {
-                            None => format!(". Use /model to select one of {name}'s models"),
-                            Some(m) if m.id.is_empty() => format!(". Use /model to select one of {name}'s models"),
-                            Some(m) if m.provider == provider => String::new(),
-                            Some(m) => format!(
-                                ". The Session still uses {}/{}; /model switches to {name}'s models",
-                                m.provider, m.id
-                            ),
-                        };
-                        send(LaneEvent::Status(format!("{done}{hint}")));
-                    }
+                    Ok(_) => credentials_saved(&link, &catalog_env, &send, "Saved API key for", &provider, &name),
                 }
+            }
+            Command::RefreshCatalog => {
+                // `models.refresh()`: from the network unless offline (`PI_OFFLINE`), on its own thread.
+                let (env, ui) = (catalog_env.clone(), ui.clone());
+                std::thread::spawn(move || {
+                    let refresh = if (env.var)("PI_OFFLINE").is_none() {
+                        match session_core::model_refresh::refresh_catalogs(
+                            &env,
+                            ai::model_refresh::DEFAULT_CATALOG_BASE_URL,
+                            &ai::model_refresh::management_user_agent(&crate::version()),
+                            false,
+                        ) {
+                            Ok(errors) => {
+                                CatalogRefresh::Done(errors.into_iter().map(|(provider, _)| provider).collect())
+                            }
+                            Err(error) if error == session_core::model_refresh::REFRESH_TIMED_OUT => {
+                                CatalogRefresh::TimedOut
+                            }
+                            Err(error) => CatalogRefresh::Failed(error),
+                        }
+                    } else {
+                        CatalogRefresh::Done(Vec::new())
+                    };
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::Catalog(catalog(&env))));
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::CatalogRefreshed(refresh)));
+                });
+            }
+            Command::LoginSaved(provider, name) => {
+                // `reloadWorkerAuth`: the catalog refresh reaches the network unless offline (`PI_OFFLINE`).
+                if (catalog_env.var)("PI_OFFLINE").is_none() {
+                    let _ = session_core::model_refresh::refresh_catalogs(
+                        &catalog_env,
+                        ai::model_refresh::DEFAULT_CATALOG_BASE_URL,
+                        &ai::model_refresh::management_user_agent(&crate::version()),
+                        false,
+                    );
+                }
+                credentials_saved(&link, &catalog_env, &send, "Logged in to", &provider, &name);
             }
             Command::Credentials => {
                 let path = config::paths::AgentPaths::new(settings_path.1.clone()).auth();
@@ -902,6 +1219,29 @@ fn share_session(link: &Link, send: &dyn Fn(LaneEvent)) {
     status(result.unwrap_or_else(|e| e));
 }
 
+/// What follows saving a credential (`runLoginDialog`): where it went, the refreshed catalog, and whether the session's
+/// model is that provider's.
+fn credentials_saved(link: &Link, env: &Env, send: &dyn Fn(LaneEvent), action: &str, provider: &str, name: &str) {
+    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    let done = format!("{action} {name}. Credentials saved to {}", auth.display());
+    send(LaneEvent::Status(format!(
+        "{done}. Reloading the Session's credentials…"
+    )));
+    // The session reads credentials per request; the catalog follows the providers.
+    send(LaneEvent::Catalog(catalog(env)));
+    let model = link.op(&Op::Describe).ok().flatten().map(|d| model_info(&d["model"]));
+    let hint = match model {
+        None => format!(". Use /model to select one of {name}'s models"),
+        Some(m) if m.id.is_empty() => format!(". Use /model to select one of {name}'s models"),
+        Some(m) if m.provider == provider => String::new(),
+        Some(m) => format!(
+            ". The Session still uses {}/{}; /model switches to {name}'s models",
+            m.provider, m.id
+        ),
+    };
+    send(LaneEvent::Status(format!("{done}{hint}")));
+}
+
 /// `loginProviderOptions`: every built-in provider's sign-in options with what is configured (a stored credential,
 /// else the variables that supply a key), sorted by name.
 fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selectors::AuthProvider> {
@@ -953,6 +1293,37 @@ fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selector
                 ..base
             });
         }
+    }
+    // models.json Radius providers (`"oauth": "radius"`) sign in as the built-in Radius provider does, under their
+    // own id and name; a key comes from RADIUS_API_KEY as Radius's does.
+    let registry = session_core::lane::registry(env);
+    let radius = provider_logins().into_iter().find(|p| p.id == "radius");
+    for id in registry.config().provider_ids() {
+        let builtin = ai::models::builtin_providers().any(|p| p == id);
+        let (Some((name, _)), Some(radius), false) = (registry.radius_gateway(id), radius.as_ref(), builtin) else {
+            continue;
+        };
+        let status = match stored.get(id) {
+            Some(kind) => Some((kind.clone(), Some("stored credential".to_string()))),
+            None => ai::env::find_env_keys_in("radius", &source)
+                .filter(|keys| !keys.is_empty())
+                .map(|keys| ("api_key".to_string(), Some(keys.join(", ")))),
+        };
+        let base = AuthProvider {
+            id: id.to_string(),
+            name,
+            auth_type: "oauth".into(),
+            status,
+            api_key_method: radius.api_key.clone(),
+            login_label: radius.oauth.clone().flatten(),
+            generic_login: true,
+        };
+        let api_key = radius.api_key.is_some().then(|| AuthProvider {
+            auth_type: "api_key".into(),
+            ..base.clone()
+        });
+        options.push(base);
+        options.extend(api_key);
     }
     options.sort_by(|a, b| locale_compare(&a.name, &b.name));
     options
@@ -1151,6 +1522,9 @@ pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, 
     };
     let client = DaemonLane {
         commands: command_tx.clone(),
+        env: env.clone(),
+        ui: ui_tx.clone(),
+        login: Arc::default(),
     };
     let model = model.map_or_else(
         || ModelInfo {
@@ -1258,6 +1632,7 @@ mod tests {
             name: name.map(str::to_string),
             automatic_name: false,
             first_message: "hi".into(),
+            all_messages_text: "hi".into(),
             message_count: 1,
         }
     }
@@ -1282,11 +1657,77 @@ mod tests {
     }
 
     #[test]
+    fn cli_interactive_summarization_retry_events_become_tui_events() {
+        assert_eq!(
+            tui_events(
+                &json!({"type": "summarization_retry_scheduled", "lane": "main", "attempt": 1, "maxAttempts": 3,
+                "delayMs": 2000, "errorMessage": "Overloaded"})
+            ),
+            [LaneEvent::SummarizationRetryScheduled {
+                attempt: 1,
+                max_attempts: 3,
+                delay_ms: 2000,
+                error: "Overloaded".into()
+            }]
+        );
+        assert_eq!(
+            tui_events(
+                &json!({"type": "summarization_retry_attempt_start", "source": "compaction", "reason": "threshold"})
+            ),
+            [LaneEvent::SummarizationRetryStarted {
+                branch_summary: false,
+                reason: "threshold".into()
+            }]
+        );
+        assert_eq!(
+            tui_events(&json!({"type": "summarization_retry_attempt_start", "source": "branchSummary"})),
+            [LaneEvent::SummarizationRetryStarted {
+                branch_summary: true,
+                reason: "manual".into()
+            }]
+        );
+        assert_eq!(
+            tui_events(&json!({"type": "summarization_retry_finished", "lane": "main"})),
+            [LaneEvent::SummarizationRetryFinished]
+        );
+    }
+
+    #[test]
     fn cli_interactive_compaction_and_thinking_events_become_tui_events() {
         assert_eq!(
             tui_events(&json!({"type": "compaction_start", "reason": "manual"})),
-            [LaneEvent::CompactionStarted]
+            [LaneEvent::CompactionStarted {
+                reason: "manual".into()
+            }]
         );
+        assert_eq!(
+            tui_events(&json!({"type": "compaction_start", "reason": "overflow"})),
+            [LaneEvent::CompactionStarted {
+                reason: "overflow".into()
+            }]
+        );
+        // An automatic compaction that left no entry ends the indicator; a completed one ends with its entry, a
+        // manual one with its operation's answer.
+        assert_eq!(
+            tui_events(
+                &json!({"type": "compaction_end", "reason": "threshold", "status": "failed", "error": {"message": "Auto-compaction failed: boom"}})
+            ),
+            [LaneEvent::CompactionEnded {
+                status: "failed".into(),
+                error: Some("Auto-compaction failed: boom".into())
+            }]
+        );
+        assert_eq!(
+            tui_events(&json!({"type": "compaction_end", "reason": "threshold", "status": "declined"})),
+            [LaneEvent::CompactionEnded {
+                status: "declined".into(),
+                error: None
+            }]
+        );
+        assert!(
+            tui_events(&json!({"type": "compaction_end", "reason": "threshold", "status": "completed"})).is_empty()
+        );
+        assert!(tui_events(&json!({"type": "compaction_end", "reason": "manual", "status": "failed"})).is_empty());
         let entry = json!({"type": "compaction", "id": "c1", "tokensBefore": 15, "retainedTail": []});
         assert_eq!(
             tui_events(&json!({"type": "entry_added", "entry": entry})),

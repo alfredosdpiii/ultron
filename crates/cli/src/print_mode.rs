@@ -30,11 +30,59 @@ pub enum Target {
     Ephemeral,
 }
 
-/// What a prompted run produced: the final assistant text, its server and its session.
+/// What a prompted run produced: the final assistant text, its server and its session, and the route notices of
+/// its answers (shown on stderr).
 pub struct Prompted {
     pub text: String,
     pub server_id: String,
     pub session_id: String,
+    pub notices: Vec<String>,
+}
+
+/// The Claude subscription route notices (`details.notice` of a `claude_subscription_route` diagnostic: "Claude
+/// subscription limit reached; using API credits until <time>", or the switch back) on the assistant messages a
+/// session file gained after `offset` bytes.
+pub fn route_notices(path: &std::path::Path, offset: u64) -> Vec<String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut text = String::new();
+    let read = std::fs::File::open(path).and_then(|mut file| {
+        file.seek(SeekFrom::Start(offset))?;
+        file.read_to_string(&mut text)
+    });
+    if read.is_err() {
+        return Vec::new();
+    }
+    let mut notices = Vec::new();
+    for line in text.lines() {
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let writes = value.as_array().cloned().unwrap_or_else(|| vec![value]);
+        for write in writes {
+            if write["type"] != "message" {
+                continue;
+            }
+            if let Some(notice) = interactive::lane::route_notice(&write["message"])
+                && !notices.contains(&notice)
+            {
+                notices.push(notice);
+            }
+        }
+    }
+    notices
+}
+
+/// The session file of `id` in the sessions directory `root` or one of its per-directory folders.
+fn session_file(root: &std::path::Path, id: &str) -> Option<std::path::PathBuf> {
+    let entries: Vec<std::path::PathBuf> = std::fs::read_dir(root).ok()?.flatten().map(|e| e.path()).collect();
+    let nested = entries
+        .iter()
+        .filter_map(|dir| std::fs::read_dir(dir).ok())
+        .flat_map(|files| files.flatten().map(|file| file.path()));
+    entries.iter().cloned().chain(nested).find(|path| {
+        path.extension().is_some_and(|e| e == "jsonl")
+            && session_journal::repo::read_metadata(path).is_some_and(|m| m.id == id)
+    })
 }
 
 /// The model flags of the command line.
@@ -44,10 +92,13 @@ pub fn flags(parsed: &Args) -> ModelFlags {
         model: parsed.model.clone(),
         api_key: parsed.api_key.clone(),
         thinking: parsed.thinking.clone(),
+        // TypeScript's native command forwards no `--models` to the worker (native-command.ts): only the settings'
+        // `enabledModels` scope applies.
+        models: None,
     }
 }
 
-/// `--provider`/`--model` against the built-in catalog, with `models.json` base URLs applied.
+/// `--provider`/`--model` against the built-in catalog and models.json.
 pub fn resolve_model(parsed: &Args, env: &Env) -> Result<ai::Model, String> {
     session_core::lane::resolve_model(&flags(parsed), env)
 }
@@ -61,7 +112,11 @@ fn preflight(parsed: &Args, env: &Env, target: &Target) -> Result<(), String> {
         // A resumed session keeps its own model; the worker reports its problems.
         Err(_) => return Ok(()),
     };
-    if session_core::lane::api_key(&flags(parsed), env, &model.provider).is_none() {
+    // A models.json key that does not resolve reports why (`$VAR` unset, `!command` failing).
+    // A stored OAuth credential may authenticate by header alone (Kimi For Coding's bearer, `getAuth`'s headers).
+    if session_core::lane::request_key(&flags(parsed), env, &model.provider)?.is_none()
+        && !session_core::lane::header_auth(env, &model.provider)
+    {
         return Err(format!("No API key found for {}", model.provider));
     }
     Ok(())
@@ -83,6 +138,7 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
             thinking: parsed.thinking.clone(),
             extension_mode: Some(extension_mode.into()),
             no_naming: parsed.no_session,
+            no_extensions: parsed.no_extensions,
         },
         keep_alive: true,
         root: instance.root().map(std::path::Path::to_path_buf),
@@ -151,7 +207,29 @@ pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> R
             Ok(route)
         })),
     };
-    let result = run_client_with(&client_command(parsed, &target, Some(prompt)), &route, &run_options);
+    // The session's file before the run: its route notices are read from what the run adds. An ephemeral session is
+    // removed here, once they are read, not by the client.
+    let offset = match &target {
+        Target::Open(metadata) => std::fs::metadata(&metadata.path).map_or(0, |m| m.len()),
+        _ => 0,
+    };
+    let mut command = client_command(parsed, &target, Some(prompt));
+    let ephemeral = std::mem::replace(&mut command.no_session, false);
+    let result = run_client_with(&command, &route, &run_options);
+    let notices = match &result {
+        Ok(ClientResult::Prompted { session_id, .. }) => session_file(&options.session_dir, session_id)
+            .map(|path| route_notices(&path, offset))
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    if ephemeral
+        && let Ok(ClientResult::Prompted { session_id, .. }) = &result
+        && let Ok(connection) = client::runtime::Connection::connect(&route.path, &route.server_id)
+    {
+        let target = connection.server_target();
+        let _ = connection.call(target, "pi.session-management", "remove", json!([session_id]));
+        connection.disconnect();
+    }
     for server in servers.lock().unwrap_or_else(|e| e.into_inner()).drain(..) {
         server.close();
     }
@@ -168,6 +246,7 @@ pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> R
             text,
             server_id,
             session_id,
+            notices,
         }),
         _ => Err("the client did not prompt".into()),
     }

@@ -89,7 +89,8 @@ pub trait RpcSession {
     fn set_thinking_level(&mut self, level: &str, out: &Output) -> Result<(), String>;
     fn cycle_thinking_level(&mut self, out: &Output) -> Result<Option<String>, String>;
     fn set_queue_mode(&mut self, kind: QueueKind, mode: &str) -> Result<(), String>;
-    fn compact(&mut self, custom_instructions: Option<&str>, out: &Output) -> Result<Value, String>;
+    /// Compact; `reply` answers once the compaction ends, so `abort` and `get_state` are served meanwhile.
+    fn compact(&mut self, custom_instructions: Option<&str>, reply: Reply) -> Result<(), String>;
     fn set_auto_compaction(&mut self, enabled: bool);
     fn set_auto_retry(&mut self, enabled: bool);
     fn abort_retry(&mut self);
@@ -108,6 +109,23 @@ pub trait RpcSession {
     fn set_session_name(&mut self, name: &str) -> Result<(), String>;
     fn messages(&self) -> Vec<Value>;
     fn commands(&self) -> Result<Vec<Value>, String>;
+    /// `/goal <args>`: the session goal's command (set, pause, resume, clear, check); returns its reply text.
+    fn goal(&mut self, args: &str) -> Result<String, String> {
+        let _ = args;
+        Err("/goal is not available in this session".into())
+    }
+    /// A read-only inspection request (`agents.status`, `rlm.frames`, ...) through the session's inspector.
+    fn inspect(&mut self, request: &str, payload: Value) -> Result<Value, String>;
+    /// Write the session's active branch as an HTML page; returns the path written.
+    fn export_html(&mut self, output_path: Option<&str>) -> Result<String, String>;
+    /// Pi's `extension_ui_response`: the answer to an extension dialog of the worker.
+    fn extension_ui_response(&mut self, _id: &str, _answer: Value) {}
+}
+
+/// The arguments of a `/goal` prompt (`None`: not a `/goal` command).
+fn goal_arguments(message: &str) -> Option<&str> {
+    let rest = message.trim().strip_prefix("/goal")?;
+    (rest.is_empty() || rest.starts_with(char::is_whitespace)).then(|| rest.trim())
 }
 
 fn success(id: Option<&Value>, command: &str, data: Option<Value>) -> Value {
@@ -195,6 +213,10 @@ fn run_command<S: RpcSession>(
     match kind {
         "prompt" => {
             let (message, images) = prompt_request(command, kind)?;
+            // `/goal ...` is the session goal's command, as in the TUI: answered with its text, never a turn.
+            if let Some(args) = goal_arguments(&message) {
+                return done(Some(json!({"text": session.goal(args)?})));
+            }
             if session.is_running() {
                 let queue = match str_field("streamingBehavior") {
                     Some("steer") => QueueKind::Steer,
@@ -256,7 +278,16 @@ fn run_command<S: RpcSession>(
             session.set_queue_mode(queue, mode)?;
             done(None)
         }
-        "compact" => done(Some(session.compact(str_field("customInstructions"), out)?)),
+        "compact" => {
+            // Answered when the compaction ends: an `abort` or `get_state` sent meanwhile is served at once.
+            let reply = Reply {
+                id: command.get("id").cloned(),
+                command: kind.into(),
+                out: out.clone(),
+            };
+            session.compact(str_field("customInstructions"), reply)?;
+            Ok(None)
+        }
         "set_auto_compaction" => {
             session.set_auto_compaction(command.get("enabled") == Some(&Value::Bool(true)));
             done(None)
@@ -322,14 +353,26 @@ fn run_command<S: RpcSession>(
         }
         "get_messages" => done(Some(json!({"messages": session.messages()}))),
         "get_commands" => done(Some(json!({"commands": session.commands()?}))),
-        // Ultron's inspector and the HTML export need subsystems the Rust build does not have yet.
-        "inspect" | "export_html" => Err(format!("{kind} is not implemented in the Rust build yet")),
+        "goal" => {
+            let args = str_field("args").unwrap_or_default();
+            done(Some(json!({"text": session.goal(args)?})))
+        }
+        // Ultron extension: the read-only inspector behind /agents, /memory why, /skills why, /experiments.
+        "inspect" => {
+            let request = str_field("request").ok_or("inspect requires a request type")?;
+            let payload = command.get("payload").cloned().unwrap_or_else(|| json!({}));
+            done(Some(session.inspect(request, payload)?))
+        }
+        "export_html" => {
+            let path = session.export_html(str_field("outputPath"))?;
+            done(Some(json!({ "path": path })))
+        }
         other => Err(format!("Unknown command: {other}")),
     }
 }
 
-/// `handleLine`: parse one record and answer it. Extension UI responses are accepted and ignored (no extension
-/// host runs yet), as unknown ids are.
+/// `handleLine`: parse one record and answer it. Extension UI responses go to the session's worker (unknown ids are
+/// ignored there) and are not answered.
 pub fn handle_line<S: RpcSession>(session: &mut S, line: &str, out: &Output) {
     let command: Value = match serde_json::from_str(line) {
         Ok(command) => command,
@@ -344,6 +387,17 @@ pub fn handle_line<S: RpcSession>(session: &mut S, line: &str, out: &Output) {
     };
     let kind = command.get("type").and_then(Value::as_str);
     if kind == Some("extension_ui_response") {
+        // Fire-and-forget, as in Pi: unknown ids are ignored and nothing is written back.
+        let answer = if command["cancelled"] == true {
+            Some(json!({"cancelled": true}))
+        } else if let Some(confirmed) = command["confirmed"].as_bool() {
+            Some(json!({"confirmed": confirmed}))
+        } else {
+            command["value"].as_str().map(|value| json!({"value": value}))
+        };
+        if let (Some(id), Some(answer)) = (command["id"].as_str(), answer) {
+            session.extension_ui_response(id, answer);
+        }
         return;
     }
     let id = command.get("id");

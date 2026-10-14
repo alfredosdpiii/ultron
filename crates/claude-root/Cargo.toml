@@ -9,6 +9,7 @@ publish.workspace = true
 agent = { path = "../agent" }
 ai = { path = "../ai" }
 config = { path = "../config" }
+delegation = { path = "../delegation" }
 getrandom = "=0.4.3"
 kernel = { path = "../kernel" }
 kernel-apis = { path = "../kernel-apis" }

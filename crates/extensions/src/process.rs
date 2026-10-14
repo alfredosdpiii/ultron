@@ -534,6 +534,24 @@ impl Drop for ExtensionProcess {
     }
 }
 
+impl ExtensionProcess {
+    /// One `event` request; `cancel` gives it up (`notifications/cancelled`).
+    fn deliver(&self, event: &Value, cancel: Option<&CancelToken>) -> Result<Option<Value>, String> {
+        let kind = event["type"].as_str().unwrap_or_default();
+        let peer = self.peer().map_err(|e| e.to_string())?;
+        match peer.request("event", event.clone(), Some(self.manifest.event_timeout), cancel) {
+            Ok(Value::Null) => Ok(None),
+            Ok(value) => Ok(Some(value)),
+            Err(RpcError::Timeout(ms)) => Err(format!(
+                "Extension {} did not answer {kind} within {ms}ms",
+                self.manifest.name
+            )),
+            Err(RpcError::Closed(reason)) => Err(format!("Extension {} exited: {reason}", self.manifest.name)),
+            Err(other) => Err(other.to_string()),
+        }
+    }
+}
+
 impl Endpoint for ExtensionProcess {
     fn path(&self) -> &str {
         &self.display_path
@@ -546,18 +564,11 @@ impl Endpoint for ExtensionProcess {
     }
 
     fn dispatch(&self, event: &Value) -> Result<Option<Value>, String> {
-        let kind = event["type"].as_str().unwrap_or_default();
-        let peer = self.peer().map_err(|e| e.to_string())?;
-        match peer.request("event", event.clone(), Some(self.manifest.event_timeout), None) {
-            Ok(Value::Null) => Ok(None),
-            Ok(value) => Ok(Some(value)),
-            Err(RpcError::Timeout(ms)) => Err(format!(
-                "Extension {} did not answer {kind} within {ms}ms",
-                self.manifest.name
-            )),
-            Err(RpcError::Closed(reason)) => Err(format!("Extension {} exited: {reason}", self.manifest.name)),
-            Err(other) => Err(other.to_string()),
-        }
+        self.deliver(event, None)
+    }
+
+    fn dispatch_cancellable(&self, event: &Value, cancel: &CancelToken) -> Result<Option<Value>, String> {
+        self.deliver(event, Some(cancel))
     }
 
     fn commands(&self) -> Vec<(String, Option<String>)> {
@@ -615,7 +626,7 @@ pub struct ExtensionHost {
     processes: Vec<Arc<ExtensionProcess>>,
     router: Router,
     pub diagnostics: Vec<Diagnostic>,
-    _shared: Arc<Shared>,
+    shared: Arc<Shared>,
 }
 
 impl ExtensionHost {
@@ -675,12 +686,18 @@ impl ExtensionHost {
             router: Router::new(endpoints),
             processes,
             diagnostics,
-            _shared: shared,
+            shared,
         }
     }
 
     pub fn router(&self) -> &Router {
         &self.router
+    }
+
+    /// A host message on the extension event bus (`pi.events.emit(channel, data)` from the host side, e.g.
+    /// `ultron:context_edit`): every extension subscribed to `channel` gets `bus/message`.
+    pub fn publish(&self, channel: &str, data: &Value) {
+        self.shared.broadcast(channel, data);
     }
 
     pub fn processes(&self) -> &[Arc<ExtensionProcess>] {

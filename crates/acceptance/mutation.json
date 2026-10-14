@@ -1,0 +1,150 @@
+{
+	"generated_at": "2026-10-13T23:02:27.053Z",
+	"mutations_sha256": "582f2e1784d80d3850f6c6e135431afceb83028420e346c7e509eaf1b19f7d57",
+	"summary": {
+		"total": 10,
+		"killed": 10,
+		"survived": 0,
+		"error": 0,
+		"invalid": 0
+	},
+	"findings": [],
+	"results": [
+		{
+			"id": "family-sender-from-payload",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Sender identity comes from the calling lane, never the payload",
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a41_rejects_forged_sender_fields_and_takes_the_sender_from_the_calling_lane"
+			]
+		},
+		{
+			"id": "family-drop-family-scope",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Child sends are limited to direct children of the sender",
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a41_isolates_verifiers_to_their_direct_parent_and_never_steers_them",
+				"acceptance_a41_derives_identity_from_real_task_lanes_and_steers_a_live_child_lane",
+				"acceptance_a41_rejects_siblings_grandchildren_and_other_families"
+			]
+		},
+		{
+			"id": "family-verifier-may-message-children",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Verifier tasks may only message their direct parent",
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a41_isolates_verifiers_to_their_direct_parent_and_never_steers_them"
+			]
+		},
+		{
+			"id": "family-messages-never-expire",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Expired messages are never delivered",
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a41_never_delivers_expired_messages_and_reports_them_as_expired",
+				"acceptance_a41_rejects_sends_to_a_full_inbox_and_oversized_messages_instead_of_dropping"
+			]
+		},
+		{
+			"id": "progress-truthy-passed",
+			"row": "A44",
+			"file": "crates/kernel-apis/src/progress.rs",
+			"guarantee": "A completion claim is verified only when the verifier returns passed === true",
+			"tests": [
+				"crates/acceptance/tests/a44_progress.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a44_never_verifies_a_completion_claim_without_a_passing_verifier"
+			]
+		},
+		{
+			"id": "progress-grants-budget-extension",
+			"row": "A44",
+			"file": "crates/kernel-apis/src/progress.rs",
+			"guarantee": "Reassessment never extends budgets",
+			"tests": [
+				"crates/acceptance/tests/a44_progress.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a44_always_denies_budget_extension_and_records_the_reason",
+				"acceptance_a44_persists_receipts_and_decisions_across_module_instances_and_settles_interrupted_verifications"
+			]
+		},
+		{
+			"id": "kernel-keeps-credentials",
+			"row": "A10",
+			"file": "crates/kernel/src/config.rs",
+			"guarantee": "Credential-named variables are scrubbed from the kernel environment",
+			"tests": [
+				"crates/acceptance/tests/a10_worker_isolation.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a10_kernel_gets_no_ambient_credentials_or_unauthorized_host_capability"
+			]
+		},
+		{
+			"id": "kernel-keeps-worker-control-channel",
+			"row": "A10",
+			"file": "crates/kernel/src/config.rs",
+			"guarantee": "Worker control-channel variables are scrubbed even when their names look harmless",
+			"tests": [
+				"crates/acceptance/tests/a10_worker_isolation.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a10_kernel_gets_no_ambient_credentials_or_unauthorized_host_capability"
+			]
+		},
+		{
+			"id": "schedules-drop-slot-key",
+			"row": "A23",
+			"file": "crates/kernel-apis/src/schedules.rs",
+			"guarantee": "Schedule firings are admitted with a slot-derived idempotency key",
+			"tests": [
+				"crates/acceptance/tests/a23_schedules.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a23_a_restart_on_the_same_stores_does_not_rerun_a_completed_or_claimed_slot",
+				"acceptance_a23_duplicate_and_concurrent_ticks_in_the_same_slot_run_the_slot_once",
+				"acceptance_a23_the_background_timer_fires_due_slots_and_stops_on_close"
+			]
+		},
+		{
+			"id": "schedules-truthy-gate",
+			"row": "A23",
+			"file": "crates/kernel-apis/src/schedules.rs",
+			"guarantee": "A required check passes only with a boolean passed === true",
+			"tests": [
+				"crates/acceptance/tests/a23_schedules.rs"
+			],
+			"outcome": "killed",
+			"failing_tests": [
+				"acceptance_a23_required_gate_achieved_only_when_every_required_check_succeeds_with_passed_true"
+			]
+		}
+	]
+}

@@ -1,9 +1,7 @@
 //! `ultron migrate ...` (`ultron/migration-cli.ts`, `ultron/migration.ts`): profile backup and restore, and the
 //! command line of Pi <-> Ultron session migration. Output names paths and counts only; credential file contents are
 //! never printed.
-//!
-//! Not ported: `import-pi` and `export-pi` themselves, which write and read native format-4 sessions through the
-//! session repository (their arguments are checked, then they report that they are not implemented).
+//! `import-pi` and `export-pi` run `session_core::migration`.
 
 use crate::Env;
 use serde_json::{Value, json};
@@ -136,16 +134,36 @@ fn command(sub: &str, rest: &[String], env: &Env) -> Result<Vec<String>, Failure
         "import-pi" => {
             let o = parse_options(rest, &["sessions-root"])?;
             expect_positional(&o.positional, 1, 1)?;
-            Err(Failure::Error(
-                "`ultron migrate import-pi` is not implemented in the Rust build yet".into(),
-            ))
+            let root_input = o
+                .get("sessions-root")
+                .map(str::to_string)
+                .or_else(|| (env.var)(config::paths::ENV_SESSION_DIR))
+                .unwrap_or_else(|| {
+                    env.agent_dir()
+                        .join("experimental")
+                        .join("sessions")
+                        .display()
+                        .to_string()
+                });
+            let sessions_root = config::paths::resolve(&root_input, &env.cwd, &env.home);
+            let result = session_core::migration::import_pi_session(&resolve(env, &o.positional[0]), &sessions_root)
+                .map_err(|e| Failure::Error(e.to_string()))?;
+            Ok(import_lines(&result))
         }
         "export-pi" => {
             let o = parse_options(rest, &[])?;
             expect_positional(&o.positional, 2, 2)?;
-            Err(Failure::Error(
-                "`ultron migrate export-pi` is not implemented in the Rust build yet".into(),
-            ))
+            let result = session_core::migration::export_native_session_to_pi(
+                &resolve(env, &o.positional[0]),
+                &resolve(env, &o.positional[1]),
+            )
+            .map_err(Failure::Error)?;
+            Ok(vec![format!(
+                "Exported native session {} ({} entries) to {}",
+                result.session_id,
+                result.entries,
+                result.path.display()
+            )])
         }
         "backup" => {
             let o = parse_options(rest, &["agent-dir"])?;
@@ -173,6 +191,49 @@ fn command(sub: &str, rest: &[String], env: &Env) -> Result<Vec<String>, Failure
         }
         other => Err(Failure::Usage(format!("Unknown migrate command: {other}"))),
     }
+}
+
+/// What `migrate import-pi` prints for an import: paths and counts only.
+fn import_lines(result: &session_core::migration::ImportResult) -> Vec<String> {
+    let entries = |count: usize| if count == 1 { "entry" } else { "entries" };
+    let mut lines = vec![
+        format!(
+            "Imported {} entries as native session {}",
+            result.imported, result.session_id
+        ),
+        format!("  {}", result.path.display()),
+    ];
+    for (kind, count) in &result.skipped {
+        lines.push(format!("  skipped {count} {kind} {}", entries(*count)));
+    }
+    for (kind, count) in &result.preserved {
+        lines.push(format!(
+            "  preserved {count} unknown {kind} {} as custom entries",
+            entries(*count)
+        ));
+    }
+    if result.branch_copies > 0 {
+        lines.push(format!(
+            "  applied branch-local context edits per branch with {} copied {}",
+            result.branch_copies,
+            entries(result.branch_copies)
+        ));
+    }
+    for id in &result.unapplied_context_edits {
+        lines.push(format!(
+            "  context edit {id} does not target a message on its own path; kept as an entry, not applied"
+        ));
+    }
+    if result.usage_entries > 0 {
+        lines.push(format!(
+            "  imported usage of {} Pi {} (${}) into usage root {}",
+            result.usage_entries,
+            entries(result.usage_entries),
+            session_file::js::format_f64(result.usage_cost),
+            result.usage_root
+        ));
+    }
+    lines
 }
 
 fn is_excluded(relative: &str) -> bool {

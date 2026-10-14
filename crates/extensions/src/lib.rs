@@ -23,6 +23,6 @@ pub use process::{
     EVENTS, ExtensionHost, ExtensionProcess, FunctionSpec, HostApi, NoHost, PROTOCOL_VERSION, Registrations,
     SessionInfo,
 };
-pub use router::{Endpoint, ExtensionError, ResolvedCommand, Router};
+pub use router::{Cancelled, Endpoint, ExtensionError, ResolvedCommand, Router};
 pub use rpc::{CancelToken, Peer, RpcError};
 pub use ui::{UiModel, UiUpdate};

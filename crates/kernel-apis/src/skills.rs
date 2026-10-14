@@ -2,6 +2,7 @@
 //! requests, journaled in the module document. Selection never grants capabilities: frontmatter keys that would
 //! grant tools, models, budgets or permissions are reported and ignored.
 
+use crate::TaskHost;
 use crate::code_skills::{CodeSkillKind, CodeSkills};
 use crate::store::{DocumentStore, read_versioned};
 use crate::util::{
@@ -194,6 +195,23 @@ fn append(document: &mut Value, key: &str, record: Value) {
     }
 }
 
+/// `invocationPrompt`: the skill block of Pi's `/skill` expansion, its version and the input as JSON.
+fn invocation_prompt(skill: &Skill, input: &Value) -> String {
+    let dir = match skill.file_path.rfind('/') {
+        Some(0) => "/",
+        Some(at) => &skill.file_path[..at],
+        None => ".",
+    };
+    format!(
+        "<skill name=\"{}\" location=\"{}\">\nReferences are relative to {dir}.\n\n{}\n</skill>\n\nSkill version: {}\n\nInput (JSON):\n{}",
+        skill.name,
+        skill.file_path,
+        skill.body,
+        skill.version,
+        crate::util::stringify(input)
+    )
+}
+
 struct Snapshot {
     generation: i64,
     skills: Vec<Skill>,
@@ -344,11 +362,27 @@ impl SkillsModule {
         self.current().map(drop)
     }
 
+    /// A request without a task runtime (`skills.invoke` is refused: nothing can spawn the skill's task).
     pub fn handle(
         &self,
         kind: &str,
         payload: &Map<String, Value>,
         caller: Option<&str>,
+        signal: &Signal,
+    ) -> Result<Value, String> {
+        let host = crate::RootOnly {
+            now: crate::util::system_clock(),
+        };
+        self.handle_with_host(kind, payload, caller, &host, signal)
+    }
+
+    /// A request whose `skills.invoke` spawns through `host`.
+    pub fn handle_with_host(
+        &self,
+        kind: &str,
+        payload: &Map<String, Value>,
+        caller: Option<&str>,
+        host: &dyn TaskHost,
         signal: &Signal,
     ) -> Result<Value, String> {
         match kind {
@@ -379,20 +413,7 @@ impl SkillsModule {
                     .cloned()
                     .ok_or_else(|| format!("Unknown skill decision: {id}"))
             }
-            "skills.invoke" => {
-                fields(payload, &["name", "version", "input"])?;
-                let name = nonempty_string(payload.get("name"), "name")?;
-                let version = version_string(payload.get("version"))?;
-                if !payload.contains_key("input") {
-                    return Err("input must be JSON".into());
-                }
-                let snapshot = self.current()?;
-                let skill = Self::pinned(&snapshot, &name, Some(&version))?;
-                if !skill.invocable {
-                    return Err(format!("Skill {name} disables model invocation"));
-                }
-                Err("skills.invoke needs task spawning, which this host does not provide yet".into())
-            }
+            "skills.invoke" => self.invoke(payload, caller, host, signal),
             "skills.propose_code" | "skills.propose_policy" | "skills.rollback" => {
                 self.change_code(kind, payload, caller, signal)
             }
@@ -415,6 +436,81 @@ impl SkillsModule {
             }
             _ => Err(format!("Unsupported skills request: {kind}")),
         }
+    }
+
+    /// `invoke`: the pinned skill as an `rlm-child@1` task of the caller. Only definition, input and key reach the
+    /// host: frontmatter never changes the child's model, tools or budget. Each invocation is journaled
+    /// (`admitting`, then `spawned` with its task, or `failed` with the error).
+    fn invoke(
+        &self,
+        payload: &Map<String, Value>,
+        caller: Option<&str>,
+        host: &dyn TaskHost,
+        signal: &Signal,
+    ) -> Result<Value, String> {
+        fields(payload, &["name", "version", "input"])?;
+        let name = nonempty_string(payload.get("name"), "name")?;
+        let version = version_string(payload.get("version"))?;
+        let Some(input) = payload.get("input") else {
+            return Err("input must be JSON".into());
+        };
+        let snapshot = self.current()?;
+        let skill = Self::pinned(&snapshot, &name, Some(&version))?;
+        if !skill.invocable {
+            return Err(format!("Skill {name} disables model invocation"));
+        }
+        let invocation = json!({
+            "id": uuid(),
+            "at": (self.now)(),
+            "name": name,
+            "version": skill.version,
+            "caller_task_id": caller,
+            "state": "admitting",
+        });
+        let id = invocation["id"].as_str().unwrap_or_default().to_string();
+        let record = |change: Value| -> Result<(), String> {
+            let _exclusive = lock(&self.exclusive);
+            self.mutate(|document| {
+                let existing = document["invocations"]
+                    .as_array_mut()
+                    .and_then(|items| items.iter_mut().find(|item| item["id"] == id.as_str()));
+                match existing {
+                    Some(existing) => {
+                        for (key, value) in change.as_object().into_iter().flatten() {
+                            existing[key] = value.clone();
+                        }
+                    }
+                    None => {
+                        let mut next = invocation.clone();
+                        for (key, value) in change.as_object().into_iter().flatten() {
+                            next[key] = value.clone();
+                        }
+                        append(document, "invocations", next);
+                    }
+                }
+            })
+        };
+        record(json!({}))?;
+        let request = json!({
+            "definition": "rlm-child@1",
+            "input": {"prompt": invocation_prompt(skill, input)},
+            "key": format!("skills.invoke:{id}"),
+        });
+        let task_id = match host.spawn(&request, caller, signal) {
+            Ok(task) => task["id"].as_str().unwrap_or_default().to_string(),
+            Err(error) => {
+                record(json!({"state": "failed", "error": error}))?;
+                return Err(error);
+            }
+        };
+        record(json!({"state": "spawned", "task_id": task_id}))?;
+        Ok(json!({
+            "invocation_id": id,
+            "task_id": task_id,
+            "name": name,
+            "version": skill.version,
+            "ignored_capability_requests": skill.ignored,
+        }))
     }
 
     fn code_skills(&self) -> Result<&CodeSkills, String> {
@@ -604,6 +700,13 @@ impl crate::ApiModule for SkillsModule {
     }
 
     fn handle(&self, request: &crate::Request<'_>) -> Result<Value, String> {
-        SkillsModule::handle(self, request.kind, request.payload, request.caller_task, request.signal)
+        SkillsModule::handle_with_host(
+            self,
+            request.kind,
+            request.payload,
+            request.caller_task,
+            request.host,
+            request.signal,
+        )
     }
 }

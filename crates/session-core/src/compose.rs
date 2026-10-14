@@ -1,7 +1,8 @@
 //! The composition root of a session's host stack. A cell's host request passes, outermost first:
 //!
 //! 1. [`kernel_apis::KernelApis`]: the kernel-API modules (`skills.*` with code skills, `memory.*`, `grants.*`,
-//!    `hints.*`), matched by prefix;
+//!    `hints.*`, and the local services of [`services`]: `refinements.*`, `experiments.*`, `gates.*`), matched by
+//!    prefix;
 //! 2. [`inference::Inference`]: `rlm.infer`, `rlm.load`, `rlm.frames`;
 //! 3. [`Router`]: subagents (`rlm.spawn`, `rlm.collect`, ... served by [`delegation::host::Delegation`] for the
 //!    calling lane, in host collect mode: a cell never waits) and extension functions (`ext.call`, `ext.list`);
@@ -56,6 +57,9 @@ const DELEGATION_REQUESTS: [&str; 7] = [
     "rlm.merge",
 ];
 
+/// Told the session's MCP gateway when its stack opens.
+pub type McpListener = Arc<dyn Fn(&Arc<mcp::gateway::Gateway>) + Send + Sync>;
+
 /// Collaborators a caller may supply in place of the defaults (tests, embedders).
 #[derive(Clone, Default)]
 pub struct Services {
@@ -64,6 +68,13 @@ pub struct Services {
     pub memory: Option<Arc<dyn MemoryBackend>>,
     /// Answers `prompt` approval decisions (none: they fail closed).
     pub approver: Option<Arc<dyn Approver>>,
+    /// Told the session's MCP gateway once its stack opens (the session worker serves `/mcp` with it).
+    pub on_mcp: Option<McpListener>,
+    /// Where the gateway's notices go when the session starts (configuration errors, an eager server that needs
+    /// sign-in): the attached client's UI (`ctx.ui.notify`). None: nowhere, as without a UI in TypeScript.
+    pub mcp_notices: Option<mcp::gateway::NoticeSink>,
+    /// Pi `--no-extensions`: no extensions are loaded, and no MCP servers (MCP is user configuration like them).
+    pub no_extensions: bool,
 }
 
 /// What every lane of this process shares: settings, locations, guards, extensions and the snapshot key. Owned
@@ -88,6 +99,17 @@ pub struct Config {
     /// The frame settings `rlm.map` / `rlm.infer` read from the environment (`ULTRON_RLM_FRAME_MODEL`,
     /// `ULTRON_REVIEW_MODEL`, `ULTRON_RLM_MAP_TOKENS`).
     pub frame_env: HashMap<String, String>,
+    /// The process environment, for models.json keys and headers (`$VAR` values).
+    pub var: crate::VarLookup,
+    /// Cell output masking for every lane: the values MCP servers resolve (env, headers) are registered here, as
+    /// TypeScript's process-wide `registerSecretValues`.
+    pub masker: Arc<host::secrets::OutputMasker>,
+    /// Whether the project's own configuration (`.pi/mcp.json`) may be read.
+    pub project_trusted: bool,
+    /// The current key of a `/login` provider, for MCP servers with `auth.provider`.
+    pub provider_token: mcp::connection::ProviderToken,
+    /// MCP servers are read (not with `--no-extensions`).
+    pub mcp_enabled: bool,
 }
 
 impl Config {
@@ -121,7 +143,65 @@ impl Config {
                 .into_iter()
                 .filter_map(|key| (env.var)(key).map(|value| (key.to_string(), value)))
                 .collect(),
+            var: env.var.clone(),
+            masker: Arc::default(),
+            project_trusted: manager.is_project_trusted(),
+            mcp_enabled: true,
+            provider_token: {
+                let env = env.clone();
+                Arc::new(move |provider: &str| crate::lane::api_key(&crate::ModelFlags::default(), &env, provider))
+            },
         }
+    }
+
+    /// The session's MCP gateway (extensions/mcp): the servers of `mcp.json`, and of `.pi/mcp.json` in a trusted
+    /// project, reached from the REPL through the `mcp` tool. Server log messages go to `<agentDir>/mcp.log`.
+    pub fn mcp_gateway(&self) -> Arc<mcp::gateway::Gateway> {
+        let masker = self.masker.clone();
+        mcp::gateway::Gateway::new(mcp::gateway::GatewayOptions {
+            agent_dir: self.agent_dir.clone(),
+            project_trusted: self.project_trusted,
+            servers: (!self.mcp_enabled).then(Vec::new),
+            env: mcp::connection::ConnectionEnv {
+                cwd: self.cwd.clone(),
+                home: self.home.clone(),
+                env_overlay: HashMap::new(),
+                client_version: mcp::gateway::client_version(),
+                log: Some(Arc::new(mcp::log::ServerLog::new(self.agent_dir.join("mcp.log")))),
+                secrets: Some(Arc::new(move |values: &[String]| {
+                    let values: Vec<Value> = values.iter().map(|v| Value::String(v.clone())).collect();
+                    masker.register_secret_values(&values);
+                })),
+                provider_token: Some(self.provider_token.clone()),
+                ..mcp::connection::ConnectionEnv::default()
+            },
+            open_url: None,
+        })
+    }
+
+    /// The model `provider`/`id` of the built-in catalog or models.json, ready for requests.
+    pub fn model(&self, provider: &str, id: &str) -> Option<Model> {
+        let env = Env {
+            cwd: self.cwd.clone(),
+            home: self.home.clone(),
+            var: self.var.clone(),
+            docs: PathBuf::new(),
+        };
+        crate::lane::catalog_model(provider, id, &env).ok()
+    }
+
+    /// Refuses a spawn's `model=` unless it names a model of the built-in catalog or models.json.
+    fn model_check(self: &Arc<Self>) -> delegation::host::ModelCheck {
+        let config = self.clone();
+        Arc::new(move |spec: &str| {
+            match spec
+                .split_once('/')
+                .and_then(|(provider, id)| config.model(provider, id))
+            {
+                Some(_) => Ok(()),
+                None => Err(format!("model must be provider/model naming a known model, not {spec}")),
+            }
+        })
     }
 
     /// The session's file hooks (session-worker.ts): Loki's guard unless `ULTRON_LOKI` or the global `loki.mode`
@@ -159,6 +239,50 @@ fn lane_dir(lane: &str) -> String {
         .collect()
 }
 
+/// Live kernels a session keeps (`maxLive` of the TS rlm tool, 16); `rlm.maxLiveKernels` overrides it.
+fn max_live_kernels(settings: &Value) -> usize {
+    settings["rlm"]["maxLiveKernels"]
+        .as_u64()
+        .filter(|n| *n >= 1)
+        .map_or(16, |n| n.min(1024) as usize)
+}
+
+/// Where each lane's kernel snapshot lives (the path its kernel restores at startup): the pool snapshots an idle
+/// kernel there before evicting it.
+fn lane_snapshot_path(config: &Arc<Config>, session_id: &str) -> delegation::lanes::SnapshotPathFn {
+    let snapshots = config.session_dir("rlm-snapshots", session_id);
+    Arc::new(move |lane: &str| {
+        Some(
+            snapshots
+                .join(format!("{}.snapshot", lane_dir(lane)))
+                .display()
+                .to_string(),
+        )
+    })
+}
+
+/// The runtime guide's view of the `mcp` gateway: the tool and its servers when `mcp.json` names any.
+fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideOptions {
+    let tool = config.mcp_gateway().tool();
+    resources::runtime_guide::RuntimeGuideOptions {
+        mcp_servers: tool
+            .as_ref()
+            .map(|t| mcp::gateway::server_names_of(&t.description))
+            .unwrap_or_default(),
+        extension_tools: tool
+            .into_iter()
+            .map(|t| resources::runtime_guide::ExtensionToolSummary {
+                name: t.name,
+                description: t.description,
+            })
+            .collect(),
+        ..Default::default()
+    }
+}
+
+/// How long an extension may take to answer `commands/complete` (completions are asked as the user types).
+const EXTENSION_COMPLETION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 /// The process-wide composition: configuration, loaded extensions and injected services.
 pub struct Runtime {
     pub config: Arc<Config>,
@@ -181,15 +305,19 @@ impl Runtime {
     /// Read the settings, start the extensions configured for `cwd` (`mode`: "print", "json" or "rpc") and build
     /// the root system prompt.
     pub fn new(env: &Env, mode: &str, sessions_dir: PathBuf, services: Services) -> Result<Runtime, String> {
-        let config = Config::from_env(env);
-        let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, false);
+        let mut config = Config::from_env(env);
+        config.mcp_enabled = !services.no_extensions;
+        // The worker's project trust (`workerProjectTrusted`): a trusted project's extensions load too.
+        let trusted = crate::extension_commands::worker_project_trusted(&env.cwd, &config.agent_dir, &env.home);
+        let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted);
         let discovery = extensions::discover_with_settings(&env.cwd, &config.agent_dir, &env.home, &manager);
         let mut diagnostics: Vec<String> = discovery
             .diagnostics
             .iter()
             .map(|d| format!("{}: {}", d.path.display(), d.message))
             .collect();
-        let extensions = (!discovery.manifests.is_empty()).then(|| {
+        // `--no-extensions`: extensions are not discovered or loaded.
+        let extensions = (!services.no_extensions && !discovery.manifests.is_empty()).then(|| {
             let session = SessionInfo {
                 cwd: env.cwd.display().to_string(),
                 mode: mode.into(),
@@ -198,6 +326,9 @@ impl Runtime {
             };
             Arc::new(ExtensionHost::load(discovery.manifests, session, Arc::new(NoHost)))
         });
+        if services.no_extensions {
+            diagnostics.clear();
+        }
         if let Some(host) = &extensions {
             diagnostics.extend(
                 host.diagnostics
@@ -209,11 +340,14 @@ impl Runtime {
         let guide = extensions
             .as_ref()
             .and_then(|host| extensions::kernel_api::guide_section(&host.functions()));
-        let system = crate::lane::system_prompt(
+        // The `mcp` gateway lives in the REPL: the runtime guide lists it with its servers (`mcpServerNames`).
+        let runtime_guide = mcp_runtime_guide(&config);
+        let system = crate::lane::system_prompt_with_guide(
             env,
             &env.cwd.display().to_string(),
             config.loki_root.as_deref(),
             guide.as_deref(),
+            &runtime_guide,
         )?;
         Ok(Runtime {
             config: Arc::new(config),
@@ -289,13 +423,69 @@ impl Runtime {
             )),
             kernel_apis::artifacts::ArtifactLimits::default(),
         )?;
+        // The local services: refinements (lessons, checked by the worker's activation rules) and experiment history in
+        // one keyed document file, release gates in their module document. Active instruction refinements reach
+        // later typed-agent prompts through the host's refinement hook.
+        let local = Arc::new(services::LocalServices::worker(Box::new(
+            kernel_apis::artifacts::FileKeyedDocuments::new(
+                config.session_dir("rlm-modules", session_id).join("local.json"),
+            ),
+        )));
+        let refinements = services::instruction_hook(local.clone());
+        // `session_start` of the MCP extension: eager servers connect in the background; configuration errors were
+        // reported with the runtime's diagnostics.
+        let gateway = config.mcp_gateway();
+        let notices = gateway.start(self.services.mcp_notices.clone());
+        if let Some(notify) = &self.services.mcp_notices {
+            for (message, level) in notices {
+                notify(&message, &level);
+            }
+        }
+        if let Some(on_mcp) = &self.services.on_mcp {
+            on_mcp(&gateway);
+        }
         let apis = ApiModules {
+            local: Arc::new(services::LocalServicesModule { services: local }),
+            gates: Arc::new(services::ReleaseGateModule::new(modules("release-gates"), None)),
             artifacts: Arc::new(kernel_apis::artifacts::ArtifactsModule::new(artifacts)),
             skills: Arc::new(SkillsModule::new(modules("skills"), loader, clock.clone(), Some(code))),
             memory: Arc::new(MemoryApi { service: memory }),
             grants: Arc::new(GrantsModule::new(modules("grants"), clock, false)),
             hints: Arc::new(HintsModule::new(modules("hints"))),
+            // `tools.*`: the `mcp` gateway and the extension processes' functions called from the REPL, detached
+            // after `yield_after`.
+            tools: Arc::new(kernel_apis::ToolCalls::new(
+                (gateway.tool().is_some() || self.extensions.is_some()).then(|| {
+                    Arc::new(crate::session_tools::SessionTools {
+                        extensions: self.extensions.clone().map(crate::extension_tools::ExtensionTools::new),
+                        mcp: Some(gateway.clone()),
+                    }) as Arc<dyn kernel_apis::ToolRunner>
+                }),
+                modules("tool-calls"),
+            )),
+            // The task modules of session-worker.ts over the typed-agent host: retained instances (their lanes
+            // pinned in the kernel pool), progress with verifier runs, and family messages.
+            instances: Arc::new(kernel_apis::InstancesModule::new(modules("instances"), None)),
+            progress: Arc::new(kernel_apis::ProgressModule::new(modules("progress"))),
+            family: Arc::new(kernel_apis::FamilyModule::new(
+                modules("family"),
+                kernel_apis::FamilyOptions::default(),
+            )),
         };
+        // Situational hints (`ULTRON_HINTS=on`): what a cell did, observed per lane, ends its result with one line.
+        let var = |key: &str| (config.var)(key);
+        let cell_hints = Arc::new(kernel_apis::cell_hints::CellHints::new(
+            apis.hints.clone(),
+            kernel_apis::cell_hints::CellHintsOptions {
+                enabled: kernel_apis::cell_hints::hints_enabled(var("ULTRON_HINTS").as_deref()),
+                max_per_tag: kernel_apis::cell_hints::hint_max_per_tag(var("ULTRON_HINTS_MAX").as_deref()),
+                async_events: config.async_events,
+                read_handle_bytes: kernel_apis::cell_hints::read_handle_bytes(
+                    var("ULTRON_READ_HANDLE_BYTES").as_deref(),
+                ),
+                ..Default::default()
+            },
+        ));
         let session_id = session_id.to_string();
         let system = self.system.clone();
         let extensions = self.extensions.clone();
@@ -319,6 +509,12 @@ impl Runtime {
                 ),
             };
             let goal_slot: Arc<std::sync::OnceLock<Arc<GoalDriver>>> = Arc::new(std::sync::OnceLock::new());
+            // Bounded-inference frames: traces as session values (in memory without a session), run as
+            // `rlm-frame@1` tasks of the typed-agent host.
+            let frames = inference::FrameSession::new(match &agent_stores {
+                Some(stores) => stores.frames.clone(),
+                None => Arc::new(inference::MemoryTraceStore::default()),
+            });
             let (agents, usage, task_ends) = typed_agents(
                 &config,
                 agent_stores,
@@ -326,7 +522,14 @@ impl Runtime {
                 &model,
                 api_key.clone(),
                 goal_slot.clone(),
+                Some(refinements),
+                crate::frames::frame_runner(frames.clone()),
             );
+            frames.set_tasks(Arc::new(crate::frames::StackFrameTasks {
+                agents: agents.clone(),
+                usage: usage.clone(),
+                stack: me.clone(),
+            }));
             // Schedules and the session goal are durable tasks of the typed-agent host.
             let schedules = Arc::new(SchedulesModule::new(schedules_store, None));
             let goal = Arc::new(GoalDriver::new(
@@ -359,7 +562,7 @@ impl Runtime {
             options.now = Box::new(|| crate::lane::now_ms() as f64);
             let (delegation, child_ends) = Delegation::new(options);
             // A spawn naming a model the session cannot run is refused, never run on the root's model (A04).
-            delegation.set_model_check(delegation::host::builtin_model_check());
+            delegation.set_model_check(config.model_check());
             let factory_stack = me.clone();
             let handler_stack = me.clone();
             let lanes = Lanes::new(LanesOptions {
@@ -373,6 +576,12 @@ impl Runtime {
                 }),
                 max_lanes: 64,
                 cancel_grace: Duration::from_secs(5),
+                // Live kernels are bounded as the TS session's rlm tool bounds them (A43): an idle lane is
+                // snapshotted to its own snapshot path and evicted, and its next cell restores it.
+                pool: Some(delegation::lanes::PoolLimits::new(
+                    max_live_kernels(&config.settings),
+                    Some(lane_snapshot_path(&config, &session_id)),
+                )),
             });
             let (lanes, cell_ends) = match lanes {
                 Ok(pair) => pair,
@@ -383,6 +592,7 @@ impl Runtime {
                         handlers: Arc::new(|_, _, _| Arc::new(Closed) as Arc<dyn HostHandler>),
                         max_lanes: 1,
                         cancel_grace: Duration::ZERO,
+                        pool: None,
                     })
                     .expect("one lane is a valid limit");
                     (lanes, ends)
@@ -398,6 +608,7 @@ impl Runtime {
             });
             Stack {
                 config,
+                mcp: gateway,
                 host,
                 delegation,
                 extensions,
@@ -415,9 +626,12 @@ impl Runtime {
                 cell_progress: Arc::new(Mutex::new(None)),
                 agents,
                 usage,
+                frames,
                 schedules,
                 goal,
                 work: std::sync::OnceLock::new(),
+                cell_hints,
+                context: std::sync::OnceLock::new(),
             }
         });
         built?;
@@ -477,11 +691,17 @@ fn skill_sources(config: &Config) -> Vec<SkillSource> {
 }
 
 struct ApiModules {
+    local: Arc<services::LocalServicesModule>,
+    gates: Arc<services::ReleaseGateModule>,
     artifacts: Arc<kernel_apis::artifacts::ArtifactsModule>,
     skills: Arc<SkillsModule>,
     memory: Arc<MemoryApi>,
     grants: Arc<GrantsModule>,
     hints: Arc<HintsModule>,
+    tools: Arc<kernel_apis::ToolCalls>,
+    instances: Arc<kernel_apis::InstancesModule>,
+    progress: Arc<kernel_apis::ProgressModule>,
+    family: Arc<kernel_apis::FamilyModule>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -508,6 +728,8 @@ impl HostHandler for Closed {
 /// kernel-API modules.
 pub struct Stack {
     config: Arc<Config>,
+    /// The session's MCP servers (closed with the session).
+    mcp: Arc<mcp::gateway::Gateway>,
     pub host: Arc<Host>,
     pub delegation: Delegation,
     pub lanes: Lanes,
@@ -529,11 +751,17 @@ pub struct Stack {
     /// The typed-agent host (`agents.*`, `background.*`, `workflows.run`) and its usage ledger.
     pub agents: Agents,
     pub usage: UsageLedger,
+    /// The session's bounded-inference frames (`rlm.infer`, `rlm.map`, `rlm.frames`): budgets, traces, tasks.
+    pub frames: Arc<inference::FrameSession>,
     /// `schedules.*` and the session goal (`goal.*`, `/goal`), on the root lane.
     pub schedules: Arc<SchedulesModule>,
     pub goal: Arc<GoalDriver>,
     /// Schedules, the goal and shell jobs as durable work: recovered when the stack opens, its tick running.
     pub work: std::sync::OnceLock<DurableWork>,
+    /// Situational hints over every lane's cells (crate::lane::Rlm appends them).
+    cell_hints: Arc<kernel_apis::cell_hints::CellHints>,
+    /// Model-owned context of every lane (`ctx.*`; collapse on return on the root), once the session actor opened it.
+    pub context: std::sync::OnceLock<Arc<kernel_apis::ContextControl>>,
 }
 
 impl Stack {
@@ -557,6 +785,7 @@ impl Stack {
             extensions: self.extensions.clone(),
             host: self.host_of(lane),
             progress: (lane == crate::lane::MAIN).then(|| self.cell_progress.clone()),
+            lane: lane.to_string(),
         };
         let inference = Inference::new(
             Arc::new(router),
@@ -565,7 +794,8 @@ impl Stack {
             // Frames run on their handler threads' own runtimes, so they get their own HTTP client.
             Arc::new(ReqwestTransport::new(None)),
             self.sessions_dir.join("rlm-context").join(&self.session_id),
-        );
+        )
+        .with_session(self.frames.clone(), lane);
         // `rlm.map` and the frame-model defaults wrap the frames.
         let text = |v: &Value| v.as_str().map(str::to_string);
         let settings = &self.config.settings;
@@ -592,13 +822,30 @@ impl Stack {
                 .with(self.schedules.clone() as Arc<dyn kernel_apis::ApiModule>)
                 .with(self.goal.clone() as Arc<dyn kernel_apis::ApiModule>);
         }
+        // `ctx.*` from any lane edits that lane's own branch (core::context_children).
+        if let Some(context) = self.context.get() {
+            apis = apis.with(context.clone() as Arc<dyn kernel_apis::ApiModule>);
+        }
         let apis = apis
             .with(self.apis.artifacts.clone())
             .with(self.apis.skills.clone())
             .with(self.apis.memory.clone())
             .with(self.apis.grants.clone())
-            .with(self.apis.hints.clone());
-        Arc::new(apis)
+            .with(self.apis.hints.clone())
+            .with(self.apis.tools.clone())
+            .with(self.apis.local.clone())
+            .with(self.apis.gates.clone())
+            .with(self.apis.instances.clone())
+            .with(self.apis.progress.clone())
+            .with(self.apis.family.clone());
+        if !self.cell_hints.enabled() {
+            return Arc::new(apis);
+        }
+        Arc::new(ObservedByHints {
+            inner: Arc::new(apis),
+            hints: self.cell_hints.clone(),
+            lane: lane.to_string(),
+        })
     }
 
     /// `lane`'s kernel (not started): in the lane's working directory, inside the shell sandbox, with the
@@ -616,6 +863,8 @@ impl Stack {
             ("ULTRON_RLM_SPILL_DIR".into(), spill_dir.display().to_string()),
             // The kernel's write skills ask the host's file hooks (Loki, the sandbox's containment) first.
             ("ULTRON_FILE_HOOKS".into(), "1".into()),
+            // What a running cell prints reaches the host as it is written (`cell.output`): its partial output.
+            ("ULTRON_RLM_STREAM_OUTPUT".into(), "1".into()),
             ("HOME".into(), config.home.display().to_string()),
         ];
         if let Some(host) = &self.extensions
@@ -666,7 +915,84 @@ impl Stack {
             .config
             .session_dir("rlm-output", &self.session_id)
             .join(lane_dir(lane));
-        Ok(rlm_over(&self.config, self.lanes.clone(), lane, spill_dir))
+        let hints = self.cell_hints.enabled().then(|| self.cell_hints.clone());
+        Ok(rlm_over(&self.config, self.lanes.clone(), lane, spill_dir, hints))
+    }
+
+    /// `listCommands`: the extensions' slash commands, `/review`, prompt templates and skills (crate::commands).
+    pub fn commands(&self) -> Vec<Value> {
+        let config = &self.config;
+        let trusted = crate::extension_commands::worker_project_trusted(&config.cwd, &config.agent_dir, &config.home);
+        let settings = config::settings::SettingsManager::create(&config.cwd, &config.agent_dir, trusted);
+        let extensions: Vec<crate::commands::ExtensionCommand> = self
+            .extensions
+            .iter()
+            .flat_map(|host| host.router().registered_commands())
+            .map(|command| crate::commands::ExtensionCommand {
+                source_info: crate::extension_commands::source_info(
+                    Path::new(&command.extension_path),
+                    &settings,
+                    &config.cwd,
+                    &config.agent_dir,
+                    &config.home,
+                ),
+                name: command.invocation_name,
+                description: command.description,
+            })
+            .collect();
+        // The bundled skills sit beside the runtime (packages/coding-agent/skills).
+        let bundled = self
+            .config
+            .runtime_path
+            .ancestors()
+            .nth(4)
+            .map(|root| root.join("skills"));
+        crate::commands::list_commands(
+            &self.config.cwd.display().to_string(),
+            &self.config.agent_dir.display().to_string(),
+            &bundled.unwrap_or_default().display().to_string(),
+            &extensions,
+        )
+    }
+
+    /// Runs the extension command `/name args` (`LegacyExtensionCommands.run`): `{notifications: []}` once its
+    /// handler returned.
+    pub fn run_extension_command(&self, name: &str, args: &str) -> Result<Value, String> {
+        let host = self
+            .extensions
+            .as_ref()
+            .filter(|host| {
+                host.router()
+                    .registered_commands()
+                    .iter()
+                    .any(|c| c.invocation_name == name)
+            })
+            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
+        host.run_command(name, args, None).map_err(|e| e.to_string())?;
+        Ok(serde_json::json!({"notifications": []}))
+    }
+
+    /// The argument completions of the extension command `/name` for `prefix` (`commands/complete`): its items
+    /// (`{value, label, description?}`), or `null` when it offers none.
+    pub fn complete_extension_command(&self, name: &str, prefix: &str) -> Result<Value, String> {
+        let host = self
+            .extensions
+            .as_ref()
+            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
+        let command = host
+            .router()
+            .registered_commands()
+            .into_iter()
+            .find(|c| c.invocation_name == name)
+            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
+        let process = host
+            .processes()
+            .iter()
+            .find(|p| p.manifest().path.display().to_string() == command.extension_path)
+            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
+        process
+            .complete_command(&command.name, prefix, EXTENSION_COMPLETION_TIMEOUT)
+            .map_err(|e| e.to_string())
     }
 
     /// The model the session's lanes run on unless told otherwise.
@@ -679,14 +1005,45 @@ impl Stack {
         &self.system
     }
 
+    /// As [`Stack::close`], for a worker whose session a successor worker takes over: running shell jobs keep
+    /// running, journaled as running, for the successor to follow (`DurableWork::hand_over`), and subagents are not
+    /// cancelled: their tasks stay unfinished in the journal, so the successor reattaches them as after a crash.
+    pub fn hand_over(&self) {
+        if let Some(work) = self.work.get() {
+            work.hand_over();
+        }
+        // Tool calls run in this worker's extension processes and MCP connections: they end with it (a successor
+        // reads them as interrupted).
+        self.apis.tools.close();
+        self.mcp.close();
+        self.lanes.close();
+    }
+
     /// Stop the session's lanes and subagents, and its durable work (the tick, goal jobs, shell jobs).
     pub fn close(&self) {
         if let Some(work) = self.work.get() {
             work.close();
         }
+        self.apis.tools.close();
+        self.mcp.close();
         self.agents.close();
         self.delegation.close();
         self.lanes.close();
+    }
+
+    /// The session's situational hints (`ULTRON_HINTS`).
+    pub fn cell_hints(&self) -> &Arc<kernel_apis::cell_hints::CellHints> {
+        &self.cell_hints
+    }
+
+    /// The session's MCP gateway (`/mcp`, and the REPL's `mcp` namespace through `tools.*`).
+    pub fn mcp(&self) -> &Arc<mcp::gateway::Gateway> {
+        &self.mcp
+    }
+
+    /// The session's REPL tool calls (`tools.*`).
+    pub fn tool_calls(&self) -> &Arc<kernel_apis::ToolCalls> {
+        &self.apis.tools
     }
 }
 
@@ -706,11 +1063,14 @@ pub struct AgentStores {
     pub definitions: Box<dyn delegation::task_store::TaskStore>,
     pub usage: Box<dyn delegation::task_store::TaskStore>,
     pub lanes: Box<dyn FnOnce(Weak<Stack>) -> delegation::agents::LaneRunner>,
+    /// Where frame traces are kept (`ultron.rlm.frames`).
+    pub frames: Arc<dyn inference::TraceStore>,
 }
 
 /// The typed-agent host of a session: its journal, definitions and usage ledger in `stores` (in memory without),
 /// the predict adapter over the session's model, `rlm` lanes as `stores` runs them, root turns charged to roots
 /// of their own. Returns the host, its ledger and its task-end channel.
+#[allow(clippy::too_many_arguments)]
 fn typed_agents(
     config: &Config,
     stores: Option<AgentStores>,
@@ -718,6 +1078,8 @@ fn typed_agents(
     model: &Model,
     api_key: Option<String>,
     goal: Arc<std::sync::OnceLock<Arc<GoalDriver>>>,
+    refinements: Option<delegation::agents::RefinementsHook>,
+    frames: delegation::agents::FrameRunner,
 ) -> (Agents, UsageLedger, Receiver<delegation::agents::TaskEnd>) {
     use delegation::task_store::MemoryStore;
     let (tasks, definitions, usage_store, lanes) = match stores {
@@ -754,17 +1116,36 @@ fn typed_agents(
     options.definition_store = Some(definitions);
     options.usage = Some(usage.clone());
     options.lanes = lanes;
+    options.frames = Some(frames);
     options.root_turns = true;
-    // The session goal follows its runs' ends.
-    options.on_task_end = Some(Arc::new(move |task: &Value, _, _| {
+    options.refinements = refinements;
+    // The session goal follows its runs' ends; the root's context control attributes each root-level task's
+    // result to the cell that returns it (collapse on return).
+    let context_stack = stack.clone();
+    options.on_task_end = Some(Arc::new(move |task: &Value, cost, _| {
         if let (Some(goal), Some(id)) = (goal.get(), task["id"].as_str()) {
             let _ = goal.task_ended(id, task.get("result"));
+        }
+        if let Some(stack) = context_stack.upgrade()
+            && let Some(context) = stack.context.get()
+        {
+            context.task_ended(task, cost);
         }
     }));
     let (predict_model, predict_key) = (model.clone(), api_key);
     options.predict = Some(predict_adapter(Arc::new(move |call: PredictCall<'_>| {
         complete_once(&predict_model, predict_key.clone(), &call)
     })));
+    // Retained instances pin their lanes' kernels in the session's pool.
+    let (pin_stack, unpin_stack) = (stack.clone(), stack.clone());
+    options.pin_lane = Some(Arc::new(move |lane: &str, holder: &str| {
+        pin_stack.upgrade().is_some_and(|stack| stack.lanes.pin(lane, holder))
+    }));
+    options.unpin_lane = Some(Arc::new(move |lane: &str, holder: &str| {
+        if let Some(stack) = unpin_stack.upgrade() {
+            stack.lanes.unpin(lane, holder);
+        }
+    }));
     let reuse_stack = stack;
     options.before_lane_reuse = Some(Arc::new(move |lane: &str| {
         let stack = reuse_stack.upgrade().ok_or("The session is closed")?;
@@ -852,13 +1233,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
         .model
         .as_deref()
         .and_then(|spec| spec.split_once('/'))
-        .and_then(|(provider, id)| ai::models::builtin_model(provider, id).cloned())
-        .map(|mut model| {
-            if model.provider == stack.model.provider {
-                model.base_url = stack.model.base_url.clone();
-            }
-            model
-        })
+        .and_then(|(provider, id)| stack.config.model(provider, id))
         .unwrap_or_else(|| stack.model.clone());
     let root_cwd = stack.config.cwd.display().to_string();
     let mut system = stack.system.clone();
@@ -933,10 +1308,18 @@ struct Router {
     host: Arc<Host>,
     /// The root lane's cell progress (crate::turns): shell output is published as the cell's partial output.
     progress: Option<Arc<Mutex<Option<harness::chat::CellProgress>>>>,
+    /// The lane the requests come from: its shell jobs are its own.
+    lane: String,
 }
 
 impl HostHandler for Router {
     fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        if kind == crate::turns::CELL_OUTPUT {
+            if let Some(progress) = &self.progress {
+                crate::turns::publish_output(progress, payload.get("text").and_then(Value::as_str).unwrap_or(""));
+            }
+            return Ok(Value::Null);
+        }
         if DELEGATION_REQUESTS.contains(&kind) || kind.starts_with("rlm.worktrees.") {
             return self.delegation.handle(kind, payload, signal);
         }
@@ -969,7 +1352,7 @@ impl HostHandler for Router {
             return result;
         }
         let shell = matches!(kind, "bash" | "shell.bash" | "shell.run" | "shell.result");
-        let result = self.host.handle(kind, payload, signal);
+        let result = self.host.handle_lane(&self.lane, kind, payload, signal);
         if shell
             && let (Some(progress), Ok(value)) = (&self.progress, &result)
             && let Some(output) = value["output"].as_str().filter(|o| !o.is_empty())
@@ -984,6 +1367,25 @@ impl HostHandler for Router {
                 .as_str(),
             );
         }
+        result
+    }
+}
+
+/// Every host request of a lane's kernel, observed for the situational hints (what a cell waited on, polled or
+/// detached).
+struct ObservedByHints {
+    inner: Arc<dyn HostHandler>,
+    hints: Arc<kernel_apis::cell_hints::CellHints>,
+    lane: String,
+}
+
+impl HostHandler for ObservedByHints {
+    fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        let started = kernel_apis::util::system_clock()();
+        let observed = payload.clone();
+        let result = self.inner.handle(kind, payload, signal);
+        self.hints
+            .observe(&self.lane, kind, &observed, result.as_ref().ok(), started);
         result
     }
 }
@@ -1151,6 +1553,76 @@ impl RuntimeEvents {
             ));
         }
         lines
+    }
+
+    /// Every completion since the last call, for the event dispatcher (crate::async_events): typed tasks' ends
+    /// nobody awaited (`task_done`, with their root), subagents' ends (`child_done`) and detached cells' ends
+    /// (`cell_done`), each for the lane that owns the work. A subagent's or cell's root is left for the caller.
+    pub fn drain_ends(&self) -> Vec<crate::async_events::RuntimeEvent> {
+        let mut events = Vec::new();
+        while let Ok(end) = lock(&self.task_ends).try_recv() {
+            if end.awaited {
+                continue;
+            }
+            let task = &end.task;
+            events.push(crate::async_events::RuntimeEvent {
+                kind: end.kind.into(),
+                id: task["id"].as_str().unwrap_or_default().into(),
+                status: task["result"]["status"]
+                    .as_str()
+                    .or(task["state"].as_str())
+                    .unwrap_or("ended")
+                    .into(),
+                summary: task_event_summary(task),
+                fetch: end.fetch.clone(),
+                lane: end.owner_lane.clone(),
+                root_id: end.root_id.clone(),
+            });
+        }
+        while let Ok(end) = lock(&self.child_ends).try_recv() {
+            let task = &end.task;
+            events.push(crate::async_events::RuntimeEvent {
+                kind: end.kind.into(),
+                id: task["id"].as_str().unwrap_or_default().into(),
+                status: task["result"]["status"]
+                    .as_str()
+                    .or(task["state"].as_str())
+                    .unwrap_or("ended")
+                    .into(),
+                summary: task_event_summary(task),
+                fetch: end.fetch.clone(),
+                lane: end.owner_lane.clone(),
+                root_id: None,
+            });
+        }
+        while let Ok(end) = lock(&self.cell_ends).try_recv() {
+            let (status, summary) = match &end.outcome {
+                Ok(result) => (
+                    if result.status == kernel::Status::Ok {
+                        "completed"
+                    } else {
+                        "failed"
+                    },
+                    [result.stdout.as_str(), result.result.as_deref().unwrap_or_default()].join(" "),
+                ),
+                Err(error) => ("failed", error.clone()),
+            };
+            events.push(crate::async_events::RuntimeEvent {
+                kind: "cell_done".into(),
+                id: end.cell.clone(),
+                status: status.into(),
+                summary,
+                fetch: "await rlm.cells()".into(),
+                lane: end.lane.clone(),
+                root_id: None,
+            });
+        }
+        events
+    }
+
+    /// Whether events are on (`ULTRON_ASYNC_EVENTS`).
+    pub fn enabled(&self) -> bool {
+        self.enabled
     }
 
     /// Whether work of the root lane is still running: subagents, or detached cells.

@@ -22,6 +22,20 @@ pub const CONTEXT_OMITTED_CUSTOM_TYPE: &str = "context_edit:omitted";
 pub const CONTEXT_OMITTED_TOOL_RESULT_TEXT: &str = "[Tool result removed from context.]";
 pub const CONTEXT_NOTE_CUSTOM_TYPE: &str = "ultron:context-note";
 pub const CONTEXT_PIN_CUSTOM_TYPE: &str = "ultron:context-pin";
+/// Custom message type of a note in the model's context.
+pub const CONTEXT_NOTE_MESSAGE_TYPE: &str = "ultron-note";
+/// Extension event-bus channel that receives every context edit (`pi.events.on(...)`).
+pub const CONTEXT_EDIT_EVENT: &str = "ultron:context_edit";
+
+/// `CONTEXT_ENTRY_PROJECTORS[CONTEXT_NOTE_CUSTOM_TYPE]`: a note is a custom message at its place in the branch
+/// ("Note (ctx.note): ..."); a note without text projects nothing.
+pub fn project_note(entry: &Value) -> Vec<Value> {
+    match entry["data"].get("text").and_then(Value::as_str) {
+        Some(text) if !text.is_empty() => vec![json!({"role": "custom", "customType": CONTEXT_NOTE_MESSAGE_TYPE,
+            "content": format!("Note (ctx.note): {text}"), "display": true, "timestamp": entry["timestamp"]})],
+        _ => Vec::new(),
+    }
+}
 
 const HISTORY_DEFAULT: i64 = 20;
 const HISTORY_MAX: i64 = 200;

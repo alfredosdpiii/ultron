@@ -1,0 +1,945 @@
+{
+	"commands": [
+		{
+			"name": "agents",
+			"args": "",
+			"requests": [
+				{
+					"type": "agents.status",
+					"payload": {}
+				}
+			],
+			"shown": "/agents\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": " ",
+			"requests": [
+				{
+					"type": "agents.status",
+					"payload": {}
+				}
+			],
+			"shown": "/agents\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "list",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "list"
+					}
+				}
+			],
+			"shown": "/agents list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "why",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "why"
+					}
+				}
+			],
+			"shown": "/agents why\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "why task-a"
+					}
+				}
+			],
+			"shown": "/agents why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "why  task-a"
+					}
+				}
+			],
+			"shown": "/agents  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "list extra"
+					}
+				}
+			],
+			"shown": "/agents list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "task-9",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "task-9"
+					}
+				}
+			],
+			"shown": "/agents task-9\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "agents",
+			"args": "a b",
+			"requests": [
+				{
+					"type": "agents.inspect",
+					"payload": {
+						"id": "a b"
+					}
+				}
+			],
+			"shown": "/agents a b\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": "",
+			"requests": [
+				{
+					"type": "memory.list",
+					"payload": {}
+				}
+			],
+			"shown": "/memory\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": " ",
+			"requests": [
+				{
+					"type": "memory.list",
+					"payload": {}
+				}
+			],
+			"shown": "/memory\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": "list",
+			"requests": [
+				{
+					"type": "memory.list",
+					"payload": {}
+				}
+			],
+			"shown": "/memory list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": "why",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /memory why <task-id> | /memory list"
+		},
+		{
+			"name": "memory",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "memory.why",
+					"payload": {
+						"taskId": "task-a"
+					}
+				}
+			],
+			"shown": "/memory why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "memory.why",
+					"payload": {
+						"taskId": "task-a"
+					}
+				}
+			],
+			"shown": "/memory  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "memory.list",
+					"payload": {}
+				}
+			],
+			"shown": "/memory list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "memory",
+			"args": "task-9",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /memory why <task-id> | /memory list"
+		},
+		{
+			"name": "memory",
+			"args": "a b",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /memory why <task-id> | /memory list"
+		},
+		{
+			"name": "skills",
+			"args": "",
+			"requests": [
+				{
+					"type": "skills.list",
+					"payload": {}
+				}
+			],
+			"shown": "/skills\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": " ",
+			"requests": [
+				{
+					"type": "skills.list",
+					"payload": {}
+				}
+			],
+			"shown": "/skills\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": "list",
+			"requests": [
+				{
+					"type": "skills.list",
+					"payload": {}
+				}
+			],
+			"shown": "/skills list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": "why",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /skills why <decision-id> | /skills list"
+		},
+		{
+			"name": "skills",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "skills.why",
+					"payload": {
+						"decision_id": "task-a"
+					}
+				}
+			],
+			"shown": "/skills why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "skills.why",
+					"payload": {
+						"decision_id": "task-a"
+					}
+				}
+			],
+			"shown": "/skills  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "skills.list",
+					"payload": {}
+				}
+			],
+			"shown": "/skills list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "skills",
+			"args": "task-9",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /skills why <decision-id> | /skills list"
+		},
+		{
+			"name": "skills",
+			"args": "a b",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /skills why <decision-id> | /skills list"
+		},
+		{
+			"name": "experiments",
+			"args": "",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": " ",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "list",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "why",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments why\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "task-9",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments task-9\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "experiments",
+			"args": "a b",
+			"requests": [
+				{
+					"type": "experiments.list",
+					"payload": {}
+				}
+			],
+			"shown": "/experiments a b\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "",
+			"requests": [
+				{
+					"type": "goals.list",
+					"payload": {}
+				}
+			],
+			"shown": "/goals\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": " ",
+			"requests": [
+				{
+					"type": "goals.list",
+					"payload": {}
+				}
+			],
+			"shown": "/goals\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "list",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "list"
+					}
+				}
+			],
+			"shown": "/goals list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "why",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "why"
+					}
+				}
+			],
+			"shown": "/goals why\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "why task-a"
+					}
+				}
+			],
+			"shown": "/goals why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "why  task-a"
+					}
+				}
+			],
+			"shown": "/goals  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "list extra"
+					}
+				}
+			],
+			"shown": "/goals list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "task-9",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "task-9"
+					}
+				}
+			],
+			"shown": "/goals task-9\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "goals",
+			"args": "a b",
+			"requests": [
+				{
+					"type": "goals.get",
+					"payload": {
+						"id": "a b"
+					}
+				}
+			],
+			"shown": "/goals a b\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /progress <task-id>"
+		},
+		{
+			"name": "progress",
+			"args": " ",
+			"requests": [],
+			"shown": "",
+			"error": "Usage: /progress <task-id>"
+		},
+		{
+			"name": "progress",
+			"args": "list",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "list"
+					}
+				}
+			],
+			"shown": "/progress list\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "why",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "why"
+					}
+				}
+			],
+			"shown": "/progress why\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "why task-a",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "why task-a"
+					}
+				}
+			],
+			"shown": "/progress why task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": " why  task-a ",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "why  task-a"
+					}
+				}
+			],
+			"shown": "/progress  why  task-a\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "list extra",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "list extra"
+					}
+				}
+			],
+			"shown": "/progress list extra\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "task-9",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "task-9"
+					}
+				}
+			],
+			"shown": "/progress task-9\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		},
+		{
+			"name": "progress",
+			"args": "a b",
+			"requests": [
+				{
+					"type": "progress.history",
+					"payload": {
+						"task_id": "a b"
+					}
+				}
+			],
+			"shown": "/progress a b\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125",
+			"error": null
+		}
+	],
+	"formats": [
+		{
+			"title": "/case 0",
+			"value": null,
+			"text": "/case 0\nnull"
+		},
+		{
+			"title": "/case 1",
+			"value": true,
+			"text": "/case 1\ntrue"
+		},
+		{
+			"title": "/case 2",
+			"value": 0,
+			"text": "/case 2\n0"
+		},
+		{
+			"title": "/case 3",
+			"value": 0,
+			"text": "/case 3\n0"
+		},
+		{
+			"title": "/case 4",
+			"value": 1.5,
+			"text": "/case 4\n1.5"
+		},
+		{
+			"title": "/case 5",
+			"value": 1e+21,
+			"text": "/case 5\n1e+21"
+		},
+		{
+			"title": "/case 6",
+			"value": 123456789012,
+			"text": "/case 6\n123456789012"
+		},
+		{
+			"title": "/case 7",
+			"value": 0.000001,
+			"text": "/case 7\n0.000001"
+		},
+		{
+			"title": "/case 8",
+			"value": 1e-7,
+			"text": "/case 8\n1e-7"
+		},
+		{
+			"title": "/case 9",
+			"value": -2.25,
+			"text": "/case 9\n-2.25"
+		},
+		{
+			"title": "/case 10",
+			"value": "plain",
+			"text": "/case 10\nplain"
+		},
+		{
+			"title": "/case 11",
+			"value": "line one\nline two",
+			"text": "/case 11\nline one\nline two"
+		},
+		{
+			"title": "/case 12",
+			"value": "é—ü",
+			"text": "/case 12\né—ü"
+		},
+		{
+			"title": "/case 13",
+			"value": [],
+			"text": "/case 13\n(none)"
+		},
+		{
+			"title": "/case 14",
+			"value": {},
+			"text": "/case 14\n(none)"
+		},
+		{
+			"title": "/case 15",
+			"value": [
+				1,
+				"two",
+				null,
+				false
+			],
+			"text": "/case 15\n- 1\n- two\n- null\n- false"
+		},
+		{
+			"title": "/case 16",
+			"value": [
+				[],
+				{},
+				[
+					1,
+					[
+						2,
+						[]
+					]
+				],
+				{
+					"a": []
+				}
+			],
+			"text": "/case 16\n-\n  (none)\n-\n  (none)\n-\n  - 1\n  -\n    - 2\n    -\n      (none)\n-\n  a: (none)"
+		},
+		{
+			"title": "/case 17",
+			"value": {
+				"2": "two",
+				"10": "ten",
+				"b": 1,
+				"a": {
+					"c": [],
+					"d": {}
+				},
+				"x": [
+					{
+						"y": 1,
+						"z": [
+							3,
+							4
+						]
+					},
+					"s"
+				]
+			},
+			"text": "/case 17\n2: two\n10: ten\nb: 1\na:\n  c: (none)\n  d: (none)\nx:\n  -\n    y: 1\n    z:\n      - 3\n      - 4\n  - s"
+		},
+		{
+			"title": "/case 18",
+			"value": [
+				{
+					"id": "m1",
+					"kind": "forget",
+					"state": "forgotten",
+					"memoryId": "doc-1",
+					"textHash": "abc"
+				}
+			],
+			"text": "/case 18\n-\n  id: m1\n  kind: forget\n  state: forgotten\n  memoryId: doc-1\n  textHash: abc"
+		},
+		{
+			"title": "/case 19",
+			"value": {
+				"key0": 0,
+				"key1": 1,
+				"key2": 2,
+				"key3": 3,
+				"key4": 4,
+				"key5": 5,
+				"key6": 6,
+				"key7": 7,
+				"key8": 8,
+				"key9": 9,
+				"key10": 10,
+				"key11": 11,
+				"key12": 12,
+				"key13": 13,
+				"key14": 14,
+				"key15": 15,
+				"key16": 16,
+				"key17": 17,
+				"key18": 18,
+				"key19": 19,
+				"key20": 20,
+				"key21": 21,
+				"key22": 22,
+				"key23": 23,
+				"key24": 24,
+				"key25": 25,
+				"key26": 26,
+				"key27": 27,
+				"key28": 28,
+				"key29": 29,
+				"key30": 30,
+				"key31": 31,
+				"key32": 32,
+				"key33": 33,
+				"key34": 34,
+				"key35": 35,
+				"key36": 36,
+				"key37": 37,
+				"key38": 38,
+				"key39": 39,
+				"key40": 40,
+				"key41": 41,
+				"key42": 42,
+				"key43": 43,
+				"key44": 44
+			},
+			"text": "/case 19\nkey0: 0\nkey1: 1\nkey2: 2\nkey3: 3\nkey4: 4\nkey5: 5\nkey6: 6\nkey7: 7\nkey8: 8\nkey9: 9\nkey10: 10\nkey11: 11\nkey12: 12\nkey13: 13\nkey14: 14\nkey15: 15\nkey16: 16\nkey17: 17\nkey18: 18\nkey19: 19\nkey20: 20\nkey21: 21\nkey22: 22\nkey23: 23\nkey24: 24\nkey25: 25\nkey26: 26\nkey27: 27\nkey28: 28\nkey29: 29\nkey30: 30\nkey31: 31\nkey32: 32\nkey33: 33\nkey34: 34\nkey35: 35\nkey36: 36\nkey37: 37\nkey38: 38\n… 6 more lines"
+		},
+		{
+			"title": "/case 20",
+			"value": [
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49
+			],
+			"text": "/case 20\n- 0\n- 1\n- 2\n- 3\n- 4\n- 5\n- 6\n- 7\n- 8\n- 9\n- 10\n- 11\n- 12\n- 13\n- 14\n- 15\n- 16\n- 17\n- 18\n- 19\n- 20\n- 21\n- 22\n- 23\n- 24\n- 25\n- 26\n- 27\n- 28\n- 29\n- 30\n- 31\n- 32\n- 33\n- 34\n- 35\n- 36\n- 37\n- 38\n… 11 more lines"
+		},
+		{
+			"title": "/case 21",
+			"value": {
+				"nested": {
+					"deeper": {
+						"deepest": {
+							"list": [
+								1,
+								{
+									"k": "v"
+								}
+							]
+						}
+					}
+				}
+			},
+			"text": "/case 21\nnested:\n  deeper:\n    deepest:\n      list:\n        - 1\n        -\n          k: v"
+		},
+		{
+			"title": "/case 22",
+			"value": {
+				"tasks": [
+					{
+						"id": "task-1",
+						"definition": "rlm-frame@1",
+						"state": "completed"
+					}
+				],
+				"usage": {
+					"modelCalls": 2,
+					"cost": 0.0125
+				}
+			},
+			"text": "/case 22\ntasks:\n  -\n    id: task-1\n    definition: rlm-frame@1\n    state: completed\nusage:\n  modelCalls: 2\n  cost: 0.0125"
+		}
+	]
+}

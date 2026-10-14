@@ -5,56 +5,56 @@ A03	acceptance	Invalid result triggers bounded repair or typed failure	acceptanc
 A04	acceptance	Root pin and explicit child model are preserved	acceptance_a04_an_explicit_child_model_reaches_only_the_child_lane_the_root_lanes_model_is_never_changed
 A05	acceptance	Cancellation terminates owned work and rejects late success	acceptance_a05_runs_an_explicit_background_job_through_the_same_durable_task_host
 A06	acceptance	Output, artifact, wall-time, concurrency, and process limits hold	acceptance_a06_oversize_artifacts_and_quota_overflow_are_rejected_without_being_stored
-A07	acceptance	Branch/fork/resume restores matching state; no abandoned lesson leak	
+A07	acceptance	Branch/fork/resume restores matching state; no abandoned lesson leak	acceptance_a07_a_lesson_from_an_abandoned_branch_never_applies_after_navigating_away_and_each_branch_keeps_its_own
 A08	acceptance	Unsupported Python state reports non-restorable, never silently correct	acceptance_a08_snapshot_type_matrix_reports_every_unsupported_name_with_a_reason
 A09	acceptance	Concurrent calls/retries cannot bypass tree budget admission	acceptance_a09_a_burst_of_concurrent_spawns_admits_exactly_the_limit_and_rejects_the_rest
 A10	acceptance	Worker receives no ambient credentials or unauthorized host capability	acceptance_a10_kernel_gets_no_ambient_credentials_or_unauthorized_host_capability
 A11	acceptance	Approval binds scope/revision/policy and is rechecked	acceptance_a11_a_check_is_a_pure_evaluation_that_reports_every_failing_binding
 A12	acceptance	Graph validates before effects; routes/skips/fan-in/cycles are explicit	acceptance_a12_every_validation_error_is_raised_before_any_task_is_admitted_or_any_node_runs
 A13	acceptance	Agent admission does not satisfy a graph dependency	acceptance_a13_a_dependent_is_not_admitted_or_started_until_the_slow_dependencys_result_is_durable
-A14	acceptance	No checks/incomplete review/stale receipt cannot imply verified completion	
-A15	acceptance	Baseline versus candidate is recorded; required regressions block	
-A16	acceptance	Memory skip causes no retrieval; scopes survive consolidation	
+A14	acceptance	No checks/incomplete review/stale receipt cannot imply verified completion	acceptance_a14_every_task_result_path_is_unverified_and_a_stored_verified_result_is_refused
+A15	acceptance	Baseline versus candidate is recorded; required regressions block	acceptance_a15_a_required_regression_blocks
+A16	acceptance	Memory skip causes no retrieval; scopes survive consolidation	acceptance_a16_scope_tags_pinned_through_consolidation_and_cross_scope_merge_refused_ported_part
 A17	acceptance	Correction supersedes stale claims; hypotheses remain distinguishable	acceptance_a17_corrected_claim_is_current_and_stale_claim_superseded_in_fresh_sessions
 A18	acceptance	Ingestion acceptance is distinct from completed retention; forgetting persists	acceptance_a18_accepted_stays_distinct_from_stored_through_receipt_failure_and_restart
-A19	acceptance	Refiner cannot alter policy, grants, or acceptance tests	
-A20	acceptance	Versioned refinement changes later behavior and can roll back	
-A21	acceptance	Replay does not duplicate external effects; uncertainty stays explicit	
+A19	acceptance	Refiner cannot alter policy, grants, or acceptance tests	acceptance_a19_proposals_targeting_policy_grants_acceptance_tests_the_instrument_lock_or_trusted_instructions_are_rejected
+A20	acceptance	Versioned refinement changes later behavior and can roll back	acceptance_a20_activation_reaches_later_model_runs_a_new_version_supersedes_it_and_rollback_removes_it
+A21	acceptance	Replay does not duplicate external effects; uncertainty stays explicit	acceptance_a21_crashes_before_launch_after_the_effects_response_and_after_commit_never_duplicate_the_effect
 A22	acceptance	Detached work and retained children survive UI loss	acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_collectable
 A23	acceptance	Schedules/goals/verification compose within budgets	acceptance_a23_admission_failure_from_the_usage_budget_is_recorded_once_per_slot_without_a_retry_storm
 A24	acceptance	Costs, task transitions, and inspection agree on one record	acceptance_a24_reconstructs_a_mixed_run_from_the_journal_ledger_progress_and_schedule_records_and_matches_agents_status
-A25	acceptance	Existing Pi capabilities and data survive migration and rollback	
-A26	acceptance	Component changes cannot pass merely by weakening tests	
+A25	acceptance	Existing Pi capabilities and data survive migration and rollback	acceptance_a25_restore_rehearsal_is_byte_identical_and_leaves_sessions_untouched
+A26	acceptance	Component changes cannot pass merely by weakening tests	acceptance_gate_mutation_runner_classifies_and_restores
 A27	acceptance	RLM handles a self-contained task without graph/delegation/memory/refinement	acceptance_a27_rlm_completes_a_self_contained_task_without_host_services
 A28	acceptance	Retrieval explanation/query/scope match the executed search; rewrite cannot widen access	acceptance_a28_recorded_decision_equals_the_request_the_backend_received
-A29	acceptance	Memory inspector shows actual injected evidence without a new search or hidden-scope disclosure	
-A30	acceptance	Correction/deletion propagates to managed memory views/exports without changing trusted instructions	
-A31	acceptance	Skill selection is version-pinned, explainable, and cannot grant capabilities	
-A32	acceptance	Skill proposals require evidence, validation, and applicable approval; rejection/rollback holds	
-A33	acceptance	Experiment history includes all attempts and variants do not contaminate each other	
-A34	acceptance	Optional-service failure preserves RLM operation without bypassing required checks or replaying effects	
+A29	acceptance	Memory inspector shows actual injected evidence without a new search or hidden-scope disclosure	acceptance_a29_why_shows_injected_evidence_without_a_new_search_or_other_scopes_ported_part
+A30	acceptance	Correction/deletion propagates to managed memory views/exports without changing trusted instructions	acceptance_a30_forgotten_and_corrected_memories_leave_every_view_agents_md_is_untouched
+A31	acceptance	Skill selection is version-pinned, explainable, and cannot grant capabilities	acceptance_a31_version_pinned_load_succeeds_and_a_stale_version_is_rejected
+A32	acceptance	Skill proposals require evidence, validation, and applicable approval; rejection/rollback holds	acceptance_a32_a_repeated_procedure_proposal_activates_only_with_evidence_and_records_that_approval_is_disabled
+A33	acceptance	Experiment history includes all attempts and variants do not contaminate each other	acceptance_a33_variants_with_isolated_memory_and_refinement_state_never_see_each_others_writes
+A34	acceptance	Optional-service failure preserves RLM operation without bypassing required checks or replaying effects	acceptance_a34_combined_hindsight_refinement_module_and_workflow_outage_in_one_real_rlm_kernel_run
 A35	acceptance	Deterministic/predict/rlm methods share policy, validation, accounting, and task semantics	acceptance_a35_only_rlm_launches_a_lane_predict_and_deterministic_never_start_an_iterative_kernel
-A36	acceptance	Invocation scratch is isolated while declared instance state persists	
+A36	acceptance	Invocation scratch is isolated while declared instance state persists	acceptance_a36_reset_clears_scratch_and_restores_bindings_while_declared_state_persists
 A37	acceptance	Bounded preview preserves full values and does not execute unsafe introspection on the host	acceptance_a37_range_reads_return_exact_byte_ranges_including_ranges_that_split_multibyte_characters
-A38	acceptance	Nested context excludes unauthorized and contaminating history	
-A39	acceptance	Configured models can use the actual typed RLM interface	
-A40	acceptance	Retained instances accept new invocations without rewriting old terminal outcomes	
+A38	acceptance	Nested context excludes unauthorized and contaminating history	acceptance_a38_a_child_lane_sees_its_own_subtree_only_siblings_are_indistinguishable_from_missing
+A39	acceptance	Configured models can use the actual typed RLM interface	acceptance_a39_answer_checks_follow_the_typescript_patterns
+A40	acceptance	Retained instances accept new invocations without rewriting old terminal outcomes	acceptance_a36_continue_on_the_same_lane_with_fresh_scratch_and_never_rewrite_the_earlier_result
 A41	acceptance	Family messages enforce identity, scope, deduplication, expiry, and safe delivery	acceptance_a41_derives_identity_from_real_task_lanes_and_steers_a_live_child_lane
 A42	acceptance	Human child intervention and subtree stop preserve unrelated work	acceptance_a42_inspect_correct_and_stop_one_childs_subtree_while_the_sibling_continues_and_completes
-A43	acceptance	Resource release/eviction respects live references, evidence retention, and quotas	
-A44	acceptance	Progress and reassessment use evidence and cannot extend budgets or declare unsupported success	
+A43	acceptance	Resource release/eviction respects live references, evidence retention, and quotas	acceptance_a43_idle_eviction_skips_a_running_cell_and_a_pinned_lane
+A44	acceptance	Progress and reassessment use evidence and cannot extend budgets or declare unsupported success	acceptance_a44_always_denies_budget_extension_and_records_the_reason
 A45	acceptance	Saturated nested recursion makes progress or returns bounded capacity failure, never deadlock	acceptance_a45_a_parent_awaiting_children_at_saturation_gets_bounded_capacity_failures_and_still_completes
-A46	acceptance	The combined system performs the full demonstration without manual state repair	
-A47	acceptance	An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input	
+A46	acceptance	The combined system performs the full demonstration without manual state repair	acceptance_a46_fix_review_retain_and_improve_with_real_runtime_effects
+A47	acceptance	An input larger than the model's context window is processed to the exact answer through bounded inference frames; no request exceeds the window and the root transcript never contains the input	acceptance_a47_input_larger_than_the_window_is_counted_exactly_through_bounded_frames
 A48	acceptance	Contract repair: a malformed frame answer is re-asked within budget and returns a valid value; exhaustion yields an Incomplete with evidence and the root turn continues	acceptance_a48_end_to_end_repair_is_valid_exhaustion_is_incomplete_and_the_turn_continues
-A49	acceptance	Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded	
-A50	acceptance	Cancellation: aborting the root cancels every running inference frame within 2 s	
-A51	acceptance	After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values	
-A52	acceptance	ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins	
+A49	acceptance	Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded	acceptance_a49_a_map_of_8_frames_under_calls_6_runs_6_and_marks_2_incomplete_in_order
+A50	acceptance	Cancellation: aborting the root cancels every running inference frame within 2 s	acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_within_2s
+A51	acceptance	After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values	acceptance_a51_twenty_completed_tasks_keep_the_next_request_bounded_and_values_full_through_agents_result
+A52	acceptance	ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins	acceptance_a52_forget_spares_the_current_turn_and_pins_extensions_observe_it_compaction_keeps_notes_and_pins
 A53	acceptance	A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly	acceptance_a53_a_passing_skill_is_importable_listed_and_survives_worker_restart
 A54	acceptance	On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first	acceptance_a54_the_second_run_imports_the_saved_skill_and_makes_fewer_cheaper_calls
 A55	acceptance	An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error	acceptance_a55_a_class_defined_in_a_cell_is_invokable_typed_end_to_end_keeps_state_and_rejects_a_bad_return
-A56	acceptance	Long-running work does not block the turn and completion is delivered without polling	
+A56	acceptance	Long-running work does not block the turn and completion is delivered without polling	acceptance_a56_child_done_event_reinvokes_the_idle_root
 CHORD-DELTA-01	chord-delta	Replays real tracker batches with apply, applyImmutable and applyImmutableBatches to upstream values	tracker_streams_replay_encode_and_decode_like_upstream
 CHORD-DELTA-02	chord-delta	apply and applyImmutable edge cases and errors (name and message) match upstream	apply_edge_and_error_cases_match_upstream
 CHORD-DELTA-03	chord-delta	assertValidOp accepts and rejects the same op tuples with the same errors	op_validation_matches_upstream
@@ -1748,7 +1748,7 @@ DURP4-12	acceptance	the goal keeps its checks and runs on after SIGKILL	acceptan
 DURP4-13	acceptance	a started goal run is adopted, not started twice	acceptance_a23_durable_a_goal_run_admitted_before_the_crash_is_adopted_not_started_twice
 DURP4-14	acceptance	DurableWork driven like the composition root	acceptance_a23_durable_work_wiring_drives_schedules_goal_and_jobs_like_the_composition_root
 DURP4-15	acceptance	jobs journal stays small and survives a worker restart	acceptance_a56_the_journal_stays_small_and_survives_a_worker_restart
-MDPERF-1	tui/marked	lex time grows linearly with input (1x vs 4x < 6x)	tui_marked_lex_time_grows_linearly
+MDPERF-1	tui/marked	lex time grows linearly with input (1x vs 4x < 6x)	tui_marked_lex_work_grows_linearly
 MDPERF-2	tui/marked	per-run emStrongRDelim classification equals the regex	tui_marked_delimiter_runs_match_the_em_strong_regex
 MDPERF-3	tui/marked	hand-written inlineText scanner ends tokens where the regex does	tui_marked_inline_text_scanner_matches_the_regex
 MDPERF-4	tui/marked	candidate-position blockSkip masking equals replace_all	tui_marked_block_skip_mask_matches_the_regex
@@ -1761,7 +1761,597 @@ DURINT-04	session-core	committed cell result kept once	cli_durable_kill_after_a_
 DURINT-05	session-core	steer delivered exactly once	cli_durable_kill_after_a_steer_is_taken_delivers_it_exactly_once
 DURINT-06	session-core	two conversations resume after a kill	cli_durable_two_conversations_progress_together_and_both_resume_after_a_kill
 DURINT-07	acceptance	running child survives a worker kill, result collectable	acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_collectable
-DURINT-08	acceptance	A56 child_done summary leads with definition and verdict tag	acceptance_a56_child_done_event_reinvokes_the_idle_root_ported_part
+DURINT-08	acceptance	A56 child_done summary leads with definition and verdict tag	acceptance_a56_child_done_event_reinvokes_the_idle_root
+SVC-01	local services	refinements and experiments match NativeLocalServices (245 requests, branches, corrupt docs, failed writes)	services_local_refinements_and_experiments_match_native_local_services
+SVC-02	release gates	gates.* match createReleaseGateModule (78 requests, tamper, durability)	services_release_gates_match_the_release_gate_module
+SVC-03	kernel APIs	refinements/gates/experiments Python cells match the TS host through runtime.py	services_kernel_apis_match_the_typescript_host
+SVC-04	refinement hook	active instruction refinement as {id,version,text}	services_instruction_hook_yields_the_active_instruction_of_a_definition_and_nothing_else
+SVC-05	session values	keyed and whole documents per namespace, restored on reopen	services_session_values_keep_documents_per_namespace_and_survive_a_reopen
+SVC-A34	acceptance	A34 combined outage in one real kernel run	acceptance_a34_combined_hindsight_refinement_module_and_workflow_outage_in_one_real_rlm_kernel_run
+SVC-A46	acceptance	A46 ported part over RPC: fix, gate, review, refinement on held-out run, experiments	acceptance_a46_fix_review_retain_and_improve_with_real_runtime_effects
+SVC-A07-1	acceptance	A07 resume/fork/rollback/lesson branches	acceptance_a07_resume_after_restart_restores_tasks_definitions_lessons_progress_memory_and_usage_from_real_session_values
+SVC-A07-2	acceptance	A07 resume/fork/rollback/lesson branches	acceptance_a07_a_fork_starts_from_the_source_state_then_lessons_written_on_either_side_never_leak_to_the_other_across_restarts
+SVC-A07-3	acceptance	A07 resume/fork/rollback/lesson branches	acceptance_a07_rolling_back_a_lesson_on_one_branch_before_a_restart_does_not_resurrect_it_and_the_other_branch_keeps_its_own
+SVC-A07-4	acceptance	A07 resume/fork/rollback/lesson branches	acceptance_a07_a_lesson_from_an_abandoned_branch_never_applies_after_navigating_away_and_each_branch_keeps_its_own
+SVC-A14-1	acceptance	A14 no false verification	acceptance_a14_every_task_result_path_is_unverified_and_a_stored_verified_result_is_refused
+SVC-A14-2	acceptance	A14 no false verification	acceptance_a14_reviewer_output_missing_required_fields_fails_an_incomplete_review_verifies_nothing
+SVC-A14-3	acceptance	A14 no false verification	acceptance_a14_a_progress_completion_claim_is_verified_only_by_a_host_run_verifier_that_returns_passed_true
+SVC-A14-4	acceptance	A14 no false verification	acceptance_a14_a_goal_with_no_required_checks_or_a_check_without_an_explicit_pass_is_never_achieved
+SVC-A14-5	acceptance	A14 no false verification	acceptance_a14_a_release_gate_blocks_on_a_missing_required_check_or_a_stale_fixture
+SVC-A14-6	acceptance	A14 no false verification	acceptance_a14_a_receipt_for_a_stale_revision_is_denied
+SVC-A15-1	acceptance	A15 release gate	acceptance_a15_passes_when_every_required_check_passes_in_the_candidate
+SVC-A15-2	acceptance	A15 release gate	acceptance_a15_a_required_regression_blocks
+SVC-A15-3	acceptance	A15 release gate	acceptance_a15_an_optional_regression_is_reported_but_does_not_block
+SVC-A15-4	acceptance	A15 release gate	acceptance_a15_a_required_check_missing_or_failed_in_the_candidate_blocks_even_without_a_baseline_pass
+SVC-A15-5	acceptance	A15 release gate	acceptance_a15_a_gate_definition_is_frozen_once_defined
+SVC-A15-6	acceptance	A15 release gate	acceptance_a15_a_fixture_mismatch_blocks_with_a_reason
+SVC-A15-7	acceptance	A15 release gate	acceptance_a15_every_attempt_blocked_or_passed_is_recorded_in_history
+SVC-A15-8	acceptance	A15 release gate	acceptance_a15_rejects_unknown_fields_and_unknown_gates
+SVC-A15-9	acceptance	A15 release gate	acceptance_a15_gates_and_attempts_survive_a_new_module_instance_and_tampered_definitions_are_refused
+SVC-A19-1	acceptance	A19 refiner protected	acceptance_a19_proposals_targeting_policy_grants_acceptance_tests_the_instrument_lock_or_trusted_instructions_are_rejected
+SVC-A19-2	acceptance	A19 refiner protected	acceptance_a19_content_that_requests_tools_grants_models_budgets_or_permissions_is_rejected_at_proposal_and_activation
+SVC-A19-3	acceptance	A19 refiner protected	acceptance_a19_escalation_prose_inside_an_allowed_instruction_is_inert_data_grants_and_other_state_are_unchanged
+SVC-A20-1	acceptance	A20 refinement reaches later runs	acceptance_a20_activation_reaches_later_model_runs_a_new_version_supersedes_it_and_rollback_removes_it
+SVC-A32-1	acceptance	A32 skill proposals	acceptance_a32_a_repeated_procedure_proposal_activates_only_with_evidence_and_records_that_approval_is_disabled
+SVC-A32-2	acceptance	A32 skill proposals	acceptance_a32_an_equivalent_pending_or_active_proposal_is_a_duplicate_a_real_change_is_not
+SVC-A32-3	acceptance	A32 skill proposals	acceptance_a32_invalid_skill_content_fails_validation_and_enabled_approval_cannot_override_it
+SVC-A32-4	acceptance	A32 skill proposals	acceptance_a32_rejection_and_rollback_hold_across_restart_a_declined_proposal_needs_new_evidence_to_resurface
+SVC-A32-5	acceptance	A32 skill proposals	acceptance_a32_the_workers_refinement_service_refuses_malformed_skills_and_accepts_a_loadable_skill_md
+SVC-A33-1	acceptance	A33 experiment history	acceptance_a33_every_attempt_including_crashed_failed_and_incomplete_ones_is_recorded_against_the_frozen_fixture
+SVC-A33-2	acceptance	A33 experiment history	acceptance_a33_variants_with_isolated_memory_and_refinement_state_never_see_each_others_writes
+SVC-A33-3	acceptance	A33 experiment history	acceptance_a33_per_variant_usage_including_failed_and_incomplete_attempts_reconciles_with_independent_metering
+LANE-01	skills	invoke spawns pinned skill as rlm-child@1, byte-equal to skills.ts	kernel_apis_skills_invoke_spawns_the_pinned_skill_as_the_typescript_module_does
+LANE-02	skills	frontmatter never reaches spawned child	acceptance_a31_capability_granting_frontmatter_is_reported_and_never_reaches_the_spawned_child
+LANE-03	skills	invoke through real host links parent, keeps model	acceptance_a31_invoke_through_the_real_host_keeps_the_childs_model_and_tools_and_links_the_parent
+LANE-04	skills	concurrent invokes see one catalog snapshot	acceptance_a31_concurrent_loads_selects_and_invokes_each_observe_one_catalog_snapshot_while_content_changes
+LANE-05	instances	same lane, fresh scratch, earlier result untouched	acceptance_a36_continue_on_the_same_lane_with_fresh_scratch_and_never_rewrite_the_earlier_result
+LANE-06	instances	busy/closed/non-parent/laneless refused	acceptance_a36_reject_concurrent_use_closed_instances_non_parents_and_laneless_tasks
+LANE-07	instances	instance survives owner restart	acceptance_a36_an_instance_survives_an_owner_restart_and_keeps_its_lane
+LANE-08	instances	retained instance continues durable conversation over RPC	acceptance_a36_end_to_end_a_retained_instance_continues_its_lane_conversation
+LANE-09	progress	completion claim never verified without passing verifier	acceptance_a44_never_verifies_a_completion_claim_without_a_passing_verifier
+LANE-10	nested	reviewer and child send only own prompt and kernel (RPC)	acceptance_a38_reviewer_and_rlm_child_lanes_receive_only_their_own_prompt_and_their_own_kernel
+LANE-11	nested	child lane sees own subtree only	acceptance_a38_a_child_lane_sees_its_own_subtree_only_siblings_are_indistinguishable_from_missing
+LANE-12	pool	second lane evicts idle first after snapshot; state restored	session_core_a43_a_second_lane_evicts_the_idle_first_one_after_a_snapshot_and_the_first_lanes_state_comes_back
+LANE-13	pool	pinned lane never evicted; full pool refuses lane	session_core_a43_a_pinned_lane_is_never_evicted_and_a_full_pool_refuses_a_new_lane
+LANE-14	contracts	checks hold on dotted fields	delegation_contract_checks_hold_on_the_dotted_field_they_name
+LANE-15	contracts	brief validation; hop set by host	delegation_contract_briefs_are_validated_and_the_hop_is_the_hosts
+LANE-16	contracts	met contract carries evidence	delegation_contract_a_result_that_meets_its_contract_carries_the_evidence
+LANE-17	contracts	missed check fails naming it	delegation_contract_a_result_that_misses_a_check_fails_naming_it_and_the_journal_keeps_the_failure
+LANE-18	contracts	role/instruction lead prompt; hop grows	delegation_contract_role_and_instruction_lead_the_rlm_prompt_and_the_hop_grows_with_nesting
+LANE-19	contracts	retried key with other contract refused	delegation_contract_a_retried_key_with_another_contract_is_another_task
+LANE-20	contracts	workflow node briefs; missed check skips dependents	delegation_contract_workflow_nodes_carry_briefs_and_a_missed_check_skips_the_dependents
+DURFIN-01	runtime	killed cell keeps its print output	cli_durable_kill_during_a_cell_keeps_its_printed_output
+DURFIN-02	subagents	reattached worktree child: worktree, env, prompt, thinking, cancel reads cancelled	cli_durable_a_reattached_worktree_child_keeps_its_worktree_and_thinking_and_its_cancel_reads_cancelled
+DURFIN-03	subagents	typed-agent run interrupted after restart, never resent	cli_durable_a_typed_agent_run_is_interrupted_by_a_restart_not_resent
+DURFIN-04	usage	child turns charged to the starting root	cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it
+DURFIN-05	subagents	SIGTERM worker leaves its running child to its successor	cli_durable_a_signalled_worker_leaves_its_running_child_to_its_successor
+DURFIN-06	queues	steer + follow-up at a final answer run as two turns (TS fixture)	cli_queues_a_steer_and_a_follow_up_at_a_final_answer_run_as_two_turns
+DURFIN-07	p4	signalled worker hands its shell job over	cli_durable_a_signalled_worker_hands_its_running_shell_job_to_its_successor
+DURFIN-08	p4	/goal over RPC	acceptance_a23_goal_command_over_rpc_answers_the_goals_text_without_a_turn
+DURFIN-09	p4	/goal and the route notice in the TUI	interactive_commands_goal_reaches_the_session_goal_and_shows_its_reply
+DURFIN-10	p4	route notice in print mode	cli_print_route_notices_are_read_from_the_runs_new_messages_once
+DURFIN-11	a56	event dispatcher rules (TS cases)	session_core_async_events_after_an_abort_the_root_never_restarts_and_later_completions_wait_quietly
+DURFIN-12	a56	job_done re-invokes the idle root	acceptance_a56_a_slow_job_does_not_block_the_turn_and_its_completion_event_reinvokes_the_model
+DURFIN-13	a56	cancelRoot and per-lane job visibility	acceptance_a56_an_aborted_root_turn_cancels_its_jobs_and_announces_nothing_other_roots_keep_running
+CLI01	cli/autoreview	fixture repository commits equal recording	cli_autoreview_offline_fixture_repository_matches
+CLI02	cli/autoreview	--help starts nothing	cli_autoreview_help_starts_nothing
+CLI03	cli/autoreview	fast --json contract equal to TS incl. request bodies	cli_autoreview_fast_json_contract
+CLI04	cli/autoreview	rate limit retried; review completes	cli_autoreview_rate_limit_is_retried
+CLI05	cli/autoreview	verdict follows final severity	cli_autoreview_verdict_follows_final_severity
+CLI06	cli/autoreview	text output is the review body	cli_autoreview_text_is_the_review_body
+CLI07	cli/autoreview	--mode both investigates with read-only lookups	cli_autoreview_both_mode_investigates
+CLI08	cli/autoreview	bad commit exit 1; usage errors exit 2	cli_autoreview_errors_and_usage
+CLI09	cli/autoreview	install/uninstall through the binary	cli_autoreview_install_and_uninstall_service
+CLI10	cli/autoreview	review owner/repo#N --dry-run --json, then status	cli_autoreview_review_pull_request_dry_run_then_status
+CLI11	cli/autoreview	enabled:false: once/run poll nothing	cli_autoreview_disabled_polls_nothing
+CLI12	cli/autoreview	ack logo text equals TS logoText	cli_autoreview_logo_text_matches_typescript
+CLI13	cli/autoreview	once --json reviews what is due; lock released; no accounts errors	cli_autoreview_once_reviews_what_is_due
+CLI14	cli/autoreview	status renders recent reviews and queue	cli_autoreview_status_renders_recent_reviews
+AR-CMP01	review/compiled	predicate parsing (count/status/answer/contains, quotes, Python `$` before a final newline)	review_compiled_predicates_match_python
+AR-CMP02	review/compiled	validate: normalization, ids, ops, args, for_each, asks, asserts, findings, references, cycles, bounds, coverage, error cut at 40	review_compiled_validate_matches_python
+AR-CMP03	review/compiled	validation errors from the TS test	review_compiled_validation_errors_from_ts
+AR-CMP04	review/compiled	grounding: a capped grep or a read alone is refused	review_compiled_grounding_from_ts
+AR-CMP05	review/compiled	coverage items S/K/C and the triggered catalogue shapes T; uncovered items	review_compiled_coverage_items_match_python
+AR-CMP06	review/compiled	coverage errors, unknown declared ids, limits_for	review_compiled_coverage_from_ts
+AR-CMP07	review/compiled	count_of, items_of, render, count_predicate over exact and capped counts	review_compiled_result_reading_matches_python
+AR-CMP08	review/compiled	assert evaluation, truth, conditions, roots_in_ask, contradicted, test_decided/could_not_run, finding gates (also with defer_unrunnable), step records	review_compiled_checks_over_results_match_python
+AR-CMP09	review/compiled	unknown on skipped/failed/unclear inputs; gate undecided/false (TS literals)	review_compiled_three_valued_checks_from_ts
+AR-CMP10	review/compiled	placeholder filling, summaries, quote checks, public_value	review_compiled_fill_summary_quotes_match_python
+AR-CMP11	review/compiled	for_each expansion: renaming, scope, max_items and step-limit truncation	review_compiled_for_each_expansion_matches_python
+AR-CMP12	review/compiled	for_each expansion from the TS test (2 of 4 hits, the rest noted)	review_compiled_expansion_from_ts
+AR-CMP13	review/compiled	candidate shapes, finding fields, ask material, template programs (runnable/unavailable variants, forced shapes), quote_in, quote_in_reads	review_compiled_candidate_templates_match_python
+AR-CMP14	review/compiled	template shapes and programs from the TS test; each template validates	review_compiled_templates_from_ts
+CMP15	review/compiled	runner_availability, planner_views	review_compiled_runners_views_match_python
+D01	review-daemon	blockedPulls: own login@host prefix, request_changes, not closed, not dry run, key regex	review_daemon_blocked_pulls_match_typescript
+D02	review-daemon	discover: since = lastPollAt-2min or now-24h, If-Modified-Since, 304 keeps cursor, pollInterval, reasons merged, latest notifiedAt, search queries and 2-day window, blocked pulls, errors	review_daemon_discover_matches_typescript
+D03	review-daemon	pruneOld: regular files older than days (boundary kept), dirs/symlinks/missing dirs skipped	review_daemon_prune_old_matches_typescript
+D04	review-daemon	createLogger: ISO stamp, writer and autoreview-<date>.log appended, 0600 file, 0700 dir, no dir means writer only	review_daemon_create_logger_matches_typescript
+D05	review-daemon	notifications find review requests and mentions; other subjects and reasons ignored; cursor saved; second poll overlaps	review_daemon_notifications_find_requests_and_mentions
+D06	review-daemon	poll interval adopted when longer than pollSeconds	review_daemon_adopts_a_longer_poll_interval
+D07	review-daemon	search fallback on the first cycle and every fifth; found again but reviewed means skipped	review_daemon_search_fallback_first_and_every_fifth_cycle
+D08	review-daemon	up to concurrency reviews at once; one pull request never twice	review_daemon_concurrency_limit_and_one_pull_once
+D09	review-daemon	rate limit pauses the account until resumeAt; nothing sent meanwhile; pausedUntil and lastError cleared after	review_daemon_rate_limit_pauses_account
+D10	review-daemon	every due pull acknowledged before reviews waiting for a slot; tagToAck/ackToPost recorded	review_daemon_every_due_pull_acknowledged_at_once
+D11	review-daemon	bot pull skipped (logged) unless skipBots false	review_daemon_bot_pull_skipped_unless_setting_off
+D12	review-daemon	blocked pulls re-found on search cycles; old dry-run files and logs pruned	review_daemon_blocked_pulls_on_search_cycles_and_prune
+D13	review-daemon	prune at most once a day	review_daemon_prunes_at_most_daily
+D14	review-daemon	each account reviews with its own token	review_daemon_each_account_reviews_with_its_own_token
+D15	review-daemon	log lines mask a token that slips into a message	review_daemon_log_lines_mask_a_token
+D16	review-daemon	failed decision logged, reported failed, retried after 60 s; state.queue lists it	review_daemon_failed_decision_retried_after_a_minute
+D17	review-daemon	rate-limited decision waits until resumeAt (account paused)	review_daemon_rate_limited_review_waits_until_resume
+D18	review-daemon	lastError cut to 300 chars	review_daemon_last_error_cut_to_300_characters
+D19	review-daemon	state.queue lines: (reviewing), (acknowledged, waiting), candidates; empty when done	review_daemon_records_reviewing_and_waiting_queue_lines
+D20	review-daemon	run wakes when a review finishes (no fixed sleep); stops on Stopper	review_daemon_run_wakes_when_a_review_finishes_and_stops
+D21	review-daemon	run: running reviews finish before it returns	review_daemon_run_lets_a_running_review_finish_after_stop
+D22	review-daemon	run polls again after pollSeconds, sleeping in chunks of at most 5 s	review_daemon_run_polls_again_after_the_poll_interval
+D23	review-daemon	enqueue keeps the earliest notBefore when found again	review_daemon_found_again_waits_no_longer_than_the_new_find
+D24	review-daemon	a finished decision starts its review (pump in finally)	review_daemon_a_finished_decision_starts_its_review
+D25	review-daemon	paused account: due candidates not decided	review_daemon_paused_account_decides_nothing
+DEEP-01	deep	Repo: ls-tree/show/grep/log reads at the head commit, path validation, binary/2MB refusal, git argv and call counts as Python, refuses other git subcommands	review_deep_repo_reads_the_head_commit_like_python
+DEEP-02	deep	serve_request: every kind (read, grep, list, definition, references, symbol/callers/callees/tests_of with and without reference, history, blame_range, pickaxe, run_tests, mutation_check) and every rejection, with git calls per request	review_deep_serve_request_matches_python
+DEEP-03	deep	serve_blocks/serve: 8-request cap, round size cut, rejected titles as json.dumps	review_deep_serve_rounds_match_python
+DEEP-04	deep	numbered, hits, definition pattern, is_code, behaviour lines, json.dumps, tests summarize	review_deep_helpers_match_python
+DEEP-05	deep	extract: defined/changed/calls/constants/env/flags/tables/claims/inputs/config/fields with limits and 78-line definition window	review_deep_extract_matches_python
+DEEP-06	deep	build_brief: sections, claims, required names, lenses, size cut, reference resolved/failed stats	review_deep_build_brief_matches_python
+DEEP-07	deep	check_citations: slack, flat quotes, int() error messages, beyond-diff	review_deep_check_citations_matches_python
+DEEP-08	deep	normalize_deep: levels/cap/to_level/enrich, confidence, category, test_run evidence	review_deep_normalize_deep_matches_python
+DEEP-09	deep	cited_windows	review_deep_cited_windows_match_python
+DEEP-10	deep	merge with records, nearly_identical	review_deep_merge_matches_python
+DEEP-11	deep	shapes_by_lens and mentions	review_deep_shapes_and_mentions_match_python
+DEEP-12	deep	test_line and regression_findings	review_deep_regression_findings_match_python
+DEEP-13	deep	shared_views	review_deep_shared_views_match_python
+DEEP-14	deep	start_tests after the session opens, tests_block, no_tests	review_deep_start_tests_and_block_match_python
+DEEP-15	deep	prove_unpinned: proven/refuted/already failing/no executions left	review_deep_prove_unpinned_matches_python
+DEEP-16	deep	assurance sentences	review_deep_assurance_matches_python
+DEEP-17	deep	investigate over the frame scheduler: rounds, ledger and recall, nudges, leads, test notes, failures, record and tokens	review_deep_investigate_matches_python
+DEEP-18	deep	TS: the map's names, uses, helpers and claims	review_deep_ts_map_names_uses_helpers_and_claims
+DEEP-19	deep	TS: requests are a closed, validated, bounded set	review_deep_ts_requests_are_a_closed_validated_bounded_set
+DEEP-20	deep	TS: history lookups through git log only	review_deep_ts_history_lookups_use_git_log_only
+ENG01	review/engine	review cell runs run_file with JSON-quoted paths	review_engine_cell_runs_run_file_with_json_quoted_paths
+ENG02	review/engine	pipeline error names exception and last 6 traceback lines	review_engine_pipeline_error_names_the_exception_and_the_traceback_end
+ENG03	review/engine	result error; model/verifyModel defaults	review_engine_result_error_and_model_defaults
+ENG04	review/engine	pruneSessions removes only old .jsonl in groups	review_engine_prunes_only_old_session_files
+ENG05	review/engine	transient provider failures retried like the frame harness	review_engine_retries_transient_provider_failures_like_the_frame_harness
+ENG06	review/engine	local diff reviewed through a real kernel, frames routed by model, unresolvable model fails only its frames	review_engine_reviews_a_local_diff_through_a_kernel_with_frames_routed_by_model
+G01	github	gh auth status JSON/text parsing; auth env per host	review_github_parse_auth_status_matches_typescript
+G02	github	gh api -i output split	review_github_parse_api_output_matches_typescript
+G03	github	pull refs from URLs and targets; pull keys	review_github_pull_references_match_typescript
+G04	github	client methods, rate limits, errors, argv/env/stdin	review_github_client_over_scripted_replies_matches_typescript
+G05	github	remote matching; ~ expansion	review_github_local_checkout_remotes_and_paths_match_typescript
+G06	github	guide mentions; withheld plans	review_github_guide_mentions_and_withheld_plans_match_typescript
+G07	github	@mentions; latest mention	review_github_mentions_and_latest_mention_match_typescript
+G08	github	decide incl. skipBots, drafts, re-request	review_github_decide_matches_typescript
+G09	github	ack body, size cap, line choice; state keys	review_github_ack_body_and_line_choice_match_typescript
+G10	github	claim hash	review_github_claim_hash_matches_typescript
+G11	github	accounts on every host, restricted	review_github_accounts_come_from_gh_auth_status_on_every_host
+G12	github	text fallback; gh missing	review_github_list_accounts_falls_back_to_text_and_needs_gh
+G13	github	token only via env, read once, masked, forget	review_github_token_reaches_gh_only_through_the_environment
+G14	github	api output and targets (TS literals)	review_github_api_output_and_pull_targets
+G15	github	Retry-After / reset → RateLimit; plain 403	review_github_retry_after_and_exhausted_limit_become_rate_limits
+G16	github	atomic serialized state writes; corrupt reads empty	review_github_state_writes_are_atomic_and_serialized
+G17	github	recent 50, 8 attempt shas, lenient read	review_github_state_keeps_recent_and_attempt_bounds
+G18	github	one daemon per agent dir	review_github_only_one_daemon_holds_an_agent_directory
+G19	github	stale daemon lock taken over	review_github_a_stale_daemon_lock_is_taken_over
+G20	github	runner env/stdin/cwd/127	review_github_process_runner_env_stdin_cwd_and_exit_codes
+G21	github	runner timeout 124	review_github_process_runner_times_out_with_124
+G22	github	runner 64 MiB cap kills child	review_github_process_runner_caps_output_and_kills_the_child
+G23	github	runner shared across threads	review_github_process_runner_is_shared_across_threads
+G24	github	ack then one atomic review; token hygiene	review_github_a_requested_review_acknowledges_then_posts_one_atomic_review
+G25	github	no double review; re-request/mention	review_github_the_same_commit_is_not_reviewed_twice_until_asked_again
+G26	github	mention notification without mention	review_github_a_mention_notification_without_a_mention_is_skipped
+G27	github	own/closed PR → COMMENT, no ack	review_github_own_and_closed_pull_requests_get_a_comment
+G28	github	incomplete → COMMENT; clone failure → diff only	review_github_incomplete_coverage_comments_and_a_failed_clone_reviews_the_diff
+G29	github	dropped inline re-posted; 422 fallback	review_github_a_dropped_inline_comment_is_reposted_and_a_rejected_review_goes_without_inline
+G30	github	head moved → requeue	review_github_a_head_that_moves_during_the_review_requeues
+G31	github	3 attempts then give up	review_github_three_failed_attempts_then_one_could_not_review_comment
+G32	github	rate limit not an attempt	review_github_a_rate_limit_while_reviewing_is_not_a_failed_attempt
+G33	github	push reviewed only when asked/blocking	review_github_a_push_is_reviewed_again_only_when_asked_or_blocking
+G34	github	requested team membership	review_github_a_requested_team_counts_only_for_members
+G35	github	draft only on mention	review_github_a_draft_is_reviewed_only_when_mentioned
+G36	github	default ack logo	review_github_by_default_the_acknowledgement_carries_the_logo
+G37	github	ack off/custom; no repeat	review_github_the_acknowledgement_can_be_turned_off_or_customized
+G38	github	dry run files; later real post	review_github_dry_run_writes_the_would_be_review_and_posts_nothing
+G39	github	bot PR skipped (skipBots)	review_github_a_bots_pull_request_is_skipped_unless_skip_bots_is_off
+G40	github	force review	review_github_force_reviews_without_a_request
+G41	github	test eligibility in spec	review_github_tests_run_only_where_the_account_can_push_or_the_owner_is_listed
+G42	github	find_checkout by remote	review_github_a_local_checkout_counts_only_when_its_remote_is_the_repository
+G43	github	spec: testCheckout, guides, testEnv wins	review_github_the_engine_is_told_about_a_matching_checkout_and_the_guides
+G44	github	guide names never posted	review_github_nothing_that_names_a_private_review_guide_is_posted
+G45	github	incremental re-review; resolve own fixed threads	review_github_new_commits_rereview_the_increment_and_resolve_fixed_threads
+G46	github	fates learned/retained; at close once	review_github_the_fate_of_earlier_findings_is_learned_and_retained
+G47	github	lessons reach engine; learn off	review_github_a_repository_rule_reaches_the_engine_and_learning_can_be_off
+G48	github	force-push → whole diff	review_github_a_force_push_reviews_the_whole_diff_again
+GLUE-01	review/deep	build_brief with the real reference matches Python (text, lenses, reference view and stats, lookups, facts)	review_glue_build_brief_with_the_real_reference_matches_python
+GLUE-02	review/deep	the reference reads through the deep repo's shared cache; base commit read separately; python_unindexed without an interpreter	review_glue_reference_reads_through_the_deep_repo
+GLUE-03	review/compiled	Source reads the deep repo	review_glue_source_reads_the_deep_repo
+GLUE-04	review/deep	start_tests: no tests, no sandbox, detection, regression, run limits, unavailable, no runner; runner availability	review_glue_start_tests_matches_python
+GLUE-05	review/deep	the session serves run_tests and mutation_check, enforces its limit, removes exports when dropped	review_glue_session_serves_test_requests
+GLUE-06	review/compiled	Interpreter.run over lookups, tests, asserts, conditions, for_each, asks, gates matches Python	review_glue_interpreter_runs_match_python
+GLUE-07	review/compiled	rounds hand asks and undecided findings back to the caller	review_glue_rounds_hand_asks_and_undecided_findings_back
+GLUE-08	review/compiled	a step the caller leaves without a result is skipped instead of handed back forever	review_glue_unanswered_steps_are_skipped_at_the_end
+GLUE-09	review/context	stated_intent matches Python	review_glue_stated_intent_matches_python
+REF-01	reference	TS block end by brace count	review_reference_ts_block_end_matches_python
+REF-02	reference	TS/JS index: definitions, imports, exports, call sites, families	review_reference_index_ts_matches_python
+REF-03	reference	Python index through the kernel's interpreter equals index_python	review_reference_python_indexer_matches_python
+REF-04	reference	YAML scalars, flow split, comments, parse_yaml, yaml_get	review_reference_yaml_matches_python
+REF-05	reference	Terraform blocks, attrs, nested, refs, heredocs	review_reference_terraform_matches_python
+REF-06	reference	module map	review_reference_module_map_matches_python
+REF-07	reference	build over git repos: index, bounds, resolution, lookups, views, block, facts, findings, serve	review_reference_repositories_match_python
+REF-08	reference	no interpreter: Python files left out and reported, other facts stand	review_reference_without_python_skips_python_files_and_says_so
+REF-09	reference	TS test: definitions, callers, tests, signatures through imports	review_reference_resolves_definitions_callers_tests_and_signatures
+REF-10	reference	TS test: workflow and Terraform facts as cited findings	review_reference_states_workflow_and_terraform_facts
+REF-11	reference	TS test: id-token handed to an external reusable workflow	review_reference_external_reusable_workflow_is_a_fact_with_the_mutable_ref
+REF-12	reference	TS test: YAML reader and Terraform scanner literals	review_reference_yaml_and_terraform_readers_read_what_workflows_and_manifests_use
+REF-13	reference	TS test: symbol/callers/callees/tests_of served	review_reference_serves_symbol_callers_callees_and_tests_of
+SVC01	review/service	systemd/launchd files equal TS serviceFile	review_service_files_match_recorded
+SVC02	review/service	install/uninstall (TS literals)	review_service_install_and_uninstall
+T01	review_tests	sandbox_env and launcher env built from scratch (PATH, DOCKER_HOST only)	review_tests_sandbox_env_matches_python
+T02	review_tests	Sandbox.wrap argv for bwrap/unshare/docker (layouts, binds, cwd, env), describe	review_tests_wrap_matches_python
+T03	review_tests	detect_sandbox order, docker needs image, only, probe dirs removed	review_tests_detect_sandbox_matches_python
+T04	review_tests	self_check argv, launcher token, ok verdict, error text, canary removed	review_tests_self_check_matches_python
+T05	review_tests	doctor report, json.dumps text, CLI usage/environments/doctor output	review_tests_doctor_and_command_line_match_python
+T06	review_tests	interpreter_home, discover_environment, list_environments over recorded trees	review_tests_environments_match_python
+T07	review_tests	interpreter dir that is a top-level dir's child is never bound	review_tests_top_level_install_directory_is_never_bound
+T08	review_tests	detect_runner, TestRunner.command, runner_for, _nearest	review_tests_runner_detection_matches_python
+T09	review_tests	parse_outcome statuses and per-test results	review_tests_parse_outcome_matches_python
+T10	review_tests	summarize	review_tests_summaries_match_python
+T11	review_tests	TestSession paths/plan/run/mutation/compare/serve, limits, records, exports, checkout envs, toolchain, node	review_tests_sessions_match_python
+T12	review_tests	run_process exit codes, combined output, cap, lossy decode, not-found	review_tests_run_process_matches_python
+T13	review_tests	run_process timeout kills the process group	review_tests_run_process_timeout_kills_the_group
+T14	review_tests	export_commit via git archive (export-ignore, exec bit, bad rev)	review_tests_export_commit_matches_python
+T15	review_tests	TS: runners recognized from tracked files	review_tests_ts_runners_recognized_from_tracked_files
+T16	review_tests	TS: outcome passed/failed/timeout/unavailable	review_tests_ts_outcome_passed_failed_timeout_unavailable
+T17	review_tests	TS: monorepo packages run their own tests	review_tests_ts_monorepo_packages_run_their_own_tests
+T18	review_tests	TS: sandbox env has no credentials	review_tests_ts_sandbox_env_has_no_credentials
+T19	review_tests	TS: bwrap argv	review_tests_ts_bwrap_argv
+T20	review_tests	TS: unshare and docker argv	review_tests_ts_unshare_and_docker_argv
+T21	review_tests	TS: strongest working mechanism	review_tests_ts_strongest_working_mechanism_is_chosen
+T22	review_tests	TS: real self-check on this machine	review_tests_ts_real_self_check_on_this_machine
+T23	review_tests	TS: only prepared environments are found	review_tests_ts_only_prepared_environments_are_found
+T24	review_tests	TS: interpreter resolved to its install dir	review_tests_ts_interpreter_resolved_to_its_install_directory
+T25	review_tests	TS: requests validated	review_tests_ts_requests_are_validated
+T26	review_tests	TS: sandboxed, exported, time-limited, counted	review_tests_ts_every_execution_is_sandboxed_exported_limited
+T27	review_tests	TS: base versus head regressions	review_tests_ts_base_versus_head
+T28	review_tests	TS: mutation applied and reverted	review_tests_ts_mutation_applied_and_reverted
+T29	review_tests	TS: checkout environments in a run, testEnv override, unshare	review_tests_ts_checkout_environments_in_a_run
+T30	review_tests	TS: real sandboxed make run	review_tests_ts_real_sandboxed_make_run
+T31	review_tests	serve replies as the deep pass does	review_tests_serve_replies_like_the_deep_pass
+CLAUDE-29	claude/worker-root	--claude model selection mapped to claude-subscription/<id>; refused ids	claude_root_claude_flag_selects_the_claude_subscription_model
+CLAUDE-30	claude/worker-root	ultron --claude -p runs the root on claude-subscription with tools exactly [rlm]	claude_root_claude_flag_runs_the_root_on_the_claude_subscription
+CLAUDE-31	claude/worker-root	ultron --claude refuses another provider's model	claude_root_claude_flag_refuses_another_providers_model
+CLAUDE-32	claude/mcp	--children claude: rlm.spawn runs a Claude Code child; token-checked verdict relay; child_done event	claude_root_mcp_spawns_claude_code_children_and_relays_their_verdict
+FRM-01	frames host	frame is a journaled rlm-frame@1 task, no tools, task_id	acceptance_a47_host_the_frame_is_a_journaled_task_seeing_only_its_task_and_views_with_no_tools
+FRM-02	frames host	8 frames under calls=6	acceptance_a49_host_a_map_of_8_frames_under_calls_6_runs_6_and_marks_2_incomplete_in_order
+FRM-03	frames host	tranches never oversubscribe	acceptance_a49_host_concurrent_siblings_hold_tranches_that_never_oversubscribe_the_token_pool
+FRM-04	frames host	pool cannot cover → incomplete, unsent	acceptance_a49_host_when_the_pool_cannot_cover_a_request_the_frame_is_incomplete_and_nothing_is_sent
+FRM-05	frames host	refund, cache discount, activeReservations 0, modelCalls 2	acceptance_a49_host_a_provider_failure_refunds_its_tranche_cache_reads_are_discounted_and_the_ledger_settles
+FRM-06	frames host	frame without depth → depth_exhausted	acceptance_a49_host_a_frame_without_depth_cannot_start_nested_frames
+FRM-07	frames host	abort cancels tasks, per-item errors, traced	acceptance_a50_host_all_in_flight_frames_are_cancelled_and_the_map_returns_per_item_errors
+FRM-08	frames host	traces as session values, newest first	acceptance_a47_host_traces_are_stored_as_session_values_and_listed_newest_first
+FRM-09	frames e2e	trace read by later cell and over RPC	acceptance_a47_a_frame_trace_is_read_by_a_later_cell_and_over_rpc_after_the_turn
+FRM-10	frames e2e	nested frames: parent pool, one level less depth	acceptance_a49_nested_frames_draw_on_their_parents_pool_and_one_level_less_depth
+FRM-11	frames e2e	follow-up refused before sending	acceptance_a49_a_follow_up_request_the_budget_cannot_cover_is_refused_before_it_is_sent
+FRM-12	frames e2e	large input, journal and RPC inspect	acceptance_a47_input_larger_than_the_window_is_counted_exactly_through_bounded_frames
+FRM-13	frames e2e	RPC abort → all frame tasks cancelled	acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_within_2s
+FRM-14	frames e2e	cell abort → cancelled tasks, traced errors	acceptance_a50_aborting_the_root_cancels_every_in_flight_frame_within_2s
+INSP-01	session-core inspect	refuses non-inspection requests, no runtime, non-object payload	acceptance_a29_the_inspector_refuses_requests_that_would_search_or_change_state
+INSP-02	interactive inspection	command → request/usage error and formatInspection match TS	interactive_inspection_commands_make_the_typescript_requests_and_show_the_same_text
+INSP-03	interactive inspection	formatInspection replay	interactive_format_inspection_matches_typescript
+INSP-04	interactive inspection	index keys first whatever insertion order	interactive_format_inspection_lists_index_keys_first_whatever_the_insertion_order
+INSP-05	A30 view	rendered /memory list via inspector hides forgotten/superseded	acceptance_a30_forgotten_and_corrected_memories_leave_every_view_agents_md_is_untouched
+INSP-06	cli rpc	get_commands and export_html equal the TS fixture	cli_rpc_models_matches_typescript
+INSP-07	cli rpc	inspect, get_commands sources, export_html roles	acceptance_a25_native_rpc_runs_prompts_bash_and_session_commands_ported_part
+INSP-08	interactive	/agents, /agents id, /progress usage without overlays	interactive_commands_agents_opens_the_hub_with_overlays_only
+LIVE-01	acceptance	A39 live typed-RLM capability suite through the Rust binary (opt-in, ULTRON_LIVE_EVAL=1)	acceptance_a39_live_models_use_the_typed_rlm_interface
+LIVE-02	acceptance	A39 frozen data set reproduces the TS generator (sum 24645201)	acceptance_a39_dataset_sum_matches_the_typescript_recording
+LIVE-03	acceptance	A39 answer checks follow the TS patterns	acceptance_a39_answer_checks_follow_the_typescript_patterns
+LIVE-04	acceptance	A46 live fix/review/improve demo through the Rust binary (opt-in)	acceptance_a46_live_model_fixes_reviews_and_improves_through_the_typed_rlm_api
+LIVE-05	acceptance	A46 diagnostics top location counted from the rows	acceptance_a46_live_diagnostics_top_location_is_counted_from_the_rows
+FIX-01	claude fallback	without an explicit URL the fallback goes to models.json anthropic baseUrl, never the public API	ai_claude_subscription_fallback_goes_to_the_models_json_anthropic_base_url
+CPROV-01	ai	models.json providers/models compose over built-ins (baseUrl, compat deep-merge, upserts, modelOverrides) as TS	ai_model_registry_composes_models_like_typescript
+CPROV-02	ai	models.json load and composition errors joined as ModelRuntime.getError	ai_model_registry_errors_match_typescript
+CPROV-03	ai	availability: configured key (command, $VAR set, literal) else built-in env key	ai_model_registry_availability_matches_typescript
+CPROV-04	ai	request auth: --api-key, $VAR/!cmd key, provider+model headers, authHeader, TS error text	ai_model_registry_request_auth_matches_typescript
+CPROV-05	ai	exact provider/id and --provider references incl. TS unknown/not-found errors	ai_model_registry_exact_references_match_typescript
+CPROV-06	ai	configured headers go under caller headers and never into model JSON	ai_model_registry_request_headers_reach_options_not_json
+CPROV-07	ai	authHeader without a key fails the request	ai_model_registry_auth_header_needs_a_key
+CPROV-08	ai	config values: templates, escapes, commands, error text	ai_model_registry_config_values
+CPROV-09	ai	claude-subscription with models.json entry resolves any id	ai_model_registry_dynamic_catalog_provider
+CPROV-10	session-core	--model/--provider, catalog_model, subagent Config::model over models.json	session_core_custom_models_resolve_from_models_json
+CPROV-11	session-core	available snapshot and keys (flag, $VAR, env) for custom providers	session_core_custom_models_available_and_keyed
+CPROV-12	session-core	lane Provider sends models.json headers; unresolved header fails before send	session_core_lane_provider_sends_models_json_headers
+CPROV-13	cli	--list-models stdout and models.json warning match TS	cli_custom_providers_list_models_matches_typescript
+CPROV-14	cli	ultron -p --model custom/id reaches loopback stub with id, key, headers, [rlm]	cli_custom_provider_print_mode_reaches_loopback_stub
+CPROV-15	cli	unresolvable models.json key fails before any request	cli_custom_provider_unresolved_key_fails_before_any_request
+CPROV-16	cli	RPC get_available_models/set_model with custom models, no secrets listed	cli_custom_provider_rpc_lists_and_selects_custom_models
+CPROV-17	cli	autoreview engine resolves custom-provider models with key and headers	cli_autoreview_custom_provider_models_resolve
+SELA-1	session-journal	allMessagesText of native and v3 files matches TS buildSessionInfo	session_journal_all_messages_text_matches_typescript
+SELA-2	session-journal	cwd listing carries every message's text	session_journal_listing_carries_all_messages_text
+SELA-3	interactive	selector search finds a word only a later message holds	interactive_commands_session_search_finds_a_word_from_a_later_message
+SELA-4	cli	/resume search through the worker listing finds a later reply's word	cli_interactive_resume_search_finds_a_word_from_a_later_message
+SELA-5	cli	daemon describe lists allMessagesText	cli_daemon_describe_lists_all_messages_text
+SELA-6	ai	Radius loopback login completes under port contention (shared lock, fail-fast browser)	ai_oauth_radius_browser_login_completes_through_the_loopback_callback
+CTX-1	session-core	root requests stay bounded: a seen task result collapses on return (ContextControl hooks on the live root lane)	acceptance_a51_twenty_completed_tasks_keep_the_next_request_bounded_and_values_full_through_agents_result
+CTX-2	session-core	ctx.forget guards, edit-aware run split, boundary-deferred note, pi.events observation, notes and pins kept across compaction	acceptance_a52_forget_spares_the_current_turn_and_pins_extensions_observe_it_compaction_keeps_notes_and_pins
+CTX-3	extensions	host publish on the event bus reaches subscribed channels only	extensions_process_host_publish_reaches_bus_subscribers_only
+CTX-4	kernel-apis	note projector: Note (ctx.note) custom message, empty note projects nothing	kernel_apis_context_note_projector_is_a_custom_message_at_its_place
+CTX-5	session-journal	buildSessionContext entry projectors after edits	session_journal_context_projectors_place_custom_messages_and_respect_edits
+FIN46-01	acceptance A21	lost response then owner crash: no replay, same key returns durable interrupted result, reservation settles unknown	acceptance_a21_a_lost_response_followed_by_an_owner_crash_is_not_replayed_and_the_same_key_returns_the_durable_interrupted_result
+FIN46-02	acceptance A21	crashes before launch, after response, after commit never duplicate the effect	acceptance_a21_crashes_before_launch_after_the_effects_response_and_after_commit_never_duplicate_the_effect
+FIN46-03	acceptance A30	forget/correct leave every view; refinements.propose refuses AGENTS.md target	acceptance_a30_forgotten_and_corrected_memories_leave_every_view_agents_md_is_untouched
+FIN46-04	acceptance A46	abort mid-invoke cancels the child, session keeps working	acceptance_a46_aborting_mid_invoke_cancels_the_child_and_the_session_keeps_working
+FIN46-05	acceptance A46	diagnose, fix, gate, review, retain, background stop, refinement, RPC inspect	acceptance_a46_fix_review_retain_and_improve_with_real_runtime_effects
+FIN46-06	acceptance A46	failure variants never become verified completion	acceptance_a46_failure_variants_never_become_verified_completion
+FIN46-07	acceptance A46 live	TS live task with instances and reattached RPC inspect	acceptance_a46_live_model_fixes_reviews_and_improves_through_the_typed_rlm_api
+FIN46-08	interactive A25	/import without path: Pi picker, read-only, selection imports	interactive_commands_import_without_a_path_picks_a_pi_session_read_only
+FIN46-09	cli A25	/import without path lists this project's Pi sessions and imports through the server	cli_interactive_import_without_a_path_picks_a_pi_session_of_this_project_and_imports_it
+FIN56-01	auth	request key order from ModelRuntime.getAuth (flag, auth.json, models.json, env)	session_core_request_key_matches_typescript_resolution_order
+FIN56-02	auth	stored key reaches lane api_key	session_core_request_key_stored_key_reaches_lane_api_key
+FIN56-03	auth	print mode sends auth.json key; flag beats it	cli_print_mode_sends_the_auth_json_key
+FIN56-04	tools	cell abort cancels a waited call, nothing announced	acceptance_a56_aborting_the_cell_cancels_a_call_it_is_waiting_on_and_nothing_is_announced
+FIN56-05	tools	slow call detaches after yield; end reported for tool_done	acceptance_a56_a_slow_call_detaches_after_the_yield_time_and_its_end_is_reported_for_an_event
+FIN56-06	tools	yield_after handle: result, cancel, root abort	acceptance_a56_yield_after_returns_a_handle_result_waits_cancel_stops_a_root_abort_cancels
+FIN56-07	tools	detached mcp wait's tool_done re-invokes the model (CLI)	acceptance_a56_a_wait_past_the_tool_yield_detaches_and_its_tool_done_event_reinvokes_the_model
+FIN56-08	hints	job-detached	kernel_apis_hints_job_detached_a_plain_bash_that_came_back_running
+FIN56-09	hints	blocked-on-job	kernel_apis_hints_blocked_on_job_over_60_s_awaiting_job_result_while_events_are_on
+FIN56-10	hints	poll-loop	kernel_apis_hints_poll_loop_repeated_status_calls_or_sleeping_in_a_loop_around_a_check
+FIN56-11	hints	output-truncated and large-read	kernel_apis_hints_output_truncated_and_large_read
+FIN56-12	hints	repeated-failure	kernel_apis_hints_repeated_failure_the_same_exception_three_cells_in_a_row
+FIN56-13	hints	repeated-cell	kernel_apis_hints_repeated_cell_three_times_in_a_row_and_again_at_six
+FIN56-14	hints	marker naming the spill file	kernel_apis_hints_truncation_marker_naming_the_file_is_recognized
+FIN56-15	hints	one per cell, spent tag gives way	kernel_apis_hints_one_hint_per_cell_most_specific_first_a_spent_tag_gives_way
+FIN56-16	hints	per-lane mutes persist, cap per tag	kernel_apis_hints_mutes_are_per_lane_and_persist_each_tag_fires_at_most_n_times
+FIN56-17	hints	stuck-loop fires once per phase, escalates once	kernel_apis_stuck_loop_fires_once_per_phase_escalates_once_and_replaces_repeated_failure
+FIN56-18	hints	live lane: job-detached and poll-loop lines	acceptance_a56_hints_job_detached_and_poll_loop_end_the_live_cell_results
+FIN56-19	hints	off unless ULTRON_HINTS	acceptance_a56_hints_are_off_unless_asked_for
+FIN56-20	async-cli	collapse rewrites only the newest cell output	acceptance_a56_collapse_on_return_rewrites_only_the_newest_cell_output
+FIN56-21	async-cli	plain bash detach ends with job-detached hint	acceptance_a56_a_plain_bash_past_the_yield_window_detaches_and_its_completion_event_reinvokes_the_model
+FIN56-22	sandbox	sandboxed job survives killed worker, adopted, still isolated, cancel kills sandbox	host_sandboxed_job_survives_a_killed_worker_and_the_next_host_adopts_it
+FIN56-A26-01	acceptance-gate	instrument lock write/check byte-identical to acceptance-lock.mjs	acceptance_gate_lock_matches_node_script
+FIN56-A26-02	acceptance-gate	lock of the checkout equals Node	acceptance_gate_lock_of_the_checkout_matches_node
+FIN56-A26-03	acceptance-gate	rust profile locks crates/acceptance evidence	acceptance_gate_rust_profile_locks_rust_evidence
+FIN56-A26-04	acceptance-gate	applyEdits matches Node	acceptance_gate_apply_edits_matches_node
+FIN56-A26-05	acceptance-gate	mutation runner classifies killed/survived/error/invalid/baseline and restores	acceptance_gate_mutation_runner_classifies_and_restores
+FIN56-A26-06	acceptance-gate	hung runner killed at the deadline, error not kill, file restored	acceptance_gate_mutation_runner_times_out_and_restores
+FIN56-A26-07	acceptance-gate	Node-format in-flight record restored on start; runner spawn failure is error	acceptance_gate_mutation_runner_restores_interrupted_run
+FIN56-A26-08	acceptance-gate	--only and exit verdict	acceptance_gate_mutate_binary_runs_only_named
+A26-1	acceptance-gate	lock --write/--check reproduces scripts/acceptance-lock.mjs byte for byte	acceptance_gate_lock_matches_node_script
+A26-2	acceptance-gate	the checkout's computed lock matches the Node script	acceptance_gate_lock_of_the_checkout_matches_node
+A26-3	acceptance-gate	rust profile locks COVERAGE, crates/acceptance/tests, mutations.json, manifest and gate source	acceptance_gate_rust_profile_locks_rust_evidence
+A26-4	acceptance-gate	apply_edits matches Node applyEdits (unique find)	acceptance_gate_apply_edits_matches_node
+A26-5	acceptance-gate	mutation runner classifies killed/survived/error/invalid and restores the file	acceptance_gate_mutation_runner_classifies_and_restores
+A26-6	acceptance-gate	a timed-out mutation run is killed and the file restored	acceptance_gate_mutation_runner_times_out_and_restores
+A26-7	acceptance-gate	an interrupted run's in-flight record is restored on the next start	acceptance_gate_mutation_runner_restores_interrupted_run
+A26-8	acceptance-gate	the mutate binary runs only the --only mutations	acceptance_gate_mutate_binary_runs_only_named
+ACMP-01	session-core/auto-compaction	isContextOverflow per provider text, silent and length-stop overflow	session_core_auto_compaction_overflow_matches_typescript_per_provider
+ACMP-02	session-core/auto-compaction	isRecoverableLength counts as overflow	session_core_auto_compaction_recoverable_length_matches_typescript
+ACMP-03	session-core/auto-compaction	shouldCompact threshold math	session_core_auto_compaction_threshold_matches_typescript
+ACMP-04	session-core/auto-compaction	getCompactionSettings: modelOverrides, defaults, invalid values	session_core_auto_compaction_settings_match_typescript
+ACMP-05	session-core/auto-compaction	set_auto_compaction overrides compaction.enabled	session_core_auto_compaction_live_toggle_overrides_the_setting
+ACMP-06	session-core/auto-compaction	one compaction per checkpoint trigger	session_core_auto_compaction_checkpoint_compacts_once_per_trigger
+ACMP-07	session-core/auto-compaction	an overflow commits as an error	session_core_auto_compaction_overflow_commits_as_an_error
+ACMP-08	cli/rpc	threshold compaction before run end: events, entry, journal	cli_rpc_auto_compaction_threshold_matches_typescript
+ACMP-09	cli/rpc	threshold compaction before the next request, mid-run	cli_rpc_auto_compaction_mid_run_matches_typescript
+ACMP-10	cli/rpc	overflow: error commits, compacts, retries once, run completes	cli_rpc_auto_compaction_overflow_retries_and_matches_typescript
+ACMP-11	cli/rpc	second overflow fails the run	cli_rpc_auto_compaction_second_overflow_fails_and_matches_typescript
+ACMP-12	cli/rpc	failed summary at run end fails the run (summarization_failed)	cli_rpc_auto_compaction_failed_summary_fails_the_run_and_matches_typescript
+ACMP-13	cli/rpc	failed summary mid-run fails the run	cli_rpc_auto_compaction_failed_mid_run_summary_fails_the_run_and_matches_typescript
+ACMP-14	cli/rpc	failed overflow summary fails the run with its error	cli_rpc_auto_compaction_failed_overflow_summary_fails_the_run_and_matches_typescript
+ACMP-15	cli/rpc	before_compaction trim declines at run end	cli_rpc_auto_compaction_trimmed_instead_matches_typescript
+ACMP-16	cli/rpc	before_compaction trim declines mid-run, placed at the boundary	cli_rpc_auto_compaction_trimmed_mid_run_matches_typescript
+ACMP-17	cli/rpc	set_auto_compaction false: no threshold compaction	cli_rpc_auto_compaction_off_matches_typescript
+ACMP-18	cli/rpc	auto-compaction fixture covers every case	cli_rpc_auto_compaction_fixture_covers_every_case
+ACMP-19	cli/rpc	notes kept across a mid-run compaction	cli_rpc_auto_compaction_mid_run_keeps_notes_across_it
+ACMP-20	cli/rpc	compacts again later; no recompaction from stale usage; previous summary kept	cli_rpc_auto_compaction_compacts_again_after_an_earlier_compaction
+ACMP-21	cli/rpc	compaction off leaves an overflow to fail the run	cli_rpc_auto_compaction_off_leaves_an_overflow_to_fail_the_run
+ACMP-22	cli/durable	kill during threshold compaction reopens and compacts again	cli_durable_kill_during_auto_compaction_compacts_again_after_the_restart
+ACMP-23	cli/durable	kill during overflow compaction resumes, then retries	cli_durable_kill_during_overflow_compaction_compacts_and_retries_after_the_restart
+ACMP-24	interactive/tui	auto-compaction status line by reason, then Working again	interactive_commands_auto_compaction_status_line_then_working_again
+ACMP-25	cli/interactive	compaction_start reason and compaction_end mapped to TUI events	cli_interactive_compaction_and_thinking_events_become_tui_events
+FIN1-01	review/fixtures	tests.json records the sandbox home as <root>/fakehome (no home_path findings)	review_tests_detect_sandbox_matches_python
+FIN1-02	ai/claude-subscription	discovery probes run the fake CLI via the interpreter, never a freshly written executable	ai_claude_subscription_discovery_probes_follow_the_telemetry_setting
+FIN1-03	session-core/compaction	abort cancels a running manual compaction; isCompacting reported; op ends aborted; session prompts on	cli_rpc_compaction_abort_cancels_a_manual_compaction
+FIN1-04	session-core/compaction	abort cancels a run's threshold compaction with the run; nothing left open	cli_rpc_compaction_abort_cancels_an_automatic_compaction_with_its_run
+FIN1-05	session-core/extensions	session_before_compact cancel cancels a manual compaction; session_compact_failed follows	cli_rpc_compaction_extension_cancels_a_manual_compaction
+FIN1-06	session-core/extensions	session_before_compact compaction supplies the summary (fromHook, usage row, no request); session_compact follows	cli_rpc_compaction_extension_supplies_the_summary
+FIN1-07	session-core/extensions	automatic compactions emit before/after hooks; a hook cancel lets the run complete without compaction	cli_rpc_compaction_extension_sees_and_cancels_automatic_compactions
+FIN1-08	session-core/recovery	kill after a journaled compaction cancel settles aborted, branch unchanged, preparation removed	session_core_compaction_cancel_journaled_before_a_kill_settles_aborted
+FIN1-09	session-core/recovery	kill during a compaction without cancel settles failed and drops its preparation	session_core_compaction_killed_without_a_cancel_settles_failed_and_drops_its_preparation
+FIN1-10	session-core/compaction	live cancel ends the compaction operation aborted with the lane idle	session_core_compaction_cancelled_live_ends_aborted
+FIN1-11	session-core/compaction	a hook's compaction commits from summary.deciding without a summary request	session_core_compaction_from_a_hook_commits_without_a_summary_request
+FIN1-12	interactive	Esc during a manual compaction aborts it; cancelled shows "Compaction cancelled"	interactive_commands_escape_cancels_a_manual_compaction
+FIN1-13	session-core/async-events	an event waiting for a retry still counts as pending activity	session_core_async_events_an_event_waiting_for_a_retry_still_counts_as_pending
+FIN1-14	delegation/session-core	an unattached worker never retires between a child's end and its child_done event	acceptance_a22_detached_work_finishes_with_no_client_retires_and_stays_durable_for_a_later_client
+FIN1-15	acceptance/a22	reattached client waits for the child_done run to settle before prompting	acceptance_a22_a_background_child_keeps_running_after_its_client_quits_and_a_new_client_reattaches
+FIN1-16	acceptance/a22	client restarted after a hard kill waits for the child_done run to settle	acceptance_a22_a_client_restarted_right_after_a_hard_kill_reattaches_to_the_busy_worker
+INITM-01	session-core/model	without --model a new session starts on the settings defaultProvider/defaultModel and defaultThinkingLevel; --thinking still wins	session_core_initial_model_uses_the_settings_default_and_its_thinking_level
+INITM-02	session-core/model	modelThinkingLevels beats defaultThinkingLevel; the level is stored unclamped as TS stores it	session_core_initial_thinking_prefers_the_per_model_level_over_the_default
+INITM-03	session-core/model	a default whose provider has no credentials is skipped; a known provider's default model is preferred	session_core_initial_model_skips_a_default_without_credentials_and_prefers_a_known_providers_default
+INITM-04	session-core/model	with no default, the first available model is used	session_core_initial_model_falls_back_to_the_first_available_model
+INITM-05	session-core/model	no credentials at all still asks for --model	session_core_initial_model_without_any_credentials_asks_for_a_model
+INITM-06	session-core/model	a resumed session without --model keeps its own model and thinking level	session_core_initial_model_never_replaces_a_resumed_sessions_model
+CMP2-01	compaction	compact during a run aborts the run first, persists the aborted response, then one manual compaction (TS #7253)	cli_rpc_compaction_compact_during_a_run_aborts_the_run_first
+CMP2-02	compaction	compaction started by compact-during-run: isCompacting, kill settles run aborted + compaction interrupted, abort cancels it	cli_rpc_compaction_compact_during_a_run_recovers_and_cancels
+CMP2-03	compaction	abort during session_before_compact reaches the hook as notifications/cancelled, compaction_end manual aborted, session prompts on (TS #8920)	cli_rpc_compaction_abort_during_a_hook_reaches_it_as_its_signal
+CMP2-04	extensions	cancellable session_before_* dispatch gives up a hook that never answers, notifies it, skips later handlers, reports no error	extensions_cancellable_abort_gives_up_a_hook_that_never_answers
+CMP2-05	extensions	cancellable dispatch without an abort follows emit's rules	extensions_cancellable_without_an_abort_is_emit
+CMP2-06	compaction	cancel journaled at summary.deciding (during the hook) then kill settles aborted	session_core_compaction_cancel_during_the_hook_then_a_kill_settles_aborted
+CMP2-07	navigation	branch summary is isCompacting, refuses a second navigation, writes nothing before commit, abort ends it aborted with the leaf unchanged	cli_rpc_compaction_branch_summary_is_compacting_and_abortable
+CMP2-08	navigation	navigation refused during a manual compaction (TS #9178); compact during a branch summary aborts it, then compacts	cli_rpc_compaction_navigation_and_compaction_exclude_each_other
+CMP2-09	tui	Esc cancels a branch summary; cancelled navigation shows "Branch summarization cancelled" and reopens the tree on the entry	interactive_commands_escape_cancels_a_branch_summary
+PKG-01	release	copied binary runs with the checkout hidden and no Node: --version, --help, print-mode rlm cell in a kernel started from the installed runtime.py, installed skills path in the system prompt, nothing sent names the checkout, --export matches the library for dark and light themes	cli_package_copied_binary_runs_with_the_checkout_hidden
+PKG-02	release	concurrent first runs (8 processes) install exactly one verified directory with no leftovers	cli_package_concurrent_first_runs_install_one_directory
+PKG-03	release	16 threads racing on install agree on one directory	cli_package_threads_racing_on_install_agree_on_one_directory
+PKG-04	release	a verified install directory is never rewritten	cli_package_install_keeps_a_verified_directory
+PKG-05	release	a damaged directory (truncated, deleted file, foreign marker, no marker) is replaced	cli_package_install_replaces_a_damaged_directory
+PKG-06	release	embedded set equals the runtime modules, patterns, skills, docs and changelog byte for byte, with executable modes	cli_package_embeds_the_runtime_skills_docs_and_changelog_byte_for_byte
+PKG-07	release	ULTRON_DEV_ASSETS selects checkout, embedded or a given package directory, with errors	cli_package_dev_assets_chooses_where_the_files_come_from
+PKG-08	release	install.sh installs into a prefix without Node, replaces by rename, copies license files, refuses unknown arguments	cli_package_install_script_installs_into_a_prefix_without_node
+CTXEXT-01	session-core/ctx	ctx.* on a subagent lane edits only that lane's next request (summarize/forget/pin/note/guards, TS literal expectations)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane_and_is_observed_once_with_its_lane
+CTXEXT-02	session-core/commands	get_commands lists extension-process commands in TS precedence order with name:N, descriptions, SourceInfo, /mcp after them	acceptance_a25_get_commands_lists_extension_process_commands_in_typescript_order_with_their_source
+CTXEXT-03	session-core/daemon	legacy-extension-commands list/run and listCommands shapes; run reaches the registering process; unknown name refused	acceptance_a25_the_session_lists_and_runs_extension_commands_for_the_client_tui
+CTXEXT-04	interactive	direct extension slash commands skip built-ins and invalid names; default description	interactive_extension_commands_direct_commands_skip_builtins_and_invalid_names
+CTXEXT-05	interactive	/name and /extension <name> [args] dispatch; usage error; unknown before listing	interactive_extension_commands_run_directly_and_through_slash_extension
+CTXEXT-06	interactive	autocomplete offers extension commands with descriptions	interactive_extension_commands_are_offered_by_autocomplete_with_their_descriptions
+HARD-01	cli tests	scripts exec'd by path launch under concurrent forks (no ETXTBSY)	cli_exec_race_installed_scripts_always_launch_while_other_threads_fork
+HARD-02	ai oauth	radius browser login completes on a private callback port; redirect URI stays 1456	ai_oauth_radius_browser_login_completes_through_the_loopback_callback
+HARD-03	ai oauth	radius denial ends the login on a private callback port	ai_oauth_radius_browser_denial_ends_the_login
+HARD-04	sandbox	docker clears the image's ENV to the policy allowlist	sandbox_escape_docker_clears_the_images_environment
+HARD-05	sandbox	every backend incl. docker dies with its parent	sandbox_escape_sandbox_dies_with_its_parent
+HARD-06	sandbox	docker argv: client tied to parent and container to client, env -i	sandbox_interactive_unshare_and_docker_argv
+HARD-07	host	bash under bwrap/unshare/docker keeps the policy (paths, /tmp, env, exit code)	host_sandboxed_backends_bash_keeps_the_policy
+HARD-08	host	network follows the setting under every backend	host_sandboxed_backends_network_follows_the_setting
+HARD-09	host	jobs keep the policy and their status under every backend	host_sandboxed_backends_jobs_keep_the_policy_and_their_status
+HARD-10	host	timed-out bash and cancelled jobs stop inside the sandbox (docker included)	host_sandboxed_backends_stopped_commands_stop_inside_the_sandbox
+HARD-11	host	sandboxed job survives its worker and is adopted, under every backend	host_sandboxed_job_survives_a_killed_worker_and_the_next_host_adopts_it
+HARD-12	review	autoreview self-check under docker; only image-defined names flagged	review_tests_real_self_check_under_docker
+HARD-13	cli	first frame waits for neither provider network nor kernel	cli_first_frame_waits_for_neither_the_network_nor_the_kernel
+MCPGW-01	mcp/gateway	gateway modes, error codes/messages, status, search scoring, resources, read, describe, connect, lazy start, reuse, crash then reconnect, timeout, cancel, shutdown, mcp.log, secret registration, HTTP server match TS against fake servers	mcp_gateway_matches_typescript_over_stdio_and_http
+MCPGW-02	mcp/gateway	project .pi/mcp.json read only when trusted	mcp_gateway_reads_the_project_config_only_when_trusted
+MCPGW-03	mcp/gateway	no servers: no mcp tool registered (TS-recorded)	mcp_gateway_is_not_registered_without_servers
+MCPGW-04	mcp/gateway	description Servers: line gives the runtime guide's server names	mcp_gateway_description_names_the_enabled_servers_for_the_runtime_guide
+MCPGW-05	mcp/gateway	given servers replace the mcp.json files	mcp_gateway_given_servers_skip_the_config_files
+MCPGW-06	mcp/command	/mcp status/connect/tools/disconnect/disable/enable/login/usage (ported TS test)	mcp_gateway_command_reports_status_connects_disconnects_and_disables
+MCPGW-07	mcp/command	/mcp enable/disable edit the defining mcp.json (indentation kept) and disconnect	mcp_gateway_command_enable_and_disable_edit_the_defining_file
+MCPGW-08	mcp/command	profile without servers registers no gateway (ported TS test)	mcp_gateway_a_profile_without_mcp_servers_registers_no_gateway_tool
+MCPGW-09	session-core	MCP via kernel mcp namespace over tools.*; model tools exactly [rlm]; lazy start, reuse, McpError, env secret masked in rlm output, closed with session	session_core_mcp_servers_are_kernel_apis_and_the_model_keeps_one_tool
+MCPGW-10	session-core	runtime guide lists mcp and its servers	session_core_mcp_servers_are_listed_in_the_runtime_guide
+MCPGW-11	session-core	no servers: no gateway, no Extension tools section	session_core_without_mcp_servers_there_is_no_gateway
+MCPGW-12	session-core	MCP config errors reported once as diagnostics	session_core_mcp_configuration_errors_reach_the_clients_ui_when_the_session_starts
+MCPGW-13	session-core	cancelling a detached mcp call sends notifications/cancelled; connection survives	session_core_cancelling_a_detached_mcp_call_cancels_the_request_on_the_server
+MODELS-01	ai	parseModelPattern: exact, partial id/name, alias over dated (localeCompare), :thinking suffixes, warnings	ai_model_resolver_parse_pattern_matches_typescript
+MODELS-02	ai	resolveModelScopeFromModels: minimatch globs, exact refs, fuzzy patterns, dedupe, diagnostics	ai_model_resolver_scope_matches_typescript
+MODELS-03	ai	resolveCliModel: provider inference, ambiguity messages, auth tie-break, custom-id fallback, strict suffixes	ai_model_resolver_cli_model_matches_typescript
+MODELS-04	ai	findInitialModel steps 2-5 incl. claude-code exclusion	ai_model_resolver_initial_model_matches_typescript
+MODELS-05	ai	minimatch nocase semantics (braces, globstar, classes, extglob, dot, negation, comments)	ai_model_resolver_minimatch_matches_typescript
+MODELS-06	ai	built-in catalog equals TS getModels (incl. claude-sonnet-5-5)	ai_model_resolver_catalog_matches_typescript
+MODELS-07	session-core	--model fuzzy pattern and :thinking suffix set model and thinking level	session_core_model_flag_resolves_fuzzy_patterns_and_a_thinking_suffix
+MODELS-08	session-core	enabledModels / --models pick a new session's model with the pattern's level	session_core_scoped_models_pick_a_new_sessions_model
+MODELS-09	session-core	saved default in scope wins (buildSessionOptions)	session_core_scoped_models_prefer_the_saved_default_in_scope
+MODELS-10	session-core	scope matches only available models	session_core_scoped_models_only_match_available_models
+MODELS-11	session-core	resumed session keeps its model despite scope	session_core_scoped_models_never_replace_a_resumed_sessions_model
+MODELS-12	session-core	models.json/auth.json request auth (Copilot baseUrl, command values, Radius catalogs/availability/token/env key/refresh) equals TS getAuth	session_core_model_auth_matches_typescript
+MODELS-13	session-core	Copilot OAuth requests go to the token's endpoint over models.json baseUrl	session_core_copilot_oauth_requests_go_to_the_token_endpoint
+MODELS-14	session-core	!command keys and headers run for every request	session_core_command_headers_run_for_every_request
+MODELS-15	session-core	models.json Radius provider refreshes on its own gateway and sends the new token	session_core_radius_provider_requests_use_the_refreshed_token
+MODELS-16	ai	Sonnet 5.5 catalog entry (price/limits) used by claude-subscription fallback	ai_claude_subscription_fallback_model_missing_from_the_api_catalog_thinks_adaptively
+PKG2-01	release	--version, --help, auth/usage/config/migrate --help, mcp list, instances and --export install no runtime files; --list-models does	cli_package_runs_that_read_no_package_files_install_nothing
+PKG2-02	release	prune spares installs and staging dirs held by running processes; removes unused, crashed and moved-aside dirs; prunes held ones after their processes exit	cli_package_prune_spares_installs_and_staging_in_use_by_running_processes
+PKG2-03	release	8 concurrent runs install once and prune unused older installs while sparing one held by a real process	cli_package_concurrent_runs_prune_while_installing
+PKG2-04	release	a run waiting on a lock while its install is pruned and replaced ends up holding the install now at the path	cli_package_ready_reinstalls_when_pruned_while_waiting_for_its_lock
+HARD2-01	sandbox	review Docker argv matches autoreview_tests.py (env -i, tied, setpriv/polling)	sandbox_review_wrap_matches_autoreview_argv
+HARD2-02	review	review sandbox command lines match the Python with and without setpriv	review_tests_wrap_matches_python
+HARD2-03	review	review Docker self-check fully ok (image ENV cleared)	review_tests_real_self_check_under_docker
+HARD2-04	review	timed-out review commands stop inside every sandbox incl. docker	review_tests_timed_out_commands_stop_inside_every_sandbox
+HARD2-05	review	TS docker argv expectations (env -i, --init -i)	review_tests_ts_unshare_and_docker_argv
+HARD2-06	tui	lexing work grows linearly (deterministic counter)	tui_marked_lex_work_grows_linearly
+HARD2-07	tui	O(log n) closing search equals the run walk	tui_marked_closing_search_matches_the_walk
+HARD2-08	sandbox	docker without setpriv: status kept, holder ends, killed client stops container	sandbox_escape_docker_without_setpriv_ties_the_container_to_its_client
+HARD2-09	acceptance	root-abort cancel waits for the async end record	acceptance_a56_yield_after_returns_a_handle_result_waits_cancel_stops_a_root_abort_cancels
+HARD2-10	acceptance	rpc client stop waits for a clean exit (120 s hang guard)	acceptance_a02_large_input_stays_in_the_kernel_and_the_model_sees_only_bounded_results
+CMP3-01	navigation	summarized navigation admitted at summary.deciding with branch_summary preparation, intent and commit_navigation boundary	session_core_navigation_journal_admits_a_summarized_navigation_at_deciding
+CMP3-02	navigation	branch summary commits under the target as the tip, label on the summary, result navigation/completed, preparation removed	session_core_navigation_journal_commits_the_summary_under_the_target
+CMP3-03	navigation	hook summary commits from deciding with its usage row; hook cancel ends declined	session_core_navigation_journal_hook_summary_and_decline
+CMP3-04	navigation	kill at navigation.ready_to_commit commits on reopen (label set); with cancel request ends aborted	session_core_navigation_journal_ready_to_commit_then_a_kill_commits
+CMP3-05	navigation	direct navigation commits tip and label and ends completed	session_core_navigation_journal_direct_navigation_commits_live
+CMP3-06	navigation	interrupted summary settles failed/interrupted, cancel-requested settles aborted, branch unchanged	session_core_navigation_journal_interrupted_summary_settles_without_moving
+CMP3-07	navigation	live navigation journal trace, events carry the operation id	cli_rpc_compaction_navigation_is_journaled_as_an_operation
+CMP3-08	extensions	session_before_tree cancel: "Navigation cancelled", isCompacting cleared, leaf unchanged, declined op (TS #3688)	cli_rpc_compaction_tree_hook_cancels_the_navigation
+CMP3-09	extensions	session_before_tree summary replaces the model's; session_tree reports new/old leaf, summaryEntry, fromExtension	cli_rpc_compaction_tree_hook_supplies_the_summary
+CMP3-10	extensions	session_before_tree customInstructions/replaceInstructions/label override the caller's	cli_rpc_compaction_tree_hook_overrides_instructions_and_label
+CMP3-11	extensions	abort during session_before_tree reaches the hook as notifications/cancelled, navigation aborted; prompt meanwhile refused with LaneBusy	cli_rpc_compaction_tree_hook_is_cancelled_by_abort
+CMP3-12	compaction	isCompacting true during session_compact (manual) and session_tree, false during manual session_compact_failed	cli_rpc_compaction_is_compacting_while_after_hooks_run
+CMP3-13	compaction	isCompacting true during an automatic compaction's session_compact_failed	cli_rpc_compaction_is_compacting_while_an_automatic_failure_hook_runs
+CMP3-14	tui	a hook-cancelled navigation shows "Navigation cancelled" as status, not an error	interactive_commands_tree_navigates_before_a_user_message
+CMP4-01	navigation	selected user message: tip to its parent, editorText answered, hook targetId is the selection, label on the selection (labelEntryId) or on the summary; current tip is a no-op; unknown entry "Entry X not found"	cli_rpc_compaction_navigation_resolves_a_selected_user_message
+CMP4-02	navigation	recovery of navigation.ready_to_commit labels labelEntryId, not the target	session_core_navigation_journal_labels_the_selected_entry_on_recovery
+CMP4-03	tui	/tree sends the selected entry id; the editor text comes from the navigation's answer	interactive_commands_tree_navigates_before_a_user_message
+CMP4-04	compaction	retryDelayMs (base*2^(n-1) capped) and normalizedRetryPolicy from settings retry (maxRetries+1, 1 when off)	session_core_compaction_summary_retry_policy_matches_the_harness
+CMP4-05	compaction	summary.retry_wait journal (usage row, nextAttempt, notBefore, errorMessage), attempt 2 with a fresh request; kill during wait settles failed/interrupted or aborted	session_core_compaction_retry_wait_journal_and_kill
+CMP4-06	navigation	branch summary retry_wait then attempt 2 commits; kill during wait settles failed/interrupted without moving	session_core_navigation_journal_retry_wait_then_retry_or_kill
+CMP4-07	compaction	manual compaction retries an Overloaded summary: full state trace, retry_scheduled/retry_start/retry_end	cli_rpc_compaction_manual_summary_retries_a_transient_error
+CMP4-08	compaction	kill during a live retry_wait settles failed/interrupted; abort during the wait ends aborted at once with no second request	cli_rpc_compaction_retry_wait_is_recoverable_and_abortable
+CMP4-09	compaction	branch summary and in-run threshold compaction retry	cli_rpc_compaction_branch_summary_and_run_compaction_retry
+CMP4-10	compaction	no retry for a non-transient error or with retry.enabled false	cli_rpc_compaction_summary_retry_needs_a_transient_error_and_retries_on
+CTXEXT2-01	cli/daemon	A signalled worker's task-journal writes are dropped from hand-over on; its running child is reattached and resent by the successor	cli_durable_a_signalled_worker_leaves_its_running_child_to_its_successor
+CTXEXT2-02	session-core/ctx	ctx.forget of a note still waiting for the boundary hides it (write withdrawn, requeued without its message)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane_and_is_observed_once_with_its_lane
+CTXEXT2-03	harness/session-core	Subagent lanes compact at threshold with TS default policy; ctx trims an answered large result instead; after compaction the request carries summary then kept notes/pins	acceptance_a52_a_subagent_lane_trims_then_compacts_and_keeps_its_notes
+CTXEXT2-04	session-core	commands/complete of the registering extension under its own name; null when none	acceptance_a25_the_session_lists_and_runs_extension_commands_for_the_client_tui
+CTXEXT2-05	interactive	extension command argument completions fetched off the UI thread and shown on arrival; never asked for built-ins	interactive_extension_commands_complete_arguments_off_the_ui_thread
+CTXEXT2-06	interactive	extension slash commands inserted right after /extension, before /mcp	interactive_extension_commands_sit_after_slash_extension_before_mcp
+CTXEXT2-07	cli	an extension command runs off the TUI link thread; a prompt completes meanwhile	cli_interactive_an_extension_command_does_not_hold_up_other_commands
+CTXEXT3-01	harness/compaction	Edits of entries a compaction keeps still apply after it; the summarizer sees edits applied	harness_chat_compaction_keeps_the_edits_of_kept_entries
+MODELS2-01	interactive	Ctrl+P nextModel via resolveModelScopeFromModels (globs, fuzzy, suffixes, claude-code, available order, errors)	interactive_next_model_matches_typescript
+MODELS2-02	cli	--models parsed but not forwarded to the session (native-command.ts)	cli_models_flag_is_parsed_but_not_forwarded_to_the_session
+MODELS2-03	session-core	stored catalog restore, legacy Radius import, update --models network refresh vs TS	session_core_model_refresh_matches_typescript
+MODELS2-04	session-core	pi.dev overlay needs a lastModified newer than the bundled data	session_core_stored_catalog_overlay_needs_a_newer_stamp
+MODELS2-05	cli	update --models without credentials succeeds and fetches nothing	cli_update_models_without_credentials_refreshes_nothing_and_succeeds
+MODELS2-06	cli	/login device-code flow for a models.json Radius provider (screens, auth.json, gateway requests)	cli_radius_device_code_login_like_ts
+MODELS2-07	cli	/login Esc while the code is shown	cli_radius_device_code_login_cancel_like_ts
+MODELS2-08	cli	login runner cancel stops polling and saves nothing	cli_tui_login_esc_stops_the_flow_and_saves_nothing
+MODELS2-09	cli	ultron auth check/print-api-key/print-bearer-token for Radius providers vs TS	cli_auth_for_radius_providers_matches_typescript
+MODELS2-10	ai	Radius browser login on a system-chosen callback port	ai_oauth_radius_browser_login_on_a_system_chosen_callback_port
+CMP5-01	compaction	AgentSession summarization_retry_scheduled / attempt_start / finished for manual, threshold and branch summaries; finished after an abort during the wait	cli_rpc_compaction_summary_retry_emits_agent_session_events
+CMP5-02	rpc	the summarization retry events reach the RPC client as AgentSession emits them, between compaction_start and compaction_end	cli_rpc_compaction_summary_retry_events_on_rpc
+CMP5-04	tui	lane summarization retry events become TUI events (scheduled, started with branchSummary or compaction reason, finished)	cli_interactive_summarization_retry_events_become_tui_events
+CMP5-05	tui	interactive-mode rendering of summarization retries (error line, countdown, indicators)	interactive_commands_summarization_retry_shows_like_interactive_mode
+MCPGW2-01	mcp/validation	prepareToolArguments on the gateway schema (null drop, coercion, TypeBox messages)	mcp_validation_prepare_tool_arguments_matches_typescript
+MCPGW2-02	mcp/validation	gateway parameters are TS's	mcp_validation_gateway_schema_is_the_typescript_one
+MCPGW2-03	mcp/js_json	V8 JSON.parse messages (positions, context, special strings)	mcp_validation_json_parse_messages_match_v8
+MCPGW2-04	mcp/gateway	invalid args string replies as TS	mcp_validation_gateway_reports_invalid_args_strings_as_typescript
+MCPGW2-05	mcp/ordering	death seen before call: failed restart	mcp_ordering_a_death_seen_before_the_call_reports_the_failed_restart
+MCPGW2-06	mcp/ordering	death not yet seen: cached tool list	mcp_ordering_a_death_not_yet_seen_reads_the_cached_tool_list
+MCPGW2-07	mcp/ordering	death during refresh keeps refresh failure	mcp_ordering_a_death_during_the_tool_refresh_keeps_the_refresh_failure
+MCPGW2-08	mcp/oauth	401, sign-in, refresh, logout, eager notice, auth.provider per request, credential file match TS	mcp_oauth_sign_in_refresh_and_sign_out_match_typescript
+MCPGW2-09	mcp/oauth	one refresh across processes	mcp_oauth_refreshes_once_when_several_processes_find_the_same_token_rejected
+MCPGW2-10	mcp/oauth	refresh saves new tokens	mcp_oauth_waits_for_a_running_refresh_to_save_the_new_tokens
+MCPGW2-11	mcp/oauth	issuer mismatch rejected	mcp_oauth_rejects_an_authorization_response_from_another_issuer
+MCPGW2-12	mcp/oauth	step-up keeps granted scope	mcp_oauth_keeps_the_granted_scope_when_the_server_asks_for_more
+MCPGW2-13	mcp/oauth	configured AS metadata URL	mcp_oauth_uses_the_configured_authorization_server_metadata_url
+MCPGW2-14	mcp/oauth	insufficient_scope needs sign-in	mcp_oauth_an_insufficient_scope_challenge_needs_sign_in
+MCPGW2-15	mcp/oauth	separate credentials per server name	mcp_oauth_store_keeps_separate_credentials_for_servers_sharing_a_url
+MCPGW2-16	mcp/oauth	legacy URL-keyed state taken over	mcp_oauth_store_moves_credentials_stored_by_url_to_the_first_server_that_loads_them
+MCPGW2-17	mcp/oauth	logout of legacy state	mcp_oauth_store_signs_out_of_credentials_stored_by_url
+MCPGW2-18	daemon	bridge: no client -> defaults, dropped	daemon_extension_ui_without_a_client_dialogs_take_defaults_and_notifications_drop
+MCPGW2-19	daemon	bridge: ordered requests, answers	daemon_extension_ui_a_serving_client_gets_requests_in_order_and_answers_them
+MCPGW2-20	daemon	bridge: timeout, cancel, grace	daemon_extension_ui_dialogs_honour_timeout_and_cancel_and_settle_once_the_client_leaves
+MCPGW2-21	daemon	bridge: expected client queue	daemon_extension_ui_an_expected_client_gets_what_was_queued_before_its_first_poll
+MCPGW2-22	daemon	bridge: expected client absent	daemon_extension_ui_an_expected_client_that_never_arrives_leaves_dialogs_with_defaults
+MCPGW2-23	interactive	/mcp runs in worker; dialogs in order	interactive_mcp_runs_in_the_worker_and_its_dialogs_are_answered_in_order
+MCPGW2-24	interactive	input answer/cancel; notify status	interactive_mcp_input_dialogs_answer_or_cancel_and_notices_show_in_the_status_line
+MCPGW2-25	interactive	/extension usage	interactive_extension_command_names_the_command
+MCPGW2-26	session-core	REPL tool args validated/coerced e2e	session_core_tool_arguments_are_validated_and_coerced_as_typescript_prepares_them
+MCPGW2-27	session-core	config errors reach client UI	session_core_mcp_configuration_errors_reach_the_clients_ui_when_the_session_starts
+MCPGW2-28	cli	worker /mcp list/run/menu + eager notice	cli_daemon_mcp_command_and_notices_reach_the_client
+MCPGW2-29	cli	--no-extensions leaves MCP out	cli_daemon_no_extensions_leaves_mcp_out
+MCPGW2-30	cli	RPC relays extension_ui_request	cli_rpc_mode_relays_mcp_notices_as_extension_ui_requests
+MCPGW2-31	cli	/mcp status and menu in tmux TUI	cli_interactive_mcp_status_and_menu_in_the_tui
+CMP6-01	ai	provider stream-error stopReason, errorMessage and request count match the TS providers over real HTTP (Anthropic SSE/HTTP, OpenAI completions/responses, Google, Mistral)	ai_stream_errors_match_typescript_over_http
+MCPGW3-01	mcp/validation	required (one error, first missing name in path) and enum checks, type errors not stopping other keywords, match TypeBox	mcp_validation_required_and_enum_match_typescript
+MCPGW3-02	daemon	buffered notifications dropped after the serving grace when no client polls	daemon_extension_ui_buffered_notifications_are_dropped_once_the_client_stops_polling
+MCPGW3-03	mcp/oauth	refresh lock renewed while held; a waiting process never takes it over mid-refresh	mcp_oauth_a_held_refresh_lock_is_renewed_and_not_taken_over
+MCPGW3-04	mcp/oauth	refreshes serialized per server, not across servers	mcp_oauth_refreshes_of_different_servers_do_not_wait_for_each_other
+MCPGW3-05	mcp/gateway	openBrowser launcher per platform as TS	mcp_gateway_open_browser_uses_the_platform_launcher_as_typescript
+MCPGW3-06	mcp/gateway	launcher detached, URL as one argument, no shell, missing launcher ignored	mcp_gateway_open_browser_passes_the_url_as_one_argument
+MCPGW4-02	mcp/formats	every TypeBox-registered format accepts and rejects as TS	mcp_validation_formats_match_typebox
+MCPGW4-03	mcp/formats	pattern as ECMAScript u-flag regex (\d \w \s \b ., lookaround, backrefs, \p{..}, \u{..}), message	mcp_validation_patterns_match_ecmascript
+MODELS3-01	ai	OpenRouter OAuth login (paste forms, callback, denial, exchange errors, refresh/toAuth) vs TS	ai_oauth_openrouter_replays_recorded_typescript_flows
+MODELS3-02	ai	OpenRouter: a paste during a claimed callback keeps the callback's single exchange	ai_oauth_openrouter_paste_after_a_claimed_callback_keeps_the_callbacks_exchange
+MODELS3-03	ai	Radius replay on a system-chosen callback port, no machine-wide lock	ai_oauth_xai_kimi_meta_radius_replay_recorded_typescript_flows
+MODELS3-04	cli	every TS account login has its handler (name, loginLabel); others refused	cli_tui_login_offers_every_typescript_account_login
+MODELS3-05	cli	Anthropic login through the TUI runner saves what TS returns	cli_tui_login_anthropic_saves_what_typescript_returns
+MODELS3-06	cli	OpenRouter login through the TUI runner saves what TS returns	cli_tui_login_openrouter_saves_what_typescript_returns
+MODELS3-07	cli	browser callback listens on the chosen port	cli_tui_login_browser_callback_listens_on_the_chosen_port
+MODELS3-08	cli	Anthropic login dialog (auth URL, paste prompt, Esc) like TS	cli_anthropic_account_login_dialog_like_ts
+MODELS3-09	cli	OpenAI Codex login method dialog like TS	cli_openai_codex_account_login_dialog_like_ts
+MODELS3-10	cli	GitHub Copilot enterprise prompt dialog like TS	cli_github_copilot_account_login_dialog_like_ts
+MODELS3-11	cli	OpenRouter login dialog like TS	cli_openrouter_account_login_dialog_like_ts
+MODELS3-12	cli	ultron auth for built-in/models.json providers incl. OAuth refresh of every built-in OAuth provider vs TS	cli_auth_for_builtin_and_models_json_providers_matches_typescript
+MODELS3-13	cli	/scoped-models selector, session scope for Ctrl+P, save, enable-all collapse, default model saved	cli_scoped_models_selector_and_cycling_like_ts
+MODELS4-01	model-auth	Kimi OAuth requests carry the stored token as Authorization: Bearer (no x-api-key), with models.json headers merged over it	session_core_kimi_oauth_requests_carry_the_bearer_header
+MODELS4-03	print-mode	ultron -p with Kimi OAuth passes preflight and prompt without an API key and sends the bearer	cli_kimi_oauth_print_mode_sends_the_bearer_header
+MODELS4-04	tui-scoped-models	refresh timeout shows "Model refresh timed out; showing cached models." (warning)	cli_scoped_models_refresh_timeout_says_so_like_ts
+MODELS4-06	delegation-usage	a cancelled task settles its open model reservation before its result is published	acceptance_a09_a_cancelled_task_settles_its_model_reservation_before_its_result_is_published
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

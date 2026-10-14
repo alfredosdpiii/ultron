@@ -2,6 +2,15 @@
 //! [`Link`], every command an operation of the session worker (crates/session-core `Op`), and the run's progress
 //! the transcript's lane-watch events translated to Pi's RPC events. New, switched, forked and cloned sessions are
 //! created by the server and re-attached, as TypeScript clients do.
+//!
+//! Supervision (Ultron Durable): while this process runs, its server generation restarts a session worker that
+//! crashes, attached or not (busy or detached work held). When RPC mode ends (stdin closed, a signal), the server
+//! releases the worker: a busy one (a run, running shell jobs or subagents, events waiting) keeps its work running
+//! detached and retires when it is done, but nothing supervises it any more, so a crash after that is not restarted.
+//! This is the TypeScript behaviour (`rpc-native.ts`: a released worker runs on alone, and a crashed one is only
+//! resumed by the next client, `ultron -c`). The session's durable runtime then resumes what was interrupted (pinned
+//! requests resent, cells reported interrupted, subagents reattached, and shell jobs that outlived the worker
+//! followed; a sandboxed job dies with its worker) when the next client attaches.
 
 use super::events::{LaneEvent, RpcEventTranslator};
 use super::{Input, Output, QueueKind, Reply, RpcSession};
@@ -19,7 +28,7 @@ use std::sync::mpsc::Sender;
 pub enum Event {
     /// A lane-watch event of the attached session.
     Watch(Value),
-    /// A `bash` command finished: its response, and the count of commands still running.
+    /// A `bash` or `compact` command finished: its response, and the count of commands still running.
     BashDone {
         reply: Reply,
         result: Result<Option<Value>, String>,
@@ -28,6 +37,46 @@ pub enum Event {
     /// A signal ended RPC mode: release the session (a busy worker keeps its work, detached; nothing is aborted,
     /// as leaving RPC mode is not an abort) and exit with this code.
     Signal(i32),
+    /// An extension dialog or notification of the worker, written as Pi's `extension_ui_request` line.
+    ExtensionUi(Value),
+}
+
+/// Extension dialogs and notifications from the worker reach this client as Pi's `extension_ui_request` lines
+/// (rpc-native.ts `uiLoop`); a different session starts again from its open dialogs.
+fn serve_extension_ui(
+    link: crate::link::LinkHandle,
+    tx: Sender<Input<Event>>,
+    stop: Arc<std::sync::atomic::AtomicBool>,
+) {
+    std::thread::spawn(move || {
+        let (mut cursor, mut session): (Option<u64>, String) = (None, String::new());
+        while !stop.load(Ordering::SeqCst) {
+            if link.session_id() != session {
+                session = link.session_id();
+                cursor = None;
+            }
+            let connection = link.connection();
+            // Short polls: a poll held open in the worker would keep it from retiring after this client is gone.
+            let polled = connection
+                .session_target()
+                .and_then(|target| connection.call(target, "ultron.extension-ui", "poll", json!([cursor, 0])));
+            match polled {
+                Ok(Some(result)) => {
+                    cursor = result["cursor"].as_u64();
+                    for item in result["requests"].as_array().into_iter().flatten() {
+                        if tx
+                            .send(Input::Event(Event::ExtensionUi(item["request"].clone())))
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                }
+                _ => cursor = None,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(250));
+        }
+    });
 }
 
 pub struct Remote<'a> {
@@ -41,7 +90,10 @@ pub struct Remote<'a> {
     run_id: Option<String>,
     /// The run that was in progress when the link lost its worker or server.
     lost_run: Option<String>,
+    /// Commands answered when they end (`bash`, `compact`) still running.
     bash: Arc<AtomicUsize>,
+    /// Ends the extension UI relay.
+    ui_stop: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// The session id of a `switch_session` selector: an id, or a session file whose header names one.
@@ -77,7 +129,10 @@ impl<'a> Remote<'a> {
                 let _ = watch.send(Input::Event(Event::Watch(event)));
             }),
         )?;
+        let ui_stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        serve_extension_ui(link.handle(), tx.clone(), ui_stop.clone());
         Ok(Remote {
+            ui_stop,
             env,
             parsed,
             link: Some(link),
@@ -143,6 +198,10 @@ impl RpcSession for Remote<'_> {
                 }
                 std::process::exit(code);
             }
+            Event::ExtensionUi(request) => {
+                out.emit(&request);
+                return;
+            }
         };
         // A run its worker lost ends for RPC clients as failed when the link rejoins (recovery settled it), unless
         // its end, or another run, was seen meanwhile.
@@ -192,6 +251,7 @@ impl RpcSession for Remote<'_> {
     }
 
     fn close(&mut self) {
+        self.ui_stop.store(true, Ordering::SeqCst);
         if let Some(link) = self.link.take() {
             link.close(self.parsed.no_session);
         }
@@ -284,11 +344,26 @@ impl RpcSession for Remote<'_> {
         .map(drop)
     }
 
-    fn compact(&mut self, custom_instructions: Option<&str>, _out: &Output) -> Result<Value, String> {
-        self.op(Op::Compact {
+    fn compact(&mut self, custom_instructions: Option<&str>, reply: Reply) -> Result<(), String> {
+        let connection = self.link()?.connection();
+        let session = connection.session_target().map_err(|e| e.to_string())?;
+        let op = Op::Compact {
             instructions: custom_instructions.map(str::to_string),
-        })
-        .map(Option::unwrap_or_default)
+        };
+        let request = connection
+            .start(session, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]))
+            .map_err(|e| e.to_string())?;
+        let (pending, tx) = (self.bash.clone(), self.tx.clone());
+        pending.fetch_add(1, Ordering::SeqCst);
+        std::thread::spawn(move || {
+            let result = connection
+                .wait(&request)
+                .map(|data| Some(data.unwrap_or_default()))
+                .map_err(crate::link::fail);
+            // The command loop answers it: that thread holds the process's stdout.
+            let _ = tx.send(Input::Event(Event::BashDone { reply, result, pending }));
+        });
+        Ok(())
     }
 
     fn set_auto_compaction(&mut self, enabled: bool) {
@@ -397,7 +472,51 @@ impl RpcSession for Remote<'_> {
     }
 
     fn commands(&self) -> Result<Vec<Value>, String> {
-        Err("get_commands is not implemented in the Rust build yet".into())
+        Ok(self
+            .op(Op::Commands)?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default())
+    }
+
+    fn inspect(&mut self, request: &str, payload: Value) -> Result<Value, String> {
+        Ok(self
+            .op(Op::Inspect {
+                request: request.into(),
+                payload,
+            })?
+            .unwrap_or(Value::Null))
+    }
+
+    fn extension_ui_response(&mut self, id: &str, answer: Value) {
+        if let Some(link) = &self.link {
+            let _ = link.call("ultron.extension-ui", "respond", json!([id, answer]));
+        }
+    }
+
+    fn export_html(&mut self, output_path: Option<&str>) -> Result<String, String> {
+        // The session's active branch as the worker holds it (`snapshot().transcript`), under its header's creation
+        // time; the page's working directory is this process's, as in rpc-native.ts.
+        let described = self.op(Op::Describe)?.unwrap_or_default();
+        let id = described["sessionId"].as_str().unwrap_or_default().to_string();
+        let created_at = described["sessionFile"]
+            .as_str()
+            .and_then(|file| crate::session::read_first_line(std::path::Path::new(file)).ok())
+            .and_then(|line| serde_json::from_str::<Value>(&line).ok())
+            .and_then(|header| header["createdAt"].as_f64())
+            .unwrap_or_else(|| session_core::lane::now_ms() as f64);
+        let entries = described["entries"].as_array().cloned().unwrap_or_default();
+        let cwd = self.env.cwd.display().to_string();
+        let data = crate::export_html::native_entries_data(&id, &cwd, created_at, &entries);
+        crate::export_html::write_native_session_html(&data, &id, output_path, self.env)
+    }
+
+    fn goal(&mut self, args: &str) -> Result<String, String> {
+        let reply = self.op(Op::Goal { args: args.to_string() })?;
+        Ok(reply
+            .as_ref()
+            .and_then(Value::as_str)
+            .unwrap_or("No goal reply")
+            .to_string())
     }
 }
 

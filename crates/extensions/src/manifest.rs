@@ -254,17 +254,17 @@ pub fn discover(
     let mut collector = Collector {
         out: Discovery::default(),
     };
+    // Pi's precedence order (`resourcePrecedenceRank`): project entries, the project's directory, profile entries,
+    // the profile's directory; a manifest found twice keeps its first place.
     let project_base = cwd.join(CONFIG_DIR_NAME);
     if project_trusted {
         for entry in settings_entries(project) {
             collector.settings_entry(&entry, &project_base, home);
         }
+        collector.scan_dir(&project_base.join("extensions"));
     }
     for entry in settings_entries(global) {
         collector.settings_entry(&entry, agent_dir, home);
-    }
-    if project_trusted {
-        collector.scan_dir(&project_base.join("extensions"));
     }
     collector.scan_dir(&agent_dir.join("extensions"));
     collector.out

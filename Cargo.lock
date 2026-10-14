@@ -6,6 +6,7 @@ version = 4
 name = "acceptance"
 version = "0.1.0"
 dependencies = [
+ "ai",
  "cli",
  "config",
  "daemon",
@@ -15,10 +16,25 @@ dependencies = [
  "hindsight",
  "host",
  "inference",
+ "interactive",
  "kernel",
  "kernel-apis",
  "serde_json",
+ "services",
  "session-core",
+ "session-file",
+ "session-journal",
+ "tempfile",
+]
+
+[[package]]
+name = "acceptance-gate"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "serde",
+ "serde_json",
+ "sha2",
  "tempfile",
 ]
 
@@ -55,6 +71,7 @@ dependencies = [
  "crc32fast",
  "getrandom 0.4.3",
  "indexmap",
+ "model-scope",
  "reqwest",
  "rustix",
  "serde",
@@ -242,6 +259,7 @@ dependencies = [
  "agent",
  "ai",
  "config",
+ "delegation",
  "getrandom 0.4.3",
  "kernel",
  "kernel-apis",
@@ -271,6 +289,7 @@ dependencies = [
  "daemon",
  "delegation",
  "extensions",
+ "hindsight",
  "host",
  "indexmap",
  "inference",
@@ -282,6 +301,7 @@ dependencies = [
  "protocol",
  "regex",
  "resources",
+ "review",
  "ring",
  "rustix",
  "sandbox",
@@ -460,6 +480,7 @@ dependencies = [
  "inference",
  "kernel",
  "loki",
+ "mcp",
  "nix",
  "protocol",
  "resources",
@@ -1060,6 +1081,9 @@ dependencies = [
  "icu_properties",
  "icu_provider",
  "smallvec",
+ "utf16_iter",
+ "utf8_iter",
+ "write16",
  "zerovec",
 ]
 
@@ -1170,6 +1194,7 @@ dependencies = [
 name = "inference"
 version = "0.1.0"
 dependencies = [
+ "agent",
  "ai",
  "getrandom 0.4.3",
  "host",
@@ -1185,8 +1210,10 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "fancy-regex 0.19.2",
+ "model-scope",
  "rustix",
  "serde_json",
+ "session-file",
  "tui",
 ]
 
@@ -1385,11 +1412,18 @@ checksum = "4050469837a6ff301cd14c1f8f24f88549e6d548f24f64e2148eb0f72cebc51f"
 name = "mcp"
 version = "0.1.0"
 dependencies = [
+ "ai",
  "base64",
+ "config",
+ "fancy-regex 0.19.2",
  "getrandom 0.4.3",
+ "icu_normalizer",
+ "regex",
  "reqwest",
  "rustix",
  "serde_json",
+ "session-file",
+ "sha2",
  "tempfile",
  "url",
 ]
@@ -1430,6 +1464,10 @@ dependencies = [
  "wasi",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "model-scope"
+version = "0.1.0"
 
 [[package]]
 name = "moxcms"
@@ -1865,12 +1903,16 @@ dependencies = [
 name = "review"
 version = "0.1.0"
 dependencies = [
+ "ai",
  "indexmap",
+ "inference",
+ "kernel",
  "regex",
  "ring",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -2148,6 +2190,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "services"
+version = "0.1.0"
+dependencies = [
+ "delegation",
+ "fancy-regex 0.19.2",
+ "kernel",
+ "kernel-apis",
+ "serde_json",
+ "session-journal",
+ "tempfile",
+]
+
+[[package]]
 name = "session-core"
 version = "0.1.0"
 dependencies = [
@@ -2166,9 +2221,11 @@ dependencies = [
  "kernel",
  "kernel-apis",
  "loki",
+ "mcp",
  "resources",
  "sandbox",
  "serde_json",
+ "services",
  "session-file",
  "session-journal",
  "tempfile",
@@ -2645,6 +2702,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "utf16_iter"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8232dd3cdaed5356e0f716d285e4b40b932ac434100fe9b7e0e8e935b9e6246"
+
+[[package]]
 name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3003,6 +3066,12 @@ dependencies = [
  "wayland-protocols",
  "wayland-protocols-wlr",
 ]
+
+[[package]]
+name = "write16"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d1890f4022759daae28ed4fe62859b1236caebfc61ede2f63ed4e695f3f6d936"
 
 [[package]]
 name = "writeable"

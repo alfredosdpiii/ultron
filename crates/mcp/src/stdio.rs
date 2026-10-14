@@ -20,6 +20,9 @@ const DEFAULT_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 /// How long a server gets to exit on its own after stdin closes, before it is sent SIGTERM.
 const STDIN_CLOSE_GRACE: Duration = Duration::from_millis(500);
 
+/// How long the close of an exited server waits for the rest of its stderr.
+const STDERR_DRAIN_GRACE: Duration = Duration::from_secs(2);
+
 #[derive(Clone, Default)]
 pub struct StdioOptions {
     pub command: String,
@@ -158,10 +161,14 @@ impl Transport for StdioTransport {
         state.stdin = child.stdin.take();
         drop(state);
 
+        // The stdout reader reports the close only after stderr ended (or a grace period passed, when a child of
+        // the server keeps it open), so the stderr tail of a server that died is complete.
+        let (stderr_done, stderr_ended) = std::sync::mpsc::channel::<()>();
         if let Some(mut stderr) = child.stderr.take() {
             let buffer = self.stderr.clone();
             let max = self.options.max_stderr_bytes.unwrap_or(DEFAULT_MAX_STDERR_BYTES);
             std::thread::spawn(move || {
+                let _done = stderr_done;
                 let mut chunk = [0u8; 8192];
                 while let Ok(n @ 1..) = stderr.read(&mut chunk) {
                     let mut buffer = lock(&buffer);
@@ -197,6 +204,7 @@ impl Transport for StdioTransport {
                 }
             }
             let _ = child.wait();
+            let _ = stderr_ended.recv_timeout(STDERR_DRAIN_GRACE);
             if !String::from_utf8_lossy(&buffer).trim().is_empty() {
                 sink(Incoming::Error(
                     "MCP stdio server closed with an incomplete JSON-RPC message".into(),
@@ -221,7 +229,14 @@ impl Transport for StdioTransport {
         stdin
             .write_all(payload.as_bytes())
             .and_then(|()| stdin.flush())
-            .map_err(|e| Error::Other(e.to_string()))
+            .map_err(|e| {
+                // The server exited before reading: its close is reported as the connection closing, as Node does.
+                if e.kind() == std::io::ErrorKind::BrokenPipe {
+                    Error::closed()
+                } else {
+                    Error::Other(e.to_string())
+                }
+            })
     }
 
     fn close(&self) {

@@ -353,7 +353,7 @@
    "cccccccccccccccccccccccccccccccccccccccccccccccccc"
   ],
   [
-   "home/guides/mine.md",
+   "fakehome/guides/mine.md",
    "Home guide."
   ]
  ],
@@ -669,7 +669,7 @@
     "Reviewer guidance from the person this review is for. Apply it: it says what matters in this\ncodebase and how to judge it. It is private: never quote it, name it, or refer to it or to its existence in\nanything you write; state every finding in your own words, from the code.\n\nHome guide.",
     [
      "mine.md",
-     "<root>/home/guides/mine.md"
+     "<root>/fakehome/guides/mine.md"
     ]
    ]
   },
@@ -685,7 +685,7 @@
     "Reviewer guidance from the person this review is for. Apply it: it says what matters in this\ncodebase and how to judge it. It is private: never quote it, name it, or refer to it or to its existence in\nanything you write; state every finding in your own words, from the code.\n\nHome guide.",
     [
      "mine.md",
-     "<root>/home/guides/mine.md"
+     "<root>/fakehome/guides/mine.md"
     ]
    ]
   },

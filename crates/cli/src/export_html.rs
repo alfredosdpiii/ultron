@@ -392,6 +392,41 @@ fn native_session_data(path: &Path) -> Result<Value, String> {
     }))
 }
 
+/// `toSessionData` of native-export.ts: the session data of native entries (active branch, oldest first), as the
+/// RPC `export_html` command renders a running session's transcript.
+pub fn native_entries_data(id: &str, cwd: &str, created_at: f64, entries: &[Value]) -> Value {
+    let entries: Vec<Value> = entries
+        .iter()
+        .filter_map(Value::as_object)
+        .map(to_session_entry)
+        .filter(|entry| !entry.is_null())
+        .collect();
+    let tip_id = path_tip(&entries);
+    json!({
+        "header": {"type": "session", "version": 3, "id": id, "timestamp": iso(Some(&json!(created_at))), "cwd": cwd},
+        "entries": entries,
+        "leafId": tip_id,
+    })
+}
+
+/// `writeNativeSessionHtml`: render `data` to `output` (normalized; none: `ultron-session-<id>.html`), relative to
+/// the process's working directory; returns the path as written.
+pub fn write_native_session_html(
+    data: &Value,
+    id: &str,
+    output: Option<&str>,
+    env: &crate::Env,
+) -> Result<String, String> {
+    let target = match output {
+        Some(out) if !out.is_empty() => config::paths::expand_tilde(out, &env.home).display().to_string(),
+        _ => format!("ultron-session-{id}.html"),
+    };
+    let html = generate_html(data, (env.var)("COLORFGBG").as_deref());
+    std::fs::write(env.cwd.join(&target), html)
+        .map_err(|e| crate::usage::log::io_message(&e, "open", Path::new(&target)))?;
+    Ok(target)
+}
+
 fn path_tip(entries: &[Value]) -> Value {
     entries.last().and_then(|e| e.get("id")).cloned().unwrap_or(Value::Null)
 }

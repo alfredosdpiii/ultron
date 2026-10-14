@@ -1,14 +1,11 @@
-//! A56 (partial): completion is delivered without polling.
-//! Ported from packages/coding-agent/test/ultron-async-events.test.ts (the event text and the off switch) and from
-//! packages/coding-agent/test/ultron-async-cli.test.ts (a subagent's completion re-invokes the idle root), end to
-//! end through the `ultron` binary in RPC mode against a scripted provider.
+//! A56: completion is delivered without polling.
+//! Ported from packages/coding-agent/test/ultron-async-events.test.ts (the event text and the off switch; the
+//! dispatcher's delivery rules are in crates/session-core/tests/async_events.rs) and from
+//! packages/coding-agent/test/ultron-async-cli.test.ts (a subagent's completion re-invokes the idle root; the job
+//! cases are in a56_async_cli.rs), end to end through the `ultron` binary in RPC mode against a scripted provider.
 //!
 //! The `child_done` summary leads with the task definition and the verdict tag, as session-worker.ts `taskEvent`
-//! writes it (`rlm-child@1: [unverified] child found 3 files`, the TS test's literal). Not ported: every job-based case (no `job_done` events: `host::Host` reports no job ends),
-//! the dispatcher's turn budget, cost cap and chain cap (`ULTRON_MAX_TOTAL_TURNS`, max event runs), steering a
-//! running turn and reclaiming an unconsumed steer, abort semantics for jobs, child-lane event routing, the event as
-//! an `ultron-runtime-event` custom message (Rust appends a user message), and the prompt-cache prefix and collapse
-//! cases.
+//! writes it (`rlm-child@1: [unverified] child found 3 files`, the TS test's literal).
 
 mod common;
 
@@ -104,20 +101,19 @@ fn script(order: &Order, request: &Request) -> Reply {
     Reply::Text("DELEGATED".into())
 }
 
-fn agent_events(events: &[serde_json::Value], kind: &str) -> usize {
-    events.iter().filter(|e| e["type"] == kind).count()
-}
-
 #[test]
-fn acceptance_a56_child_done_event_reinvokes_the_idle_root_ported_part() {
+fn acceptance_a56_child_done_event_reinvokes_the_idle_root() {
     let order = Arc::new(Order::default());
     let provider = Provider::start(child_script(&order));
     let install = Install::new(&provider);
     let mut client = install.rpc(&["--no-session"], &[]);
-    let events = client
+    client
         .prompt_and_wait("PARENT: delegate the count", common::HANG)
         .unwrap();
-    // The child's end continued the run: the root answered the event after its own turn ended with DELEGATED.
+    // The turn ends with DELEGATED; the child's end re-invokes the idle root as a run of its own.
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("DELEGATED"));
+    client.mark();
+    client.wait_for(&|l| l["type"] == "agent_end", common::HANG).unwrap();
     assert_eq!(
         client.get_last_assistant_text().unwrap().as_deref(),
         Some("ROOT GOT rlm-child@1: [unverified] child found 3 files")
@@ -142,9 +138,24 @@ fn acceptance_a56_child_done_event_reinvokes_the_idle_root_ported_part() {
         event.contains(&format!("fetch=\"await rlm.collect([&quot;{id}&quot;])\"")),
         "{event}"
     );
-    // Nothing loops: one settled run, no further requests (a short settle: a slow machine can only miss a loop).
-    assert_eq!(agent_events(&events, "agent_settled"), 1);
-    std::thread::sleep(Duration::from_millis(1500));
+    // RPC clients see the event as a Pi custom message.
+    let messages = client.get_messages().unwrap();
+    assert!(
+        messages
+            .iter()
+            .any(|m| m["role"] == "custom" && m["customType"] == "ultron-runtime-event"),
+        "{messages:#?}"
+    );
+    // Nothing loops: two runs, no further requests once the session is idle.
+    common::wait_until("the session is idle", || {
+        client
+            .get_state()
+            .is_ok_and(|s| s["isStreaming"] == false && s["pendingMessageCount"] == 0)
+    });
+    assert_eq!(
+        client.transcript.iter().filter(|l| l["type"] == "agent_start").count(),
+        2
+    );
     assert_eq!(provider.requests().len(), 4);
     let (_, code) = client.finish(common::HANG);
     assert_eq!(code, Some(0));

@@ -4,17 +4,12 @@
 //! shared pool decides deterministically which frames run. Code-free frames that name no model take
 //! ULTRON_RLM_FRAME_MODEL, else `rlm.frameModel`; `rlm.frameThinking` is the default thinking level.
 
-use super::{
-    Budget, DEFAULT_REPAIRS, DEFAULT_SCALAR_REPAIRS, DEFAULT_TIMEOUT_MS, Frame, Inference, Kind, Ledger, MAX_DEPTH,
-    MAX_REPAIRS, MAX_SAFE_INTEGER, MAX_TASK_CHARS, MAX_TIMEOUT_MS, Options, Outcome, THINKING_LEVELS, fields,
-    is_model_ref, is_plain_type, js_len, js_normalize, js_trim, lock, observation, optional_integer, schema, trace,
-};
+use super::{Inference, MAX_SAFE_INTEGER, fields, is_model_ref, js_normalize, js_trim, optional_integer};
 use kernel::{HostHandler, Signal};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 pub const DEFAULT_MAP_TOKENS: u64 = 500_000;
 const MAX_MAP_FRAMES: usize = 10_000;
@@ -146,53 +141,10 @@ impl Frames {
             return Err(format!("rlm.map takes at most {MAX_MAP_FRAMES} frames"));
         }
         let concurrency = optional_integer(payload.get("concurrency"), "concurrency", 1, MAX_CONCURRENCY)?.unwrap_or(8);
-        let contract = payload
-            .get("contract")
-            .filter(|c| !c.is_null())
-            .cloned()
-            .map(js_normalize);
-        if let Some(contract) = &contract {
-            schema::validate_schema(contract, "$.contract")?;
-            if let Some(at) = schema::unchecked_keyword(contract, "$.contract") {
-                return Err(format!("{at}: this contract keyword is not checked by this host yet"));
-            }
-        }
-        let empty = Map::new();
-        let budget = match payload.get("budget") {
-            None | Some(Value::Null) => &empty,
-            Some(Value::Object(budget)) => budget,
-            Some(_) => return Err("budget must be an object".into()),
-        };
-        fields(budget, &["calls", "tokens", "depth"])?;
-        let calls = optional_integer(budget.get("calls"), "budget.calls", 0, MAX_SAFE_INTEGER)?;
-        let tokens = optional_integer(budget.get("tokens"), "budget.tokens", 0, MAX_SAFE_INTEGER)?;
-        let depth = optional_integer(budget.get("depth"), "budget.depth", 1, MAX_DEPTH)?.unwrap_or(1);
-        if !payload.get("model").is_none_or(Value::is_null)
-            && !payload.get("model").and_then(Value::as_str).is_some_and(is_model_ref)
-        {
-            return Err("model must be provider/model".into());
-        }
-        let max_repairs = optional_integer(payload.get("max_repairs"), "max_repairs", 0, MAX_REPAIRS)?.unwrap_or(
-            if contract
-                .as_ref()
-                .is_some_and(|c| is_plain_type(c, &["string", "integer", "number", "boolean", "null"]))
-            {
-                DEFAULT_SCALAR_REPAIRS
-            } else {
-                DEFAULT_REPAIRS
-            },
-        );
-        let timeout = optional_integer(payload.get("timeout_ms"), "timeout_ms", 1, MAX_TIMEOUT_MS)?;
-        let given = payload.get("thinking").filter(|t| !t.is_null());
-        if given.is_some_and(|t| !t.as_str().is_some_and(|t| THINKING_LEVELS.contains(&t))) {
-            return Err(format!("thinking must be one of {}", THINKING_LEVELS.join(", ")));
-        }
         self.defaults(payload);
-        let model = payload.get("model").and_then(Value::as_str).map(str::to_string);
-        let thinking = payload.get("thinking").and_then(Value::as_str).map(str::to_string);
-        let default_tokens = tokens.is_none();
-        let tokens = tokens.or_else(|| Some(self.default_map_tokens()));
-        if !self.inference.views(payload.get("prefix"))?.is_empty() {
+        let inference = &self.inference;
+        let (options, admission) = inference.options(payload, Some(self.default_map_tokens()))?;
+        if !inference.views(payload.get("prefix"), 1)?.is_empty() {
             return Err(
                 "rlm.map's shared_prefix is not supported by this host yet; pass the shared context per frame".into(),
             );
@@ -201,65 +153,40 @@ impl Frames {
         let mut requests = Vec::new();
         for item in &items {
             let item = item.as_object().ok_or("frame must be an object")?;
-            let task = item
-                .get("task")
-                .and_then(Value::as_str)
-                .filter(|task| !js_trim(task).is_empty())
-                .ok_or("task must be a nonempty string")?;
-            if js_len(task) > MAX_TASK_CHARS {
-                return Err(format!(
-                    "task exceeds {MAX_TASK_CHARS} characters; pass data as context"
-                ));
-            }
-            requests.push((task, self.inference.views(item.get("context"))?));
+            let task = Inference::task_of(item)?;
+            requests.push((task, inference.views(item.get("context"), options.depth)?));
         }
-        if depth > 1 {
+        if options.depth > 1 && !inference.session.has_tasks() {
             return Err(format!(
-                "budget depth {depth} needs frames that run code (the rlm tool), which this host does not run yet"
+                "budget depth {} needs frames that run code (the rlm tool), which this host does not run yet",
+                options.depth
             ));
         }
-
-        let mut ledger = Ledger::default();
-        let budget = Budget {
-            id: trace::uuid("budget"),
-            node: ledger.add(None, calls, tokens),
-            depth,
-            default_tokens,
-        };
+        let session = &inference.session;
+        let options = Arc::new(options);
+        let budget = Arc::new(session.budget(&admission));
         // Each frame's first call is claimed in order at admission, so the shared pool decides deterministically
         // which frames run.
-        let frames: Vec<(Mutex<Frame>, bool)> = requests
+        let frames: Vec<_> = requests
             .into_iter()
             .map(|(task, views)| {
-                let mut frame = Frame::new(&mut ledger, &budget, task, views);
-                frame.kind = "map";
-                frame.batch = items.len();
-                let held = ledger.hold(budget.node, Kind::Calls, 1);
-                (Mutex::new(frame), held)
+                session.admit(
+                    &budget,
+                    &options,
+                    &inference.engine,
+                    &admission,
+                    task,
+                    views,
+                    "map",
+                    items.len(),
+                )
             })
             .collect();
-        let options = Options {
-            contract,
-            max_repairs,
-            thinking,
-            timeout: Duration::from_millis(timeout.unwrap_or(DEFAULT_TIMEOUT_MS)),
-        };
-        let ledger = Mutex::new(ledger);
-        let outcomes: Vec<Mutex<Option<Outcome>>> = frames.iter().map(|_| Mutex::new(None)).collect();
         // Up to `concurrency` workers take frames in order; concurrent frames' holds shrink each other's tranches.
         let next = AtomicUsize::new(0);
         let worker = || {
-            loop {
-                let at = next.fetch_add(1, Ordering::SeqCst);
-                let Some((frame, held)) = frames.get(at) else { break };
-                let mut frame = lock(frame);
-                let outcome = self
-                    .inference
-                    .run_frame(&ledger, &mut frame, *held, model.as_deref(), &options, signal);
-                let outcome = self
-                    .inference
-                    .finish(&ledger, &budget, &frame, &options, model.as_deref(), outcome);
-                *lock(&outcomes[at]) = Some(outcome);
+            while let Some(frame) = frames.get(next.fetch_add(1, Ordering::SeqCst)) {
+                session.run_frame(frame, &inference.lane, signal);
             }
         };
         let workers = (concurrency as usize).min(frames.len());
@@ -269,27 +196,18 @@ impl Frames {
             }
             worker();
         });
-        // Observations once every frame is done (their `remaining` is the pool's final state).
-        let mut ledger = lock(&ledger);
-        let mut results = Vec::new();
         let mut usage = (0, 0, 0.0);
-        for ((frame, _), outcome) in frames.iter().zip(outcomes) {
-            let frame = lock(frame);
-            let outcome = outcome.into_inner().unwrap_or_else(|poisoned| poisoned.into_inner());
-            let outcome = outcome.unwrap_or_else(|| Outcome::Error("frame did not run".into()));
-            results.push(observation(&mut ledger, &frame, depth, outcome));
-            let measured = frame.measured;
-            usage = (usage.0 + measured.0, usage.1 + measured.1, usage.2 + measured.2);
-        }
-        let mut reply = budget.snapshot(&ledger);
-        reply["remaining"] = json!({
-            "calls": ledger.available(budget.node, Kind::Calls),
-            "tokens": ledger.available(budget.node, Kind::Tokens),
-            "depth": depth,
-        });
+        let results: Vec<Value> = frames
+            .iter()
+            .map(|frame| {
+                let measured = session.measured(frame);
+                usage = (usage.0 + measured.0, usage.1 + measured.1, usage.2 + measured.2);
+                session.observation(frame)
+            })
+            .collect();
         Ok(json!({
             "results": results,
-            "budget": reply,
+            "budget": session.budget_reply(&budget),
             "usage": js_normalize(json!({"input_tokens": usage.0, "output_tokens": usage.1, "cost": usage.2})),
         }))
     }

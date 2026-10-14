@@ -1,15 +1,16 @@
-//! A51 (partial): after 20 completed tasks the root's next request stays bounded (results collapse on return by
-//! context edit) while `agents.result` still returns full values.
-//! Ported from packages/coding-agent/test/ultron-context-control.test.ts: the three cases the manifest names (edits
+//! A51: after 20 completed tasks the root's next request stays bounded (results collapse on return by context
+//! edit) while `agents.result` still returns full values.
+//! Ported from packages/coding-agent/test/ultron-a51-collapse-on-return.test.ts through the `ultron` binary over RPC
+//! with the scripted provider: each root cell invokes `rlm-child@1` and prints its 4 KB value; once the model has
+//! answered after a cell's output the root lane collapses it to one line per task, so request size stops growing,
+//! and the last cell fetches all 20 values in full through the journal.
+//! Also from packages/coding-agent/test/ultron-context-control.test.ts: the three cases the manifest names (edits
 //! keep tool calls and results paired; collapse lines), with literal expectations, over
 //! `kernel_apis::context_control`; the guide line is checked in the system prompt the `ultron` binary sends.
-//! Not ported: ultron-a51-collapse-on-return.test.ts needs `agents.invoke` with the `rlm-child@1` definition and
-//! `agents.result` (no definition registry in Rust), and `ContextControl` is not wired into the session's lanes
-//! (crates/session-core/src/compose.rs), so nothing collapses a cell output in a live run.
 
 mod common;
 
-use common::{Install, Provider, Reply, stdout_of};
+use common::{HANG, Install, Provider, Reply, Request, stdout_of};
 use kernel_apis::context_control::{
     CONTEXT_EDIT_CUSTOM_TYPE, CONTEXT_OMITTED_CUSTOM_TYPE, CONTEXT_OMITTED_TOOL_RESULT_TEXT, TaskLine,
     apply_context_edits, collapsed_cell_text, message_text, task_line,
@@ -133,4 +134,105 @@ fn acceptance_a51_collapse_lines_one_per_task_with_random_keys_hidden() {
     assert_eq!(stdout_of(&install.prompt("A51 guide", &[])), "OK\n");
     let system = provider.roots()[0].system();
     assert!(system.contains("`ctx` edits your view of your own context (`ctx.history()`, `ctx.forget`"));
+}
+
+const TASKS: usize = 20;
+const VALUE_BYTES: usize = 4000;
+const ROOT_PROMPT: &str = "A51: run twenty tasks and keep going";
+
+/// A child's 4 KB answer, distinct per task so a leak of any one of them is visible.
+fn child_value(index: usize) -> String {
+    format!("RESULT_{index}_")
+        .repeat(VALUE_BYTES)
+        .chars()
+        .take(VALUE_BYTES)
+        .collect()
+}
+
+/// The task index a child's request is for (`CHILD <n>` in its prompt).
+fn child_index(request: &Request) -> Option<usize> {
+    request.users().iter().find_map(|user| {
+        let rest = &user[user.find("CHILD ")? + "CHILD ".len()..];
+        rest.split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()
+    })
+}
+
+fn is_root(request: &Request) -> bool {
+    request.users().iter().any(|user| user == ROOT_PROMPT)
+}
+
+fn a51_script(request: &Request) -> Reply {
+    if let Some(index) = child_index(request) {
+        return Reply::Text(child_value(index));
+    }
+    if !is_root(request) {
+        return Reply::Text("unexpected".into());
+    }
+    // The root's turn: the cells it already ran. Each cell has its own call id, as a real model's would.
+    let turn = request.tool_results().len();
+    let call = format!("call_a51_{turn}");
+    if turn < TASKS {
+        return Reply::RlmCall(
+            call,
+            format!(
+                "r{turn} = await agents.invoke(\"rlm-child@1\", {{\"prompt\": \"CHILD {turn}\"}}, key=\"a51-{turn}\")\nprint(r{turn})"
+            ),
+        );
+    }
+    if turn == TASKS {
+        return Reply::RlmCall(
+            call,
+            [
+                "tasks = [t for t in (await agents.tasks())[\"tasks\"] if t[\"definition\"] == \"rlm-child@1\"]",
+                "values = [await agents.result(t['id']) for t in tasks]",
+                "print('FULL', len(values), sum(len(v['value']) for v in values), sorted(v['value'][:12] for v in values)[:2])",
+            ]
+            .join("\n"),
+        );
+    }
+    Reply::Text("A51_DONE".into())
+}
+
+#[test]
+fn acceptance_a51_twenty_completed_tasks_keep_the_next_request_bounded_and_values_full_through_agents_result() {
+    let provider = Provider::start(a51_script);
+    let install = Install::new(&provider);
+    let mut client = install.rpc(&["--no-session"], &[]);
+    client.prompt_and_wait(ROOT_PROMPT, HANG).unwrap();
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("A51_DONE"));
+    let messages = client.get_messages().unwrap();
+    let (_, code) = client.finish(HANG);
+    assert_eq!(code, Some(0));
+
+    let roots: Vec<Request> = provider.requests().into_iter().filter(is_root).collect();
+    assert_eq!(roots.len(), TASKS + 2);
+    let sizes: Vec<usize> = roots.iter().map(|request| request.raw.len()).collect();
+    let base = sizes[0];
+    // Without collapse every request would carry every earlier 4 KB value (the last one over 80 KB more). With it a
+    // request carries the newest cell or two in full and one line per earlier task.
+    let bound = base + 3 * (VALUE_BYTES + 600) + TASKS * 900;
+    for (turn, size) in sizes.iter().enumerate() {
+        assert!(*size < bound, "request {turn}: {size} bytes, bound {bound}");
+    }
+    assert!(sizes[TASKS + 1] - base < TASKS * VALUE_BYTES / 2);
+
+    let last = &roots[TASKS + 1].raw;
+    // Early results are gone from the model's view (a 200-character head stays); one-line summaries and handles
+    // remain.
+    for index in [0, 1, 5, 10] {
+        assert!(!last.contains(&child_value(index)[..600]), "task {index} leaked");
+    }
+    assert!(last.contains("collapsed on return"));
+    assert!(last.contains("rlm-child@1 key=a51-0 succeeded"));
+    assert!(last.contains("await agents.result(\\\""));
+    // The journal still returns every full value.
+    assert!(last.contains(&format!("FULL {TASKS} {}", TASKS * VALUE_BYTES)));
+    // The durable transcript keeps every cell's output in full.
+    let transcript = serde_json::to_string(&messages).unwrap();
+    for index in [0, 1, 5, 10, 19] {
+        assert!(
+            transcript.contains(&child_value(index)[..600]),
+            "task {index} not in the transcript"
+        );
+    }
 }

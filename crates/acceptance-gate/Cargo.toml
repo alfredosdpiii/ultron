@@ -1,0 +1,19 @@
+[package]
+name = "acceptance-gate"
+version = "0.1.0"
+description = "A26 for the Rust build: the acceptance instrument lock (scripts/acceptance-lock.mjs) and the regression-mutation runner (scripts/acceptance-mutation.mjs) over cargo test"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64 = "=0.23.1"
+serde = "=1.0.229"
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+sha2 = "=0.10.9"
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[lints]
+workspace = true

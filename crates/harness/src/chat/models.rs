@@ -39,6 +39,8 @@ pub struct StreamRequest {
     pub options: Map<String, Value>,
     pub session_id: Option<String>,
     pub reasoning: Option<String>,
+    /// The conversation the request is for (e.g. to charge its usage to the work that owns it).
+    pub conversation_id: Option<durable::ConversationId>,
 }
 
 impl StreamRequest {
@@ -150,6 +152,10 @@ pub struct Settings {
     pub tool_execution: ToolExecution,
     pub steering_mode: QueueMode,
     pub follow_up_mode: QueueMode,
+    /// A final boundary that places steering messages leaves follow-ups for the next one (the TypeScript agent loop:
+    /// steering continues the run, follow-ups are polled only when it would stop), so a steer and a follow-up
+    /// queued at a final answer run as two turns. Off: the spec's boundary places both at once.
+    pub follow_up_after_steer: bool,
 }
 
 impl Default for Settings {
@@ -163,6 +169,7 @@ impl Default for Settings {
             tool_execution: ToolExecution::Parallel,
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
+            follow_up_after_steer: false,
         }
     }
 }
@@ -172,6 +179,7 @@ impl Settings {
         QueueModes {
             steering: self.steering_mode,
             follow_up: self.follow_up_mode,
+            follow_up_after_steer: self.follow_up_after_steer,
         }
     }
 }

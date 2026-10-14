@@ -531,7 +531,7 @@
    "dir": true
   },
   {
-   "path": "home/.local/bin/mise",
+   "path": "fakehome/.local/bin/mise",
    "content": ""
   },
   {
@@ -583,7 +583,7 @@
   {
    "path": "",
    "setting": null,
-   "found": "<root>/home/.local/bin/mise"
+   "found": "<root>/fakehome/.local/bin/mise"
   },
   {
    "path": null,

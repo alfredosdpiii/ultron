@@ -156,3 +156,30 @@ pub fn remove_server_config(path: &Path, name: &str) -> Result<bool, String> {
     })?;
     Ok(removed)
 }
+
+/// `updateMcpServerConfig` with `enabled`: `true` removes the key (the default), `false` sets it.
+pub fn update_server_enabled(path: &Path, name: &str, enabled: bool) -> Result<(), String> {
+    let mut missing = false;
+    edit_servers(path, |object| {
+        let Some(server) = object
+            .get_mut("mcpServers")
+            .and_then(Value::as_object_mut)
+            .and_then(|servers| servers.get_mut(name))
+            .and_then(Value::as_object_mut)
+        else {
+            missing = true;
+            return false;
+        };
+        if enabled {
+            server.shift_remove("enabled");
+        } else {
+            // An existing key keeps its place, as a JavaScript assignment does.
+            server.insert("enabled".into(), Value::Bool(false));
+        }
+        true
+    })?;
+    if missing {
+        return Err(format!("{} does not define MCP server \"{name}\"", path.display()));
+    }
+    Ok(())
+}

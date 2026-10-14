@@ -1,23 +1,20 @@
-//! `listModels` from packages/coding-agent/src/cli/list-models.ts over the built-in catalog.
+//! `listModels` from packages/coding-agent/src/cli/list-models.ts over the built-in catalog and models.json.
 
 use ai::Model;
 use std::cmp::Ordering;
 use std::path::Path;
 
-/// Built-in models whose provider has an API key in the environment or an entry in auth.json.
-pub fn available_models(env: &crate::Env) -> Vec<&'static Model> {
-    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
-    let source = ai::env::EnvSource {
-        lookup: &*env.var,
-        exists: &|p: &Path| p.exists(),
-        home: Some(env.home.clone()),
-    };
-    ai::models::builtin_providers()
-        .filter(|p| {
-            ai::env::env_api_key_in(p, &source).is_some() || config::auth::read_stored_credential(&auth, p).is_some()
-        })
-        .flat_map(ai::models::builtin_models)
-        .collect()
+/// The models of providers with credentials: built-in and models.json providers with a key (configured, in the
+/// environment) or an entry in auth.json.
+pub fn available_models(env: &crate::Env) -> Vec<Model> {
+    session_core::lane::available_models(env)
+}
+
+/// The warning `--list-models` writes to stderr when models.json did not load or a provider in it does not compose.
+pub fn models_json_warning(env: &crate::Env) -> Option<String> {
+    session_core::lane::registry(env)
+        .error()
+        .map(|error| format!("{}\n", ai::model_config::models_json_warning(&error)))
 }
 
 /// `formatTokenCount`: 200000 -> "200K", 1000000 -> "1M", 131072 -> "131.1K" (`toFixed(1)` rounds ties up).
@@ -55,7 +52,7 @@ pub fn locale_compare(a: &str, b: &str) -> Ordering {
 }
 
 /// The `--list-models` output for `models`, filtered by `search`.
-pub fn render(models: &[&'static Model], search: Option<&str>, docs: &Path) -> String {
+pub fn render(models: &[Model], search: Option<&str>, docs: &Path) -> String {
     if models.is_empty() {
         return format!(
             "No models available. Use /login to log into a provider via OAuth or API key. See:\n  {}\n  {}\n",
@@ -63,9 +60,10 @@ pub fn render(models: &[&'static Model], search: Option<&str>, docs: &Path) -> S
             docs.join("models.md").display()
         );
     }
+    let all: Vec<&Model> = models.iter().collect();
     let mut filtered: Vec<&Model> = match search {
-        Some(q) if !q.is_empty() => tui::fuzzy::fuzzy_filter(models, q, |m| format!("{} {}", m.provider, m.id)),
-        _ => models.to_vec(),
+        Some(q) if !q.is_empty() => tui::fuzzy::fuzzy_filter(&all, q, |m| format!("{} {}", m.provider, m.id)),
+        _ => all,
     };
     if filtered.is_empty() {
         return format!("No models matching \"{}\"\n", search.unwrap_or_default());

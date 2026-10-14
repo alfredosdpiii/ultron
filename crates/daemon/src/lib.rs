@@ -7,6 +7,7 @@ pub mod control;
 pub mod coord_client;
 pub mod coordinator;
 pub mod diff;
+pub mod extension_ui;
 pub mod instance;
 pub mod lane;
 pub mod lifecycle;

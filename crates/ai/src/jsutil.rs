@@ -397,3 +397,5 @@ pub fn loose_match(text: &str, first: &str, second: &str) -> bool {
         matches_at(i, &first) && (matches_at(i + first.len(), &second) || matches_at(i + first.len() + 1, &second))
     })
 }
+
+pub use model_scope::locale_compare;

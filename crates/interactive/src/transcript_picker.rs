@@ -309,7 +309,7 @@ impl TranscriptPicker {
         self.scroll_key(data)
     }
 
-    /// Page/home/end/shift+arrow scroll without moving the selection.
+    /// Page up/down, home, end and shift+arrow scroll without moving the selection.
     fn scroll_key(&mut self, data: &str) -> PickerEvent {
         let body = &mut self.browser.body;
         let moved = if self.keys.matches(data, "tui.altScreen.pageUp") {

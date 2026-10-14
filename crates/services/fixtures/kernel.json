@@ -1,0 +1,521 @@
+{
+	"area": "services",
+	"scenarios": [
+		{
+			"name": "refinements through the kernel API",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await refinements.propose('instruction', 'instruction:rlm-child', 0, 'Check empty inputs.', [{'run': 'r1'}]), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"approval\": null, \"baseVersion\": 0, \"content\": \"Check empty inputs.\", \"evidence\": [{\"run\": \"r1\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}], \"id\": \"<uuid>\", \"kind\": \"instruction\", \"previousId\": null, \"scope\": \"session\", \"state\": \"proposed\", \"target\": \"instruction:rlm-child\", \"version\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nfirst = (await refinements.list())[0]\nprint(_json.dumps(await refinements.activate(first['id']), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"approval\": \"not_required\", \"baseVersion\": 0, \"content\": \"Check empty inputs.\", \"evidence\": [{\"run\": \"r1\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}], \"id\": \"<uuid>\", \"kind\": \"instruction\", \"previousId\": null, \"scope\": \"session\", \"state\": \"active\", \"target\": \"instruction:rlm-child\", \"version\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await rlm.host_request('refinements.current', {'kind': 'instruction', 'target': 'instruction:rlm-child'}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"approval\": \"not_required\", \"baseVersion\": 0, \"content\": \"Check empty inputs.\", \"evidence\": [{\"run\": \"r1\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}], \"id\": \"<uuid>\", \"kind\": \"instruction\", \"previousId\": null, \"scope\": \"session\", \"state\": \"active\", \"target\": \"instruction:rlm-child\", \"version\": 1}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nsecond = await refinements.propose('instruction', 'instruction:rlm-child', 1, 'Check empty and huge inputs.', {'failure': 'huge'}, scope='project')\nprint(_json.dumps(await refinements.activate(second['id']), sort_keys=True))\nprint(_json.dumps(await refinements.rollback(second['id']), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"approval\": \"not_required\", \"baseVersion\": 1, \"content\": \"Check empty and huge inputs.\", \"evidence\": {\"failure\": \"huge\"}, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}], \"id\": \"<uuid>\", \"kind\": \"instruction\", \"previousId\": \"<uuid>\", \"scope\": \"project\", \"state\": \"active\", \"target\": \"instruction:rlm-child\", \"version\": 2}\n{\"approval\": \"not_required\", \"baseVersion\": 1, \"content\": \"Check empty and huge inputs.\", \"evidence\": {\"failure\": \"huge\"}, \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rolled_back\"}], \"id\": \"<uuid>\", \"kind\": \"instruction\", \"previousId\": \"<uuid>\", \"scope\": \"project\", \"state\": \"rolled_back\", \"target\": \"instruction:rlm-child\", \"version\": 2}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([(r['state'], r['version'], r['approval'], [h['state'] for h in r['history']]) for r in await refinements.list()], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[[\"active\", 1, \"not_required\", [\"proposed\", \"active\", \"superseded\", \"active\"]], [\"rolled_back\", 2, \"not_required\", [\"proposed\", \"active\", \"rolled_back\"]]]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nthird = await refinements.propose('skill', 'skill:triage', 0, {'procedure': 'rerun'}, [{'run': 'r2'}])\nprint(_json.dumps(await rlm.host_request('refinements.approve', {'id': third['id']}), sort_keys=True))\nprint(_json.dumps(await refinements.reject(third['id']), sort_keys=True))\nprint(_json.dumps(await rlm.host_request('refinements.get', {'id': third['id']}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"approval\": \"approved\", \"baseVersion\": 0, \"content\": {\"procedure\": \"rerun\"}, \"evidence\": [{\"run\": \"r2\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}], \"id\": \"<uuid>\", \"kind\": \"skill\", \"previousId\": null, \"scope\": \"session\", \"state\": \"proposed\", \"target\": \"skill:triage\", \"version\": null}\n{\"approval\": \"approved\", \"baseVersion\": 0, \"content\": {\"procedure\": \"rerun\"}, \"evidence\": [{\"run\": \"r2\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"id\": \"<uuid>\", \"kind\": \"skill\", \"previousId\": null, \"scope\": \"session\", \"state\": \"rejected\", \"target\": \"skill:triage\", \"version\": null}\n{\"approval\": \"approved\", \"baseVersion\": 0, \"content\": {\"procedure\": \"rerun\"}, \"evidence\": [{\"run\": \"r2\"}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"rejected\"}], \"id\": \"<uuid>\", \"kind\": \"skill\", \"previousId\": null, \"scope\": \"session\", \"state\": \"rejected\", \"target\": \"skill:triage\", \"version\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await refinements.propose('instruction', 'instruction:security-policy', 0, 'Relax.', [{'run': 'x'}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('instruction', 'acceptance/manifest.json', 0, 'Edit.', [{'run': 'x'}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('skill', 'skill:review', 0, {'instructions': 'Review.', 'allowed-tools': ['bash']}, [{'run': 'x'}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('skill', 'skill:review', 0, '---\\nname: r\\nmodel: big\\n---\\nbody', [{'run': 'x'}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('instruction', 'instruction:rlm-child', 0, 'Check empty inputs.', [{'run': 'r1'}])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('instruction', 'instruction:rlm-child', -1, 'x', [])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('instruction', 'instruction:rlm-child', 0, '   ', [])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.propose('instruction', 'instruction:rlm-child', 0, 'x', 5)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.activate('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.rollback('')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('refinements.current', {'kind': 'tool', 'target': 'tool:x'})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('refinements.list', {'all': True})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('refinements.update', {'id': 'x'})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Forbidden refinement target\nRuntimeError Target must be an explicit namespace:name ID, not a path\nRuntimeError Refinement content cannot request capabilities (allowed-tools)\nRuntimeError Refinement content cannot request capabilities (model)\nRuntimeError Duplicate refinement proposal: <uuid> (active)\nRuntimeError baseVersion must be a nonnegative safe integer\nRuntimeError Content must be nonempty JSON text, an object, or an array\nRuntimeError Evidence must be JSON text, an object, or an array\nRuntimeError Unknown refinement: nope\nRuntimeError Malformed refinement event\nRuntimeError Invalid refinement kind\nRuntimeError Malformed local service fields\nRuntimeError Unknown local service request: refinements.update\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(type(refinements).__module__, type(refinements).__name__, sorted(n for n in dir(refinements) if not n.startswith('_')))",
+					"status": "ok",
+					"stdout": "memory_api Refinements ['activate', 'list', 'propose', 'reject', 'rollback']\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"local": {
+					"ultron.refinements": {
+						"formatVersion": 1,
+						"events": [
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "instruction",
+									"target": "instruction:rlm-child",
+									"baseVersion": 0,
+									"content": "Check empty inputs.",
+									"evidence": [
+										{
+											"run": "r1"
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "activate",
+								"id": "<uuid>",
+								"at": "<time>",
+								"approval": "not_required"
+							},
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "instruction",
+									"target": "instruction:rlm-child",
+									"baseVersion": 1,
+									"content": "Check empty and huge inputs.",
+									"evidence": {
+										"failure": "huge"
+									},
+									"scope": "project"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "activate",
+								"id": "<uuid>",
+								"at": "<time>",
+								"approval": "not_required"
+							},
+							{
+								"action": "rollback",
+								"id": "<uuid>",
+								"at": "<time>"
+							},
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "skill",
+									"target": "skill:triage",
+									"baseVersion": 0,
+									"content": {
+										"procedure": "rerun"
+									},
+									"evidence": [
+										{
+											"run": "r2"
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "approve",
+								"id": "<uuid>",
+								"at": "<time>"
+							},
+							{
+								"action": "reject",
+								"id": "<uuid>",
+								"at": "<time>"
+							}
+						]
+					}
+				},
+				"gates": null
+			}
+		},
+		{
+			"name": "experiments through the kernel API",
+			"cells": [
+				{
+					"code": "import json as _json\nruns = []\nfor variant, outcome in [('baseline', 'failed'), ('baseline', 'passed'), ('candidate', 'incomplete')]:\n    runs.append(await rlm.host_request('experiments.record', {'run': {'variant': variant, 'fixtureHash': 'heldout-v1', 'outcome': outcome, 'usage': {'root': 10, 'frames': 2, 'total': 12}}}))\nprint(_json.dumps(runs, sort_keys=True))",
+					"status": "ok",
+					"stdout": "[{\"fixtureHash\": \"heldout-v1\", \"id\": \"<uuid>\", \"outcome\": \"failed\", \"recordedAt\": \"<time>\", \"usage\": {\"frames\": 2, \"root\": 10, \"total\": 12}, \"variant\": \"baseline\"}, {\"fixtureHash\": \"heldout-v1\", \"id\": \"<uuid>\", \"outcome\": \"passed\", \"recordedAt\": \"<time>\", \"usage\": {\"frames\": 2, \"root\": 10, \"total\": 12}, \"variant\": \"baseline\"}, {\"fixtureHash\": \"heldout-v1\", \"id\": \"<uuid>\", \"outcome\": \"incomplete\", \"recordedAt\": \"<time>\", \"usage\": {\"frames\": 2, \"root\": 10, \"total\": 12}, \"variant\": \"candidate\"}]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([(r['variant'], r['outcome']) for r in await rlm.host_request('experiments.list', {})], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[[\"baseline\", \"failed\"], [\"baseline\", \"passed\"], [\"candidate\", \"incomplete\"]]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps((await rlm.host_request('experiments.compare', {'baseline': runs[0]['id'], 'candidate': runs[2]['id']}))['claim'], sort_keys=True))",
+					"status": "ok",
+					"stdout": "\"Observed runs only; no statistical superiority established\"\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await rlm.host_request('experiments.record', {'run': {'variant': 'v', 'fixtureHash': 'f', 'outcome': 'crashed'}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('experiments.record', {'run': {'variant': 'v', 'fixtureHash': 'f', 'outcome': 'failed', 'usage': {'root': 10, 'total': 12}}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('experiments.record', {'run': {'variant': 'v', 'fixtureHash': 'other', 'outcome': 'passed'}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('experiments.compare', {'baseline': runs[0]['id'], 'candidate': 'nope'})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await rlm.host_request('experiments.delete', {'id': runs[0]['id']})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Experiment requires variant, fixtureHash, outcome and valid record metadata\nRuntimeError Experiment usage total does not reconcile with its parts\nok {\"fixtureHash\": \"other\", \"id\": \"<uuid>\", \"outcome\": \"passed\", \"recordedAt\": \"<time>\", \"variant\": \"v\"}\nRuntimeError Unknown experiment\nRuntimeError Unknown local service request: experiments.delete\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nlisted = await rlm.host_request('experiments.list', {})\ntry:\n    await rlm.host_request('experiments.compare', {'baseline': listed[0]['id'], 'candidate': listed[-1]['id']})\nexcept Exception as e:\n    print(type(e).__name__, e)\nprint(len(listed))",
+					"status": "ok",
+					"stdout": "RuntimeError Different fixtures cannot form a matched comparison\n4\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"local": {
+					"ultron.experiments": {
+						"formatVersion": 1,
+						"runs": [
+							{
+								"variant": "baseline",
+								"fixtureHash": "heldout-v1",
+								"outcome": "failed",
+								"usage": {
+									"root": 10,
+									"frames": 2,
+									"total": 12
+								},
+								"id": "<uuid>",
+								"recordedAt": "<time>"
+							},
+							{
+								"variant": "baseline",
+								"fixtureHash": "heldout-v1",
+								"outcome": "passed",
+								"usage": {
+									"root": 10,
+									"frames": 2,
+									"total": 12
+								},
+								"id": "<uuid>",
+								"recordedAt": "<time>"
+							},
+							{
+								"variant": "candidate",
+								"fixtureHash": "heldout-v1",
+								"outcome": "incomplete",
+								"usage": {
+									"root": 10,
+									"frames": 2,
+									"total": 12
+								},
+								"id": "<uuid>",
+								"recordedAt": "<time>"
+							},
+							{
+								"variant": "v",
+								"fixtureHash": "other",
+								"outcome": "passed",
+								"id": "<uuid>",
+								"recordedAt": "<time>"
+							}
+						]
+					}
+				},
+				"gates": null
+			}
+		},
+		{
+			"name": "release gates through the kernel API",
+			"cells": [
+				{
+					"code": "import json as _json\nprint(_json.dumps(await gates.define('demo-unit', [{'name': 'unit', 'required': True}, {'name': 'lint', 'required': False}], 'a' * 64), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"checks\": [{\"name\": \"lint\", \"required\": false}, {\"name\": \"unit\", \"required\": true}], \"defined_at\": 1760000000000, \"defined_by\": null, \"digest\": \"70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2\", \"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"id\": \"demo-unit\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await gates.define('demo-unit', [{'name': 'lint', 'required': False}, {'name': 'unit', 'required': True}], 'a' * 64), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"checks\": [{\"name\": \"lint\", \"required\": false}, {\"name\": \"unit\", \"required\": true}], \"defined_at\": 1760000000000, \"defined_by\": null, \"digest\": \"70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2\", \"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"id\": \"demo-unit\"}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await gates.compare('demo-unit', {'variant': 'baseline', 'fixture_hash': 'a' * 64, 'results': {'unit': 'failed', 'lint': 'passed'}}, {'variant': 'candidate', 'fixture_hash': 'a' * 64, 'results': {'unit': 'passed'}}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"baseline\": {\"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"results\": {\"lint\": \"passed\", \"unit\": \"failed\"}, \"variant\": \"baseline\"}, \"candidate\": {\"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"results\": {\"lint\": \"missing\", \"unit\": \"passed\"}, \"variant\": \"candidate\"}, \"decision\": \"passed\", \"gate_digest\": \"70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2\", \"gate_id\": \"demo-unit\", \"id\": \"gate-attempt-<uuid>\", \"improvements\": [{\"baseline\": \"failed\", \"candidate\": \"passed\", \"check\": \"unit\", \"required\": true}], \"reasons\": [\"Every required check passed in candidate candidate\", \"Optional check lint regressed (missing); reported, not blocking\"], \"regressions\": [{\"baseline\": \"passed\", \"candidate\": \"missing\", \"check\": \"lint\", \"required\": false}], \"requester_task_id\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await gates.compare('demo-unit', {'variant': 'base', 'fixture_hash': 'a' * 64, 'results': {'unit': 'passed', 'lint': 'passed'}}, {'variant': 'cand', 'fixture_hash': 'b' * 64, 'results': {'unit': 'passed'}}), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"at\": 1760000000000, \"baseline\": {\"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"results\": {\"lint\": \"passed\", \"unit\": \"passed\"}, \"variant\": \"base\"}, \"candidate\": {\"fixture_hash\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\", \"results\": {\"lint\": \"missing\", \"unit\": \"passed\"}, \"variant\": \"cand\"}, \"decision\": \"blocked\", \"gate_digest\": \"70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2\", \"gate_id\": \"demo-unit\", \"id\": \"gate-attempt-<uuid>\", \"improvements\": [], \"reasons\": [\"Fixture mismatch: candidate cand ran against bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, gate demo-unit requires aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"Optional check lint regressed (missing); reported, not blocking\"], \"regressions\": [{\"baseline\": \"passed\", \"candidate\": \"missing\", \"check\": \"lint\", \"required\": false}], \"requester_task_id\": null}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([(a['decision'], a['reasons']) for a in (await gates.history('demo-unit'))['attempts']], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[[\"passed\", [\"Every required check passed in candidate candidate\", \"Optional check lint regressed (missing); reported, not blocking\"]], [\"blocked\", [\"Fixture mismatch: candidate cand ran against bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, gate demo-unit requires aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"Optional check lint regressed (missing); reported, not blocking\"]]]\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps(await gates.list(), sort_keys=True))",
+					"status": "ok",
+					"stdout": "{\"gates\": [{\"checks\": [{\"name\": \"lint\", \"required\": false}, {\"name\": \"unit\", \"required\": true}], \"defined_at\": 1760000000000, \"defined_by\": null, \"digest\": \"70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2\", \"fixture_hash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"id\": \"demo-unit\"}]}\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\ntry:\n    r = await gates.define('demo-unit', [{'name': 'unit', 'required': False}, {'name': 'x', 'required': True}], 'a' * 64)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await gates.define('Bad', [{'name': 'unit', 'required': True}], 'a' * 64)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await gates.define('opt', [{'name': 'unit', 'required': False}], 'a' * 64)\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await gates.compare('demo-unit', {'variant': 'b', 'fixture_hash': 'a' * 64, 'results': {}}, {'variant': 'c', 'fixture_hash': 'a' * 64, 'results': {'bonus': 'passed'}})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await gates.compare('nope', {}, {})\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await gates.history('nope')\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Release gate demo-unit is already defined with different content and cannot be changed\nRuntimeError id must be a short lowercase identifier\nRuntimeError A gate needs at least one required check; a gate with none could never block\nRuntimeError candidate.results names a check the gate does not define: bonus\nRuntimeError Unknown release gate: nope\nRuntimeError Unknown release gate: nope\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "print(type(gates).__module__, type(gates).__name__, sorted(n for n in dir(gates) if not n.startswith('_')))",
+					"status": "ok",
+					"stdout": "release_gate_api ReleaseGates ['compare', 'define', 'history', 'list']\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"local": {},
+				"gates": {
+					"version": 1,
+					"gates": [
+						{
+							"id": "demo-unit",
+							"checks": [
+								{
+									"name": "lint",
+									"required": false
+								},
+								{
+									"name": "unit",
+									"required": true
+								}
+							],
+							"fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+							"digest": "70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2",
+							"defined_at": 1760000000000,
+							"defined_by": null
+						}
+					],
+					"attempts": [
+						{
+							"id": "gate-attempt-<uuid>",
+							"gate_id": "demo-unit",
+							"gate_digest": "70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2",
+							"at": 1760000000000,
+							"requester_task_id": null,
+							"baseline": {
+								"variant": "baseline",
+								"fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+								"results": {
+									"lint": "passed",
+									"unit": "failed"
+								}
+							},
+							"candidate": {
+								"variant": "candidate",
+								"fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+								"results": {
+									"lint": "missing",
+									"unit": "passed"
+								}
+							},
+							"decision": "passed",
+							"reasons": [
+								"Every required check passed in candidate candidate",
+								"Optional check lint regressed (missing); reported, not blocking"
+							],
+							"regressions": [
+								{
+									"check": "lint",
+									"required": false,
+									"baseline": "passed",
+									"candidate": "missing"
+								}
+							],
+							"improvements": [
+								{
+									"check": "unit",
+									"required": true,
+									"baseline": "failed",
+									"candidate": "passed"
+								}
+							]
+						},
+						{
+							"id": "gate-attempt-<uuid>",
+							"gate_id": "demo-unit",
+							"gate_digest": "70b872b8922ec5b05c89c6a590753df1b825187b80760a043c9cb32d1fb55cc2",
+							"at": 1760000000000,
+							"requester_task_id": null,
+							"baseline": {
+								"variant": "base",
+								"fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+								"results": {
+									"lint": "passed",
+									"unit": "passed"
+								}
+							},
+							"candidate": {
+								"variant": "cand",
+								"fixture_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+								"results": {
+									"lint": "missing",
+									"unit": "passed"
+								}
+							},
+							"decision": "blocked",
+							"reasons": [
+								"Fixture mismatch: candidate cand ran against bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, gate demo-unit requires aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+								"Optional check lint regressed (missing); reported, not blocking"
+							],
+							"regressions": [
+								{
+									"check": "lint",
+									"required": false,
+									"baseline": "passed",
+									"candidate": "missing"
+								}
+							],
+							"improvements": []
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "worker validation of skill proposals",
+			"cells": [
+				{
+					"code": "import json as _json\ntry:\n    r = await refinements.activate((await refinements.propose('skill', 'skill:bad-one', 0, 'just prose', [{'repeated': 3}]))['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.activate((await refinements.propose('skill', 'skill:bad-two', 0, '---\\nname: Bad Name\\ndescription: x\\n---\\nbody', [{'repeated': 3}]))['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.activate((await refinements.propose('skill', 'skill:release-notes', 0, '---\\nname: release-notes\\ndescription: Draft release notes\\n---\\nCollect merged PRs, then group them.', [{'repeated': 3}]))['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)\ntry:\n    r = await refinements.activate((await refinements.propose('instruction', 'instruction:rlm-child', 0, {'text': 'not text'}, [{'run': 1}]))['id'])\n    print(\"ok\", _json.dumps(r, sort_keys=True))\nexcept Exception as e:\n    print(type(e).__name__, e)",
+					"status": "ok",
+					"stdout": "RuntimeError Skill content needs YAML frontmatter\nRuntimeError Skill frontmatter needs a kebab-case name\nok {\"approval\": \"not_required\", \"baseVersion\": 0, \"content\": \"---\\nname: release-notes\\ndescription: Draft release notes\\n---\\nCollect merged PRs, then group them.\", \"evidence\": [{\"repeated\": 3}], \"history\": [{\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"proposed\"}, {\"at\": \"<time>\", \"cause\": \"<uuid>\", \"state\": \"active\"}], \"id\": \"<uuid>\", \"kind\": \"skill\", \"previousId\": null, \"scope\": \"session\", \"state\": \"active\", \"target\": \"skill:release-notes\", \"version\": 1}\nRuntimeError An instruction refinement must be text\n",
+					"result": "",
+					"error": null
+				},
+				{
+					"code": "import json as _json\nprint(_json.dumps([(r['target'], r['state'], r['approval']) for r in await refinements.list()], sort_keys=True))",
+					"status": "ok",
+					"stdout": "[[\"skill:bad-one\", \"proposed\", null], [\"skill:bad-two\", \"proposed\", null], [\"skill:release-notes\", \"active\", \"not_required\"], [\"instruction:rlm-child\", \"proposed\", null]]\n",
+					"result": "",
+					"error": null
+				}
+			],
+			"state": {
+				"local": {
+					"ultron.refinements": {
+						"formatVersion": 1,
+						"events": [
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "skill",
+									"target": "skill:bad-one",
+									"baseVersion": 0,
+									"content": "just prose",
+									"evidence": [
+										{
+											"repeated": 3
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "skill",
+									"target": "skill:bad-two",
+									"baseVersion": 0,
+									"content": "---\nname: Bad Name\ndescription: x\n---\nbody",
+									"evidence": [
+										{
+											"repeated": 3
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "skill",
+									"target": "skill:release-notes",
+									"baseVersion": 0,
+									"content": "---\nname: release-notes\ndescription: Draft release notes\n---\nCollect merged PRs, then group them.",
+									"evidence": [
+										{
+											"repeated": 3
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							},
+							{
+								"action": "activate",
+								"id": "<uuid>",
+								"at": "<time>",
+								"approval": "not_required"
+							},
+							{
+								"action": "propose",
+								"id": "<uuid>",
+								"proposal": {
+									"kind": "instruction",
+									"target": "instruction:rlm-child",
+									"baseVersion": 0,
+									"content": {
+										"text": "not text"
+									},
+									"evidence": [
+										{
+											"run": 1
+										}
+									],
+									"scope": "session"
+								},
+								"at": "<time>"
+							}
+						]
+					}
+				},
+				"gates": null
+			}
+		}
+	]
+}

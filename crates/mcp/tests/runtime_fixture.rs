@@ -75,16 +75,11 @@ fn mcp_runtime_resolve_headers_match_typescript() {
 
 #[test]
 fn mcp_runtime_stdio_transport_options_match_typescript() {
-    for case in fixture()["transportCases"].as_array().unwrap() {
+    let fixture = fixture();
+    let home = Path::new(fixture["home"].as_str().unwrap());
+    for case in fixture["transportCases"].as_array().unwrap() {
         let config = case["config"].as_object().unwrap();
-        let got = transport_spec(
-            "srv",
-            config,
-            Path::new("/proj/root"),
-            Path::new("/home/fixture"),
-            &env(),
-        )
-        .map(|(spec, _)| {
+        let got = transport_spec("srv", config, Path::new("/proj/root"), home, &env()).map(|(spec, _)| {
             let TransportSpec::Stdio(o) = spec else {
                 panic!("stdio expected")
             };

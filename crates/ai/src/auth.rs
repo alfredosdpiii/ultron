@@ -684,6 +684,9 @@ pub struct BuiltinOAuth {
     pub provider: OAuthProvider,
     pub transport: Arc<dyn Transport>,
     pub clock: Clock,
+    /// The browser login's callback server listens here instead of the registered port (`Some(0)`: any free port;
+    /// the redirect URI keeps the registered one).
+    pub callback_port: Option<u16>,
 }
 
 impl OAuthAuth for BuiltinOAuth {
@@ -702,6 +705,7 @@ impl OAuthAuth for BuiltinOAuth {
             if let Some(signal) = interaction.signal() {
                 ctx.signal = signal;
             }
+            ctx.callback_port = self.callback_port;
             self.provider.login(&ctx).await
         })
     }
@@ -744,6 +748,7 @@ pub fn builtin_provider_auth_with_clock(
             provider,
             transport: Arc::clone(&transport),
             clock,
+            callback_port: None,
         }))
     };
     let env =

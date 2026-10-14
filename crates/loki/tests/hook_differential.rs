@@ -4,6 +4,9 @@
 //! built it: a temp dir with a work tree, a bin dir of git/sh/python3 (node when
 //! asked) plus the case's fake tools, HOME there, and the same git history.
 
+#[path = "../../cli/tests/executable_support/mod.rs"]
+mod executable_support;
+
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -83,8 +86,7 @@ fn place(root: &Path, files: &Value, tokens: &Value) {
             )
             .unwrap();
         } else {
-            std::fs::write(&target, content["exec"].as_str().unwrap()).unwrap();
-            std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o755)).unwrap();
+            executable_support::install(&target, content["exec"].as_str().unwrap());
         }
     }
 }
@@ -136,8 +138,8 @@ fn replay(case: &Value, tokens: &Value) -> Outcome {
         std::os::unix::fs::symlink(which("node"), bin.join("node")).unwrap();
     }
     for (name, script) in case["bin"].as_object().into_iter().flatten() {
-        std::fs::write(bin.join(name), script.as_str().unwrap()).unwrap();
-        std::fs::set_permissions(bin.join(name), std::fs::Permissions::from_mode(0o755)).unwrap();
+        // Executed by path by the hooks: written without a write descriptor in this process (ETXTBSY).
+        executable_support::install(&bin.join(name), script.as_str().unwrap());
     }
     let work = top.join("w");
     std::fs::create_dir(&work).unwrap();

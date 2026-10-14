@@ -375,3 +375,19 @@ fn kernel_apis_context_hooks_collapse_trim_and_keep_like_typescript() {
     }
     assert_eq!(Value::Array(observed), recorded["observed"]);
 }
+
+#[test]
+fn kernel_apis_context_note_projector_is_a_custom_message_at_its_place() {
+    // CONTEXT_ENTRY_PROJECTORS[ultron:context-note] of context-control.ts.
+    let entry = json!({"id": "n1", "type": "custom", "customType": "ultron:context-note", "timestamp": 7,
+        "data": {"text": "remember the port"}});
+    assert_eq!(
+        kernel_apis::context_control::project_note(&entry),
+        vec![
+            json!({"role": "custom", "customType": "ultron-note", "content": "Note (ctx.note): remember the port",
+            "display": true, "timestamp": 7})
+        ]
+    );
+    let empty = json!({"id": "n2", "type": "custom", "customType": "ultron:context-note", "data": {"text": ""}});
+    assert!(kernel_apis::context_control::project_note(&empty).is_empty());
+}

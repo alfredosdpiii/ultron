@@ -1,0 +1,1188 @@
+{
+ "now": 1791108000000,
+ "constants": {
+  "searchEvery": 5
+ },
+ "blockedState": {
+  "version": 1,
+  "accounts": {},
+  "pulls": {
+   "bot@github.com/o/r#1": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.com/o/r#2": {
+    "lastVerdict": "approve"
+   },
+   "bot@github.com/o/r#3": {
+    "lastVerdict": "request_changes",
+    "closed": true
+   },
+   "bot@github.com/o/r#4": {
+    "lastVerdict": "request_changes",
+    "lastReviewDryRun": true
+   },
+   "other@github.com/o/r#5": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@ghe.io/team/svc#6": {
+    "lastVerdict": "request_changes",
+    "closed": false,
+    "lastReviewDryRun": false
+   },
+   "bot@github.com/o/r/x#7": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.com/bad": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.com/o/r#08": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.com/o/r#1x": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.comx/o/r#9": {
+    "lastVerdict": "request_changes"
+   },
+   "bot@github.com/a-b/c.d#10": {
+    "lastVerdict": "request_changes",
+    "lastReviewDryRun": false
+   },
+   "bot@github.com/o/r#11": {
+    "lastVerdict": "comment"
+   },
+   "bot@github.com/o/r#12": {}
+  },
+  "recent": []
+ },
+ "blocked": [
+  {
+   "account": {
+    "login": "bot",
+    "host": "github.com"
+   },
+   "blocked": [
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r",
+     "number": 1
+    },
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r/x",
+     "number": 7
+    },
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r",
+     "number": 8
+    },
+    {
+     "host": "github.com",
+     "owner": "a-b",
+     "repo": "c.d",
+     "number": 10
+    }
+   ]
+  },
+  {
+   "account": {
+    "login": "bot",
+    "host": "ghe.io"
+   },
+   "blocked": [
+    {
+     "host": "ghe.io",
+     "owner": "team",
+     "repo": "svc",
+     "number": 6
+    }
+   ]
+  },
+  {
+   "account": {
+    "login": "other",
+    "host": "github.com"
+   },
+   "blocked": [
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r",
+     "number": 5
+    }
+   ]
+  },
+  {
+   "account": {
+    "login": "BOT",
+    "host": "github.com"
+   },
+   "blocked": []
+  },
+  {
+   "account": {
+    "login": "nobody",
+    "host": "github.com"
+   },
+   "blocked": []
+  }
+ ],
+ "discover": [
+  {
+   "name": "first poll: a day back; reasons merged; the latest notification time",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {},
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\nLast-Modified: Sun, 04 Oct 2026 10:00:00 GMT\r\nX-Poll-Interval: 60\r\n\r\n[{\"reason\":\"review_requested\",\"updated_at\":\"2026-10-04T09:59:56Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/1\"}},{\"reason\":\"mention\",\"updated_at\":\"2026-10-04T09:59:58.500Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/1\"}},{\"reason\":\"mention\",\"updated_at\":\"2026-10-04T09:00:00Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/1\"}},{\"reason\":\"review_requested\",\"updated_at\":\"2026-10-04T09:59:56Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/1\"}},{\"reason\":\"mention\",\"updated_at\":\"\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/2\"}},{\"reason\":\"team_mention\",\"updated_at\":\"garbage\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/3\"}},{\"reason\":\"subscribed\",\"updated_at\":\"2026-10-04T09:00:00Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/4\"}},{\"reason\":\"mention\",\"updated_at\":\"2026-10-04T09:00:00Z\",\"subject\":{\"type\":\"Issue\",\"url\":\"https://api.github.com/repos/o/r/pulls/5\"}},{\"reason\":\"review_requested\",\"updated_at\":\"2026-10-04T09:00:00Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/2\"}},{\"reason\":\"mention\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/6\"}},{\"reason\":\"review_requested\",\"updated_at\":\"2026-10-04T11:00:00+02:00\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/7\"}},{\"reason\":\"mention\",\"updated_at\":\"2026-10-03\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/8\"}}]",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 1
+      },
+      "reasons": [
+       "review_requested",
+       "mention"
+      ],
+      "notifiedAt": 1791107998500
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 2
+      },
+      "reasons": [
+       "mention",
+       "review_requested"
+      ],
+      "notifiedAt": 1791104400000
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 3
+      },
+      "reasons": [
+       "team_mention"
+      ]
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 6
+      },
+      "reasons": [
+       "mention"
+      ]
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 7
+      },
+      "reasons": [
+       "review_requested"
+      ],
+      "notifiedAt": 1791104400000
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 8
+      },
+      "reasons": [
+       "mention"
+      ],
+      "notifiedAt": 1790985600000
+     }
+    ],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z",
+     "lastModified": "Sun, 04 Oct 2026 10:00:00 GMT",
+     "pollInterval": 60
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "a later poll: If-Modified-Since, two minutes of overlap; 304 keeps the cursor",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {
+    "lastPollAt": "2026-10-04T09:00:00.000Z",
+    "lastModified": "Sun, 04 Oct 2026 09:00:00 GMT",
+    "etag": "\"e\"",
+    "pausedUntil": "2026-10-04T09:30:00.000Z",
+    "lastError": "old",
+    "custom": 1
+   },
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 304 OK\r\nX-Poll-Interval: 120\r\n\r\n",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-04T08%3A58%3A00.000Z",
+      "-H",
+      "If-Modified-Since: Sun, 04 Oct 2026 09:00:00 GMT"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z",
+     "lastModified": "Sun, 04 Oct 2026 09:00:00 GMT",
+     "etag": "\"e\"",
+     "pausedUntil": "2026-10-04T09:30:00.000Z",
+     "custom": 1,
+     "pollInterval": 120
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "a 304 with a new Last-Modified",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {
+    "lastPollAt": "2026-10-04T09:59:00Z",
+    "lastModified": "old"
+   },
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 304 OK\r\nLast-Modified: Sun, 04 Oct 2026 10:00:00 GMT\r\n\r\n",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-04T09%3A57%3A00.000Z",
+      "-H",
+      "If-Modified-Since: old"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z",
+     "lastModified": "Sun, 04 Oct 2026 10:00:00 GMT"
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "search cycle: review requests, mentions of two days, blocked pulls",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {
+    "lastPollAt": "garbage",
+    "pollInterval": 60
+   },
+   "now": 1791108000000,
+   "search": true,
+   "blocked": [
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r",
+     "number": 1
+    },
+    {
+     "host": "github.com",
+     "owner": "o",
+     "repo": "r",
+     "number": 9
+    }
+   ],
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\nLast-Modified: Sun, 04 Oct 2026 10:00:00 GMT\r\n\r\n[{\"reason\":\"mention\",\"updated_at\":\"2026-10-04T09:59:00Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://api.github.com/repos/o/r/pulls/2\"}}]",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[{\"number\":1,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}},{\"number\":2,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}}]}",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[{\"number\":2,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}},{\"number\":7,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}},{\"number\":2,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}}]}",
+     "stderr": ""
+    }
+   ],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Aopen%20is%3Apr%20review-requested%3Abot%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Apr%20mentions%3Abot%20updated%3A%3E%3D2026-10-02%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 2
+      },
+      "reasons": [
+       "mention",
+       "review_requested",
+       "search_mention"
+      ],
+      "notifiedAt": 1791107940000
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 1
+      },
+      "reasons": [
+       "review_requested",
+       "requested_changes"
+      ]
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 7
+      },
+      "reasons": [
+       "search_mention"
+      ]
+     },
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 9
+      },
+      "reasons": [
+       "requested_changes"
+      ]
+     }
+    ],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z",
+     "pollInterval": 60,
+     "lastModified": "Sun, 04 Oct 2026 10:00:00 GMT"
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "search window across a day boundary",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {},
+   "now": 1791073800000,
+   "search": true,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n[]",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[]}",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[{\"number\":3,\"repository_url\":\"https://api.github.com/repos/o/r\"}]}",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T00%3A30%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Aopen%20is%3Apr%20review-requested%3Abot%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Apr%20mentions%3Abot%20updated%3A%3E%3D2026-10-02%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [],
+    "state": {
+     "lastPollAt": "2026-10-04T00:30:00.000Z"
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "search without blocked pulls",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {
+    "lastPollAt": "2026-10-03"
+   },
+   "now": 1791108000000,
+   "search": true,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n[]",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[{\"number\":4,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}}]}",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[]}",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-02T23%3A58%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Aopen%20is%3Apr%20review-requested%3Abot%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Apr%20mentions%3Abot%20updated%3A%3E%3D2026-10-02%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [
+     {
+      "ref": {
+       "host": "github.com",
+       "owner": "o",
+       "repo": "r",
+       "number": 4
+      },
+      "reasons": [
+       "review_requested"
+      ]
+     }
+    ],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z"
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "an enterprise account",
+   "account": [
+    "corp",
+    "ghe.io"
+   ],
+   "state": {
+    "lastPollAt": "2026-10-04T12:00:00+02:00"
+   },
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\nLast-Modified: Sun, 04 Oct 2026 10:00:00 GMT\r\nX-Poll-Interval: 0\r\n\r\n[{\"reason\":\"review_requested\",\"updated_at\":\"2026-10-04T09:59:56Z\",\"subject\":{\"type\":\"PullRequest\",\"url\":\"https://ghe.io/api/v3/repos/o/r/pulls/1\"}}]",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "ghe.io",
+      "notifications?all=true&per_page=50&since=2026-10-04T09%3A58%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "ghe.io"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [
+     {
+      "ref": {
+       "host": "ghe.io",
+       "owner": "o",
+       "repo": "r",
+       "number": 1
+      },
+      "reasons": [
+       "review_requested"
+      ],
+      "notifiedAt": 1791107996000
+     }
+    ],
+    "state": {
+     "lastPollAt": "2026-10-04T10:00:00.000Z",
+     "lastModified": "Sun, 04 Oct 2026 10:00:00 GMT"
+    }
+   },
+   "error": null
+  },
+  {
+   "name": "a rate limit on notifications",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {},
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 1,
+     "stdout": "HTTP/2.0 403 Error\r\nRetry-After: 300\r\n\r\n{\"message\":\"secondary rate limit\"}",
+     "stderr": "gh: HTTP 403"
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": null,
+   "error": {
+    "name": "RateLimitError",
+    "message": "GitHub rate limit: secondary rate limit",
+    "status": null,
+    "resumeAt": 1791108300000
+   }
+  },
+  {
+   "name": "a failed search",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {},
+   "now": 1791108000000,
+   "search": true,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n[]",
+     "stderr": ""
+    },
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\n\r\n{\"items\":[{\"number\":1,\"repository_url\":\"https://api.github.com/repos/o/r\",\"pull_request\":{}}]}",
+     "stderr": ""
+    },
+    {
+     "code": 1,
+     "stdout": "HTTP/2.0 500 Error\r\n\r\n{\"message\":\"boom\"}",
+     "stderr": "gh: HTTP 500"
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Aopen%20is%3Apr%20review-requested%3Abot%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    },
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "search/issues?per_page=50&sort=updated&order=desc&q=is%3Apr%20mentions%3Abot%20updated%3A%3E%3D2026-10-02%20archived%3Afalse"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": null,
+   "error": {
+    "name": "GitHubError",
+    "message": "GitHub GET search/issues?per_page=50&sort=updated&order=desc&q=is%3Apr%20mentions%3Abot%20updated%3A%3E%3D2026-10-02%20archived%3Afalse: 500 boom",
+    "status": 500,
+    "resumeAt": null
+   }
+  },
+  {
+   "name": "gh produced no response",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {},
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 1,
+     "stdout": "",
+     "stderr": "gh: connection refused"
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": null,
+   "error": {
+    "name": "GitHubError",
+    "message": "gh api GET notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z failed: gh: connection refused",
+    "status": 0,
+    "resumeAt": null
+   }
+  },
+  {
+   "name": "a poll interval that is not a number",
+   "account": [
+    "bot",
+    "github.com"
+   ],
+   "state": {
+    "pollInterval": 90
+   },
+   "now": 1791108000000,
+   "search": false,
+   "replies": [
+    {
+     "code": 0,
+     "stdout": "HTTP/2.0 200 OK\r\nX-Poll-Interval: soon\r\n\r\n[]",
+     "stderr": ""
+    }
+   ],
+   "blocked": [],
+   "calls": [
+    {
+     "argv": [
+      "gh",
+      "api",
+      "-i",
+      "--method",
+      "GET",
+      "--hostname",
+      "github.com",
+      "notifications?all=true&per_page=50&since=2026-10-03T10%3A00%3A00.000Z"
+     ],
+     "env": {
+      "GH_TOKEN": "t",
+      "GH_HOST": "github.com"
+     }
+    }
+   ],
+   "result": {
+    "pulls": [],
+    "state": {
+     "pollInterval": 90,
+     "lastPollAt": "2026-10-04T10:00:00.000Z"
+    }
+   },
+   "error": null
+  }
+ ],
+ "pruneFiles": [
+  {
+   "name": "a/old.md",
+   "age": 1296000000
+  },
+  {
+   "name": "a/edge.md",
+   "age": 1209600000
+  },
+  {
+   "name": "a/past-edge.md",
+   "age": 1209601000
+  },
+  {
+   "name": "a/recent.md",
+   "age": 1123200000
+  },
+  {
+   "name": "a/future.md",
+   "age": -86400000
+  },
+  {
+   "name": "b/autoreview-2026-09-01.log",
+   "age": 2592000000
+  },
+  {
+   "name": "b/fresh.log",
+   "age": 0
+  },
+  {
+   "name": "b/hour.log",
+   "age": 3600000
+  }
+ ],
+ "prune": [
+  {
+   "days": null,
+   "dirs": [
+    "a",
+    "b",
+    "missing"
+   ],
+   "removed": 3,
+   "left": [
+    "a/edge.md",
+    "a/future.md",
+    "a/link.md",
+    "a/recent.md",
+    "a/sub",
+    "b/fresh.log",
+    "b/hour.log"
+   ]
+  },
+  {
+   "days": 0,
+   "dirs": [
+    "a",
+    "b"
+   ],
+   "removed": 6,
+   "left": [
+    "a/future.md",
+    "a/link.md",
+    "a/sub",
+    "b/fresh.log"
+   ]
+  },
+  {
+   "days": 1,
+   "dirs": [
+    "b"
+   ],
+   "removed": 1,
+   "left": [
+    "a/edge.md",
+    "a/future.md",
+    "a/link.md",
+    "a/old.md",
+    "a/past-edge.md",
+    "a/recent.md",
+    "a/sub",
+    "b/fresh.log",
+    "b/hour.log"
+   ]
+  },
+  {
+   "days": 14,
+   "dirs": [
+    "b",
+    "a"
+   ],
+   "removed": 3,
+   "left": [
+    "a/edge.md",
+    "a/future.md",
+    "a/link.md",
+    "a/recent.md",
+    "a/sub",
+    "b/fresh.log",
+    "b/hour.log"
+   ]
+  },
+  {
+   "days": null,
+   "dirs": [],
+   "removed": 0,
+   "left": [
+    "a/edge.md",
+    "a/future.md",
+    "a/link.md",
+    "a/old.md",
+    "a/past-edge.md",
+    "a/recent.md",
+    "a/sub",
+    "b/autoreview-2026-09-01.log",
+    "b/fresh.log",
+    "b/hour.log"
+   ]
+  },
+  {
+   "days": 30,
+   "dirs": [
+    "a",
+    "b"
+   ],
+   "removed": 0,
+   "left": [
+    "a/edge.md",
+    "a/future.md",
+    "a/link.md",
+    "a/old.md",
+    "a/past-edge.md",
+    "a/recent.md",
+    "a/sub",
+    "b/autoreview-2026-09-01.log",
+    "b/fresh.log",
+    "b/hour.log"
+   ]
+  }
+ ],
+ "logger": [
+  {
+   "logs": "logs",
+   "nows": [
+    1791108000000,
+    1791158400000
+   ],
+   "lines": [
+    "hello",
+    "multi\nline",
+    "unicode é ✓ 😀",
+    ""
+   ],
+   "written": [
+    "2026-10-04T10:00:00.000Z hello\n",
+    "2026-10-05T00:00:00.000Z multi\nline\n",
+    "2026-10-05T00:00:00.000Z unicode é ✓ 😀\n",
+    "2026-10-05T00:00:00.000Z \n"
+   ],
+   "files": [
+    {
+     "name": "autoreview-2026-10-04.log",
+     "text": "2026-10-04T10:00:00.000Z hello\n",
+     "mode": 384
+    },
+    {
+     "name": "autoreview-2026-10-05.log",
+     "text": "2026-10-05T00:00:00.000Z multi\nline\n2026-10-05T00:00:00.000Z unicode é ✓ 😀\n2026-10-05T00:00:00.000Z \n",
+     "mode": 384
+    }
+   ],
+   "dirMode": 448
+  },
+  {
+   "logs": "deep/er/logs",
+   "nows": [
+    1798761599999,
+    1798761600000
+   ],
+   "lines": [
+    "one",
+    "two"
+   ],
+   "written": [
+    "2026-12-31T23:59:59.999Z one\n",
+    "2027-01-01T00:00:00.000Z two\n"
+   ],
+   "files": [
+    {
+     "name": "autoreview-2026-12-31.log",
+     "text": "2026-12-31T23:59:59.999Z one\n",
+     "mode": 384
+    },
+    {
+     "name": "autoreview-2027-01-01.log",
+     "text": "2027-01-01T00:00:00.000Z two\n",
+     "mode": 384
+    }
+   ],
+   "dirMode": 448
+  },
+  {
+   "logs": null,
+   "nows": [
+    1791108000000
+   ],
+   "lines": [
+    "no file"
+   ],
+   "written": [
+    "2026-10-04T10:00:00.000Z no file\n"
+   ],
+   "files": [],
+   "dirMode": null
+  }
+ ]
+}

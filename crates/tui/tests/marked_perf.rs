@@ -1,8 +1,10 @@
 //! Lexer and layout cost of the Markdown component (tui::marked + tui::markdown).
 //!
-//! `tui_marked_lex_time_grows_linearly` guards against quadratic regressions: it lexes generated documents at 1x and
-//! 4x size and requires the time ratio to stay under 6 (a quadratic lexer gives ~16). It compares ratios, never
-//! absolute times, so machine load does not flake it.
+//! `tui_marked_lex_work_grows_linearly` guards against quadratic regressions without a clock: it lexes generated
+//! documents at 1x and 4x size and compares the lexer's own work counter (`tui::marked::lex_work`: rule calls plus the
+//! bytes each can scan), which is the same on every run and every machine. Linear lexing gives a ratio of ~4, a
+//! lexer that rescans the rest of the input per token ~16. The wall-clock version of the same check
+//! (`tui_marked_lex_time_grows_linearly`) is ignored: a time ratio failed under load.
 //!
 //! `tui_marked_bench` (ignored) is the timing harness behind the before/after numbers:
 //! `cargo test -p tui --release --test marked_perf -- --ignored --nocapture`. `MARKED_BENCH_ONLY=<substring>` and
@@ -13,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use tui::components::Component;
 use tui::markdown::{Markdown, MarkdownOptions, MarkdownTheme};
-use tui::marked::markdown_tokens;
+use tui::marked::{lex_work, markdown_tokens};
 
 fn sty(open: u32, close: u32) -> tui::select::StyleFn {
     Box::new(move |s| format!("\x1b[{open}m{s}\x1b[{close}m"))
@@ -162,8 +164,29 @@ fn tui_marked_bench() {
     }
 }
 
-/// Lexing time must grow linearly: 4x the input may take at most ~6x the time (quadratic would be ~16x). Each side
-/// is the best of several runs, so a load spike on one run does not decide the ratio.
+/// The lexer's work on `doc` (deterministic: the counter is per thread and the lexer has no randomness).
+fn work_of(doc: &str) -> u64 {
+    let before = lex_work();
+    markdown_tokens(doc);
+    lex_work() - before
+}
+
+/// Lexing work must grow linearly: 4x the input may cost at most 5x the work (quadratic would be ~16x). The ratio is
+/// the same on every run; the bound leaves room only for per-document constants.
+fn assert_linear_work(name: &str, make: impl Fn(usize) -> String, unit: usize) {
+    let (small, large) = (make(unit), make(unit * 4));
+    let (s, l) = (work_of(&small), work_of(&large));
+    assert_eq!(work_of(&small), s, "{name}: the work count is not deterministic");
+    let ratio = l as f64 / s as f64;
+    println!("{name:<34} work {s:>9} -> {l:>9} ({ratio:.2}x for 4x the input)");
+    assert!(
+        ratio < 5.0,
+        "{name}: lexing 4x the input did {ratio:.2}x the work ({s} -> {l})"
+    );
+}
+
+/// The same inputs as [`assert_linear_work`], timed: 4x the input may take at most ~6x the time. Each side is the
+/// best of several runs, but a load spike still decides the ratio, so this only runs on demand.
 fn assert_linear(name: &str, make: impl Fn(usize) -> String, unit: usize) {
     let small = make(unit);
     let large = make(unit * 4);
@@ -177,7 +200,29 @@ fn assert_linear(name: &str, make: impl Fn(usize) -> String, unit: usize) {
     );
 }
 
+/// Every input of the timing check, plus the pathological ones of the bench, by work count.
 #[test]
+fn tui_marked_lex_work_grows_linearly() {
+    assert_linear_work("assistant document", assistant_doc, 40_000);
+    assert_linear_work("one long paragraph", |n| "word *em* _u_ `c` ".repeat(n / 18), 40_000);
+    assert_linear_work("many short paragraphs", |n| "para line\n\n".repeat(n / 11), 40_000);
+    assert_linear_work("unclosed delimiters", |n| "*a _b **c ".repeat(n / 10), 10_000);
+    assert_linear_work("nested delimiters", |n| "*_a_* b_*c ".repeat(n / 11), 10_000);
+    assert_linear_work("unclosed brackets and backticks", |n| "[a `b <c ".repeat(n / 9), 10_000);
+    assert_linear_work("long line", |n| "word ".repeat(n / 5), 40_000);
+    assert_linear_work("** pairs", |n| "**a** ".repeat(n / 6), 10_000);
+    assert_linear_work(
+        "nested quotes",
+        |n| (1..=n / 400).map(|d| format!("> line {d}\n")).collect(),
+        4_000,
+    );
+    assert_linear_work("short lines", |n| "a\n".repeat(n / 2), 20_000);
+    assert_linear_work("inline math", |n| "x $a+b$ and \\(c\\) y ".repeat(n / 22), 10_000);
+    assert_linear_work("unclosed math", |n| "$a ".repeat(n / 3), 10_000);
+}
+
+#[test]
+#[ignore = "wall clock: load decides a time ratio; tui_marked_lex_work_grows_linearly is the gate"]
 fn tui_marked_lex_time_grows_linearly() {
     assert_linear("assistant document", assistant_doc, 40_000);
     assert_linear("one long paragraph", |n| "word *em* _u_ `c` ".repeat(n / 18), 40_000);

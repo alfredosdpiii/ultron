@@ -22,6 +22,8 @@ pub enum QueueMode {
 pub struct QueueModes {
     pub steering: QueueMode,
     pub follow_up: QueueMode,
+    /// At `final`, follow-ups wait while steers are placed (see `Settings::follow_up_after_steer`).
+    pub follow_up_after_steer: bool,
 }
 
 /// Where a boundary runs: after a tool round, or at the end of a run.
@@ -148,7 +150,7 @@ pub fn apply_boundary(tx: &mut Tx<'_>, boundary: &mut Boundary, at: At, now: u64
         .map(|(index, _)| index)
         .collect();
     let mut users = pick("steer", boundary.modes.steering);
-    if last {
+    if last && !(boundary.modes.follow_up_after_steer && !users.is_empty()) {
         users.extend(pick("followUp", boundary.modes.follow_up));
     }
     users.sort_unstable();

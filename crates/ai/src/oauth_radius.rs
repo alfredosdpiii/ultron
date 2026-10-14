@@ -15,7 +15,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const CALLBACK_PORT: u16 = 1456;
 const CALLBACK_PATH: &str = "/oauth/callback";
-const REDIRECT_URI: &str = "http://127.0.0.1:1456/oauth/callback";
+const CALLBACK_HOST: &str = "127.0.0.1";
 const TOKEN_EXPIRY_SKEW_MS: f64 = 60_000.0;
 const CLIENT_ID: &str = "pi-gateway";
 const SCOPE: &str = "gateway offline_access";
@@ -38,6 +38,9 @@ pub struct RadiusOAuth {
     pub gateway: String,
     pub transport: Arc<dyn Transport>,
     pub clock: Clock,
+    /// The loopback port the browser login's callback server listens on (1456, the registered redirect URI); `0`
+    /// lets the system choose one, and the redirect URI names it (tests, never a fixed machine-wide port).
+    pub callback_port: u16,
 }
 
 impl RadiusOAuth {
@@ -47,7 +50,14 @@ impl RadiusOAuth {
             gateway: normalize_radius_gateway_url(gateway),
             transport,
             clock,
+            callback_port: CALLBACK_PORT,
         }
+    }
+
+    /// The same login with its callback server on `port` (`0`: any free port).
+    pub fn with_callback_port(mut self, port: u16) -> Self {
+        self.callback_port = port;
+        self
     }
 
     fn url(&self, path: &str) -> String {
@@ -277,20 +287,22 @@ impl RadiusOAuth {
         let signal = signal.as_ref();
         let (verifier, challenge) = generate_pkce();
         let state = random_uuid();
+        let server = CallbackServer::start(&state, self.callback_port).await;
+        let redirect_uri = format!("http://{CALLBACK_HOST}:{}{CALLBACK_PATH}", server.port);
+        let redirect_uri = redirect_uri.as_str();
         let mut authorize = reqwest::Url::parse(endpoint).map_err(|_| format!("Invalid URL: {endpoint}"))?;
         authorize.set_query(Some(&form_urlencode(&[
             ("response_type", "code"),
             ("client_id", CLIENT_ID),
-            ("redirect_uri", REDIRECT_URI),
+            ("redirect_uri", redirect_uri),
             ("scope", SCOPE),
             ("code_challenge", &challenge),
             ("code_challenge_method", "S256"),
             ("handoff", "url"),
             ("state", &state),
         ])));
-        let server = CallbackServer::start(&state).await;
         interaction.notify(AuthEvent::Progress {
-            message: format!("Listening for OAuth callback on {REDIRECT_URI}"),
+            message: format!("Listening for OAuth callback on {redirect_uri}"),
         });
         interaction.notify(AuthEvent::AuthUrl {
             url: authorize.to_string(),
@@ -304,7 +316,7 @@ impl RadiusOAuth {
             AuthPrompt::ManualCode {
                 message: "Complete sign-in in your browser, or paste the authorization code / redirect URL here:"
                     .into(),
-                placeholder: Some(REDIRECT_URI.into()),
+                placeholder: Some(redirect_uri.into()),
             },
             Some(manual_abort.clone()),
         );
@@ -356,7 +368,7 @@ impl RadiusOAuth {
             &[
                 ("grant_type", "authorization_code"),
                 ("client_id", CLIENT_ID),
-                ("redirect_uri", REDIRECT_URI),
+                ("redirect_uri", redirect_uri),
                 ("code", &code),
                 ("code_verifier", &verifier),
             ],
@@ -396,20 +408,28 @@ pub fn parse_authorization_input(input: &str) -> (Option<String>, Option<String>
 }
 
 /// The loopback callback server: `receiver` yields the code, `None` when the provider denied, or closes when the port
-/// could not be bound.
+/// could not be bound (`port` is then None).
 struct CallbackServer {
     receiver: tokio::sync::oneshot::Receiver<Option<String>>,
     stop: Option<tokio::sync::oneshot::Sender<()>>,
+    /// The port it listens on (the requested one when it could not bind).
+    port: u16,
 }
 
 impl CallbackServer {
-    async fn start(expected_state: &str) -> Self {
+    async fn start(expected_state: &str, port: u16) -> Self {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let host = oauth_callback_host();
-        let Ok(listener) = tokio::net::TcpListener::bind((host.as_str(), CALLBACK_PORT)).await else {
+        let Ok(listener) = tokio::net::TcpListener::bind((host.as_str(), port)).await else {
             drop(sender);
-            return CallbackServer { receiver, stop: None };
+            return CallbackServer {
+                receiver,
+                stop: None,
+                port,
+            };
         };
+        let port = listener.local_addr().map_or(port, |a| a.port());
+        let base = format!("http://{CALLBACK_HOST}:{port}{CALLBACK_PATH}");
         let (stop, mut stopped) = tokio::sync::oneshot::channel::<()>();
         let state = expected_state.to_string();
         tokio::spawn(async move {
@@ -430,7 +450,7 @@ impl CallbackServer {
                 }
                 let head = String::from_utf8_lossy(&buffer).into_owned();
                 let target = head.split_whitespace().nth(1).unwrap_or("/").to_string();
-                let url = reqwest::Url::parse(REDIRECT_URI).and_then(|base| base.join(&target));
+                let url = reqwest::Url::parse(&base).and_then(|base| base.join(&target));
                 let (status, html, result) = match url {
                     Ok(url) if url.path() == CALLBACK_PATH => {
                         let param = |key: &str| url.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v.into_owned());
@@ -472,6 +492,7 @@ impl CallbackServer {
         CallbackServer {
             receiver,
             stop: Some(stop),
+            port,
         }
     }
 }

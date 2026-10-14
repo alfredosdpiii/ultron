@@ -325,7 +325,8 @@ function stripStacks(value) {
 sections.codex = async () => {
 	const api = await src("api/openai-codex-responses.ts");
 	const b64 = (v) => Buffer.from(JSON.stringify(v)).toString("base64").replace(/=+$/, "");
-	const jwt = (claims) => `${b64({ alg: "none" })}.${b64(claims)}.sig`;
+	// Unsigned fakes; the signature says so, which also keeps scripts/secret-scan.mjs from taking them for real tokens.
+	const jwt = (claims) => `${b64({ alg: "none" })}.${b64(claims)}.example-sig`;
 	const token = jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "acc-123" } });
 	const cModel = (extra = {}) => model("openai-codex-responses", "openai-codex", "https://chatgpt.com/backend-api", { id: "gpt-5.5", ...extra });
 	const done = (extra = {}, type = "response.done") => ev(type, { response: resp("completed", extra) });
@@ -1138,7 +1139,8 @@ async function subscriptionCases() {
 		if (!next) throw new Error("unexpected request");
 		return new Response(next.body, { status: next.status, statusText: STATUS_TEXT[next.status] ?? "" });
 	};
-	const jwt = (payload) => `${Buffer.from('{"alg":"none"}').toString("base64")}.${Buffer.from(JSON.stringify(payload)).toString("base64")}.sig`;
+	// Unsigned fakes; the signature says so, which also keeps scripts/secret-scan.mjs from taking them for real tokens.
+	const jwt = (payload) => `${Buffer.from('{"alg":"none"}').toString("base64")}.${Buffer.from(JSON.stringify(payload)).toString("base64")}.example-sig`;
 	const CODEX_JWT = jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "acct_123" }, sub: "u" });
 	const CODEX_JWT_NO_ACCOUNT = jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "" } });
 	const COPILOT_TOKEN = "tid=abc;exp=1767229200;proxy-ep=proxy.individual.githubcopilot.com;sku=x";

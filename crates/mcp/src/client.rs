@@ -662,17 +662,19 @@ impl Client {
             let incoming: Vec<CancelToken> = state.incoming.drain().map(|(_, c)| c).collect();
             (was_closed, pending, incoming)
         };
-        for entry in pending {
-            let _ = entry.tx.send(Err(error.clone()));
-        }
-        for token in incoming {
-            token.cancel(Some(&error.to_string()));
-        }
+        // Close listeners run before the waiting requests wake, as in TypeScript, where they run synchronously and
+        // the rejected requests continue in later microtasks: a caller that sees its request fail also sees the close.
         if !was_closed {
             let listeners = lock(&self.0.close_listeners).clone();
             for listener in listeners {
                 listener();
             }
+        }
+        for entry in pending {
+            let _ = entry.tx.send(Err(error.clone()));
+        }
+        for token in incoming {
+            token.cancel(Some(&error.to_string()));
         }
     }
 

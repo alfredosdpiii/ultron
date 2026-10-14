@@ -1,0 +1,160 @@
+{
+	"version": 1,
+	"description": "A26 regression-mutation slice for the Rust build: the ten Node guarantees (acceptance/mutations.json) ported to the Rust code that implements them. Each mutation weakens one critical guarantee; the listed Rust evidence tests must fail (kill it). Run with `acceptance-gate mutate --profile rust`; covered by crates/acceptance/instrument.lock.",
+	"mutations": [
+		{
+			"id": "family-sender-from-payload",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Sender identity comes from the calling lane, never the payload",
+			"edits": [
+				{
+					"find": "\"steer\",",
+					"replace": "\"steer\",\n                \"sender\","
+				},
+				{
+					"find": "let sender = request.caller_task;",
+					"replace": "let sender = payload.get(\"sender\").and_then(Value::as_str).or(request.caller_task);"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			]
+		},
+		{
+			"id": "family-drop-family-scope",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Child sends are limited to direct children of the sender",
+			"edits": [
+				{
+					"find": ".filter(|task| text(task, \"parentId\") == sender)",
+					"replace": ".filter(|_task| true)"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			]
+		},
+		{
+			"id": "family-verifier-may-message-children",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Verifier tasks may only message their direct parent",
+			"edits": [
+				{
+					"find": "return Err(\"Verifier tasks may only message their direct parent\".into());",
+					"replace": ""
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			]
+		},
+		{
+			"id": "family-messages-never-expire",
+			"row": "A41",
+			"file": "crates/kernel-apis/src/family.rs",
+			"guarantee": "Expired messages are never delivered",
+			"edits": [
+				{
+					"find": "message[\"state\"] == \"pending\" && message[\"expiresAt\"].as_i64().is_some_and(|expires| expires <= now)",
+					"replace": "false"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a41_family.rs"
+			]
+		},
+		{
+			"id": "progress-truthy-passed",
+			"row": "A44",
+			"file": "crates/kernel-apis/src/progress.rs",
+			"guarantee": "A completion claim is verified only when the verifier returns passed === true",
+			"edits": [
+				{
+					"find": "Some(Value::Bool(true)) => (",
+					"replace": "Some(v) if !matches!(v, Value::Null | Value::Bool(false)) && v.as_str() != Some(\"\") && v.as_f64() != Some(0.0) => ("
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a44_progress.rs"
+			]
+		},
+		{
+			"id": "progress-grants-budget-extension",
+			"row": "A44",
+			"file": "crates/kernel-apis/src/progress.rs",
+			"guarantee": "Reassessment never extends budgets",
+			"edits": [
+				{
+					"find": "\"decision\": \"denied\",",
+					"replace": "\"decision\": \"granted\","
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a44_progress.rs"
+			]
+		},
+		{
+			"id": "kernel-keeps-credentials",
+			"row": "A10",
+			"file": "crates/kernel/src/config.rs",
+			"guarantee": "Credential-named variables are scrubbed from the kernel environment",
+			"edits": [
+				{
+					"find": "allowed.contains(name.as_ref()) || !(control || credential)",
+					"replace": "allowed.contains(name.as_ref()) || !control"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a10_worker_isolation.rs"
+			]
+		},
+		{
+			"id": "kernel-keeps-worker-control-channel",
+			"row": "A10",
+			"file": "crates/kernel/src/config.rs",
+			"guarantee": "Worker control-channel variables are scrubbed even when their names look harmless",
+			"edits": [
+				{
+					"find": "allowed.contains(name.as_ref()) || !(control || credential)",
+					"replace": "allowed.contains(name.as_ref()) || !credential"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a10_worker_isolation.rs"
+			]
+		},
+		{
+			"id": "schedules-drop-slot-key",
+			"row": "A23",
+			"file": "crates/kernel-apis/src/schedules.rs",
+			"guarantee": "Schedule firings are admitted with a slot-derived idempotency key",
+			"edits": [
+				{
+					"find": "\"key\": schedule_key(&claimed, slot),",
+					"replace": "\"key\": format!(\"{}:{}\", schedule_key(&claimed, slot), uuid()),"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a23_schedules.rs"
+			]
+		},
+		{
+			"id": "schedules-truthy-gate",
+			"row": "A23",
+			"file": "crates/kernel-apis/src/schedules.rs",
+			"guarantee": "A required check passes only with a boolean passed === true",
+			"edits": [
+				{
+					"find": ".and_then(Value::as_bool)",
+					"replace": ".map(|v| !matches!(v, Value::Null | Value::Bool(false)) && v.as_str() != Some(\"\") && v.as_f64() != Some(0.0))"
+				}
+			],
+			"tests": [
+				"crates/acceptance/tests/a23_schedules.rs"
+			]
+		}
+	]
+}

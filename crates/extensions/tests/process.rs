@@ -517,6 +517,21 @@ fn extensions_process_bus_messages_reach_every_subscriber() {
 }
 
 #[test]
+fn extensions_process_host_publish_reaches_bus_subscribers_only() {
+    // The host's side of `pi.events` (`ultron:context_edit` is published this way): subscribers of the channel get
+    // the data, other channels are not delivered.
+    let dir = tempfile::tempdir().unwrap();
+    let (host, _) = load(vec![manifest(dir.path(), "a", json!({}))], false);
+    host.publish("elsewhere", &json!(1));
+    host.publish("greetings", &json!({ "edit": "e1" }));
+    wait_for("bus delivery", || {
+        !info(&host, "a")["bus"].as_array().unwrap().is_empty()
+    });
+    assert_eq!(info(&host, "a")["bus"], json!([["greetings", { "edit": "e1" }]]));
+    host.shutdown();
+}
+
+#[test]
 fn extensions_process_shutdown_stops_the_process() {
     let dir = tempfile::tempdir().unwrap();
     let (host, _) = load(vec![manifest(dir.path(), "hello", json!({}))], false);

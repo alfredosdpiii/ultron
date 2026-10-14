@@ -51,6 +51,16 @@ impl Delegation {
                     }
                 };
                 let lane_name = child.then(|| format!("ultron.rlm-child.{id}"));
+                // A reattached worktree child keeps its worktree (its saved record names the task): its work is
+                // committed on its branch when it ends, and `rlm.merge` finds it.
+                let worktree = waiter
+                    .as_ref()
+                    .and(self.inner.workspace.as_deref())
+                    .and_then(|workspace| {
+                        wt::list_records(workspace)
+                            .into_iter()
+                            .find(|record| record.task_id.as_deref() == Some(id.as_str()))
+                    });
                 if let (Some(lane), Some(_)) = (&lane_name, &waiter) {
                     state.lane_tasks.insert(lane.clone(), id.clone());
                 }
@@ -70,7 +80,7 @@ impl Delegation {
                     waiters: 0,
                     signal: signal.clone(),
                     finishing: false,
-                    worktree: None,
+                    worktree,
                     worktree_baseline: None,
                     outside_before: None,
                     before: None,
@@ -100,50 +110,8 @@ impl Delegation {
         };
         let result =
             result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
-        self.end_restored(id, result);
-    }
-
-    /// End a reattached child: its result becomes the task's outcome and its end is announced (`child_done`).
-    fn end_restored(&self, id: &str, result: Value) {
-        let event = {
-            let mut state = lock(&self.inner.state);
-            let closed = state.closed;
-            let owner_lane = state
-                .task(id)
-                .and_then(|t| t.parent_id.clone())
-                .and_then(|p| state.task(&p).and_then(|t| t.lane_name.clone()))
-                .unwrap_or_else(|| "main".into());
-            let now = (self.inner.now)();
-            let Some(task) = state.task_mut(id) else { return };
-            if task.outcome.is_some() {
-                return;
-            }
-            let terminal = match result["status"].as_str() {
-                Some("succeeded") => "completed",
-                Some(other) => other,
-                None => "failed",
-            };
-            task.record["state"] = json!(terminal);
-            task.record["result"] = result.clone();
-            task.ended_at.get_or_insert(now);
-            task.signal.abort("ended");
-            task.outcome = Some(Ok(result));
-            self.inner.changed.notify_all();
-            (!closed).then(|| DetachedEnd {
-                task: task.record.clone(),
-                kind: "child_done",
-                owner_lane,
-                awaited: task.waiters > 0,
-                fetch: format!("await rlm.collect([\"{id}\"])"),
-            })
-        };
-        if let Some(event) = event {
-            let _ = self
-                .inner
-                .events
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .send(event);
-        }
+        // As any child's end (its worktree work committed first), kept by the host: the journal already holds the
+        // task as it recovered it.
+        let _ = self.end(id, result);
     }
 }

@@ -218,11 +218,23 @@ fn sandbox_interactive_unshare_and_docker_argv() {
     ]));
     let on = flat_policy(true, None).wrap(Mechanism::Unshare, &Flat, &["true".into()], Path::new("/p"));
     assert!(!on.contains(&"--net".to_owned()));
+    let docker = flat_policy(false, Some("/t")).wrap(
+        Mechanism::Docker,
+        &Flat,
+        &["bash".into(), "-c".into(), "x".into()],
+        Path::new("/p"),
+    );
+    // The client dies with its parent, and the container with its client (escape.rs runs both for real).
+    assert_eq!(docker[..6], ["setpriv", "--pdeathsig", "KILL", "--", "bash", "-c"]);
+    assert_eq!(docker[7], "ultron-docker");
     assert_eq!(
-        argv(&flat_policy(false, Some("/t")), Mechanism::Docker),
-        "docker run --rm --init --pull never --network none --cap-drop ALL --security-opt no-new-privileges \
+        docker[8..].join(" "),
+        format!(
+            "docker run --rm --init -i --pull never --network none --cap-drop ALL --security-opt no-new-privileges \
 --pids-limit 1024 --user 7:8 -v /t:/tmp:rw -v /h:/h:ro -v /p:/p:rw --tmpfs /h/.ssh -v /dev/null:/h/.netrc:ro -w /p \
--e PATH=/usr/bin img bash -c x"
+img sh -c {} sh env -i PATH=/usr/bin bash -c x",
+            docker[docker.len() - 8]
+        )
     );
 }
 

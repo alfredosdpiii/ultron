@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-fn fail(error: CallError) -> String {
+pub(crate) fn fail(error: CallError) -> String {
     daemon::lost::describe(&error.to_string()).unwrap_or_else(|| error.to_string())
 }
 
@@ -57,6 +57,59 @@ struct Shared {
     closing: AtomicBool,
     /// Serializes attaching (the supervisor and the owner's `attach`).
     attaching: Mutex<()>,
+}
+
+/// A call of the attached session, sent again once the link rejoined when it was refused before reaching a worker.
+fn session_call(shared: &Shared, service: &str, member: &str, args: Value) -> OpResult {
+    let deadline = Instant::now() + REJOIN_TIMEOUT;
+    loop {
+        shared.wait_reconnected();
+        let connection = shared.connection();
+        if connection.is_closed() && Instant::now() < deadline {
+            // Not sent: wait for the supervisor to reconnect.
+            std::thread::sleep(SUPERVISE);
+            continue;
+        }
+        let result = connection
+            .session_target()
+            .and_then(|session| connection.call(session, service, member, args.clone()));
+        match result {
+            // Refused before it reached a worker: send it again once the link rejoined.
+            Err(CallError::Server(error))
+                if error.code == daemon::routed::RECONNECTING_CODE && Instant::now() < deadline =>
+            {
+                std::thread::sleep(SUPERVISE);
+            }
+            other => return other.map_err(fail),
+        }
+    }
+}
+
+/// Session operations of a link's attached session, from any thread ([`Link::ops`]).
+#[derive(Clone)]
+pub struct Ops(Arc<Shared>);
+
+impl Ops {
+    /// Run a session operation on the attached session's worker.
+    pub fn op(&self, op: &Op) -> OpResult {
+        session_call(&self.0, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]))
+    }
+}
+
+/// The link as another thread follows it ([`Link::handle`]).
+#[derive(Clone)]
+pub struct LinkHandle {
+    shared: Arc<Shared>,
+}
+
+impl LinkHandle {
+    pub fn connection(&self) -> Arc<Connection> {
+        self.shared.connection()
+    }
+
+    pub fn session_id(&self) -> String {
+        self.shared.lock().session_id.clone()
+    }
 }
 
 pub struct Link {
@@ -364,6 +417,13 @@ impl Link {
         self.shared.connection()
     }
 
+    /// A handle another thread can follow the link with (its current connection and session).
+    pub fn handle(&self) -> LinkHandle {
+        LinkHandle {
+            shared: self.shared.clone(),
+        }
+    }
+
     /// The attached session's id.
     pub fn session_id(&self) -> String {
         self.shared.lock().session_id.clone()
@@ -384,6 +444,13 @@ impl Link {
     /// Remove a stored session through the server (`pi.session-management.remove`).
     pub fn remove(&self, id: &str) -> Result<(), String> {
         self.management("remove", json!([id])).map(|_| ())
+    }
+
+    /// Import a Pi session's text through the server (`pi.session-management.importPi`): `{session, alreadyImported,
+    /// imported}`.
+    pub fn import_pi(&self, source_path: &str, content: &str) -> Result<Value, String> {
+        let source = json!({"sourcePath": source_path, "content": content});
+        Ok(self.management("importPi", json!([source]))?.unwrap_or_default())
     }
 
     /// Rename a stored session through the server (`pi.session-management.rename`).
@@ -421,28 +488,12 @@ impl Link {
     /// A call on the attached session, after any reconnection under way; a call refused because the worker was
     /// restarting never reached it and is sent again once the link rejoined.
     fn session_call(&self, service: &str, member: &str, args: Value) -> OpResult {
-        let deadline = Instant::now() + REJOIN_TIMEOUT;
-        loop {
-            self.shared.wait_reconnected();
-            let connection = self.shared.connection();
-            if connection.is_closed() && Instant::now() < deadline {
-                // Not sent: wait for the supervisor to reconnect.
-                std::thread::sleep(SUPERVISE);
-                continue;
-            }
-            let result = connection
-                .session_target()
-                .and_then(|session| connection.call(session, service, member, args.clone()));
-            match result {
-                // Refused before it reached a worker: send it again once the link rejoined.
-                Err(CallError::Server(error))
-                    if error.code == daemon::routed::RECONNECTING_CODE && Instant::now() < deadline =>
-                {
-                    std::thread::sleep(SUPERVISE);
-                }
-                other => return other.map_err(fail),
-            }
-        }
+        session_call(&self.shared, service, member, args)
+    }
+
+    /// A handle that runs session operations from another thread, beside this link's own calls.
+    pub fn ops(&self) -> Ops {
+        Ops(self.shared.clone())
     }
 
     /// Run a session operation on the attached session's worker.

@@ -97,7 +97,7 @@ impl AuthStorage {
         let Some(credential) = self.data.get(provider).cloned() else {
             return Ok(None);
         };
-        resolve_api_key(credential, &|name| std::env::var(name).ok())
+        resolve_stored_api_key(credential, &|name| std::env::var(name).ok())
     }
 
     /// Provider ids and credential types, in file order.
@@ -147,7 +147,9 @@ impl AuthStorage {
     }
 }
 
-fn resolve_api_key(
+/// `FileAuthStorage.read`'s key resolution: an `api_key` credential's `key` template (`$VAR`, `${VAR}`) resolved
+/// against its own `env`, then `process_env`; a key naming an unset variable is removed. Other credentials as given.
+pub fn resolve_stored_api_key(
     mut credential: Value,
     process_env: &dyn Fn(&str) -> Option<String>,
 ) -> Result<Option<Value>, String> {

@@ -174,7 +174,8 @@ const repos = trees.map((tree) => {
 		rmSync(base, { recursive: true, force: true });
 	}
 });
-const miseTree = [file("one/bin/mise"), file("two/mise"), dir("three/mise"), file("home/.local/bin/mise"), file("mise")];
+// The fake home is "fakehome": a recorded `<root>/home/<dir>/` path reads as a real one to scripts/secret-scan.mjs.
+const miseTree = [file("one/bin/mise"), file("two/mise"), dir("three/mise"), file("fakehome/.local/bin/mise"), file("mise")];
 const miseCases = [
 	["<root>/none:<root>/one/bin:<root>/two", undefined], ["<root>/none:<root>/two/./:<root>/one/bin", true],
 	["<root>/one/bin", false], ["<root>/one/bin", "  "], ["<root>/one/bin", " /opt/m "], ["<root>/one/bin", "true"],
@@ -186,7 +187,7 @@ try {
 	build(miseBase, miseTree);
 	const real = (text) => text?.replaceAll("<root>", miseBase);
 	mise = miseCases.map(([path, setting]) => ({ path: path ?? null, setting: setting ?? null,
-		found: prepare.findMise(path === undefined ? {} : { PATH: real(path) }, join(miseBase, "home"), setting)?.replaceAll(miseBase, "<root>") ?? null }));
+		found: prepare.findMise(path === undefined ? {} : { PATH: real(path) }, join(miseBase, "fakehome"), setting)?.replaceAll(miseBase, "<root>") ?? null }));
 } finally {
 	rmSync(miseBase, { recursive: true, force: true });
 }
@@ -281,3 +282,9 @@ const levels = [{}, { severity: "blocker" }, { severity: "major" }, { severity: 
 	{ severity: "bogus" }].map((f) => [f, types.levelOf(f)]);
 writeFileSync(join(here, "plan.json"), `${JSON.stringify({ plans: planOut, places, emptyPlace: plan.placeLine([], 3) ?? null,
 	levels, severities: types.LEVELS.map(types.severityOf), marker: plan.commentMarker("k-1") }, null, 1)}\n`);
+
+// The other areas' recorders, each deterministic and writing its own fixture: the deep pass, the structural
+// reference, the sandboxed tests, the compiled mode, their glue, the GitHub flow, the daemon and the service files.
+for (const generator of ["generate_deep.mjs", "generate_reference.mjs", "generate_tests.mjs", "generate_compiled.mjs",
+	"generate_glue.mjs", "generate_github.mjs", "generate_daemon.mjs", "generate_service.mjs"])
+	execFileSync(process.execPath, [join(here, generator)], { stdio: "inherit" });

@@ -1360,7 +1360,20 @@ impl Delegation {
                 None => "failed",
             }
             .to_string();
-            let committed = state.journal.transition(id, &terminal, Some(result));
+            // A child reattached after a restart (`restore`: running again, never started by this host) is already
+            // terminal in the journal, which recorded it `interrupted` when it reopened (and keeps that first
+            // terminal record): its real end (a result, or a cancel) is the host's, kept in memory.
+            let reattached = state
+                .task(id)
+                .is_some_and(|t| t.started_at.is_none() && t.lane_name.is_some() && t.record["state"] == "running");
+            let committed = if reattached {
+                let mut record = state.task(id).map(|t| t.record.clone()).unwrap_or_default();
+                record["state"] = json!(terminal);
+                record["result"] = result;
+                Ok(record)
+            } else {
+                state.journal.transition(id, &terminal, Some(result))
+            };
             let now = (self.inner.now)();
             let closed = state.closed;
             let owner_lane = {
@@ -1378,7 +1391,7 @@ impl Delegation {
             });
             task.outcome = Some(outcome.clone());
             self.inner.changed.notify_all();
-            match outcome {
+            let event = match outcome {
                 Ok(_) if !closed => Some(DetachedEnd {
                     task: task.record.clone(),
                     kind: "child_done",
@@ -1388,17 +1401,22 @@ impl Delegation {
                 }),
                 Ok(_) => None,
                 Err(error) => return Err(error),
+            };
+            // Queued in the critical section that ends the task: to anyone holding the state lock a child is
+            // either running or has its end queued. Sent after the lock, the session's activity check could run
+            // in between, see neither, and retire an unattached worker with the child's end never delivered.
+            if let Some(event) = &event {
+                let _ = self
+                    .inner
+                    .events
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .send(event.clone());
             }
+            event
         };
         if let Some(event) = event {
-            let result = event.task["result"].clone();
-            let _ = self
-                .inner
-                .events
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .send(event);
-            return Ok(result);
+            return Ok(event.task["result"].clone());
         }
         let state = lock(&self.inner.state);
         state

@@ -15,6 +15,7 @@ agent = { path = "../agent" }
 ai = { path = "../ai" }
 loki = { path = "../loki" }
 resources = { path = "../resources" }
+review = { path = "../review" }
 tokio = { version = "=1.53.2", features = ["rt", "time"] }
 claude-root = { path = "../claude-root" }
 client = { path = "../client" }
@@ -24,6 +25,7 @@ daemon = { path = "../daemon" }
 delegation = { path = "../delegation" }
 extensions = { path = "../extensions" }
 host = { path = "../host" }
+hindsight = { path = "../hindsight" }
 interactive = { path = "../interactive" }
 indexmap = "=2.14.2"
 regex = "=1.13.1"
@@ -38,6 +40,9 @@ session-file = { path = "../session-file" }
 sha2 = "=0.10.9"
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 tui = { path = "../tui" }
+
+[build-dependencies]
+sha2 = "=0.10.9"
 
 [dev-dependencies]
 chord-delta = { path = "../chord-delta" }

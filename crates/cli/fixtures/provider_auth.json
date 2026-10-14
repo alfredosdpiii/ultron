@@ -1,0 +1,1564 @@
+{
+	"stubs": {
+		"POST https://platform.claude.com/v1/oauth/token": [
+			{
+				"body": {
+					"access_token": "anthropic-new",
+					"refresh_token": "anthropic-refresh-new",
+					"expires_in": 3600
+				}
+			}
+		],
+		"POST https://auth.openai.com/oauth/token": [
+			{
+				"body": {
+					"access_token": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+					"refresh_token": "codex-refresh-new",
+					"expires_in": 3600
+				}
+			}
+		],
+		"GET https://api.github.com/copilot_internal/v2/token": [
+			{
+				"body": {
+					"token": "tid=abc;exp=4102444800;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+					"expires_at": 4102444800
+				}
+			}
+		],
+		"GET https://api.individual.githubcopilot.com/models": [
+			{
+				"body": {
+					"data": [
+						{
+							"id": "gpt-5.4",
+							"model_picker_enabled": true,
+							"policy": {
+								"state": "enabled"
+							}
+						},
+						{
+							"id": "claude-sonnet-5",
+							"model_picker_enabled": true,
+							"policy": {
+								"state": "enabled"
+							}
+						}
+					]
+				}
+			}
+		],
+		"POST https://auth.x.ai/oauth2/token": [
+			{
+				"body": {
+					"access_token": "xai-new",
+					"refresh_token": "xai-refresh-new",
+					"expires_in": 3600,
+					"token_type": "Bearer"
+				}
+			}
+		],
+		"POST https://auth.kimi.com/api/oauth/token": [
+			{
+				"body": {
+					"access_token": "kimi-new",
+					"refresh_token": "kimi-refresh-new",
+					"expires_in": 3600,
+					"token_type": "Bearer"
+				}
+			}
+		],
+		"POST https://api.meta.ai/muse-code/key": [
+			{
+				"body": {
+					"api_key": "meta-key-new"
+				}
+			}
+		]
+	},
+	"failing": {
+		"POST https://platform.claude.com/v1/oauth/token": [
+			{
+				"status": 400,
+				"body": {
+					"error": "invalid_grant"
+				}
+			}
+		],
+		"POST https://auth.openai.com/oauth/token": [
+			{
+				"body": {
+					"access_token": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+					"refresh_token": "codex-refresh-new",
+					"expires_in": 3600
+				}
+			}
+		],
+		"GET https://api.github.com/copilot_internal/v2/token": [
+			{
+				"body": {
+					"token": "tid=abc;exp=4102444800;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+					"expires_at": 4102444800
+				}
+			}
+		],
+		"GET https://api.individual.githubcopilot.com/models": [
+			{
+				"body": {
+					"data": [
+						{
+							"id": "gpt-5.4",
+							"model_picker_enabled": true,
+							"policy": {
+								"state": "enabled"
+							}
+						},
+						{
+							"id": "claude-sonnet-5",
+							"model_picker_enabled": true,
+							"policy": {
+								"state": "enabled"
+							}
+						}
+					]
+				}
+			}
+		],
+		"POST https://auth.x.ai/oauth2/token": [
+			{
+				"body": {
+					"access_token": "xai-new",
+					"refresh_token": "xai-refresh-new",
+					"expires_in": 3600,
+					"token_type": "Bearer"
+				}
+			}
+		],
+		"POST https://auth.kimi.com/api/oauth/token": [
+			{
+				"body": {
+					"access_token": "kimi-new",
+					"refresh_token": "kimi-refresh-new",
+					"expires_in": 3600,
+					"token_type": "Bearer"
+				}
+			}
+		],
+		"POST https://api.meta.ai/muse-code/key": [
+			{
+				"body": {
+					"api_key": "meta-key-new"
+				}
+			}
+		]
+	},
+	"cases": [
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--json"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"anthropic\",\"authType\":\"oauth\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"anthropic-refresh\"}"
+				}
+			],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"refresh": "anthropic-refresh-new",
+					"access": "anthropic-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"anthropic"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "anthropic-new\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"anthropic-refresh\"}"
+				}
+			],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"refresh": "anthropic-refresh-new",
+					"access": "anthropic-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--json",
+				"--credentials"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"anthropic\",\"authType\":\"oauth\",\"credentials\":\"anthropic-new\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"anthropic-refresh\"}"
+				}
+			],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"refresh": "anthropic-refresh-new",
+					"access": "anthropic-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"openai-codex"
+			],
+			"models": null,
+			"auth": {
+				"openai-codex": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "openai-codex-refresh",
+					"expires": 1,
+					"accountId": "a"
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://auth.openai.com/oauth/token",
+					"headers": {
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&refresh_token=openai-codex-refresh&client_id=app_EMoamEEZ73f0CkXaXp7hrann"
+				}
+			],
+			"stored": {
+				"openai-codex": {
+					"type": "oauth",
+					"access": "eyJhbGciOiJub25lIn0=.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiYWNjb3VudC03ODkifX0=.sig",
+					"refresh": "codex-refresh-new",
+					"expires": "<now+>",
+					"accountId": "account-789"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"github-copilot"
+			],
+			"models": null,
+			"auth": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "github-copilot-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "tid=abc;exp=4102444800;proxy-ep=proxy.individual.githubcopilot.com;sku=x\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "GET",
+					"url": "https://api.github.com/copilot_internal/v2/token",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer github-copilot-refresh",
+						"copilot-integration-id": "vscode-chat",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"user-agent": "GitHubCopilotChat/0.35.0"
+					},
+					"body": null
+				},
+				{
+					"method": "GET",
+					"url": "https://api.individual.githubcopilot.com/models",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer tid=abc;exp=4102444800;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+						"copilot-integration-id": "vscode-chat",
+						"editor-plugin-version": "copilot-chat/0.35.0",
+						"editor-version": "vscode/1.107.0",
+						"user-agent": "GitHubCopilotChat/0.35.0",
+						"x-github-api-version": "2026-06-01"
+					},
+					"body": null
+				}
+			],
+			"stored": {
+				"github-copilot": {
+					"type": "oauth",
+					"refresh": "github-copilot-refresh",
+					"access": "tid=abc;exp=4102444800;proxy-ep=proxy.individual.githubcopilot.com;sku=x",
+					"expires": 4102444500000,
+					"availableModelIds": [
+						"gpt-5.4",
+						"claude-sonnet-5"
+					]
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"xai"
+			],
+			"models": null,
+			"auth": {
+				"xai": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "xai-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "xai-new\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://auth.x.ai/oauth2/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "grant_type=refresh_token&client_id=b1a00492-073a-47ea-816f-4c329264a828&refresh_token=xai-refresh"
+				}
+			],
+			"stored": {
+				"xai": {
+					"type": "oauth",
+					"access": "xai-new",
+					"refresh": "xai-refresh-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"kimi-coding"
+			],
+			"models": null,
+			"auth": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "kimi-coding-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "kimi-new\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://auth.kimi.com/api/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/x-www-form-urlencoded"
+					},
+					"body": "client_id=17e5f671-d194-4dfb-9706-5516cb48c098&grant_type=refresh_token&refresh_token=kimi-coding-refresh"
+				}
+			],
+			"stored": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-new",
+					"refresh": "kimi-refresh-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"meta"
+			],
+			"models": null,
+			"auth": {
+				"meta": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "meta-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "meta-key-new\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://api.meta.ai/muse-code/key",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer meta-refresh",
+						"content-type": "application/json",
+						"x-api-version": "1.0.0"
+					},
+					"body": "{}"
+				}
+			],
+			"stored": {
+				"meta": {
+					"type": "oauth",
+					"refresh": "meta-refresh",
+					"access": "meta-key-new",
+					"expires": "<now+>"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"openrouter"
+			],
+			"models": null,
+			"auth": {
+				"openrouter": {
+					"type": "oauth",
+					"access": "sk-or-key",
+					"refresh": "openrouter-refresh",
+					"expires": 9007199254740991
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "sk-or-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"openrouter": {
+					"type": "oauth",
+					"access": "sk-or-key",
+					"refresh": "openrouter-refresh",
+					"expires": 9007199254740991
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"xai",
+				"--json"
+			],
+			"models": null,
+			"auth": {
+				"xai": {
+					"type": "oauth",
+					"access": "valid",
+					"refresh": "xai-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"xai\",\"authType\":\"oauth\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"xai": {
+					"type": "oauth",
+					"access": "valid",
+					"refresh": "xai-refresh",
+					"expires": 4102444800000
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"github-copilot"
+			],
+			"models": null,
+			"auth": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "valid",
+					"refresh": "github-copilot-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Provider \"github-copilot\" is configured with OAuth, not an API key\n",
+			"code": 1,
+			"requests": [],
+			"stored": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "valid",
+					"refresh": "github-copilot-refresh",
+					"expires": 4102444800000
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--json"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "failing",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"anthropic\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"anthropic-refresh\"}"
+				}
+			],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"anthropic"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"stubs": "failing",
+			"stdout": "",
+			"stderr": "Error: Failed to resolve credential\n",
+			"code": 1,
+			"requests": [
+				{
+					"method": "POST",
+					"url": "https://platform.claude.com/v1/oauth/token",
+					"headers": {
+						"accept": "application/json",
+						"content-type": "application/json"
+					},
+					"body": "{\"grant_type\":\"refresh_token\",\"client_id\":\"9d1c250a-e61b-44d9-88ed-5944d1962f5e\",\"refresh_token\":\"anthropic-refresh\"}"
+				}
+			],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "old",
+					"refresh": "anthropic-refresh",
+					"expires": 1
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"proxy\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"proxy"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "literal-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "$PROXY_KEY"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"proxy\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"proxy"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "pre-$PROXY_KEY"
+					}
+				}
+			},
+			"auth": null,
+			"env": {
+				"PROXY_KEY": "env"
+			},
+			"stubs": "default",
+			"stdout": "pre-env\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"proxy"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "!printf ' cmd-key '"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "cmd-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "!exit 3"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"proxy\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"proxy"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "!exit 3"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Failed to resolve credential\n",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"proxy\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--json",
+				"--credentials"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"proxy\",\"authType\":\"api_key\",\"credentials\":\"stored-key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"proxy"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Provider \"proxy\" is not configured with an OAuth bearer token\n",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"openai"
+			],
+			"models": {
+				"providers": {
+					"openai": {
+						"apiKey": "models-openai"
+					}
+				}
+			},
+			"auth": null,
+			"env": {
+				"OPENAI_API_KEY": "env-openai"
+			},
+			"stubs": "default",
+			"stdout": "models-openai\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"broken": {}
+				}
+			},
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"anthropic\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"nope"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Unknown provider \"nope\". Use --list-models to see available providers.\n",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"claude-sonnet-4-5",
+				"--json"
+			],
+			"models": null,
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"claude-sonnet-4-5\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"no-such-model-xyz",
+				"--json"
+			],
+			"models": null,
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"no-such-model-xyz\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"proxy",
+				"--model",
+				"m",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"proxy\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"claude-sonnet-4-5",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"broken": {}
+				}
+			},
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"invalid\",\"provider\":\"claude-sonnet-4-5\",\"reason\":\"invalid_state\"}\n",
+			"stderr": "",
+			"code": 2,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--model",
+				"m"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "stored-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--model",
+				"no-such-model-xyz"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Model \"no-such-model-xyz\" not found. Use --list-models to see available models.\n",
+			"code": 1,
+			"requests": [],
+			"stored": {
+				"proxy": {
+					"type": "api_key",
+					"key": "stored-key"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--model",
+				"gpt-5.4"
+			],
+			"models": null,
+			"auth": {
+				"openai": {
+					"type": "api_key",
+					"key": "openai-key"
+				},
+				"openrouter": {
+					"type": "api_key",
+					"key": "openrouter-key"
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Multiple configured providers matched (openai, openrouter). Specify --provider.\n",
+			"code": 1,
+			"requests": [],
+			"stored": {
+				"openai": {
+					"type": "api_key",
+					"key": "openai-key"
+				},
+				"openrouter": {
+					"type": "api_key",
+					"key": "openrouter-key"
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"proxy",
+				"--model",
+				"zzz"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "literal-key\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--model",
+				"k3"
+			],
+			"models": null,
+			"auth": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-valid",
+					"refresh": "kimi-coding-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "kimi-valid\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-valid",
+					"refresh": "kimi-coding-refresh",
+					"expires": 4102444800000
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-bearer-token",
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5"
+			],
+			"models": null,
+			"auth": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "anthropic-valid",
+					"refresh": "anthropic-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"stubs": "default",
+			"stdout": "anthropic-valid\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {
+				"anthropic": {
+					"type": "oauth",
+					"access": "anthropic-valid",
+					"refresh": "anthropic-refresh",
+					"expires": 4102444800000
+				}
+			}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--provider",
+				"anthropic",
+				"--model",
+				"no-such-model-xyz"
+			],
+			"models": null,
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "k\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"print-api-key",
+				"--model",
+				"m"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "",
+			"stderr": "Error: Model \"m\" not found. Use --list-models to see available models.\n",
+			"code": 1,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5",
+				"--json"
+			],
+			"models": null,
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"anthropic\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"anthropic/claude-sonnet-4-5",
+				"--json"
+			],
+			"models": null,
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"anthropic\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"m",
+				"--json"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"proxy\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"proxy/m"
+			],
+			"models": {
+				"providers": {
+					"proxy": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						],
+						"apiKey": "literal-key"
+					}
+				}
+			},
+			"auth": null,
+			"env": {},
+			"stubs": "default",
+			"stdout": "ready\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"anthropic",
+				"--model",
+				"no-such-model-xyz",
+				"--json"
+			],
+			"models": null,
+			"auth": null,
+			"env": {
+				"ANTHROPIC_API_KEY": "k"
+			},
+			"stubs": "default",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"anthropic\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0,
+			"requests": [],
+			"stored": {}
+		}
+	]
+}

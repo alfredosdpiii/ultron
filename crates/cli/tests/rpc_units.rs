@@ -322,6 +322,18 @@ fn cli_rpc_watch_events_decode_as_lane_events() {
         LaneEvent::from_watch(&inside),
         Some(LaneEvent::MessageEnd { in_run: true, .. })
     ));
+    // AgentSession's summarization retry events pass through as they are, without the lane.
+    let scheduled = json!({"type": "summarization_retry_scheduled", "lane": "main", "attempt": 1, "maxAttempts": 3,
+        "delayMs": 2000, "errorMessage": "Overloaded"});
+    let Some(retry @ LaneEvent::SummarizationRetry(_)) = LaneEvent::from_watch(&scheduled) else {
+        panic!("not shown");
+    };
+    assert_eq!(
+        RpcEventTranslator::default().translate(retry),
+        [
+            json!({"type": "summarization_retry_scheduled", "attempt": 1, "maxAttempts": 3, "delayMs": 2000, "errorMessage": "Overloaded"})
+        ]
+    );
     // Only a failed run carries its error; an aborted one ends without.
     let failed = json!({"type": "run_end", "status": "failed", "error": {"message": "boom"}, "endedAt": 5});
     let aborted = json!({"type": "run_end", "status": "aborted", "endedAt": 6});

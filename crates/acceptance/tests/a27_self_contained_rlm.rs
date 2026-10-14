@@ -171,11 +171,9 @@ fn end_to_end_part() {
     assert_eq!(results[0], (ROWS + 1).to_string());
     assert_eq!(results[1], "(no result)");
     assert_eq!(results[2], expected_answer().trim_end());
-    assert!(
-        results[3].contains("Ultron RLM host request is not available in this host yet: refinements.list"),
-        "{}",
-        results[3]
-    );
+    // The shipped stack serves the local services (session-core/src/compose.rs), as the TS session worker does: the
+    // self-contained run wrote no refinement, so the ledger is empty. (The TS refusal is the bare host above.)
+    assert_eq!(results[3], "[]");
 }
 
 #[test]

@@ -1,0 +1,2930 @@
+{
+	"parameters": {
+		"type": "object",
+		"properties": {
+			"tool": {
+				"type": "string",
+				"description": "MCP tool to call"
+			},
+			"args": {
+				"anyOf": [
+					{
+						"type": "string"
+					},
+					{
+						"type": "object",
+						"additionalProperties": true
+					}
+				],
+				"description": "Tool arguments as a JSON object, or as a JSON string encoding one"
+			},
+			"connect": {
+				"type": "string",
+				"description": "Server to connect (or reconnect)"
+			},
+			"describe": {
+				"type": "string",
+				"description": "Tool to describe"
+			},
+			"instructions": {
+				"type": "string",
+				"description": "Server whose usage instructions to return"
+			},
+			"search": {
+				"type": "string",
+				"description": "Words to find tools by"
+			},
+			"limit": {
+				"type": "number"
+			},
+			"server": {
+				"type": "string",
+				"description": "Server name: lists its tools, or narrows the other modes"
+			},
+			"resources": {
+				"description": "true (or a server name) lists resources"
+			},
+			"read": {
+				"type": "string",
+				"description": "URI of a resource to read; needs server"
+			}
+		}
+	},
+	"prepared": [
+		{
+			"params": {},
+			"ok": {}
+		},
+		{
+			"params": {
+				"tool": "t"
+			},
+			"ok": {
+				"tool": "t"
+			}
+		},
+		{
+			"params": {
+				"limit": "5",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 5,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": " 7 ",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 7,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "abc",
+				"search": "x"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": \"abc\",\n  \"search\": \"x\"\n}"
+		},
+		{
+			"params": {
+				"limit": "",
+				"search": "x"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": \"\",\n  \"search\": \"x\"\n}"
+		},
+		{
+			"params": {
+				"limit": true,
+				"search": "x"
+			},
+			"ok": {
+				"limit": 1,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": null,
+				"search": "x"
+			},
+			"ok": {
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": [
+					1
+				],
+				"search": "x"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": [\n    1\n  ],\n  \"search\": \"x\"\n}"
+		},
+		{
+			"params": {
+				"limit": "1e2",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 100,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "0x10",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 16,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "Infinity",
+				"search": "x"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": \"Infinity\",\n  \"search\": \"x\"\n}"
+		},
+		{
+			"params": {
+				"tool": 5
+			},
+			"ok": {
+				"tool": "5"
+			}
+		},
+		{
+			"params": {
+				"tool": true
+			},
+			"ok": {
+				"tool": "true"
+			}
+		},
+		{
+			"params": {
+				"tool": null
+			},
+			"ok": {}
+		},
+		{
+			"params": {
+				"tool": [
+					"a"
+				]
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - tool: must be string\n\nReceived arguments:\n{\n  \"tool\": [\n    \"a\"\n  ]\n}"
+		},
+		{
+			"params": {
+				"tool": {
+					"a": 1
+				}
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - tool: must be string\n\nReceived arguments:\n{\n  \"tool\": {\n    \"a\": 1\n  }\n}"
+		},
+		{
+			"params": {
+				"tool": 1.5
+			},
+			"ok": {
+				"tool": "1.5"
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": {
+					"a": 1
+				}
+			},
+			"ok": {
+				"tool": "t",
+				"args": {
+					"a": 1
+				}
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": "{}"
+			},
+			"ok": {
+				"tool": "t",
+				"args": "{}"
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": 5
+			},
+			"ok": {
+				"tool": "t",
+				"args": "5"
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": true
+			},
+			"ok": {
+				"tool": "t",
+				"args": "true"
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": null
+			},
+			"ok": {
+				"tool": "t"
+			}
+		},
+		{
+			"params": {
+				"tool": "t",
+				"args": [
+					1,
+					2
+				]
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - args: must be string\n  - args: must be object\n  - args: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"tool\": \"t\",\n  \"args\": [\n    1,\n    2\n  ]\n}"
+		},
+		{
+			"params": {
+				"server": 3,
+				"describe": false
+			},
+			"ok": {
+				"server": "3",
+				"describe": "false"
+			}
+		},
+		{
+			"params": {
+				"resources": "x"
+			},
+			"ok": {
+				"resources": "x"
+			}
+		},
+		{
+			"params": {
+				"resources": 0
+			},
+			"ok": {
+				"resources": 0
+			}
+		},
+		{
+			"params": {
+				"read": null,
+				"server": "s"
+			},
+			"ok": {
+				"server": "s"
+			}
+		},
+		{
+			"params": {
+				"connect": null,
+				"extra": 1
+			},
+			"ok": {
+				"extra": 1
+			}
+		},
+		{
+			"params": {
+				"search": null
+			},
+			"ok": {}
+		},
+		{
+			"params": {
+				"search": 12
+			},
+			"ok": {
+				"search": "12"
+			}
+		},
+		{
+			"params": {
+				"instructions": 1,
+				"connect": 2
+			},
+			"ok": {
+				"instructions": "1",
+				"connect": "2"
+			}
+		},
+		{
+			"params": {
+				"limit": "3",
+				"tool": null,
+				"server": null
+			},
+			"ok": {
+				"limit": 3
+			}
+		},
+		{
+			"params": {
+				"limit": {}
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": {}\n}"
+		},
+		{
+			"params": {
+				"resources": null
+			},
+			"ok": {
+				"resources": null
+			}
+		},
+		{
+			"params": {
+				"limit": "abc",
+				"tool": [
+					"a"
+				],
+				"args": [
+					1
+				]
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - tool: must be string\n  - args: must be string\n  - args: must be object\n  - args: must match a schema in anyOf\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": \"abc\",\n  \"tool\": [\n    \"a\"\n  ],\n  \"args\": [\n    1\n  ]\n}"
+		},
+		{
+			"params": {
+				"tool": [
+					"a"
+				],
+				"limit": "abc"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - tool: must be string\n  - limit: must be number\n\nReceived arguments:\n{\n  \"tool\": [\n    \"a\"\n  ],\n  \"limit\": \"abc\"\n}"
+		},
+		{
+			"params": {
+				"limit": 1e+21,
+				"tool": 1e+21
+			},
+			"ok": {
+				"limit": 1e+21,
+				"tool": "1e+21"
+			}
+		},
+		{
+			"params": {
+				"tool": 0
+			},
+			"ok": {
+				"tool": "0"
+			}
+		},
+		{
+			"params": {
+				"tool": 0.1
+			},
+			"ok": {
+				"tool": "0.1"
+			}
+		},
+		{
+			"params": {
+				"tool": 123456789.125
+			},
+			"ok": {
+				"tool": "123456789.125"
+			}
+		},
+		{
+			"params": {
+				"limit": "-5",
+				"search": "x"
+			},
+			"ok": {
+				"limit": -5,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "+5",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 5,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": ".5",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 0.5,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "5.",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 5,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "0b11",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 3,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "0o17",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 15,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": "1_000",
+				"search": "x"
+			},
+			"err": "Validation failed for tool \"mcp\":\n  - limit: must be number\n\nReceived arguments:\n{\n  \"limit\": \"1_000\",\n  \"search\": \"x\"\n}"
+		},
+		{
+			"params": {
+				"limit": "\t8\n",
+				"search": "x"
+			},
+			"ok": {
+				"limit": 8,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"limit": false,
+				"search": "x"
+			},
+			"ok": {
+				"limit": 0,
+				"search": "x"
+			}
+		},
+		{
+			"params": {
+				"args": false,
+				"tool": "t"
+			},
+			"ok": {
+				"args": "false",
+				"tool": "t"
+			}
+		},
+		{
+			"params": {
+				"args": 0,
+				"tool": "t"
+			},
+			"ok": {
+				"args": "0",
+				"tool": "t"
+			}
+		},
+		{
+			"params": {
+				"describe": 1e-7
+			},
+			"ok": {
+				"describe": "1e-7"
+			}
+		},
+		{
+			"params": {
+				"describe": 1.23e-18
+			},
+			"ok": {
+				"describe": "1.23e-18"
+			}
+		},
+		{
+			"params": {
+				"describe": 9007199254740992
+			},
+			"ok": {
+				"describe": "9007199254740992"
+			}
+		}
+	],
+	"parse": [
+		{
+			"input": "x",
+			"err": "Unexpected token 'x', \"x\" is not valid JSON"
+		},
+		{
+			"input": "{",
+			"err": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "}",
+			"err": "Unexpected token '}', \"}\" is not valid JSON"
+		},
+		{
+			"input": "[",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "{a}",
+			"err": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "{\"a\"}",
+			"err": "Expected ':' after property name in JSON at position 4 (line 1 column 5)"
+		},
+		{
+			"input": "{\"a\":}",
+			"err": "Unexpected token '}', \"{\"a\":}\" is not valid JSON"
+		},
+		{
+			"input": "{\"a\":1,}",
+			"err": "Expected double-quoted property name in JSON at position 7 (line 1 column 8)"
+		},
+		{
+			"input": "{\"a\":1 \"b\":2}",
+			"err": "Expected ',' or '}' after property value in JSON at position 7 (line 1 column 8)"
+		},
+		{
+			"input": "[1,]",
+			"err": "Unexpected token ']', \"[1,]\" is not valid JSON"
+		},
+		{
+			"input": "[1 2]",
+			"err": "Expected ',' or ']' after array element in JSON at position 3 (line 1 column 4)"
+		},
+		{
+			"input": "\"abc",
+			"err": "Unterminated string in JSON at position 4 (line 1 column 5)"
+		},
+		{
+			"input": "\"a\\qb\"",
+			"err": "Bad escaped character in JSON at position 3 (line 1 column 4)"
+		},
+		{
+			"input": "\"a\u0001b\"",
+			"err": "Bad control character in string literal in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "1 2",
+			"err": "Unexpected non-whitespace character after JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "{}x",
+			"err": "Unexpected non-whitespace character after JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "tru",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "nul",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "-",
+			"err": "No number after minus sign in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "1.",
+			"err": "Unterminated fractional number in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "1e",
+			"err": "Exponent part is missing a number in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "1e+",
+			"err": "Exponent part is missing a number in JSON at position 3 (line 1 column 4)"
+		},
+		{
+			"input": "01",
+			"err": "Unexpected number in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "{\"a\":1}}",
+			"err": "Unexpected non-whitespace character after JSON at position 7 (line 1 column 8)"
+		},
+		{
+			"input": "   ",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "\n{\n\"a\": [1,\n2,,]}",
+			"err": "Unexpected token ',', \"\n{\n\"a\": [1,\n2,,]}\" is not valid JSON"
+		},
+		{
+			"input": "{'a':1}",
+			"err": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz",
+			"err": "Unexpected token 'a', \"abcdefghij\"... is not valid JSON"
+		},
+		{
+			"input": "[\"x\", undefined]",
+			"err": "Unexpected token 'u', \"[\"x\", undefined]\" is not valid JSON"
+		},
+		{
+			"input": "{\"k\": NaN}",
+			"err": "Unexpected token 'N', \"{\"k\": NaN}\" is not valid JSON"
+		},
+		{
+			"input": "\"\\u12\"",
+			"err": "Bad Unicode escape in JSON at position 5 (line 1 column 6)"
+		},
+		{
+			"input": "{\"a\":1,\"b\":",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "é",
+			"err": "Unexpected token 'é', \"é\" is not valid JSON"
+		},
+		{
+			"input": "[-]",
+			"err": "No number after minus sign in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": ".5",
+			"err": "Unexpected token '.', \".5\" is not valid JSON"
+		},
+		{
+			"input": "+1",
+			"err": "Unexpected token '+', \"+1\" is not valid JSON"
+		},
+		{
+			"input": "{\"a\"  :  tru}",
+			"err": "Unexpected token '}', \"{\"a\"  :  tru}\" is not valid JSON"
+		},
+		{
+			"input": "undefined",
+			"err": "\"undefined\" is not valid JSON"
+		},
+		{
+			"input": "NaN",
+			"err": "\"NaN\" is not valid JSON"
+		},
+		{
+			"input": "Infinity",
+			"err": "\"Infinity\" is not valid JSON"
+		},
+		{
+			"input": "[object Object]",
+			"err": "\"[object Object]\" is not valid JSON"
+		},
+		{
+			"input": "\r\n{x",
+			"err": "Expected property name or '}' in JSON at position 3 (line 2 column 2)"
+		},
+		{
+			"input": "{\n\n  \"a\" 1}",
+			"err": "Expected ':' after property name in JSON at position 9 (line 3 column 7)"
+		},
+		{
+			"input": "\r\n\r\n  [1,,]",
+			"err": "Unexpected token ',', \"\r\n\r\n  [1,,]\" is not valid JSON"
+		},
+		{
+			"input": "{\"aaaaaaaaaaaaaaaaaaaa\": 1, \"bbbbbbbbbbbbbbbbbbbbbbbbbbbb\": x}",
+			"err": "Unexpected token 'x', ...\"bbbbbbb\": x}\" is not valid JSON"
+		},
+		{
+			"input": "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, x",
+			"err": "Unexpected token 'x', ...\", 13, 14, x\" is not valid JSON"
+		},
+		{
+			"input": "[\"😀\", @]",
+			"err": "Unexpected token '@', \"[\"😀\", @]\" is not valid JSON"
+		},
+		{
+			"input": "\t[\t1\t]\tz",
+			"err": "Unexpected non-whitespace character after JSON at position 7 (line 1 column 8)"
+		},
+		{
+			"input": "{\"a\":\"b\" , }",
+			"err": "Expected double-quoted property name in JSON at position 11 (line 1 column 12)"
+		},
+		{
+			"input": "[1, 2, 3, 4, 5, 6, 7, x, 8, 9, 10, 11, 12, 13]",
+			"err": "Unexpected token 'x', ...\" 5, 6, 7, x, 8, 9, 1\"... is not valid JSON"
+		},
+		{
+			"input": "{\"a\":-x}",
+			"err": "No number after minus sign in JSON at position 6 (line 1 column 7)"
+		},
+		{
+			"input": "\"\\u00zz\"",
+			"err": "Bad Unicode escape in JSON at position 5 (line 1 column 6)"
+		},
+		{
+			"input": "[1e5, 2E-3, -0.0, 1.5e+300]",
+			"ok": [
+				100000,
+				0.002,
+				0,
+				1.5e+300
+			]
+		},
+		{
+			"input": "{\"a\":1,\"a\":2,\"b\":3}",
+			"ok": {
+				"a": 2,
+				"b": 3
+			}
+		},
+		{
+			"input": "[true, false, null]",
+			"ok": [
+				true,
+				false,
+				null
+			]
+		},
+		{
+			"input": "123456789012345678901234567890",
+			"ok": 1.2345678901234568e+29
+		},
+		{
+			"input": "[\"\\/\\b\\f\\n\\r\\t\\\"\\\\\"]",
+			"ok": [
+				"/\b\f\n\r\t\"\\"
+			]
+		},
+		{
+			"input": "{\"a\": {\"b\": [1, {\"c\": tx}]}}",
+			"err": "Unexpected token 'x', ...\"1, {\"c\": tx}]}}\" is not valid JSON"
+		},
+		{
+			"input": " ",
+			"err": "Unexpected token ' ', \" \" is not valid JSON"
+		},
+		{
+			"input": "[1] ",
+			"err": "Unexpected non-whitespace character after JSON at position 3 (line 1 column 4)"
+		},
+		{
+			"input": "\"abc\u0000\"",
+			"err": "Bad control character in string literal in JSON at position 4 (line 1 column 5)"
+		},
+		{
+			"input": "\"\"",
+			"ok": ""
+		},
+		{
+			"input": "{\"a\":1}\r\n\t ",
+			"ok": {
+				"a": 1
+			}
+		},
+		{
+			"input": "[0.5e-3, -12, 1E2]",
+			"ok": [
+				0.0005,
+				-12,
+				100
+			]
+		},
+		{
+			"input": "{\"__proto__\": 1}",
+			"ok": {
+				"__proto__": 1
+			}
+		},
+		{
+			"input": "{\"a\" : [ ] , \"b\" : { } }",
+			"ok": {
+				"a": [],
+				"b": {}
+			}
+		},
+		{
+			"input": "\"\\u0041\\uD83D\\uDE00\"",
+			"ok": "A😀"
+		},
+		{
+			"input": "[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" x]",
+			"err": "Expected ',' or ']' after array element in JSON at position 43 (line 1 column 44)"
+		},
+		{
+			"input": "00",
+			"err": "Unexpected number in JSON at position 1 (line 1 column 2)"
+		},
+		{
+			"input": "-01",
+			"err": "Unexpected number in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "1.5.5",
+			"err": "Unexpected non-whitespace character after JSON at position 3 (line 1 column 4)"
+		},
+		{
+			"input": "[1}",
+			"err": "Expected ',' or ']' after array element in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "{\"a\":1]",
+			"err": "Expected ',' or '}' after property value in JSON at position 6 (line 1 column 7)"
+		},
+		{
+			"input": "{\"a\":1",
+			"err": "Expected ',' or '}' after property value in JSON at position 6 (line 1 column 7)"
+		},
+		{
+			"input": "[1",
+			"err": "Expected ',' or ']' after array element in JSON at position 2 (line 1 column 3)"
+		},
+		{
+			"input": "{\"a\"",
+			"err": "Expected ':' after property name in JSON at position 4 (line 1 column 5)"
+		},
+		{
+			"input": "{\"a\":1,",
+			"err": "Expected double-quoted property name in JSON at position 7 (line 1 column 8)"
+		},
+		{
+			"input": "[1,",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "\"a\" \"b\"",
+			"err": "Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)"
+		},
+		{
+			"input": "{\"a\":\"x\" 5}",
+			"err": "Expected ',' or '}' after property value in JSON at position 9 (line 1 column 10)"
+		},
+		{
+			"input": "[\"x\" \"y\"]",
+			"err": "Expected ',' or ']' after array element in JSON at position 5 (line 1 column 6)"
+		},
+		{
+			"input": "",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "[\n1,\n2,\n]",
+			"err": "Unexpected token ']', \"[\n1,\n2,\n]\" is not valid JSON"
+		},
+		{
+			"input": "x                   ",
+			"err": "Unexpected token 'x', \"x                   \" is not valid JSON"
+		},
+		{
+			"input": "                   x",
+			"err": "Unexpected token 'x', \"                   x\" is not valid JSON"
+		},
+		{
+			"input": "x                    ",
+			"err": "Unexpected token 'x', \"x         \"... is not valid JSON"
+		},
+		{
+			"input": "         x           ",
+			"err": "Unexpected token 'x', \"         x         \"... is not valid JSON"
+		},
+		{
+			"input": "          x          ",
+			"err": "Unexpected token 'x', ...\"          x         \"... is not valid JSON"
+		},
+		{
+			"input": "           x         ",
+			"err": "Unexpected token 'x', ...\"          x         \" is not valid JSON"
+		},
+		{
+			"input": "                    x",
+			"err": "Unexpected token 'x', ...\"          x\" is not valid JSON"
+		},
+		{
+			"input": "x                             ",
+			"err": "Unexpected token 'x', \"x         \"... is not valid JSON"
+		},
+		{
+			"input": "         x                    ",
+			"err": "Unexpected token 'x', \"         x         \"... is not valid JSON"
+		},
+		{
+			"input": "          x                   ",
+			"err": "Unexpected token 'x', ...\"          x         \"... is not valid JSON"
+		},
+		{
+			"input": "           x                  ",
+			"err": "Unexpected token 'x', ...\"          x         \"... is not valid JSON"
+		},
+		{
+			"input": "                  x           ",
+			"err": "Unexpected token 'x', ...\"          x         \"... is not valid JSON"
+		},
+		{
+			"input": "                   x          ",
+			"err": "Unexpected token 'x', ...\"          x         \"... is not valid JSON"
+		},
+		{
+			"input": "                    x         ",
+			"err": "Unexpected token 'x', ...\"          x         \" is not valid JSON"
+		},
+		{
+			"input": "                     x        ",
+			"err": "Unexpected token 'x', ...\"          x        \" is not valid JSON"
+		},
+		{
+			"input": "                             x",
+			"err": "Unexpected token 'x', ...\"          x\" is not valid JSON"
+		},
+		{
+			"input": "\"\\u12",
+			"err": "Bad Unicode escape in JSON at position 5 (line 1 column 6)"
+		},
+		{
+			"input": "\"\\",
+			"err": "Unexpected end of JSON input"
+		},
+		{
+			"input": "\"\\",
+			"err": "Unexpected end of JSON input"
+		}
+	],
+	"gateway": [
+		{
+			"args": "x",
+			"text": "Error: Unexpected token 'x', \"x\" is not valid JSON",
+			"details": {
+				"error": "error"
+			}
+		},
+		{
+			"args": "{\"a\":",
+			"text": "Error: Unexpected end of JSON input",
+			"details": {
+				"error": "error"
+			}
+		},
+		{
+			"args": "[1]",
+			"text": "Invalid args: expected a JSON object",
+			"details": {
+				"error": "invalid_args"
+			}
+		},
+		{
+			"args": "null",
+			"text": "Invalid args: expected a JSON object",
+			"details": {
+				"error": "invalid_args"
+			}
+		},
+		{
+			"args": "\"s\"",
+			"text": "Invalid args: expected a JSON object",
+			"details": {
+				"error": "invalid_args"
+			}
+		},
+		{
+			"args": "5",
+			"text": "Invalid args: expected a JSON object",
+			"details": {
+				"error": "invalid_args"
+			}
+		}
+	],
+	"schemas": [
+		{
+			"type": "object",
+			"properties": {
+				"mode": {
+					"type": "string",
+					"enum": [
+						"fast",
+						"slow"
+					]
+				},
+				"level": {
+					"type": "number",
+					"enum": [
+						1,
+						2,
+						3
+					]
+				},
+				"name": {
+					"type": "string"
+				},
+				"nested": {
+					"type": "object",
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"kind": {
+							"enum": [
+								"a",
+								"b"
+							]
+						}
+					},
+					"required": [
+						"id"
+					]
+				},
+				"list": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"x": {
+								"type": "number"
+							}
+						},
+						"required": [
+							"x"
+						]
+					}
+				},
+				"mixed": {
+					"enum": [
+						"on",
+						1,
+						true,
+						null
+					]
+				}
+			},
+			"required": [
+				"name",
+				"mode"
+			]
+		},
+		{
+			"type": "object",
+			"properties": {
+				"a": {
+					"type": "string"
+				},
+				"b": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"a",
+				"b"
+			]
+		},
+		{
+			"type": "object",
+			"properties": {
+				"n": {
+					"type": "number",
+					"minimum": 1,
+					"maximum": 10
+				},
+				"x": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"exclusiveMaximum": 5
+				},
+				"i": {
+					"type": "integer",
+					"minimum": 0,
+					"multipleOf": 2
+				},
+				"s": {
+					"type": "string",
+					"minLength": 2,
+					"maxLength": 4
+				},
+				"p": {
+					"type": "string",
+					"pattern": "^[a-z]+-\\d+$"
+				},
+				"e": {
+					"type": "string",
+					"format": "email"
+				},
+				"u": {
+					"type": "string",
+					"format": "uri"
+				},
+				"d": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"l": {
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 2,
+					"items": {
+						"type": "string"
+					}
+				},
+				"q": {
+					"type": "array",
+					"uniqueItems": true
+				},
+				"o": {
+					"type": "object",
+					"properties": {
+						"k": {
+							"type": "string"
+						}
+					},
+					"additionalProperties": false
+				},
+				"m": {
+					"type": "object",
+					"minProperties": 1,
+					"maxProperties": 2
+				},
+				"c": {
+					"const": "fixed"
+				}
+			},
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"a": {
+					"type": "string"
+				}
+			},
+			"additionalProperties": {
+				"type": "number"
+			}
+		},
+		{
+			"type": "object",
+			"properties": {
+				"a": {
+					"type": "string"
+				},
+				"t": {
+					"type": [
+						"string",
+						"number"
+					]
+				},
+				"f": false,
+				"ok": true
+			},
+			"patternProperties": {
+				"^x-": {
+					"type": "number"
+				}
+			},
+			"required": [
+				"a"
+			],
+			"additionalProperties": false,
+			"minProperties": 2
+		},
+		{
+			"type": "object",
+			"properties": {
+				"s": {
+					"type": "string",
+					"minLength": 3,
+					"maxLength": 3
+				},
+				"q": {
+					"type": "array",
+					"uniqueItems": true
+				},
+				"c": {
+					"const": {
+						"k": [
+							1,
+							2
+						]
+					}
+				},
+				"n": {
+					"type": "number",
+					"multipleOf": 0.1
+				},
+				"b": {
+					"type": "number",
+					"minimum": 1.5,
+					"exclusiveMaximum": 1e+21
+				}
+			}
+		}
+	],
+	"schemaCases": [
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast"
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast"
+			}
+		},
+		{
+			"schema": 0,
+			"params": {},
+			"err": "Validation failed for tool \"probe\":\n  - name: must have required properties name, mode\n\nReceived arguments:\n{}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"mode": "fast"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - name: must have required properties name\n\nReceived arguments:\n{\n  \"mode\": \"fast\"\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "medium"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mode: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"medium\"\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"level": "2"
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast",
+				"level": 2
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"level": 4
+			},
+			"err": "Validation failed for tool \"probe\":\n  - level: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"level\": 4\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"level": "9"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - level: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"level\": \"9\"\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": 5,
+				"mode": "slow"
+			},
+			"ok": {
+				"name": "5",
+				"mode": "slow"
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"nested": {}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - nested.id: must have required properties id\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"nested\": {}\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"nested": {
+					"id": "i",
+					"kind": "c"
+				}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - nested.kind: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"nested\": {\n    \"id\": \"i\",\n    \"kind\": \"c\"\n  }\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"nested": {
+					"id": 3,
+					"kind": "a"
+				}
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast",
+				"nested": {
+					"id": "3",
+					"kind": "a"
+				}
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"list": [
+					{
+						"x": 1
+					},
+					{},
+					{
+						"x": "2"
+					}
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - list.1.x: must have required properties x\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"list\": [\n    {\n      \"x\": 1\n    },\n    {},\n    {\n      \"x\": \"2\"\n    }\n  ]\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"list": [
+					{
+						"x": "nope"
+					}
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - list.0.x: must be number\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"list\": [\n    {\n      \"x\": \"nope\"\n    }\n  ]\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": "on"
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": "on"
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": false
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mixed: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"mixed\": false\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": null
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": null
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": null,
+				"mode": "fast"
+			},
+			"ok": {
+				"name": "",
+				"mode": "fast"
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": null
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mode: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": null\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": 5
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mode: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": 5\n}"
+		},
+		{
+			"schema": 1,
+			"params": {},
+			"err": "Validation failed for tool \"probe\":\n  - a: must have required properties a, b\n\nReceived arguments:\n{}"
+		},
+		{
+			"schema": 1,
+			"params": {
+				"b": "x"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - a: must have required properties a\n\nReceived arguments:\n{\n  \"b\": \"x\"\n}"
+		},
+		{
+			"schema": 1,
+			"params": {
+				"a": null,
+				"b": null
+			},
+			"ok": {
+				"a": "",
+				"b": ""
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"mode": "bad"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - name: must have required properties name\n  - mode: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"mode\": \"bad\"\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": [
+					"x"
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mode: must be string\n  - mode: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": [\n    \"x\"\n  ]\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"mode": "bad",
+				"name": [
+					"q"
+				],
+				"level": 7,
+				"nested": {
+					"kind": "z"
+				}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mode: must be equal to one of the allowed values\n  - level: must be equal to one of the allowed values\n  - name: must be string\n  - nested.id: must have required properties id\n  - nested.kind: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"mode\": \"bad\",\n  \"name\": [\n    \"q\"\n  ],\n  \"level\": 7,\n  \"nested\": {\n    \"kind\": \"z\"\n  }\n}"
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": 1
+			},
+			"ok": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": 1
+			}
+		},
+		{
+			"schema": 0,
+			"params": {
+				"name": "n",
+				"mode": "fast",
+				"mixed": "1"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - mixed: must be equal to one of the allowed values\n\nReceived arguments:\n{\n  \"name\": \"n\",\n  \"mode\": \"fast\",\n  \"mixed\": \"1\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": 5,
+				"x": 1,
+				"i": 4,
+				"s": "abc",
+				"p": "ab-12",
+				"l": [
+					"a"
+				],
+				"o": {
+					"k": "v"
+				}
+			},
+			"ok": {
+				"n": 5,
+				"x": 1,
+				"i": 4,
+				"s": "abc",
+				"p": "ab-12",
+				"l": [
+					"a"
+				],
+				"o": {
+					"k": "v"
+				}
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": 0
+			},
+			"err": "Validation failed for tool \"probe\":\n  - n: must be >= 1\n\nReceived arguments:\n{\n  \"n\": 0\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": 11
+			},
+			"err": "Validation failed for tool \"probe\":\n  - n: must be <= 10\n\nReceived arguments:\n{\n  \"n\": 11\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": 1,
+				"x": 5
+			},
+			"err": "Validation failed for tool \"probe\":\n  - x: must be < 5\n\nReceived arguments:\n{\n  \"n\": 1,\n  \"x\": 5\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"x": 0
+			},
+			"err": "Validation failed for tool \"probe\":\n  - x: must be > 0\n\nReceived arguments:\n{\n  \"x\": 0\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": "0"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - n: must be >= 1\n\nReceived arguments:\n{\n  \"n\": \"0\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"i": 3
+			},
+			"err": "Validation failed for tool \"probe\":\n  - i: must be multiple of 2\n\nReceived arguments:\n{\n  \"i\": 3\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"i": 2.5
+			},
+			"err": "Validation failed for tool \"probe\":\n  - i: must be integer\n  - i: must be multiple of 2\n\nReceived arguments:\n{\n  \"i\": 2.5\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"i": -2
+			},
+			"err": "Validation failed for tool \"probe\":\n  - i: must be >= 0\n\nReceived arguments:\n{\n  \"i\": -2\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"s": "a"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have fewer than 2 characters\n\nReceived arguments:\n{\n  \"s\": \"a\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"s": "abcde"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have more than 4 characters\n\nReceived arguments:\n{\n  \"s\": \"abcde\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"s": "😀😀"
+			},
+			"ok": {
+				"s": "😀😀"
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"p": "AB-1"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - p: must match pattern \"^[a-z]+-\\d+$\"\n\nReceived arguments:\n{\n  \"p\": \"AB-1\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"p": "ab-x"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - p: must match pattern \"^[a-z]+-\\d+$\"\n\nReceived arguments:\n{\n  \"p\": \"ab-x\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"e": "nobody"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - e: must match format \"email\"\n\nReceived arguments:\n{\n  \"e\": \"nobody\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"e": "a@b.co"
+			},
+			"ok": {
+				"e": "a@b.co"
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"u": "not a uri"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - u: must match format \"uri\"\n\nReceived arguments:\n{\n  \"u\": \"not a uri\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"u": "https://x.y/z"
+			},
+			"ok": {
+				"u": "https://x.y/z"
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"d": "yesterday"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - d: must match format \"date-time\"\n\nReceived arguments:\n{\n  \"d\": \"yesterday\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"d": "2024-01-02T03:04:05Z"
+			},
+			"ok": {
+				"d": "2024-01-02T03:04:05Z"
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"l": []
+			},
+			"err": "Validation failed for tool \"probe\":\n  - l: must not have fewer than 1 items\n\nReceived arguments:\n{\n  \"l\": []\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"l": [
+					"a",
+					"b",
+					"c"
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - l: must not have more than 2 items\n\nReceived arguments:\n{\n  \"l\": [\n    \"a\",\n    \"b\",\n    \"c\"\n  ]\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"l": [
+					1
+				]
+			},
+			"ok": {
+				"l": [
+					"1"
+				]
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"q": [
+					1,
+					1
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - q: must not have duplicate items\n\nReceived arguments:\n{\n  \"q\": [\n    1,\n    1\n  ]\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"q": [
+					1,
+					2
+				]
+			},
+			"ok": {
+				"q": [
+					1,
+					2
+				]
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"o": {
+					"k": "v",
+					"z": 1
+				}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - o.z: schema is false\n  - o: must not have additional properties\n\nReceived arguments:\n{\n  \"o\": {\n    \"k\": \"v\",\n    \"z\": 1\n  }\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"extra": 1
+			},
+			"err": "Validation failed for tool \"probe\":\n  - extra: schema is false\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"extra\": 1\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"extra": 1,
+				"other": 2,
+				"n": 0
+			},
+			"err": "Validation failed for tool \"probe\":\n  - extra: schema is false\n  - other: schema is false\n  - root: must not have additional properties\n  - n: must be >= 1\n\nReceived arguments:\n{\n  \"extra\": 1,\n  \"other\": 2,\n  \"n\": 0\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"m": {}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - m: must not have fewer than 1 properties\n\nReceived arguments:\n{\n  \"m\": {}\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"m": {
+					"a": 1,
+					"b": 2,
+					"c": 3
+				}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - m: must not have more than 2 properties\n\nReceived arguments:\n{\n  \"m\": {\n    \"a\": 1,\n    \"b\": 2,\n    \"c\": 3\n  }\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"c": "fixed"
+			},
+			"ok": {
+				"c": "fixed"
+			}
+		},
+		{
+			"schema": 2,
+			"params": {
+				"c": "other"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - c: must be equal to constant\n\nReceived arguments:\n{\n  \"c\": \"other\"\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"s": 12345
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have more than 4 characters\n\nReceived arguments:\n{\n  \"s\": 12345\n}"
+		},
+		{
+			"schema": 2,
+			"params": {
+				"n": 0,
+				"s": "a",
+				"l": [],
+				"extra": true
+			},
+			"err": "Validation failed for tool \"probe\":\n  - extra: schema is false\n  - root: must not have additional properties\n  - n: must be >= 1\n  - s: must not have fewer than 2 characters\n  - l: must not have fewer than 1 items\n\nReceived arguments:\n{\n  \"n\": 0,\n  \"s\": \"a\",\n  \"l\": [],\n  \"extra\": true\n}"
+		},
+		{
+			"schema": 3,
+			"params": {
+				"a": "x",
+				"b": 1
+			},
+			"ok": {
+				"a": "x",
+				"b": 1
+			}
+		},
+		{
+			"schema": 3,
+			"params": {
+				"a": "x",
+				"b": "2"
+			},
+			"ok": {
+				"a": "x",
+				"b": 2
+			}
+		},
+		{
+			"schema": 3,
+			"params": {
+				"a": "x",
+				"b": "nope"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - b: must be number\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"b\": \"nope\"\n}"
+		},
+		{
+			"schema": 4,
+			"params": {},
+			"err": "Validation failed for tool \"probe\":\n  - a: must have required properties a\n  - root: must not have fewer than 2 properties\n\nReceived arguments:\n{}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"z": 1
+			},
+			"err": "Validation failed for tool \"probe\":\n  - z: schema is false\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"z\": 1\n}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"x-1": 2
+			},
+			"ok": {
+				"a": "x",
+				"x-1": 2
+			}
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"x-1": "two"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - x-1: must be number\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"x-1\": \"two\"\n}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"f": 1
+			},
+			"err": "Validation failed for tool \"probe\":\n  - f: schema is false\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"f\": 1\n}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"t": true
+			},
+			"ok": {
+				"a": "x",
+				"t": "true"
+			}
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"t": [
+					1
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - t: must be either string or number\n\nReceived arguments:\n{\n  \"a\": \"x\",\n  \"t\": [\n    1\n  ]\n}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": "x",
+				"ok": [
+					1
+				]
+			},
+			"ok": {
+				"a": "x",
+				"ok": [
+					1
+				]
+			}
+		},
+		{
+			"schema": 4,
+			"params": {
+				"a": 1
+			},
+			"err": "Validation failed for tool \"probe\":\n  - root: must not have fewer than 2 properties\n\nReceived arguments:\n{\n  \"a\": 1\n}"
+		},
+		{
+			"schema": 4,
+			"params": {
+				"1": "m",
+				"2": "n",
+				"a": "x"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - 1: schema is false\n  - 2: schema is false\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"1\": \"m\",\n  \"2\": \"n\",\n  \"a\": \"x\"\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "😀😀😀"
+			},
+			"ok": {
+				"s": "😀😀😀"
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "éé"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have fewer than 3 characters\n\nReceived arguments:\n{\n  \"s\": \"éé\"\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "ééé"
+			},
+			"ok": {
+				"s": "ééé"
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "👨‍👩‍👧ab"
+			},
+			"ok": {
+				"s": "👨‍👩‍👧ab"
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "🇺🇸ab"
+			},
+			"ok": {
+				"s": "🇺🇸ab"
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "ab"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have fewer than 3 characters\n\nReceived arguments:\n{\n  \"s\": \"ab\"\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"s": "abcd"
+			},
+			"err": "Validation failed for tool \"probe\":\n  - s: must not have more than 3 characters\n\nReceived arguments:\n{\n  \"s\": \"abcd\"\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"q": [
+					{
+						"a": 1,
+						"b": 2
+					},
+					{
+						"b": 2,
+						"a": 1
+					}
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - q: must not have duplicate items\n\nReceived arguments:\n{\n  \"q\": [\n    {\n      \"a\": 1,\n      \"b\": 2\n    },\n    {\n      \"b\": 2,\n      \"a\": 1\n    }\n  ]\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"q": [
+					1,
+					"1",
+					true,
+					null,
+					[
+						1
+					],
+					{
+						"a": 1
+					}
+				]
+			},
+			"ok": {
+				"q": [
+					1,
+					"1",
+					true,
+					null,
+					[
+						1
+					],
+					{
+						"a": 1
+					}
+				]
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"q": [
+					1,
+					1
+				]
+			},
+			"err": "Validation failed for tool \"probe\":\n  - q: must not have duplicate items\n\nReceived arguments:\n{\n  \"q\": [\n    1,\n    1\n  ]\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"c": {
+					"k": [
+						1,
+						2
+					]
+				}
+			},
+			"ok": {
+				"c": {
+					"k": [
+						1,
+						2
+					]
+				}
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"c": {
+					"k": [
+						2,
+						1
+					]
+				}
+			},
+			"err": "Validation failed for tool \"probe\":\n  - c: must be equal to constant\n\nReceived arguments:\n{\n  \"c\": {\n    \"k\": [\n      2,\n      1\n    ]\n  }\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"n": 0.3
+			},
+			"ok": {
+				"n": 0.3
+			}
+		},
+		{
+			"schema": 5,
+			"params": {
+				"n": 0.35
+			},
+			"err": "Validation failed for tool \"probe\":\n  - n: must be multiple of 0.1\n\nReceived arguments:\n{\n  \"n\": 0.35\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"b": 1
+			},
+			"err": "Validation failed for tool \"probe\":\n  - b: must be >= 1.5\n\nReceived arguments:\n{\n  \"b\": 1\n}"
+		},
+		{
+			"schema": 5,
+			"params": {
+				"b": 1e+22
+			},
+			"err": "Validation failed for tool \"probe\":\n  - b: must be < 1e+21\n\nReceived arguments:\n{\n  \"b\": 1e+22\n}"
+		}
+	],
+	"formatCases": [
+		{
+			"format": "date-time",
+			"value": "2024-01-02T03:04:05Z",
+			"ok": true
+		},
+		{
+			"format": "date-time",
+			"value": "2024-01-02t03:04:05.5+01:00",
+			"ok": true
+		},
+		{
+			"format": "date-time",
+			"value": "2024-02-30T00:00:00Z",
+			"ok": false,
+			"err": "  - v: must match format \"date-time\""
+		},
+		{
+			"format": "date-time",
+			"value": "2024-01-02T03:04:05",
+			"ok": false,
+			"err": "  - v: must match format \"date-time\""
+		},
+		{
+			"format": "date-time",
+			"value": "2016-12-31T23:59:60Z",
+			"ok": true
+		},
+		{
+			"format": "date-time",
+			"value": "2016-12-31T22:59:60-01:00",
+			"ok": true
+		},
+		{
+			"format": "date-time",
+			"value": "2024-01-02 03:04:05Z",
+			"ok": false,
+			"err": "  - v: must match format \"date-time\""
+		},
+		{
+			"format": "date",
+			"value": "2024-02-29",
+			"ok": true
+		},
+		{
+			"format": "date",
+			"value": "2023-02-29",
+			"ok": false,
+			"err": "  - v: must match format \"date\""
+		},
+		{
+			"format": "date",
+			"value": "2024-13-01",
+			"ok": false,
+			"err": "  - v: must match format \"date\""
+		},
+		{
+			"format": "date",
+			"value": "24-01-01",
+			"ok": false,
+			"err": "  - v: must match format \"date\""
+		},
+		{
+			"format": "time",
+			"value": "03:04:05Z",
+			"ok": true
+		},
+		{
+			"format": "time",
+			"value": "03:04:05",
+			"ok": false,
+			"err": "  - v: must match format \"time\""
+		},
+		{
+			"format": "time",
+			"value": "24:00:00Z",
+			"ok": false,
+			"err": "  - v: must match format \"time\""
+		},
+		{
+			"format": "time",
+			"value": "23:59:59.123-05:30",
+			"ok": true
+		},
+		{
+			"format": "time",
+			"value": "12:00:00+24:00",
+			"ok": false,
+			"err": "  - v: must match format \"time\""
+		},
+		{
+			"format": "duration",
+			"value": "P1Y2M3DT4H5M6S",
+			"ok": true
+		},
+		{
+			"format": "duration",
+			"value": "PT1H",
+			"ok": true
+		},
+		{
+			"format": "duration",
+			"value": "P1W",
+			"ok": true
+		},
+		{
+			"format": "duration",
+			"value": "P",
+			"ok": false,
+			"err": "  - v: must match format \"duration\""
+		},
+		{
+			"format": "duration",
+			"value": "P1H",
+			"ok": false,
+			"err": "  - v: must match format \"duration\""
+		},
+		{
+			"format": "duration",
+			"value": "PT",
+			"ok": false,
+			"err": "  - v: must match format \"duration\""
+		},
+		{
+			"format": "email",
+			"value": "a@b.co",
+			"ok": true
+		},
+		{
+			"format": "email",
+			"value": "A.B+c@ex-ample.com",
+			"ok": true
+		},
+		{
+			"format": "email",
+			"value": "\"q d\"@x.org",
+			"ok": true
+		},
+		{
+			"format": "email",
+			"value": "a@[127.0.0.1]",
+			"ok": true
+		},
+		{
+			"format": "email",
+			"value": "a@b",
+			"ok": true
+		},
+		{
+			"format": "email",
+			"value": "a@-b.com",
+			"ok": false,
+			"err": "  - v: must match format \"email\""
+		},
+		{
+			"format": "email",
+			"value": "nobody",
+			"ok": false,
+			"err": "  - v: must match format \"email\""
+		},
+		{
+			"format": "email",
+			"value": "a@b..c",
+			"ok": false,
+			"err": "  - v: must match format \"email\""
+		},
+		{
+			"format": "hostname",
+			"value": "example.com",
+			"ok": true
+		},
+		{
+			"format": "hostname",
+			"value": "a-b.c",
+			"ok": true
+		},
+		{
+			"format": "hostname",
+			"value": "-a.com",
+			"ok": false,
+			"err": "  - v: must match format \"hostname\""
+		},
+		{
+			"format": "hostname",
+			"value": "a.com.",
+			"ok": false,
+			"err": "  - v: must match format \"hostname\""
+		},
+		{
+			"format": "hostname",
+			"value": "xn--bcher-kva.de",
+			"ok": true
+		},
+		{
+			"format": "hostname",
+			"value": "ab--c.com",
+			"ok": false,
+			"err": "  - v: must match format \"hostname\""
+		},
+		{
+			"format": "hostname",
+			"value": "a_b.com",
+			"ok": false,
+			"err": "  - v: must match format \"hostname\""
+		},
+		{
+			"format": "hostname",
+			"value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com",
+			"ok": false,
+			"err": "  - v: must match format \"hostname\""
+		},
+		{
+			"format": "idn-hostname",
+			"value": "bücher.de",
+			"ok": true
+		},
+		{
+			"format": "idn-hostname",
+			"value": "éxample.com",
+			"ok": true
+		},
+		{
+			"format": "idn-hostname",
+			"value": "a·l.com",
+			"ok": false,
+			"err": "  - v: must match format \"idn-hostname\""
+		},
+		{
+			"format": "idn-hostname",
+			"value": "l·l.com",
+			"ok": true
+		},
+		{
+			"format": "idn-hostname",
+			"value": "אב.com",
+			"ok": true
+		},
+		{
+			"format": "idn-hostname",
+			"value": "-x.com",
+			"ok": false,
+			"err": "  - v: must match format \"idn-hostname\""
+		},
+		{
+			"format": "idn-hostname",
+			"value": "ـx.com",
+			"ok": false,
+			"err": "  - v: must match format \"idn-hostname\""
+		},
+		{
+			"format": "idn-hostname",
+			"value": "・x",
+			"ok": false,
+			"err": "  - v: must match format \"idn-hostname\""
+		},
+		{
+			"format": "idn-hostname",
+			"value": "ア・ア",
+			"ok": true
+		},
+		{
+			"format": "idn-email",
+			"value": "ü@bücher.de",
+			"ok": true
+		},
+		{
+			"format": "idn-email",
+			"value": "a@b",
+			"ok": true
+		},
+		{
+			"format": "idn-email",
+			"value": "a@-b.de",
+			"ok": false,
+			"err": "  - v: must match format \"idn-email\""
+		},
+		{
+			"format": "idn-email",
+			"value": "x@y-.de",
+			"ok": false,
+			"err": "  - v: must match format \"idn-email\""
+		},
+		{
+			"format": "ipv4",
+			"value": "127.0.0.1",
+			"ok": true
+		},
+		{
+			"format": "ipv4",
+			"value": "256.1.1.1",
+			"ok": false,
+			"err": "  - v: must match format \"ipv4\""
+		},
+		{
+			"format": "ipv4",
+			"value": "1.2.3",
+			"ok": false,
+			"err": "  - v: must match format \"ipv4\""
+		},
+		{
+			"format": "ipv4",
+			"value": "01.2.3.4",
+			"ok": false,
+			"err": "  - v: must match format \"ipv4\""
+		},
+		{
+			"format": "ipv6",
+			"value": "::1",
+			"ok": true
+		},
+		{
+			"format": "ipv6",
+			"value": "2001:db8::8a2e:370:7334",
+			"ok": true
+		},
+		{
+			"format": "ipv6",
+			"value": "::ffff:1.2.3.4",
+			"ok": true
+		},
+		{
+			"format": "ipv6",
+			"value": "1:2:3:4:5:6:7:8:9",
+			"ok": false,
+			"err": "  - v: must match format \"ipv6\""
+		},
+		{
+			"format": "ipv6",
+			"value": "gggg::1",
+			"ok": false,
+			"err": "  - v: must match format \"ipv6\""
+		},
+		{
+			"format": "iri",
+			"value": "https://ex.com/päth",
+			"ok": true
+		},
+		{
+			"format": "iri",
+			"value": "http://[v1.fe]/x",
+			"ok": true
+		},
+		{
+			"format": "iri",
+			"value": "no scheme",
+			"ok": false,
+			"err": "  - v: must match format \"iri\""
+		},
+		{
+			"format": "iri",
+			"value": "http://x/a b",
+			"ok": false,
+			"err": "  - v: must match format \"iri\""
+		},
+		{
+			"format": "iri",
+			"value": "http://x/%zz",
+			"ok": false,
+			"err": "  - v: must match format \"iri\""
+		},
+		{
+			"format": "iri-reference",
+			"value": "/relative/path",
+			"ok": true
+		},
+		{
+			"format": "iri-reference",
+			"value": "//host/p",
+			"ok": true
+		},
+		{
+			"format": "iri-reference",
+			"value": "a://b",
+			"ok": true
+		},
+		{
+			"format": "iri-reference",
+			"value": "http//bad",
+			"ok": false,
+			"err": "  - v: must match format \"iri-reference\""
+		},
+		{
+			"format": "iri-reference",
+			"value": "x y",
+			"ok": false,
+			"err": "  - v: must match format \"iri-reference\""
+		},
+		{
+			"format": "json-pointer",
+			"value": "/a/b",
+			"ok": true
+		},
+		{
+			"format": "json-pointer",
+			"value": "",
+			"ok": true
+		},
+		{
+			"format": "json-pointer",
+			"value": "/a~1b",
+			"ok": true
+		},
+		{
+			"format": "json-pointer",
+			"value": "/a~2",
+			"ok": false,
+			"err": "  - v: must match format \"json-pointer\""
+		},
+		{
+			"format": "json-pointer",
+			"value": "a",
+			"ok": false,
+			"err": "  - v: must match format \"json-pointer\""
+		},
+		{
+			"format": "json-pointer-uri-fragment",
+			"value": "#/a/b",
+			"ok": true
+		},
+		{
+			"format": "json-pointer-uri-fragment",
+			"value": "#",
+			"ok": true
+		},
+		{
+			"format": "json-pointer-uri-fragment",
+			"value": "#/a%20b",
+			"ok": true
+		},
+		{
+			"format": "json-pointer-uri-fragment",
+			"value": "/a",
+			"ok": false,
+			"err": "  - v: must match format \"json-pointer-uri-fragment\""
+		},
+		{
+			"format": "json-pointer-uri-fragment",
+			"value": "#/%zz",
+			"ok": false,
+			"err": "  - v: must match format \"json-pointer-uri-fragment\""
+		},
+		{
+			"format": "regex",
+			"value": "^a+$",
+			"ok": true
+		},
+		{
+			"format": "regex",
+			"value": "(",
+			"ok": false,
+			"err": "  - v: must match format \"regex\""
+		},
+		{
+			"format": "regex",
+			"value": "[a-z]",
+			"ok": true
+		},
+		{
+			"format": "regex",
+			"value": "\\p{L}",
+			"ok": true
+		},
+		{
+			"format": "regex",
+			"value": "a{2,1}",
+			"ok": false,
+			"err": "  - v: must match format \"regex\""
+		},
+		{
+			"format": "relative-json-pointer",
+			"value": "0",
+			"ok": true
+		},
+		{
+			"format": "relative-json-pointer",
+			"value": "1/a",
+			"ok": true
+		},
+		{
+			"format": "relative-json-pointer",
+			"value": "2#",
+			"ok": true
+		},
+		{
+			"format": "relative-json-pointer",
+			"value": "-1",
+			"ok": false,
+			"err": "  - v: must match format \"relative-json-pointer\""
+		},
+		{
+			"format": "relative-json-pointer",
+			"value": "01",
+			"ok": false,
+			"err": "  - v: must match format \"relative-json-pointer\""
+		},
+		{
+			"format": "uri",
+			"value": "https://x.y/z",
+			"ok": true
+		},
+		{
+			"format": "uri",
+			"value": "urn:isbn:123",
+			"ok": true
+		},
+		{
+			"format": "uri",
+			"value": "mailto:a@b",
+			"ok": true
+		},
+		{
+			"format": "uri",
+			"value": "not a uri",
+			"ok": false,
+			"err": "  - v: must match format \"uri\""
+		},
+		{
+			"format": "uri",
+			"value": "/relative",
+			"ok": false,
+			"err": "  - v: must match format \"uri\""
+		},
+		{
+			"format": "uri",
+			"value": "http://x/%zz",
+			"ok": false,
+			"err": "  - v: must match format \"uri\""
+		},
+		{
+			"format": "uri-reference",
+			"value": "/relative",
+			"ok": true
+		},
+		{
+			"format": "uri-reference",
+			"value": "https://x.y",
+			"ok": true
+		},
+		{
+			"format": "uri-reference",
+			"value": "#frag",
+			"ok": true
+		},
+		{
+			"format": "uri-reference",
+			"value": "a b",
+			"ok": false,
+			"err": "  - v: must match format \"uri-reference\""
+		},
+		{
+			"format": "uri-reference",
+			"value": "%zz",
+			"ok": false,
+			"err": "  - v: must match format \"uri-reference\""
+		},
+		{
+			"format": "uri-template",
+			"value": "https://x/{id}",
+			"ok": true
+		},
+		{
+			"format": "uri-template",
+			"value": "/a/{+path}/b",
+			"ok": true
+		},
+		{
+			"format": "uri-template",
+			"value": "{?q,r}",
+			"ok": true
+		},
+		{
+			"format": "uri-template",
+			"value": "/a/{",
+			"ok": false,
+			"err": "  - v: must match format \"uri-template\""
+		},
+		{
+			"format": "uri-template",
+			"value": "a b",
+			"ok": false,
+			"err": "  - v: must match format \"uri-template\""
+		},
+		{
+			"format": "url",
+			"value": "https://x.y/z",
+			"ok": true
+		},
+		{
+			"format": "url",
+			"value": "file:///tmp/a",
+			"ok": true
+		},
+		{
+			"format": "url",
+			"value": "not a url",
+			"ok": false,
+			"err": "  - v: must match format \"url\""
+		},
+		{
+			"format": "url",
+			"value": "x:",
+			"ok": true
+		},
+		{
+			"format": "url",
+			"value": "http://[::1]:80/",
+			"ok": true
+		},
+		{
+			"format": "uuid",
+			"value": "123e4567-e89b-12d3-a456-426614174000",
+			"ok": true
+		},
+		{
+			"format": "uuid",
+			"value": "123E4567-E89B-12D3-A456-426614174000",
+			"ok": true
+		},
+		{
+			"format": "uuid",
+			"value": "123e4567e89b12d3a456426614174000",
+			"ok": false,
+			"err": "  - v: must match format \"uuid\""
+		},
+		{
+			"format": "uuid",
+			"value": "123e4567-e89b-12d3-a456-42661417400g",
+			"ok": false,
+			"err": "  - v: must match format \"uuid\""
+		},
+		{
+			"format": "unknown",
+			"value": "anything",
+			"ok": true
+		}
+	],
+	"patternCases": [
+		{
+			"pattern": "^\\d+$",
+			"value": "123",
+			"ok": true
+		},
+		{
+			"pattern": "^\\d+$",
+			"value": "٣",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\d+$\""
+		},
+		{
+			"pattern": "^\\d+$",
+			"value": "12a",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\d+$\""
+		},
+		{
+			"pattern": "^\\w+$",
+			"value": "a_1",
+			"ok": true
+		},
+		{
+			"pattern": "^\\w+$",
+			"value": "é",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\w+$\""
+		},
+		{
+			"pattern": "^\\w+$",
+			"value": "a b",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\w+$\""
+		},
+		{
+			"pattern": "^\\s$",
+			"value": " ",
+			"ok": true
+		},
+		{
+			"pattern": "^\\s$",
+			"value": " ",
+			"ok": true
+		},
+		{
+			"pattern": "^\\s$",
+			"value": " ",
+			"ok": true
+		},
+		{
+			"pattern": "^\\s$",
+			"value": "x",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\s$\""
+		},
+		{
+			"pattern": "\\bcat\\b",
+			"value": "a cat!",
+			"ok": true
+		},
+		{
+			"pattern": "\\bcat\\b",
+			"value": "concat",
+			"ok": false,
+			"err": "  - v: must match pattern \"\\bcat\\b\""
+		},
+		{
+			"pattern": "\\bcat\\b",
+			"value": "écat",
+			"ok": true
+		},
+		{
+			"pattern": "^(?=.*x)(?!.*y).+$",
+			"value": "ax",
+			"ok": true
+		},
+		{
+			"pattern": "^(?=.*x)(?!.*y).+$",
+			"value": "axy",
+			"ok": false,
+			"err": "  - v: must match pattern \"^(?=.*x)(?!.*y).+$\""
+		},
+		{
+			"pattern": "^(?=.*x)(?!.*y).+$",
+			"value": "a",
+			"ok": false,
+			"err": "  - v: must match pattern \"^(?=.*x)(?!.*y).+$\""
+		},
+		{
+			"pattern": "^(a)\\1$",
+			"value": "aa",
+			"ok": true
+		},
+		{
+			"pattern": "^(a)\\1$",
+			"value": "ab",
+			"ok": false,
+			"err": "  - v: must match pattern \"^(a)\\1$\""
+		},
+		{
+			"pattern": "^\\p{Lu}+$",
+			"value": "ABC",
+			"ok": true
+		},
+		{
+			"pattern": "^\\p{Lu}+$",
+			"value": "Abc",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\p{Lu}+$\""
+		},
+		{
+			"pattern": "^\\p{Lu}+$",
+			"value": "É",
+			"ok": true
+		},
+		{
+			"pattern": "^[^a-c]$",
+			"value": "d",
+			"ok": true
+		},
+		{
+			"pattern": "^[^a-c]$",
+			"value": "a",
+			"ok": false,
+			"err": "  - v: must match pattern \"^[^a-c]$\""
+		},
+		{
+			"pattern": "^[^a-c]$",
+			"value": "😀",
+			"ok": true
+		},
+		{
+			"pattern": "^.$",
+			"value": "😀",
+			"ok": true
+		},
+		{
+			"pattern": "^.$",
+			"value": "ab",
+			"ok": false,
+			"err": "  - v: must match pattern \"^.$\""
+		},
+		{
+			"pattern": "colou?r",
+			"value": "my color",
+			"ok": true
+		},
+		{
+			"pattern": "colou?r",
+			"value": "colr",
+			"ok": false,
+			"err": "  - v: must match pattern \"colou?r\""
+		},
+		{
+			"pattern": "^\\u{1F600}$",
+			"value": "😀",
+			"ok": true
+		},
+		{
+			"pattern": "^\\u{1F600}$",
+			"value": "x",
+			"ok": false,
+			"err": "  - v: must match pattern \"^\\u{1F600}$\""
+		}
+	]
+}

@@ -192,8 +192,7 @@ pub fn remove(meta: &Meta) -> Result<(), String> {
     }
 }
 
-/// `readNativeSessionDetails`: name, first user message text and message count.
-pub fn details(meta: &Meta) -> (Option<String>, String, usize) {
-    let listing = names::listing(meta.metadata());
-    (listing.name, listing.first_message, listing.message_count)
+/// `readNativeSessionDetails`: name, first user message text, all messages' text and message count.
+pub fn details(meta: &Meta) -> names::SessionListing {
+    names::listing(meta.metadata())
 }

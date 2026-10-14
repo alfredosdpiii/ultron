@@ -7,7 +7,7 @@
 //! the sandbox's writable paths they are blocked, as the shell's would be.
 
 use crate::{Guard, Host};
-use sandbox::launcher::{Launcher, Policy};
+use sandbox::launcher::{Launcher, Mechanism, Policy};
 use sandbox::settings::Mode;
 use sandbox::{Approvals, Approver, Settings};
 use serde_json::{Value, json};
@@ -56,11 +56,35 @@ impl Host {
     /// (`sandbox.*`, `approval.*`). `home` is the user's home, `tmp` the session temp dir seen as /tmp inside (None:
     /// a private /tmp per command), `approver` the UI that answers `prompt` decisions (None: they fail closed).
     pub fn sandboxed(
+        self,
+        settings: &Value,
+        home: &Path,
+        tmp: Option<&Path>,
+        approver: Option<Arc<dyn Approver>>,
+    ) -> Self {
+        self.sandboxed_under(settings, home, tmp, approver, None)
+    }
+
+    /// [`Host::sandboxed`] under `mechanism` instead of the strongest one that works here (tests run every backend
+    /// this way; None runs unisolated, as `auto` does when nothing works).
+    pub fn sandboxed_with_mechanism(
+        self,
+        settings: &Value,
+        home: &Path,
+        tmp: Option<&Path>,
+        approver: Option<Arc<dyn Approver>>,
+        mechanism: Option<Mechanism>,
+    ) -> Self {
+        self.sandboxed_under(settings, home, tmp, approver, Some(mechanism))
+    }
+
+    fn sandboxed_under(
         mut self,
         settings: &Value,
         home: &Path,
         tmp: Option<&Path>,
         approver: Option<Arc<dyn Approver>>,
+        mechanism: Option<Option<Mechanism>>,
     ) -> Self {
         let sandbox_settings = Settings::from_settings(settings);
         let host_env: Vec<(String, String)> = std::env::vars().collect();
@@ -72,7 +96,11 @@ impl Host {
             tmp,
             &host_env,
         );
-        let launcher = Arc::new(Launcher::new(sandbox_settings.mode, policy));
+        let launcher = Launcher::new(sandbox_settings.mode, policy);
+        let launcher = Arc::new(match mechanism {
+            Some(mechanism) => launcher.with_mechanism(mechanism),
+            None => launcher,
+        });
         let mut approvals = Approvals::from_settings(settings);
         approvals.approver = approver;
         let inner = std::mem::replace(&mut self.guard, Box::new(crate::AllowAll));

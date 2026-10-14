@@ -1,0 +1,1471 @@
+{
+	"cases": [
+		{
+			"name": "copilot oauth sends to the token's proxy endpoint over a models.json baseUrl",
+			"models": {
+				"providers": {
+					"github-copilot": {
+						"baseUrl": "http://127.0.0.1:9/cp"
+					}
+				}
+			},
+			"store": null,
+			"auth": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "tid=x;exp=9999999999;proxy-ep=proxy.business.githubcopilot.com;",
+					"refresh": "r",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"providers": {
+				"github-copilot": [
+					"github-copilot/claude-fable-5",
+					"github-copilot/claude-fable-5.1",
+					"github-copilot/claude-haiku-4.5",
+					"github-copilot/claude-opus-4.7",
+					"github-copilot/claude-opus-4.8",
+					"github-copilot/claude-opus-5",
+					"github-copilot/claude-opus-5.5",
+					"github-copilot/claude-sonnet-4.6",
+					"github-copilot/claude-sonnet-5",
+					"github-copilot/gemini-3.5-flash",
+					"github-copilot/gemini-3.6-flash",
+					"github-copilot/gemini-3.7-flash",
+					"github-copilot/gemini-3.8-flash",
+					"github-copilot/kimi-k2.7-code",
+					"github-copilot/kimi-k3",
+					"github-copilot/gpt-5-mini",
+					"github-copilot/gpt-5.3-codex",
+					"github-copilot/gpt-5.4",
+					"github-copilot/gpt-5.4-mini",
+					"github-copilot/gpt-5.4-nano",
+					"github-copilot/gpt-5.5",
+					"github-copilot/gpt-5.6-luna",
+					"github-copilot/gpt-5.6-sol",
+					"github-copilot/gpt-5.6-terra",
+					"github-copilot/gpt-6-astra",
+					"github-copilot/gpt-6-luna",
+					"github-copilot/gpt-6-sol",
+					"github-copilot/grok-4.5",
+					"github-copilot/grok-4.6",
+					"github-copilot/grok-4.7",
+					"github-copilot/mai-code-1-flash-picker",
+					"github-copilot/mai-code-1.1-flash"
+				]
+			},
+			"available": [
+				"github-copilot/claude-fable-5",
+				"github-copilot/claude-fable-5.1",
+				"github-copilot/claude-haiku-4.5",
+				"github-copilot/claude-opus-4.7",
+				"github-copilot/claude-opus-4.8",
+				"github-copilot/claude-opus-5",
+				"github-copilot/claude-opus-5.5",
+				"github-copilot/claude-sonnet-4.6",
+				"github-copilot/claude-sonnet-5",
+				"github-copilot/gemini-3.5-flash",
+				"github-copilot/gemini-3.6-flash",
+				"github-copilot/gemini-3.7-flash",
+				"github-copilot/gemini-3.8-flash",
+				"github-copilot/kimi-k2.7-code",
+				"github-copilot/kimi-k3",
+				"github-copilot/gpt-5-mini",
+				"github-copilot/gpt-5.3-codex",
+				"github-copilot/gpt-5.4",
+				"github-copilot/gpt-5.4-mini",
+				"github-copilot/gpt-5.4-nano",
+				"github-copilot/gpt-5.5",
+				"github-copilot/gpt-5.6-luna",
+				"github-copilot/gpt-5.6-sol",
+				"github-copilot/gpt-5.6-terra",
+				"github-copilot/gpt-6-astra",
+				"github-copilot/gpt-6-luna",
+				"github-copilot/gpt-6-sol",
+				"github-copilot/grok-4.5",
+				"github-copilot/grok-4.6",
+				"github-copilot/grok-4.7",
+				"github-copilot/mai-code-1-flash-picker",
+				"github-copilot/mai-code-1.1-flash"
+			],
+			"calls": [
+				{
+					"model": "github-copilot/gpt-5.4",
+					"found": {
+						"id": "gpt-5.4",
+						"name": "GPT-5.4",
+						"api": "openai-responses",
+						"provider": "github-copilot",
+						"baseUrl": "http://127.0.0.1:9/cp",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 2.5,
+							"output": 15,
+							"cacheRead": 0.25,
+							"cacheWrite": 0,
+							"tiers": [
+								{
+									"inputTokensAbove": 272000,
+									"input": 5,
+									"output": 22.5,
+									"cacheRead": 0.5,
+									"cacheWrite": 0
+								}
+							]
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 128000,
+						"headers": {
+							"User-Agent": "GitHubCopilotChat/0.35.0",
+							"Editor-Version": "vscode/1.107.0",
+							"Editor-Plugin-Version": "copilot-chat/0.35.0",
+							"Copilot-Integration-Id": "vscode-chat"
+						},
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": "low",
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": "xhigh",
+							"max": null
+						},
+						"compat": {
+							"supportsOpenAIGrammarTools": true,
+							"supportsMidConvoSystemMessages": true,
+							"supportsAdditionalTools": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": "tid=x;exp=9999999999;proxy-ep=proxy.business.githubcopilot.com;",
+							"baseUrl": "https://api.business.githubcopilot.com",
+							"headers": {
+								"User-Agent": "GitHubCopilotChat/0.35.0",
+								"Editor-Version": "vscode/1.107.0",
+								"Editor-Plugin-Version": "copilot-chat/0.35.0",
+								"Copilot-Integration-Id": "vscode-chat"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "tid=x;exp=9999999999;proxy-ep=proxy.business.githubcopilot.com;",
+					"refresh": "r"
+				}
+			}
+		},
+		{
+			"name": "copilot oauth without a proxy endpoint uses the enterprise endpoint",
+			"models": {
+				"providers": {
+					"github-copilot": {
+						"baseUrl": "http://127.0.0.1:9/cp"
+					}
+				}
+			},
+			"store": null,
+			"auth": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "tid=x;exp=9999999999;",
+					"refresh": "r",
+					"expires": 4102444800000,
+					"enterpriseUrl": "ghe.example.com"
+				}
+			},
+			"env": {},
+			"providers": {
+				"github-copilot": [
+					"github-copilot/claude-fable-5",
+					"github-copilot/claude-fable-5.1",
+					"github-copilot/claude-haiku-4.5",
+					"github-copilot/claude-opus-4.7",
+					"github-copilot/claude-opus-4.8",
+					"github-copilot/claude-opus-5",
+					"github-copilot/claude-opus-5.5",
+					"github-copilot/claude-sonnet-4.6",
+					"github-copilot/claude-sonnet-5",
+					"github-copilot/gemini-3.5-flash",
+					"github-copilot/gemini-3.6-flash",
+					"github-copilot/gemini-3.7-flash",
+					"github-copilot/gemini-3.8-flash",
+					"github-copilot/kimi-k2.7-code",
+					"github-copilot/kimi-k3",
+					"github-copilot/gpt-5-mini",
+					"github-copilot/gpt-5.3-codex",
+					"github-copilot/gpt-5.4",
+					"github-copilot/gpt-5.4-mini",
+					"github-copilot/gpt-5.4-nano",
+					"github-copilot/gpt-5.5",
+					"github-copilot/gpt-5.6-luna",
+					"github-copilot/gpt-5.6-sol",
+					"github-copilot/gpt-5.6-terra",
+					"github-copilot/gpt-6-astra",
+					"github-copilot/gpt-6-luna",
+					"github-copilot/gpt-6-sol",
+					"github-copilot/grok-4.5",
+					"github-copilot/grok-4.6",
+					"github-copilot/grok-4.7",
+					"github-copilot/mai-code-1-flash-picker",
+					"github-copilot/mai-code-1.1-flash"
+				]
+			},
+			"available": [
+				"github-copilot/claude-fable-5",
+				"github-copilot/claude-fable-5.1",
+				"github-copilot/claude-haiku-4.5",
+				"github-copilot/claude-opus-4.7",
+				"github-copilot/claude-opus-4.8",
+				"github-copilot/claude-opus-5",
+				"github-copilot/claude-opus-5.5",
+				"github-copilot/claude-sonnet-4.6",
+				"github-copilot/claude-sonnet-5",
+				"github-copilot/gemini-3.5-flash",
+				"github-copilot/gemini-3.6-flash",
+				"github-copilot/gemini-3.7-flash",
+				"github-copilot/gemini-3.8-flash",
+				"github-copilot/kimi-k2.7-code",
+				"github-copilot/kimi-k3",
+				"github-copilot/gpt-5-mini",
+				"github-copilot/gpt-5.3-codex",
+				"github-copilot/gpt-5.4",
+				"github-copilot/gpt-5.4-mini",
+				"github-copilot/gpt-5.4-nano",
+				"github-copilot/gpt-5.5",
+				"github-copilot/gpt-5.6-luna",
+				"github-copilot/gpt-5.6-sol",
+				"github-copilot/gpt-5.6-terra",
+				"github-copilot/gpt-6-astra",
+				"github-copilot/gpt-6-luna",
+				"github-copilot/gpt-6-sol",
+				"github-copilot/grok-4.5",
+				"github-copilot/grok-4.6",
+				"github-copilot/grok-4.7",
+				"github-copilot/mai-code-1-flash-picker",
+				"github-copilot/mai-code-1.1-flash"
+			],
+			"calls": [
+				{
+					"model": "github-copilot/gpt-5.4",
+					"found": {
+						"id": "gpt-5.4",
+						"name": "GPT-5.4",
+						"api": "openai-responses",
+						"provider": "github-copilot",
+						"baseUrl": "http://127.0.0.1:9/cp",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 2.5,
+							"output": 15,
+							"cacheRead": 0.25,
+							"cacheWrite": 0,
+							"tiers": [
+								{
+									"inputTokensAbove": 272000,
+									"input": 5,
+									"output": 22.5,
+									"cacheRead": 0.5,
+									"cacheWrite": 0
+								}
+							]
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 128000,
+						"headers": {
+							"User-Agent": "GitHubCopilotChat/0.35.0",
+							"Editor-Version": "vscode/1.107.0",
+							"Editor-Plugin-Version": "copilot-chat/0.35.0",
+							"Copilot-Integration-Id": "vscode-chat"
+						},
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": "low",
+							"low": "low",
+							"medium": "medium",
+							"high": "high",
+							"xhigh": "xhigh",
+							"max": null
+						},
+						"compat": {
+							"supportsOpenAIGrammarTools": true,
+							"supportsMidConvoSystemMessages": true,
+							"supportsAdditionalTools": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": "tid=x;exp=9999999999;",
+							"baseUrl": "https://copilot-api.ghe.example.com",
+							"headers": {
+								"User-Agent": "GitHubCopilotChat/0.35.0",
+								"Editor-Version": "vscode/1.107.0",
+								"Editor-Plugin-Version": "copilot-chat/0.35.0",
+								"Copilot-Integration-Id": "vscode-chat"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"github-copilot": {
+					"type": "oauth",
+					"access": "tid=x;exp=9999999999;",
+					"refresh": "r"
+				}
+			}
+		},
+		{
+			"name": "command keys and headers run for every request",
+			"models": {
+				"providers": {
+					"cmdp": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"apiKey": "!n=$(cat <dir>/key 2>/dev/null || echo 0); n=$((n+1)); echo $n > <dir>/key; echo key-$n",
+						"headers": {
+							"x-provider": "!n=$(cat <dir>/provider 2>/dev/null || echo 0); n=$((n+1)); echo $n > <dir>/provider; echo p-$n"
+						},
+						"models": [
+							{
+								"id": "m",
+								"headers": {
+									"x-model": "!n=$(cat <dir>/model 2>/dev/null || echo 0); n=$((n+1)); echo $n > <dir>/model; echo m-$n"
+								}
+							}
+						]
+					}
+				}
+			},
+			"store": null,
+			"auth": {},
+			"env": {},
+			"providers": {
+				"cmdp": [
+					"cmdp/m"
+				]
+			},
+			"available": [
+				"cmdp/m"
+			],
+			"calls": [
+				{
+					"model": "cmdp/m",
+					"found": {
+						"id": "m",
+						"name": "m",
+						"api": "openai-completions",
+						"provider": "cmdp",
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 128000,
+						"maxTokens": 16384
+					},
+					"results": [
+						{
+							"apiKey": "key-1",
+							"baseUrl": null,
+							"headers": {
+								"x-provider": "p-1",
+								"x-model": "m-1"
+							}
+						},
+						{
+							"apiKey": "key-2",
+							"baseUrl": null,
+							"headers": {
+								"x-provider": "p-2",
+								"x-model": "m-2"
+							}
+						},
+						{
+							"apiKey": "key-3",
+							"baseUrl": null,
+							"headers": {
+								"x-provider": "p-3",
+								"x-model": "m-3"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {}
+		},
+		{
+			"name": "radius provider on the default gateway lists the bundled catalog under its own id",
+			"models": {
+				"providers": {
+					"myradius": {
+						"oauth": "radius",
+						"baseUrl": "https://radius.pi.dev/v1",
+						"name": "My Radius"
+					}
+				}
+			},
+			"store": null,
+			"auth": {
+				"myradius": {
+					"type": "oauth",
+					"access": "radius-access",
+					"refresh": "radius-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"providers": {
+				"myradius": [
+					"myradius/balanced",
+					"myradius/cheap",
+					"myradius/claude-fable-5",
+					"myradius/claude-fable-5-1",
+					"myradius/claude-haiku-4-5",
+					"myradius/claude-opus-4-5",
+					"myradius/claude-opus-4-8",
+					"myradius/claude-opus-5",
+					"myradius/claude-opus-5-5",
+					"myradius/claude-sonnet-4-5",
+					"myradius/claude-sonnet-5",
+					"myradius/deepseek-v4-flash",
+					"myradius/deepseek-v4-pro",
+					"myradius/deepseek-v4.1-flash",
+					"myradius/glm-5.2",
+					"myradius/glm-5.3",
+					"myradius/glm-5.3-flash",
+					"myradius/gpt-5.3-codex",
+					"myradius/gpt-5.4",
+					"myradius/gpt-5.4-mini",
+					"myradius/gpt-5.5",
+					"myradius/gpt-5.6-luna",
+					"myradius/gpt-5.6-sol",
+					"myradius/gpt-5.6-terra",
+					"myradius/gpt-6-astra",
+					"myradius/gpt-6-luna",
+					"myradius/gpt-6-sol",
+					"myradius/kimi-k2.7-code",
+					"myradius/kimi-k3",
+					"myradius/precise"
+				]
+			},
+			"available": [
+				"myradius/balanced",
+				"myradius/cheap",
+				"myradius/claude-fable-5",
+				"myradius/claude-fable-5-1",
+				"myradius/claude-haiku-4-5",
+				"myradius/claude-opus-4-5",
+				"myradius/claude-opus-4-8",
+				"myradius/claude-opus-5",
+				"myradius/claude-opus-5-5",
+				"myradius/claude-sonnet-4-5",
+				"myradius/claude-sonnet-5",
+				"myradius/deepseek-v4-flash",
+				"myradius/deepseek-v4-pro",
+				"myradius/deepseek-v4.1-flash",
+				"myradius/glm-5.2",
+				"myradius/glm-5.3",
+				"myradius/glm-5.3-flash",
+				"myradius/gpt-5.3-codex",
+				"myradius/gpt-5.4",
+				"myradius/gpt-5.4-mini",
+				"myradius/gpt-5.5",
+				"myradius/gpt-5.6-luna",
+				"myradius/gpt-5.6-sol",
+				"myradius/gpt-5.6-terra",
+				"myradius/gpt-6-astra",
+				"myradius/gpt-6-luna",
+				"myradius/gpt-6-sol",
+				"myradius/kimi-k2.7-code",
+				"myradius/kimi-k3",
+				"myradius/precise"
+			],
+			"calls": [
+				{
+					"model": "myradius/balanced",
+					"found": {
+						"id": "balanced",
+						"name": "Balanced",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"lab": "Moonshot AI",
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"enabled": true,
+						"providers": [
+							{
+								"id": "fireworks",
+								"name": "Fireworks AI",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "sference",
+								"name": "sference",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "baseten",
+								"name": "Baseten",
+								"credential": "radius",
+								"source": "radius"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "myradius",
+						"baseUrl": "https://radius.pi.dev/v1",
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": "radius-access",
+							"baseUrl": null,
+							"headers": null
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"myradius": {
+					"type": "oauth",
+					"access": "radius-access",
+					"refresh": "radius-refresh"
+				}
+			}
+		},
+		{
+			"name": "radius provider without credentials falls back to RADIUS_API_KEY",
+			"models": {
+				"providers": {
+					"myradius": {
+						"oauth": "radius",
+						"baseUrl": "https://radius.pi.dev/v1"
+					}
+				}
+			},
+			"store": null,
+			"auth": {},
+			"env": {
+				"RADIUS_API_KEY": "env-radius"
+			},
+			"providers": {
+				"myradius": [
+					"myradius/balanced",
+					"myradius/cheap",
+					"myradius/claude-fable-5",
+					"myradius/claude-fable-5-1",
+					"myradius/claude-haiku-4-5",
+					"myradius/claude-opus-4-5",
+					"myradius/claude-opus-4-8",
+					"myradius/claude-opus-5",
+					"myradius/claude-opus-5-5",
+					"myradius/claude-sonnet-4-5",
+					"myradius/claude-sonnet-5",
+					"myradius/deepseek-v4-flash",
+					"myradius/deepseek-v4-pro",
+					"myradius/deepseek-v4.1-flash",
+					"myradius/glm-5.2",
+					"myradius/glm-5.3",
+					"myradius/glm-5.3-flash",
+					"myradius/gpt-5.3-codex",
+					"myradius/gpt-5.4",
+					"myradius/gpt-5.4-mini",
+					"myradius/gpt-5.5",
+					"myradius/gpt-5.6-luna",
+					"myradius/gpt-5.6-sol",
+					"myradius/gpt-5.6-terra",
+					"myradius/gpt-6-astra",
+					"myradius/gpt-6-luna",
+					"myradius/gpt-6-sol",
+					"myradius/kimi-k2.7-code",
+					"myradius/kimi-k3",
+					"myradius/precise"
+				]
+			},
+			"available": [
+				"myradius/balanced",
+				"myradius/cheap",
+				"myradius/claude-fable-5",
+				"myradius/claude-fable-5-1",
+				"myradius/claude-haiku-4-5",
+				"myradius/claude-opus-4-5",
+				"myradius/claude-opus-4-8",
+				"myradius/claude-opus-5",
+				"myradius/claude-opus-5-5",
+				"myradius/claude-sonnet-4-5",
+				"myradius/claude-sonnet-5",
+				"myradius/deepseek-v4-flash",
+				"myradius/deepseek-v4-pro",
+				"myradius/deepseek-v4.1-flash",
+				"myradius/glm-5.2",
+				"myradius/glm-5.3",
+				"myradius/glm-5.3-flash",
+				"myradius/gpt-5.3-codex",
+				"myradius/gpt-5.4",
+				"myradius/gpt-5.4-mini",
+				"myradius/gpt-5.5",
+				"myradius/gpt-5.6-luna",
+				"myradius/gpt-5.6-sol",
+				"myradius/gpt-5.6-terra",
+				"myradius/gpt-6-astra",
+				"myradius/gpt-6-luna",
+				"myradius/gpt-6-sol",
+				"myradius/kimi-k2.7-code",
+				"myradius/kimi-k3",
+				"myradius/precise"
+			],
+			"calls": [
+				{
+					"model": "myradius/balanced",
+					"found": {
+						"id": "balanced",
+						"name": "Balanced",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"lab": "Moonshot AI",
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"enabled": true,
+						"providers": [
+							{
+								"id": "fireworks",
+								"name": "Fireworks AI",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "sference",
+								"name": "sference",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "baseten",
+								"name": "Baseten",
+								"credential": "radius",
+								"source": "radius"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "myradius",
+						"baseUrl": "https://radius.pi.dev/v1",
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": "env-radius",
+							"baseUrl": null,
+							"headers": null
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {}
+		},
+		{
+			"name": "radius provider without any credential is unavailable",
+			"models": {
+				"providers": {
+					"myradius": {
+						"oauth": "radius",
+						"baseUrl": "https://radius.pi.dev/v1"
+					}
+				}
+			},
+			"store": null,
+			"auth": {},
+			"env": {},
+			"providers": {
+				"myradius": [
+					"myradius/balanced",
+					"myradius/cheap",
+					"myradius/claude-fable-5",
+					"myradius/claude-fable-5-1",
+					"myradius/claude-haiku-4-5",
+					"myradius/claude-opus-4-5",
+					"myradius/claude-opus-4-8",
+					"myradius/claude-opus-5",
+					"myradius/claude-opus-5-5",
+					"myradius/claude-sonnet-4-5",
+					"myradius/claude-sonnet-5",
+					"myradius/deepseek-v4-flash",
+					"myradius/deepseek-v4-pro",
+					"myradius/deepseek-v4.1-flash",
+					"myradius/glm-5.2",
+					"myradius/glm-5.3",
+					"myradius/glm-5.3-flash",
+					"myradius/gpt-5.3-codex",
+					"myradius/gpt-5.4",
+					"myradius/gpt-5.4-mini",
+					"myradius/gpt-5.5",
+					"myradius/gpt-5.6-luna",
+					"myradius/gpt-5.6-sol",
+					"myradius/gpt-5.6-terra",
+					"myradius/gpt-6-astra",
+					"myradius/gpt-6-luna",
+					"myradius/gpt-6-sol",
+					"myradius/kimi-k2.7-code",
+					"myradius/kimi-k3",
+					"myradius/precise"
+				]
+			},
+			"available": [],
+			"calls": [
+				{
+					"model": "myradius/balanced",
+					"found": {
+						"id": "balanced",
+						"name": "Balanced",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"lab": "Moonshot AI",
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"enabled": true,
+						"providers": [
+							{
+								"id": "fireworks",
+								"name": "Fireworks AI",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "sference",
+								"name": "sference",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "baseten",
+								"name": "Baseten",
+								"credential": "radius",
+								"source": "radius"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "myradius",
+						"baseUrl": "https://radius.pi.dev/v1",
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						null
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {}
+		},
+		{
+			"name": "radius provider on its own gateway lists the stored catalog and refreshes there",
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1"
+					}
+				}
+			},
+			"store": {
+				"gw": {
+					"models": [
+						{
+							"id": "fast",
+							"name": "Stored fast",
+							"api": "pi-messages",
+							"provider": "gw",
+							"baseUrl": "http://127.0.0.1:<port>/gw",
+							"reasoning": true,
+							"input": [
+								"text"
+							],
+							"cost": {
+								"input": 1,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0
+							},
+							"contextWindow": 100000,
+							"maxTokens": 8000
+						},
+						{
+							"id": "deep",
+							"name": "Stored deep",
+							"api": "pi-messages",
+							"provider": "gw",
+							"baseUrl": "http://127.0.0.1:<port>/gw",
+							"reasoning": true,
+							"input": [
+								"text"
+							],
+							"cost": {
+								"input": 1,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0
+							},
+							"contextWindow": 100000,
+							"maxTokens": 8000
+						}
+					],
+					"checkedAt": 1
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "old-access",
+					"refresh": "old-refresh",
+					"expires": 1
+				}
+			},
+			"env": {},
+			"providers": {
+				"gw": [
+					"gw/fast",
+					"gw/deep"
+				]
+			},
+			"available": [
+				"gw/fast",
+				"gw/deep"
+			],
+			"calls": [
+				{
+					"model": "gw/deep",
+					"found": {
+						"id": "deep",
+						"name": "Stored deep",
+						"api": "pi-messages",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:<port>/gw",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 100000,
+						"maxTokens": 8000
+					},
+					"results": [
+						{
+							"apiKey": "refreshed-access",
+							"baseUrl": null,
+							"headers": null
+						}
+					]
+				}
+			],
+			"gatewayRequests": [
+				{
+					"method": "POST",
+					"path": "/v1/oauth/token",
+					"body": {
+						"grant_type": "refresh_token",
+						"client_id": "pi-gateway",
+						"refresh_token": "old-refresh"
+					}
+				}
+			],
+			"credentials": {
+				"gw": {
+					"type": "oauth",
+					"access": "refreshed-access",
+					"refresh": "refreshed-refresh"
+				}
+			}
+		},
+		{
+			"name": "radius provider on its own gateway with a valid token",
+			"models": {
+				"providers": {
+					"gw": {
+						"oauth": "radius",
+						"baseUrl": "http://127.0.0.1:<port>/v1/",
+						"headers": {
+							"x-gw": "$GW_HEADER"
+						}
+					}
+				}
+			},
+			"store": {
+				"gw": {
+					"models": [
+						{
+							"id": "fast",
+							"name": "Stored fast",
+							"api": "pi-messages",
+							"provider": "gw",
+							"baseUrl": "http://127.0.0.1:<port>/gw",
+							"reasoning": true,
+							"input": [
+								"text"
+							],
+							"cost": {
+								"input": 1,
+								"output": 2,
+								"cacheRead": 0,
+								"cacheWrite": 0
+							},
+							"contextWindow": 100000,
+							"maxTokens": 8000
+						}
+					],
+					"checkedAt": 1
+				}
+			},
+			"auth": {
+				"gw": {
+					"type": "oauth",
+					"access": "gw-access",
+					"refresh": "gw-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {
+				"GW_HEADER": "h"
+			},
+			"providers": {
+				"gw": [
+					"gw/fast"
+				]
+			},
+			"available": [
+				"gw/fast"
+			],
+			"calls": [
+				{
+					"model": "gw/fast",
+					"found": {
+						"id": "fast",
+						"name": "Stored fast",
+						"api": "pi-messages",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:<port>/gw",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 100000,
+						"maxTokens": 8000
+					},
+					"results": [
+						{
+							"apiKey": "gw-access",
+							"baseUrl": null,
+							"headers": {
+								"x-gw": "h"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"gw": {
+					"type": "oauth",
+					"access": "gw-access",
+					"refresh": "gw-refresh"
+				}
+			}
+		},
+		{
+			"name": "built-in radius with a stored oauth credential",
+			"models": {
+				"providers": {}
+			},
+			"store": null,
+			"auth": {
+				"radius": {
+					"type": "oauth",
+					"access": "builtin-access",
+					"refresh": "builtin-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"providers": {
+				"radius": [
+					"radius/balanced",
+					"radius/cheap",
+					"radius/claude-fable-5",
+					"radius/claude-fable-5-1",
+					"radius/claude-haiku-4-5",
+					"radius/claude-opus-4-5",
+					"radius/claude-opus-4-8",
+					"radius/claude-opus-5",
+					"radius/claude-opus-5-5",
+					"radius/claude-sonnet-4-5",
+					"radius/claude-sonnet-5",
+					"radius/deepseek-v4-flash",
+					"radius/deepseek-v4-pro",
+					"radius/deepseek-v4.1-flash",
+					"radius/glm-5.2",
+					"radius/glm-5.3",
+					"radius/glm-5.3-flash",
+					"radius/gpt-5.3-codex",
+					"radius/gpt-5.4",
+					"radius/gpt-5.4-mini",
+					"radius/gpt-5.5",
+					"radius/gpt-5.6-luna",
+					"radius/gpt-5.6-sol",
+					"radius/gpt-5.6-terra",
+					"radius/gpt-6-astra",
+					"radius/gpt-6-luna",
+					"radius/gpt-6-sol",
+					"radius/kimi-k2.7-code",
+					"radius/kimi-k3",
+					"radius/precise"
+				]
+			},
+			"available": [
+				"radius/balanced",
+				"radius/cheap",
+				"radius/claude-fable-5",
+				"radius/claude-fable-5-1",
+				"radius/claude-haiku-4-5",
+				"radius/claude-opus-4-5",
+				"radius/claude-opus-4-8",
+				"radius/claude-opus-5",
+				"radius/claude-opus-5-5",
+				"radius/claude-sonnet-4-5",
+				"radius/claude-sonnet-5",
+				"radius/deepseek-v4-flash",
+				"radius/deepseek-v4-pro",
+				"radius/deepseek-v4.1-flash",
+				"radius/glm-5.2",
+				"radius/glm-5.3",
+				"radius/glm-5.3-flash",
+				"radius/gpt-5.3-codex",
+				"radius/gpt-5.4",
+				"radius/gpt-5.4-mini",
+				"radius/gpt-5.5",
+				"radius/gpt-5.6-luna",
+				"radius/gpt-5.6-sol",
+				"radius/gpt-5.6-terra",
+				"radius/gpt-6-astra",
+				"radius/gpt-6-luna",
+				"radius/gpt-6-sol",
+				"radius/kimi-k2.7-code",
+				"radius/kimi-k3",
+				"radius/precise"
+			],
+			"calls": [
+				{
+					"model": "radius/balanced",
+					"found": {
+						"id": "balanced",
+						"name": "Balanced",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"lab": "Moonshot AI",
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"enabled": true,
+						"providers": [
+							{
+								"id": "fireworks",
+								"name": "Fireworks AI",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "sference",
+								"name": "sference",
+								"credential": "radius",
+								"source": "radius"
+							},
+							{
+								"id": "baseten",
+								"name": "Baseten",
+								"credential": "radius",
+								"source": "radius"
+							}
+						],
+						"api": "pi-messages",
+						"provider": "radius",
+						"baseUrl": "https://radius.pi.dev/v1",
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": "builtin-access",
+							"baseUrl": null,
+							"headers": null
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"radius": {
+					"type": "oauth",
+					"access": "builtin-access",
+					"refresh": "builtin-refresh"
+				}
+			}
+		},
+		{
+			"name": "kimi oauth sends its access token as an Authorization header",
+			"models": {
+				"providers": {}
+			},
+			"store": null,
+			"auth": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-access",
+					"refresh": "kimi-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {},
+			"providers": {
+				"kimi-coding": [
+					"kimi-coding/k3",
+					"kimi-coding/k3-256k",
+					"kimi-coding/kimi-for-coding",
+					"kimi-coding/kimi-for-coding-highspeed"
+				]
+			},
+			"available": [
+				"kimi-coding/k3",
+				"kimi-coding/k3-256k",
+				"kimi-coding/kimi-for-coding",
+				"kimi-coding/kimi-for-coding-highspeed"
+			],
+			"calls": [
+				{
+					"model": "kimi-coding/k3",
+					"found": {
+						"id": "k3",
+						"name": "Kimi K3",
+						"api": "anthropic-messages",
+						"provider": "kimi-coding",
+						"baseUrl": "https://api.kimi.com/coding",
+						"compat": {
+							"allowEmptySignature": true,
+							"forceAdaptiveThinking": true
+						},
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": null,
+							"baseUrl": null,
+							"headers": {
+								"Authorization": "Bearer kimi-access"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-access",
+					"refresh": "kimi-refresh"
+				}
+			}
+		},
+		{
+			"name": "kimi oauth headers go out with the models.json headers",
+			"models": {
+				"providers": {
+					"kimi-coding": {
+						"headers": {
+							"x-kimi": "$KIMI_HEADER"
+						}
+					}
+				}
+			},
+			"store": null,
+			"auth": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-access",
+					"refresh": "kimi-refresh",
+					"expires": 4102444800000
+				}
+			},
+			"env": {
+				"KIMI_HEADER": "k"
+			},
+			"providers": {
+				"kimi-coding": [
+					"kimi-coding/k3",
+					"kimi-coding/k3-256k",
+					"kimi-coding/kimi-for-coding",
+					"kimi-coding/kimi-for-coding-highspeed"
+				]
+			},
+			"available": [
+				"kimi-coding/k3",
+				"kimi-coding/k3-256k",
+				"kimi-coding/kimi-for-coding",
+				"kimi-coding/kimi-for-coding-highspeed"
+			],
+			"calls": [
+				{
+					"model": "kimi-coding/k3",
+					"found": {
+						"id": "k3",
+						"name": "Kimi K3",
+						"api": "anthropic-messages",
+						"provider": "kimi-coding",
+						"baseUrl": "https://api.kimi.com/coding",
+						"compat": {
+							"allowEmptySignature": true,
+							"forceAdaptiveThinking": true
+						},
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 3,
+							"output": 15,
+							"cacheRead": 0.3,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1048576,
+						"maxTokens": 131072,
+						"thinkingLevelMap": {
+							"off": null,
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"xhigh": null,
+							"max": "max"
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"results": [
+						{
+							"apiKey": null,
+							"baseUrl": null,
+							"headers": {
+								"Authorization": "Bearer kimi-access",
+								"x-kimi": "k"
+							}
+						}
+					]
+				}
+			],
+			"gatewayRequests": [],
+			"credentials": {
+				"kimi-coding": {
+					"type": "oauth",
+					"access": "kimi-access",
+					"refresh": "kimi-refresh"
+				}
+			}
+		}
+	]
+}
