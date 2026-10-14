@@ -29,6 +29,17 @@ fn sandbox(port: u16) -> Sandbox {
     sandbox
 }
 
+/// [`sandbox`] whose cells run in the command sandbox (`sandbox.mode`, off by default).
+fn sandboxed(port: u16) -> Sandbox {
+    let sandbox = sandbox(port);
+    std::fs::write(
+        sandbox.agent_dir.join("settings.json"),
+        r#"{"sessionNaming":{"enabled":false},"sandbox":{"mode":"auto"}}"#,
+    )
+    .unwrap();
+    sandbox
+}
+
 fn run(sandbox: &Sandbox, args: &[&str]) -> Output {
     sandbox.ultron().args(args).output().unwrap()
 }
@@ -80,7 +91,7 @@ fn cli_composition_sandboxed_cell_cannot_write_home() {
         ],
         Naming::Fail,
     );
-    let sandbox = sandbox(port);
+    let sandbox = sandboxed(port);
     let output = run(&sandbox, &["-p", "--model", MODEL, "try to escape"]);
     assert_eq!(stdout(&output), "done\n", "{}", stderr(&output));
     let requests = seen.lock().unwrap().requests.clone();
@@ -418,7 +429,7 @@ fn cli_composition_cell_calls_the_memory_api_on_the_injected_backend() {
 #[test]
 fn cli_composition_sandbox_doctor_reports_isolation() {
     let (port, _seen) = mock_server(vec![], Naming::Fail);
-    let sandbox = sandbox(port);
+    let sandbox = sandboxed(port);
     let output = run(&sandbox, &["sandbox", "doctor"]);
     let report: Value = serde_json::from_str(&stdout(&output)).unwrap();
     assert_eq!(report["mode"], "auto");
@@ -486,7 +497,7 @@ fn cli_composition_lane_declares_exactly_the_rlm_tool() {
     let lane = cli::lane::Lane::open(&runtime, &model, Some("test-key".into()), "lane-test").unwrap();
     let tools: Vec<String> = lane.tools().iter().map(|t| t.tool().name.clone()).collect();
     assert_eq!(tools, ["rlm"]);
-    let Some(ai::Message::System(system)) = lane.system_message(&runtime.system) else {
+    let Some(ai::Message::System(system)) = lane.system_message(&runtime.system.current()) else {
         panic!("no system message");
     };
     let declared: Vec<String> = system.tools_added.iter().flatten().map(|t| t.name.clone()).collect();

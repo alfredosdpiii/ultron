@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 #[test]
 fn sandbox_settings_defaults_and_overrides() {
     let defaults = Settings::from_settings(&json!({}));
-    assert_eq!(defaults.mode, Mode::Auto);
+    assert_eq!(defaults.mode, Mode::Off);
     assert!(defaults.network);
     assert_eq!(defaults.writable.len(), DEFAULT_HOME_WRITABLE.len());
     assert_eq!(defaults.hidden.len(), DEFAULT_HIDDEN.len());
@@ -25,7 +25,7 @@ fn sandbox_settings_defaults_and_overrides() {
     assert_eq!(custom.env, vec!["FOO".to_owned()]);
     assert_eq!(custom.image.as_deref(), Some("img:1"));
     let invalid = Settings::from_settings(&json!({ "sandbox": { "mode": "sometimes", "network": "no" } }));
-    assert_eq!(invalid.mode, Mode::Auto);
+    assert_eq!(invalid.mode, Mode::Off);
     assert!(invalid.network);
 }
 

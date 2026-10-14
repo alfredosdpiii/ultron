@@ -1,16 +1,18 @@
-//! `sandbox.*` settings: `mode` (`off` | `auto` | `required`, default `auto`), `writable` (extra writable paths),
-//! `readable` (extra read-only paths), `hidden` (paths replaced by empty ones), `network` (default true), `env`
-//! (extra environment variable names passed in), `image` (Docker image; Docker is used only with one).
+//! `sandbox.*` settings: `mode` (`off` | `auto` | `required`, default `off`: commands run as TypeScript runs them),
+//! `writable` (extra writable paths), `readable` (extra read-only paths), `hidden` (paths replaced by empty ones),
+//! `network` (default true), `env` (extra environment variable names passed in), `image` (Docker image; Docker is
+//! used only with one).
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Mode {
-    /// Commands run as before: no isolation, the host's environment.
+    /// Commands run as before: no isolation, the host's environment (the default: the user's own machine, keys and
+    /// agents, as the TypeScript product runs them).
+    #[default]
     Off,
     /// The strongest mechanism that works; without one, commands run unisolated (reported as `none`).
-    #[default]
     Auto,
     /// The strongest mechanism that works; without one, commands are refused.
     Required,
@@ -102,7 +104,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            mode: Mode::Auto,
+            mode: Mode::Off,
             writable: DEFAULT_HOME_WRITABLE.iter().map(|p| format!("~/{p}")).collect(),
             readable: Vec::new(),
             hidden: DEFAULT_HIDDEN.iter().map(|p| format!("~/{p}")).collect(),
