@@ -450,7 +450,7 @@ fn configured_providers(env: &Env, registry: &ModelRegistry) -> Vec<String> {
 /// models.json key, or the built-in provider's environment key), ready for requests.
 pub fn available_models(env: &Env) -> Vec<Model> {
     let registry = registry(env);
-    configured_providers(env, &registry)
+    let mut models: Vec<Model> = configured_providers(env, &registry)
         .into_iter()
         .flat_map(|p| {
             let oauth = stored_oauth(env, &p);
@@ -460,6 +460,31 @@ pub fn available_models(env: &Env) -> Vec<Model> {
                 .into_iter()
                 .map(move |m| prepare(registry, m, env, oauth))
         })
+        .collect();
+    models.extend(subscription_models(env, &registry, &models));
+    models
+}
+
+/// The Claude subscription's pinned models, when Claude Code is installed. Its catalog takes any id, so the registry
+/// lists none of them; without this they are reachable only as `--model claude-subscription/<id>`. Models already
+/// listed (a models.json entry for the provider) are not repeated.
+fn subscription_models(env: &Env, registry: &ModelRegistry, listed: &[Model]) -> Vec<Model> {
+    use ai::claude_subscription::{PROVIDER, catalog, process};
+    let mut lookup: ai::claude_subscription::Env = [process::COMMAND_ENV, "PATH", "HOME"]
+        .into_iter()
+        .filter_map(|k| (env.var)(k).map(|v| (k.to_string(), v)))
+        .collect();
+    lookup
+        .entry("HOME".into())
+        .or_insert_with(|| env.home.to_string_lossy().into_owned());
+    if process::resolve_claude(None, &lookup).is_none() {
+        return Vec::new();
+    }
+    catalog::pinned_routes()
+        .into_iter()
+        .filter(|(_, id, _)| !listed.iter().any(|m| m.provider == PROVIDER && m.id == *id))
+        .filter_map(|(_, id, _)| registry.find(PROVIDER, id))
+        .map(|m| prepare(registry, m, env, false))
         .collect()
 }
 
