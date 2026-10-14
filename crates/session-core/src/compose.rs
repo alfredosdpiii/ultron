@@ -283,6 +283,87 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
 /// How long an extension may take to answer `commands/complete` (completions are asked as the user types).
 const EXTENSION_COMPLETION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
+/// The root system prompt, rendered again only when the settings' [`crate::lane::PromptMode`] changes (engineering
+/// mode, `alwaysSkills`), so the prompt-cache prefix stays stable (session-worker.ts `currentSystemPrompt`). A
+/// change applies from the next request.
+#[derive(Clone)]
+pub struct SystemPrompt(Arc<PromptState>);
+
+type RenderPrompt = dyn Fn(&crate::lane::PromptMode) -> Result<(String, Vec<String>), String> + Send + Sync;
+
+struct PromptState {
+    /// `None`: a fixed prompt.
+    render: Option<Box<RenderPrompt>>,
+    mode: Box<dyn Fn() -> crate::lane::PromptMode + Send + Sync>,
+    current: Mutex<(crate::lane::PromptMode, String, Vec<String>)>,
+}
+
+impl SystemPrompt {
+    /// A prompt that never changes.
+    pub fn fixed(text: impl Into<String>) -> SystemPrompt {
+        SystemPrompt(Arc::new(PromptState {
+            render: None,
+            mode: Box::new(crate::lane::PromptMode::default),
+            current: Mutex::new((Default::default(), text.into(), Vec::new())),
+        }))
+    }
+
+    /// The native worker's prompt for `env`'s working directory, in the mode its settings name now (read with the
+    /// worker's project trust).
+    fn rendered(
+        env: &Env,
+        config: &Config,
+        trusted: bool,
+        extensions: Option<String>,
+        guide: resources::runtime_guide::RuntimeGuideOptions,
+    ) -> Result<SystemPrompt, String> {
+        let (cwd, agent_dir) = (env.cwd.clone(), config.agent_dir.clone());
+        let mode = move || {
+            let settings = config::settings::SettingsManager::create(&cwd, &agent_dir, trusted);
+            crate::lane::PromptMode::from_settings(&settings)
+        };
+        let (env, loki_root) = (env.clone(), config.loki_root.clone());
+        let render = move |mode: &crate::lane::PromptMode| {
+            crate::lane::system_prompt_in_mode(
+                &env,
+                &env.cwd.display().to_string(),
+                loki_root.as_deref(),
+                extensions.as_deref(),
+                &guide,
+                mode,
+            )
+        };
+        let initial = mode();
+        let (text, warnings) = render(&initial)?;
+        Ok(SystemPrompt(Arc::new(PromptState {
+            render: Some(Box::new(render)),
+            mode: Box::new(mode),
+            current: Mutex::new((initial, text, warnings)),
+        })))
+    }
+
+    /// The prompt in the settings' current mode. A mode whose prompt does not render keeps the last one.
+    pub fn current(&self) -> String {
+        let state = &self.0;
+        let Some(render) = &state.render else {
+            return lock(&state.current).1.clone();
+        };
+        let mode = (state.mode)();
+        let mut current = lock(&state.current);
+        if current.0 != mode
+            && let Ok((text, warnings)) = render(&mode)
+        {
+            *current = (mode, text, warnings);
+        }
+        current.1.clone()
+    }
+
+    /// The `alwaysSkills` problems of the prompt as last rendered.
+    pub fn warnings(&self) -> Vec<String> {
+        lock(&self.0.current).2.clone()
+    }
+}
+
 /// The process-wide composition: configuration, loaded extensions and injected services.
 pub struct Runtime {
     pub config: Arc<Config>,
@@ -291,7 +372,7 @@ pub struct Runtime {
     /// Problems found loading extensions (reported once, as warnings).
     pub diagnostics: Vec<String>,
     /// The root lane's system prompt (subagents use it too).
-    pub system: String,
+    pub system: SystemPrompt,
     /// Where session-scoped host files (job logs, inference context) live: the cwd's session directory.
     pub sessions_dir: PathBuf,
     /// `print`, `json`, `rpc` or `interactive`.
@@ -342,13 +423,8 @@ impl Runtime {
             .and_then(|host| extensions::kernel_api::guide_section(&host.functions()));
         // The `mcp` gateway lives in the REPL: the runtime guide lists it with its servers (`mcpServerNames`).
         let runtime_guide = mcp_runtime_guide(&config);
-        let system = crate::lane::system_prompt_with_guide(
-            env,
-            &env.cwd.display().to_string(),
-            config.loki_root.as_deref(),
-            guide.as_deref(),
-            &runtime_guide,
-        )?;
+        let system = SystemPrompt::rendered(env, &config, trusted, guide, runtime_guide)?;
+        diagnostics.extend(system.warnings());
         Ok(Runtime {
             config: Arc::new(config),
             extensions,
@@ -740,7 +816,7 @@ pub struct Stack {
     api_key: Option<String>,
     session_id: String,
     sessions_dir: PathBuf,
-    system: String,
+    system: SystemPrompt,
     services: Services,
     workspaces: Mutex<HashMap<String, Workspace>>,
     /// The root lane kernels' sandbox, once built.
@@ -1000,9 +1076,9 @@ impl Stack {
         &self.model
     }
 
-    /// The root lane's system prompt.
-    pub fn system(&self) -> &str {
-        &self.system
+    /// The root lane's system prompt, in the settings' current mode.
+    pub fn system(&self) -> String {
+        self.system.current()
     }
 
     /// As [`Stack::close`], for a worker whose session a successor worker takes over: running shell jobs keep
@@ -1236,7 +1312,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
         .and_then(|(provider, id)| stack.config.model(provider, id))
         .unwrap_or_else(|| stack.model.clone());
     let root_cwd = stack.config.cwd.display().to_string();
-    let mut system = stack.system.clone();
+    let mut system = stack.system.current();
     if let Some(cwd) = run.cwd.as_deref() {
         // A worktree subagent works in its worktree: its shell, kernel and prompt name it, not the checkout.
         let host = Runtime {
@@ -1244,7 +1320,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             extensions: None,
             services: stack.services.clone(),
             diagnostics: Vec::new(),
-            system: String::new(),
+            system: SystemPrompt::fixed(""),
             sessions_dir: stack.sessions_dir.clone(),
             mode: String::new(),
             hindsight: None,

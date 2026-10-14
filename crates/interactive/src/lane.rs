@@ -250,6 +250,11 @@ pub enum LaneEvent {
         themes: Vec<String>,
         terminal_theme: String,
     },
+    /// The settings' mode for `/mode` and `/engineering`: engineering mode and the always-on skills it names.
+    Mode {
+        engineering: bool,
+        always_skills: Vec<String>,
+    },
     /// The stored credentials (`auth.json`): provider id and type (`api_key` or `oauth`), for `/logout`.
     Credentials(Vec<(String, String)>),
     /// What `/login` offers: every sign-in option with what is configured, for the query `/login` was given.
@@ -407,6 +412,8 @@ pub trait LaneClient {
     fn rlm_status(&self) {}
     /// Read the settings for `/settings` ([`LaneEvent::Settings`]).
     fn read_settings(&self) {}
+    /// Read the settings' mode for `/mode` and `/engineering` ([`LaneEvent::Mode`]).
+    fn read_mode(&self) {}
     /// The sign-in options for `/login` ([`LaneEvent::LoginProviders`]).
     fn login_providers(&self, query: &str) {
         let _ = query;

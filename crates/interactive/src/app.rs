@@ -80,6 +80,8 @@ pub struct AppOptions {
 enum Purpose {
     Model,
     Thinking,
+    /// `/mode`: the always-on skills the status names after a choice.
+    Mode(Vec<String>),
     /// "Summarize branch?" before navigating to this entry.
     Summarize(String),
     /// "Select authentication method": the options it chooses among (`None`: every provider).
@@ -225,6 +227,8 @@ pub struct App {
     /// A compaction is running (its indicator says Esc cancels it).
     compacting: bool,
     selection: Option<Selection>,
+    /// What `/mode` or `/engineering` does once [`LaneEvent::Mode`] reports the settings' mode.
+    mode_request: Option<crate::modes::ModeRequest>,
     session_id: Option<String>,
     session_file: Option<String>,
     session_name: Option<String>,
@@ -404,6 +408,7 @@ fn slash_commands(
     models: &[ModelInfo],
     extension: &[(String, Option<String>)],
     completions: &crate::extension_commands::Completions,
+    qol: &QolSettings,
 ) -> Vec<SlashCommand> {
     let direct: Vec<String> = crate::extension_commands::direct_extension_commands(extension)
         .into_iter()
@@ -418,6 +423,14 @@ fn slash_commands(
             argument_hint: hint,
         })
         .collect();
+    if qol.overlays {
+        commands.extend(crate::commands::QOL_COMMANDS.iter().map(|c| SlashCommand {
+            name: c.name.to_string(),
+            description: Some(c.description.to_string()),
+            argument_hint: (!c.hint.is_empty()).then(|| c.hint.to_string()),
+            argument_completions: None,
+        }));
+    }
     let models = models.to_vec();
     if let Some(model) = commands.iter_mut().find(|c| c.name == "model") {
         model.argument_completions = Some(Box::new(move |prefix: &str| {
@@ -450,7 +463,7 @@ impl App {
             .map(|(name, _)| name)
             .collect();
         self.editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
-            slash_commands(&self.models, &commands, &self.completions),
+            slash_commands(&self.models, &commands, &self.completions, &self.qol),
             &self.cwd,
             self.fd_path.clone(),
             &self.models,
@@ -468,7 +481,7 @@ impl App {
         );
         editor.set_select_list_theme(select_theme(&theme, "muted", "muted"));
         let qol = options.qol;
-        let commands = slash_commands(&options.models, &[], &Default::default());
+        let commands = slash_commands(&options.models, &[], &Default::default(), &qol);
         editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
             commands,
             &options.cwd,
@@ -517,6 +530,7 @@ impl App {
             operation: None,
             compacting: false,
             selection: None,
+            mode_request: None,
             session_id: None,
             session_file: None,
             session_name: None,
@@ -1072,6 +1086,10 @@ impl App {
             LaneEvent::SummarizationRetryFinished => self.chat.clear_retry_indicator(),
             LaneEvent::Tree { tree, leaf } => self.show_tree(tree, leaf, None),
             LaneEvent::RlmStatus(listed) => self.rlm_agents = listed,
+            LaneEvent::Mode {
+                engineering,
+                always_skills,
+            } => self.mode_read(engineering, always_skills),
             LaneEvent::Settings {
                 settings,
                 env_overrides,
@@ -1697,7 +1715,11 @@ impl App {
 
     fn execute_slash_command(&mut self, name: &str, args: &str) {
         self.editor.set_text("");
-        if !COMMANDS.iter().any(|c| c.name == name) && !self.extension_commands.iter().any(|c| c == name) {
+        let qol_command = self.qol.overlays && crate::commands::QOL_COMMANDS.iter().any(|c| c.name == name);
+        if !COMMANDS.iter().any(|c| c.name == name)
+            && !qol_command
+            && !self.extension_commands.iter().any(|c| c == name)
+        {
             self.status = format!("Unknown slash command: /{name}");
             return;
         }
@@ -1759,6 +1781,21 @@ impl App {
                 None => self.client.list_pi_sessions(),
             },
             "thinking" => self.thinking_command(args),
+            "mode" => match args.trim() {
+                "" => self.request_mode(crate::modes::ModeRequest::Picker),
+                name => match crate::modes::find(name) {
+                    Some(mode) => self.request_mode(crate::modes::ModeRequest::Set(mode.engineering)),
+                    None => self.show_status(&format!(
+                        "Error: Unknown mode \"{name}\". Available modes: {}.",
+                        crate::modes::MODES.iter().map(|m| m.id).collect::<Vec<_>>().join(", ")
+                    )),
+                },
+            },
+            "engineering" => match crate::modes::engineering_arg(args) {
+                Some(None) => self.request_mode(crate::modes::ModeRequest::Status),
+                Some(Some(enabled)) => self.request_mode(crate::modes::ModeRequest::Set(enabled)),
+                None => self.show_status("Usage: /engineering true|false"),
+            },
             "compact" => {
                 self.show_status("Compacting…");
                 self.client.compact((!args.is_empty()).then_some(args));
@@ -1979,6 +2016,43 @@ impl App {
         self.client.set_thinking(level);
         self.thinking_level = level.to_string();
         self.update_editor_border();
+    }
+
+    /// `/mode` and `/engineering` act on the settings' mode, which the client reads.
+    fn request_mode(&mut self, request: crate::modes::ModeRequest) {
+        self.mode_request = Some(request);
+        self.client.read_mode();
+    }
+
+    fn mode_read(&mut self, engineering: bool, always_skills: Vec<String>) {
+        use crate::modes::{MODES, ModeRequest, current};
+        match self.mode_request.take() {
+            Some(ModeRequest::Picker) => {
+                let selected = current(engineering);
+                let items = MODES
+                    .iter()
+                    .map(|mode| SelectItem {
+                        value: mode.id.to_string(),
+                        label: if mode.id == selected.id {
+                            format!("{} (selected)", mode.label)
+                        } else {
+                            mode.label.to_string()
+                        },
+                        description: Some(mode.description.to_string()),
+                    })
+                    .collect();
+                self.open_selection("Select mode:", items, Some(selected.id), Purpose::Mode(always_skills));
+            }
+            Some(ModeRequest::Status) => self.show_status(&crate::modes::status(engineering, &always_skills)),
+            Some(ModeRequest::Set(enabled)) => self.set_engineering(enabled, &always_skills),
+            None => {}
+        }
+    }
+
+    /// Write the `engineering` setting; the session's next request renders its prompt in that mode.
+    fn set_engineering(&mut self, enabled: bool, always_skills: &[String]) {
+        self.client.save_setting("engineering", Value::Bool(enabled));
+        self.show_status(&crate::modes::changed(enabled, always_skills));
     }
 
     /// Pi's Shift+Tab.
@@ -3140,6 +3214,11 @@ impl App {
                         let level = item.value.clone();
                         self.set_thinking(&level);
                         self.status = format!("Thinking level: {level}.");
+                    }
+                    Purpose::Mode(always_skills) => {
+                        if let Some(mode) = crate::modes::find(&item.value) {
+                            self.set_engineering(mode.engineering, &always_skills);
+                        }
                     }
                     Purpose::ExtensionSelect { id, confirm } => {
                         let answer = if confirm {

@@ -183,7 +183,8 @@ pub fn system_prompt(
     system_prompt_with_guide(env, cwd, loki_root, extensions, &Default::default())
 }
 
-/// [`system_prompt`] whose runtime guide gets `guide` (the REPL's extension tools and MCP servers).
+/// [`system_prompt`] whose runtime guide gets `guide` (the REPL's extension tools and MCP servers), in the mode the
+/// global settings name ([`PromptMode`]).
 pub fn system_prompt_with_guide(
     env: &Env,
     cwd: &str,
@@ -191,6 +192,44 @@ pub fn system_prompt_with_guide(
     extensions: Option<&str>,
     guide: &resources::runtime_guide::RuntimeGuideOptions,
 ) -> Result<String, String> {
+    let settings = config::settings::SettingsManager::create(Path::new(cwd), &env.agent_dir(), false);
+    let mode = PromptMode::from_settings(&settings);
+    system_prompt_in_mode(env, cwd, loki_root, extensions, guide, &mode).map(|(prompt, _)| prompt)
+}
+
+/// What the settings change about the system prompt. Engineering mode (the `engineering` setting, `/engineering`,
+/// `/mode`) puts the always-on skills (`alwaysSkills`) in the prompt; off, they are listed like any skill.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PromptMode {
+    pub engineering: bool,
+    pub always_skills: Vec<String>,
+}
+
+impl PromptMode {
+    /// `getEngineering` and `getAlwaysSkills` (the string entries of `alwaysSkills`).
+    pub fn from_settings(settings: &config::settings::SettingsManager) -> PromptMode {
+        let settings = settings.settings();
+        PromptMode {
+            engineering: settings.get("engineering") == Some(&Value::Bool(true)),
+            always_skills: settings
+                .get("alwaysSkills")
+                .and_then(Value::as_array)
+                .map(|names| names.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                .unwrap_or_default(),
+        }
+    }
+}
+
+/// [`system_prompt_with_guide`] in an explicit mode, with the `alwaysSkills` problems (a skill that is not loaded,
+/// cannot be read, or would pass the always-on size limit) as warnings.
+pub fn system_prompt_in_mode(
+    env: &Env,
+    cwd: &str,
+    loki_root: Option<&Path>,
+    extensions: Option<&str>,
+    guide: &resources::runtime_guide::RuntimeGuideOptions,
+    mode: &PromptMode,
+) -> Result<(String, Vec<String>), String> {
     use resources::system_prompt::{BuildOptions, build_system_prompt};
     let agent_dir = env.agent_dir().display().to_string();
     let bundled = config::paths::normalize(&env.docs.join("../skills"))
@@ -204,6 +243,11 @@ pub fn system_prompt_with_guide(
     })
     .skills;
     skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
+    // Skills the user set always on carry their text into the prompt (resource-loader.ts `applyAlwaysSkills`).
+    let warnings = resources::skills::apply_always_skills(&mut skills, &mode.always_skills)
+        .into_iter()
+        .map(|d| d.message)
+        .collect();
     let runtime = resources::runtime_guide::rlm_runtime_prompt(&["rlm"], guide).unwrap_or_default();
     // loki.ts `readContext`: a policy the engine cannot read gives no note (the guard still runs and reports it).
     let loki_note = loki_root
@@ -222,9 +266,10 @@ pub fn system_prompt_with_guide(
             .chain(extensions.map(|text| ("extensions".to_string(), text.to_string())))
             .chain(loki_note.map(|note| ("loki".to_string(), note)))
             .collect(),
+        engineering: mode.engineering,
         ..BuildOptions::new(cwd)
     };
-    build_system_prompt(&options, None)
+    Ok((build_system_prompt(&options, None)?, warnings))
 }
 
 /// The profile's models.json over the built-in catalog (custom providers and models, overrides, keys, headers).

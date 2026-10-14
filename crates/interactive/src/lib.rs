@@ -18,6 +18,7 @@ pub mod inspection;
 pub mod lane;
 pub mod login_dialog;
 pub mod model_hub;
+pub mod modes;
 pub mod qol;
 pub mod retry;
 pub mod rlm;

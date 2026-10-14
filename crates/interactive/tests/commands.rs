@@ -120,6 +120,9 @@ impl LaneClient for Recorder {
     fn read_settings(&self) {
         self.push("read_settings".into());
     }
+    fn read_mode(&self) {
+        self.push("read_mode".into());
+    }
     fn login_providers(&self, query: &str) {
         self.push(format!("login_providers {query}"));
     }
@@ -1524,4 +1527,63 @@ fn interactive_commands_import_without_a_path_picks_a_pi_session_read_only() {
     app.handle_input("\x1b");
     assert!(!screen(&mut app).contains("new pi ask"));
     assert_eq!(calls(&c), ["list_pi", "import /pi/old.jsonl", "list_pi"]);
+}
+
+fn mode_event(engineering: bool) -> LaneEvent {
+    LaneEvent::Mode {
+        engineering,
+        always_skills: vec!["ponytail".into(), "ship-with-no-mistakes".into()],
+    }
+}
+
+/// `/mode`: a picker of the modes with the settings' one selected; choosing another writes `engineering`.
+#[test]
+fn interactive_commands_mode_picker_switches_the_mode() {
+    let qol = interactive::qol::QolSettings {
+        overlays: true,
+        ..interactive::qol::QolSettings::parity()
+    };
+    let (mut app, c) = app_with(qol, vec![model("a", true)]);
+    submit(&mut app, "/mode");
+    assert_eq!(calls(&c), ["read_mode"]);
+    app.apply(mode_event(true));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Select mode:") && s.contains("Engineering (selected)") && s.contains("Default"),
+        "{s}"
+    );
+    assert!(s.contains("alwaysSkills in the system prompt"), "{s}");
+    app.handle_input("\x1b[A");
+    app.handle_input("\r");
+    assert_eq!(calls(&c).last().unwrap(), "setting engineering=false");
+    let s = screen(&mut app);
+    assert!(s.contains("Engineering mode off"), "{s}");
+    // A name switches without the picker.
+    submit(&mut app, "/mode engineering");
+    app.apply(mode_event(false));
+    assert_eq!(calls(&c).last().unwrap(), "setting engineering=true");
+    assert!(screen(&mut app).contains("Engineering mode on: always-on skills (ponytail"));
+    submit(&mut app, "/mode research");
+    assert!(screen(&mut app).contains("Unknown mode \"research\". Available modes: default, engineering."));
+    // The parity build has exactly the client TUI's commands.
+    let (mut parity, pc) = app_with(interactive::qol::QolSettings::parity(), vec![model("a", true)]);
+    submit(&mut parity, "/mode engineering");
+    assert!(screen(&mut parity).contains("Unknown slash command: /mode"));
+    assert!(!calls(&pc).contains(&"read_mode".to_string()));
+}
+
+/// `/engineering [true|false]` as client-tui-pi-commands.ts `setEngineeringMode`: report, set, usage.
+#[test]
+fn interactive_commands_engineering_reports_and_sets_the_mode() {
+    let (mut app, c) = app();
+    submit(&mut app, "/engineering");
+    assert_eq!(calls(&c), ["read_mode"]);
+    app.apply(mode_event(true));
+    assert!(screen(&mut app).contains("Engineering mode is on (always-on skills: ponytail, ship-with-no-mistakes)"));
+    submit(&mut app, "/engineering off");
+    app.apply(mode_event(true));
+    assert_eq!(calls(&c).last().unwrap(), "setting engineering=false");
+    submit(&mut app, "/engineering sometimes");
+    assert!(screen(&mut app).contains("Usage: /engineering true|false"));
+    assert_eq!(calls(&c).last().unwrap(), "setting engineering=false");
 }

@@ -60,6 +60,7 @@ enum Command {
     Inspect(String, String, Value),
     KillAgent(String),
     ReadSettings,
+    ReadMode,
     RlmStatus,
     Credentials,
     Logout(String, String),
@@ -248,6 +249,9 @@ impl LaneClient for DaemonLane {
     }
     fn read_settings(&self) {
         self.send(Command::ReadSettings);
+    }
+    fn read_mode(&self) {
+        self.send(Command::ReadMode);
     }
     fn rlm_status(&self) {
         self.send(Command::RlmStatus);
@@ -1121,6 +1125,15 @@ fn link_thread(
                     env_overrides,
                     themes,
                     terminal_theme: terminal_theme.to_string(),
+                });
+            }
+            Command::ReadMode => {
+                let (cwd, agent_dir) = &settings_path;
+                let settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                let mode = session_core::lane::PromptMode::from_settings(&settings);
+                send(LaneEvent::Mode {
+                    engineering: mode.engineering,
+                    always_skills: mode.always_skills,
                 });
             }
             Command::Shutdown => break,

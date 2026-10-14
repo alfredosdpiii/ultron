@@ -197,11 +197,16 @@ fn session_core_mcp_servers_are_listed_in_the_runtime_guide() {
         resources::runtime_guide::EventDelivery::Wake,
     )
     .unwrap();
-    assert!(session.runtime.system.contains(&section), "{}", session.runtime.system);
+    assert!(
+        session.runtime.system.current().contains(&section),
+        "{}",
+        session.runtime.system.current()
+    );
     assert!(
         session
             .runtime
             .system
+            .current()
             .contains("MCP servers (alpha) are reached through the `mcp` namespace")
     );
     session.lane.shutdown();
@@ -211,7 +216,7 @@ fn session_core_mcp_servers_are_listed_in_the_runtime_guide() {
 fn session_core_without_mcp_servers_there_is_no_gateway() {
     let dir = tempfile::tempdir().unwrap();
     let session = session(dir.path(), Some(json!({})));
-    assert!(!session.runtime.system.contains("## Extension tools"));
+    assert!(!session.runtime.system.current().contains("## Extension tools"));
     assert_eq!(
         session.rlm("try:\n    await mcp.servers()\nexcept Exception as e:\n    print(e)"),
         "Extension tools are not available in this session"

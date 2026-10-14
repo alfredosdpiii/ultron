@@ -211,7 +211,7 @@ impl DurableChildren {
         {
             return crate::lane_reuse::continue_lane(&chat, conversation, &run);
         }
-        lock_map(&self.systems).insert(run.lane.clone(), stack.system().to_string());
+        lock_map(&self.systems).insert(run.lane.clone(), stack.system());
         let model = match run.model.as_deref().and_then(|spec| spec.split_once('/')) {
             Some((provider, id)) => ModelRef::new(provider, id),
             None => ModelRef::new(&stack.model().provider, &stack.model().id),

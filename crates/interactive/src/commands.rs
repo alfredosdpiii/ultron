@@ -28,6 +28,14 @@ const fn c(name: &'static str, hint: &'static str, description: &'static str) ->
 }
 
 /// Every command the TypeScript client TUI offers, in its order.
+/// The Rust-only commands, offered with the overlays ([`crate::qol::QolSettings::overlays`]); a parity build has
+/// exactly the client TUI's [`COMMANDS`].
+pub const QOL_COMMANDS: [CommandSpec; 1] = [c(
+    "mode",
+    "[name]",
+    "Switch mode (Default, Engineering); without a name, pick one",
+)];
+
 pub const COMMANDS: [CommandSpec; 38] = [
     c("name", "<name>", "Set session display name"),
     c("session", "", "Show session info and stats"),

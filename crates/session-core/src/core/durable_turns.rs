@@ -113,14 +113,14 @@ pub(super) fn open_durable(
         children: children.clone(),
     };
     // A child conversation's system prompt is its subagent's (the root's request is built by the actor).
-    let (section_children, root_system) = (children.clone(), lane.stack.system().to_string());
+    let (section_children, root_stack) = (children.clone(), lane.stack.clone());
     let sections: harness::chat::SectionSource = Arc::new(move |conversation, _| {
         let mut sections = indexmap::IndexMap::new();
         if conversation != ROOT_CONVERSATION_ID {
             let system = section_children
                 .lane_of(conversation)
                 .and_then(|lane| section_children.system_of(&lane))
-                .unwrap_or_else(|| root_system.clone());
+                .unwrap_or_else(|| root_stack.system());
             sections.insert("system".to_string(), system);
         }
         Ok(sections)
@@ -472,7 +472,11 @@ impl Core {
         if first.is_some() {
             history.pop();
         }
-        let mut messages: Vec<Message> = self.lane.system_message(&self.runtime.system).into_iter().collect();
+        let mut messages: Vec<Message> = self
+            .lane
+            .system_message(&self.runtime.system.current())
+            .into_iter()
+            .collect();
         messages.extend(lane::to_llm(&history));
         messages.extend(lane::to_llm(&run));
         Ok(messages)
