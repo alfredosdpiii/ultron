@@ -945,6 +945,10 @@ impl Core {
             &session_id,
             Some(children.host(session.clone())),
         )?;
+        // The runtime counters are the session value `ultron.module/stats` (counting continues from a resumed one).
+        lane.stack
+            .stats
+            .attach(Arc::new(crate::session_stats::SessionStore(session.clone())));
         let branches = Arc::new(context_lane::RootBranches::new(session.clone()));
         // One module answers `ctx.*` from every lane's kernel; each lane edits its own branch.
         let child_context = Arc::new(context_children::ChildContext::new(children.clone(), session.clone()));
@@ -1681,6 +1685,8 @@ impl Core {
         }
         self.nudger.run_ended(&run.id);
         self.skill_nudger.run_ended(&run.id);
+        // What the run counted is in the session file when its end is reported.
+        self.lane.stack.stats.flush();
         // Failure streaks of the hints' loop detector start over with the next run.
         self.lane.stack.cell_hints().run_ended(LANE);
         if let Some(waiter) = run.waiter {
@@ -1869,6 +1875,10 @@ impl Core {
     }
 
     fn sync_op(&mut self, op: Op) -> OpResult {
+        // `/usage` reads the session file it describes: the counters still in memory are saved first.
+        if matches!(op, Op::Describe) {
+            self.lane.stack.stats.flush();
+        }
         match op {
             Op::Prompt { .. }
             | Op::PromptAndWait { .. }
@@ -2230,6 +2240,7 @@ impl Core {
         .flatten()
         .collect();
         for steer in steers {
+            self.lane.stack.stats.nudge(&steer);
             let _ = self.enqueue(QueueKind::Steer, steer, Vec::new(), None);
         }
     }
@@ -2447,8 +2458,10 @@ impl Core {
         let _ = getrandom_fill(&mut random);
         let id = self.run_ids.next(now_ms(), random);
         self.branches.run_started();
-        // Per-turn guard times start from zero (`fileHooks.beginTurn()` on the root lane's `run_start`).
-        self.lane.stack.host.begin_turn();
+        // Per-turn guard times start from zero (`fileHooks.beginTurn()` on the root lane's `run_start`), and a
+        // session in which the root ran keeps its counters, even when they are all zero.
+        self.lane.stack.begin_turn();
+        self.lane.stack.stats.touch();
         self.run = Some(Running {
             id: id.clone(),
             signal,

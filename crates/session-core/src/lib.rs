@@ -43,6 +43,7 @@ pub mod request_settings;
 pub mod review_command;
 pub mod session_flags;
 pub mod session_resources;
+pub mod session_stats;
 pub mod session_tools;
 pub mod stored_auth;
 pub mod subagents;

@@ -19,6 +19,7 @@
 
 use crate::RunEnv as Env;
 use crate::lane::{Provider, Rlm, rlm_over};
+use crate::session_stats::{GuardOutcome, SessionStats};
 use agent::{AgentOptions, AgentTool, StreamFn};
 use ai::{Message, Model, UserMessage, UserMessageContent};
 use delegation::agents::{Agents, AgentsOptions, Completion, PredictCall, predict_adapter};
@@ -28,7 +29,7 @@ use delegation::lanes::{CellEnd, Lanes, LanesOptions};
 use delegation::usage::UsageLedger;
 use extensions::{ExtensionHost, SessionInfo};
 use host::Host;
-use host::file_hooks::FileHooks;
+use host::file_hooks::{FileHooks, GuardRecord, OnRecord};
 use host::loki_guard::{LokiGuard, LokiMode, git_root, loki_mode};
 use inference::Inference;
 use kernel::{ContinuityPolicy, HostHandler, Kernel, KernelOptions, Signal};
@@ -162,6 +163,13 @@ impl Config {
         }
     }
 
+    /// The bundled skills directory (packages/coding-agent/skills, beside the runtime), unless
+    /// `ULTRON_BUNDLED_SKILLS` turns it off.
+    pub fn bundled_skills(&self) -> Option<String> {
+        let root = self.runtime_path.ancestors().nth(4)?;
+        crate::session_resources::bundled_skills(&root.join("skills"), &*self.var)
+    }
+
     /// The session's MCP gateway (extensions/mcp): the servers of `mcp.json`, and of `.pi/mcp.json` in a trusted
     /// project, reached from the REPL through the `mcp` tool. Server log messages go to `<agentDir>/mcp.log`.
     pub fn mcp_gateway(&self) -> Arc<mcp::gateway::Gateway> {
@@ -181,9 +189,12 @@ impl Config {
                     masker.register_secret_values(&values);
                 })),
                 provider_token: Some(self.provider_token.clone()),
+                // The worker's proxies, with undici's semantics (TS: the worker's `configureHttpDispatcher`).
+                proxy: Some(ai::net::ProxyEnv::from_lookup(&*self.var)),
                 ..mcp::connection::ConnectionEnv::default()
             },
-            open_url: None,
+            // The session's PATH finds the launcher (never the process's).
+            open_url: Some(mcp::gateway::browser_opener((self.var)("PATH"), (self.var)("HOME"))),
         })
     }
 
@@ -231,8 +242,9 @@ impl Config {
 
     /// The session's file hooks (session-worker.ts): Loki's guard unless `ULTRON_LOKI` or the global `loki.mode`
     /// setting turns it off.
-    /// In `cwd` (a worktree subagent's own), Loki checks that tree.
-    fn file_hooks_in(&self, cwd: &Path) -> FileHooks {
+    /// In `cwd` (a worktree subagent's own), Loki checks that tree. Every guard outcome goes to `ULTRON_LOKI_LOG`, then
+    /// to `record` (the session's counters).
+    fn file_hooks_in(&self, cwd: &Path, record: Option<OnRecord>) -> FileHooks {
         // After-cell checks picture the directory between cells (workspace-snapshot.ts).
         let snapshot: host::file_hooks::Snapshotter = std::sync::Arc::new(|dir: &Path| {
             let picture = delegation::workspace::snapshot_workspace(
@@ -247,8 +259,16 @@ impl Config {
             })
         });
         let mut hooks = FileHooks::with_snapshots(cwd, snapshot);
-        if let Some(log) = crate::guard_log::loki_log((self.var)("ULTRON_LOKI_LOG").as_deref()) {
-            hooks.on_record(log);
+        match (
+            crate::guard_log::loki_log((self.var)("ULTRON_LOKI_LOG").as_deref()),
+            record,
+        ) {
+            (Some(log), Some(record)) => hooks.on_record(Arc::new(move |outcome: &GuardRecord| {
+                log(outcome);
+                record(outcome);
+            })),
+            (Some(only), None) | (None, Some(only)) => hooks.on_record(only),
+            (None, None) => {}
         }
         if let Some(root) = &self.loki_root {
             let root = if cwd == self.cwd {
@@ -259,7 +279,13 @@ impl Config {
             // Post-write checks compare against the committed policy and a base revision: only in a repository
             // with a `.loki/` policy (TS: after its auto-install there).
             let post_write = git_root(cwd).is_some() && root.join(".loki").is_dir();
-            hooks.add(Box::new(LokiGuard::new(&root, self.loki).with_post_write(post_write)));
+            hooks.add(Box::new(
+                LokiGuard::new(&root, self.loki)
+                    .with_post_write(post_write)
+                    .with_timeout(host::loki_guard::loki_timeout(
+                        (self.var)("ULTRON_LOKI_TIMEOUT_MS").as_deref(),
+                    )),
+            ));
         }
         hooks
     }
@@ -566,10 +592,13 @@ impl Runtime {
         // Shell jobs are durable: their journal is in the session's module directory, and opening the host recovers
         // the jobs a dead worker left (from their processes).
         let jobs = config.session_dir("rlm-modules", session_id).join("jobs.json");
+        // The session's runtime counters (`ultron.module/stats`): saved once the session actor attaches its journal.
+        let stats = Arc::new(SessionStats::system("lane"));
         let host = Arc::new(
-            self.host_in(&config.cwd, session_id, "bash")?
+            self.host_in(&config.cwd, session_id, "bash", Some(&stats))?
                 .with_journal(Arc::new(host::journal::FileJobJournal::new(jobs)))?,
         );
+        crate::guard_log::loki_setup(&config);
         let modules = |name: &str| -> Arc<FileDocumentStore> {
             Arc::new(FileDocumentStore::new(
                 config
@@ -718,6 +747,7 @@ impl Runtime {
                 goal_slot.clone(),
                 Some(refinements),
                 crate::frames::frame_runner(frames.clone()),
+                &stats,
             );
             frames.set_tasks(Arc::new(crate::frames::StackFrameTasks {
                 agents: agents.clone(),
@@ -739,7 +769,7 @@ impl Runtime {
                 let result = inner(run);
                 if let Some(stack) = closer.upgrade() {
                     let _ = stack.lanes.close_lane(&lane);
-                    lock(&stack.workspaces).remove(&lane);
+                    stack.retire_workspace(&lane);
                 }
                 result
             });
@@ -755,6 +785,9 @@ impl Runtime {
             options.workspace = Some(config.cwd.clone());
             options.now = Box::new(|| crate::lane::now_ms() as f64);
             let (delegation, child_ends) = Delegation::new(options);
+            // How each worktree child's merge ended is counted (`onMerge`).
+            let merges = stats.clone();
+            delegation.on_merge(Arc::new(move |task: &str, status: &str| merges.merge(task, status)));
             // Workflow nodes with worktree=True run as subagents of the workflow's caller (worktrees live there).
             agents.set_worktree_children(Arc::new(delegation.clone()));
             // A spawn naming a model the session cannot run is refused, never run on the root's model (A04).
@@ -780,7 +813,23 @@ impl Runtime {
                 )),
             });
             let (lanes, cell_ends) = match lanes {
-                Ok(pair) => pair,
+                Ok(pair) => {
+                    // Every host request a kernel makes is counted; `rlm.pool`, inspected or asked by a cell, carries
+                    // the session's guard statistics.
+                    let calls = stats.clone();
+                    pair.0
+                        .observe_requests(Arc::new(move |kind: &str| calls.host_call(kind)));
+                    let guards_of = me.clone();
+                    pair.0.extend_pool_stats(Arc::new(move |pool: &mut Value| {
+                        if let Some(stack) = guards_of.upgrade() {
+                            let guards = stack.guard_stats();
+                            if !guards.is_empty() {
+                                pool["guards"] = Value::Array(guards);
+                            }
+                        }
+                    }));
+                    pair
+                }
                 Err(error) => {
                     built = Err(error);
                     let (lanes, ends) = Lanes::new(LanesOptions {
@@ -832,6 +881,8 @@ impl Runtime {
                 swarm: std::sync::OnceLock::new(),
                 budget_note: Arc::new(std::sync::OnceLock::new()),
                 lane_steer: Arc::new(std::sync::OnceLock::new()),
+                stats,
+                retired_guards: Mutex::new(Vec::new()),
             }
         });
         built?;
@@ -848,8 +899,19 @@ impl Runtime {
 
     /// The file hooks of a host in `cwd`: Loki's (see [`Config::file_hooks_in`]), then extensions'
     /// `after_cell_changes`.
-    fn file_hooks_in(&self, cwd: &Path) -> FileHooks {
-        let mut hooks = self.config.file_hooks_in(cwd);
+    fn file_hooks_in(&self, cwd: &Path, stats: Option<&Arc<SessionStats>>) -> FileHooks {
+        let record = stats.map(|stats| {
+            let stats = stats.clone();
+            Arc::new(move |record: &GuardRecord| {
+                stats.guard(&GuardOutcome {
+                    guard: &record.guard,
+                    phase: record.phase,
+                    outcome: record.outcome,
+                    ms: record.ms as f64,
+                });
+            }) as OnRecord
+        });
+        let mut hooks = self.config.file_hooks_in(cwd, record);
         if let Some(extensions) = &self.extensions {
             hooks.add(Box::new(crate::extension_file_hooks::ExtensionBeforeWrite::new(
                 extensions.clone(),
@@ -861,8 +923,15 @@ impl Runtime {
         hooks
     }
 
-    /// A sandboxed host with its working directory at `cwd` (the session's, or a worktree subagent's).
-    fn host_in(&self, cwd: &Path, session_id: &str, spill: &str) -> Result<Host, String> {
+    /// A sandboxed host with its working directory at `cwd` (the session's, or a worktree subagent's); its guard
+    /// outcomes are counted in `stats`.
+    fn host_in(
+        &self,
+        cwd: &Path,
+        session_id: &str,
+        spill: &str,
+        stats: Option<&Arc<SessionStats>>,
+    ) -> Result<Host, String> {
         let config = &self.config;
         let jobs_dir = self.sessions_dir.join("rlm-jobs").join(session_id);
         // Blocking-bash spill files stay with the session (TS: the OS temp dir), so the sandbox keeps only
@@ -877,14 +946,16 @@ impl Runtime {
             .settings
             .as_object()
             .and_then(|settings| config::settings_keys::shell_path(settings, &config.home));
-        Ok(Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd)))
-            .with_shell_path(shell_path)
-            .sandboxed(
-                &config.settings,
-                &config.home,
-                Some(&tmp_dir),
-                self.services.approver.clone(),
-            ))
+        Ok(
+            Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd, stats)))
+                .with_shell_path(shell_path)
+                .sandboxed(
+                    &config.settings,
+                    &config.home,
+                    Some(&tmp_dir),
+                    self.services.approver.clone(),
+                ),
+        )
     }
 }
 
@@ -896,7 +967,8 @@ fn skill_sources(
 ) -> Vec<SkillSource> {
     let cwd = config.cwd.display().to_string();
     let agent_dir = config.agent_dir.display().to_string();
-    crate::session_resources::skills(&cwd, &agent_dir, extra, no_skills)
+    let bundled = config.bundled_skills();
+    crate::session_resources::skills(&cwd, &agent_dir, extra, no_skills, bundled.as_deref())
         .into_iter()
         .map(|skill| SkillSource {
             content: std::fs::read_to_string(&skill.file_path).unwrap_or_default(),
@@ -988,18 +1060,52 @@ pub struct Stack {
     pub budget_note: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
     /// Steering into a child lane's running conversation (crate::agent_hub), once the session actor wired it.
     pub lane_steer: Arc<std::sync::OnceLock<crate::agent_hub::LaneSteer>>,
+    /// The session's runtime counters (crate::session_stats), for `/usage`.
+    pub stats: Arc<SessionStats>,
+    /// The guard statistics of worktree subagent hosts whose runs ended (TypeScript has one set of file hooks for the
+    /// whole session, so they stay in its totals).
+    retired_guards: Mutex<Vec<Value>>,
 }
 
 impl Stack {
     /// `poolStats()` as the worker answers an inspected `rlm.pool`: the lanes' kernel pool, plus the session's
     /// file-hook guard statistics (`guards`) when it has guards.
     pub fn pool_stats(&self) -> Value {
-        let mut stats = self.lanes.pool_stats();
-        let guards = self.host.guard_stats();
-        if !guards.is_empty() {
-            stats["guards"] = Value::Array(guards);
+        self.lanes.pool_stats()
+    }
+
+    /// `fileHooks.stats()` over the whole session: the session host's guards, with the same guards of every worktree
+    /// subagent's host (live or ended) added in.
+    pub fn guard_stats(&self) -> Vec<Value> {
+        let mut totals = self.host.guard_stats();
+        let others: Vec<Vec<Value>> = lock(&self.workspaces)
+            .values()
+            .map(|w| w.host.guard_stats())
+            .chain(std::iter::once(lock(&self.retired_guards).clone()))
+            .collect();
+        for stats in others {
+            add_guard_stats(&mut totals, &stats);
         }
-        stats
+        totals
+    }
+
+    /// A new root turn began (`fileHooks.beginTurn()`): every host's per-turn guard times start from zero.
+    pub fn begin_turn(&self) {
+        self.host.begin_turn();
+        for workspace in lock(&self.workspaces).values() {
+            workspace.host.begin_turn();
+        }
+        for retired in lock(&self.retired_guards).iter_mut() {
+            retired["turnMs"] = json!(0);
+        }
+    }
+
+    /// A worktree subagent's lane ended: its host goes, its guard statistics stay in the session's.
+    fn retire_workspace(&self, lane: &str) {
+        let Some(workspace) = lock(&self.workspaces).remove(lane) else {
+            return;
+        };
+        add_guard_stats(&mut lock(&self.retired_guards), &workspace.host.guard_stats());
     }
 
     /// The host `lane` runs its shell in: a worktree subagent's own, else the session's.
@@ -1194,7 +1300,8 @@ impl Stack {
             self.images.clone(),
             Some(self.host_of(lane)),
         )
-        .with_budget_note(self.budget_note.clone()))
+        .with_budget_note(self.budget_note.clone())
+        .with_stats(self.stats.clone()))
     }
 
     /// `listCommands`: the extensions' slash commands, `/review`, prompt templates and skills (crate::commands).
@@ -1218,17 +1325,11 @@ impl Stack {
                 description: command.description,
             })
             .collect();
-        // The bundled skills sit beside the runtime (packages/coding-agent/skills).
-        let bundled = self
-            .config
-            .runtime_path
-            .ancestors()
-            .nth(4)
-            .map(|root| root.join("skills"));
+        let bundled = self.config.bundled_skills();
         let commands = crate::commands::list_commands_with(
             &self.config.cwd.display().to_string(),
             &self.config.agent_dir.display().to_string(),
-            &bundled.unwrap_or_default().display().to_string(),
+            bundled.as_deref(),
             &extensions,
             &self.services.resources,
         );
@@ -1297,6 +1398,7 @@ impl Stack {
         self.apis.tools.close();
         self.mcp.close();
         self.lanes.close();
+        self.stats.close();
     }
 
     /// Stop the session's lanes and subagents, and its durable work (the tick, goal jobs, shell jobs).
@@ -1309,6 +1411,8 @@ impl Stack {
         self.agents.close();
         self.delegation.close();
         self.lanes.close();
+        // What the closing lanes counted is saved; nothing is counted after.
+        self.stats.close();
     }
 
     /// The session's situational hints (`ULTRON_HINTS`).
@@ -1360,6 +1464,7 @@ fn typed_agents(
     goal: Arc<std::sync::OnceLock<Arc<GoalDriver>>>,
     refinements: Option<delegation::agents::RefinementsHook>,
     frames: delegation::agents::FrameRunner,
+    stats: &Arc<SessionStats>,
 ) -> (Agents, UsageLedger, Receiver<delegation::agents::TaskEnd>) {
     use delegation::task_store::MemoryStore;
     let (tasks, definitions, usage_store, lanes) = match stores {
@@ -1380,10 +1485,13 @@ fn typed_agents(
     // and the `rootBudget` settings.
     let var = config.var.clone();
     let limits = delegation::usage::limits_from_env(&|key| var(key), &config.settings["rootBudget"]);
+    // Work refused at a root's limit is counted (`onRefused: () => sessionStats.usageLimitBlock()`).
+    let refused = stats.clone();
     let usage = UsageLedger::new(
         usage_store,
         delegation::usage::UsageOptions {
             limits,
+            on_refused: Some(Arc::new(move |_: &str| refused.usage_limit_block())),
             ..Default::default()
         },
     )
@@ -1538,7 +1646,12 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             hindsight: None,
             extension_providers: None,
         }
-        .host_in(Path::new(cwd), &stack.session_id, &lane_dir(&run.lane_name));
+        .host_in(
+            Path::new(cwd),
+            &stack.session_id,
+            &lane_dir(&run.lane_name),
+            Some(&stack.stats),
+        );
         match host {
             Ok(host) => {
                 lock(&stack.workspaces).insert(
@@ -1556,6 +1669,11 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
     }
     // A subagent's `view_image` resizes for its own model.
     stack.images.set_model(Some(&run.lane_name), model.clone());
+    // The model each `rlm.spawn` subagent runs on is counted (`childModel`; a subagent run as a process has no lane
+    // to ask).
+    stack
+        .stats
+        .child_model(&run.task_id, &format!("{}/{}", model.provider, model.id));
     ChildSetup {
         model,
         system,
@@ -1970,4 +2088,29 @@ impl RuntimeEvents {
 /// Whether a value lists exactly the `rlm` tool: the invariant every request body keeps.
 pub fn only_rlm(tools: &[Value]) -> bool {
     tools.len() == 1 && tools[0]["name"] == json!("rlm")
+}
+
+/// Add `more` (each guard's `fileHooks.stats()` entry) into `totals`: the same guard by position and name, a new one
+/// appended.
+fn add_guard_stats(totals: &mut Vec<Value>, more: &[Value]) {
+    const COUNTERS: [&str; 7] = [
+        "checks",
+        "blocked",
+        "unchecked",
+        "afterChecks",
+        "afterFindings",
+        "totalMs",
+        "turnMs",
+    ];
+    for (index, stats) in more.iter().enumerate() {
+        match totals.get_mut(index).filter(|t| t["name"] == stats["name"]) {
+            Some(total) => {
+                for key in COUNTERS {
+                    let sum = total[key].as_u64().unwrap_or(0) + stats[key].as_u64().unwrap_or(0);
+                    total[key] = json!(sum);
+                }
+            }
+            None => totals.push(stats.clone()),
+        }
+    }
 }

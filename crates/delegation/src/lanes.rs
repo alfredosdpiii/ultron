@@ -140,7 +140,16 @@ struct Inner {
     /// Live kernels (taken after `state`, never the other way round).
     pool: Mutex<KernelPool<LaneKernel>>,
     options: LanesOptions,
+    /// Told the type of every host request a cell's kernel makes (the session's runtime counters).
+    observer: Mutex<Option<RequestObserver>>,
+    /// Adds to what `rlm.pool` reports (the session's file-hook guard statistics).
+    pool_extra: Mutex<Option<PoolExtra>>,
 }
+
+/// Sees the type of each host request a cell makes, before it is answered.
+pub type RequestObserver = Arc<dyn Fn(&str) + Send + Sync>;
+/// Completes an `rlm.pool` report.
+pub type PoolExtra = Arc<dyn Fn(&mut Value) + Send + Sync>;
 
 /// A root's lanes; clones share them.
 #[derive(Clone)]
@@ -161,6 +170,16 @@ struct CellHandler {
 
 impl HostHandler for CellHandler {
     fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        let observer = self
+            .lanes
+            .inner
+            .observer
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(observer) = observer {
+            observer(kind);
+        }
         if kind.starts_with("rlm.lane") || kind.starts_with("rlm.cell") || kind == "rlm.recovery" || kind == "rlm.pool"
         {
             return self.lanes.request(kind, payload, Some(&self.cell));
@@ -200,6 +219,8 @@ impl Lanes {
                     events: Mutex::new(sender),
                     pool: Mutex::new(pool),
                     options,
+                    observer: Mutex::new(None),
+                    pool_extra: Mutex::new(None),
                 }),
             },
             receiver,
@@ -233,8 +254,33 @@ impl Lanes {
         self.pool().unpin(lane, holder);
     }
 
-    /// `rlm.pool`: live kernels, their leases, pins and idle time, and how many evictions happened.
+    /// Every host request a cell makes is shown to `observer` first.
+    pub fn observe_requests(&self, observer: RequestObserver) {
+        *self.inner.observer.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
+    }
+
+    /// `rlm.pool` reports, inspected or asked by a cell, are completed by `extra`.
+    pub fn extend_pool_stats(&self, extra: PoolExtra) {
+        *self.inner.pool_extra.lock().unwrap_or_else(PoisonError::into_inner) = Some(extra);
+    }
+
+    /// `rlm.pool`: live kernels, their leases, pins and idle time, and how many evictions happened, plus what
+    /// [`Lanes::extend_pool_stats`] adds.
     pub fn pool_stats(&self) -> Value {
+        let mut stats = self.kernel_pool_stats();
+        let extra = self
+            .inner
+            .pool_extra
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(extra) = extra {
+            extra(&mut stats);
+        }
+        stats
+    }
+
+    fn kernel_pool_stats(&self) -> Value {
         let mut pool = self.pool();
         let mut stats = pool.stats();
         stats["evictions"] = json!(pool.evictions().iter().filter(|r| r["evicted"] == true).count());

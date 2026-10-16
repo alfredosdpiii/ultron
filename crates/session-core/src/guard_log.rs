@@ -1,6 +1,8 @@
 //! `ULTRON_LOKI_LOG` (loki.ts `lokiLog`): every file-hook guard outcome appended to a file as a JSON line
-//! `{"at": <ms since the epoch>, "guard", "phase", "outcome", "ms", "paths", "lane", "detail"?}`. Unset or blank
-//! writes nothing; a relative path is resolved against the process directory; write errors are ignored.
+//! `{"at": <ms since the epoch>, "guard", "phase", "outcome", "ms", "paths", "lane", "detail"?}`, and the session's
+//! Loki setup (`setupLoki`'s record) as `{"at", "phase": "setup", "outcome": "on", "mode", "engine", "reports",
+//! "projectPython", "ms"}`. Unset or blank writes nothing; a relative path is resolved against the process directory;
+//! write errors are ignored.
 
 use host::file_hooks::{GuardRecord, OnRecord};
 use serde_json::{Value, json};
@@ -17,23 +19,91 @@ pub fn log_line(at: u64, record: &GuardRecord) -> String {
     format!("{line}\n")
 }
 
+/// Where `value` (the variable's text) points; None when unset or blank.
+fn target(value: Option<&str>) -> Option<PathBuf> {
+    let path = value.map(str::trim).filter(|path| !path.is_empty())?;
+    Some(std::path::absolute(Path::new(path)).unwrap_or_else(|_| PathBuf::from(path)))
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Lines written by one process go out one at a time.
+static APPENDING: Mutex<()> = Mutex::new(());
+
+fn append(target: &Path, line: &str) {
+    let _held = APPENDING.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(parent) = target.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(target) {
+        let _ = file.write_all(line.as_bytes());
+    }
+}
+
 /// The appender for `value` (the variable's text); None when unset or blank.
 pub fn loki_log(value: Option<&str>) -> Option<OnRecord> {
-    let path = value.map(str::trim).filter(|path| !path.is_empty())?;
-    let target: PathBuf = std::path::absolute(Path::new(path)).unwrap_or_else(|_| PathBuf::from(path));
-    let lock = Arc::new(Mutex::new(()));
+    let target = target(value)?;
     Some(Arc::new(move |record: &GuardRecord| {
-        let at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
-        let line = log_line(at, record);
-        let _held = lock.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(parent) = target.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&target) {
-            let _ = file.write_all(line.as_bytes());
-        }
+        append(&target, &log_line(now_ms(), record))
     }))
+}
+
+/// `setupLoki`'s record of a session whose Loki guard is on: the in-process engine (`bundled`: a repository's own
+/// `.loki/loki.py` is never run, its `.loki/` policy is read), structured reports, the project interpreter named for
+/// it, and how long setting it up took.
+pub fn setup_record(mode: &str, project_python: Option<&str>, ms: u64) -> Value {
+    json!({
+        "phase": "setup",
+        "outcome": "on",
+        "mode": mode,
+        "engine": "bundled",
+        "reports": "json",
+        "projectPython": project_python,
+        "ms": ms,
+    })
+}
+
+/// `findProjectPython` without running an interpreter: ULTRON_LOKI_PROJECT_PYTHON, else nothing when LOKI_PYTHON is
+/// set (left to the engine), else a `.venv` or `venv` interpreter in `cwd`.
+pub fn project_python(var: &dyn Fn(&str) -> Option<String>, cwd: &Path) -> Option<String> {
+    let set = |key: &str| var(key).map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    if let Some(named) = set("ULTRON_LOKI_PROJECT_PYTHON") {
+        return Some(named);
+    }
+    if set("LOKI_PYTHON").is_some() {
+        return None;
+    }
+    [".venv", "venv"].iter().find_map(|directory| {
+        ["bin/python", "bin/python3", "Scripts/python.exe"]
+            .iter()
+            .map(|relative| cwd.join(directory).join(relative))
+            .find(|candidate| candidate.is_file())
+            .map(|candidate| candidate.display().to_string())
+    })
+}
+
+/// The session's Loki setup, written to `ULTRON_LOKI_LOG` when the guard is on (loki.ts `options.record?.({phase:
+/// "setup", ...})`).
+pub fn loki_setup(config: &crate::compose::Config) {
+    let started = std::time::Instant::now();
+    let mode = match config.loki {
+        host::loki_guard::LokiMode::Off => return,
+        host::loki_guard::LokiMode::Advise => "advise",
+        host::loki_guard::LokiMode::On => "on",
+    };
+    let Some(target) = target((config.var)("ULTRON_LOKI_LOG").as_deref()) else {
+        return;
+    };
+    let python = project_python(&|key| (config.var)(key), &config.cwd);
+    let record = setup_record(mode, python.as_deref(), started.elapsed().as_millis() as u64);
+    let mut line = json!({ "at": now_ms() });
+    if let (Value::Object(line), Value::Object(fields)) = (&mut line, record) {
+        line.extend(fields);
+    }
+    append(&target, &format!("{line}\n"));
 }

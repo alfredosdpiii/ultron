@@ -21,16 +21,13 @@ pub struct Fetched {
 #[derive(Clone, Default)]
 pub struct Fetcher {
     pub timeout: Option<Duration>,
+    /// The run's proxies (`None`: reqwest's own lookup).
+    pub proxy: Option<ai::net::ProxyEnv>,
 }
 
 impl Fetcher {
     fn client(&self) -> Result<reqwest::blocking::Client, OAuthError> {
-        let mut builder = reqwest::blocking::Client::builder();
-        if let Some(timeout) = self.timeout {
-            builder = builder.timeout(timeout);
-        }
-        builder
-            .build()
+        crate::net::client(self.proxy.as_ref(), self.timeout)
             .map_err(|e| OAuthError::Network(format!("fetch failed: {e}")))
     }
 

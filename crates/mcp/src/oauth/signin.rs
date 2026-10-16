@@ -35,6 +35,8 @@ pub struct OAuthSettings {
     pub scope: Option<String>,
     pub client_name: Option<String>,
     pub auth_server_metadata_url: Option<String>,
+    /// The proxies the sign-in's and refreshes' requests go through (the connection's: the run's environment).
+    pub proxy: Option<ai::net::ProxyEnv>,
 }
 
 /// Where the loopback callback listens and the redirect URI it serves.
@@ -280,6 +282,10 @@ pub fn sign_in(
             authorization_server_metadata_url: settings.auth_server_metadata_url.clone(),
             scope,
             skip_refresh: step_up,
+            fetch: Fetcher {
+                timeout: None,
+                proxy: settings.proxy.clone(),
+            },
             ..FlowOptions::default()
         };
         if authorize(&provider, &flow)? == FlowResult::Authorized {
@@ -388,6 +394,7 @@ impl OAuthAuth {
                     scope: challenge.and_then(|c| c.scope.clone()),
                     fetch: Fetcher {
                         timeout: Some(REFRESH_REQUEST_TIMEOUT),
+                        proxy: settings.proxy.clone(),
                     },
                     ..FlowOptions::default()
                 },

@@ -193,7 +193,12 @@ struct Inner {
     model_check: Mutex<Option<ModelCheck>>,
     /// Where a forked child starts (see [`Delegation::set_fork_point`]); none: `fork=True` is refused.
     fork_point: Mutex<Option<crate::fork::ForkPointHook>>,
+    /// Told how each worktree child's merge ended (see [`Delegation::on_merge`]).
+    on_merge: Mutex<Option<MergeObserver>>,
 }
+
+/// Sees how a worktree child's merge ended: its task id and merge status (`merged`, `conflict`, `empty`, ...).
+pub type MergeObserver = Arc<dyn Fn(&str, &str) + Send + Sync>;
 
 /// Checks a well-formed `provider/model` a spawn names; an error refuses the spawn with that message.
 pub type ModelCheck = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
@@ -417,6 +422,7 @@ impl Delegation {
                 merging: Mutex::new(()),
                 model_check: Mutex::new(None),
                 fork_point: Mutex::new(None),
+                on_merge: Mutex::new(None),
             }),
         };
         (host, receiver)
@@ -431,6 +437,24 @@ impl Delegation {
     /// so far, before the call still running), which the runner receives as [`ChildRun::fork_at`].
     pub fn set_fork_point(&self, hook: crate::fork::ForkPointHook) {
         *self.inner.fork_point.lock().unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// Tell `observer` how each worktree child's merge ended (`onMerge`: the session's counters).
+    pub fn on_merge(&self, observer: MergeObserver) {
+        *self.inner.on_merge.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
+    }
+
+    /// `merged(task, status)`: keep how a child's merge ended and tell the observer (it never affects the merge).
+    fn merged(&self, id: &str, status: &str) {
+        let observer = self
+            .inner
+            .on_merge
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(observer) = observer {
+            observer(id, status);
+        }
     }
 
     /// The kernel host handler for `lane` ("main" for the root; a child's `lane_name`).
@@ -796,6 +820,7 @@ impl Delegation {
                     task.merge_status = Some(status.to_string());
                 }
             }
+            self.merged(id, status);
             match outcome {
                 wt::MergeOutcome::Conflict {
                     files,
@@ -1524,12 +1549,17 @@ impl Delegation {
                     "error": format!("committing the worktree failed: {}", error.message) })
             }
         };
-        let mut state = lock(&self.inner.state);
-        if let Some(task) = state.task_mut(id) {
-            task.worktree = Some(record);
-            if empty {
-                task.merge_status = Some("empty".into());
+        {
+            let mut state = lock(&self.inner.state);
+            if let Some(task) = state.task_mut(id) {
+                task.worktree = Some(record);
+                if empty {
+                    task.merge_status = Some("empty".into());
+                }
             }
+        }
+        if empty {
+            self.merged(id, "empty");
         }
         result["worktree"] = info;
         result

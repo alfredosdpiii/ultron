@@ -154,9 +154,10 @@ struct Prompt<'a> {
 
 impl crate::oauth::signin::SignInPrompt for Prompt<'_> {
     fn show_authorization_url(&self, url: &str) {
-        match &self.open_url {
-            Some(open) => open(url),
-            None => open_browser(url),
+        // Without an injected opener nothing is launched: the URL is shown to open by hand. A launcher found on the
+        // process PATH could open the user's real browser from a test.
+        if let Some(open) = &self.open_url {
+            open(url);
         }
         self.ui.notify(
             &format!("Sign in to MCP server \"{}\" in your browser:\n{url}", self.name),
@@ -205,13 +206,6 @@ fn node_platform() -> &'static str {
     }
 }
 
-/// Opens a URL in the platform browser (`openBrowser`): best effort, never through a shell. The URL stays on screen
-/// to open by hand when the launcher is missing.
-pub fn open_browser(target: &str) {
-    let (command, args) = browser_command(node_platform(), target);
-    spawn_detached(&command, &args);
-}
-
 /// Starts `command` detached (its own process group, no stdio, as `spawn(..., {detached: true, stdio: "ignore"})`)
 /// and reaps it in the background; a launcher that fails to start is ignored.
 pub fn spawn_detached(command: &str, args: &[String]) {
@@ -231,6 +225,39 @@ pub fn spawn_detached(command: &str, args: &[String]) {
 }
 
 pub type UrlOpener = Arc<dyn Fn(&str) + Send + Sync>;
+
+/// `openBrowser` with the launcher found on `path` (the session's PATH, never the process's), run detached with
+/// only that PATH and `home` in its environment; a missing launcher opens nothing.
+pub fn browser_opener(path: Option<String>, home: Option<String>) -> UrlOpener {
+    Arc::new(move |url: &str| {
+        let (name, args) = browser_command(node_platform(), url);
+        let Some(launcher) = path.as_deref().and_then(|path| {
+            std::env::split_paths(path)
+                .map(|dir| dir.join(&name))
+                .find(|candidate| candidate.is_file())
+        }) else {
+            return;
+        };
+        let mut command = std::process::Command::new(launcher);
+        command
+            .args(&args)
+            .env_clear()
+            .env("PATH", path.as_deref().unwrap_or_default())
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        if let Some(home) = &home {
+            command.env("HOME", home);
+        }
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut command, 0);
+        if let Ok(mut child) = command.spawn() {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+        }
+    })
+}
 
 /// A notice for the user (`ctx.ui.notify`): `(message, level)`.
 pub type Notice = (String, String);

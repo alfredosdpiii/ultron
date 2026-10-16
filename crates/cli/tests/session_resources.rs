@@ -68,7 +68,7 @@ fn replay(case: &Value) -> Replayed {
     let (cwd, agent_dir) = (cwd.display().to_string(), agent_dir.display().to_string());
     let tmp_text = root.display().to_string();
     let sub = |s: &str| s.replace(&tmp_text, "<TMP>");
-    let commands = session_core::commands::list_commands_with(&cwd, &agent_dir, "/nonexistent", &[], &resources);
+    let commands = session_core::commands::list_commands_with(&cwd, &agent_dir, None, &[], &resources);
     let info = |name: &str| -> Value {
         let found = commands
             .iter()
@@ -77,13 +77,13 @@ fn replay(case: &Value) -> Replayed {
             .unwrap_or(Value::Null);
         serde_json::from_str(&sub(&found["sourceInfo"].to_string())).unwrap()
     };
-    let skills = session_core::session_resources::skills(&cwd, &agent_dir, &resources, flags.no_skills)
+    let skills = session_core::session_resources::skills(&cwd, &agent_dir, &resources, flags.no_skills, None)
         .into_iter()
         .map(|s| json!({"name": s.name, "filePath": sub(&s.file_path), "sourceInfo": info(&format!("skill:{}", s.name))}))
         .collect();
     let prompts = session_core::session_resources::prompts(&cwd, &agent_dir, &resources)
         .into_iter()
-        .map(|p| json!({"name": p.name, "filePath": sub(&p.file_path)}))
+        .map(|p| json!({"name": p.name, "filePath": sub(&p.file_path), "sourceInfo": info(&p.name)}))
         .collect();
     let flags = session_core::session_flags::SessionFlags {
         skill_paths: flags.skill_paths.iter().map(|p| sub(p)).collect(),

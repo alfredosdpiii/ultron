@@ -20,6 +20,7 @@ pub mod http;
 pub mod js_json;
 pub mod jsonrpc;
 pub mod log;
+pub mod net;
 pub mod oauth;
 pub mod resolve;
 pub mod results;

@@ -78,15 +78,36 @@
 			"prompts": [
 				{
 					"name": "beta-prompt",
-					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md"
+					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+						"source": "<TMP>/pkgs/beta",
+						"scope": "temporary",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/beta"
+					}
 				},
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				},
 				{
 					"name": "alpha-prompt",
-					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md"
+					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+						"source": "../pkgs/alpha",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/alpha"
+					}
 				}
 			]
 		},
@@ -145,15 +166,36 @@
 			"prompts": [
 				{
 					"name": "beta-prompt",
-					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md"
+					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+						"source": "<TMP>/pkgs/beta",
+						"scope": "temporary",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/beta"
+					}
 				},
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				},
 				{
 					"name": "alpha-prompt",
-					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md"
+					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+						"source": "../pkgs/alpha",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/alpha"
+					}
 				}
 			]
 		},
@@ -223,11 +265,25 @@
 			"prompts": [
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				},
 				{
 					"name": "alpha-prompt",
-					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md"
+					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+						"source": "../pkgs/alpha",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/alpha"
+					}
 				}
 			]
 		},
@@ -293,11 +349,25 @@
 			"prompts": [
 				{
 					"name": "beta-prompt",
-					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md"
+					"filePath": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/beta/prompts/beta-prompt.md",
+						"source": "<TMP>/pkgs/beta",
+						"scope": "temporary",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/beta"
+					}
 				},
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				}
 			]
 		},
@@ -373,7 +443,14 @@
 			"prompts": [
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				}
 			]
 		},
@@ -458,15 +535,36 @@
 			"prompts": [
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				},
 				{
 					"name": "gamma-prompt",
-					"filePath": "<TMP>/pkgs/gamma/prompts/gamma-prompt.md"
+					"filePath": "<TMP>/pkgs/gamma/prompts/gamma-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/gamma/prompts/gamma-prompt.md",
+						"source": "../../pkgs/gamma",
+						"scope": "project",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/gamma"
+					}
 				},
 				{
 					"name": "alpha-prompt",
-					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md"
+					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+						"source": "../pkgs/alpha",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/alpha"
+					}
 				}
 			]
 		},
@@ -540,11 +638,25 @@
 			"prompts": [
 				{
 					"name": "own",
-					"filePath": "<TMP>/agent/prompts/own.md"
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
 				},
 				{
 					"name": "alpha-prompt",
-					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md"
+					"filePath": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/pkgs/alpha/prompts/alpha-prompt.md",
+						"source": "../pkgs/alpha",
+						"scope": "user",
+						"origin": "package",
+						"baseDir": "<TMP>/pkgs/alpha"
+					}
 				}
 			]
 		}

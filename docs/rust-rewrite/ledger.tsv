@@ -2791,6 +2791,40 @@ W4S-29	tui	clipboard image reads gated by Wayland/WSL, wl-paste then xclip	tui_c
 W4S-30	tui	XDG_SESSION_TYPE=wayland detection	tui_wayland_session_reads_xdg_session_type
 W4S-31	cli	/login options match loginProviderOptions (no extension providers, models.json providers)	cli_login_options_match_ts_login_provider_options
 W4S-32	cli	stored key status for a models.json provider	cli_login_options_show_a_stored_key_for_a_models_json_provider
+W5S-01	session-stats	recorder counts cells/APIs/host calls/guards/steers/limits/merges/child models/external turns like TS	session_core_session_stats_counts_like_typescript
+W5S-02	session-stats	external-root turn ends at close	session_core_session_stats_external_root_turn_ends_at_close_like_typescript
+W5S-03	session-stats	host-call types and merge/child-model maps bounded to 200	session_core_session_stats_maps_are_bounded_like_typescript
+W5S-04	session-stats	resume from stored, unversioned, malformed, non-document values	session_core_session_stats_resume_from_stored_documents_like_typescript
+W5S-05	session-stats	foreign format version never overwritten	session_core_session_stats_leave_a_foreign_document_alone_like_typescript
+W5S-06	session-stats	writes only on change, retries failed writes	session_core_session_stats_write_only_changes_and_retry_failed_writes_like_typescript
+W5S-07	session-stats	cellApis/classifyNudge/statsLane/parseSessionStats parity	session_core_session_stats_helpers_match_typescript
+W5S-08	session-stats	scheduled save without flush	session_core_session_stats_save_on_their_own_after_a_change
+W5S-09	session-stats	stored stats of a real run equal the TS session worker's	session_core_session_stats_of_a_run_match_typescript
+W5S-10	usage	/usage rows for workflows, Loki, limits match TS	cli_interactive_usage_matches_ts
+W5S-11	guard-stats	cell rlm.pool carries guards; worktree hosts summed (also after the lane ends); merges and child models recorded	session_core_pool_guards_add_worktree_subagents_and_reach_the_cell
+W5S-12	session-stats	steers to the root are counted	session_core_stats_count_the_steers_sent_to_the_root
+W5S-13	session-stats	usage-ledger refusals counted	session_core_stats_count_work_refused_at_a_root_limit
+W5S-14	loki	ULTRON_LOKI_TIMEOUT_MS parsing (lokiTimeoutMs cases)	host_loki_timeout_reads_ultron_loki_timeout_ms_like_typescript
+W5S-15	loki	check past the limit is written unchecked with the TS note	host_loki_check_past_ultron_loki_timeout_ms_writes_unchecked
+W5S-16	loki	ULTRON_LOKI_TIMEOUT_MS reaches the session guard	session_core_loki_timeout_ms_reaches_the_session_guard
+W5S-17	loki-log	setup record first, then guard outcomes	session_core_loki_log_starts_with_the_setup_record_like_typescript
+W5S-18	loki-log	setup names project python and advise mode	session_core_loki_log_setup_names_the_project_python_and_advise_mode
+W5S-19	loki-log	nothing logged with Loki off	session_core_loki_log_is_empty_with_loki_off
+W5R-01	resources	settings local skills/prompts entries, patterns, auto-discovery (~/.agents, ancestor .agents), bundled skills, order and sourceInfo match DefaultResourceLoader.reload	session_core_resources_match_typescript_resource_loader
+W5R-02	resources	SYSTEM.md / APPEND_SYSTEM.md shape the session system prompt; untrusted project uses the profile's	session_core_resources_shape_the_session_system_prompt
+W5R-03	resources	stored trust decision (workerProjectTrusted) removes project skills, prompts, SYSTEM.md, ancestor .agents	session_core_resources_follow_the_stored_trust_decision
+W5R-04	resources	a failing settings package is reported; local and auto resources still load	session_core_resources_keep_local_ones_when_a_package_fails
+W5R-05	resources	skills under a cli skill directory get cli sourceInfo	session_core_resources_skills_under_a_cli_directory_are_cli
+W5R-06	resources	-e prompts carry their package metadata; -e/package/defaults lists match TS	cli_session_resources_match_typescript_resource_loader
+W5R-07	mcp	connection reaches HTTP server through injected HTTP_PROXY (absolute form)	mcp_proxy_connection_reaches_an_http_server_through_the_injected_proxy
+W5R-08	mcp	https server tunnelled with CONNECT via https_proxy	mcp_proxy_https_server_is_tunnelled_with_connect
+W5R-09	mcp	NO_PROXY host goes direct	mcp_proxy_no_proxy_server_goes_direct
+W5R-10	mcp	OAuth sign-in discovery through injected proxy	mcp_proxy_oauth_sign_in_discovers_through_the_injected_proxy
+W5R-11	mcp	connection token refresh through injected proxy	mcp_proxy_connection_token_refresh_goes_through_the_injected_proxy
+W5R-12	mcp	injected env ignores process env proxies	mcp_proxy_injected_environment_ignores_the_process_environment
+W5R-13	mcp	session gateway uses the session env's proxy	session_core_mcp_gateway_reaches_http_servers_through_the_session_proxy
+W5R-14	cli	ultron mcp list/login go through the run's HTTP_PROXY	cli_mcp_proxy_list_and_login_go_through_the_run_proxy
+W5R-15	cli	ALL_PROXY is not used (undici semantics); list/login go direct	cli_mcp_proxy_all_proxy_is_not_an_undici_variable
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

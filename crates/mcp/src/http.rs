@@ -231,6 +231,9 @@ pub struct HttpOptions {
     /// Consecutive failed reconnects before giving up. Default 5.
     pub reconnect_max_retries: Option<u32>,
     pub auth: Option<Arc<dyn AuthProvider>>,
+    /// The proxies requests go through (`Some`: exactly these, from the run's environment; `None`: reqwest's own
+    /// lookup).
+    pub proxy: Option<ai::net::ProxyEnv>,
 }
 
 #[derive(Default)]
@@ -257,9 +260,10 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 impl HttpTransport {
     pub fn new(options: HttpOptions) -> Self {
+        let client = crate::net::client(options.proxy.as_ref(), None).unwrap_or_else(|_| Client::new());
         HttpTransport(Arc::new(Shared {
             options,
-            client: Client::new(),
+            client,
             state: Mutex::new(State::default()),
         }))
     }

@@ -1,10 +1,10 @@
 //! `listCommands` of the session control (session-control-provider.ts), as RPC `get_commands` answers it: the
 //! extensions' slash commands in load order with their `SourceInfo` (crate::extension_commands; the built-in `/mcp`
 //! last, as the inline extension TS loads after the discovered ones), `/review`, the prompt
-//! templates and the skills (`skill:<name>`), each with its source. Prompt templates and skills found in the profile
-//! or project carry Pi's auto-discovered `SourceInfo` (`{path, source: "auto", scope, origin: "top-level",
-//! baseDir}`, package-manager.ts); the bundled skills the worker passes as paths are `{source: "local", scope:
-//! "temporary"}` with the skill's directory as `baseDir`.
+//! templates and the skills (`skill:<name>`), each with its `SourceInfo` as the resource loader gives it
+//! (crate::session_resources): auto-discovered ones `{source: "auto", scope, origin: "top-level", baseDir}`, settings
+//! entries `local`, packages theirs, `-e` skills `cli`; the bundled skills the worker passes as paths are
+//! `{source: "local", scope: "temporary"}` with the skill's directory as `baseDir`.
 
 use serde_json::{Map, Value, json};
 
@@ -28,28 +28,18 @@ fn entry(name: &str, description: Option<&str>, source: &str, info: Option<Value
     Value::Object(out)
 }
 
-/// Pi's auto-discovered `SourceInfo` of a resource file in `scope` (`user`: the profile, `project`: the project's
-/// config directory); none for a resource from anywhere else.
-fn auto_source(path: &str, scope: &str, cwd: &str, agent_dir: &str) -> Option<Value> {
-    let base = match scope {
-        "user" => agent_dir.to_string(),
-        "project" => format!("{cwd}/{}", resources::skills::CONFIG_DIR_NAME),
-        _ => return None,
-    };
-    Some(json!({"path": path, "source": "auto", "scope": scope, "origin": "top-level", "baseDir": base}))
-}
-
-/// The commands of a session in `cwd` with profile `agent_dir` and the bundled skills in `bundled`.
-pub fn list_commands(cwd: &str, agent_dir: &str, bundled: &str, extensions: &[ExtensionCommand]) -> Vec<Value> {
+/// The commands of a session in `cwd` with profile `agent_dir`, the bundled skills in `bundled` and no resolved
+/// resources (only the bundled skills; [`list_commands_with`] takes the session's).
+pub fn list_commands(cwd: &str, agent_dir: &str, bundled: Option<&str>, extensions: &[ExtensionCommand]) -> Vec<Value> {
     list_commands_with(cwd, agent_dir, bundled, extensions, &Default::default())
 }
 
-/// [`list_commands`] with the session's `-e` and package resources (crate::session_resources): their prompts and
-/// skills are commands too, with their `SourceInfo`.
+/// [`list_commands`] with the session's resources (crate::session_resources): its prompts and skills are commands,
+/// each with its `SourceInfo` (`resourceSourceInfo`).
 pub fn list_commands_with(
     cwd: &str,
     agent_dir: &str,
-    bundled: &str,
+    bundled: Option<&str>,
     extensions: &[ExtensionCommand],
     extra: &crate::session_resources::SessionResources,
 ) -> Vec<Value> {
@@ -61,24 +51,16 @@ pub fn list_commands_with(
     commands.push(entry("mcp", Some(MCP_DESCRIPTION), "extension", Some(inline)));
     commands.push(entry("review", Some(REVIEW_DESCRIPTION), "prompt", None));
     for template in crate::session_resources::prompts(cwd, agent_dir, extra) {
-        let info = auto_source(&template.file_path, template.scope, cwd, agent_dir)
-            .or_else(|| crate::session_resources::source_info(extra, &template.file_path));
-        commands.push(entry(&template.name, Some(&template.description), "prompt", info));
+        let info = crate::session_resources::prompt_source_info(extra, &template, cwd, agent_dir);
+        commands.push(entry(&template.name, Some(&template.description), "prompt", Some(info)));
     }
-    let skills = crate::session_resources::skills(cwd, agent_dir, extra, false);
-    let bundled = resources::skills::load_skills_from_dir(bundled, "bundled").skills;
-    for skill in skills.into_iter().chain(bundled) {
-        let info = match skill.source.as_str() {
-            "bundled" => Some(json!({"path": skill.file_path, "source": "local", "scope": "temporary",
-                "origin": "top-level", "baseDir": skill.base_dir})),
-            scope => auto_source(&skill.file_path, scope, cwd, agent_dir)
-                .or_else(|| crate::session_resources::source_info(extra, &skill.file_path)),
-        };
+    for skill in crate::session_resources::skills(cwd, agent_dir, extra, false, bundled) {
+        let info = crate::session_resources::skill_source_info(extra, &skill);
         commands.push(entry(
             &format!("skill:{}", skill.name),
             Some(&skill.description),
             "skill",
-            info,
+            Some(info),
         ));
     }
     commands

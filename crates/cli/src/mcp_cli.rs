@@ -600,7 +600,14 @@ fn connect(entry: &ServerEntry, env: &Env) -> Connection {
             let t = Arc::new(mcp::StdioTransport::new(options));
             (t.clone(), Some(t))
         }
-        TransportSpec::Http(options) => (Arc::new(mcp::http::HttpTransport::new(options)), None),
+        TransportSpec::Http(options) => {
+            // The run's proxies, never this process's own environment.
+            let options = mcp::http::HttpOptions {
+                proxy: Some(ai::net::ProxyEnv::from_lookup(&*env.var)),
+                ..options
+            };
+            (Arc::new(mcp::http::HttpTransport::new(options)), None)
+        }
     };
     let outcome = (|| -> Result<Connection, mcp::Error> {
         client.connect(transport)?;

@@ -683,6 +683,8 @@ impl Core {
             compaction_failed: false,
             resume_overflow,
         });
+        self.lane.stack.begin_turn();
+        self.lane.stack.stats.touch();
         self.emit(event(vec![
             ("type", json!("run_start")),
             ("runId", json!(id)),

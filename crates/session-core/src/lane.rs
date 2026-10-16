@@ -235,11 +235,12 @@ pub fn system_prompt_in_mode(
     guide: &resources::runtime_guide::RuntimeGuideOptions,
     mode: &PromptMode,
 ) -> Result<(String, Vec<String>), String> {
-    system_prompt_with_resources(env, cwd, loki_root, extensions, guide, mode, &Default::default())
+    let resources = crate::session_resources::resolve_default(env);
+    system_prompt_with_resources(env, cwd, loki_root, extensions, guide, mode, &resources)
 }
 
-/// [`system_prompt_in_mode`] with the session's `-e` and package resources (crate::session_resources): their
-/// skills join the listing (the `-e` ones also with `--no-skills`).
+/// [`system_prompt_in_mode`] with the session's resources (crate::session_resources): their skills are listed (the
+/// `-e` ones also with `--no-skills`), and SYSTEM.md / APPEND_SYSTEM.md shape the prompt.
 pub fn system_prompt_with_resources(
     env: &Env,
     cwd: &str,
@@ -251,13 +252,10 @@ pub fn system_prompt_with_resources(
 ) -> Result<(String, Vec<String>), String> {
     use resources::system_prompt::{BuildOptions, build_system_prompt};
     let agent_dir = env.agent_dir().display().to_string();
-    let bundled = config::paths::normalize(&env.docs.join("../skills"))
-        .display()
-        .to_string();
-    let mut skills = crate::session_resources::skills(cwd, &agent_dir, extra, mode.no_skills);
+    let bundled = crate::session_resources::bundled_skills(&env.docs.join("../skills"), &*env.var);
+    let mut skills = crate::session_resources::skills(cwd, &agent_dir, extra, mode.no_skills, bundled.as_deref());
     let mut warnings = Vec::new();
     if !mode.no_skills {
-        skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
         // Skills the user set always on carry their text into the prompt (resource-loader.ts `applyAlwaysSkills`).
         warnings = resources::skills::apply_always_skills(&mut skills, &mode.always_skills)
             .into_iter()
@@ -280,7 +278,10 @@ pub fn system_prompt_with_resources(
             resources::context_files::load_project_context_files(cwd, &agent_dir)
         },
         skills,
-        bundled_skills_dir: Some(bundled),
+        bundled_skills_dir: bundled,
+        // SYSTEM.md replaces Pi's preamble, tools and rules; APPEND_SYSTEM.md is the addendum (`resourceLoader`).
+        custom_prompt: extra.system_prompt.clone(),
+        append_system_prompt: extra.append_system_prompt.join("\n\n"),
         sections: [("runtime".to_string(), runtime)]
             .into_iter()
             .chain(extensions.map(|text| ("extensions".to_string(), text.to_string())))
@@ -771,6 +772,8 @@ pub struct Rlm {
     host: Option<Arc<Host>>,
     /// The budget line a cell's result ends with (crate::budget_note), once wired.
     budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
+    /// The session's runtime counters: each cell is counted where it runs.
+    stats: Option<Arc<crate::session_stats::SessionStats>>,
 }
 
 impl Rlm {
@@ -778,6 +781,18 @@ impl Rlm {
     pub(crate) fn with_budget_note(mut self, budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>) -> Rlm {
         self.budget = budget;
         self
+    }
+
+    /// This tool with its cells counted in `stats` (`stats.cell(lane, code, {failed, masked})`).
+    pub(crate) fn with_stats(mut self, stats: Arc<crate::session_stats::SessionStats>) -> Rlm {
+        self.stats = Some(stats);
+        self
+    }
+
+    fn count_cell(&self, code: &str, failed: bool, masked: usize) {
+        if let Some(stats) = &self.stats {
+            stats.cell(&self.lane, code, failed, masked);
+        }
     }
 
     /// The budget line this cell's result ends with, if any (`budgetNote(lane, operationId)`).
@@ -806,6 +821,16 @@ impl Rlm {
         let host = self.host.as_ref()?;
         host.cell_ended(&self.lane);
         host.take_pending(&self.lane)
+    }
+
+    /// How this lane's cell results are finished (masking, the byte budget, the spill directory).
+    fn cell_format(&self) -> CellFormat<'_> {
+        CellFormat {
+            masker: &self.masker,
+            mask_secrets: self.mask_secrets.as_deref(),
+            max_bytes: self.max_bytes,
+            spill_dir: Some(&self.spill_dir),
+        }
     }
 
     /// The cell `lane` is running now.
@@ -848,8 +873,8 @@ impl Rlm {
             if let Some(host) = &self.host {
                 host.cell_started(&self.lane);
             }
-            let (lanes, lane) = (self.lanes.clone(), self.lane.clone());
-            let mut cell = tokio::task::spawn_blocking(move || lanes.run(&lane, &code, CELL_BUDGET));
+            let (lanes, lane, source) = (self.lanes.clone(), self.lane.clone(), code.clone());
+            let mut cell = tokio::task::spawn_blocking(move || lanes.run(&lane, &source, CELL_BUDGET));
             let outcome = match until_aborted(&mut cell, signal).await {
                 Some(done) => done,
                 None => {
@@ -857,6 +882,7 @@ impl Rlm {
                         let _ = self.lanes.cancel(&running, ABORT_REQUESTED);
                     }
                     let _ = cell.await;
+                    self.count_cell(&code, true, 0);
                     let findings = self.end_cell();
                     self.images.take(&self.lane);
                     return Err(match findings {
@@ -865,6 +891,13 @@ impl Rlm {
                     });
                 }
             };
+            // A cell that could not run, or ended without a result, is counted as failed now; one with a result
+            // when its text is made (below).
+            let has_result = matches!(outcome, Ok(Ok(CellOutcome::Done(Ok(_)))));
+            if !has_result {
+                let left_running = matches!(outcome, Ok(Ok(CellOutcome::Running { .. })));
+                self.count_cell(&code, !left_running, 0);
+            }
             let findings = self.end_cell();
             // Findings follow the result text (and an error's hint), as session-worker.ts `withFindings`.
             let with_findings = |text: String| match &findings {
@@ -876,6 +909,10 @@ impl Rlm {
             let images = self.images.take(&self.lane);
             let outcome = outcome?.map_err(|e| with_findings(e.to_string()))?;
             if signal.aborted() {
+                if has_result {
+                    // It ran to its end; the turn was aborted meanwhile.
+                    self.count_cell(&code, false, 0);
+                }
                 return Err(with_findings(ABORT_REQUESTED.into()));
             }
             let result = match outcome {
@@ -894,14 +931,16 @@ impl Rlm {
                     });
                 }
             };
-            let format = CellFormat {
-                masker: &self.masker,
-                mask_secrets: self.mask_secrets.as_deref(),
-                max_bytes: self.max_bytes,
-                spill_dir: Some(&self.spill_dir),
-            };
-            let output = cell_output(&result, &format)
-                .map_err(|failure| with_findings(self.with_hint(failure.message, Some(&failure.ename))))?;
+            let output = cell_output(&result, &self.cell_format());
+            self.count_cell(
+                &code,
+                output.is_err(),
+                output
+                    .as_ref()
+                    .map_or_else(|failure| failure.masked, |output| output.masked),
+            );
+            let output =
+                output.map_err(|failure| with_findings(self.with_hint(failure.message, Some(&failure.ename))))?;
             // Only a hint is appended: output that itself starts with a newline stays as it is.
             let hint = self.hint(&output.text, None);
             let text = with_findings(match output.text.is_empty() {
@@ -1028,5 +1067,6 @@ pub(crate) fn rlm_over(
         images,
         host,
         budget: Arc::new(std::sync::OnceLock::new()),
+        stats: None,
     }
 }

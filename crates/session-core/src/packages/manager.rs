@@ -1720,6 +1720,21 @@ impl PackageManager {
                 }
             }
         }
+        self.add_local_and_auto(&mut acc);
+        Ok((to_resolved(acc), roots))
+    }
+
+    /// [`PackageManager::resolve`] without the settings `packages` (nothing is installed): the settings' local
+    /// `skills`/`prompts`/`themes`/`extensions` entries and the auto-discovered resources. A session falls back to
+    /// these when a package could not be resolved.
+    pub fn resolve_local(&self) -> ResolvedPaths {
+        let mut acc: Accumulator = Default::default();
+        self.add_local_and_auto(&mut acc);
+        to_resolved(acc)
+    }
+
+    /// The settings' local entries (`resolveLocalEntries`, project scope first) and `addAutoDiscoveredResources`.
+    fn add_local_and_auto(&self, acc: &mut Accumulator) {
         let global_base = self.agent_dir.clone();
         let project_base = join(&self.cwd, config::paths::CONFIG_DIR_NAME);
         let entries = |scope: Scope, kind: ResourceType, settings: &SettingsManager| -> Vec<String> {
@@ -1747,12 +1762,11 @@ impl PackageManager {
                     base_dir: None,
                 };
                 for f in &files {
-                    add(&mut acc, kind, f, &m, enabled.contains(f));
+                    add(acc, kind, f, &m, enabled.contains(f));
                 }
             }
         }
-        self.add_auto_discovered(&mut acc, &global_base, &project_base, &entries);
-        Ok((to_resolved(acc), roots))
+        self.add_auto_discovered(acc, &global_base, &project_base, &entries);
     }
 
     /// `addAutoDiscoveredResources`.

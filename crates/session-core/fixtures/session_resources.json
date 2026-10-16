@@ -1,0 +1,850 @@
+{
+	"generator": "crates/session-core/fixtures/generate-session-resources.mjs",
+	"cases": [
+		{
+			"name": "defaults-trusted-project",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {},
+			"project": {
+				"skills": [
+					"local/proj-listed"
+				]
+			},
+			"trusted": true,
+			"noSkills": false,
+			"skills": [
+				{
+					"name": "proj-listed",
+					"filePath": "<TMP>/work/.pi/local/proj-listed/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/local/proj-listed/SKILL.md",
+						"source": "local",
+						"scope": "project",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "mine",
+					"filePath": "<TMP>/work/.pi/skills/mine/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/skills/mine/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "proj-skill",
+					"filePath": "<TMP>/work/.pi/skills/proj-skill/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/skills/proj-skill/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "work-agent",
+					"filePath": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.agents"
+					}
+				},
+				{
+					"name": "ancestor-agent",
+					"filePath": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/.agents"
+					}
+				},
+				{
+					"name": "shared",
+					"filePath": "<TMP>/agent/skills/shared/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/skills/shared/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "home-agent",
+					"filePath": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/home/.agents"
+					}
+				},
+				{
+					"name": "bundled-one",
+					"filePath": "<TMP>/bundled/bundled-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/bundled-one/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/bundled-one"
+					}
+				}
+			],
+			"prompts": [
+				{
+					"name": "proj-prompt",
+					"filePath": "<TMP>/work/.pi/prompts/proj-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/prompts/proj-prompt.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "second",
+					"filePath": "<TMP>/agent/prompts/second.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/second.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Project system prompt.\n",
+			"appendSystemPrompt": [
+				"Project addendum.\n"
+			],
+			"prompt": "Project system prompt.\n\n\n<addendum>\nProject addendum.\n\n</addendum>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>proj-listed</name>\n    <description>The proj-listed skill.</description>\n    <location><TMP>/work/.pi/local/proj-listed/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mine</name>\n    <description>The project&apos;s mine skill.</description>\n    <location><TMP>/work/.pi/skills/mine/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>proj-skill</name>\n    <description>The proj-skill skill.</description>\n    <location><TMP>/work/.pi/skills/proj-skill/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>work-agent</name>\n    <description>The work-agent skill.</description>\n    <location><TMP>/work/.agents/skills/work-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>ancestor-agent</name>\n    <description>The ancestor-agent skill.</description>\n    <location><TMP>/.agents/skills/ancestor-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>shared</name>\n    <description>The profile&apos;s shared skill.</description>\n    <location><TMP>/agent/skills/shared/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>home-agent</name>\n    <description>The home-agent skill.</description>\n    <location><TMP>/home/.agents/skills/home-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bundled-one</name>\n    <description>The bundled-one skill.</description>\n    <location><TMP>/bundled/bundled-one/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		},
+		{
+			"name": "untrusted-project-loads-no-project-resources",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {},
+			"project": {
+				"skills": [
+					"local/proj-listed"
+				]
+			},
+			"trusted": false,
+			"noSkills": false,
+			"skills": [
+				{
+					"name": "mine",
+					"filePath": "<TMP>/agent/skills/mine/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/skills/mine/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "shared",
+					"filePath": "<TMP>/agent/skills/shared/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/skills/shared/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "home-agent",
+					"filePath": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/home/.agents"
+					}
+				},
+				{
+					"name": "bundled-one",
+					"filePath": "<TMP>/bundled/bundled-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/bundled-one/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/bundled-one"
+					}
+				}
+			],
+			"prompts": [
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "second",
+					"filePath": "<TMP>/agent/prompts/second.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/second.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Profile system prompt.\n",
+			"appendSystemPrompt": [
+				"Profile addendum.\n"
+			],
+			"prompt": "Profile system prompt.\n\n\n<addendum>\nProfile addendum.\n\n</addendum>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>mine</name>\n    <description>The profile&apos;s own skill.</description>\n    <location><TMP>/agent/skills/mine/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>shared</name>\n    <description>The profile&apos;s shared skill.</description>\n    <location><TMP>/agent/skills/shared/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>home-agent</name>\n    <description>The home-agent skill.</description>\n    <location><TMP>/home/.agents/skills/home-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bundled-one</name>\n    <description>The bundled-one skill.</description>\n    <location><TMP>/bundled/bundled-one/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		},
+		{
+			"name": "local-entries-with-patterns",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {
+				"skills": [
+					"../extra/skills",
+					"!skip-me",
+					"../extra/loose/SKILL.md",
+					"extensions/tool/SKILL.md"
+				],
+				"prompts": [
+					"../extra/prompts",
+					"!other.md",
+					"../extra/single.md"
+				]
+			},
+			"project": null,
+			"trusted": true,
+			"noSkills": false,
+			"skills": [
+				{
+					"name": "mine",
+					"filePath": "<TMP>/work/.pi/skills/mine/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/skills/mine/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "proj-skill",
+					"filePath": "<TMP>/work/.pi/skills/proj-skill/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/skills/proj-skill/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "work-agent",
+					"filePath": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.agents"
+					}
+				},
+				{
+					"name": "ancestor-agent",
+					"filePath": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/.agents"
+					}
+				},
+				{
+					"name": "extra-one",
+					"filePath": "<TMP>/extra/skills/extra-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/skills/extra-one/SKILL.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "extra-two",
+					"filePath": "<TMP>/extra/skills/extra-two/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/skills/extra-two/SKILL.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "loose",
+					"filePath": "<TMP>/extra/loose/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/loose/SKILL.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "tool-skill",
+					"filePath": "<TMP>/agent/extensions/tool/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/extensions/tool/SKILL.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "shared",
+					"filePath": "<TMP>/agent/skills/shared/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/skills/shared/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "home-agent",
+					"filePath": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/home/.agents"
+					}
+				},
+				{
+					"name": "bundled-one",
+					"filePath": "<TMP>/bundled/bundled-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/bundled-one/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/bundled-one"
+					}
+				}
+			],
+			"prompts": [
+				{
+					"name": "proj-prompt",
+					"filePath": "<TMP>/work/.pi/prompts/proj-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/prompts/proj-prompt.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "listed",
+					"filePath": "<TMP>/extra/prompts/listed.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/prompts/listed.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "single",
+					"filePath": "<TMP>/extra/single.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/single.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "second",
+					"filePath": "<TMP>/agent/prompts/second.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/second.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Project system prompt.\n",
+			"appendSystemPrompt": [
+				"Project addendum.\n"
+			],
+			"prompt": "Project system prompt.\n\n\n<addendum>\nProject addendum.\n\n</addendum>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>mine</name>\n    <description>The project&apos;s mine skill.</description>\n    <location><TMP>/work/.pi/skills/mine/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>proj-skill</name>\n    <description>The proj-skill skill.</description>\n    <location><TMP>/work/.pi/skills/proj-skill/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>work-agent</name>\n    <description>The work-agent skill.</description>\n    <location><TMP>/work/.agents/skills/work-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>ancestor-agent</name>\n    <description>The ancestor-agent skill.</description>\n    <location><TMP>/.agents/skills/ancestor-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>extra-one</name>\n    <description>The extra-one skill.</description>\n    <location><TMP>/extra/skills/extra-one/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>extra-two</name>\n    <description>The extra-two skill.</description>\n    <location><TMP>/extra/skills/extra-two/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>loose</name>\n    <description>The loose skill.</description>\n    <location><TMP>/extra/loose/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tool-skill</name>\n    <description>The tool-skill skill.</description>\n    <location><TMP>/agent/extensions/tool/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>shared</name>\n    <description>The profile&apos;s shared skill.</description>\n    <location><TMP>/agent/skills/shared/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>home-agent</name>\n    <description>The home-agent skill.</description>\n    <location><TMP>/home/.agents/skills/home-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bundled-one</name>\n    <description>The bundled-one skill.</description>\n    <location><TMP>/bundled/bundled-one/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		},
+		{
+			"name": "overrides-on-auto-discovered",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {
+				"skills": [
+					"!shared"
+				],
+				"prompts": [
+					"!own.md",
+					"+prompts/own.md",
+					"-prompts/second.md"
+				]
+			},
+			"project": {
+				"skills": [
+					"-skills/proj-skill"
+				]
+			},
+			"trusted": true,
+			"noSkills": false,
+			"skills": [
+				{
+					"name": "mine",
+					"filePath": "<TMP>/work/.pi/skills/mine/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/skills/mine/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "work-agent",
+					"filePath": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.agents/skills/work-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.agents"
+					}
+				},
+				{
+					"name": "ancestor-agent",
+					"filePath": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/.agents/skills/ancestor-agent/SKILL.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/.agents"
+					}
+				},
+				{
+					"name": "home-agent",
+					"filePath": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/home/.agents/skills/home-agent/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/home/.agents"
+					}
+				},
+				{
+					"name": "bundled-one",
+					"filePath": "<TMP>/bundled/bundled-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/bundled-one/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/bundled-one"
+					}
+				}
+			],
+			"prompts": [
+				{
+					"name": "proj-prompt",
+					"filePath": "<TMP>/work/.pi/prompts/proj-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/prompts/proj-prompt.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Project system prompt.\n",
+			"appendSystemPrompt": [
+				"Project addendum.\n"
+			],
+			"prompt": "Project system prompt.\n\n\n<addendum>\nProject addendum.\n\n</addendum>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>mine</name>\n    <description>The project&apos;s mine skill.</description>\n    <location><TMP>/work/.pi/skills/mine/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>work-agent</name>\n    <description>The work-agent skill.</description>\n    <location><TMP>/work/.agents/skills/work-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>ancestor-agent</name>\n    <description>The ancestor-agent skill.</description>\n    <location><TMP>/.agents/skills/ancestor-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>home-agent</name>\n    <description>The home-agent skill.</description>\n    <location><TMP>/home/.agents/skills/home-agent/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bundled-one</name>\n    <description>The bundled-one skill.</description>\n    <location><TMP>/bundled/bundled-one/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		},
+		{
+			"name": "force-include-after-exclude",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {
+				"skills": [
+					"!**/*",
+					"+skills/shared"
+				]
+			},
+			"project": null,
+			"trusted": false,
+			"noSkills": false,
+			"skills": [
+				{
+					"name": "shared",
+					"filePath": "<TMP>/agent/skills/shared/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/skills/shared/SKILL.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "bundled-one",
+					"filePath": "<TMP>/bundled/bundled-one/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/bundled-one/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/bundled-one"
+					}
+				},
+				{
+					"name": "mine",
+					"filePath": "<TMP>/bundled/mine/SKILL.md",
+					"sourceInfo": {
+						"path": "<TMP>/bundled/mine/SKILL.md",
+						"source": "local",
+						"scope": "temporary",
+						"origin": "top-level",
+						"baseDir": "<TMP>/bundled/mine"
+					}
+				}
+			],
+			"prompts": [
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "second",
+					"filePath": "<TMP>/agent/prompts/second.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/second.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Profile system prompt.\n",
+			"appendSystemPrompt": [
+				"Profile addendum.\n"
+			],
+			"prompt": "Profile system prompt.\n\n\n<addendum>\nProfile addendum.\n\n</addendum>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nLoad a skill's file in the rlm tool (`print(Path(location).read_text())`) when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>shared</name>\n    <description>The profile&apos;s shared skill.</description>\n    <location><TMP>/agent/skills/shared/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>bundled-one</name>\n    <description>The bundled-one skill.</description>\n    <location><TMP>/bundled/bundled-one/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>mine</name>\n    <description>The bundled mine skill.</description>\n    <location><TMP>/bundled/mine/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		},
+		{
+			"name": "no-skills-keeps-prompts",
+			"files": {
+				".git/HEAD": "ref: refs/heads/main\n",
+				"agent/skills/mine/SKILL.md": "---\nname: mine\ndescription: The profile's own skill.\n---\n\n# mine\n",
+				"agent/skills/shared/SKILL.md": "---\nname: shared\ndescription: The profile's shared skill.\n---\n\n# shared\n",
+				"agent/prompts/own.md": "---\ndescription: The profile's prompt\n---\nDo the thing with $1.\n",
+				"agent/prompts/second.md": "---\ndescription: The profile's second prompt\n---\nDo the thing with $1.\n",
+				"agent/SYSTEM.md": "Profile system prompt.\n",
+				"agent/extensions/tool/index.ts": "export default function () {}\n",
+				"agent/extensions/tool/SKILL.md": "---\nname: tool-skill\ndescription: The tool-skill skill.\n---\n\n# tool-skill\n",
+				"agent/APPEND_SYSTEM.md": "Profile addendum.\n",
+				"home/.agents/skills/home-agent/SKILL.md": "---\nname: home-agent\ndescription: The home-agent skill.\n---\n\n# home-agent\n",
+				".agents/skills/ancestor-agent/SKILL.md": "---\nname: ancestor-agent\ndescription: The ancestor-agent skill.\n---\n\n# ancestor-agent\n",
+				"work/.agents/skills/work-agent/SKILL.md": "---\nname: work-agent\ndescription: The work-agent skill.\n---\n\n# work-agent\n",
+				"work/.pi/skills/proj-skill/SKILL.md": "---\nname: proj-skill\ndescription: The proj-skill skill.\n---\n\n# proj-skill\n",
+				"work/.pi/skills/mine/SKILL.md": "---\nname: mine\ndescription: The project's mine skill.\n---\n\n# mine\n",
+				"work/.pi/prompts/proj-prompt.md": "---\ndescription: The project's prompt\n---\nDo the thing with $1.\n",
+				"work/.pi/SYSTEM.md": "Project system prompt.\n",
+				"work/.pi/APPEND_SYSTEM.md": "Project addendum.\n",
+				"work/.pi/local/proj-listed/SKILL.md": "---\nname: proj-listed\ndescription: The proj-listed skill.\n---\n\n# proj-listed\n",
+				"extra/skills/extra-one/SKILL.md": "---\nname: extra-one\ndescription: The extra-one skill.\n---\n\n# extra-one\n",
+				"extra/skills/extra-two/SKILL.md": "---\nname: extra-two\ndescription: The extra-two skill.\n---\n\n# extra-two\n",
+				"extra/skills/skip-me/SKILL.md": "---\nname: skip-me\ndescription: The skip-me skill.\n---\n\n# skip-me\n",
+				"extra/loose/SKILL.md": "---\nname: loose\ndescription: The loose skill.\n---\n\n# loose\n",
+				"extra/prompts/listed.md": "---\ndescription: A listed prompt\n---\nDo the thing with $1.\n",
+				"extra/prompts/other.md": "---\ndescription: Another listed prompt\n---\nDo the thing with $1.\n",
+				"extra/single.md": "---\ndescription: A single listed prompt\n---\nDo the thing with $1.\n",
+				"bundled/bundled-one/SKILL.md": "---\nname: bundled-one\ndescription: The bundled-one skill.\n---\n\n# bundled-one\n",
+				"bundled/mine/SKILL.md": "---\nname: mine\ndescription: The bundled mine skill.\n---\n\n# mine\n"
+			},
+			"settings": {
+				"skills": [
+					"../extra/skills"
+				],
+				"prompts": [
+					"../extra/single.md"
+				]
+			},
+			"project": null,
+			"trusted": true,
+			"noSkills": true,
+			"skills": [],
+			"prompts": [
+				{
+					"name": "proj-prompt",
+					"filePath": "<TMP>/work/.pi/prompts/proj-prompt.md",
+					"sourceInfo": {
+						"path": "<TMP>/work/.pi/prompts/proj-prompt.md",
+						"source": "auto",
+						"scope": "project",
+						"origin": "top-level",
+						"baseDir": "<TMP>/work/.pi"
+					}
+				},
+				{
+					"name": "single",
+					"filePath": "<TMP>/extra/single.md",
+					"sourceInfo": {
+						"path": "<TMP>/extra/single.md",
+						"source": "local",
+						"scope": "user",
+						"origin": "top-level"
+					}
+				},
+				{
+					"name": "own",
+					"filePath": "<TMP>/agent/prompts/own.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/own.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				},
+				{
+					"name": "second",
+					"filePath": "<TMP>/agent/prompts/second.md",
+					"sourceInfo": {
+						"path": "<TMP>/agent/prompts/second.md",
+						"source": "auto",
+						"scope": "user",
+						"origin": "top-level",
+						"baseDir": "<TMP>/agent"
+					}
+				}
+			],
+			"systemPrompt": "Project system prompt.\n",
+			"appendSystemPrompt": [
+				"Project addendum.\n"
+			],
+			"prompt": "Project system prompt.\n\n\n<addendum>\nProject addendum.\n\n</addendum>\n\n<cwd>\n<TMP>/work\n</cwd>"
+		}
+	]
+}

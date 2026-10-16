@@ -2,7 +2,7 @@
 // (`DefaultResourceLoader.reload`, as the TypeScript session worker builds it) when `-e` sources and settings
 // `packages` provide them, beside the profile's and project's own. Every source is a local directory under a private
 // temp root (no npm, no git); the packages hold only skills and prompts (no JavaScript extensions to load). Each case
-// records the skills (name, file, sourceInfo) and prompts (name, file) under the root, in order, with the root as
+// records the skills and prompts (name, file, sourceInfo) under the root, in order, with the root as
 // <TMP>. crates/cli/tests/session_resources.rs replays them through the CLI's `-e` resolution and the session's.
 // Usage: node crates/cli/fixtures/session_resources.mjs
 import { assertOffline } from "./offline-guard.mjs";
@@ -94,7 +94,8 @@ for (const c of cases) {
 		agentDir,
 		settingsManager,
 		bundledSkillPaths: [],
-		additionalExtensionPaths: c.extensions,
+		// native-command.ts: a local `-e` path reaches the worker resolved against the client's cwd.
+		additionalExtensionPaths: c.extensions.map((path) => resolve(cwd, path)),
 		...(c.noSkills ? { noSkills: true } : {}),
 	});
 	await loader.reload();
@@ -115,7 +116,7 @@ for (const c of cases) {
 			prompts: loader
 				.getPrompts()
 				.prompts.filter((p) => under(p.filePath))
-				.map((p) => ({ name: p.name, filePath: p.filePath })),
+				.map((p) => ({ name: p.name, filePath: p.filePath, sourceInfo: p.sourceInfo })),
 		}),
 	);
 	rmSync(root, { recursive: true, force: true });

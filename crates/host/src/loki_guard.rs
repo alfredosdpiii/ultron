@@ -151,6 +151,15 @@ pub enum LokiMode {
 
 const OFF_VALUES: [&str; 5] = ["off", "0", "false", "no", "none"];
 
+/// `lokiTimeoutMs`: ULTRON_LOKI_TIMEOUT_MS, how long a before-write (or before-shell) check may take before the write
+/// proceeds unchecked, when it is a positive safe integer. Unset or invalid: None, no limit (TypeScript: 5 s), so a
+/// check slowed by machine load still decides the write instead of letting it through unchecked.
+pub fn loki_timeout(value: Option<&str>) -> Option<std::time::Duration> {
+    // `Number(value)`: surrounding whitespace is ignored, and integral forms like "250.0" or "1e3" are integers.
+    let n: f64 = value?.trim().parse().ok()?;
+    (n.fract() == 0.0 && n > 0.0 && n <= 9_007_199_254_740_991.0).then(|| std::time::Duration::from_millis(n as u64))
+}
+
 /// `lokiMode`: ULTRON_LOKI (off | advise | on), else the `loki.mode` setting, else on.
 pub fn loki_mode(env: Option<&str>, settings: &Map<String, Value>) -> LokiMode {
     let raw = env.map(|v| v.trim().to_lowercase()).filter(|v| !v.is_empty());
@@ -213,6 +222,8 @@ pub struct LokiGuard {
     hook: HookRunner,
     /// Post-write checks run (`postWrite`): they compare against a base revision, so only in a repository.
     post_write: bool,
+    /// How long a before-write check may take (`timeoutMs`); None: no limit.
+    timeout: Option<std::time::Duration>,
 }
 
 /// Runs Loki's post-write `hook` on repository-relative files: its exit status, stdout and stderr.
@@ -236,7 +247,14 @@ impl LokiGuard {
             paused_shown: AtomicBool::new(false),
             hook: std::sync::Arc::new(|root: &Path, files: &[String]| loki::run::hook(root, files, true)),
             post_write: true,
+            timeout: None,
         }
+    }
+
+    /// The limit on each before-write and before-shell check (see [`loki_timeout`]); None: no limit.
+    pub fn with_timeout(mut self, timeout: Option<std::time::Duration>) -> Self {
+        self.timeout = timeout;
+        self
     }
 
     /// Whether the files each cell changed are checked after it (`postWrite`; default on). Outside a Git
@@ -333,10 +351,10 @@ impl FileWriteGuard for LokiGuard {
         "Loki"
     }
 
-    /// The Rust engine checks in-process (its tool runs have their own limits): no per-call limit, so a check
-    /// slowed by machine load still decides the write instead of letting it through unchecked.
+    /// ULTRON_LOKI_TIMEOUT_MS when set (see [`loki_timeout`]); otherwise the in-process engine has no per-call
+    /// limit (its tool runs have their own).
     fn timeout(&self) -> Option<std::time::Duration> {
-        None
+        self.timeout
     }
 
     fn before_write(&self, path: &Path, content: &str, cwd: &Path) -> Result<Verdict, String> {

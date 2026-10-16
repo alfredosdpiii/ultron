@@ -53,6 +53,9 @@ pub struct ConnectionEnv {
     pub transport: Option<TransportFactory>,
     /// OAuth credentials (`mcp-auth.json`); without them OAuth servers send no token.
     pub credentials: Option<Arc<CredentialStore>>,
+    /// The proxies HTTP servers and their OAuth requests are reached through (`Some`: the run's environment, with
+    /// undici's semantics; `None`: reqwest's own lookup of this process's environment).
+    pub proxy: Option<ai::net::ProxyEnv>,
 }
 
 /// HTTP servers authenticate with OAuth unless the config supplies an `Authorization` header or `auth`.
@@ -69,14 +72,21 @@ fn oauth_url_of(entry: &ServerEntry) -> Option<String> {
     (!keyed).then(|| url.to_string())
 }
 
-fn oauth_settings_of(entry: &ServerEntry, env: &HashMap<String, String>) -> Result<OAuthSettings, String> {
+fn oauth_settings_of(
+    entry: &ServerEntry,
+    env: &HashMap<String, String>,
+    proxy: Option<&ai::net::ProxyEnv>,
+) -> Result<OAuthSettings, String> {
     let Some(oauth) = entry
         .config
         .get("url")
         .and(entry.config.get("oauth"))
         .and_then(Value::as_object)
     else {
-        return Ok(OAuthSettings::default());
+        return Ok(OAuthSettings {
+            proxy: proxy.cloned(),
+            ..OAuthSettings::default()
+        });
     };
     let text = |key: &str| oauth.get(key).and_then(Value::as_str).map(String::from);
     let client_secret = match oauth.get("clientSecret").and_then(Value::as_str) {
@@ -98,6 +108,7 @@ fn oauth_settings_of(entry: &ServerEntry, env: &HashMap<String, String>) -> Resu
         scope: text("scope"),
         client_name: text("clientName"),
         auth_server_metadata_url: text("authServerMetadataUrl"),
+        proxy: proxy.cloned(),
     })
 }
 
@@ -219,11 +230,11 @@ impl Connection {
         if let Some(url) = oauth_url_of(entry)
             && let Some(credentials) = &env.credentials
         {
-            let (settings_entry, settings_env) = (entry.clone(), env.env_overlay.clone());
+            let (settings_entry, settings_env, proxy) = (entry.clone(), env.env_overlay.clone(), env.proxy.clone());
             return Some(Arc::new(OAuthAuth::new(
                 &url,
                 credentials.for_server(&entry.name, &url),
-                Box::new(move || oauth_settings_of(&settings_entry, &settings_env)),
+                Box::new(move || oauth_settings_of(&settings_entry, &settings_env, proxy.as_ref())),
                 challenge.clone(),
             )));
         }
@@ -243,7 +254,7 @@ impl Connection {
 
     /// `oauthSettings`: the `oauth` config, the client secret resolved.
     pub fn oauth_settings(&self) -> Result<OAuthSettings, String> {
-        oauth_settings_of(&self.entry, &self.env.env_overlay)
+        oauth_settings_of(&self.entry, &self.env.env_overlay, self.env.proxy.as_ref())
     }
 
     /// The server's last OAuth challenge.
@@ -404,6 +415,7 @@ impl Connection {
         Ok(match spec {
             TransportSpec::Http(mut options) => {
                 options.auth = self.auth.clone();
+                options.proxy = self.env.proxy.clone();
                 (Arc::new(HttpTransport::new(options)), None)
             }
             TransportSpec::Stdio(options) => {

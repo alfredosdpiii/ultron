@@ -1,0 +1,70 @@
+{
+	"generator": "crates/session-core/fixtures/generate-session-stats-run.mjs",
+	"cells": [
+		"print('one')",
+		"print(await bash('echo hi > out.txt'))",
+		"1/0",
+		"print('ghp_' + 'a' * 36)",
+		"print(await write('notes.md', 'hello'))"
+	],
+	"stats": {
+		"version": 1,
+		"root": "lane",
+		"since": 0,
+		"updatedAt": 0,
+		"cells": {
+			"root": {
+				"count": 5,
+				"failed": 1,
+				"apis": {
+					"bash": 1,
+					"write": 1
+				}
+			},
+			"subagents": {
+				"count": 0,
+				"failed": 0,
+				"apis": {}
+			},
+			"other": {
+				"count": 0,
+				"failed": 0,
+				"apis": {}
+			}
+		},
+		"hostCalls": {
+			"bash": 1,
+			"files.before_write": 1
+		},
+		"secretsMasked": 1,
+		"guards": {
+			"Loki": {
+				"checks": 2,
+				"blocked": 0,
+				"unchecked": 0,
+				"afterChecks": 0,
+				"afterFindings": 0,
+				"ms": 0
+			}
+		},
+		"nudges": {
+			"toolRounds": 0,
+			"wait": 0,
+			"skill": 0
+		},
+		"usageLimitBlocks": 0,
+		"merges": {},
+		"childModels": {},
+		"externalTurns": {
+			"count": 0,
+			"wallMs": 0
+		}
+	},
+	"toolResults": [
+		"one",
+		"(no output)",
+		"Traceback (most recent call last):\n  File \"<rlm-cell>\", line 1, in <module>\n    1/0\nZeroDivisionError: division by zero",
+		"[REDACTED:github_token]",
+		"Wrote notes.md (5 bytes)"
+	]
+}

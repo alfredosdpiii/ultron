@@ -71,23 +71,6 @@ fn jsonl_values(text: &str) -> Vec<Value> {
     text.lines().map(|l| serde_json::from_str(l).unwrap()).collect()
 }
 
-/// The rows of the TypeScript `/usage` report that the Rust worker cannot produce: it keeps no runtime counters
-/// (session-stats.ts), so the report says what is not recorded instead of reporting zeros.
-const USAGE_UNRECORDED: [(&str, &str); 3] = [
-    (
-        " Workflows  0 runs",
-        " Workflows  not recorded (this session predates Ultron's runtime counters)",
-    ),
-    (
-        "   Loki     no write was checked",
-        "   Loki     not recorded (kept only in the worker's memory when this session ran)",
-    ),
-    (
-        "   Limits   0 usage-limit blocks",
-        "   Limits   not recorded (this session predates the count)",
-    ),
-];
-
 fn replay(name: &str) {
     replay_with(name, &[]);
 }
@@ -331,8 +314,9 @@ fn cli_interactive_rlm_views_like_ts() {
     });
 }
 
-/// `/usage` prints the session report; rows backed by the worker's runtime counters say they are not recorded.
+/// `/usage` prints the session report, the rows backed by the session's runtime counters (workflow runs, Loki
+/// checks, usage-limit blocks) included, as in TypeScript.
 #[test]
 fn cli_interactive_usage_matches_ts() {
-    replay_with("usage", &USAGE_UNRECORDED);
+    replay("usage");
 }

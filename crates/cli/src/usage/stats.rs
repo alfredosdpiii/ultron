@@ -2,97 +2,10 @@
 //! and the stored runtime counters (`ultron.module/stats`).
 
 use indexmap::IndexMap;
-use regex::Regex;
 use serde_json::{Map, Value};
-use std::sync::LazyLock;
 
-/// REPL APIs a cell's code can name, in the order the report lists them.
-pub const CELL_APIS: [&str; 16] = [
-    "bash",
-    "read",
-    "edit",
-    "write",
-    "rlm.load",
-    "rlm.infer",
-    "rlm.map",
-    "rlm.spawn",
-    "rlm.collect",
-    "rlm.merge",
-    "mcp.call",
-    "tools.call",
-    "workflows.run",
-    "agents.*",
-    "background.start",
-    "view_image",
-];
-
-static API_PATTERNS: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
-    // `(?<![\w.])name\s*\(`: the regex crate has no look-behind, so the preceding character is matched instead.
-    let bare = |name: &str| format!(r"(?:^|[^A-Za-z0-9_.]){name}\s*\(");
-    let dotted = |name: &str| format!(r"(?:^|[^A-Za-z0-9_]){}\s*\(", name.replace('.', r"\."));
-    let patterns = [
-        ("bash", bare("bash")),
-        ("read", bare("read")),
-        ("edit", bare("edit")),
-        ("write", bare("write")),
-        ("rlm.load", dotted("rlm.load")),
-        ("rlm.infer", dotted("rlm.infer")),
-        ("rlm.map", dotted("rlm.map")),
-        ("rlm.spawn", dotted("rlm.spawn")),
-        ("rlm.collect", dotted("rlm.collect")),
-        ("rlm.merge", dotted("rlm.merge")),
-        ("mcp.call", dotted("mcp.call")),
-        ("tools.call", dotted("tools.call")),
-        ("workflows.run", dotted("workflows.run")),
-        (
-            "agents.*",
-            r"(?:^|[^A-Za-z0-9_])agents\.(?:spawn|invoke|register)\s*\(".to_string(),
-        ),
-        ("background.start", dotted("background.start")),
-        ("view_image", bare("view_image")),
-    ];
-    patterns
-        .into_iter()
-        .map(|(name, pattern)| (name, Regex::new(&pattern).expect("API pattern compiles")))
-        .collect()
-});
-
-/// The REPL APIs a cell's code names (each at most once).
-pub fn cell_apis(code: &str) -> Vec<&'static str> {
-    API_PATTERNS
-        .iter()
-        .filter(|(_, pattern)| pattern.is_match(code))
-        .map(|(name, _)| *name)
-        .collect()
-}
-
-static NUDGES: LazyLock<[(&'static str, Regex); 3]> = LazyLock::new(|| {
-    let re = |p: &str| Regex::new(p).expect("nudge pattern compiles");
-    [
-        (
-            "skill",
-            re(r"^\[Ultron\] [0-9]+ tool rounds in a row succeeded(?-u:\b)"),
-        ),
-        (
-            "wait",
-            re(
-                r"^\[Ultron\] (?:1 subagent or task you started is|[0-9]+ subagents or tasks you started are) still running(?-u:\b)",
-            ),
-        ),
-        (
-            "toolRounds",
-            re(r"^\[Ultron\] You have (?:now )?used [0-9]+ rounds of tool calls(?-u:\b)"),
-        ),
-    ]
-});
-
-/// Which steer a `[Ultron] ...` message is: `skill`, `wait` or `toolRounds`.
-pub fn classify_nudge(text: &str) -> Option<&'static str> {
-    if !text.starts_with("[Ultron] ") {
-        return None;
-    }
-    NUDGES.iter().find(|(_, re)| re.is_match(text)).map(|(kind, _)| *kind)
-}
+/// The recorder's helpers, shared with the session that writes the counters (crates/session-core).
+pub use session_core::session_stats::{CELL_APIS, cell_apis, classify_nudge};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Cells {
