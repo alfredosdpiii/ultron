@@ -770,6 +770,19 @@ impl Agents {
         parent: Option<&str>,
         notify: Option<&'static str>,
     ) -> Result<String, String> {
+        self.spawn_task_with_record(request, cell, parent, notify)
+            .map(|(id, _)| id)
+    }
+
+    /// [`Self::spawn_task`], with the task's record as admitted: read before its run starts on another thread, so
+    /// a spawn reports `admitted` as TS does (its run starts after the call returns), never a state the run reached.
+    fn spawn_task_with_record(
+        &self,
+        request: TaskRequest,
+        cell: Option<&Signal>,
+        parent: Option<&str>,
+        notify: Option<&'static str>,
+    ) -> Result<(String, Value), String> {
         let _admitting = lock(&self.inner.admissions);
         if self.state().closed {
             return Err("Ultron task host is closed".into());
@@ -797,7 +810,8 @@ impl Agents {
                 }
                 let id = prior["id"].as_str().unwrap_or_default().to_string();
                 Self::adopt(&mut state, prior);
-                return Ok(id);
+                let record = state.task(&id).map(|t| t.record.clone()).unwrap_or(Value::Null);
+                return Ok((id, record));
             }
         }
         let strategy = self.definition(&request.definition)?.strategy();
@@ -839,7 +853,7 @@ impl Agents {
         if !created {
             settle("succeeded");
             Self::adopt(&mut self.state(), record);
-            return Ok(id);
+            return Ok((id.clone(), self.record(&id)));
         }
         let now = self.now();
         let deadline_at = reservation.as_ref().and_then(Reservation::deadline_at);
@@ -890,6 +904,7 @@ impl Agents {
                 }
             });
         }
+        let admitted = self.record(&id);
         if closed {
             let _ = self.cancel(&id, "Ultron task host closed");
         } else {
@@ -897,7 +912,7 @@ impl Agents {
             let task_id = id.clone();
             std::thread::spawn(move || host.run(&task_id, request));
         }
-        Ok(id)
+        Ok((id, admitted))
     }
 
     /// A journal record this owner did not start (an earlier owner's, or a retried key's) joins the task table.
@@ -1699,8 +1714,8 @@ impl Agents {
                         .map_or(DEFAULT_TIMEOUT_MS, |t| t as u64),
                     ..TaskRequest::default()
                 };
-                let id = self.spawn_task(request, cell, parent, Some("task_done"))?;
-                Ok(public_task(&self.record(&id)))
+                let (_, admitted) = self.spawn_task_with_record(request, cell, parent, Some("task_done"))?;
+                Ok(public_task(&admitted))
             }
             "background.list" => {
                 fields(&payload, &[])?;
@@ -1737,10 +1752,10 @@ impl Agents {
             "agents.spawn" | "agents.invoke" => {
                 let spawn = kind == "agents.spawn";
                 let request = self.request(&payload, parent)?;
-                let id = self.spawn_task(request, cell, parent, spawn.then_some("task_done"))?;
+                let (id, admitted) =
+                    self.spawn_task_with_record(request, cell, parent, spawn.then_some("task_done"))?;
                 if spawn {
-                    let record = self.record(&id);
-                    return Ok(json!({ "id": id, "state": record["state"] }));
+                    return Ok(json!({ "id": id, "state": admitted["state"] }));
                 }
                 self.result_of(&id, cell.map(|c| (c, true)))
             }

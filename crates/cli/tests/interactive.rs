@@ -453,9 +453,36 @@ impl Drop for Tui {
             std::thread::sleep(Duration::from_millis(20));
         }
         // Whatever outlived the guard (a session daemon that never saw its last client leave) is killed, so no test
-        // leaves processes behind.
-        let _ = Command::new("pkill").args(["-9", "-f", &pattern]).status();
+        // leaves processes behind: only server generations recorded in this test's own server dir, and only while
+        // their command line still names this root (never `pkill`).
+        for pid in recorded_server_pids(&self.root.join("server")) {
+            let ours = std::fs::read(format!("/proc/{pid}/cmdline"))
+                .is_ok_and(|c| String::from_utf8_lossy(&c).contains(&pattern));
+            if let (true, Some(pid)) = (ours, rustix::process::Pid::from_raw(pid)) {
+                let _ = rustix::process::kill_process(pid, rustix::process::Signal::KILL);
+            }
+        }
     }
+}
+
+/// The pids of the server generations recorded under `dir` (`generation-*.json`, any depth).
+fn recorded_server_pids(dir: &Path) -> Vec<i32> {
+    let mut pids = Vec::new();
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if path.is_dir() {
+            pids.extend(recorded_server_pids(&path));
+        } else if name.starts_with("generation-") && name.ends_with(".json") {
+            let record = std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|t| serde_json::from_str::<Value>(&t).ok());
+            if let Some(pid) = record.and_then(|r| r["pid"].as_i64()).filter(|&p| p > 0) {
+                pids.push(pid as i32);
+            }
+        }
+    }
+    pids
 }
 
 fn replies(scenario: &Value) -> Vec<Reply> {

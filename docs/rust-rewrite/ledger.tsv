@@ -2751,6 +2751,14 @@ W4R-17	interactive	ArminComponent 7 effects frames match TS	interactive_easter_e
 W4R-18	interactive	EarendilAnnouncementComponent matches TS	interactive_easter_eggs_earendil_announcement_renders_like_typescript
 W4R-19	interactive	base64 of the announcement image	interactive_easter_eggs_base64_matches_the_standard_alphabet
 W4R-20	tui	/dementedelves and /arminsayshi draw	cli_interactive_easter_eggs_draw_pi_components
+W4T-01	tui	@ completion runs fd off the input thread; typing renders meanwhile; newer request kills held fd; answer equals sync provider	tui_editor_at_completion_runs_fd_off_the_input_thread
+W4T-02	tui	background answer for a moved cursor is dropped (isAutocompleteRequestCurrent)	tui_editor_at_completion_drops_an_answer_for_moved_cursor
+W4T-03	tui	forced Tab with one match applies it from the background answer	tui_editor_at_completion_with_one_match_on_tab_applies_it_off_thread
+W4T-04	tui	TS editor autocomplete sequences replayed through the async path	tui_editor_autocomplete_scripted_sequences_match_ts
+W4T-05	interactive	app edits/paints while fd is held; run loop paints picker after Wake	interactive_qol_at_completion_paints_while_fd_runs_off_the_ui_thread
+W4T-06	cli	steer/follow-up state read while the cell runs (touchAfter), regenerated TS fixture	cli_rpc_steer_and_follow_up_while_running_match_typescript
+W4T-07	delegation	spawn/background.start report the admitted state (TS), not a later one	delegation_agents_host_matches_native_rlm_host
+W4T-08	daemon	refused worker's coded refusal wins over its observed exit	cli_durable_two_servers_racing_for_one_session_one_is_refused
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

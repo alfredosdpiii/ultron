@@ -9,7 +9,7 @@ use std::rc::Rc;
 use serde_json::{Value, json};
 use tui::autocomplete::{
     AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions, CombinedAutocompleteProvider, Completion,
-    SlashCommand,
+    SlashCommand, SuggestionsJob,
 };
 use tui::collate::locale_compare;
 use tui::components::Component;
@@ -107,17 +107,9 @@ fn combined(base: &Path, fd: Option<PathBuf>) -> CombinedAutocompleteProvider {
 /// The generator's wrapper: `#tag` and `$VAR` items, everything else from the combined provider.
 struct Tagged(CombinedAutocompleteProvider);
 
-impl AutocompleteProvider for Tagged {
-    fn trigger_characters(&self) -> Vec<String> {
-        ["$", "ab", "/", " ", "#"].map(String::from).to_vec()
-    }
-    fn get_suggestions(
-        &self,
-        lines: &[String],
-        line: usize,
-        col: usize,
-        force: bool,
-    ) -> Option<AutocompleteSuggestions> {
+impl Tagged {
+    /// The `#tag`/`$VAR` answer; `None` outside those words.
+    fn tagged(&self, lines: &[String], line: usize, col: usize) -> Option<Option<AutocompleteSuggestions>> {
         let before = &lines[line][..col];
         let word_start = before
             .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
@@ -138,12 +130,35 @@ impl AutocompleteProvider for Tagged {
                     description: None,
                 })
                 .collect();
-            return (!items.is_empty()).then(|| AutocompleteSuggestions {
+            return Some((!items.is_empty()).then(|| AutocompleteSuggestions {
                 items,
                 prefix: before[i..].to_string(),
-            });
+            }));
         }
-        self.0.get_suggestions(lines, line, col, force)
+        None
+    }
+}
+
+impl AutocompleteProvider for Tagged {
+    fn trigger_characters(&self) -> Vec<String> {
+        ["$", "ab", "/", " ", "#"].map(String::from).to_vec()
+    }
+    fn get_suggestions(
+        &self,
+        lines: &[String],
+        line: usize,
+        col: usize,
+        force: bool,
+    ) -> Option<AutocompleteSuggestions> {
+        self.tagged(lines, line, col)
+            .unwrap_or_else(|| self.0.get_suggestions(lines, line, col, force))
+    }
+    /// The editor's path: `@` file search runs off the UI thread, as in the product.
+    fn suggestions_job(&self, lines: &[String], line: usize, col: usize, force: bool) -> SuggestionsJob {
+        match self.tagged(lines, line, col) {
+            Some(answer) => SuggestionsJob::Ready(answer),
+            None => self.0.suggestions_job(lines, line, col, force),
+        }
     }
     fn apply_completion(
         &self,
@@ -303,6 +318,9 @@ fn tui_editor_autocomplete_scripted_sequences_match_ts() {
             }
             let pending = e.has_pending_autocomplete();
             e.fire_autocomplete_debounce();
+            // TS awaits the request; here its answer comes from the worker thread (hang guard only).
+            e.wait_autocomplete(std::time::Duration::from_secs(120));
+            assert!(!e.is_autocomplete_running(), "{name}: autocomplete never answered");
             let (line, col) = e.cursor();
             let got = json!({
                 "pending": pending,

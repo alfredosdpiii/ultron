@@ -22,6 +22,8 @@ pub enum UiEvent {
     Lane(LaneEvent),
     /// Stdin closed.
     InputClosed,
+    /// Something finished off the UI thread (an autocomplete answer): poll and paint.
+    Wake,
 }
 
 /// Spinner frame interval (`Loader`).
@@ -228,6 +230,9 @@ pub fn paint_loop(
         if app.poll_services() {
             dirty = true;
         }
+        if app.poll_autocomplete() {
+            dirty = true;
+        }
         if let Some((command, content)) = app.take_edit_request() {
             // Pi's Ctrl+G: the TUI stops (input paused, alternate screen left, cooked mode) while the editor runs.
             let gate = app.input_gate();
@@ -372,5 +377,6 @@ fn handle(app: &mut App, event: UiEvent) {
         UiEvent::Input(data) => app.handle_input(&data),
         UiEvent::Lane(event) => app.apply(event),
         UiEvent::InputClosed => app.exit = true,
+        UiEvent::Wake => {}
     }
 }

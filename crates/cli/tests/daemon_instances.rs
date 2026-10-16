@@ -156,6 +156,10 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
         if running.len() == 2 {
             break running;
         }
+        // A client that exited cannot become the second instance: fail now (its stderr is the test's).
+        if let Some(status) = client.try_wait().unwrap() {
+            panic!("the project client exited ({status}); instances: {running:?}");
+        }
         assert!(Instant::now() < deadline, "instances: {running:?}");
         std::thread::sleep(Duration::from_millis(50));
     };

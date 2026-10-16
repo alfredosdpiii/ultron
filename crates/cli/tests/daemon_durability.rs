@@ -98,6 +98,20 @@ impl Provider {
     fn wait_for(&self, count: usize, what: &str) {
         wait_until(HANG_GUARD, what, || self.count() >= count);
     }
+
+    /// [`Provider::wait_for`] while `client` runs: a client that exits first fails at once, with its output.
+    fn wait_for_client(&self, count: usize, what: &str, client: &mut Child) {
+        wait_until(HANG_GUARD, what, || {
+            if let Some(status) = client.try_wait().unwrap() {
+                let mut stderr = String::new();
+                if let Some(pipe) = client.stderr.as_mut() {
+                    let _ = pipe.read_to_string(&mut stderr);
+                }
+                panic!("the client exited ({status}) before {what}; stderr:\n{stderr}");
+            }
+            self.count() >= count
+        });
+    }
 }
 
 fn wait_until(timeout: Duration, what: &str, mut done: impl FnMut() -> bool) {
@@ -551,13 +565,13 @@ fn cli_durable_print_client_rejoins_after_its_coordinator_is_killed() {
         (text_reply("Recovered."), Duration::ZERO),
     ]);
     let home = Home::new(provider.port);
-    let client = home
+    let mut client = home
         .command(&["--mode", "json", "--model", MODEL, "first"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    provider.wait_for(1, "the turn reached the provider");
+    provider.wait_for_client(1, "the turn reached the provider", &mut client);
     let coordinator = coordinator_pid(&home).expect("the coordinator runs");
     signal(coordinator, rustix::process::Signal::KILL);
     let output = client.wait_with_output().unwrap();
@@ -652,13 +666,13 @@ fn cli_durable_rpc_client_rejoins_after_its_coordinator_is_killed() {
 fn cli_durable_sigint_aborts_the_print_turn() {
     let provider = provider(vec![(text_reply("Never seen."), STALL)]);
     let home = Home::new(provider.port);
-    let client = home
+    let mut client = home
         .command(&["--mode", "json", "--model", MODEL, "stop me"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    provider.wait_for(1, "the turn reached the provider");
+    provider.wait_for_client(1, "the turn reached the provider", &mut client);
     signal(client.id(), rustix::process::Signal::INT);
     let output = client.wait_with_output().unwrap();
     assert_eq!(output.status.code(), Some(130));

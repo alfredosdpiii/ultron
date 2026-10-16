@@ -11137,8 +11137,7 @@
      "type": "prompt",
      "message": "then this",
      "streamingBehavior": "followUp"
-    },
-    "touch": "queued"
+    }
    },
    {
     "command": {
@@ -11148,7 +11147,9 @@
     "wait": [
      "response",
      "agent_settled"
-    ]
+    ],
+    "touch": "queued",
+    "touchAfter": "response"
    },
    {
     "command": {

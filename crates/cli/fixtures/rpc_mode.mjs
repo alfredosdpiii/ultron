@@ -1,6 +1,6 @@
 // Records the TypeScript `ultron --mode rpc` against a scripted Anthropic SSE server: each case sends JSONL commands
 // one step at a time (a step waits for the lines it names before the next is sent, then creates its `touch` file in the
-// working directory), then closes stdin and records
+// working directory, or as soon as its `touchAfter` line was seen), then closes stdin and records
 // every stdout line, the provider requests, the exit code and the session files left (format-4 journals, normalized
 // by journal.mjs). Ids, timestamps and temp paths are normalized.
 // Usage: node crates/cli/fixtures/rpc_mode.mjs
@@ -109,15 +109,22 @@ export async function run(c) {
 		const command = typeof step.command === "string" ? step.command : JSON.stringify(resolveRefs(step.command, lines));
 		child.stdin.write(`${command}\n`);
 		const deadline = Date.now() + 60_000;
+		// `touch`: create this file in the working directory (a readiness signal for a cell) once the step is done,
+		// or once its `touchAfter` line was seen when the step's later lines need the cell to go on.
+		let touched = !step.touch;
+		const touch = () => {
+			if (!touched) writeFileSync(join(cwd, step.touch), "");
+			touched = true;
+		};
 		while (!stepDone(step, lines.slice(from))) {
+			if (step.touchAfter && stepDone({ ...step, wait: [step.touchAfter] }, lines.slice(from))) touch();
 			if (Date.now() > deadline) throw new Error(`${c.name}: timed out on ${JSON.stringify(step)}\n${stderr}`);
 			await new Promise((r) => {
 				wake = r;
 				setTimeout(r, 50);
 			});
 		}
-		// `touch`: create this file in the working directory once the step is done (a readiness signal for a cell).
-		if (step.touch) writeFileSync(join(cwd, step.touch), "");
+		touch();
 	}
 	child.stdin.end();
 	const code = await closed;
@@ -330,8 +337,9 @@ export const cases = [
 			{ command: { id: "p1", type: "prompt", message: "sleep" }, wait: ["response", "tool_execution_start"] },
 			{ command: { id: "p2", type: "prompt", message: "not now" } },
 			{ command: { id: "st", type: "steer", message: "steer me" } },
-			{ command: { id: "fu", type: "prompt", message: "then this", streamingBehavior: "followUp" }, touch: "queued" },
-			{ command: { id: "gs", type: "get_state" }, wait: ["response", "agent_settled"] },
+			{ command: { id: "fu", type: "prompt", message: "then this", streamingBehavior: "followUp" } },
+			// The state is read while the cell still runs (both messages queued); only then may the cell finish.
+			{ command: { id: "gs", type: "get_state" }, wait: ["response", "agent_settled"], touch: "queued", touchAfter: "response" },
 			{ command: { id: "m1", type: "get_messages" } },
 		],
 	},

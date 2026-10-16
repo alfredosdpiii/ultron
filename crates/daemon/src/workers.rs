@@ -144,6 +144,9 @@ struct Pending {
     token: String,
     pid: u32,
     outcome: Option<Result<String, ServiceError>>,
+    /// The process exited before readiness while the coordinator still listed it: its disconnect settles the
+    /// launch with this error, unless a `worker_failed` relayed before the disconnect already did.
+    exited: Option<ServiceError>,
 }
 
 /// A crashed worker's restart: attempts since it last ran stably, and whether one is under way.
@@ -562,6 +565,7 @@ impl Manager {
                     token,
                     pid,
                     outcome: None,
+                    exited: None,
                 },
             );
             self.notify_count(&inner);
@@ -1051,10 +1055,24 @@ impl Manager {
             .get(path)
             .is_some_and(|p| p.peer == peer && p.outcome.is_none());
         if pending_here {
-            self.fail_pending(
-                path,
-                ServiceError::internal(format!("Session worker exited before readiness ({describe})")),
-            );
+            let error = ServiceError::internal(format!("Session worker exited before readiness ({describe})"));
+            // A worker that refuses its session (`worker_failed`, such as another process owning it) says so
+            // through the coordinator and exits; the exit, observed directly, can win that race. While the
+            // coordinator still lists the worker, its relayed messages and then its disconnect are still to come,
+            // in that order: the disconnect settles the launch with this error, unless the refusal did first.
+            if self.coordinator().peer_snapshot().contains(peer) {
+                let mut inner = self.lock();
+                if let Some(pending) = inner.pending.get_mut(path)
+                    && pending.peer == peer
+                    && pending.outcome.is_none()
+                {
+                    // Reaped: its pid may be reused, so nothing may signal it any more.
+                    pending.pid = 0;
+                    pending.exited = Some(error);
+                }
+                return;
+            }
+            self.fail_pending(path, error);
             return;
         }
         let inner = self.lock();
@@ -1111,9 +1129,9 @@ impl Manager {
                     .map(|w| (w.expected_stop || w.retiring, w.meta.id.clone()));
                 let pending = inner
                     .pending
-                    .iter()
+                    .iter_mut()
                     .find(|(_, p)| p.peer == peer)
-                    .map(|(k, _)| k.clone());
+                    .map(|(k, p)| (k.clone(), p.exited.take()));
                 drop(inner);
                 self.changed.notify_all();
                 self.settle_exited(&peer);
@@ -1121,11 +1139,10 @@ impl Manager {
                     let error = (!expected).then(|| format!("Session worker {id} disconnected unexpectedly"));
                     self.remove_worker(&peer, error);
                 }
-                if let Some(path) = pending {
-                    self.fail_pending(
-                        &path,
-                        ServiceError::internal("Session worker disconnected during startup"),
-                    );
+                if let Some((path, exited)) = pending {
+                    let error =
+                        exited.unwrap_or_else(|| ServiceError::internal("Session worker disconnected during startup"));
+                    self.fail_pending(&path, error);
                 }
             }
             Event::Message { from, payload } => self.handle_message(&from, &payload),

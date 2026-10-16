@@ -134,7 +134,7 @@ impl Screen {
                     match event {
                         interactive::run::UiEvent::Input(data) => send(Ev::Input(data)),
                         interactive::run::UiEvent::InputClosed => send(Ev::Closed),
-                        interactive::run::UiEvent::Lane(_) => {}
+                        interactive::run::UiEvent::Lane(_) | interactive::run::UiEvent::Wake => {}
                     }
                 }
             });

@@ -442,7 +442,11 @@ fn run_case_with(case: &Value, journals: bool) -> Vec<Value> {
             _ => vec!["response".into()],
         };
         let id = step["command"].get("id").cloned();
+        // The generator's `touch`: a file a scripted cell waits for, created once the step is done, or once its
+        // `touchAfter` line was seen (a state read while the cell still runs).
+        let mut touch = step["touch"].as_str();
         for want in waits {
+            let touch_now = step["touchAfter"].as_str() == Some(want.as_str());
             let id = id.clone();
             client
                 .wait_for(
@@ -456,10 +460,12 @@ fn run_case_with(case: &Value, journals: bool) -> Vec<Value> {
                     Duration::from_secs(120),
                 )
                 .unwrap_or_else(|e| panic!("{name}: step {step}: {e}"));
+            if touch_now && let Some(file) = touch.take() {
+                std::fs::write(options.cwd.as_ref().unwrap().join(file), "").unwrap();
+            }
         }
-        // The generator's `touch`: a file a scripted cell waits for, created once the step is done.
-        if let Some(touch) = step["touch"].as_str() {
-            std::fs::write(options.cwd.as_ref().unwrap().join(touch), "").unwrap();
+        if let Some(file) = touch {
+            std::fs::write(options.cwd.as_ref().unwrap().join(file), "").unwrap();
         }
     }
     let stderr = client.stderr();

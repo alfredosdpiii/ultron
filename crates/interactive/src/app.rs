@@ -1345,6 +1345,17 @@ impl App {
         }
     }
 
+    /// Called off the UI thread when an autocomplete answer computed there (`@` file search) is ready; the run
+    /// loop then applies it with [`App::poll_autocomplete`].
+    pub fn set_autocomplete_waker(&mut self, waker: impl Fn() + Send + Sync + 'static) {
+        self.editor.set_autocomplete_waker(waker);
+    }
+
+    /// Apply autocomplete answers computed off the UI thread; true when the editor changed. Never blocks.
+    pub fn poll_autocomplete(&mut self) -> bool {
+        self.editor.poll_autocomplete()
+    }
+
     /// Whether a debounced autocomplete request waits.
     pub fn fire_autocomplete_pending(&self) -> bool {
         self.editor.has_pending_autocomplete()

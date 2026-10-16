@@ -1,11 +1,14 @@
 //! Autocomplete provider interface and `CombinedAutocompleteProvider` (port of packages/tui/src/autocomplete.ts):
 //! slash commands and their arguments, `@` fuzzy file search through `fd`, and plain path completion from a
-//! directory listing. Columns are byte offsets. Providers are synchronous; the editor debounces `@`/trigger-char
-//! requests and its owner fires them (see `Editor::fire_autocomplete_debounce`), which stands in for the TS abort
-//! signal.
+//! directory listing. Columns are byte offsets. `get_suggestions` answers synchronously; `suggestions_job` lets a
+//! provider hand the editor work that may block (the `fd` walk), which the editor runs off the UI thread with an
+//! [`AbortSignal`] (TS `getSuggestions(..., { signal })`), dropping answers for text that changed meanwhile.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::collate::locale_compare;
 use crate::fuzzy::fuzzy_filter;
@@ -43,11 +46,44 @@ pub struct Completion {
     pub cursor_col: usize,
 }
 
+/// TS `AbortSignal` for one autocomplete request: aborting it SIGKILLs the `fd` child the request is waiting on
+/// (only that child, which this process spawned and has not reaped yet).
+#[derive(Debug, Default)]
+pub struct AbortSignal {
+    aborted: AtomicBool,
+    child: Mutex<Option<Child>>,
+}
+
+impl AbortSignal {
+    pub fn abort(&self) {
+        self.aborted.store(true, Ordering::SeqCst);
+        let mut child = self.child.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(child) = child.as_mut() {
+            // Unreaped, so the pid is still this child's (TS `child.kill("SIGKILL")`).
+            let _ = child.kill();
+        }
+    }
+
+    pub fn is_aborted(&self) -> bool {
+        self.aborted.load(Ordering::SeqCst)
+    }
+}
+
+/// Work that answers a request off the UI thread.
+pub type BackgroundSuggestions = Box<dyn FnOnce(&AbortSignal) -> Option<AutocompleteSuggestions> + Send>;
+
+/// How a provider answers a request: at once, or by work the editor runs off the UI thread.
+pub enum SuggestionsJob {
+    Ready(Option<AutocompleteSuggestions>),
+    Background(BackgroundSuggestions),
+}
+
 pub trait AutocompleteProvider {
     /// Characters that trigger this provider at token boundaries.
     fn trigger_characters(&self) -> Vec<String> {
         Vec::new()
     }
+    /// The answer, computed on the calling thread (blocking for `@` file search).
     fn get_suggestions(
         &self,
         lines: &[String],
@@ -55,6 +91,10 @@ pub trait AutocompleteProvider {
         col: usize,
         force: bool,
     ) -> Option<AutocompleteSuggestions>;
+    /// What the editor calls: providers whose answer may block return [`SuggestionsJob::Background`].
+    fn suggestions_job(&self, lines: &[String], line: usize, col: usize, force: bool) -> SuggestionsJob {
+        SuggestionsJob::Ready(self.get_suggestions(lines, line, col, force))
+    }
     fn apply_completion(
         &self,
         lines: &[String],
@@ -286,7 +326,17 @@ struct FdEntry {
 }
 
 /// `walkDirectoryWithFd`: `fd` over `base_dir` (hidden files, symlinks followed, `.git` excluded).
-fn walk_with_fd(base_dir: &Path, fd: &Path, query: &str, max_results: usize, max_depth: Option<usize>) -> Vec<FdEntry> {
+fn walk_with_fd(
+    base_dir: &Path,
+    fd: &Path,
+    query: &str,
+    max_results: usize,
+    max_depth: Option<usize>,
+    signal: &AbortSignal,
+) -> Vec<FdEntry> {
+    if signal.is_aborted() {
+        return Vec::new();
+    }
     let mut cmd = Command::new(fd);
     cmd.arg("--base-directory")
         .arg(base_dir)
@@ -302,13 +352,36 @@ fn walk_with_fd(base_dir: &Path, fd: &Path, query: &str, max_results: usize, max
     if !query.is_empty() {
         cmd.arg(build_fd_path_query(query));
     }
-    let Ok(out) = cmd.stdin(Stdio::null()).stderr(Stdio::null()).output() else {
+    let Ok(mut child) = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
         return Vec::new();
     };
-    if !out.status.success() {
+    let Some(mut pipe) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Vec::new();
+    };
+    {
+        let mut slot = signal.child.lock().unwrap_or_else(|e| e.into_inner());
+        if signal.is_aborted() {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Vec::new();
+        }
+        *slot = Some(child);
+    }
+    let mut bytes = Vec::new();
+    let _ = pipe.read_to_end(&mut bytes);
+    let child = signal.child.lock().unwrap_or_else(|e| e.into_inner()).take();
+    let success = child.and_then(|mut c| c.wait().ok()).is_some_and(|s| s.success());
+    if signal.is_aborted() || !success || bytes.is_empty() {
         return Vec::new();
     }
-    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stdout = String::from_utf8_lossy(&bytes);
     stdout
         .trim_matches(is_whitespace_char)
         .split('\n')
@@ -519,91 +592,100 @@ impl CombinedAutocompleteProvider {
         });
         out
     }
+}
 
-    /// `resolveScopedFuzzyQuery`: `dir/que` searches `que` inside `dir` when it is a directory.
-    fn resolve_scoped_query(&self, raw: &str) -> Option<(PathBuf, String, String)> {
-        let normalized = raw.replace('\\', "/");
-        let slash = normalized.rfind('/')?;
-        let display_base = normalized[..=slash].to_string();
-        let query = normalized[slash + 1..].to_string();
-        let base_dir = if display_base.starts_with("~/") {
-            PathBuf::from(expand_home(&display_base))
-        } else if display_base.starts_with('/') {
-            PathBuf::from(&display_base)
-        } else {
-            PathBuf::from(join(&self.base_path.display().to_string(), &display_base))
-        };
-        std::fs::metadata(&base_dir)
-            .ok()?
-            .is_dir()
-            .then_some((base_dir, query, display_base))
+/// `resolveScopedFuzzyQuery`: `dir/que` searches `que` inside `dir` when it is a directory.
+fn resolve_scoped_query(base_path: &Path, raw: &str) -> Option<(PathBuf, String, String)> {
+    let normalized = raw.replace('\\', "/");
+    let slash = normalized.rfind('/')?;
+    let display_base = normalized[..=slash].to_string();
+    let query = normalized[slash + 1..].to_string();
+    let base_dir = if display_base.starts_with("~/") {
+        PathBuf::from(expand_home(&display_base))
+    } else if display_base.starts_with('/') {
+        PathBuf::from(&display_base)
+    } else {
+        PathBuf::from(join(&base_path.display().to_string(), &display_base))
+    };
+    std::fs::metadata(&base_dir)
+        .ok()?
+        .is_dir()
+        .then_some((base_dir, query, display_base))
+}
+
+/// `getFuzzyFileSuggestions`: depth-1 then recursive `fd` results, scored, best 20.
+fn fuzzy_file_suggestions(
+    base_path: &Path,
+    fd: &Path,
+    query: &str,
+    is_quoted: bool,
+    signal: &AbortSignal,
+) -> Vec<AutocompleteItem> {
+    if signal.is_aborted() {
+        return Vec::new();
     }
-
-    /// `getFuzzyFileSuggestions`: depth-1 then recursive `fd` results, scored, best 20.
-    fn fuzzy_file_suggestions(&self, query: &str, is_quoted: bool) -> Vec<AutocompleteItem> {
-        let Some(fd) = &self.fd_path else {
-            return Vec::new();
-        };
-        let scoped = self.resolve_scoped_query(query);
-        let (base, fd_query) = match &scoped {
-            Some((dir, q, _)) => (dir.clone(), q.clone()),
-            None => (self.base_path.clone(), query.to_string()),
-        };
-        let mut entries = walk_with_fd(&base, fd, &fd_query, 100, Some(1));
-        let recursive = walk_with_fd(&base, fd, &fd_query, 100, None);
-        for e in recursive {
-            if !entries.iter().any(|s| s.path == e.path) {
-                entries.push(e);
-            }
+    let scoped = resolve_scoped_query(base_path, query);
+    let (base, fd_query) = match &scoped {
+        Some((dir, q, _)) => (dir.clone(), q.clone()),
+        None => (base_path.to_path_buf(), query.to_string()),
+    };
+    let mut entries = walk_with_fd(&base, fd, &fd_query, 100, Some(1), signal);
+    let recursive = walk_with_fd(&base, fd, &fd_query, 100, None, signal);
+    if signal.is_aborted() {
+        return Vec::new();
+    }
+    for e in recursive {
+        if !entries.iter().any(|s| s.path == e.path) {
+            entries.push(e);
         }
-        let mut scored: Vec<(u32, FdEntry)> = entries
-            .into_iter()
-            .map(|e| {
-                let score = if fd_query.is_empty() {
-                    1
-                } else {
-                    score_entry(&e.path, &fd_query, e.is_dir)
-                };
-                (score, e)
-            })
-            .filter(|(s, _)| *s > 0)
-            .collect();
-        let depth = |p: &str| p.split('/').filter(|s| !s.is_empty()).count();
-        let len16 = |p: &str| p.encode_utf16().count();
-        scored.sort_by(|(sa, a), (sb, b)| {
-            sb.cmp(sa)
-                .then_with(|| depth(&a.path).cmp(&depth(&b.path)))
-                .then_with(|| len16(&a.path).cmp(&len16(&b.path)))
-                .then_with(|| locale_compare(&a.path, &b.path))
-        });
-        scored
-            .into_iter()
-            .take(20)
-            .map(|(_, e)| {
-                let without_slash = if e.is_dir {
-                    &e.path[..e.path.len() - 1]
-                } else {
-                    &e.path[..]
-                };
-                let display = match &scoped {
-                    Some((_, _, base)) if base == "/" => format!("/{without_slash}"),
-                    Some((_, _, base)) => format!("{base}{without_slash}"),
-                    None => without_slash.to_string(),
-                };
-                let name = basename(without_slash);
-                let completion = if e.is_dir {
-                    format!("{display}/")
-                } else {
-                    display.clone()
-                };
-                AutocompleteItem {
-                    value: build_completion_value(&completion, true, is_quoted),
-                    label: if e.is_dir { format!("{name}/") } else { name.to_string() },
-                    description: Some(display),
-                }
-            })
-            .collect()
     }
+    let mut scored: Vec<(u32, FdEntry)> = entries
+        .into_iter()
+        .map(|e| {
+            let score = if fd_query.is_empty() {
+                1
+            } else {
+                score_entry(&e.path, &fd_query, e.is_dir)
+            };
+            (score, e)
+        })
+        .filter(|(s, _)| *s > 0)
+        .collect();
+    let depth = |p: &str| p.split('/').filter(|s| !s.is_empty()).count();
+    let len16 = |p: &str| p.encode_utf16().count();
+    scored.sort_by(|(sa, a), (sb, b)| {
+        sb.cmp(sa)
+            .then_with(|| depth(&a.path).cmp(&depth(&b.path)))
+            .then_with(|| len16(&a.path).cmp(&len16(&b.path)))
+            .then_with(|| locale_compare(&a.path, &b.path))
+    });
+    scored
+        .into_iter()
+        .take(20)
+        .map(|(_, e)| {
+            let without_slash = if e.is_dir {
+                &e.path[..e.path.len() - 1]
+            } else {
+                &e.path[..]
+            };
+            let display = match &scoped {
+                Some((_, _, base)) if base == "/" => format!("/{without_slash}"),
+                Some((_, _, base)) => format!("{base}{without_slash}"),
+                None => without_slash.to_string(),
+            };
+            let name = basename(without_slash);
+            let completion = if e.is_dir {
+                format!("{display}/")
+            } else {
+                display.clone()
+            };
+            AutocompleteItem {
+                value: build_completion_value(&completion, true, is_quoted),
+                label: if e.is_dir { format!("{name}/") } else { name.to_string() },
+                description: Some(display),
+            }
+        })
+        .collect()
 }
 
 impl AutocompleteProvider for CombinedAutocompleteProvider {
@@ -614,24 +696,37 @@ impl AutocompleteProvider for CombinedAutocompleteProvider {
         col: usize,
         force: bool,
     ) -> Option<AutocompleteSuggestions> {
+        match self.suggestions_job(lines, line, col, force) {
+            SuggestionsJob::Ready(answer) => answer,
+            SuggestionsJob::Background(job) => job(&AbortSignal::default()),
+        }
+    }
+
+    /// `@` file search runs `fd`, so it goes off the UI thread; slash commands and directory listings answer at once.
+    fn suggestions_job(&self, lines: &[String], line: usize, col: usize, force: bool) -> SuggestionsJob {
         let text = lines.get(line).map_or("", |l| &l[..col.min(l.len())]);
         if let Some(at) = self.extract_at_prefix(text) {
+            let Some(fd) = self.fd_path.clone() else {
+                return SuggestionsJob::Ready(None);
+            };
             let (raw, _, is_quoted) = parse_path_prefix(at);
-            let items = self.fuzzy_file_suggestions(raw, is_quoted);
-            return (!items.is_empty()).then(|| AutocompleteSuggestions {
-                items,
-                prefix: at.to_string(),
-            });
+            let (raw, prefix, base) = (raw.to_string(), at.to_string(), self.base_path.clone());
+            return SuggestionsJob::Background(Box::new(move |signal: &AbortSignal| {
+                let items = fuzzy_file_suggestions(&base, &fd, &raw, is_quoted, signal);
+                (!items.is_empty()).then_some(AutocompleteSuggestions { items, prefix })
+            }));
         }
         if !force && text.starts_with('/') {
-            return self.slash_suggestions(text);
+            return SuggestionsJob::Ready(self.slash_suggestions(text));
         }
-        let prefix = self.extract_path_prefix(text, force)?;
+        let Some(prefix) = self.extract_path_prefix(text, force) else {
+            return SuggestionsJob::Ready(None);
+        };
         let items = self.file_suggestions(prefix);
-        (!items.is_empty()).then(|| AutocompleteSuggestions {
+        SuggestionsJob::Ready((!items.is_empty()).then(|| AutocompleteSuggestions {
             items,
             prefix: prefix.to_string(),
-        })
+        }))
     }
 
     fn should_trigger_file_completion(&self, lines: &[String], line: usize, col: usize) -> bool {

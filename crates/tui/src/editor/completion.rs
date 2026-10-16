@@ -1,17 +1,91 @@
 //! The editor's autocomplete picker: when typing triggers a request (`/` at the start of the message, `@`, `#` and
 //! provider trigger characters at token boundaries, word characters inside those contexts), the debounce for
 //! attachment-style triggers, Tab/Enter/Escape/arrows while the picker is open, and mouse picks.
-//! TS runs provider requests asynchronously; here a request runs at once, or, when TS would debounce it, waits in
-//! `pending_request` until the owner calls `fire_autocomplete_debounce` after `AUTOCOMPLETE_DEBOUNCE_MS`.
+//! A request runs at once, or, when TS would debounce it, waits in `pending_request` until the owner calls
+//! `fire_autocomplete_debounce` after `AUTOCOMPLETE_DEBOUNCE_MS`. A provider answer that may block (`@` file search
+//! through `fd`) runs on the editor's worker thread, one request at a time as TS chains them; a newer request or a
+//! cancel aborts it (killing its `fd`), and the owner applies the answer with `poll_autocomplete` once the waker
+//! fires, only while text and cursor are still what the request saw (TS `isAutocompleteRequestCurrent`).
+
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use super::*;
-use crate::autocomplete::{AutocompleteItem, AutocompleteSuggestions, is_autocomplete_separator};
+use crate::autocomplete::{
+    AbortSignal, AutocompleteItem, AutocompleteSuggestions, BackgroundSuggestions, SuggestionsJob,
+    is_autocomplete_separator,
+};
 use crate::select::{SelectAction, SelectEvent, SelectItem};
 
 pub(super) const DEFAULT_TRIGGER_CHARACTERS: [char; 2] = ['@', '#'];
 
 /// Delay before an `@`/trigger-character request runs (TS `ATTACHMENT_AUTOCOMPLETE_DEBOUNCE_MS`).
 pub const AUTOCOMPLETE_DEBOUNCE_MS: u64 = 20;
+
+/// Called on the worker thread after an answer is ready for `poll_autocomplete`.
+pub type AutocompleteWaker = Arc<dyn Fn() + Send + Sync>;
+
+type Answer = (u64, Option<AutocompleteSuggestions>);
+type Job = (u64, BackgroundSuggestions, Arc<AbortSignal>);
+
+/// A background request: what it saw, and its signal. Dropping it aborts the request.
+pub(super) struct Running {
+    id: u64,
+    signal: Arc<AbortSignal>,
+    text: String,
+    line: usize,
+    col: usize,
+    force: bool,
+    explicit_tab: bool,
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        self.signal.abort();
+    }
+}
+
+/// The editor's worker thread, started by its first background request; it ends when the editor drops.
+#[derive(Default)]
+pub(super) struct Worker {
+    jobs: Option<Sender<Job>>,
+    answers: Option<Receiver<Answer>>,
+    waker: Arc<Mutex<Option<AutocompleteWaker>>>,
+    next_id: u64,
+}
+
+impl Worker {
+    /// Queue `job`; `None` when no worker thread could start.
+    fn submit(&mut self, job: BackgroundSuggestions, signal: Arc<AbortSignal>) -> Option<u64> {
+        self.next_id += 1;
+        let id = self.next_id;
+        if self.jobs.is_none() {
+            let (jobs, queue) = mpsc::channel::<Job>();
+            let (reply, answers) = mpsc::channel::<Answer>();
+            let waker = Arc::clone(&self.waker);
+            let spawned = std::thread::Builder::new().name("autocomplete".into()).spawn(move || {
+                for (id, job, signal) in queue {
+                    let answer = if signal.is_aborted() { None } else { job(&signal) };
+                    if reply.send((id, answer)).is_err() {
+                        return;
+                    }
+                    let wake = waker.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                    if let Some(wake) = wake {
+                        wake();
+                    }
+                }
+            });
+            if spawned.is_ok() {
+                self.jobs = Some(jobs);
+                self.answers = Some(answers);
+            }
+        }
+        let jobs = self.jobs.as_ref()?;
+        jobs.send((id, job, signal)).ok()?;
+        Some(id)
+    }
+}
 
 pub(super) struct Picker {
     pub(super) list: SelectList,
@@ -211,6 +285,7 @@ impl Editor {
             return;
         }
         self.pending_request = None;
+        self.running = None;
         if !explicit_tab && !force && self.debounce_pattern(self.before_cursor()) {
             self.pending_request = Some((force, explicit_tab));
             return;
@@ -220,7 +295,31 @@ impl Editor {
 
     fn run_autocomplete_request(&mut self, force: bool, explicit_tab: bool) {
         let Some(provider) = &self.provider else { return };
-        let suggestions = provider.get_suggestions(&self.lines, self.cursor_line, self.cursor_col, force);
+        self.running = None;
+        match provider.suggestions_job(&self.lines, self.cursor_line, self.cursor_col, force) {
+            SuggestionsJob::Ready(suggestions) => self.apply_answer(suggestions, force, explicit_tab),
+            SuggestionsJob::Background(job) => {
+                let signal = Arc::new(AbortSignal::default());
+                let Some(id) = self.worker.submit(job, Arc::clone(&signal)) else {
+                    // No worker thread: nothing answers, as when `fd` cannot run.
+                    self.apply_answer(None, force, explicit_tab);
+                    return;
+                };
+                self.running = Some(Running {
+                    id,
+                    signal,
+                    text: self.text(),
+                    line: self.cursor_line,
+                    col: self.cursor_col,
+                    force,
+                    explicit_tab,
+                });
+            }
+        }
+    }
+
+    /// The end of TS `runAutocompleteRequest`: no items close the picker, a forced Tab with one item applies it.
+    fn apply_answer(&mut self, suggestions: Option<AutocompleteSuggestions>, force: bool, explicit_tab: bool) {
         let Some(suggestions) = suggestions.filter(|s| !s.items.is_empty()) else {
             self.cancel_autocomplete();
             return;
@@ -232,6 +331,59 @@ impl Editor {
             return;
         }
         self.show_suggestions(suggestions, force);
+    }
+
+    /// Runs on the worker thread whenever a background answer is ready; the owner then calls `poll_autocomplete`
+    /// (typically by waking its event loop).
+    pub fn set_autocomplete_waker(&mut self, waker: impl Fn() + Send + Sync + 'static) {
+        *self.worker.waker.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(waker));
+    }
+
+    /// Whether a request's answer is still being computed off the UI thread.
+    pub fn is_autocomplete_running(&self) -> bool {
+        self.running.is_some()
+    }
+
+    /// Apply background answers that arrived; true when the editor changed (picker, text or cursor). Never blocks.
+    pub fn poll_autocomplete(&mut self) -> bool {
+        let mut changed = false;
+        while let Some(answer) = self.worker.answers.as_ref().and_then(|a| a.try_recv().ok()) {
+            changed |= self.take_answer(answer);
+        }
+        changed
+    }
+
+    /// Block until the running request is answered (or `timeout` passes), then apply it as `poll_autocomplete`
+    /// would; true when the editor changed.
+    pub fn wait_autocomplete(&mut self, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        let mut changed = false;
+        while self.running.is_some() {
+            let Some(answers) = &self.worker.answers else { break };
+            match answers.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+                Ok(answer) => changed |= self.take_answer(answer),
+                Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => break,
+            }
+        }
+        changed
+    }
+
+    fn take_answer(&mut self, (id, suggestions): Answer) -> bool {
+        if self.running.as_ref().is_none_or(|r| r.id != id) {
+            return false;
+        }
+        let Some(running) = self.running.take() else {
+            return false;
+        };
+        let current = !running.signal.is_aborted()
+            && self.text() == running.text
+            && self.cursor_line == running.line
+            && self.cursor_col == running.col;
+        if !current {
+            return false;
+        }
+        self.apply_answer(suggestions, running.force, running.explicit_tab);
+        true
     }
 
     fn show_suggestions(&mut self, suggestions: AutocompleteSuggestions, force: bool) {
@@ -328,6 +480,7 @@ impl Editor {
 
     pub(super) fn cancel_autocomplete(&mut self) {
         self.pending_request = None;
+        self.running = None;
         self.picker = None;
     }
 

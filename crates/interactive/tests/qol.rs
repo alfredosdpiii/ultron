@@ -75,6 +75,10 @@ fn model(id: &str) -> ModelInfo {
 }
 
 fn app_in(cwd: &str, qol: QolSettings) -> (App, Rc<Calls>) {
+    app_with_fd(cwd, qol, None)
+}
+
+fn app_with_fd(cwd: &str, qol: QolSettings, fd_path: Option<std::path::PathBuf>) -> (App, Rc<Calls>) {
     let keys = || {
         KeybindingsManager::new(
             app_keybindings(Platform::new("linux", false)),
@@ -97,7 +101,7 @@ fn app_in(cwd: &str, qol: QolSettings) -> (App, Rc<Calls>) {
             thinking_level: "medium".into(),
             splash: false,
             history: PromptHistoryStore::new(None, cwd),
-            fd_path: None,
+            fd_path,
             highlight: Rc::new(|code: &str| code.split('\n').map(str::to_string).collect()),
             qol,
         },
@@ -781,6 +785,100 @@ fn interactive_qol_dock_keeps_three_editor_rows_in_a_short_terminal() {
     assert!(
         rows[draft - 1].starts_with('─') && rows[draft + 1].starts_with('─'),
         "{frame}"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// `@` completion runs `fd` off the UI thread: while the fake `fd` is held the app keeps editing and painting, and
+/// the run loop paints the picker once the answer's wake-up arrives (`UiEvent::Wake`, then `poll_autocomplete`).
+#[test]
+fn interactive_qol_at_completion_paints_while_fd_runs_off_the_ui_thread() {
+    use std::io::{BufRead, Write};
+    let dir = temp_dir("fd");
+    for fifo in ["started", "go"] {
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(dir.join(fifo))
+                .status()
+                .unwrap()
+                .success()
+        );
+    }
+    // Reports each start on `started`, then waits for one line on `go` (`read -t`: a hang guard only).
+    let fd = dir.join("fd");
+    std::fs::write(
+        &fd,
+        format!(
+            "#!/bin/bash\nexec 4<>'{s}'\necho x >&4\nexec 3<>'{g}'\nread -t 120 line <&3 || exit 1\nprintf 'alpha.txt\\nbeta/\\n'\n",
+            s = dir.join("started").display(),
+            g = dir.join("go").display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&fd, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let open = |name: &str| {
+        std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(dir.join(name))
+            .unwrap()
+    };
+    let mut go = open("go");
+    let (started_tx, started) = mpsc::channel();
+    let reader = std::io::BufReader::new(open("started"));
+    std::thread::spawn(move || {
+        for line in reader.lines() {
+            if line.is_err() || started_tx.send(()).is_err() {
+                return;
+            }
+        }
+    });
+    let hang_guard = Duration::from_secs(120);
+
+    let (mut app, _) = app_with_fd(&dir.display().to_string(), QolSettings::default(), Some(fd));
+    let (tx, rx) = mpsc::channel();
+    let wake = Mutex::new(tx.clone());
+    app.set_autocomplete_waker(move || {
+        let _ = wake.lock().unwrap().send(UiEvent::Wake);
+    });
+    app.handle_input("@");
+    assert!(app.fire_autocomplete());
+    started.recv_timeout(hang_guard).expect("fd never started");
+    // `fd` is held: typing still edits and paints.
+    app.handle_input("x");
+    app.handle_input("\x7f");
+    let shown = screen(&mut app);
+    assert!(shown.contains("@") && !shown.contains("alpha.txt"), "{shown}");
+    assert!(!app.poll_autocomplete());
+    // The backspace re-requested `@` (debounced): fire it, as the loop's timer does.
+    assert!(app.fire_autocomplete());
+    started.recv_timeout(hang_guard).expect("fd never restarted");
+
+    // Release both walks, then let the run loop take the wake-up and paint the answer.
+    go.write_all(b"go\ngo\n").unwrap();
+    let frames = RefCell::new(String::new());
+    let since = std::time::Instant::now();
+    let size = || {
+        let painted = strip_terminal_sequences(&frames.borrow()).contains("alpha.txt");
+        if painted || since.elapsed() > hang_guard {
+            tx.send(UiEvent::InputClosed).unwrap();
+        }
+        (100, 30)
+    };
+    paint_loop(
+        &mut app,
+        &rx,
+        &mut |data| {
+            frames.borrow_mut().push_str(data);
+            Ok(())
+        },
+        &size,
+        None,
+    )
+    .unwrap();
+    assert!(
+        strip_terminal_sequences(&frames.borrow()).contains("alpha.txt"),
+        "the picker was never painted"
     );
     let _ = std::fs::remove_dir_all(dir);
 }

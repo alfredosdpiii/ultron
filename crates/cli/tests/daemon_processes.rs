@@ -89,6 +89,10 @@ fn cli_daemon_busy_worker_survives_a_killed_client_and_is_adopted() {
         .unwrap();
     let deadline = Instant::now() + Duration::from_secs(120);
     while provider.requests.lock().unwrap().is_empty() {
+        // A client that exited cannot send it: fail now (its stderr is the test's).
+        if let Some(status) = client.try_wait().unwrap() {
+            panic!("the client exited ({status}) before its first request");
+        }
         assert!(Instant::now() < deadline, "the first request never arrived");
         std::thread::sleep(Duration::from_millis(20));
     }

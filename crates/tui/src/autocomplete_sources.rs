@@ -16,7 +16,9 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 
-use crate::autocomplete::{AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions, Completion};
+use crate::autocomplete::{
+    AbortSignal, AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions, Completion, SuggestionsJob,
+};
 use crate::fuzzy::fuzzy_filter;
 
 // ---- emoji ----
@@ -597,6 +599,26 @@ impl AutocompleteProvider for ChainProvider {
             self.last.set(i);
             Some(s)
         })
+    }
+    /// The first provider with an answer, as in `get_suggestions`. A background answer from the last provider goes
+    /// off the UI thread; one from an earlier provider is waited for here, since a miss falls through to the rest.
+    fn suggestions_job(&self, lines: &[String], line: usize, col: usize, force: bool) -> SuggestionsJob {
+        let last = self.providers.len().saturating_sub(1);
+        for (i, p) in self.providers.iter().enumerate() {
+            let answer = match p.suggestions_job(lines, line, col, force) {
+                SuggestionsJob::Background(job) if i == last => {
+                    self.last.set(i);
+                    return SuggestionsJob::Background(job);
+                }
+                SuggestionsJob::Background(job) => job(&AbortSignal::default()),
+                SuggestionsJob::Ready(answer) => answer,
+            };
+            if let Some(s) = answer {
+                self.last.set(i);
+                return SuggestionsJob::Ready(Some(s));
+            }
+        }
+        SuggestionsJob::Ready(None)
     }
     fn apply_completion(
         &self,

@@ -137,13 +137,33 @@ fn cli_interactive_reattaches_after_the_session_worker_dies() {
     );
     tui.wait("Session:");
     submit(&tui, "first", "Before.");
+    // SIGKILL only this test's session workers: processes whose command line names `__internal session-worker`
+    // and this test's own root (never `pkill`).
     let kill = || {
-        let pattern = format!("session-worker.*{}", tui.root().display());
-        let status = std::process::Command::new("pkill")
-            .args(["-KILL", "-f", &pattern])
-            .status()
-            .unwrap();
-        assert!(status.success(), "no session worker matched {pattern}");
+        let root = tui.root().display().to_string();
+        let mut killed = 0;
+        for entry in std::fs::read_dir("/proc").unwrap().flatten() {
+            let Some(pid) = entry
+                .file_name()
+                .to_str()
+                .and_then(|n| n.parse::<i32>().ok())
+                .filter(|&p| p > 0)
+            else {
+                continue;
+            };
+            let Ok(cmdline) = std::fs::read(entry.path().join("cmdline")) else {
+                continue;
+            };
+            let cmdline = String::from_utf8_lossy(&cmdline).replace('\0', " ");
+            if cmdline.contains("__internal session-worker")
+                && cmdline.contains(&root)
+                && let Some(pid) = rustix::process::Pid::from_raw(pid)
+                && rustix::process::kill_process(pid, rustix::process::Signal::KILL).is_ok()
+            {
+                killed += 1;
+            }
+        }
+        assert!(killed > 0, "no session worker of {root} was running");
     };
     kill();
     let screen = tui.wait("was restarted");

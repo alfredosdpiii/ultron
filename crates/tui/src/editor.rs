@@ -322,6 +322,9 @@ pub struct Editor {
     picker: Option<completion::Picker>,
     /// A debounced request: (force, explicit Tab).
     pending_request: Option<(bool, bool)>,
+    /// The request whose answer is being computed off the UI thread.
+    running: Option<completion::Running>,
+    worker: completion::Worker,
     autocomplete_max_visible: usize,
     rendered_visible_lines: usize,
     rendered_picker_height: usize,
@@ -369,6 +372,8 @@ impl Editor {
             trigger_chars: completion::DEFAULT_TRIGGER_CHARACTERS.to_vec(),
             picker: None,
             pending_request: None,
+            running: None,
+            worker: completion::Worker::default(),
             autocomplete_max_visible: 5,
             rendered_visible_lines: 0,
             rendered_picker_height: 0,

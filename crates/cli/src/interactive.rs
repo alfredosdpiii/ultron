@@ -2307,6 +2307,12 @@ fn run_tui(
             let _ = ui.send(UiEvent::Lane(LaneEvent::PackageUpdates(package_updates(&env))));
         });
     }
+    {
+        let wake = ui_tx.clone();
+        app.set_autocomplete_waker(move || {
+            let _ = wake.send(UiEvent::Wake);
+        });
+    }
     spawn_gated_input(ui_tx, app.input_gate());
     let result = run_stdout(&mut app, &ui_rx, &tui::terminal::size);
     // Its prompt history is written before the process can exit.
