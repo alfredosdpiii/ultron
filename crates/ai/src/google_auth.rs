@@ -11,6 +11,7 @@
 //! `fixtures/generate-vertex-adc.mjs`. Environment lookups that upstream makes on `process.env` (HOME, the metadata
 //! server settings, the quota project override) go through the provider env first, so a credential can scope them.
 
+mod certificate;
 mod external;
 
 use crate::env::{ProviderEnv, provider_env_value};

@@ -528,7 +528,7 @@ impl Core {
         // The run's prompt (admitted with the run) is announced first, then the checkpoint before the request
         // compacts when due (crate::core::auto_compact).
         if run.prompt_pending {
-            // The next-run messages its admission placed come first, as they are on the branch (already committed).
+            // The queued messages its admission placed come first, as they are on the branch (already committed).
             let (captured, run_id) = (run.captured.clone(), run.id.clone());
             for message in captured {
                 for kind in ["message_start", "message_end"] {
@@ -665,6 +665,8 @@ impl Core {
             .children
             .set_root(self.lane.stack.agents.usage_root_for_lane(LANE, operation_id));
         self.branches.run_started();
+        // Per-turn guard times start from zero (`fileHooks.beginTurn()` on the root lane's `run_start`).
+        self.lane.stack.host.begin_turn();
         self.run = Some(Running {
             id: id.clone(),
             signal: AbortSignal::new(),

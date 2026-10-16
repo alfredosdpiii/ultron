@@ -20,9 +20,9 @@ pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut d
             "Usage:
   ultron setup
 
-A guided setup: checks Node.js and python3, sets up a provider (subscription login, API key or a custom
-OpenAI-compatible endpoint) and the default model with a live test, and finds or installs the Hindsight memory
-server. Every step can be skipped; run it again at any time.
+A guided setup: checks python3 (the REPL's interpreter), sets up a provider (subscription login, API key or a
+custom OpenAI-compatible endpoint) and the default model with a live test, and finds or installs the Hindsight
+memory server. Every step can be skipped; run it again at any time.
 
 Files are written to {} (secrets with mode 0600).",
             agent_dir.display()

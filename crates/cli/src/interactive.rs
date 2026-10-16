@@ -1746,7 +1746,7 @@ pub(crate) fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactiv
 }
 
 /// [`Op::ExtensionShortcuts`]'s answer as the TUI's event (nothing when the session did not answer).
-fn extension_shortcuts_event(listed: Option<&Value>) -> LaneEvent {
+pub fn extension_shortcuts_event(listed: Option<&Value>) -> LaneEvent {
     use interactive::extension_shortcuts::{ExtensionShortcut, ShortcutDiagnostic};
     let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
     let items = |key: &str| listed.and_then(|l| l[key].as_array().cloned()).unwrap_or_default();
@@ -1764,6 +1764,7 @@ fn extension_shortcuts_event(listed: Option<&Value>) -> LaneEvent {
             .map(|d| ShortcutDiagnostic {
                 message: text(&d["message"]),
                 path: text(&d["path"]),
+                error: d["type"] == "error",
             })
             .collect(),
     }

@@ -20,7 +20,6 @@
 use crate::RunEnv as Env;
 use crate::lane::{Provider, Rlm, rlm_over};
 use agent::{AgentOptions, AgentTool, StreamFn};
-use ai::http::ReqwestTransport;
 use ai::{Message, Model, UserMessage, UserMessageContent};
 use delegation::agents::{Agents, AgentsOptions, Completion, PredictCall, predict_adapter};
 use delegation::child::agent_runner;
@@ -81,6 +80,9 @@ pub struct Services {
     pub on_extension_shutdown: Option<crate::extension_host::ShutdownAction>,
     /// `--system-prompt`, `-e`, `--no-skills`, `--no-context-files` (crate::session_flags).
     pub session: crate::session_flags::SessionFlags,
+    /// The `-e` sources' and the settings packages' skills, prompts and extension manifests
+    /// (crate::session_resources), resolved by [`Runtime::new`].
+    pub resources: Arc<crate::session_resources::SessionResources>,
 }
 
 /// What every lane of this process shares: settings, locations, guards, extensions and the snapshot key. Owned
@@ -245,6 +247,9 @@ impl Config {
             })
         });
         let mut hooks = FileHooks::with_snapshots(cwd, snapshot);
+        if let Some(log) = crate::guard_log::loki_log((self.var)("ULTRON_LOKI_LOG").as_deref()) {
+            hooks.on_record(log);
+        }
         if let Some(root) = &self.loki_root {
             let root = if cwd == self.cwd {
                 root.clone()
@@ -356,6 +361,7 @@ impl SystemPrompt {
         extensions: Option<String>,
         guide: resources::runtime_guide::RuntimeGuideOptions,
         flags: &crate::session_flags::SessionFlags,
+        extra: Arc<crate::session_resources::SessionResources>,
     ) -> Result<SystemPrompt, String> {
         let (cwd, agent_dir) = (env.cwd.clone(), config.agent_dir.clone());
         let (no_skills, no_context_files) = (flags.no_skills, flags.no_context_files);
@@ -369,13 +375,14 @@ impl SystemPrompt {
         };
         let (env, loki_root) = (env.clone(), config.loki_root.clone());
         let render = move |mode: &crate::lane::PromptMode| {
-            crate::lane::system_prompt_in_mode(
+            crate::lane::system_prompt_with_resources(
                 &env,
                 &env.cwd.display().to_string(),
                 loki_root.as_deref(),
                 extensions.as_deref(),
                 &guide,
                 mode,
+                &extra,
             )
         };
         let initial = mode();
@@ -416,6 +423,9 @@ pub struct Runtime {
     pub services: Services,
     /// Problems found loading extensions (reported once, as warnings).
     pub diagnostics: Vec<String>,
+    /// The extensions that did not load (a manifest that is invalid or missing, a JavaScript extension, a process
+    /// that failed to start): the TUI's `[Extension issues]`.
+    pub extension_errors: Vec<extensions::manifest::Diagnostic>,
     /// What extension processes ask the session (crate::extension_host), bound to the session actor once it opens.
     pub extension_api: Arc<crate::extension_host::SessionHost>,
     /// The root lane's system prompt (subagents use it too).
@@ -435,23 +445,34 @@ impl Runtime {
     /// Read the settings, start the extensions configured for `cwd` (`mode`: "print", "json" or "rpc") and build
     /// the root system prompt.
     pub fn new(env: &Env, mode: &str, sessions_dir: PathBuf, services: Services) -> Result<Runtime, String> {
+        let mut services = services;
         let mut config = Config::from_env(env);
         config.mcp_enabled = !services.no_extensions;
         // The worker's project trust (`workerProjectTrusted`): a trusted project's extensions load too.
         let trusted = crate::extension_commands::worker_project_trusted(&env.cwd, &config.agent_dir, &env.home);
         let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted);
-        let discovery = crate::session_flags::extension_discovery(
+        // resource-loader.ts `reload`: the settings packages (installed when missing) and the `-e` resources.
+        let resolved = crate::session_resources::resolve(
+            env,
+            config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted),
+            &services.session,
+        );
+        services.resources = Arc::new(resolved);
+        let discovery = crate::session_flags::extension_discovery_with(
             env,
             &config.agent_dir,
             &manager,
             &services.session,
             services.no_extensions,
+            &services.resources,
         );
-        let mut diagnostics: Vec<String> = discovery
-            .diagnostics
-            .iter()
-            .map(|d| format!("{}: {}", d.path.display(), d.message))
-            .collect();
+        let mut diagnostics: Vec<String> = services.resources.diagnostics.clone();
+        diagnostics.extend(
+            discovery
+                .diagnostics
+                .iter()
+                .map(|d| format!("{}: {}", d.path.display(), d.message)),
+        );
         let extension_api = Arc::new(crate::extension_host::SessionHost::new(
             env.cwd.clone(),
             config.agent_dir.clone(),
@@ -471,12 +492,14 @@ impl Runtime {
             };
             Arc::new(ExtensionHost::load(discovery.manifests, session, extension_api.clone()))
         });
+        let mut extension_errors = discovery.diagnostics.clone();
         if let Some(host) = &extensions {
             diagnostics.extend(
                 host.diagnostics
                     .iter()
                     .map(|d| format!("{}: {}", d.path.display(), d.message)),
             );
+            extension_errors.extend(host.diagnostics.iter().cloned());
         }
         let hindsight = hindsight::Endpoint::resolve(&|key| (env.var)(key), hindsight::resolve::setting_url(&manager));
         let guide = extensions
@@ -487,7 +510,15 @@ impl Runtime {
         let system = match &services.session.system_prompt {
             // `--system-prompt`: exactly the given text (`currentSystemPrompt`).
             Some(text) => SystemPrompt::fixed(text.clone()),
-            None => SystemPrompt::rendered(env, &config, trusted, guide, runtime_guide, &services.session)?,
+            None => SystemPrompt::rendered(
+                env,
+                &config,
+                trusted,
+                guide,
+                runtime_guide,
+                &services.session,
+                services.resources.clone(),
+            )?,
         };
         diagnostics.extend(system.warnings());
         if let Some(host) = &extensions {
@@ -506,6 +537,7 @@ impl Runtime {
             extensions,
             services,
             diagnostics,
+            extension_errors,
             extension_api,
             system,
             sessions_dir,
@@ -568,15 +600,10 @@ impl Runtime {
             None => None,
         };
         let skills_config = config.clone();
-        // `--no-skills`: the catalog is empty.
+        // `--no-skills`: only the `-e` sources' skills are in the catalog.
         let no_skills = self.services.session.no_skills;
-        let loader: kernel_apis::SkillLoader = Arc::new(move || {
-            Ok(if no_skills {
-                Vec::new()
-            } else {
-                skill_sources(&skills_config)
-            })
-        });
+        let extra = self.services.resources.clone();
+        let loader: kernel_apis::SkillLoader = Arc::new(move || Ok(skill_sources(&skills_config, &extra, no_skills)));
         let code = CodeSkills::new(CodeSkillsOptions::new(&config.skills_dir, &config.runtime_path));
         let clock = kernel_apis::util::system_clock();
         let artifacts = kernel_apis::artifacts::Artifacts::new(
@@ -824,6 +851,9 @@ impl Runtime {
     fn file_hooks_in(&self, cwd: &Path) -> FileHooks {
         let mut hooks = self.config.file_hooks_in(cwd);
         if let Some(extensions) = &self.extensions {
+            hooks.add(Box::new(crate::extension_file_hooks::ExtensionBeforeWrite::new(
+                extensions.clone(),
+            )));
             hooks.add(Box::new(crate::extension_file_hooks::ExtensionAfterCell::new(
                 extensions.clone(),
             )));
@@ -854,25 +884,23 @@ impl Runtime {
 }
 
 /// The skill catalog `skills.*` serves: the session's skills with their file contents.
-fn skill_sources(config: &Config) -> Vec<SkillSource> {
+fn skill_sources(
+    config: &Config,
+    extra: &crate::session_resources::SessionResources,
+    no_skills: bool,
+) -> Vec<SkillSource> {
     let cwd = config.cwd.display().to_string();
     let agent_dir = config.agent_dir.display().to_string();
-    resources::skills::load_skills(&resources::skills::LoadSkillsOptions {
-        cwd: &cwd,
-        agent_dir: &agent_dir,
-        skill_paths: &[],
-        include_defaults: true,
-    })
-    .skills
-    .into_iter()
-    .map(|skill| SkillSource {
-        content: std::fs::read_to_string(&skill.file_path).unwrap_or_default(),
-        name: skill.name,
-        description: skill.description,
-        file_path: skill.file_path,
-        disable_model_invocation: skill.disable_model_invocation,
-    })
-    .collect()
+    crate::session_resources::skills(&cwd, &agent_dir, extra, no_skills)
+        .into_iter()
+        .map(|skill| SkillSource {
+            content: std::fs::read_to_string(&skill.file_path).unwrap_or_default(),
+            name: skill.name,
+            description: skill.description,
+            file_path: skill.file_path,
+            disable_model_invocation: skill.disable_model_invocation,
+        })
+        .collect()
 }
 
 struct ApiModules {
@@ -958,6 +986,17 @@ pub struct Stack {
 }
 
 impl Stack {
+    /// `poolStats()` as the worker answers an inspected `rlm.pool`: the lanes' kernel pool, plus the session's
+    /// file-hook guard statistics (`guards`) when it has guards.
+    pub fn pool_stats(&self) -> Value {
+        let mut stats = self.lanes.pool_stats();
+        let guards = self.host.guard_stats();
+        if !guards.is_empty() {
+            stats["guards"] = Value::Array(guards);
+        }
+        stats
+    }
+
     /// The host `lane` runs its shell in: a worktree subagent's own, else the session's.
     fn host_of(&self, lane: &str) -> Arc<Host> {
         lock(&self.workspaces)
@@ -973,13 +1012,9 @@ impl Stack {
             Some((signal, park)) => Arc::new(self.delegation.cell_handler(lane, signal, park)),
             None => Arc::new(self.delegation.lane_handler(lane)),
         };
-        let cwd = lock(&self.workspaces)
-            .get(lane)
-            .map_or_else(|| self.config.cwd.clone(), |w| w.cwd.clone());
         let router = Router {
             delegation,
             extensions: self.extensions.clone(),
-            cwd,
             host: self.host_of(lane),
             progress: (lane == crate::lane::MAIN).then(|| self.cell_progress.clone()),
             lane: lane.to_string(),
@@ -991,7 +1026,7 @@ impl Stack {
             self.model.clone(),
             self.api_key.clone(),
             // Frames run on their handler threads' own runtimes, so they get their own HTTP client.
-            Arc::new(ReqwestTransport::new(None)),
+            Arc::new(crate::lane::process_transport()),
             self.sessions_dir.join("rlm-context").join(&self.session_id),
         )
         .with_session(self.frames.clone(), lane);
@@ -1183,11 +1218,12 @@ impl Stack {
             .ancestors()
             .nth(4)
             .map(|root| root.join("skills"));
-        let commands = crate::commands::list_commands(
+        let commands = crate::commands::list_commands_with(
             &self.config.cwd.display().to_string(),
             &self.config.agent_dir.display().to_string(),
             &bundled.unwrap_or_default().display().to_string(),
             &extensions,
+            &self.services.resources,
         );
         crate::session_flags::filter_commands(commands, &self.services.session)
     }
@@ -1479,6 +1515,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             extensions: None,
             services: stack.services.clone(),
             diagnostics: Vec::new(),
+            extension_errors: Vec::new(),
             extension_api: Arc::new(crate::extension_host::SessionHost::new(
                 PathBuf::new(),
                 PathBuf::new(),
@@ -1552,8 +1589,6 @@ struct ChildDefaults {
 struct Router {
     delegation: Arc<dyn HostHandler>,
     extensions: Option<Arc<ExtensionHost>>,
-    /// The lane's working directory (a worktree subagent's own): extensions' `before_file_write` sees it.
-    cwd: PathBuf,
     host: Arc<Host>,
     /// The root lane's cell progress (crate::turns): shell output is published as the cell's partial output.
     progress: Option<Arc<Mutex<Option<harness::chat::CellProgress>>>>,
@@ -1611,19 +1646,6 @@ impl HostHandler for Router {
             cancel.cancel(None);
             let _ = watcher.join();
             return result;
-        }
-        if kind == "files.before_write"
-            && let Some(extensions) = &self.extensions
-        {
-            let checked = self.host.handle_lane(&self.lane, kind, payload.clone(), signal)?;
-            return Ok(crate::extension_host::before_write(
-                extensions,
-                &payload,
-                checked,
-                &self.cwd,
-                &self.lane,
-                crate::extension_host::BEFORE_WRITE_TIMEOUT,
-            ));
         }
         let shell = matches!(kind, "bash" | "shell.bash" | "shell.run" | "shell.result");
         let result = self.host.handle_lane(&self.lane, kind, payload, signal);

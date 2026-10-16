@@ -12,6 +12,7 @@ use base64::Engine;
 use serde_json::{Value, json};
 use session_core::compose::Services;
 use session_core::core::{Input, Op, OpenOptions, QueueKind};
+use session_core::review_command::expand_review_command;
 use session_core::{ModelFlags, RunEnv};
 use std::collections::HashMap;
 use std::os::unix::net::UnixStream;
@@ -288,9 +289,10 @@ fn call_core(core: &Sender<Input>, op: Op) -> ServiceResult {
 /// refused message is an answer, not a failure of the call.
 fn queue(core: &Sender<Input>, kind: QueueKind, args: &[Value]) -> ServiceResult {
     let request = request(args);
+    // `toTextPrompt`: every client's text enters here, so `/review` expands the same for all of them.
     let op = Op::Enqueue {
         kind,
-        message: request["message"].as_str().unwrap_or_default().to_string(),
+        message: expand_review_command(request["message"].as_str().unwrap_or_default()),
         images: request["images"].as_array().cloned().unwrap_or_default(),
         entry_id: None,
     };
@@ -384,10 +386,11 @@ fn services(
         })
         .method("nextRun", move |args| queue(&next_core, QueueKind::NextRun, &args))
         .method("prompt", move |args| {
-            let message = request(&args)["message"]
-                .as_str()
-                .ok_or_else(|| ServiceError::internal("Invalid prompt request"))?
-                .to_string();
+            let message = expand_review_command(
+                request(&args)["message"]
+                    .as_str()
+                    .ok_or_else(|| ServiceError::internal("Invalid prompt request"))?,
+            );
             let images = request(&args)["images"].as_array().cloned().unwrap_or_default();
             let lifecycle = prompt_lifecycle.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let marker = format!("prompt-{}", crate::paths::uuid_v4());
@@ -584,7 +587,7 @@ fn services(
     let ops = Service::new(OPS_SERVICE)
         .method("op", move |args| {
             let op = Op::from_json(request(&args)).map_err(ServiceError::internal)?;
-            call_core(&op_core, op)
+            call_core(&op_core, session_core::review_command::expand_client_op(op))
         })
         // The run's progress (crate::watchdog), now.
         .method("checkHealth", move |_| {

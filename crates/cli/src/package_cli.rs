@@ -635,7 +635,8 @@ fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
         .map_err(|e| e.to_string())?;
     let user_agent = ai::model_refresh::management_user_agent(&crate::version());
     runtime.block_on(async {
-        let client = reqwest::Client::new();
+        // The run's proxies (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, the `httpProxy` setting), as Pi's HTTP stack.
+        let client = ai::net::ClientConfig::from_lookup(&*env.var).client()?;
         let work = async {
             const RETRYABLE: [u16; 7] = [408, 425, 429, 500, 502, 503, 504];
             let mut attempt = 0;

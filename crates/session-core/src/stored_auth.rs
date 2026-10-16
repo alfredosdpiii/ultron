@@ -52,7 +52,7 @@ pub fn stored_key(env: &Env, provider: &str) -> Result<Stored, String> {
                 builtin.then(|| crate::lane::env_api_key(env, provider)).flatten()
             })))
         }
-        Some("oauth") => oauth_auth(env, provider, path, None, &OAuthOptions::default())
+        Some("oauth") => oauth_auth(env, provider, path, None, &OAuthOptions::for_env(env))
             .map(|auth| Stored::Owns(auth.and_then(|a| a.api_key))),
         _ => Ok(Stored::Owns(None)),
     }
@@ -61,7 +61,7 @@ pub fn stored_key(env: &Env, provider: &str) -> Result<Stored, String> {
 /// The credential of `provider`'s stored OAuth credential (`getAuthCredential`: its key or bearer token), refreshed when it has less than `min_validity_ms` (five
 /// minutes by default) left; `None` when nothing usable is stored.
 pub fn oauth_access(env: &Env, provider: &str, min_validity_ms: Option<f64>) -> Result<Option<String>, String> {
-    oauth_access_with(env, provider, min_validity_ms, &OAuthOptions::default())
+    oauth_access_with(env, provider, min_validity_ms, &OAuthOptions::for_env(env))
 }
 
 /// [`oauth_access`] over `options` (the transport token refreshes go through).
@@ -100,7 +100,7 @@ pub fn oauth_request_auth(env: &Env, provider: &str) -> Option<ai::model_registr
     if stored.get("type").and_then(Value::as_str) != Some("oauth") {
         return None;
     }
-    let auth = oauth_auth(env, provider, path, None, &OAuthOptions::default())
+    let auth = oauth_auth(env, provider, path, None, &OAuthOptions::for_env(env))
         .ok()
         .flatten()?;
     Some(ai::model_registry::StoredRequestAuth {
@@ -117,6 +117,16 @@ pub struct OAuthOptions {
     pub callback_port: Option<u16>,
 }
 
+impl OAuthOptions {
+    /// The options of a run in `env`: its proxies (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) reach the providers.
+    pub fn for_env(env: &Env) -> OAuthOptions {
+        OAuthOptions {
+            transport: Arc::new(ai::ReqwestTransport::for_env(&*env.var, None)),
+            callback_port: None,
+        }
+    }
+}
+
 impl Default for OAuthOptions {
     fn default() -> Self {
         OAuthOptions {
@@ -129,7 +139,7 @@ impl Default for OAuthOptions {
 /// The OAuth handler of `provider`: a built-in provider's, or Radius's on the provider's gateway (the built-in
 /// `radius`, or a models.json provider with `"oauth": "radius"`).
 pub fn oauth_login_handler(env: &Env, provider: &str) -> Option<Arc<dyn ai::auth::OAuthAuth>> {
-    oauth_handler_with(env, provider, &OAuthOptions::default())
+    oauth_handler_with(env, provider, &OAuthOptions::for_env(env))
 }
 
 /// [`oauth_login_handler`] over `options`: every provider TypeScript signs in with an account (Anthropic, OpenAI

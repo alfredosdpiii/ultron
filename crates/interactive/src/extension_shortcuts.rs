@@ -17,11 +17,13 @@ pub struct ExtensionShortcut {
     pub extension_path: String,
 }
 
-/// A conflict warning (`ResourceDiagnostic`): its message and the extension's path.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// An extension issue (`ResourceDiagnostic`): its message and the extension's path; `error` for an extension that
+/// did not load (shown in the error color), else a warning such as a shortcut conflict.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ShortcutDiagnostic {
     pub message: String,
     pub path: String,
+    pub error: bool,
 }
 
 /// The effective keybindings (`getEffectiveConfig`): every action with its keys.
@@ -52,6 +54,22 @@ pub fn hotkeys_section(shortcuts: &[ExtensionShortcut]) -> String {
         out.push_str(&format!("| `{key}` | {description} |\n"));
     }
     out
+}
+
+/// The `[Extension issues]` block (interactive-mode.ts `showLoadedResources`) in `theme`: the heading in the warning
+/// color, each issue's path and message (`formatDiagnostics`) in the error color for a load error, else the warning
+/// color. `None` without any.
+pub fn issues_block(theme: &tui::theme::Theme, diagnostics: &[ShortcutDiagnostic]) -> Option<String> {
+    if diagnostics.is_empty() {
+        return None;
+    }
+    let mut lines = vec![crate::components::fg(theme, "warning", "[Extension issues]")];
+    for d in diagnostics {
+        let color = if d.error { "error" } else { "warning" };
+        lines.push(crate::components::fg(theme, color, &format!("  {}", d.path)));
+        lines.push(crate::components::fg(theme, color, &format!("    {}", d.message)));
+    }
+    Some(lines.join("\n"))
 }
 
 /// The `[Extension issues]` block for the warnings (`formatDiagnostics`: the path, then the message under it), or

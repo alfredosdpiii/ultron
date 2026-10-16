@@ -1,0 +1,118 @@
+[
+ {
+  "name": "connected",
+  "gateway": "accept",
+  "args": [
+   "--auth-token",
+   "host-secret"
+  ],
+  "env": {},
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: connected\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": [
+   {
+    "path": "/v1/session-relays/00000000-0000-4000-8000-0000000000aa/connect",
+    "protocol": "pi-session-relay.host.v1",
+    "authorization": "Bearer host-secret",
+    "closed": "1000 Pi server stopped"
+   }
+  ]
+ },
+ {
+  "name": "reconnects-after-close",
+  "gateway": "close-first",
+  "args": [
+   "--auth-token",
+   "host-secret"
+  ],
+  "env": {},
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: connected\nRadius: reconnecting: Radius relay host closed (4000: gateway restarting)\nRadius: connected\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": [
+   {
+    "path": "/v1/session-relays/00000000-0000-4000-8000-0000000000aa/connect",
+    "protocol": "pi-session-relay.host.v1",
+    "authorization": "Bearer host-secret",
+    "closed": "4000 "
+   },
+   {
+    "path": "/v1/session-relays/00000000-0000-4000-8000-0000000000aa/connect",
+    "protocol": "pi-session-relay.host.v1",
+    "authorization": "Bearer host-secret",
+    "closed": "1000 Pi server stopped"
+   }
+  ]
+ },
+ {
+  "name": "refused",
+  "gateway": "refuse",
+  "args": [
+   "--auth-token",
+   "host-secret"
+  ],
+  "env": {},
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: reconnecting: Radius WebSocket connection failed\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": [
+   {
+    "path": "/v1/session-relays/00000000-0000-4000-8000-0000000000aa/connect",
+    "protocol": "pi-session-relay.host.v1",
+    "authorization": "Bearer host-secret",
+    "closed": null
+   }
+  ]
+ },
+ {
+  "name": "no-credential",
+  "gateway": "accept",
+  "args": [],
+  "env": {},
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: not connected; local only\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": []
+ },
+ {
+  "name": "offline",
+  "gateway": "accept",
+  "args": [
+   "--auth-token",
+   "t"
+  ],
+  "env": {
+   "PI_OFFLINE": "1"
+  },
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: not connected; local only\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": []
+ },
+ {
+  "name": "stored-key",
+  "gateway": "accept",
+  "args": [],
+  "env": {
+   "RADIUS_API_KEY": "stored-key"
+  },
+  "stdout": "Server: 00000000-0000-4000-8000-0000000000aa\nSocket: <TMP>/server/00000000-0000-4000-8000-0000000000aa.sock\nRadius: connected\n",
+  "stderr": "",
+  "code": 0,
+  "signal": null,
+  "upgrades": [
+   {
+    "path": "/v1/session-relays/00000000-0000-4000-8000-0000000000aa/connect",
+    "protocol": "pi-session-relay.host.v1",
+    "authorization": "Bearer stored-key",
+    "closed": "1000 Pi server stopped"
+   }
+  ]
+ }
+]

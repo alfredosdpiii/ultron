@@ -638,9 +638,13 @@ fn init(args: &Args) -> ExitCode {
             loki::scan::install_minimal(args.get("--dir").unwrap_or("."), args.has("--force"))
         }
     } else {
-        Err(CheckError::not_ported(
-            "init without --minimal (agent hooks, linter configuration and CI templates)",
-        ))
+        loki::init::init(
+            args.get("--dir").unwrap_or("."),
+            args.has("--force"),
+            args.has("--shell-guard"),
+            args.get("--managed-dir"),
+        )
+        .map_err(CheckError::Value)
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

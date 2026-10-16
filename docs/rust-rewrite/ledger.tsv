@@ -2645,6 +2645,71 @@ P-REVIEW-04	review	mise version ordering numeric (localeCompare numeric equivale
 P-REVIEW-05	review	node path.dirname semantics	review_prepare_env_dirname_like_node
 W2-06	cli/interactive	queue_update nextRun maps to QueueKind::NextRun	cli_interactive_watch_events_become_tui_events
 W2-11	cli/agent-hub	hub notices for steer/revive/errors; interrupted subagents are parked	cli_interactive_agent_hub_notices_and_parked_subagents
+W3S-1	session-core	/review expansion matches the TypeScript controller for prompt/steer/followUp/nextRun (92 recorded cases, JS whitespace)	session_core_review_command_expands_like_the_typescript_controller
+W3S-2	session-core	client ops: Prompt/PromptAndWait/Enqueue expanded, other ops untouched	session_core_review_command_expands_a_plain_prompt_op_and_leaves_other_ops
+W3S-3	session-core	ported ultron-review.test.ts expansion expectations (one-cell prompt, JSON literal, --post rule, non-matches)	session_core_review_command_ported_typescript_expectations
+W3S-4	cli	worker expands /review for controller steer/followUp/prompt and session-ops enqueue; idle-queued messages precede the prompt	cli_daemon_review_command_expands_for_every_client_entry_like_typescript
+W3S-5	interactive	TUI sends /review as typed (prompt idle, steer while running)	interactive_commands_review_is_sent_as_typed_for_the_worker_to_expand
+W3S-6	session-core	all modes: idle steer/followUp/nextRun placed before the prompt in queue order	session_core_idle_queue_takes_every_queued_message_before_the_prompt_in_all_mode
+W3S-7	session-core	one-at-a-time: first of each kind taken, rest left in the lane inbox and delivered by the run	session_core_idle_queue_takes_the_first_of_each_kind_one_at_a_time_and_delivers_the_rest
+W3S-8	session-core	steering one-at-a-time with follow-ups all	session_core_idle_queue_mixes_one_at_a_time_steering_with_all_follow_ups
+W3S-9	session-core	a lone idle follow-up precedes the prompt	session_core_idle_queue_places_a_lone_follow_up_before_the_prompt
+W3S-10	session-core	revived subagent keeps its rlm.spawn name (recorded per task)	session_core_agent_hub_revives_an_interrupted_subagent_from_its_brief
+W3S-11	interactive	agents.status {graph:true} falls back to the plain listing on "Unknown payload field"	interactive_p_tui_rlm_agents_status_falls_back_to_the_plain_listing
+W3S-12	interactive	progress.assess for at most 8 running tasks, only while the panel or graph shows; subagents merged without duplicates	interactive_p_tui_rlm_assesses_running_tasks_only_while_a_view_shows
+W3S-13	interactive	a round's assessments show in graph task details; stale rounds dropped	interactive_p_tui_rlm_progress_shows_in_the_task_details
+W3S-14	interactive	poll set includes agents.status {graph:true}	interactive_p_tui_rlm_polls_inspections_on_the_clock
+W3S-15	cli	RLM panel tasks/tokens gauges match TypeScript through the real worker (only the kernels strip differs)	cli_interactive_rlm_views_like_ts
+W3R-01	client	RadiusReopen backs off 1000/2000 ms, reconnects through the gateway and re-attaches the Session	client_radius_reopen_retries_with_backoff_and_reattaches_the_session
+W3R-02	client	RadiusReopen gives up with the last attempt's error; past its deadline it stops before any attempt	client_radius_reopen_gives_up_with_the_last_error
+W3R-03	cli	one-shot Radius client whose relay drops mid-prompt reconnects, rejoins and prints the whole answer, exit 0	cli_radius_client_prompt_survives_a_dropped_relay
+W3R-04	cli	client without --connect over several servers: listing across servers, per-server attach/prompt, --continue newest, missing/ambiguous/new-session/plugin/model errors	cli_client_without_connect_works_across_several_servers
+W3R-05	cli	choose_server matches runClientOperation and prepareClientSession (order, tie-breaks, TUI errors)	cli_client_server_choice_matches_run_client_and_prepare_client_session
+W3R-06	interactive	editor cursor hidden while Radius recovery is busy and while the RLM pane has focus	interactive_radius_recovery_hides_the_editor_cursor
+W3R-07	cli	ultron server stdout/stderr/exit code and gateway upgrades/close frames equal the recorded TS run (6 scenarios)	cli_radius_server_command_prints_what_typescript_prints
+W3K-01	loki	init without --minimal matches loki.py (42 recorded cases: hooks, linters, CI, Codex TOML, shims, --force, --shell-guard, --managed-dir, errors)	loki_init_matches_loki_py_corpus
+W3K-02	loki	init hook merge drops stale Loki handlers, keeps foreign ones	loki_init_merge_keeps_foreign_handlers_and_drops_stale_loki_ones
+W3K-03	host	guard stats count checks and blocks (file-hooks.ts test)	host_guard_stats_count_checks_and_blocks_like_file_hooks_ts
+W3K-04	host	shell checks counted; commands that write nothing never reach guards	host_guard_stats_count_shell_checks_and_skip_commands_that_write_nothing
+W3K-05	host	shell guard timeout lets the command run, counted unchecked	host_guard_that_does_not_answer_in_time_lets_the_command_run
+W3K-06	host	write guard timeout or error writes with the TS note text	host_guard_that_does_not_answer_in_time_lets_the_write_proceed_with_a_note
+W3K-07	host	disabled or non-write guards are not asked or counted	host_disabled_guards_are_not_asked_or_counted
+W3K-08	host	GuardRecord fields and turn-time reset	host_guard_records_and_turn_times_follow_file_hooks_ts
+W3K-09	host	after-cell stats and records (findings, advisory, unchecked, clean)	host_after_cell_stats_count_findings_and_failures_not_advisories
+W3K-10	host	host requests check writes and shell commands as the requesting lane	host_requests_check_writes_and_commands_as_the_requesting_lane
+W3K-11	session-core	before_file_write answer maps to a verdict; event carries path, content, cwd, lane	session_core_extension_before_write_maps_the_event_answer_to_a_verdict
+W3K-12	session-core	extension guard through FileHooks: block, note, unchecked, inactive without handlers	session_core_extension_before_write_through_file_hooks
+W3K-13	session-core	ULTRON_LOKI_LOG lines are JSON with "at" first; unset or blank writes nothing	session_core_loki_log_lines_are_json_with_at_first
+W3K-14	cli	real extension process guards cell writes; pool guards stats, log lines, per-turn reset	cli_extension_before_file_write_guards_cell_writes
+W3M-01	ai/vertex	certificate credential_source: subject token, chain order, config lookup, errors; STS + impersonation over mTLS	ai_google_vertex_adc_replays_recorded_typescript_scenarios
+W3M-02	ai/vertex	mTLS exchange presents the workload certificate to a 127.0.0.1 TLS fake	ai_google_auth_certificate_source_exchanges_over_mtls
+W3M-03	ai/vertex	fake requires a client cert; with_client_identity satisfies it	ai_google_auth_mtls_fake_refuses_a_client_without_a_certificate
+W3M-04	ai/vertex	trust chain PEM blocks follow upstream regex	ai_google_auth_trust_chain_blocks_follow_the_upstream_regex
+W3M-05	ai/vertex	gcloud well-known path joins like path.join	ai_google_auth_well_known_path_joins_like_node
+W3M-06	ai/net	proxy choice matches undici EnvHttpProxyAgent (200 cases)	ai_net_proxy_choice_matches_undici_env_http_proxy_agent
+W3M-07	ai/net	injected proxy forwards http and CONNECTs https	ai_net_injected_proxy_carries_http_and_tunnels_https
+W3M-08	ai/net	NO_PROXY hosts go direct	ai_net_no_proxy_entries_go_direct
+W3M-09	ai/net	configured client ignores the process environment	ai_net_client_config_ignores_the_process_environment
+W3M-10	ai/net	lowercase proxy var wins even when empty	ai_net_lowercase_variables_win_even_when_empty
+W3M-11	cli/proxy	httpProxy setting carries the self-update version check	cli_proxy_setting_carries_the_self_update_version_check
+W3M-12	cli/proxy	setup fetch honours HTTP_PROXY/NO_PROXY	cli_proxy_setup_fetch_goes_through_the_injected_proxy
+W3M-13	cli/proxy	OAuth/login transports tunnel through HTTPS_PROXY	cli_proxy_oauth_requests_tunnel_through_https_proxy
+W3M-14	cli/proxy	offline run sends nothing	cli_proxy_offline_run_sends_nothing
+W3M-15	cli/proxy	npm/git children get the run's proxy variables	cli_proxy_package_installs_pass_the_proxy_to_npm
+W3M-16	cli/signin	line editing and echo	cli_line_input_reads_an_edited_line_and_echoes_it
+W3M-17	cli/signin	Esc/Ctrl+C cancel, EOF closes	cli_line_input_esc_and_ctrl_c_cancel_and_the_end_closes
+W3M-18	cli/signin	callback ends the read; later input not consumed	cli_line_input_callback_ends_the_question_without_taking_later_input
+W3M-19	cli/signin	pasted URL answers; deadline and Esc give up	cli_line_input_pasted_url_answers_and_the_deadline_gives_up
+W3M-20	cli/resources	-e and package skills/prompts, order, sourceInfo, --no-skills match TS DefaultResourceLoader	cli_session_resources_match_typescript_resource_loader
+W3M-21	cli/resources	-e skill/prompt paths travel in the worker options	cli_session_resources_cli_paths_travel_in_the_worker_options
+W3M-22	session-core	package and -e skills reach prompt and commands	session_core_settings_packages_and_cli_sources_reach_the_prompt_and_commands
+W3M-23	session-core	--no-skills keeps -e skills (prompt and commands)	session_core_no_skills_keeps_only_the_cli_sources_skills
+W3M-24	session-core	package extension.json discovered after the profile's; filter [] disables	session_core_package_extension_manifests_are_discovered_after_the_profiles
+W3M-25	session-core	load errors lead the [Extension issues] answer	session_core_extension_load_errors_reach_the_extension_issues_answer
+W3M-26	interactive	[Extension issues] colors load errors as errors	interactive_extension_issues_color_load_errors_as_errors
+W3M-27	interactive	load errors shown at startup	interactive_extension_load_errors_show_at_startup
+W3M-28	cli	issues answer maps type error to the error flag	cli_extension_issues_answer_keeps_load_errors_apart_from_warnings
+W3M-29	cli/setup	setup help names the Rust checks (python3, no Node.js)	cli_setup_help_names_the_checks_the_rust_setup_runs
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

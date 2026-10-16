@@ -2,6 +2,11 @@
 	"generator": "crates/ai/fixtures/generate-vertex-adc.mjs",
 	"now": 1767225600000,
 	"privateKeyDer": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCVJbRwve/PEBswVCctZhkH06BiH9TKz4v7RAYSMOgrKQFXOl4hzvDr5mRxsxhxvCK+LoAJ5yIGWg9jUkfsTlCxEBcD6SWxV3nC3DeGwa38T/z/fqkDgc+RZighn7N1oCFneu68C1MX4t+BIGmn7oz9hfZPlFIA4LLJ9sk0AB8L4Bp7iqtBmAGLSlwLQgqugSNt4D+FoNDL4J7VSxiFtqG4+i+SO7s5xZ0LhIC48fcnVmFgdv/ksi0cjVfq6P0miUu702ARPdHonk+EwqvNGHz5EvkIvFyv4v2Gmlsr6loQP3W66wemctWpjSsrBZt/vw11CioYrVfYmDeEIzYStobJAgMBAAECggEABkl9qI5S6iwYIxcC0ja1g4SrZ7W4kqvTnX+9TDh0VWz7lIqR1LI7jcVCjXSnME2CV9yMRp6XI8DZkfyHji4jnvldtwCLDNPHjOwbbRpnUG5WF32C99XvERS41q/J/x3abGeORYONzk9ZlyRfeLJ6jjvFzRykbIQMTjuDHMLhqJkm5bphzIMMFdK0BIOs0C68c7Q3bL4hylP2e+hL2WvulNdrC35NsshsPIEaKLxDvu81bGhcmKh0yOOfI5H0IZ8DfGDB7LoHEm4LPA4MVb2dwKSOyCyCSN6RWwu+LmbuM5NynG4PV/HrzLl2ZGL4KdTt6eS3oiX2/iEaaNiwOkgoBwKBgQDR+KZonZFChIEnxWnNffQhf86lnxMMmpBq4FQQTNciM+ifwRmpUF+jjruj48psFMI6LNeNtRtyA3+Fkt7DV4TL5J9jTp9QVBgUxQk3ITRMrcjzprbqHI497tVkBzsg60UREmGF4u0hEj/JZorY8ETmr6QeJl3SuhaaAIp4IdZkXwKBgQC1165Lm7dT3s9VvGiKgcCkEe4o8yFn6p8qp+7/dJCmP9oxsSQu+u/gCrzzQJOqYrFR7jMtAPfB5bxsHEWpo6WS422JJo8Ey0DhKFQRnZwhlnLSVVhtuhrWSmZOgjsOjbUrerait2JfM4iLID3w1asNGoVQVL0PBeucepK/cmml1wKBgAXT6/J9ZRm+icMr1IrykwMXBApOxv2TkKyWu16Uc2gsnqlId8jeRTlJ7eVXnjevv9BTjEwPmcppVHHFqM8tL69lEhN0jDFzlBOHgID6N/Rk4m3405zd3AjWBzA2jyqTvSADLZfEu6YuVnzljrcEvDTW7Sw1DmeZ6KSvnShGcCfrAoGAcv+RZJN3nvzbllburhlcoOYN/au0xqkkO6+0f61SBTGAZcinH2bm6IMh95wxRqHfjfbcOmvQQ7lsLdq7W4r4nSpjDUdrTxbTUxFUCUfpg3xH5SjAIbR+YGLwzFmjy5JmrraOZd0fwyEuCv467eHSqRjKkoDkh2mxFWaXA6fxlEUCgYEAxBrBgKZjtM2U+xEhx3C7nmM5D5SViYNKc6YJ8V78I9Be8F4z4BzoRE8RQONzIIS1geSWRyKkajx4UM/BvfePAk3acxXQFG6swcLHmPFZWcnRM8zILns/nsr9cZSWqDtiUUX8LsTWQHj9tOMKb3a6D5b7/pvX6p6vemmViF1QySY=",
+	"certificates": {
+		"leaf": "MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4",
+		"other": "MIIBlzCCAT2gAwIBAgIUNsepR7dB/fXD/VUXMDZG30VfCagwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVd2lmLWludGVybWVkaWF0ZS50ZXN0MCAXDTI2MTAxNjE3NTE1OVoYDzIxMjYwOTIyMTc1MTU5WjAgMR4wHAYDVQQDDBV3aWYtaW50ZXJtZWRpYXRlLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARJP1uunQECauNMsY1CHCU1Sde9iWcNHwpCtM3M/+b2VGnw226Ii/eYa370lZwvh1e0la7YVOqJjHNC5T6UM22Ko1MwUTAdBgNVHQ4EFgQU0MZ8kDkat0KwGuw+lRZi29VXaVIwHwYDVR0jBBgwFoAU0MZ8kDkat0KwGuw+lRZi29VXaVIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAV7nHTmz8wmx14QeSeunjz6deSdOJMBXVE73nDgstwJgIhALNx751abcz410zMaxG79tEcPzaZ777krbeZBdL5zu4j",
+		"leafKey": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg5EdEKZe4eIZ+OUq8zIoqeV2jC7i042Atz9TipunjZ0OhRANCAATJu0ve7hn/JcyBnyMwqdOkHob36uHIWMa4PYvSBVcmHHMfCRUvfRSwqjmv2119qZvaw55vRxqAr8I8F7Cebws0"
+	},
 	"scenarios": [
 		{
 			"name": "adc/authorized-user-key-file-regional",
@@ -12930,6 +12935,4034 @@
 				}
 			],
 			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-location",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-trust-chain-leaf-first-impersonation",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json",
+							"trust_chain_path": "<dir>/certs/chain-leaf-first.pem"
+						}
+					},
+					"service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/wif-sa@p.iam.gserviceaccount.com:generateAccessToken"
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert-sts\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"accessToken\":\"at-cert-impersonated\",\"expireTime\":\"2026-01-01T01:00:00Z\"}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\",\"MIIBlzCCAT2gAwIBAgIUNsepR7dB/fXD/VUXMDZG30VfCagwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVd2lmLWludGVybWVkaWF0ZS50ZXN0MCAXDTI2MTAxNjE3NTE1OVoYDzIxMjYwOTIyMTc1MTU5WjAgMR4wHAYDVQQDDBV3aWYtaW50ZXJtZWRpYXRlLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARJP1uunQECauNMsY1CHCU1Sde9iWcNHwpCtM3M/+b2VGnw226Ii/eYa370lZwvh1e0la7YVOqJjHNC5T6UM22Ko1MwUTAdBgNVHQ4EFgQU0MZ8kDkat0KwGuw+lRZi29VXaVIwHwYDVR0jBBgwFoAU0MZ8kDkat0KwGuw+lRZi29VXaVIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAV7nHTmz8wmx14QeSeunjz6deSdOJMBXVE73nDgstwJgIhALNx751abcz410zMaxG79tEcPzaZ777krbeZBdL5zu4j\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/wif-sa@p.iam.gserviceaccount.com:generateAccessToken",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json",
+						"authorization": "Bearer at-cert-sts",
+						"content-type": "application/json"
+					},
+					"body": {
+						"scope": [
+							"https://www.googleapis.com/auth/cloud-platform"
+						],
+						"lifetime": "3600s"
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert-impersonated",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-trust-chain-without-leaf",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json",
+							"trust_chain_path": "<dir>/certs/other.pem"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert-chain\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\",\"MIIBlzCCAT2gAwIBAgIUNsepR7dB/fXD/VUXMDZG30VfCagwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVd2lmLWludGVybWVkaWF0ZS50ZXN0MCAXDTI2MTAxNjE3NTE1OVoYDzIxMjYwOTIyMTc1MTU5WjAgMR4wHAYDVQQDDBV3aWYtaW50ZXJtZWRpYXRlLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARJP1uunQECauNMsY1CHCU1Sde9iWcNHwpCtM3M/+b2VGnw226Ii/eYa370lZwvh1e0la7YVOqJjHNC5T6UM22Ko1MwUTAdBgNVHQ4EFgQU0MZ8kDkat0KwGuw+lRZi29VXaVIwHwYDVR0jBBgwFoAU0MZ8kDkat0KwGuw+lRZi29VXaVIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAV7nHTmz8wmx14QeSeunjz6deSdOJMBXVE73nDgstwJgIhALNx751abcz410zMaxG79tEcPzaZ777krbeZBdL5zu4j\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert-chain",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-trust-chain-leaf-not-first",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json",
+							"trust_chain_path": "<dir>/certs/chain-leaf-second.pem"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Leaf certificate exists in the trust chain but is not the first entry (found at index 1)."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Leaf certificate exists in the trust chain but is not the first entry (found at index 1)."
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-trust-chain-missing",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json",
+							"trust_chain_path": "<dir>/certs/absent.pem"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to process certificate chain from <dir>/certs/absent.pem: ENOENT: no such file or directory, open '<dir>/certs/absent.pem'"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to process certificate chain from <dir>/certs/absent.pem: ENOENT: no such file or directory, open '<dir>/certs/absent.pem'"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-default-config-env",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none",
+				"GOOGLE_API_CERTIFICATE_CONFIG": "<dir>/certs/config.json"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"use_default_certificate_config": true
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert-env\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert-env",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-default-config-env-invalid",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none",
+				"GOOGLE_API_CERTIFICATE_CONFIG": "<dir>/certs/absent.json"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"use_default_certificate_config": true
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Path from environment variable \"GOOGLE_API_CERTIFICATE_CONFIG\" is invalid: <dir>/certs/absent.json"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Path from environment variable \"GOOGLE_API_CERTIFICATE_CONFIG\" is invalid: <dir>/certs/absent.json"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-default-config-well-known",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"use_default_certificate_config": true
+						}
+					}
+				},
+				".config/gcloud/certificate_config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert-gcloud\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert-gcloud",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-default-config-cloudsdk",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none",
+				"CLOUDSDK_CONFIG": "<dir>/sdk"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"use_default_certificate_config": true
+						}
+					}
+				},
+				"sdk/certificate_config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 200,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"access_token\":\"at-cert-sdk\",\"issued_token_type\":\"urn:ietf:params:oauth:token-type:access_token\",\"token_type\":\"Bearer\",\"expires_in\":3600}"
+					]
+				},
+				{
+					"chunks": [
+						"data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":1,\"totalTokenCount\":6}}\r\n\r\n"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [
+					{
+						"type": "text",
+						"text": "ok"
+					}
+				],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 5,
+					"output": 1,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"reasoning": 0,
+					"totalTokens": 6,
+					"cost": {
+						"input": 0.000015,
+						"output": 0.000015,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0.00003
+					}
+				},
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"rawStopReason": "STOP"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "start",
+					"partial": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_start",
+					"contentIndex": 0,
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": ""
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_delta",
+					"contentIndex": 0,
+					"delta": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "pending",
+						"timestamp": 1767225600000
+					}
+				},
+				{
+					"type": "text_end",
+					"contentIndex": 0,
+					"content": "ok",
+					"partial": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				},
+				{
+					"type": "done",
+					"reason": "stop",
+					"message": {
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "ok"
+							}
+						],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 5,
+							"output": 1,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"reasoning": 0,
+							"totalTokens": 6,
+							"cost": {
+								"input": 0.000015,
+								"output": 0.000015,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0.00003
+							}
+						},
+						"stopReason": "stop",
+						"timestamp": 1767225600000,
+						"rawStopReason": "STOP"
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				},
+				{
+					"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/w-cert/locations/us-central1/publishers/google/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+					"method": "POST",
+					"headers": {
+						"authorization": "Bearer at-cert-sdk",
+						"content-type": "application/json",
+						"user-agent": "<pi-user-agent>"
+					},
+					"body": {
+						"contents": [
+							{
+								"parts": [
+									{
+										"text": "hi"
+									}
+								],
+								"role": "user"
+							}
+						],
+						"systemInstruction": {
+							"parts": [
+								{
+									"text": "sys"
+								}
+							],
+							"role": "user"
+						},
+						"generationConfig": {}
+					}
+				}
+			],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-default-config-missing",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"use_default_certificate_config": true
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Could not find certificate configuration file. Searched override path, the \"GOOGLE_API_CERTIFICATE_CONFIG\" env var, and the gcloud path (<dir>/.config/gcloud/certificate_config.json)."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Could not find certificate configuration file. Searched override path, the \"GOOGLE_API_CERTIFICATE_CONFIG\" env var, and the gcloud path (<dir>/.config/gcloud/certificate_config.json)."
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-location-missing",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/absent.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Provided certificate config path is invalid: <dir>/certs/absent.json"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Provided certificate config path is invalid: <dir>/certs/absent.json"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-location-directory",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Provided certificate config path is invalid: <dir>/certs"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Provided certificate config path is invalid: <dir>/certs"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-invalid-json",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": "{ not json",
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to parse certificate config from <dir>/certs/config.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to parse certificate config from <dir>/certs/config.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-without-key-path",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Certificate config file (<dir>/certs/config.json) is missing required \"cert_path\" or \"key_path\" in the workload config."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Certificate config file (<dir>/certs/config.json) is missing required \"cert_path\" or \"key_path\" in the workload config."
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-config-without-workload",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Certificate config file (<dir>/certs/config.json) is missing required \"cert_path\" or \"key_path\" in the workload config."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Certificate config file (<dir>/certs/config.json) is missing required \"cert_path\" or \"key_path\" in the workload config."
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-cert-file-missing",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/absent.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to read certificate file at <dir>/certs/absent.pem: ENOENT: no such file or directory, open '<dir>/certs/absent.pem'"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to read certificate file at <dir>/certs/absent.pem: ENOENT: no such file or directory, open '<dir>/certs/absent.pem'"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-key-file-missing",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/absent.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to read private key file at <dir>/certs/absent.key: ENOENT: no such file or directory, open '<dir>/certs/absent.key'"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to read private key file at <dir>/certs/absent.key: ENOENT: no such file or directory, open '<dir>/certs/absent.key'"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-cert-file-invalid",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/bad.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				},
+				"certs/bad.pem": "not a certificate"
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to read certificate file at <dir>/certs/bad.pem: error:0480006C:PEM routines::no start line"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to read certificate file at <dir>/certs/bad.pem: error:0480006C:PEM routines::no start line"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-key-file-invalid",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.pem"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Failed to read private key file at <dir>/certs/leaf.pem: error:1E08010C:DECODER routines::unsupported"
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Failed to read private key file at <dir>/certs/leaf.pem: error:1E08010C:DECODER routines::unsupported"
+					}
+				}
+			],
+			"requests": [],
+			"unusedResponses": 0
+		},
+		{
+			"name": "wif/certificate-sts-error",
+			"fn": "stream",
+			"model": {
+				"id": "gemini-2.5-pro",
+				"name": "Test Model",
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"baseUrl": "https://{location}-aiplatform.googleapis.com",
+				"reasoning": true,
+				"input": [
+					"text",
+					"image"
+				],
+				"cost": {
+					"input": 3,
+					"output": 15,
+					"cacheRead": 0.3,
+					"cacheWrite": 3.75
+				},
+				"contextWindow": 200000,
+				"maxTokens": 32000
+			},
+			"context": {
+				"messages": [
+					{
+						"role": "system",
+						"content": "sys",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "hi",
+						"timestamp": 2
+					}
+				]
+			},
+			"options": {
+				"project": "w-cert",
+				"location": "us-central1"
+			},
+			"processEnv": {
+				"HOME": "<dir>",
+				"METADATA_SERVER_DETECTION": "none"
+			},
+			"files": {
+				"certs/leaf.pem": "<leaf-cert>",
+				"certs/leaf.key": "<leaf-key>",
+				"certs/other.pem": "<other-cert>",
+				"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+				"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+				"certs/config.json": {
+					"cert_configs": {
+						"workload": {
+							"cert_path": "<dir>/certs/leaf.pem",
+							"key_path": "<dir>/certs/leaf.key"
+						}
+					}
+				},
+				".config/gcloud/application_default_credentials.json": {
+					"type": "external_account",
+					"audience": "//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov",
+					"subject_token_type": "urn:ietf:params:oauth:token-type:mtls",
+					"credential_source": {
+						"certificate": {
+							"certificate_config_location": "<dir>/certs/config.json"
+						}
+					}
+				}
+			},
+			"executables": [],
+			"responses": [
+				{
+					"status": 400,
+					"headers": {
+						"content-type": "application/json"
+					},
+					"chunks": [
+						"{\"error\":\"invalid_grant\",\"error_description\":\"The certificate is not trusted.\"}"
+					]
+				}
+			],
+			"result": {
+				"role": "assistant",
+				"content": [],
+				"api": "google-vertex",
+				"provider": "google-vertex",
+				"model": "gemini-2.5-pro",
+				"usage": {
+					"input": 0,
+					"output": 0,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"totalTokens": 0,
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"total": 0
+					}
+				},
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Error code invalid_grant: The certificate is not trusted."
+			},
+			"thrown": null,
+			"events": [
+				{
+					"type": "error",
+					"reason": "error",
+					"error": {
+						"role": "assistant",
+						"content": [],
+						"api": "google-vertex",
+						"provider": "google-vertex",
+						"model": "gemini-2.5-pro",
+						"usage": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"totalTokens": 0,
+							"cost": {
+								"input": 0,
+								"output": 0,
+								"cacheRead": 0,
+								"cacheWrite": 0,
+								"total": 0
+							}
+						},
+						"stopReason": "error",
+						"timestamp": 1767225600000,
+						"errorMessage": "Error code invalid_grant: The certificate is not trusted."
+					}
+				}
+			],
+			"requests": [
+				{
+					"url": "https://sts.googleapis.com/v1/token",
+					"method": "POST",
+					"headers": {
+						"accept": "application/json"
+					},
+					"body": {
+						"form": [
+							[
+								"grant_type",
+								"urn:ietf:params:oauth:grant-type:token-exchange"
+							],
+							[
+								"audience",
+								"//iam.googleapis.com/projects/123456/locations/global/workloadIdentityPools/pool/providers/prov"
+							],
+							[
+								"scope",
+								"https://www.googleapis.com/auth/cloud-platform"
+							],
+							[
+								"requested_token_type",
+								"urn:ietf:params:oauth:token-type:access_token"
+							],
+							[
+								"subject_token",
+								"[\"MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4\"]"
+							],
+							[
+								"subject_token_type",
+								"urn:ietf:params:oauth:token-type:mtls"
+							]
+						]
+					},
+					"clientIdentity": {
+						"certSha256": "5423eb64036ba28dce9090f304672edd775be432b1dea69d3edc45b0259731f2",
+						"keySha256": "e534b4d8c556cbff22b05861e2677bec0dbcc593fc6bf9b8f696cbf8fb084734"
+					}
+				}
+			],
 			"unusedResponses": 0
 		},
 		{

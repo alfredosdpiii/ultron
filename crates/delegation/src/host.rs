@@ -44,6 +44,8 @@ pub fn spawn_depth_limit(raw: Option<&str>) -> u32 {
 /// One subagent run (`NativeExternalChildRun`).
 pub struct ChildRun {
     pub task_id: String,
+    /// The `rlm.spawn(name=...)` the child was started with (kept with its task: a revived child is named so again).
+    pub name: String,
     /// The lane the child acts as: its host requests go through `host.lane_handler(&lane_name)`.
     pub lane_name: String,
     pub prompt: String,
@@ -1088,6 +1090,7 @@ impl Delegation {
         };
         let run = ChildRun {
             task_id: task_id.clone(),
+            name: name.clone(),
             lane_name: lane_name.clone(),
             prompt: brief,
             level,

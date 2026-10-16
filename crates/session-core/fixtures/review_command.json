@@ -1,0 +1,924 @@
+{
+ "cases": [
+  {
+   "operation": "prompt",
+   "text": "/review",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "  /review  ",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "  /review  ",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "  /review  ",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "  /review  ",
+   "message": "/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review main",
+   "message": "/review main\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review main",
+   "message": "/review main\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review main",
+   "message": "/review main\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review main",
+   "message": "/review main\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review main --only sec,bugs \"src/a b.py\"",
+   "message": "/review main --only sec,bugs \"src/a b.py\"\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main --only sec,bugs \\\"src/a b.py\\\"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review main --only sec,bugs \"src/a b.py\"",
+   "message": "/review main --only sec,bugs \"src/a b.py\"\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main --only sec,bugs \\\"src/a b.py\\\"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review main --only sec,bugs \"src/a b.py\"",
+   "message": "/review main --only sec,bugs \"src/a b.py\"\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main --only sec,bugs \\\"src/a b.py\\\"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review main --only sec,bugs \"src/a b.py\"",
+   "message": "/review main --only sec,bugs \"src/a b.py\"\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"main --only sec,bugs \\\"src/a b.py\\\"\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review 12 --post",
+   "message": "/review 12 --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"12 --post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review 12 --post",
+   "message": "/review 12 --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"12 --post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review 12 --post",
+   "message": "/review 12 --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"12 --post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review 12 --post",
+   "message": "/review 12 --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"12 --post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review --post=yes",
+   "message": "/review --post=yes\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post=yes\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review --post=yes",
+   "message": "/review --post=yes\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post=yes\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review --post=yes",
+   "message": "/review --post=yes\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post=yes\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review --post=yes",
+   "message": "/review --post=yes\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post=yes\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review --poster",
+   "message": "/review --poster\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--poster\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review --poster",
+   "message": "/review --poster\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--poster\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review --poster",
+   "message": "/review --poster\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--poster\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review --poster",
+   "message": "/review --poster\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--poster\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review\tsrc/x.py\n--budget 300k",
+   "message": "/review src/x.py\n--budget 300k\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/x.py\\n--budget 300k\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review\tsrc/x.py\n--budget 300k",
+   "message": "/review src/x.py\n--budget 300k\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/x.py\\n--budget 300k\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review\tsrc/x.py\n--budget 300k",
+   "message": "/review src/x.py\n--budget 300k\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/x.py\\n--budget 300k\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review\tsrc/x.py\n--budget 300k",
+   "message": "/review src/x.py\n--budget 300k\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/x.py\\n--budget 300k\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review src/\"a\"\\b",
+   "message": "/review src/\"a\"\\b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/\\\"a\\\"\\\\b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review src/\"a\"\\b",
+   "message": "/review src/\"a\"\\b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/\\\"a\\\"\\\\b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review src/\"a\"\\b",
+   "message": "/review src/\"a\"\\b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/\\\"a\\\"\\\\b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review src/\"a\"\\b",
+   "message": "/review src/\"a\"\\b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"src/\\\"a\\\"\\\\b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review ünïcode ✓",
+   "message": "/review ünïcode ✓\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"ünïcode ✓\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review ünïcode ✓",
+   "message": "/review ünïcode ✓\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"ünïcode ✓\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review ünïcode ✓",
+   "message": "/review ünïcode ✓\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"ünïcode ✓\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review ünïcode ✓",
+   "message": "/review ünïcode ✓\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"ünïcode ✓\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review a\u0001b",
+   "message": "/review a\u0001b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"a\\u0001b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review a\u0001b",
+   "message": "/review a\u0001b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"a\\u0001b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review a\u0001b",
+   "message": "/review a\u0001b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"a\\u0001b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review a\u0001b",
+   "message": "/review a\u0001b\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"a\\u0001b\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "﻿/review x﻿",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "﻿/review x﻿",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "﻿/review x﻿",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "﻿/review x﻿",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/reviewx",
+   "message": "/reviewx",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/reviewx",
+   "message": "/reviewx",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/reviewx",
+   "message": "/reviewx",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/reviewx",
+   "message": "/reviewx",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review x　",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review x　",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review x　",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review x　",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review x",
+   "message": "/review x\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"x\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review --post ",
+   "message": "/review --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review --post ",
+   "message": "/review --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review --post ",
+   "message": "/review --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review --post ",
+   "message": "/review --post\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n\nimport review_api\nreview = await review_api.run(rlm, \"--post\")\nprint(review.report)\n\nThen reply with the printed report as it is. Do not review the code yourself, edit files, or run the review again unless the cell raised an error.\n\nIf the report says a post is pending, ask me whether to post it to the pull request. Post only after I answer yes in a later message, with `await review_api.post(review, confirm=True)`; without that answer, never post.",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/review᠎x",
+   "message": "/review᠎x",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/review᠎x",
+   "message": "/review᠎x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/review᠎x",
+   "message": "/review᠎x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/review᠎x",
+   "message": "/review᠎x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/reviewer x",
+   "message": "/reviewer x",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/reviewer x",
+   "message": "/reviewer x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/reviewer x",
+   "message": "/reviewer x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/reviewer x",
+   "message": "/reviewer x",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "please /review this",
+   "message": "please /review this",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "please /review this",
+   "message": "please /review this",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "please /review this",
+   "message": "please /review this",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "please /review this",
+   "message": "please /review this",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "/Review",
+   "message": "/Review",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "/Review",
+   "message": "/Review",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "/Review",
+   "message": "/Review",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "/Review",
+   "message": "/Review",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "plain text",
+   "message": "plain text",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "plain text",
+   "message": "plain text",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "plain text",
+   "message": "plain text",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "plain text",
+   "message": "plain text",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "prompt",
+   "text": "",
+   "message": "",
+   "answer": {
+    "accepted": true,
+    "operationId": "op-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "steer",
+   "text": "",
+   "message": "",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "followUp",
+   "text": "",
+   "message": "",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  },
+  {
+   "operation": "nextRun",
+   "text": "",
+   "message": "",
+   "answer": {
+    "accepted": true,
+    "entryId": "e-1",
+    "error": null
+   }
+  }
+ ]
+}

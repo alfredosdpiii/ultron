@@ -54,6 +54,14 @@ const PRIVATE_KEY_DER =
 	"MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCVJbRwve/PEBswVCctZhkH06BiH9TKz4v7RAYSMOgrKQFXOl4hzvDr5mRxsxhxvCK+LoAJ5yIGWg9jUkfsTlCxEBcD6SWxV3nC3DeGwa38T/z/fqkDgc+RZighn7N1oCFneu68C1MX4t+BIGmn7oz9hfZPlFIA4LLJ9sk0AB8L4Bp7iqtBmAGLSlwLQgqugSNt4D+FoNDL4J7VSxiFtqG4+i+SO7s5xZ0LhIC48fcnVmFgdv/ksi0cjVfq6P0miUu702ARPdHonk+EwqvNGHz5EvkIvFyv4v2Gmlsr6loQP3W66wemctWpjSsrBZt/vw11CioYrVfYmDeEIzYStobJAgMBAAECggEABkl9qI5S6iwYIxcC0ja1g4SrZ7W4kqvTnX+9TDh0VWz7lIqR1LI7jcVCjXSnME2CV9yMRp6XI8DZkfyHji4jnvldtwCLDNPHjOwbbRpnUG5WF32C99XvERS41q/J/x3abGeORYONzk9ZlyRfeLJ6jjvFzRykbIQMTjuDHMLhqJkm5bphzIMMFdK0BIOs0C68c7Q3bL4hylP2e+hL2WvulNdrC35NsshsPIEaKLxDvu81bGhcmKh0yOOfI5H0IZ8DfGDB7LoHEm4LPA4MVb2dwKSOyCyCSN6RWwu+LmbuM5NynG4PV/HrzLl2ZGL4KdTt6eS3oiX2/iEaaNiwOkgoBwKBgQDR+KZonZFChIEnxWnNffQhf86lnxMMmpBq4FQQTNciM+ifwRmpUF+jjruj48psFMI6LNeNtRtyA3+Fkt7DV4TL5J9jTp9QVBgUxQk3ITRMrcjzprbqHI497tVkBzsg60UREmGF4u0hEj/JZorY8ETmr6QeJl3SuhaaAIp4IdZkXwKBgQC1165Lm7dT3s9VvGiKgcCkEe4o8yFn6p8qp+7/dJCmP9oxsSQu+u/gCrzzQJOqYrFR7jMtAPfB5bxsHEWpo6WS422JJo8Ey0DhKFQRnZwhlnLSVVhtuhrWSmZOgjsOjbUrerait2JfM4iLID3w1asNGoVQVL0PBeucepK/cmml1wKBgAXT6/J9ZRm+icMr1IrykwMXBApOxv2TkKyWu16Uc2gsnqlId8jeRTlJ7eVXnjevv9BTjEwPmcppVHHFqM8tL69lEhN0jDFzlBOHgID6N/Rk4m3405zd3AjWBzA2jyqTvSADLZfEu6YuVnzljrcEvDTW7Sw1DmeZ6KSvnShGcCfrAoGAcv+RZJN3nvzbllburhlcoOYN/au0xqkkO6+0f61SBTGAZcinH2bm6IMh95wxRqHfjfbcOmvQQ7lsLdq7W4r4nSpjDUdrTxbTUxFUCUfpg3xH5SjAIbR+YGLwzFmjy5JmrraOZd0fwyEuCv467eHSqRjKkoDkh2mxFWaXA6fxlEUCgYEAxBrBgKZjtM2U+xEhx3C7nmM5D5SViYNKc6YJ8V78I9Be8F4z4BzoRE8RQONzIIS1geSWRyKkajx4UM/BvfePAk3acxXQFG6swcLHmPFZWcnRM8zILns/nsr9cZSWqDtiUUX8LsTWQHj9tOMKb3a6D5b7/pvX6p6vemmViF1QySY=";
 const pem = (der) =>
 	`-----BEGIN ${"PRIVATE"} KEY-----\n${der.match(/.{1,64}/g).join("\n")}\n-----END ${"PRIVATE"} KEY-----\n`;
+// Throwaway self-signed X.509 certificates (DER, base64) and the leaf's P-256 key (PKCS#8 DER, base64), made for this
+// fixture only: an identity-pool `certificate` source (mTLS workload identity) sends the chain as its subject token.
+const CERTIFICATES = {
+	leaf: "MIIBiDCCAS2gAwIBAgIUc/SgsSpcBQ51FdzjXKDUGA0hCh4wCgYIKoZIzj0EAwIwGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDAgFw0yNjEwMTYxNzUxNTlaGA8yMTI2MDkyMjE3NTE1OVowGDEWMBQGA1UEAwwNd2lmLWxlYWYudGVzdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMm7S97uGf8lzIGfIzCp06Qehvfq4chYxrg9i9IFVyYccx8JFS99FLCqOa/bXX2pm9rDnm9HGoCvwjwXsJ5vCzSjUzBRMB0GA1UdDgQWBBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAfBgNVHSMEGDAWgBT0VOSGLeiZgfuv4h9goi5Ex1kq6jAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCXcF4vvui6mPda5BwRbAt36BzwZk6ehK05nBAITxVgKgIhAKXLd837ViuBGzNP+riDLx83tNdylEjiwM5/ZvILWri4",
+	other: "MIIBlzCCAT2gAwIBAgIUNsepR7dB/fXD/VUXMDZG30VfCagwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVd2lmLWludGVybWVkaWF0ZS50ZXN0MCAXDTI2MTAxNjE3NTE1OVoYDzIxMjYwOTIyMTc1MTU5WjAgMR4wHAYDVQQDDBV3aWYtaW50ZXJtZWRpYXRlLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARJP1uunQECauNMsY1CHCU1Sde9iWcNHwpCtM3M/+b2VGnw226Ii/eYa370lZwvh1e0la7YVOqJjHNC5T6UM22Ko1MwUTAdBgNVHQ4EFgQU0MZ8kDkat0KwGuw+lRZi29VXaVIwHwYDVR0jBBgwFoAU0MZ8kDkat0KwGuw+lRZi29VXaVIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAV7nHTmz8wmx14QeSeunjz6deSdOJMBXVE73nDgstwJgIhALNx751abcz410zMaxG79tEcPzaZ777krbeZBdL5zu4j",
+	leafKey: "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg5EdEKZe4eIZ+OUq8zIoqeV2jC7i042Atz9TipunjZ0OhRANCAATJu0ve7hn/JcyBnyMwqdOkHob36uHIWMa4PYvSBVcmHHMfCRUvfRSwqjmv2119qZvaw55vRxqAr8I8F7Cebws0",
+};
+const certPem = (der) => `-----BEGIN CERTIFICATE-----\n${der.match(/.{1,64}/g).join("\n")}\n-----END CERTIFICATE-----\n`;
 
 const clone = (v) => (v === undefined ? null : JSON.parse(JSON.stringify(v)));
 
@@ -130,12 +138,18 @@ let requests = [];
 let dir = "";
 const scrub = (value) => (typeof value === "string" ? value.replaceAll(dir, "<dir>") : value);
 async function stubFetch(url, init = {}) {
-	requests.push({
+	const request = {
 		url: String(url),
 		method: init.method ?? "GET",
 		headers: requestHeaders(init.headers),
 		body: recordBody(init.body, init.headers),
-	});
+	};
+	// gaxios hands its `agent` to fetch: an mTLS agent (certificate source) carries the client certificate and key.
+	const tls = init.agent?.options;
+	if (tls?.cert || tls?.key) {
+		request.clientIdentity = { certSha256: createHash("sha256").update(tls.cert).digest("hex"), keySha256: createHash("sha256").update(tls.key).digest("hex") };
+	}
+	requests.push(request);
 	const canned = queue.shift();
 	if (!canned) throw new Error("unexpected request");
 	// A connection failure: no response at all.
@@ -150,7 +164,12 @@ Gaxios.prototype._defaultAdapter = function (config) {
 
 const placeholders = (value) =>
 	typeof value === "string"
-		? value.replaceAll("<dir>", dir).replaceAll("<private-key>", pem(PRIVATE_KEY_DER))
+		? value
+				.replaceAll("<dir>", dir)
+				.replaceAll("<private-key>", pem(PRIVATE_KEY_DER))
+				.replaceAll("<leaf-cert>", certPem(CERTIFICATES.leaf))
+				.replaceAll("<other-cert>", certPem(CERTIFICATES.other))
+				.replaceAll("<leaf-key>", pem(CERTIFICATES.leafKey))
 		: Array.isArray(value)
 			? value.map(placeholders)
 			: value && typeof value === "object"
@@ -276,6 +295,98 @@ const externalUser = (extra = {}) => ({
 const sts = (access) => json(200, { access_token: access, issued_token_type: "urn:ietf:params:oauth:token-type:access_token", token_type: "Bearer", expires_in: 3600 });
 const text = (body) => ({ status: 200, headers: { "content-type": "text/plain" }, chunks: [body] });
 const script = (body) => `#!/bin/sh\n${body}\n`;
+
+// Identity-pool `certificate` sources: the subject token is the JSON array of base64 DER certificates (the leaf, then
+// a trust chain), and the STS exchange (and impersonation) run on an mTLS agent with the workload's cert and key.
+function certificateScenarios() {
+	const CERTS = {
+		"certs/leaf.pem": "<leaf-cert>",
+		"certs/leaf.key": "<leaf-key>",
+		"certs/other.pem": "<other-cert>",
+		"certs/chain-leaf-first.pem": "<leaf-cert><other-cert>",
+		"certs/chain-leaf-second.pem": "<other-cert><leaf-cert>",
+		"certs/config.json": { cert_configs: { workload: { cert_path: "<dir>/certs/leaf.pem", key_path: "<dir>/certs/leaf.key" } } },
+	};
+	const at = (extra = {}, certificate = { certificate_config_location: "<dir>/certs/config.json" }) =>
+		wif({ subject_token_type: "urn:ietf:params:oauth:token-type:mtls", credential_source: { certificate }, ...extra });
+	const scenario = (name, files, responses = [], processEnv = undefined) => ({
+		name: `wif/certificate-${name}`,
+		model: v25,
+		context: simple(),
+		files: { ...CERTS, ...files },
+		...(processEnv ? { processEnv } : {}),
+		options: { project: "w-cert", location: "us-central1" },
+		responses,
+	});
+	const config = (workload) => ({ cert_configs: { workload } });
+	return [
+		scenario("config-location", { [ADC]: at() }, [sts("at-cert"), done]),
+		scenario(
+			"trust-chain-leaf-first-impersonation",
+			{
+				[ADC]: at(
+					{ service_account_impersonation_url: IMPERSONATE },
+					{ certificate_config_location: "<dir>/certs/config.json", trust_chain_path: "<dir>/certs/chain-leaf-first.pem" },
+				),
+			},
+			[sts("at-cert-sts"), json(200, { accessToken: "at-cert-impersonated", expireTime: "2026-01-01T01:00:00Z" }), done],
+		),
+		scenario(
+			"trust-chain-without-leaf",
+			{ [ADC]: at({}, { certificate_config_location: "<dir>/certs/config.json", trust_chain_path: "<dir>/certs/other.pem" }) },
+			[sts("at-cert-chain"), done],
+		),
+		scenario(
+			"trust-chain-leaf-not-first",
+			{ [ADC]: at({}, { certificate_config_location: "<dir>/certs/config.json", trust_chain_path: "<dir>/certs/chain-leaf-second.pem" }) },
+		),
+		scenario(
+			"trust-chain-missing",
+			{ [ADC]: at({}, { certificate_config_location: "<dir>/certs/config.json", trust_chain_path: "<dir>/certs/absent.pem" }) },
+		),
+		scenario("default-config-env", { [ADC]: at({}, { use_default_certificate_config: true }) }, [sts("at-cert-env"), done], {
+			GOOGLE_API_CERTIFICATE_CONFIG: "<dir>/certs/config.json",
+		}),
+		scenario("default-config-env-invalid", { [ADC]: at({}, { use_default_certificate_config: true }) }, [], {
+			GOOGLE_API_CERTIFICATE_CONFIG: "<dir>/certs/absent.json",
+		}),
+		scenario(
+			"default-config-well-known",
+			{ [ADC]: at({}, { use_default_certificate_config: true }), ".config/gcloud/certificate_config.json": CERTS["certs/config.json"] },
+			[sts("at-cert-gcloud"), done],
+		),
+		scenario(
+			"default-config-cloudsdk",
+			{ [ADC]: at({}, { use_default_certificate_config: true }), "sdk/certificate_config.json": CERTS["certs/config.json"] },
+			[sts("at-cert-sdk"), done],
+			{ CLOUDSDK_CONFIG: "<dir>/sdk" },
+		),
+		scenario("default-config-missing", { [ADC]: at({}, { use_default_certificate_config: true }) }),
+		scenario("config-location-missing", { [ADC]: at({}, { certificate_config_location: "<dir>/certs/absent.json" }) }),
+		scenario("config-location-directory", { [ADC]: at({}, { certificate_config_location: "<dir>/certs" }) }),
+		scenario("config-invalid-json", { [ADC]: at(), "certs/config.json": "{ not json" }),
+		scenario("config-without-key-path", { [ADC]: at(), "certs/config.json": config({ cert_path: "<dir>/certs/leaf.pem" }) }),
+		scenario("config-without-workload", { [ADC]: at(), "certs/config.json": { cert_configs: {} } }),
+		scenario("cert-file-missing", {
+			[ADC]: at(),
+			"certs/config.json": config({ cert_path: "<dir>/certs/absent.pem", key_path: "<dir>/certs/leaf.key" }),
+		}),
+		scenario("key-file-missing", {
+			[ADC]: at(),
+			"certs/config.json": config({ cert_path: "<dir>/certs/leaf.pem", key_path: "<dir>/certs/absent.key" }),
+		}),
+		scenario("cert-file-invalid", {
+			[ADC]: at(),
+			"certs/bad.pem": "not a certificate",
+			"certs/config.json": config({ cert_path: "<dir>/certs/bad.pem", key_path: "<dir>/certs/leaf.key" }),
+		}),
+		scenario("key-file-invalid", {
+			[ADC]: at(),
+			"certs/config.json": config({ cert_path: "<dir>/certs/leaf.pem", key_path: "<dir>/certs/leaf.pem" }),
+		}),
+		scenario("sts-error", { [ADC]: at() }, [json(400, { error: "invalid_grant", error_description: "The certificate is not trusted." })]),
+	];
+}
 
 const scenarios = [
 	{
@@ -874,6 +985,7 @@ const scenarios = [
 		options: { project: "w-13", location: "us-central1" },
 		responses: [],
 	},
+	...certificateScenarios(),
 	{
 		name: "wif/executable-not-allowed",
 		model: v25,
@@ -1156,6 +1268,6 @@ assertOffline();
 const out = join(here, "google-vertex-adc.json");
 writeFileSync(
 	out,
-	`${JSON.stringify({ generator: "crates/ai/fixtures/generate-vertex-adc.mjs", now: NOW, privateKeyDer: PRIVATE_KEY_DER, scenarios: results }, null, "\t")}\n`,
+	`${JSON.stringify({ generator: "crates/ai/fixtures/generate-vertex-adc.mjs", now: NOW, privateKeyDer: PRIVATE_KEY_DER, certificates: CERTIFICATES, scenarios: results }, null, "\t")}\n`,
 );
 console.log(`wrote ${results.length} scenarios to ${out}`);

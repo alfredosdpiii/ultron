@@ -849,7 +849,7 @@ fn open_engine(
         model,
         api_key,
         resolve,
-        transport: Arc::new(ai::ReqwestTransport::new(None)),
+        transport: Arc::new(ai::ReqwestTransport::for_env(&*env.var, None)),
         retry: saved.retry,
         frame_env: frame_env(env),
         settings: inference::ModelSettings {

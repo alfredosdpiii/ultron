@@ -237,6 +237,12 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
     if (input.var)("MCP_TOOL_TIMEOUT").is_none_or(|v| v.is_empty()) {
         env.push(("MCP_TOOL_TIMEOUT".to_string(), (2 * 60 * 60 * 1000).to_string()));
     }
+    // Claude Code moves an MCP call still running after 120 s to the background; the model then calls `rlm` again
+    // to wait, and every copy later returns the same result. Ultron backgrounds cells itself (cell_done events), so a
+    // call blocks until it ends unless the user chose otherwise.
+    if (input.var)("CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS").is_none_or(|v| v.is_empty()) {
+        env.push(("CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS".to_string(), "0".to_string()));
+    }
     ClaudeLaunch {
         claude: input.claude.to_string(),
         args,

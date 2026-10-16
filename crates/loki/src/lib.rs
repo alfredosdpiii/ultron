@@ -3,7 +3,7 @@
 //! Ported: config validation, protected paths, `protect` (every preview harness,
 //! all language rule packs, Ruff/Oxlint/TypeScript previews), `hook` (git
 //! snapshots, test integrity, lockfile and dependency policy, written slop and the
-//! per-language analyzers), `scan`, `slop`, `init --minimal`, `context`, `shell`,
+//! per-language analyzers), `scan`, `slop`, `init` (with and without `--minimal`), `context`, `shell`,
 //! `shell-writes` and `explain`. Python source is parsed by CPython (`pyast`), as
 //! loki.py does. Checks that are not ported refuse with a guard error.
 
@@ -14,6 +14,7 @@ pub mod elixir;
 pub mod evidence;
 pub mod git;
 pub mod hook;
+pub mod init;
 pub mod installation;
 pub mod jsrules;
 pub mod langrules;

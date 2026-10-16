@@ -95,3 +95,98 @@ fn client_radius_connection_rejects_a_bad_server_id_before_connecting() {
         .unwrap();
     assert_eq!(error.to_string(), "serverId must be a canonical lowercase UUIDv4");
 }
+
+/// `RadiusClientReconnect`'s delays as a one-shot client reopens its relay: recorded, not waited out; `stop_at`
+/// (1-based) answers `false` on that call.
+fn recorded_sleep(
+    delays: std::sync::Arc<std::sync::Mutex<Vec<u64>>>,
+    stop_at: Option<usize>,
+) -> client::radius::ReconnectSleep {
+    std::sync::Arc::new(move |ms, _cancel: &client::radius::Cancellation| {
+        let mut delays = delays.lock().unwrap();
+        delays.push(ms);
+        stop_at != Some(delays.len())
+    })
+}
+
+fn sent_call(socket: &support::gateway::GatewaySocket, index: usize) -> serde_json::Value {
+    let sent = socket.snapshot()["sent"][index]["binary"].as_str().unwrap().to_string();
+    let mut decoder = protocol::ClientMessageDecoder::default();
+    match decoder.push(&support::gateway::unhex(&sent)).unwrap().remove(0) {
+        protocol::ClientMessage::Request { id, call, .. } => {
+            serde_json::json!({"id": id, "call": client::runtime::to_json(&call)})
+        }
+        other => panic!("not a request: {other:?}"),
+    }
+}
+
+#[test]
+fn client_radius_reopen_retries_with_backoff_and_reattaches_the_session() {
+    let gateway = Gateway::start();
+    let delays = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut reopen = client::radius::RadiusReopen::new(SERVER_ID, std::sync::Arc::new(FixedAuth(gateway.origin())));
+    reopen.sleep = Some(recorded_sleep(delays.clone(), None));
+    let (connection, socket) = std::thread::scope(|scope| {
+        let reopening = scope.spawn(|| reopen.reopen("sess-1"));
+        // The first attempt is refused; the second connects and re-attaches the Session.
+        gateway.accept(true);
+        let mut socket = gateway.accept(false);
+        socket.send(Message::Binary(hello()));
+        let attached = protocol::SessionTarget {
+            server_id: SERVER_ID.into(),
+            session_id: "sess-1".into(),
+            attachment_id: "attachment-1".into(),
+        };
+        for message in [
+            ServerMessage::Attachment {
+                attachment: Some(attached),
+            },
+            ServerMessage::Response {
+                id: "request-1".into(),
+                result: Ok(None),
+            },
+        ] {
+            socket.send(Message::Binary(
+                encode_server_message(&message, DEFAULT_MAX_FRAME_LENGTH).unwrap(),
+            ));
+        }
+        (reopening.join().unwrap().expect("reopened"), socket)
+    });
+    // 1 s before the first attempt, doubled after its failure (`CLIENT_RETRY_INITIAL_MS`, `retryMs * 2`).
+    assert_eq!(delays.lock().unwrap().clone(), vec![1_000, 2_000]);
+    assert_eq!(connection.attachment().map(|a| a.session_id), Some("sess-1".into()));
+    assert_eq!(
+        sent_call(&socket, 1),
+        serde_json::json!({"id": "request-1", "call": {"serviceId": "pi.session-management", "member": "attach", "args": ["sess-1"]}})
+    );
+    assert!(!connection.is_closed());
+    connection.disconnect();
+    socket.wait_done();
+}
+
+#[test]
+fn client_radius_reopen_gives_up_with_the_last_error() {
+    let gateway = Gateway::start();
+    let delays = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut reopen = client::radius::RadiusReopen::new(SERVER_ID, std::sync::Arc::new(FixedAuth(gateway.origin())));
+    // Stopped before the third attempt: the second attempt's error is the answer.
+    reopen.sleep = Some(recorded_sleep(delays.clone(), Some(3)));
+    let error = std::thread::scope(|scope| {
+        let reopening = scope.spawn(|| reopen.reopen("sess-1"));
+        gateway.accept(true);
+        gateway.accept(true);
+        reopening.join().unwrap().err().unwrap()
+    });
+    assert_eq!(error, "Radius WebSocket connection failed");
+    assert_eq!(delays.lock().unwrap().clone(), vec![1_000, 2_000, 4_000]);
+    // Past its deadline it stops before any attempt (an attempt would be refused at once: nothing listens on
+    // port 1, and the sleep stops it at its second delay).
+    let expired_delays = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let mut expired =
+        client::radius::RadiusReopen::new(SERVER_ID, std::sync::Arc::new(FixedAuth("http://127.0.0.1:1".into())));
+    expired.timeout = std::time::Duration::ZERO;
+    expired.sleep = Some(recorded_sleep(expired_delays.clone(), Some(2)));
+    assert_eq!(expired.reopen("sess-1").err().unwrap(), "Radius reconnect stopped");
+    assert_eq!(expired_delays.lock().unwrap().clone(), Vec::<u64>::new());
+    assert_eq!(client::radius::REOPEN_TIMEOUT, std::time::Duration::from_secs(120));
+}

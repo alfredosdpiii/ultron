@@ -988,30 +988,20 @@ fn interactive_commands_images_go_with_steering_and_follow_ups() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// `reviewPrompt` (ultron/review.ts), literal expectations from experimental-ultron-review.test.ts semantics.
+/// `reviewCommand` (slash-commands-provider.ts): `/review` is sent as typed (`/review ${args}`.trim()); the worker's
+/// agent controller expands it (session_core::review_command). While a run is in progress it is queued as steering.
 #[test]
-fn interactive_commands_review_prompt_like_ts() {
-    let plain = interactive::commands::review_prompt("  ");
-    assert!(plain.starts_with("/review\n\nRun Ultron's built-in code review in one REPL cell, exactly:\n"));
-    assert!(plain.contains("review = await review_api.run(rlm, \"\")\n"));
-    assert!(!plain.contains("post is pending"));
-    let quoted = interactive::commands::review_prompt("src/\"a\"\\b");
-    assert!(
-        quoted.contains(r#"review = await review_api.run(rlm, "src/\"a\"\\b")"#),
-        "{quoted}"
+fn interactive_commands_review_is_sent_as_typed_for_the_worker_to_expand() {
+    let (mut app, c) = app();
+    submit(&mut app, "/review main --post");
+    submit(&mut app, "/review");
+    app.apply(LaneEvent::OperationStarted("op".into()));
+    submit(&mut app, "/review 12");
+    assert_eq!(
+        calls(&c),
+        ["prompt /review main --post", "prompt /review", "steer /review 12"]
     );
-    for (args, post) in [
-        ("--post", true),
-        ("main --post=1", true),
-        ("--posting", false),
-        ("x--post", false),
-    ] {
-        assert_eq!(
-            interactive::commands::review_prompt(args).contains("post is pending"),
-            post,
-            "{args}"
-        );
-    }
+    assert!(screen(&mut app).contains("Queued s1."), "{}", screen(&mut app));
 }
 
 fn entry(id: &str, parent: Option<&str>, role: &str, text: &str) -> Value {

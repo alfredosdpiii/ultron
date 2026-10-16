@@ -1442,7 +1442,7 @@ pub fn create_setup_deps(env: &Env) -> SetupDeps {
             setup_core::probe_command(probe_path.as_deref(), command, args)
         }),
         python: setup_core::python_command(&|k| (env.var)(k)),
-        fetch: setup_core::http_fetch(),
+        fetch: setup_core::http_fetch_with(ai::net::ProxyEnv::from_lookup(&*env.var)),
         settings: SettingsManager::create(&env.cwd, &env.agent_dir(), false),
         test_model: Arc::new(test_model),
         run_docker: run_docker(path),

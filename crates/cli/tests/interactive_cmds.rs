@@ -308,21 +308,26 @@ fn cli_interactive_login_api_key_like_ts() {
     );
 }
 
-/// The RLM panel (Ctrl+R), `/rlm focus` and `/rlm pane` (the graph below 120 columns) on an idle session. The Rust
-/// worker keeps no usage limits or kernel pool yet, so its views have no `tasks`/`tokens` gauges and no `kernels`
-/// strip: every other row matches TypeScript (blank rows aside, which those missing rows shift).
+/// The RLM panel (Ctrl+R), `/rlm focus` and `/rlm pane` (the graph below 120 columns) on an idle session. The
+/// `tasks`/`tokens` gauges come from `agents.status {graph: true}` and the `kernels` strip from the inspected
+/// `rlm.pool`, as in TypeScript. The Rust session opens the root lane's kernel at once (TypeScript's starts on the
+/// first cell), so the strip says `1/16` live where TypeScript's says `0/16`: it is compared by its counters after
+/// the live count. Every other row matches TypeScript (blank rows aside).
 #[test]
 fn cli_interactive_rlm_views_like_ts() {
-    let gauge = |row: &str| row.contains("tasks ▱") || row.trim_start().starts_with("kernels ");
+    let kernels = |row: &str| row.trim_start().starts_with("kernels ");
     replay_compare("rlm-panel", &|got: &str, want: &str| {
-        let rows = |screen: &str, drop: bool| -> Vec<String> {
+        let rows = |screen: &str| -> Vec<String> {
             screen
                 .lines()
-                .filter(|l| !l.trim().is_empty() && !(drop && gauge(l)))
-                .map(str::to_string)
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| match l.split_once("/16 · ") {
+                    Some((_, counters)) if kernels(l) => format!("kernels <live>/16 · {counters}"),
+                    _ => l.to_string(),
+                })
                 .collect()
         };
-        assert_eq!(rows(got, false), rows(want, true), "--- got\n{got}\n--- want\n{want}");
+        assert_eq!(rows(got), rows(want), "--- got\n{got}\n--- want\n{want}");
     });
 }
 

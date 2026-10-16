@@ -17,6 +17,7 @@ pub mod file_args;
 pub mod instances;
 pub mod interactive;
 pub mod js;
+pub mod line_input;
 pub mod link;
 pub mod list_models;
 pub mod localtime;

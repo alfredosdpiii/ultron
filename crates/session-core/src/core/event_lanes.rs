@@ -301,7 +301,7 @@ impl Core {
         if self.run.is_some() {
             return Accepted::Busy;
         }
-        if let Err((error, _)) = self.prompt_with(message, None) {
+        if let Err((error, _)) = self.prompt_with(message, None, true) {
             return Accepted::Refused(error);
         }
         let Some(operation) = self.operation_id() else {

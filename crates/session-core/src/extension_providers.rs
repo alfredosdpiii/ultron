@@ -118,7 +118,18 @@ pub fn load_headless(
     let agent_dir = env.agent_dir();
     let trusted = crate::extension_commands::worker_project_trusted(&env.cwd, &agent_dir, &env.home);
     let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir, trusted);
-    let discovery = crate::session_flags::extension_discovery(env, &agent_dir, &settings, flags, no_extensions);
+    // The settings packages' manifests too (installed when missing, as the session's resource loading does).
+    let resources = if no_extensions {
+        Default::default()
+    } else {
+        crate::session_resources::resolve(
+            env,
+            config::settings::SettingsManager::create(&env.cwd, &agent_dir, trusted),
+            flags,
+        )
+    };
+    let discovery =
+        crate::session_flags::extension_discovery_with(env, &agent_dir, &settings, flags, no_extensions, &resources);
     if discovery.manifests.is_empty() {
         return None;
     }

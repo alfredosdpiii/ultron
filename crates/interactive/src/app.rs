@@ -218,7 +218,24 @@ struct RlmPoll {
     context: Option<crate::rlm::visualizer::RlmContextState>,
     retained: std::collections::HashSet<String>,
     last: Option<Instant>,
+    /// `agents.status {graph: true}`: the session's tasks, usage, limits, jobs, tool calls and workflows.
+    status: Option<crate::rlm::visualizer::AgentsStatus>,
+    /// The last failure of `agents.status` (cleared by the next answer).
+    error: Option<String>,
+    /// The worker rejected `agents.status {graph: true}` (`#graphListing` false): the plain listing is polled.
+    plain_listing: bool,
+    /// `progress.assess` of running tasks, polled only while the docked panel or the graph shows.
+    progress: std::collections::HashMap<String, crate::rlm::visualizer::RlmProgress>,
+    /// The assessment round in flight: its number, the answers so far and how many are still out.
+    assessing: (
+        u64,
+        std::collections::HashMap<String, crate::rlm::visualizer::RlmProgress>,
+        usize,
+    ),
 }
+
+/// Running tasks assessed per poll (`RLM_MAX_ASSESSED`).
+const RLM_MAX_ASSESSED: usize = 8;
 
 /// `nextModel` (client-tui-actions.ts): the next model in the `enabledModels` scope when it selects any
 /// (`resolveModelScopeFromModels`: globs, fuzzy ids and names, `:<thinking>` suffixes accepted and not applied,
@@ -1450,8 +1467,8 @@ impl App {
             LaneEvent::ExtensionCommands(commands) => self.set_extension_commands(commands),
             LaneEvent::ExtensionShortcuts { shortcuts, diagnostics } => {
                 self.extension_shortcuts = shortcuts;
-                if let Some(issues) = crate::extension_shortcuts::issues(&diagnostics) {
-                    self.notice(&fg(&self.theme, "warning", &issues));
+                if let Some(issues) = crate::extension_shortcuts::issues_block(&self.theme, &diagnostics) {
+                    self.notice(&issues);
                 }
             }
             LaneEvent::ExtensionCompletions { name, prefix, items } => {
@@ -2459,13 +2476,16 @@ impl App {
             }
             // Extension commands run in the session's worker; their dialogs and notices come back as extension UI.
             "mcp" => self.client.extension_command("mcp", args.trim()),
+            // `reviewCommand` (slash-commands-provider.ts): sent as typed; the worker's agent controller expands it
+            // (session_core::review_command), as it does for queued messages.
             "review" => {
                 self.show_status("Reviewing changes…");
+                let message = format!("/review {args}").trim().to_string();
                 if self.operation.is_some() {
-                    let id = self.client.steer(&crate::commands::review_prompt(args));
+                    let id = self.client.steer(&message);
                     self.status = format!("Queued {id}.");
                 } else {
-                    self.client.prompt(&crate::commands::review_prompt(args));
+                    self.client.prompt(&message);
                 }
             }
             "logout" => self.client.credentials(),
@@ -3411,7 +3431,10 @@ impl App {
     /// kernel pool, the context state, retained instances); answers arrive as lane events.
     fn refresh_rlm(&mut self) {
         self.rlm_poll.last = Some(self.now());
+        // The `rlm.spawn` subagents: the Rust worker keeps them in a task journal of their own, which
+        // `agents.status` does not list (TypeScript's one task host lists both).
         self.client.rlm_status();
+        self.inspect_agents_status();
         self.client
             .rlm_inspect("frames", "rlm.frames", serde_json::json!({ "limit": RLM_FRAME_LIMIT }));
         self.client.rlm_inspect("pool", "rlm.pool", serde_json::json!({}));
@@ -3441,9 +3464,111 @@ impl App {
         true
     }
 
+    /// `agents.status {graph: true}`, or the plain listing once the worker rejected the graph field.
+    fn inspect_agents_status(&mut self) {
+        let payload = if self.rlm_poll.plain_listing {
+            serde_json::json!({})
+        } else {
+            serde_json::json!({ "graph": true })
+        };
+        self.client.rlm_inspect("agents", "agents.status", payload);
+    }
+
+    /// `agents.status`'s answer (`#refreshRlm`): a worker that rejects `{graph: true}` is asked for the plain
+    /// listing at once; then the running tasks' progress is assessed.
+    fn agents_status_inspected(&mut self, result: Result<Value, String>) {
+        match result {
+            Ok(value) => {
+                self.rlm_poll.status = Some(crate::rlm::visualizer::parse_agents_status(&value));
+                self.rlm_poll.error = None;
+            }
+            Err(error) => {
+                if !self.rlm_poll.plain_listing && error.contains("Unknown payload field") {
+                    self.rlm_poll.plain_listing = true;
+                    self.inspect_agents_status();
+                }
+                self.rlm_poll.error = Some(error);
+            }
+        }
+        self.assess_progress();
+        self.auto_open_rlm_pane();
+        self.wave_active = !self.wave_summary(200).is_empty();
+    }
+
+    /// "Progress assessments are cheap host reads; only fetch them for a few running tasks while visible": while the
+    /// docked panel or the graph shows, `progress.assess` of the first [`RLM_MAX_ASSESSED`] running tasks; else none.
+    fn assess_progress(&mut self) {
+        let round = self.rlm_poll.assessing.0 + 1;
+        self.rlm_poll.assessing = (round, std::collections::HashMap::new(), 0);
+        if !(self.rlm_visible || matches!(self.panel, Some(Panel::RlmFocus(_)))) {
+            self.rlm_poll.progress.clear();
+            return;
+        }
+        let running: Vec<String> = self
+            .rlm_status()
+            .tasks
+            .into_iter()
+            .filter(|task| crate::rlm::visualizer::is_active_state(&task.state))
+            .take(RLM_MAX_ASSESSED)
+            .map(|task| task.id)
+            .collect();
+        if running.is_empty() {
+            self.rlm_poll.progress.clear();
+            return;
+        }
+        self.rlm_poll.assessing.2 = running.len();
+        for id in running {
+            self.client.rlm_inspect(
+                &format!("progress:{round}:{id}"),
+                "progress.assess",
+                serde_json::json!({ "task_id": id }),
+            );
+        }
+    }
+
+    /// One `progress.assess` answer of round `round`; the round's assessments replace the shown ones when the last
+    /// answer arrives (a failed or unreadable one is left out).
+    fn progress_inspected(&mut self, round: u64, id: &str, result: Result<Value, String>) {
+        let (current, answers, left) = &mut self.rlm_poll.assessing;
+        if *current != round || *left == 0 {
+            return;
+        }
+        if let Some(progress) = result
+            .ok()
+            .and_then(|value| crate::rlm::visualizer::parse_progress(&value))
+        {
+            answers.insert(id.to_string(), progress);
+        }
+        *left -= 1;
+        if *left == 0 {
+            self.rlm_poll.progress = std::mem::take(answers);
+        }
+    }
+
+    /// The session's work as the RLM views list it: `agents.status`, then the subagents it does not list.
+    fn rlm_status(&self) -> crate::rlm::visualizer::AgentsStatus {
+        use crate::rlm::visualizer::parse_agents_status;
+        let mut status = self.rlm_poll.status.clone().unwrap_or_default();
+        let subagents = parse_agents_status(&serde_json::json!({"tasks": self.rlm_agents["subagents"]}));
+        for task in subagents.tasks {
+            if !status.tasks.iter().any(|known| known.id == task.id) {
+                status.tasks.push(task);
+            }
+        }
+        status
+    }
+
     /// An RLM inspection's answer (`#refreshRlm`): a failed one leaves the pool and context unknown.
     fn rlm_inspected(&mut self, tag: &str, result: Result<Value, String>) {
         use crate::rlm::visualizer::{parse_context_state, parse_frames, parse_pool, parse_retained};
+        if tag == "agents" {
+            return self.agents_status_inspected(result);
+        }
+        if let Some((round, id)) = tag.strip_prefix("progress:").and_then(|rest| rest.split_once(':')) {
+            let round = round.parse().unwrap_or_default();
+            let id = id.to_string();
+            return self.progress_inspected(round, &id, result);
+        }
         if let Some(key) = tag.strip_prefix("trace:") {
             if let Some(Panel::RlmFocus(focus)) = self.panel.as_mut() {
                 match &result {
@@ -3565,9 +3690,9 @@ impl App {
         if matches!(self.panel, Some(Panel::RlmFocus(_))) {
             return;
         }
-        self.client.rlm_status();
         self.panel = Some(Panel::RlmFocus(Box::new(crate::rlm::RlmGraphFocus::new())));
         self.editor.focused = false;
+        self.refresh_rlm();
     }
 
     /// The focus view's height: the screen above the footer (`#openRlmFocus`).
@@ -3578,9 +3703,7 @@ impl App {
 
     /// `#buildRlmSnapshot`: the session's subagents (polled) and the root turn's `rlm` cells (the transcript).
     fn rlm_snapshot(&mut self) -> crate::rlm::RlmSnapshot {
-        use crate::rlm::visualizer::{
-            RunningTool, TranscriptView, extract_root_cell, extract_turn, parse_agents_status,
-        };
+        use crate::rlm::visualizer::{RunningTool, TranscriptView, extract_root_cell, extract_turn};
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0.0, |d| d.as_millis() as f64);
@@ -3616,7 +3739,7 @@ impl App {
         );
         let (turn, cells) = extract_turn(Some(&view), &mut self.rlm_clock, now, 30);
         let root_cell = extract_root_cell(Some(&view), &mut self.rlm_clock, now);
-        let status = parse_agents_status(&serde_json::json!({"tasks": self.rlm_agents["subagents"]}));
+        let status = self.rlm_status();
         let timing = self.rlm_clock.timings(&status.tasks, status.usage.as_ref(), now);
         crate::rlm::RlmSnapshot {
             now,
@@ -3635,7 +3758,8 @@ impl App {
             pool: self.rlm_poll.pool.clone(),
             context: self.rlm_poll.context.clone(),
             retained: self.rlm_poll.retained.clone(),
-            ..crate::rlm::RlmSnapshot::default()
+            progress: self.rlm_poll.progress.clone(),
+            error: self.rlm_poll.error.clone(),
         }
     }
 
@@ -4450,7 +4574,8 @@ impl App {
             (None, Some(Panel::TextEditor { dialog, .. })) => dialog.render(width, self.rows),
             (None, Some(Panel::ShareLoader(loader))) => loader.render(width),
             (None, None) => {
-                self.editor.focused = true;
+                // `#chatInput.focused = !#busy && !(rlm pane focused and shown)`: no cursor while recovering.
+                self.editor.focused = !self.recovering && !(self.rlm_pane_focused && self.rlm_pane_shown());
                 self.editor.terminal_rows = self.rows;
                 self.editor.render(width)
             }

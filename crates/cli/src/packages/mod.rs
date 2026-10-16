@@ -1,10 +1,6 @@
 //! Package management (`core/package-manager.ts` and the helpers it uses): sources, npm and git installs, resource
-//! resolution for `ultron config`.
+//! resolution for `ultron config`. The manager lives in session-core (a session resolves its settings' packages too);
+//! the themes the client TUI registers stay here.
 
-pub mod git_url;
-pub mod glob;
-pub mod ignore;
-pub mod manager;
-pub mod resources;
-pub mod semver;
+pub use session_core::packages::{git_url, glob, ignore, manager, resources, semver};
 pub mod themes;

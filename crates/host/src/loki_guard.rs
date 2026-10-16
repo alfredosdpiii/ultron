@@ -113,6 +113,27 @@ fn count(n: usize, noun: &str) -> String {
     format!("{n} {noun}{}", if n == 1 { "" } else { "s" })
 }
 
+/// A `.loki/` file whose content is the committed one: a `git checkout`, `switch` or `commit` in the cell brought
+/// it there, so it is no change to the policy and not reported as one (a branch switch otherwise reported
+/// `protected file: .loki/loki.json` on the cell). Untracked or modified `.loki/` files are still checked.
+fn loki_file_as_committed(root: &Path, relative: &str) -> bool {
+    if !relative.starts_with(".loki/") {
+        return false;
+    }
+    let git = |args: &[&str]| {
+        Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    };
+    git(&["ls-files", "--error-unmatch", "--", relative]) && git(&["diff", "--quiet", "HEAD", "--", relative])
+}
+
 fn first_line(text: &str) -> String {
     text.split('\n')
         .map(str::trim)
@@ -312,6 +333,12 @@ impl FileWriteGuard for LokiGuard {
         "Loki"
     }
 
+    /// The Rust engine checks in-process (its tool runs have their own limits): no per-call limit, so a check
+    /// slowed by machine load still decides the write instead of letting it through unchecked.
+    fn timeout(&self) -> Option<std::time::Duration> {
+        None
+    }
+
     fn before_write(&self, path: &Path, content: &str, cwd: &Path) -> Result<Verdict, String> {
         let Some(relative) = inside(&self.root, path) else {
             return Ok(Verdict::Allow(None));
@@ -353,6 +380,7 @@ impl FileWriteGuard for LokiGuard {
         for path in changes.files.iter().chain(&changes.checked) {
             if let Some(relative) = inside(&self.root, path)
                 && !targets.contains(&relative)
+                && !loki_file_as_committed(&self.root, &relative)
             {
                 targets.push(relative);
             }

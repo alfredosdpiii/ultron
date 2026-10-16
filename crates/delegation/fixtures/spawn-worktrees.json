@@ -715,7 +715,7 @@
 			{
 				"index": 0,
 				"taskId": "ultron-task-#0",
-				"prompt": "edit a\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/editor): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "edit a\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/editor): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
@@ -737,7 +737,7 @@
 			{
 				"index": 1,
 				"taskId": "ultron-task-#1",
-				"prompt": "claim\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/claimer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "claim\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/claimer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#1",
@@ -776,7 +776,7 @@
 			{
 				"index": 3,
 				"taskId": "ultron-task-#3",
-				"prompt": "b\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/silent): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "b\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/silent): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#2",
@@ -789,7 +789,7 @@
 			{
 				"index": 4,
 				"taskId": "ultron-task-#4",
-				"prompt": "c\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#3 (branch ultron/fixture-/failer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "c\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#3 (branch ultron/fixture-/failer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#3",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#3",
@@ -1642,7 +1642,7 @@
 			{
 				"index": 0,
 				"taskId": "ultron-task-#5",
-				"prompt": "one\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/one): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "one\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/one): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",
@@ -1664,7 +1664,7 @@
 			{
 				"index": 1,
 				"taskId": "ultron-task-#6",
-				"prompt": "two\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/two): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "two\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#1 (branch ultron/fixture-/two): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#1",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#1",
@@ -1686,7 +1686,7 @@
 			{
 				"index": 2,
 				"taskId": "ultron-task-#7",
-				"prompt": "three\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/three): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "three\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#2 (branch ultron/fixture-/three): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#2",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#2",
@@ -2200,7 +2200,7 @@
 			{
 				"index": 0,
 				"taskId": "ultron-task-#8",
-				"prompt": "outer\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/outer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+				"prompt": "outer\n\n[Worktree] You work in your own Git worktree <root>/repo/.git/ultron-worktrees/wt#0 (branch ultron/fixture-/outer): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under <root>/repo into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
 				"cwd": "<root>/repo/.git/ultron-worktrees/wt#0",
 				"env": {
 					"ULTRON_WORKTREE": "<root>/repo/.git/ultron-worktrees/wt#0",

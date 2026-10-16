@@ -42,15 +42,28 @@ impl Body for FixtureBody {
     }
 }
 
+/// A request and the client identity it went out with.
+type Sent = (HttpRequest, Option<Value>);
+
 #[derive(Clone, Default)]
 struct FixtureTransport {
     queue: Arc<Mutex<Vec<Canned>>>,
-    requests: Arc<Mutex<Vec<HttpRequest>>>,
+    /// Each request with the client identity (sha256 of the certificate and key files) it was sent with.
+    requests: Arc<Mutex<Vec<Sent>>>,
+    identity: Option<Value>,
 }
 
 impl Transport for FixtureTransport {
+    fn with_client_identity(&self, cert: &[u8], key: &[u8]) -> Result<Arc<dyn Transport>, String> {
+        let digest = |bytes: &[u8]| sha256_hex(&String::from_utf8_lossy(bytes));
+        Ok(Arc::new(FixtureTransport {
+            identity: Some(json!({"certSha256": digest(cert), "keySha256": digest(key)})),
+            ..self.clone()
+        }))
+    }
+
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {
-        self.requests.lock().unwrap().push(request);
+        self.requests.lock().unwrap().push((request, self.identity.clone()));
         let canned = {
             let mut queue = self.queue.lock().unwrap();
             if queue.is_empty() { None } else { Some(queue.remove(0)) }
@@ -105,12 +118,28 @@ fn pem(der: &str) -> String {
     format!("-----BEGIN {label}-----\n{}\n-----END {label}-----\n", lines.join("\n"))
 }
 
-/// The generator's `<dir>` and `<private-key>` placeholders, filled in.
+fn cert_pem(der: &str) -> String {
+    let lines: Vec<&str> = der
+        .as_bytes()
+        .chunks(64)
+        .map(|c| std::str::from_utf8(c).unwrap())
+        .collect();
+    format!(
+        "-----BEGIN CERTIFICATE-----\n{}\n-----END CERTIFICATE-----\n",
+        lines.join("\n")
+    )
+}
+
+/// The generator's `<dir>`, `<private-key>` and certificate placeholders, filled in.
 fn fill(value: &Value, dir: &str) -> Value {
+    let certificate = |name: &str| FIXTURE["certificates"][name].as_str().unwrap();
     match value {
         Value::String(s) => json!(
             s.replace("<dir>", dir)
                 .replace("<private-key>", &pem(FIXTURE["privateKeyDer"].as_str().unwrap()))
+                .replace("<leaf-cert>", &cert_pem(certificate("leaf")))
+                .replace("<other-cert>", &cert_pem(certificate("other")))
+                .replace("<leaf-key>", &pem(certificate("leafKey")))
         ),
         Value::Array(items) => Value::Array(items.iter().map(|v| fill(v, dir)).collect()),
         Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), fill(v, dir))).collect()),
@@ -207,7 +236,7 @@ fn uri_decode(text: &str) -> String {
     url_decode(&text.replace('+', "%2B"))
 }
 
-fn record_request(request: &HttpRequest) -> Value {
+fn record_request((request, identity): &Sent) -> Value {
     let user_agent = pi_user_agent();
     let form = request
         .headers
@@ -247,7 +276,11 @@ fn record_request(request: &HttpRequest) -> Value {
     } else {
         serde_json::from_str(&request.body).unwrap()
     };
-    json!({"url": request.url, "method": request.method, "headers": headers, "body": body})
+    let mut recorded = json!({"url": request.url, "method": request.method, "headers": headers, "body": body});
+    if let Some(identity) = identity {
+        recorded["clientIdentity"] = identity.clone();
+    }
+    recorded
 }
 
 const SCRATCH_KEYS: &[&str] = &["index", "partialJson", "partialArgs", "customInput", "streamIndex"];
@@ -296,6 +329,8 @@ fn assert_isolated_process_env() {
         "METADATA_SERVER_DETECTION",
         "GOOGLE_VERTEX_BASE_URL",
         "GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES",
+        "GOOGLE_API_CERTIFICATE_CONFIG",
+        "CLOUDSDK_CONFIG",
         "AWS_REGION",
         "AWS_DEFAULT_REGION",
         "AWS_ACCESS_KEY_ID",
@@ -390,7 +425,7 @@ fn differences(scenario: &Value) -> Vec<String> {
         let (mut expected, mut actual) = (expected.clone(), actual.clone());
         unclock(&mut expected);
         unclock(&mut actual);
-        for part in ["url", "method", "headers", "body"] {
+        for part in ["url", "method", "headers", "body", "clientIdentity"] {
             check(&format!("request {i} {part}"), &expected[part], &actual[part]);
         }
     }

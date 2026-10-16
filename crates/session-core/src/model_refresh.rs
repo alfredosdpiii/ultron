@@ -43,7 +43,7 @@ pub fn refresh_catalogs(
         .models()
         .with_file_name("models-store.json");
     let store = config::models_store::ModelsStore::new(store_path);
-    let transport: Arc<dyn ai::Transport> = Arc::new(ai::ReqwestTransport::new(None));
+    let transport: Arc<dyn ai::Transport> = Arc::new(ai::ReqwestTransport::for_env(&*env.var, None));
     let builtin: Vec<&str> = ai::models::builtin_providers().collect();
     let providers: Vec<String> = registry
         .provider_ids()

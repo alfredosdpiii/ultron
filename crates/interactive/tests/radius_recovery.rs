@@ -173,3 +173,30 @@ fn interactive_radius_recovery_ends_with_input_back() {
     app.handle_input("\r");
     assert_eq!(calls.0.borrow().clone(), vec!["prompt hello".to_string()]);
 }
+
+/// Whether the rendered frame places the hardware cursor (the focused editor's `CURSOR_MARKER`).
+fn shows_cursor(app: &mut App, width: usize) -> bool {
+    app.render(width, 30)
+        .iter()
+        .any(|line| line.contains(tui::renderer::CURSOR_MARKER))
+}
+
+#[test]
+fn interactive_radius_recovery_hides_the_editor_cursor() {
+    // `#chatInput.focused = !#busy && !(#rlmPaneFocused && #rlmPaneShown())` (client-tui.ts `#rebuild`).
+    let (mut app, _) = app();
+    assert!(shows_cursor(&mut app, 80));
+    app.apply(recovery(true, "Radius disconnected; retrying…"));
+    assert!(!shows_cursor(&mut app, 80));
+    app.apply(recovery(true, "Reattaching Session…"));
+    assert!(!shows_cursor(&mut app, 80));
+    app.apply(recovery(false, ""));
+    assert!(shows_cursor(&mut app, 80));
+    // The RLM pane beside the chat with the focus (Alt+W on a wide terminal) takes the cursor too; Alt+W again gives
+    // the focus, and the cursor, back to the chat.
+    assert!(shows_cursor(&mut app, 140));
+    app.handle_input("\x1bw");
+    assert!(!shows_cursor(&mut app, 140));
+    app.handle_input("\x1bw");
+    assert!(shows_cursor(&mut app, 140));
+}

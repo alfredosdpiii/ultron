@@ -16,7 +16,6 @@ use server::radius_relay::{RelayHostStatus, StatusSink, relay_status_line};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, mpsc};
 
 // ------------------------------------------------------------------------------------------------- command lines
@@ -658,9 +657,16 @@ fn route_from_explicit_path(path: &Path) -> Result<Route, String> {
     })
 }
 
-/// `openClientRuntime`'s route: the `--connect` address, else the instance's reachable server, else a server
+/// Where `ultron client` goes (`openClientRuntime`'s routes): one server, or every server discovered (in server ID
+/// order) when several are.
+pub enum ClientRoutes {
+    One(RemoteRoute),
+    Several(Vec<Route>),
+}
+
+/// `openClientRuntime`'s routes: the `--connect` address, else the instance's reachable servers, else a server
 /// activated for this client (with the command's model).
-pub fn client_route(command: &ClientCommand, env: &Env) -> Result<RemoteRoute, String> {
+pub fn client_routes(command: &ClientCommand, env: &Env) -> Result<ClientRoutes, String> {
     let radius = matches!(command.connect, Some(TransportAddress::Radius(_)));
     if command.auth.is_some() && !radius {
         return Err("Authentication is only supported for experimental Radius connections".into());
@@ -674,15 +680,15 @@ pub fn client_route(command: &ClientCommand, env: &Env) -> Result<RemoteRoute, S
     if radius && !command.plugin_packages.is_empty() {
         return Err("Plugin package paths can only be configured on a local Unix server".into());
     }
-    let route = match &command.connect {
-        Some(TransportAddress::Radius(server_id)) => RemoteRoute::Radius {
+    let routes = match &command.connect {
+        Some(TransportAddress::Radius(server_id)) => ClientRoutes::One(RemoteRoute::Radius {
             server_id: server_id.clone(),
             auth: Arc::new(crate::radius_relay::auth_resolver(
                 env,
                 resolved_auth(env, &command.auth),
             )),
-        },
-        Some(TransportAddress::Unix(path)) => RemoteRoute::Unix(route_from_explicit_path(path)?),
+        }),
+        Some(TransportAddress::Unix(path)) => ClientRoutes::One(RemoteRoute::Unix(route_from_explicit_path(path)?)),
         None => {
             let options = instance_server_options(env, None, command.provider.clone(), command.model.clone())?;
             let sockets = daemon::instance::socket_dir(&options.directory);
@@ -690,35 +696,160 @@ pub fn client_route(command: &ClientCommand, env: &Env) -> Result<RemoteRoute, S
             if !discovered.is_empty() && command.model.is_some() {
                 return Err("Model selection is only valid when automatically activating a new server".into());
             }
-            match discovered.into_iter().next() {
-                Some(found) => RemoteRoute::Unix(Route {
+            let mut routes: Vec<Route> = discovered
+                .into_iter()
+                .map(|found| Route {
                     server_id: found.server_id,
                     path: found.path,
-                }),
-                None => {
+                })
+                .collect();
+            match routes.len() {
+                0 => {
                     let activated = activate_server(&options, false).map_err(io)?;
-                    RemoteRoute::Unix(Route {
+                    ClientRoutes::One(RemoteRoute::Unix(Route {
                         server_id: activated.server_id,
                         path: activated.path,
-                    })
+                    }))
                 }
+                1 => ClientRoutes::One(RemoteRoute::Unix(routes.remove(0))),
+                _ => ClientRoutes::Several(routes),
             }
         }
     };
     if !command.plugin_packages.is_empty() {
+        if matches!(routes, ClientRoutes::Several(_)) {
+            return Err("Plugin selection requires exactly one local server".into());
+        }
         return Err("Plugin packages are not built by the Rust server".into());
     }
-    Ok(route)
+    Ok(routes)
+}
+
+/// What a client of several discovered servers does.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerChoice {
+    /// Every server's sessions, `(server id, session id)` in that order.
+    List(Vec<(String, String)>),
+    /// The session `session_id` of `servers[server]`.
+    Session { server: usize, session_id: String },
+}
+
+/// The session selection over several servers, each `(server id, its session directory's summaries)`: `runClient`'s
+/// (`runClientOperation`), or with `tui` the client TUI's (`prepareClientSession`). Creating a Session needs exactly
+/// one server, so with several only an existing one is chosen.
+pub fn choose_server(
+    command: &ClientCommand,
+    servers: &[(String, Vec<Value>)],
+    tui: bool,
+) -> Result<ServerChoice, String> {
+    let id_of = |summary: &Value| summary["sessionId"].as_str().unwrap_or_default().to_string();
+    let mut session_id = command.session_id.clone();
+    if session_id.is_none() && command.prompt.is_none() && !tui {
+        let mut sessions: Vec<(String, String)> = servers
+            .iter()
+            .flat_map(|(server, sessions)| sessions.iter().map(move |s| (server.clone(), id_of(s))))
+            .collect();
+        sessions.sort();
+        return Ok(ServerChoice::List(sessions));
+    }
+    let single = || {
+        if tui {
+            "Starting a Session requires exactly one server".to_string()
+        } else {
+            "Client prompt requires exactly one discovered server to create a Session".to_string()
+        }
+    };
+    if session_id.is_none() && (command.continue_ || command.resume) {
+        let modified = |s: &Value| s["modifiedAt"].as_f64().unwrap_or(0.0);
+        let newest = servers
+            .iter()
+            .enumerate()
+            .flat_map(|(index, (server, sessions))| sessions.iter().map(move |s| (index, server, s)))
+            .min_by(|(_, a_server, a), (_, b_server, b)| {
+                modified(b)
+                    .partial_cmp(&modified(a))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a_server.cmp(b_server))
+                    .then_with(|| id_of(a).cmp(&id_of(b)))
+            });
+        if let Some((index, _, summary)) = newest {
+            if tui {
+                return Ok(ServerChoice::Session {
+                    server: index,
+                    session_id: id_of(summary),
+                });
+            }
+            session_id = Some(id_of(summary));
+        }
+    }
+    let Some(id) = session_id else {
+        return Err(single());
+    };
+    let matches: Vec<usize> = servers
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, sessions))| sessions.iter().any(|s| id_of(s) == id))
+        .map(|(index, _)| index)
+        .collect();
+    match matches.as_slice() {
+        [server] => Ok(ServerChoice::Session {
+            server: *server,
+            session_id: id,
+        }),
+        [] if tui => Err(single()),
+        [] => Err(format!("No discovered server contains session {id}")),
+        _ => Err(format!("Session {id} is available from more than one server")),
+    }
+}
+
+/// A server's session summaries (its `pi.session-directory` state).
+fn server_sessions(route: &Route) -> Result<Vec<Value>, String> {
+    let connection = client::runtime::Connection::connect(&route.path, &route.server_id).map_err(crate::link::fail)?;
+    let sessions = connection
+        .subscribe(connection.server_target(), "pi.session-directory")
+        .map(|subscription| {
+            connection
+                .state(&subscription, "state")
+                .and_then(|state| state["sessions"].as_array().cloned())
+                .unwrap_or_default()
+        })
+        .map_err(crate::link::fail);
+    connection.disconnect();
+    sessions
 }
 
 /// `runClientCommand`: the TUI on a terminal without a prompt (`runClientTui`), else `runClient`'s listing
-/// (`<server id>\t<session id>` lines), attachment (`… attached`) or prompted answer (streamed as it arrives).
+/// (`<server id>\t<session id>` lines), attachment (`… attached`) or prompted answer (streamed as it arrives). Of
+/// several discovered servers, the one holding the selected session is used (`choose_server`). A Radius client's
+/// prompt survives its relay connection dropping: the reconnector brings it back and the client rejoins the session,
+/// printing the rest of the answer.
 pub fn run_client(command: &ClientCommand, env: &Env, out: &mut dyn Write) -> Result<i32, String> {
-    let route = client_route(command, env)?;
+    let tui = command.prompt.is_none() && crate::interactive::is_terminal();
+    let (route, chosen) = match client_routes(command, env)? {
+        ClientRoutes::One(route) => (route, None),
+        ClientRoutes::Several(routes) => {
+            let servers = routes
+                .iter()
+                .map(|route| Ok((route.server_id.clone(), server_sessions(route)?)))
+                .collect::<Result<Vec<_>, String>>()?;
+            match choose_server(command, &servers, tui)? {
+                ServerChoice::List(sessions) => {
+                    for (server_id, session_id) in sessions {
+                        writeln!(out, "{server_id}\t{session_id}").map_err(io)?;
+                    }
+                    return Ok(0);
+                }
+                ServerChoice::Session { server, session_id } => {
+                    (RemoteRoute::Unix(routes[server].clone()), Some(session_id))
+                }
+            }
+        }
+    };
     let continue_ = command.continue_ || command.resume;
-    if command.prompt.is_none() && crate::interactive::is_terminal() {
+    let session_id = chosen.or_else(|| command.session_id.clone());
+    if tui {
         let selection = RemoteSelection {
-            session_id: command.session_id.clone(),
+            session_id,
             continue_,
             name: None,
             fork: None,
@@ -726,21 +857,26 @@ pub fn run_client(command: &ClientCommand, env: &Env, out: &mut dyn Write) -> Re
         return crate::interactive::run_remote_interactive(&crate::args::Args::default(), env, route, selection);
     }
     let connection = route.connect().map_err(crate::link::fail)?;
-    let streamed = Arc::new(AtomicBool::new(false));
+    // The text of the assistant message streaming now: a rejoined prompt prints the rest of its answer.
+    let streamed = Arc::new(std::sync::Mutex::new(None::<String>));
     let streaming = streamed.clone();
     let on_event: client::runtime::EventListener = Arc::new(move |event: &Value| {
+        let mut current = streaming.lock().unwrap_or_else(|e| e.into_inner());
+        if event["type"] == "message_start" && current.is_some() {
+            *current = Some(String::new());
+        }
         if event["type"] == "message_update"
             && event["frame"]["type"] == "text_delta"
             && let Some(delta) = event["frame"]["delta"].as_str()
         {
-            streaming.store(true, Ordering::SeqCst);
+            current.get_or_insert_with(String::new).push_str(delta);
             let mut stdout = std::io::stdout();
             let _ = stdout.write_all(delta.as_bytes());
             let _ = stdout.flush();
         }
     });
     let request = client::runtime::ClientCommand {
-        session_id: command.session_id.clone(),
+        session_id,
         continue_,
         prompt: command.prompt.clone(),
         ..Default::default()
@@ -749,15 +885,26 @@ pub fn run_client(command: &ClientCommand, env: &Env, out: &mut dyn Write) -> Re
         on_event: Some(on_event),
         ..Default::default()
     };
-    match client::runtime::run_client_on(&request, connection, &options)? {
+    let result = match &route {
+        RemoteRoute::Radius { server_id, auth } => {
+            let reopen = client::radius::RadiusReopen::new(server_id, auth.clone());
+            let reopen = move |session: &str| reopen.reopen(session);
+            client::runtime::run_client_reopening(&request, connection, &options, Some(&reopen))?
+        }
+        RemoteRoute::Unix(_) => client::runtime::run_client_on(&request, connection, &options)?,
+    };
+    match result {
         ClientResult::Attached { server_id, session_id } => {
             writeln!(out, "{server_id}\t{session_id}\tattached").map_err(io)?;
         }
         ClientResult::Prompted { text, .. } => {
-            if streamed.load(Ordering::SeqCst) {
-                writeln!(out).map_err(io)?;
-            } else {
-                writeln!(out, "{text}").map_err(io)?;
+            let partial = streamed.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            match partial {
+                None => writeln!(out, "{text}").map_err(io)?,
+                Some(partial) => match text.strip_prefix(partial.as_str()) {
+                    Some(rest) => writeln!(out, "{rest}").map_err(io)?,
+                    None => writeln!(out, "\n{text}").map_err(io)?,
+                },
             }
         }
         ClientResult::List(sessions) => {

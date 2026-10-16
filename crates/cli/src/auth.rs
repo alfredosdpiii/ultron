@@ -455,7 +455,13 @@ fn print_credential(
 
 /// Handle `auth ...`; None when `argv` is not an auth command, else the exit code.
 pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut dyn std::io::Write) -> Option<i32> {
-    run_with(argv, env, out, err, &session_core::stored_auth::OAuthOptions::default())
+    run_with(
+        argv,
+        env,
+        out,
+        err,
+        &session_core::stored_auth::OAuthOptions::for_env(env),
+    )
 }
 
 /// [`run`] with OAuth refreshes going through `options` (tests answer the providers' endpoints).

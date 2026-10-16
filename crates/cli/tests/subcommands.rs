@@ -98,7 +98,7 @@ fn replay(case: &Value) -> Vec<String> {
         &args,
         "stdout",
         &sub(&String::from_utf8_lossy(&output.stdout)),
-        case["stdout"].as_str().unwrap(),
+        &rust_divergences(case["stdout"].as_str().unwrap()),
     );
     compare(
         &mut diffs,
@@ -163,6 +163,22 @@ fn replay(case: &Value) -> Vec<String> {
     }
     diffs
 }
+
+/// The recorded TypeScript output with the documented Rust divergences applied (decisions.tsv): `ultron setup --help`
+/// names what the Rust setup checks (python3, not Node.js: the Rust build needs no Node.js).
+fn rust_divergences(expected: &str) -> String {
+    expected.replace(
+        "A guided setup: checks Node.js and python3, sets up a provider (subscription login, API key or a custom
+OpenAI-compatible endpoint) and the default model with a live test, and finds or installs the Hindsight memory
+server.",
+        SETUP_HELP_RUST,
+    )
+}
+
+const SETUP_HELP_RUST: &str =
+    "A guided setup: checks python3 (the REPL's interpreter), sets up a provider (subscription login, API key or a
+custom OpenAI-compatible endpoint) and the default model with a live test, and finds or installs the Hindsight
+memory server.";
 
 /// Timestamps a run takes from the clock (backup directory names, manifest times).
 fn normalize(text: &str) -> String {
@@ -275,4 +291,37 @@ fn cli_package_commands_match_typescript() {
 #[test]
 fn cli_setup_matches_typescript() {
     assert!(replay_all(|args| args[0] == "setup") >= 4);
+}
+
+/// The Rust setup checks python3 (and Docker, optionally) but no Node.js; its help says so (decisions.tsv).
+#[test]
+fn cli_setup_help_names_the_checks_the_rust_setup_runs() {
+    let fx = fixture();
+    let recorded = fx["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["args"] == serde_json::json!(["setup", "--help"]))
+        .expect("setup --help is recorded");
+    let stdout = recorded["stdout"].as_str().unwrap();
+    assert!(
+        stdout.contains("checks Node.js and python3"),
+        "the TypeScript help names Node.js"
+    );
+    let rust = rust_divergences(stdout);
+    assert!(rust.contains(SETUP_HELP_RUST) && !rust.contains("Node.js"), "{rust}");
+    let tmp = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ultron"))
+        .args(["setup", "--help"])
+        .current_dir(tmp.path())
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", tmp.path())
+        .env("ULTRON_CODING_AGENT_DIR", tmp.path().join("agent"))
+        .env("ULTRON_SERVER_DIR", tmp.path().join("server"))
+        .output()
+        .unwrap();
+    let shown = String::from_utf8_lossy(&output.stdout);
+    assert!(shown.contains(SETUP_HELP_RUST), "{shown}");
+    assert!(!shown.contains("Node.js"), "{shown}");
 }

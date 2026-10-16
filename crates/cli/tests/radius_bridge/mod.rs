@@ -3,7 +3,8 @@
 //! each client connecting with `pi-session-relay.client.v1` becomes a relayed connection on it (`connection_open`
 //! with a new connection ID, binary data frames both ways, `connection_close` when either side ends). Every upgrade
 //! is recorded (path, offered subprotocol, authorization) with the close frame the peer sent. A test can hold new
-//! client upgrades until released, and drop every client connection (the gateway losing them). Waits are on
+//! client upgrades until released, and drop every client connection (the gateway losing them). Relay hosts are
+//! accepted, refused (`401`), or accepted with the first one closed at once ([`HostMode`]). Waits are on
 //! condition variables with a 120 s hang guard; nothing sleeps.
 #![allow(dead_code)]
 
@@ -44,9 +45,21 @@ struct State {
     waiting: usize,
 }
 
+/// How the gateway answers a relay host's upgrade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HostMode {
+    /// Accept every host.
+    Accept,
+    /// Accept, but close the first host connection right away with this code and reason.
+    CloseFirst(u16, &'static str),
+    /// Refuse every host upgrade with `401 Unauthorized`.
+    Refuse,
+}
+
 struct Shared {
     state: Mutex<State>,
     changed: Condvar,
+    host_mode: HostMode,
 }
 
 impl Shared {
@@ -80,11 +93,17 @@ fn send(stream: &Mutex<TcpStream>, message: &Message) -> bool {
 
 impl Bridge {
     pub fn start() -> Bridge {
+        Bridge::start_with(HostMode::Accept)
+    }
+
+    /// A gateway whose relay hosts are answered as `host_mode` says.
+    pub fn start_with(host_mode: HostMode) -> Bridge {
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
         let port = listener.local_addr().unwrap().port();
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
+            host_mode,
         });
         let accepting = shared.clone();
         std::thread::spawn(move || {
@@ -128,6 +147,17 @@ impl Bridge {
             .into_iter()
             .find(|u| u.protocol == HOST && u.closed.is_some())
             .unwrap()
+    }
+
+    /// Wait until `count` host upgrades have their close frame.
+    pub fn wait_host_closed_count(&self, count: usize) {
+        self.shared.wait_until(&format!("{count} closed relay hosts"), |s| {
+            s.upgrades
+                .iter()
+                .filter(|u| u.protocol == HOST && u.closed.is_some())
+                .count()
+                >= count
+        });
     }
 
     /// Hold (or stop holding) new client upgrades.
@@ -198,6 +228,10 @@ fn serve(mut stream: TcpStream, shared: &Arc<Shared>) {
         state.upgrades.len() - 1
     };
     shared.changed.notify_all();
+    if protocol == HOST && shared.host_mode == HostMode::Refuse {
+        let _ = stream.write_all(b"HTTP/1.1 401 Unauthorized\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
+        return;
+    }
     if protocol == CLIENT {
         let mut state = shared.lock();
         state.waiting += 1;
@@ -223,6 +257,12 @@ fn serve(mut stream: TcpStream, shared: &Arc<Shared>) {
     }
     let writer = Arc::new(Mutex::new(stream.try_clone().unwrap()));
     if protocol == HOST {
+        if let HostMode::CloseFirst(code, reason) = shared.host_mode {
+            let first = shared.lock().upgrades.iter().filter(|u| u.protocol == HOST).count() == 1;
+            if first {
+                send(&writer, &Message::Close(Some(code), reason.to_string()));
+            }
+        }
         shared.lock().hosts.insert(server_id.clone(), writer.clone());
         shared.changed.notify_all();
         host_loop(stream, &writer, shared, &server_id, index);

@@ -1,0 +1,197 @@
+{
+ "scenarios": [
+  {
+   "name": "all_modes_take_every_queued_message_before_the_prompt",
+   "steeringMode": "all",
+   "followUpMode": "all",
+   "queued": [
+    [
+     "steer",
+     "s1"
+    ],
+    [
+     "followUp",
+     "f1"
+    ],
+    [
+     "nextRun",
+     "n1"
+    ],
+    [
+     "steer",
+     "s2"
+    ]
+   ],
+   "answers": [
+    "A."
+   ],
+   "inboxAfterAdmission": [],
+   "requests": [
+    [
+     "s1",
+     "f1",
+     "n1",
+     "s2",
+     "request"
+    ]
+   ],
+   "branch": [
+    "user: s1",
+    "user: f1",
+    "user: n1",
+    "user: s2",
+    "user: request",
+    "assistant: A."
+   ],
+   "pendingResponses": 0
+  },
+  {
+   "name": "one_at_a_time_takes_the_first_of_each_kind",
+   "steeringMode": "one-at-a-time",
+   "followUpMode": "one-at-a-time",
+   "queued": [
+    [
+     "followUp",
+     "f1"
+    ],
+    [
+     "steer",
+     "s1"
+    ],
+    [
+     "followUp",
+     "f2"
+    ],
+    [
+     "nextRun",
+     "n1"
+    ],
+    [
+     "steer",
+     "s2"
+    ]
+   ],
+   "answers": [
+    "A.",
+    "B.",
+    "C."
+   ],
+   "inboxAfterAdmission": [
+    [
+     "followUp",
+     "f2"
+    ],
+    [
+     "steer",
+     "s2"
+    ]
+   ],
+   "requests": [
+    [
+     "f1",
+     "s1",
+     "n1",
+     "request",
+     "s2"
+    ],
+    [
+     "f1",
+     "s1",
+     "n1",
+     "request",
+     "s2",
+     "f2"
+    ]
+   ],
+   "branch": [
+    "user: f1",
+    "user: s1",
+    "user: n1",
+    "user: request",
+    "user: s2",
+    "assistant: A.",
+    "user: f2",
+    "assistant: B."
+   ],
+   "pendingResponses": 1
+  },
+  {
+   "name": "steering_one_at_a_time_follow_ups_all",
+   "steeringMode": "one-at-a-time",
+   "followUpMode": "all",
+   "queued": [
+    [
+     "steer",
+     "s1"
+    ],
+    [
+     "steer",
+     "s2"
+    ],
+    [
+     "followUp",
+     "f1"
+    ],
+    [
+     "followUp",
+     "f2"
+    ]
+   ],
+   "answers": [
+    "A.",
+    "B."
+   ],
+   "inboxAfterAdmission": [
+    [
+     "steer",
+     "s2"
+    ]
+   ],
+   "requests": [
+    [
+     "s1",
+     "f1",
+     "f2",
+     "request",
+     "s2"
+    ]
+   ],
+   "branch": [
+    "user: s1",
+    "user: f1",
+    "user: f2",
+    "user: request",
+    "user: s2",
+    "assistant: A."
+   ],
+   "pendingResponses": 1
+  },
+  {
+   "name": "follow_up_only",
+   "steeringMode": "all",
+   "followUpMode": "all",
+   "queued": [
+    [
+     "followUp",
+     "f1"
+    ]
+   ],
+   "answers": [
+    "A."
+   ],
+   "inboxAfterAdmission": [],
+   "requests": [
+    [
+     "f1",
+     "request"
+    ]
+   ],
+   "branch": [
+    "user: f1",
+    "user: request",
+    "assistant: A."
+   ],
+   "pendingResponses": 0
+  }
+ ]
+}

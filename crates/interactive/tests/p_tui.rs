@@ -758,6 +758,7 @@ fn interactive_p_tui_rlm_polls_inspections_on_the_clock() {
         h.calls(),
         [
             "rlm_status",
+            "inspect agents agents.status {\"graph\":true}",
             "inspect frames rlm.frames {\"limit\":200}",
             "inspect pool rlm.pool {}",
             "inspect context ctx.state {}",
@@ -774,6 +775,175 @@ fn interactive_p_tui_rlm_polls_inspections_on_the_clock() {
     h.clear();
     h.advance(1000);
     assert!(h.app.poll_rlm());
+}
+
+/// Older workers reject `agents.status {graph: true}` (client-tui.ts `#graphListing`): the TUI asks for the plain
+/// listing at once and keeps asking for it; any other failure keeps the graph listing and shows as the error.
+#[test]
+fn interactive_p_tui_rlm_agents_status_falls_back_to_the_plain_listing() {
+    let mut h = harness();
+    h.app.handle_input("\x12");
+    h.clear();
+    h.app.apply(LaneEvent::RlmInspected {
+        tag: "agents".into(),
+        result: Err("Ultron task host is closed".into()),
+    });
+    assert!(h.calls().is_empty(), "{:?}", h.calls());
+    h.app.apply(LaneEvent::RlmInspected {
+        tag: "agents".into(),
+        result: Err("Unknown payload field: graph".into()),
+    });
+    assert_eq!(h.calls(), ["inspect agents agents.status {}"]);
+    h.clear();
+    h.advance(5000);
+    assert!(h.app.poll_rlm());
+    assert!(
+        h.calls().contains(&"inspect agents agents.status {}".to_string()),
+        "{:?}",
+        h.calls()
+    );
+    // Rejected again (the plain listing has no graph field to drop): no third request.
+    h.clear();
+    h.app.apply(LaneEvent::RlmInspected {
+        tag: "agents".into(),
+        result: Err("Unknown payload field: graph".into()),
+    });
+    assert!(h.calls().is_empty(), "{:?}", h.calls());
+}
+
+fn agents_status(tasks: Value) -> LaneEvent {
+    LaneEvent::RlmInspected {
+        tag: "agents".into(),
+        result: Ok(json!({"tasks": tasks})),
+    }
+}
+
+/// `progress.assess` per running task, at most eight (`RLM_MAX_ASSESSED`), fetched only while the docked panel or
+/// the full-screen graph shows (client-tui.ts `#refreshRlm`); the tasks are `agents.status`'s and the subagents it
+/// does not list.
+#[test]
+fn interactive_p_tui_rlm_assesses_running_tasks_only_while_a_view_shows() {
+    let tasks: Vec<Value> = (0..10)
+        .map(|i| json!({"id": format!("t{i}"), "definition": "review@1", "state": if i == 1 { "completed" } else { "running" }}))
+        .collect();
+    let mut h = harness();
+    // Hidden (the wave summary is not a view that assesses).
+    h.app.apply(agents_status(json!(tasks)));
+    assert!(
+        !h.calls().iter().any(|c| c.contains("progress.assess")),
+        "{:?}",
+        h.calls()
+    );
+    // The docked panel.
+    h.app.handle_input("\x12");
+    h.clear();
+    h.app.apply(agents_status(json!(tasks)));
+    let assessed: Vec<String> = h
+        .calls()
+        .into_iter()
+        .filter(|c| c.contains("progress.assess"))
+        .collect();
+    let ids: Vec<String> = ["t0", "t2", "t3", "t4", "t5", "t6", "t7", "t8"]
+        .iter()
+        .map(|id| format!("inspect progress:2:{id} progress.assess {{\"task_id\":\"{id}\"}}"))
+        .collect();
+    assert_eq!(assessed, ids);
+    // A subagent the status does not list is assessed too; one it lists is not counted twice.
+    h.app.apply(LaneEvent::RlmStatus(json!({"subagents": [
+        {"id": "t0", "definition": "rlm-child@1", "state": "running"},
+        {"id": "child", "definition": "rlm-child@1", "state": "running"}
+    ]})));
+    h.clear();
+    h.app.apply(agents_status(
+        json!([{"id": "t0", "definition": "review@1", "state": "running"}]),
+    ));
+    assert_eq!(
+        h.calls()
+            .into_iter()
+            .filter(|c| c.contains("progress.assess"))
+            .collect::<Vec<_>>(),
+        [
+            "inspect progress:3:t0 progress.assess {\"task_id\":\"t0\"}",
+            "inspect progress:3:child progress.assess {\"task_id\":\"child\"}",
+        ]
+    );
+    // Closed again: nothing is assessed.
+    h.app.handle_input("\x12");
+    h.clear();
+    h.app.apply(agents_status(json!(tasks)));
+    assert!(
+        !h.calls().iter().any(|c| c.contains("progress.assess")),
+        "{:?}",
+        h.calls()
+    );
+    // The full-screen graph assesses as well.
+    h.app.handle_input("\x1bg");
+    h.clear();
+    h.app.apply(agents_status(
+        json!([{"id": "t9", "definition": "review@1", "state": "running"}]),
+    ));
+    assert!(
+        h.calls()
+            .iter()
+            .any(|c| c.ends_with("progress.assess {\"task_id\":\"t9\"}")),
+        "{:?}",
+        h.calls()
+    );
+}
+
+/// The round's assessments show in the graph's task details once its last answer arrives; a stale round's
+/// answers are dropped.
+#[test]
+fn interactive_p_tui_rlm_progress_shows_in_the_task_details() {
+    let mut h = harness();
+    h.app.handle_input("\x1bg");
+    h.app.apply(agents_status(json!([
+        {"id": "ultron-task-a", "definition": "rlm-child@1", "state": "running", "input": {"preview": "{\"prompt\": \"audit the parser\"}"}}
+    ])));
+    let tag = h
+        .calls()
+        .into_iter()
+        .find(|c| c.contains("progress.assess"))
+        .unwrap()
+        .split(' ')
+        .nth(1)
+        .unwrap()
+        .to_string();
+    // A newer round starts (the next poll); the first round's answer is then dropped.
+    h.clear();
+    h.app.apply(agents_status(json!([
+        {"id": "ultron-task-a", "definition": "rlm-child@1", "state": "running", "input": {"preview": "{\"prompt\": \"audit the parser\"}"}}
+    ])));
+    let stale = tag;
+    let tag = h
+        .calls()
+        .into_iter()
+        .find(|c| c.contains("progress.assess"))
+        .unwrap()
+        .split(' ')
+        .nth(1)
+        .unwrap()
+        .to_string();
+    assert_ne!(stale, tag);
+    h.app.apply(LaneEvent::RlmInspected {
+        tag: stale,
+        result: Ok(json!({"classification": "stale-round", "receipts": []})),
+    });
+    h.app.apply(LaneEvent::RlmInspected {
+        tag,
+        result: Ok(json!({"classification": "making_progress", "receipts": [{}, {}]})),
+    });
+    let mut shown = String::new();
+    for _ in 0..10 {
+        shown = h.screen_at(120, 40);
+        if shown.contains("making_progress") {
+            break;
+        }
+        h.app.handle_input(DOWN);
+        h.app.handle_input("\r");
+    }
+    assert!(shown.contains("making_progress · 2 receipts"), "{shown}");
+    assert!(!shown.contains("stale-round"), "{shown}");
 }
 
 #[test]

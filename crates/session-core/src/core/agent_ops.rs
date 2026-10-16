@@ -40,9 +40,10 @@ impl Core {
                 "Subagent {id} worked in its own worktree: start a new one instead"
             ));
         }
-        // The original name is not kept with the task; the revived one is named after it.
+        // The revived subagent keeps the name it was spawned with (a session older than that record: named after it).
+        let name = crate::subagents::subagent_name(&self.session, id).unwrap_or_else(|| format!("revived-{id}"));
         let mut kwargs = Map::new();
-        kwargs.insert("name".into(), format!("revived-{id}").into());
+        kwargs.insert("name".into(), name.into());
         if let Some(model) = &input.model {
             kwargs.insert("model".into(), format!("{}/{}", model.provider, model.model_id).into());
         }
@@ -53,7 +54,7 @@ impl Core {
             kwargs.insert("timeout_ms".into(), timeout.into());
         }
         let spawned = delegation.handle("rlm.spawn", json!({"prompt": input.prompt, "kwargs": kwargs}), LANE)?;
-        Ok(json!({"id": spawned["rlm_child_id"], "revived": id}))
+        Ok(json!({"id": spawned["rlm_child_id"], "revived": id, "name": spawned["name"]}))
     }
 
     /// [`Op::AgentTranscript`]: the messages of subagent `id`'s child conversation, and whether it runs.

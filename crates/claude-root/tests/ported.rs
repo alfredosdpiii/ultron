@@ -104,7 +104,11 @@ fn claude_root_launcher_argument_parsing_and_flag_detection() {
         assert!(flags.contains(flag), "{flag}");
     }
     // Without --system-prompt-file support the guide goes inline.
-    let var = |k: &str| (k == "MCP_TOOL_TIMEOUT").then(|| "5".to_string());
+    let var = |k: &str| match k {
+        "MCP_TOOL_TIMEOUT" => Some("5".to_string()),
+        "CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS" => Some("120000".to_string()),
+        _ => None,
+    };
     let built = build(&["mcp-config"], &launch_options(), &var, Vec::new());
     assert!(built.args.contains(&"--system-prompt".to_string()));
     assert!(built.env.is_empty());
@@ -130,7 +134,13 @@ fn claude_root_launcher_runs_claude_with_the_repl_as_the_only_tool() {
         built.args[built.args.len() - 4..],
         strings(&["-p", "hello", "--model", "sonnet"])
     );
-    assert_eq!(built.env, vec![("MCP_TOOL_TIMEOUT".to_string(), "7200000".to_string())]);
+    assert_eq!(
+        built.env,
+        vec![
+            ("MCP_TOOL_TIMEOUT".to_string(), "7200000".to_string()),
+            ("CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS".to_string(), "0".to_string()),
+        ]
+    );
     let mcp: Value = serde_json::from_str(&built.files[0].1).unwrap();
     assert_eq!(
         mcp,

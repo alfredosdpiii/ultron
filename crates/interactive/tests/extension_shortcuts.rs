@@ -222,6 +222,7 @@ fn interactive_extension_shortcut_conflicts_show_as_extension_issues() {
         message: "Extension shortcut 'ctrl+c' from /x/ext/extension.json conflicts with built-in shortcut. Skipping."
             .into(),
         path: "/x/ext/extension.json".into(),
+        error: false,
     }];
     assert_eq!(issues(&[]), None);
     assert_eq!(

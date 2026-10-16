@@ -186,3 +186,123 @@ fn cli_radius_server_reports_only_the_latest_startup_status() {
     );
     assert_eq!(lines(Vec::new()), Vec::<String>::new());
 }
+
+/// Two servers' session directories: "shared" is on both, "only-a" on A, "only-b" (the newest) on B.
+fn two_servers() -> Vec<(String, Vec<serde_json::Value>)> {
+    vec![
+        (
+            "a".into(),
+            vec![
+                json!({"sessionId": "shared", "modifiedAt": 5}),
+                json!({"sessionId": "only-a", "modifiedAt": 7}),
+            ],
+        ),
+        (
+            "b".into(),
+            vec![
+                json!({"sessionId": "only-b", "modifiedAt": 9}),
+                json!({"sessionId": "shared", "modifiedAt": 5}),
+            ],
+        ),
+    ]
+}
+
+#[test]
+fn cli_client_server_choice_matches_run_client_and_prepare_client_session() {
+    use cli::experimental::{ClientCommand, ServerChoice, choose_server};
+    let servers = two_servers();
+    let command = |session: Option<&str>, prompt: Option<&str>, continue_: bool| ClientCommand {
+        session_id: session.map(str::to_string),
+        prompt: prompt.map(str::to_string),
+        continue_,
+        ..Default::default()
+    };
+    let on = |server: usize, id: &str| {
+        Ok(ServerChoice::Session {
+            server,
+            session_id: id.into(),
+        })
+    };
+    // runClientOperation: the listing spans the servers, by server ID then session ID.
+    assert_eq!(
+        choose_server(&command(None, None, false), &servers, false),
+        Ok(ServerChoice::List(vec![
+            ("a".into(), "only-a".into()),
+            ("a".into(), "shared".into()),
+            ("b".into(), "only-b".into()),
+            ("b".into(), "shared".into()),
+        ]))
+    );
+    assert_eq!(
+        choose_server(&command(Some("only-b"), None, false), &servers, false),
+        on(1, "only-b")
+    );
+    assert_eq!(
+        choose_server(&command(Some("only-a"), Some("p"), false), &servers, false),
+        on(0, "only-a")
+    );
+    assert_eq!(
+        choose_server(&command(Some("shared"), Some("p"), false), &servers, false),
+        Err("Session shared is available from more than one server".into())
+    );
+    assert_eq!(
+        choose_server(&command(Some("missing"), Some("p"), false), &servers, false),
+        Err("No discovered server contains session missing".into())
+    );
+    assert_eq!(
+        choose_server(&command(None, Some("p"), false), &servers, false),
+        Err("Client prompt requires exactly one discovered server to create a Session".into())
+    );
+    // --continue takes the newest session of any server; ties go by server ID, then session ID.
+    assert_eq!(
+        choose_server(&command(None, Some("p"), true), &servers, false),
+        on(1, "only-b")
+    );
+    let tied = vec![
+        ("b".into(), vec![json!({"sessionId": "x", "modifiedAt": 3})]),
+        (
+            "a".into(),
+            vec![
+                json!({"sessionId": "z", "modifiedAt": 3}),
+                json!({"sessionId": "y", "modifiedAt": 3}),
+            ],
+        ),
+    ];
+    assert_eq!(choose_server(&command(None, Some("p"), true), &tied, false), on(1, "y"));
+    // A newest session on both servers is ambiguous for runClient.
+    let both = vec![
+        ("a".into(), vec![json!({"sessionId": "s", "modifiedAt": 3})]),
+        ("b".into(), vec![json!({"sessionId": "s", "modifiedAt": 3})]),
+    ];
+    assert_eq!(
+        choose_server(&command(None, Some("p"), true), &both, false),
+        Err("Session s is available from more than one server".into())
+    );
+    let empty = vec![("a".into(), Vec::new()), ("b".into(), Vec::new())];
+    assert_eq!(
+        choose_server(&command(None, Some("p"), true), &empty, false),
+        Err("Client prompt requires exactly one discovered server to create a Session".into())
+    );
+    // prepareClientSession (the TUI): the newest session is opened where it is, ambiguity is still refused, and a
+    // new Session needs exactly one server.
+    assert_eq!(choose_server(&command(None, None, true), &both, true), on(0, "s"));
+    assert_eq!(
+        choose_server(&command(Some("only-a"), None, false), &servers, true),
+        on(0, "only-a")
+    );
+    assert_eq!(
+        choose_server(&command(Some("shared"), None, false), &servers, true),
+        Err("Session shared is available from more than one server".into())
+    );
+    for (session, continue_, list) in [
+        (Some("missing"), false, &servers),
+        (None, false, &servers),
+        (None, true, &empty),
+    ] {
+        assert_eq!(
+            choose_server(&command(session, None, continue_), list, true),
+            Err("Starting a Session requires exactly one server".into()),
+            "{session:?} {continue_}"
+        );
+    }
+}

@@ -115,28 +115,6 @@ fn loki_protect_matches_loki_py_corpus() {
     );
 }
 
-#[test]
-fn loki_init_without_minimal_fails_closed() {
-    let dir = tempfile::tempdir().unwrap();
-    let root = dir.path().to_str().unwrap().to_string();
-    let args = |rest: &[&str]| -> Vec<String> {
-        ["--root", root.as_str()]
-            .iter()
-            .chain(rest)
-            .map(|s| s.to_string())
-            .collect()
-    };
-    let init = run(dir.path(), &args(&["init", "--dir", root.as_str()]), &[], "");
-    assert_eq!(init.status, 1);
-    assert!(
-        init.stderr
-            .starts_with("loki: guard error: NotPorted: init without --minimal"),
-        "{}",
-        init.stderr
-    );
-    assert!(!dir.path().join(".loki").exists());
-}
-
 /// `protect` stops at MAX_VIOLATIONS (40) lines, against `loki.py --root R protect --file .loki/f0 ... --file
 /// .loki/f44` (exit 2, stderr the first 40 refusals, stdout empty).
 #[test]

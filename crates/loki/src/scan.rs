@@ -434,7 +434,8 @@ pub fn scan(
 }
 
 pub(crate) const ENGINE: &[u8] = include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/loki.py");
-const TEMPLATE: &[u8] = include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/templates/loki.json");
+pub(crate) const TEMPLATE: &[u8] =
+    include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/templates/loki.json");
 
 /// `init --minimal`: the engine and default policy in `.loki/`, nothing else.
 pub fn install_minimal(target: &str, force: bool) -> Result<(), CheckError> {

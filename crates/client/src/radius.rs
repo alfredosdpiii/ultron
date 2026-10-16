@@ -539,3 +539,126 @@ pub fn attachment_state_view(state: &AttachmentState, session_id: &str) -> Optio
         _ => None,
     }
 }
+
+// ------------------------------------------------------------------------------------------ a one-shot client
+
+/// The relay connection a [`RadiusReopen`] brings back, as the reconnector's client.
+struct ReopenSlot {
+    server_id: String,
+    auth: Arc<dyn RelayAuthResolver>,
+    current: Mutex<Option<Arc<crate::runtime::Connection>>>,
+    connecting: AtomicBool,
+    last_error: Mutex<Option<String>>,
+}
+
+impl ReopenSlot {
+    fn connection(&self) -> Option<Arc<crate::runtime::Connection>> {
+        lock(&self.current).clone()
+    }
+
+    fn failed(&self, error: String) -> String {
+        *lock(&self.last_error) = Some(error.clone());
+        error
+    }
+}
+
+impl ReconnectClient for ReopenSlot {
+    fn connected(&self) -> bool {
+        self.connection().is_some_and(|c| !c.is_closed())
+    }
+
+    fn connection_state(&self) -> ConnectionState {
+        if self.connecting.load(Ordering::SeqCst) {
+            ConnectionState::Connecting
+        } else if self.connected() {
+            ConnectionState::Connected
+        } else {
+            ConnectionState::Disconnected
+        }
+    }
+
+    fn disconnect(&self, _reason: &str) {
+        if let Some(connection) = lock(&self.current).take() {
+            connection.disconnect();
+        }
+    }
+
+    fn reconnect(&self) -> Result<(), String> {
+        self.connecting.store(true, Ordering::SeqCst);
+        let connected = crate::runtime::Connection::connect_radius(&self.server_id, self.auth.as_ref());
+        self.connecting.store(false, Ordering::SeqCst);
+        let connection = connected.map_err(|e| self.failed(e.to_string()))?;
+        *lock(&self.current) = Some(connection);
+        Ok(())
+    }
+}
+
+/// How long a [`RadiusReopen`] keeps trying (as a client rejoins a lost Unix server, `runtime::REJOIN_TIMEOUT`).
+pub const REOPEN_TIMEOUT: Duration = crate::runtime::REJOIN_TIMEOUT;
+
+/// A non-interactive client's way back to its Radius server after the relay connection dropped mid-prompt
+/// (`openClientRuntime` gives every Radius route a `RadiusClientReconnect`): reconnect after 1 s, doubling to 30 s
+/// per failed attempt, re-attach the Session (`reconnectManagement.attach(sessionId)`), and answer the new
+/// connection. It gives up after [`REOPEN_TIMEOUT`] with the last attempt's error.
+pub struct RadiusReopen {
+    pub server_id: String,
+    pub auth: Arc<dyn RelayAuthResolver>,
+    /// The delay before each attempt (default: wait it out); `false` stops.
+    pub sleep: Option<ReconnectSleep>,
+    pub timeout: Duration,
+}
+
+impl RadiusReopen {
+    pub fn new(server_id: &str, auth: Arc<dyn RelayAuthResolver>) -> RadiusReopen {
+        RadiusReopen {
+            server_id: server_id.to_string(),
+            auth,
+            sleep: None,
+            timeout: REOPEN_TIMEOUT,
+        }
+    }
+
+    /// A new relay connection with `session_id` attached.
+    pub fn reopen(&self, session_id: &str) -> Result<Arc<crate::runtime::Connection>, String> {
+        let slot = Arc::new(ReopenSlot {
+            server_id: self.server_id.clone(),
+            auth: self.auth.clone(),
+            current: Mutex::new(None),
+            connecting: AtomicBool::new(false),
+            last_error: Mutex::new(None),
+        });
+        let attaching = slot.clone();
+        let reattach: Reattach = Arc::new(move |id: &str| {
+            let connection = attaching.connection().ok_or("Client is disconnected")?;
+            connection
+                .call(
+                    connection.server_target(),
+                    "pi.session-management",
+                    "attach",
+                    serde_json::json!([id]),
+                )
+                .and_then(|_| connection.wait_attachment(|a| a.is_some_and(|a| a.session_id == id)))
+                .map_err(|e| attaching.failed(e.to_string()))
+        });
+        let deadline = std::time::Instant::now() + self.timeout;
+        let base = self
+            .sleep
+            .clone()
+            .unwrap_or_else(|| Arc::new(|ms, cancel: &Cancellation| cancel.wait(Duration::from_millis(ms))));
+        let sleep: ReconnectSleep =
+            Arc::new(move |ms, cancel: &Cancellation| std::time::Instant::now() < deadline && base(ms, cancel));
+        let client: Arc<dyn ReconnectClient> = slot.clone();
+        let reconnector = RadiusClientReconnect::new(client, Some(session_id.to_string()), reattach, Some(sleep));
+        reconnector.connection_state_changed(ConnectionState::Disconnected);
+        reconnector.wait_idle();
+        match slot.connection() {
+            Some(connection) if !connection.is_closed() => Ok(connection),
+            _ => {
+                reconnector.dispose();
+                Err(lock(&slot.last_error)
+                    .clone()
+                    .unwrap_or_else(|| "Radius reconnect stopped".into()))
+            }
+        }
+    }
+}

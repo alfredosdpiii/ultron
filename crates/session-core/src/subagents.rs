@@ -31,6 +31,17 @@ pub const TASKS_KEY: &str = "root";
 pub const LANE_PREFIX: &str = "ultron.rlm-child.";
 /// The lane of another root conversation of the session (`ultron.conversation.<id>`).
 pub const CONVERSATION_LANE_PREFIX: &str = "ultron.conversation.";
+/// The `rlm.spawn(name=...)` of each subagent, a session value per task id (Rust-only: the task journal and the
+/// child task keep no name), so a revived subagent keeps its name.
+pub const NAMES_NAMESPACE: &str = "ultron.subagent-names";
+
+/// The name subagent `task_id` was spawned with, if this session recorded it.
+pub fn subagent_name(session: &SharedSession, task_id: &str) -> Option<String> {
+    lock(session)
+        .value(NAMES_NAMESPACE, task_id)
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
 
 /// A document kept as one session value (`createSessionTaskStore`, `createSessionDefinitionStore`).
 pub struct SessionValueStore {
@@ -185,6 +196,11 @@ impl DurableChildren {
         let stack = stack.upgrade().ok_or("The session is closed")?;
         let setup = child_setup(&stack, &run);
         lock_map(&self.systems).insert(run.lane_name.clone(), setup.system);
+        if let Some(session) = self.session.get()
+            && !self.handed_over.load(Ordering::SeqCst)
+        {
+            lock(session).commit(&[Write::set(NAMES_NAMESPACE, &run.task_id, run.name.clone().into())])?;
+        }
         let input = ChildInput {
             name: run.lane_name.clone(),
             prompt: run.prompt.clone(),
@@ -479,6 +495,11 @@ impl DurableChildren {
     fn restore_lane(&self, stack: &Stack, id: &str, input: &ChildInput) {
         let run = ChildRun {
             task_id: id.to_string(),
+            name: self
+                .session
+                .get()
+                .and_then(|session| subagent_name(session, id))
+                .unwrap_or_default(),
             lane_name: input.name.clone(),
             prompt: input.prompt.clone(),
             level: 1,

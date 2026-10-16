@@ -639,6 +639,21 @@ pub fn run_client_on(
     connection: Arc<Connection>,
     options: &RunOptions,
 ) -> Result<ClientResult, String> {
+    run_client_reopening(command, connection, options, None)
+}
+
+/// Opens a new connection to the server with the Session attached again, when the connection dropped mid-prompt
+/// (a Radius route's reconnector, [`crate::radius::RadiusReopen`]).
+pub type Reopen<'a> = &'a (dyn Fn(&str) -> Result<Arc<Connection>, String> + Send + Sync);
+
+/// [`run_client_on`] whose prompt survives its connection dropping: `reopen` brings the connection back, and the
+/// client rejoins the Session on it (follows it until idle and answers its last assistant text).
+pub fn run_client_reopening(
+    command: &ClientCommand,
+    connection: Arc<Connection>,
+    options: &RunOptions,
+    reopen: Option<Reopen<'_>>,
+) -> Result<ClientResult, String> {
     let route_server_id = connection.server_id.clone();
     let result = run_operation(command, &connection, options);
     let mut cleanup = Vec::new();
@@ -656,7 +671,7 @@ pub fn run_client_on(
     let (subscriptions, outcome) = (result.0, result.2);
     let outcome = match outcome {
         Err(Failure::Lost { session_id, error }) => {
-            recover_lost(&connection, &route_server_id, &session_id, error, options)
+            recover_lost(&connection, &route_server_id, &session_id, error, options, reopen)
         }
         Err(Failure::Other(error)) => Err(error),
         Ok(result) => Ok(result),
@@ -697,16 +712,22 @@ impl From<String> for Failure {
 }
 
 /// Rejoin after a lost prompt: on the same connection when it lives (the worker restarted), else on a new
-/// connection to the restarted server. Answers the prompted result.
+/// connection (`reopen`ed over the Radius relay, or to the restarted server). Answers the prompted result.
 fn recover_lost(
     connection: &Arc<Connection>,
     server_id: &str,
     session_id: &str,
     error: CallError,
     options: &RunOptions,
+    reopen: Option<Reopen<'_>>,
 ) -> Result<ClientResult, String> {
     let rejoined = if !connection.is_closed() {
         rejoin(connection, session_id, options)
+    } else if let Some(reopen) = reopen {
+        let fresh = reopen(session_id)?;
+        let rejoined = rejoin(&fresh, session_id, options);
+        fresh.disconnect();
+        rejoined
     } else if let Some(reconnect) = &options.reconnect {
         let route = reconnect()?;
         let fresh = Connection::connect(&route.path, &route.server_id).map_err(fail)?;

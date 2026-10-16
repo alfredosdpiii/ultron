@@ -1,0 +1,1566 @@
+{
+	"generator": "crates/ai/fixtures/generate-proxy-env.mjs",
+	"undici": "8.10.2",
+	"cases": [
+		{
+			"env": {},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://127.0.0.1/",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://EXAMPLE.org./",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {},
+			"url": "https://notinternal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"http_proxy": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"HTTPS_PROXY": "http://secure-proxy.test:8443"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"http_proxy": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"https_proxy": "http://secure-proxy.test:8443",
+				"HTTPS_PROXY": "http://ignored.test:1",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "",
+				"HTTP_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost,127.0.0.1,::1"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "internal.test"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": ".internal.test"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "*.internal.test"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "example.com:443 api.example.com:8443"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "[::1]:9000, EXAMPLE.ORG."
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "",
+				"no_proxy": "example.com"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://example.com/x",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"no_proxy": "",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTP_PROXY": "http://proxy.test:3128",
+				"NO_PROXY": "localhost:9999,*,example.com"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://proxy.test:3128"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://internal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"HTTPS_PROXY": "http://secure-proxy.test:8443",
+				"NO_PROXY": "example.com"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": "http://secure-proxy.test:8443"
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://example.com/x",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://api.example.com:8443/v1",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://localhost:8080/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://127.0.0.1/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "http://[::1]:9000/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://EXAMPLE.org./",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://sub.internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://internal.test/",
+			"proxy": null
+		},
+		{
+			"env": {
+				"ALL_PROXY": "http://proxy.test:3128"
+			},
+			"url": "https://notinternal.test/",
+			"proxy": null
+		}
+	]
+}

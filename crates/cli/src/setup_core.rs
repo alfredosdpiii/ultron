@@ -469,14 +469,22 @@ pub struct FetchResponse {
 /// A GET; `Err` is why no response came, as `describeFetchError` words it.
 pub type Fetch = Arc<dyn Fn(&FetchRequest) -> Result<FetchResponse, String> + Send + Sync>;
 
-/// The real fetch: plain HTTP over a socket (so a refused connection reads as Node's errno does), HTTPS through the
-/// provider transport.
+/// The real fetch without proxies: plain HTTP over a socket (so a refused connection reads as Node's errno does),
+/// HTTPS through the provider transport.
 pub fn http_fetch() -> Fetch {
-    Arc::new(|request: &FetchRequest| {
+    http_fetch_with(ai::net::ProxyEnv::default())
+}
+
+/// [`http_fetch`] with the run's proxies (Pi's `EnvHttpProxyAgent`): a URL they proxy goes through the proxy.
+pub fn http_fetch_with(proxy: ai::net::ProxyEnv) -> Fetch {
+    Arc::new(move |request: &FetchRequest| {
         let url = parse_url(&request.url).ok_or_else(|| format!("Failed to parse URL from {}", request.url))?;
+        let proxied = reqwest::Url::parse(&request.url)
+            .ok()
+            .is_some_and(|parsed| proxy.proxy_for(&parsed).is_some());
         match url.scheme.as_str() {
-            "http" => plain_get(&url, request),
-            "https" => tls_get(request),
+            "http" if !proxied => plain_get(&url, request),
+            "http" | "https" => transport_get(request, &proxy),
             _ => Err("fetch failed".into()),
         }
     })
@@ -577,13 +585,17 @@ fn dechunk(mut data: &[u8]) -> Vec<u8> {
     out
 }
 
-fn tls_get(request: &FetchRequest) -> Result<FetchResponse, String> {
+fn transport_get(request: &FetchRequest, proxy: &ai::net::ProxyEnv) -> Result<FetchResponse, String> {
     use ai::http::Transport;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
-    let transport = ai::http::ReqwestTransport::new(Some(request.timeout));
+    let config = ai::net::ClientConfig {
+        proxy: Some(proxy.clone()),
+        extra_roots: Vec::new(),
+    };
+    let transport = ai::http::ReqwestTransport::configured(config, Some(request.timeout))?;
     runtime.block_on(async {
         let response = transport
             .send(ai::http::HttpRequest {

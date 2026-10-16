@@ -1020,7 +1020,7 @@ pub fn run_setup_command(record: &WorktreeRecord, signal: Option<&Signal>) -> Re
 /// The note added to a worktree child's brief.
 pub fn worktree_brief_note(record: &WorktreeRecord) -> String {
     format!(
-        "[Worktree] You work in your own Git worktree {} (branch {}): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under {} into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself.",
+        "[Worktree] You work in your own Git worktree {} (branch {}): a private copy of your parent's checkout, uncommitted changes included. Use paths relative to it; read/edit/write map absolute paths under {} into it, but shell commands do not, so never cd there. Your changes are committed on your branch when you finish and your parent merges them: do not commit, switch branches or push yourself, even if your brief asks you to commit.",
         record.cwd, record.branch, record.repo
     )
 }

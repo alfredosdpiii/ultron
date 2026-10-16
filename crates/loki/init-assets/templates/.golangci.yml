@@ -1,0 +1,38 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - revive
+    - gocritic
+    - errorlint
+    - nilerr
+    - durationcheck
+    - gosec
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+    gocritic:
+      enabled-checks:
+        - deferInLoop
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    gosec:
+      # Duplicate of errcheck; permission, variable file path and math/rand
+      # checks are too noisy to block. G305 flags every archive path join,
+      # even validated ones; Loki's own loki/zip-slip rule replaces it.
+      excludes: [G104, G301, G302, G304, G305, G306, G404]
+  exclusions:
+    # golangci-lint's long-standing defaults: unchecked Close, Flush, os.Remove
+    # and print calls are conventionally ignored.
+    presets:
+      - std-error-handling

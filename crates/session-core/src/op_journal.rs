@@ -117,18 +117,19 @@ fn mint(session: &Session) -> String {
 impl Run {
     /// Admit a run: the prompt entry, the operation and the lane's current operation, then the first checkpoint.
     pub fn admit(session: &mut Session, config: Value, settings: Value, prompt: Value) -> Result<Run, String> {
-        Run::admit_with(session, config, settings, prompt, &[])
+        Run::admit_with(session, config, settings, prompt, &[], json!([]))
     }
 
-    /// [`Run::admit`] that also places `captured` (`(entryId, message)` of the lane's `nextRun` inbox items) on the
-    /// branch before the prompt, in the admission transaction, and deletes their pending entries (`selectAcceptedInbox`
-    /// then the acceptance commit of lane.ts).
+    /// [`Run::admit`] that also places `captured` (`(entryId, message)` of the inbox items the admission takes) on
+    /// the branch before the prompt, in the admission transaction, deletes their pending entries and leaves `inbox`
+    /// (the items it did not take) in the lane's state (`selectAcceptedInbox` then the acceptance commit of lane.ts).
     pub fn admit_with(
         session: &mut Session,
         config: Value,
         settings: Value,
         prompt: Value,
         captured: &[(String, Value)],
+        inbox: Value,
     ) -> Result<Run, String> {
         let started_at = prompt
             .get("timestamp")
@@ -157,7 +158,7 @@ impl Run {
             assistant_entry_id: String::new(),
             encoder: FrameEncoder::default(),
             control: json!({"status": "running"}),
-            inbox: json!([]),
+            inbox,
             generation_trigger: None,
             overflow_recovery_used: false,
             compaction: None,

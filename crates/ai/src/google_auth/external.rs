@@ -1,5 +1,6 @@
 //! Workload identity federation as google-auth-library 10.6.2 runs it: `external_account` credentials
-//! (`BaseExternalAccountClient` with an identity-pool file or URL source, an AWS source, or a pluggable executable)
+//! (`BaseExternalAccountClient` with an identity-pool file, URL or certificate source, an AWS source, or a pluggable
+//! executable)
 //! exchange a subject token at the STS endpoint, optionally impersonating a service account afterwards;
 //! `external_account_authorized_user` credentials redeem a refresh token at STS. A service account outside the default
 //! universe signs its own JWT (`JWTAccess`), which lives here too.
@@ -111,8 +112,8 @@ enum Source {
         headers: HeaderMap,
         format: Format,
     },
-    /// Validated, but its mTLS token exchange is not ported.
-    Certificate,
+    /// X.509 workload identity: the chain is the subject token, and STS is reached over mTLS.
+    Certificate(super::certificate::CertificateSource),
     Aws {
         region_url: Option<String>,
         url: Option<String>,
@@ -197,7 +198,19 @@ impl External {
         env: Option<&ProviderEnv>,
         transport: &dyn Transport,
     ) -> Result<String, Fail> {
-        let subject_token = self.subject_token(env, transport).await?;
+        // `retrieveSubjectToken`: a certificate source's exchange and impersonation go through a client presenting the
+        // workload's certificate and key (`createMtlsHttpsAgent`).
+        let (subject_token, mtls) = match &self.source {
+            Source::Certificate(source) => {
+                let token = source.subject_token(env)?;
+                let mtls = transport
+                    .with_client_identity(&token.cert, &token.key)
+                    .map_err(Fail::new)?;
+                (token.token, Some(mtls))
+            }
+            _ => (self.subject_token(env, transport).await?, None),
+        };
+        let transport: &dyn Transport = mtls.as_deref().unwrap_or(transport);
         let scope = SCOPE.to_string();
         let mut fields: Vec<(&str, &str)> = vec![
             ("grant_type", STS_GRANT_TYPE),
@@ -238,17 +251,21 @@ impl External {
         let Some(url) = &self.impersonation_url else {
             return Ok(token);
         };
-        // `getImpersonatedAccessToken`.
+        // `getImpersonatedAccessToken`. After a certificate source the client's transporter is a new `Gaxios` with
+        // the mTLS agent, without the auth library's user-agent interceptor.
+        let mut headers: HeaderMap = [
+            ("content-type".to_string(), "application/json".to_string()),
+            ("accept".to_string(), "application/json".to_string()),
+            ("authorization".to_string(), format!("Bearer {token}")),
+        ]
+        .into();
+        if mtls.is_none() {
+            headers.insert("user-agent".into(), AUTH_USER_AGENT.into());
+        }
         let request = HttpRequest {
             method: "POST".into(),
             url: url.clone(),
-            headers: [
-                ("user-agent".to_string(), AUTH_USER_AGENT.to_string()),
-                ("content-type".to_string(), "application/json".to_string()),
-                ("accept".to_string(), "application/json".to_string()),
-                ("authorization".to_string(), format!("Bearer {token}")),
-            ]
-            .into(),
+            headers,
             body: json!({ "scope": [SCOPE], "lifetime": format!("{}s", self.lifetime) }).to_string(),
         };
         let response = gaxios(transport, request, &AUTH_RETRY, ResponseType::Json).await?;
@@ -259,9 +276,7 @@ impl External {
         match &self.source {
             Source::File { path, format } => file_subject_token(path, format),
             Source::Url { url, headers, format } => url_subject_token(transport, url, headers, format).await,
-            Source::Certificate => Err(Fail::new(
-                "Vertex AI external_account credentials with a certificate (X.509 mTLS) credential_source are not supported by the Rust port",
-            )),
+            Source::Certificate(source) => source.subject_token(env).map(|t| t.token),
             Source::Aws {
                 region_url,
                 url,
@@ -365,21 +380,7 @@ fn credential_source(json: &Value) -> Result<Source, Fail> {
     }
     if let Some(certificate) = certificate {
         // `CertificateSubjectTokenSupplier`'s constructor.
-        let default = js_truthy(certificate.get("use_default_certificate_config"));
-        let location = js_truthy(certificate.get("certificate_config_location"));
-        if !default && !location {
-            return Err(Fail::typed(
-                "InvalidConfigurationError",
-                "Either `useDefaultCertificateConfig` must be true or a `certificateConfigLocation` must be provided.",
-            ));
-        }
-        if default && location {
-            return Err(Fail::typed(
-                "InvalidConfigurationError",
-                "Both `useDefaultCertificateConfig` and `certificateConfigLocation` cannot be provided.",
-            ));
-        }
-        return Ok(Source::Certificate);
+        return super::certificate::CertificateSource::from_json(certificate).map(Source::Certificate);
     }
     Err(Fail::new(NO_SOURCE))
 }

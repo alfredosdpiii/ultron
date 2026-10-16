@@ -213,6 +213,8 @@ fn session_core_agent_hub_revives_an_interrupted_subagent_from_its_brief() {
     assert_eq!(revived["revived"], json!(id), "{revived}");
     let new_id = revived["id"].as_str().unwrap().to_string();
     assert_ne!(new_id, id);
+    // It keeps the name it was spawned with, recorded with its task (and so with the revived one's, once it runs).
+    assert_eq!(revived["name"], "auditor", "{revived}");
     // The new subagent runs the same brief.
     wait_until("the revived child requests the model", || {
         !child_requests(&w).is_empty()
@@ -227,6 +229,13 @@ fn session_core_agent_hub_revives_an_interrupted_subagent_from_its_brief() {
             .iter()
             .any(|s| s["id"] == json!(new_id) && s["state"] == "completed")
     });
+    let names: Vec<Value> = home
+        .writes()
+        .into_iter()
+        .filter(|w| w["namespace"] == session_core::subagents::NAMES_NAMESPACE && w["op"] == "set")
+        .map(|w| json!([w["key"], w["value"]]))
+        .collect();
+    assert_eq!(names, [json!([id, "auditor"]), json!([new_id, "auditor"])]);
 }
 
 #[test]

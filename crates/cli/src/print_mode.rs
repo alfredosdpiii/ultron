@@ -152,20 +152,15 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
 /// The session's resource flags (native-command.ts `startForegroundServer` options): `-e` paths resolved against the
 /// cwd when local (`isLocalPath` / `resolvePath`); a package source (`npm:`, `git:`, a URL) is installed for this run
 /// under the agent's temp folder (`resolveExtensionSources(sources, { temporary: true })`) and its install directory
-/// takes its place, where the session finds the package's extension manifests. Offline, a source not yet installed is
-/// left out; a failed install fails the start.
+/// takes its place, where the session finds the package's extension manifests. Every source's skills and prompts
+/// (a package's `pi` manifest or its `skills/` and `prompts/` directories) go to the session too, as the worker's
+/// resource loader takes them from the same resolution. Offline, a source not yet installed is left out; a failed
+/// install fails the start.
 pub fn session_flags(parsed: &Args, env: &Env) -> Result<session_core::session_flags::SessionFlags, String> {
     let mut manager = None;
     let mut extension_paths = Vec::new();
+    let (mut skill_paths, mut prompt_paths): (Vec<String>, Vec<String>) = (Vec::new(), Vec::new());
     for path in parsed.extensions.iter().flatten() {
-        if extensions::manifest::is_local_path(path) {
-            extension_paths.push(
-                crate::file_args::resolve_to_cwd(path, &env.cwd, &env.home)
-                    .display()
-                    .to_string(),
-            );
-            continue;
-        }
         let manager = manager.get_or_insert_with(|| {
             let mut manager = crate::packages::manager::PackageManager::new(
                 env,
@@ -175,11 +170,33 @@ pub fn session_flags(parsed: &Args, env: &Env) -> Result<session_core::session_f
             manager.child_stdout_to_stderr = true;
             manager
         });
-        extension_paths.extend(manager.resolve_extension_sources(std::slice::from_ref(path))?.roots);
+        let resolved = manager.resolve_extension_sources(std::slice::from_ref(path))?;
+        if extensions::manifest::is_local_path(path) {
+            extension_paths.push(
+                crate::file_args::resolve_to_cwd(path, &env.cwd, &env.home)
+                    .display()
+                    .to_string(),
+            );
+        } else {
+            extension_paths.extend(resolved.roots);
+        }
+        // `mergePaths`: each path once.
+        for skill in resolved.skills {
+            if !skill_paths.contains(&skill) {
+                skill_paths.push(skill);
+            }
+        }
+        for prompt in resolved.prompts {
+            if !prompt_paths.contains(&prompt) {
+                prompt_paths.push(prompt);
+            }
+        }
     }
     Ok(session_core::session_flags::SessionFlags {
         system_prompt: parsed.system_prompt.clone(),
         extension_paths,
+        skill_paths,
+        prompt_paths,
         no_skills: parsed.no_skills,
         no_context_files: parsed.no_context_files,
     })

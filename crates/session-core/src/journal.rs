@@ -38,11 +38,11 @@ impl RunJournal {
         model: (u64, u64),
         settings: Value,
     ) -> Result<Self, String> {
-        Self::admit_capturing(session, config, prompt, model, settings, &[])
+        Self::admit_capturing(session, config, prompt, model, settings, &[], json!([]))
     }
 
-    /// [`RunJournal::admit_with_settings`] placing the lane's `nextRun` messages (`(entryId, message)`) before the
-    /// prompt (see [`Run::admit_with`]).
+    /// [`RunJournal::admit_with_settings`] placing the queued messages the admission takes (`(entryId, message)`)
+    /// before the prompt and leaving `inbox` in the lane's state (see [`Run::admit_with`]).
     pub fn admit_capturing(
         session: Option<&mut Session>,
         config: Value,
@@ -50,9 +50,10 @@ impl RunJournal {
         model: (u64, u64),
         settings: Value,
         captured: &[(String, Value)],
+        inbox: Value,
     ) -> Result<Self, String> {
         let run = match session {
-            Some(session) => Some(Run::admit_with(session, config, settings, prompt, captured)?),
+            Some(session) => Some(Run::admit_with(session, config, settings, prompt, captured, inbox)?),
             None => None,
         };
         Ok(RunJournal {

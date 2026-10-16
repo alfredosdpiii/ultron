@@ -45,7 +45,7 @@ pub fn supported(env: &Env, provider: &str) -> bool {
 pub fn options(env: &Env) -> session_core::stored_auth::OAuthOptions {
     session_core::stored_auth::OAuthOptions {
         callback_port: (env.var)("ULTRON_OAUTH_CALLBACK_PORT").and_then(|p| p.trim().parse().ok()),
-        ..Default::default()
+        ..session_core::stored_auth::OAuthOptions::for_env(env)
     }
 }
 

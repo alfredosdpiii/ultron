@@ -151,6 +151,24 @@ pub fn source_string(pkg: &Value) -> String {
     }
 }
 
+/// A configured package's directory, with its scope and its settings filter (an object entry's resource keys).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PackageRoot {
+    pub root: String,
+    pub scope: Scope,
+    pub filter: Option<Map<String, Value>>,
+}
+
+impl PackageRoot {
+    fn new(root: &str, scope: Scope, filter: Option<&Map<String, Value>>) -> Self {
+        PackageRoot {
+            root: root.to_string(),
+            scope,
+            filter: filter.cloned(),
+        }
+    }
+}
+
 /// `ConfiguredPackage`.
 pub struct ConfiguredPackage {
     pub source: String,
@@ -164,7 +182,7 @@ fn is_sha(text: &str) -> bool {
 }
 
 /// `PI_OFFLINE`.
-fn offline(var: &session_core::VarLookup) -> bool {
+fn offline(var: &crate::VarLookup) -> bool {
     var("PI_OFFLINE").is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("yes"))
 }
 
@@ -244,6 +262,16 @@ pub struct TemporaryResolved {
     pub roots: Vec<String>,
 }
 
+/// The proxy variables npm and git read, passed to them from the run's environment.
+const PROXY_VARIABLES: [&str; 6] = [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+];
+
 /// `getExtensionTempFolder`'s location under the agent dir.
 const EXTENSION_TEMP_FOLDER: [&str; 2] = ["tmp", "extensions"];
 
@@ -251,7 +279,7 @@ pub struct PackageManager {
     pub cwd: String,
     pub agent_dir: String,
     home: String,
-    var: session_core::VarLookup,
+    var: crate::VarLookup,
     pub settings: SettingsManager,
     global_npm_root: Option<(String, String)>,
     /// `setProgressCallback`: the message of each operation that starts.
@@ -264,7 +292,7 @@ pub struct PackageManager {
 }
 
 impl PackageManager {
-    pub fn new(env: &crate::Env, settings: SettingsManager) -> Self {
+    pub fn new(env: &crate::RunEnv, settings: SettingsManager) -> Self {
         let home = env.home.display().to_string();
         let resolve = |p: &str| config::paths::resolve(p, &env.cwd, &env.home).display().to_string();
         Self {
@@ -474,6 +502,13 @@ impl PackageManager {
         }
         if !self.home.is_empty() {
             command.env("HOME", &self.home);
+        }
+        // The run's proxies (the `httpProxy` setting becomes `HTTP_PROXY`/`HTTPS_PROXY`), which TypeScript's children
+        // inherit from `process.env`.
+        for name in PROXY_VARIABLES {
+            if let Some(value) = (self.var)(name) {
+                command.env(name, value);
+            }
         }
         command.envs(self.child_env.iter().map(|(k, v)| (k, v)));
         if let Some(cwd) = cwd {
@@ -1612,6 +1647,13 @@ impl PackageManager {
 
     /// `resolve()` without an `onMissing` handler: missing npm and git packages are installed (unless offline).
     pub fn resolve(&mut self) -> Result<ResolvedPaths, String> {
+        self.resolve_with_roots().map(|(resolved, _)| resolved)
+    }
+
+    /// [`PackageManager::resolve`], with the directory of every configured package it found (in precedence order),
+    /// where a session discovers the packages' extension manifests.
+    pub fn resolve_with_roots(&mut self) -> Result<(ResolvedPaths, Vec<PackageRoot>), String> {
+        let mut roots: Vec<PackageRoot> = Vec::new();
         let mut acc: Accumulator = Default::default();
         let mut all: Vec<(Value, Scope)> = self
             .packages(Scope::Project)
@@ -1646,6 +1688,7 @@ impl PackageManager {
                             if !Self::collect_package_resources(&mut acc, &resolved, filter, &metadata) {
                                 add(&mut acc, ResourceType::Extensions, &resolved, &metadata, true);
                             }
+                            roots.push(PackageRoot::new(&resolved, *scope, filter));
                         }
                         _ => {}
                     }
@@ -1661,6 +1704,7 @@ impl PackageManager {
                     }
                     metadata.base_dir = Some(path.clone());
                     Self::collect_package_resources(&mut acc, &path, filter, &metadata);
+                    roots.push(PackageRoot::new(&path, *scope, filter));
                 }
                 Parsed::Git(g) => {
                     let path = self.git_install_path(&g, resolved_scope)?;
@@ -1672,6 +1716,7 @@ impl PackageManager {
                     }
                     metadata.base_dir = Some(path.clone());
                     Self::collect_package_resources(&mut acc, &path, filter, &metadata);
+                    roots.push(PackageRoot::new(&path, *scope, filter));
                 }
             }
         }
@@ -1707,7 +1752,7 @@ impl PackageManager {
             }
         }
         self.add_auto_discovered(&mut acc, &global_base, &project_base, &entries);
-        Ok(to_resolved(acc))
+        Ok((to_resolved(acc), roots))
     }
 
     /// `addAutoDiscoveredResources`.

@@ -38,6 +38,13 @@ pub struct HttpResponse {
 /// Sends one request. `Err` is a connection failure (no response).
 pub trait Transport: Send + Sync {
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>>;
+
+    /// This transport presenting a TLS client certificate (mTLS), as Node's `https.Agent({ cert, key })` does: the
+    /// certificate (chain) and private key files' contents, PEM. A transport that cannot fails.
+    fn with_client_identity(&self, cert: &[u8], key: &[u8]) -> Result<Arc<dyn Transport>, String> {
+        let _ = (cert, key);
+        Err("this HTTP transport cannot present a TLS client certificate".into())
+    }
 }
 
 /// Request cancellation shared between the caller and the provider (`AbortSignal`).
@@ -501,11 +508,34 @@ pub struct ReqwestTransport {
     /// The longest wait for the response headers, or between two body chunks (undici's `headersTimeout` and
     /// `bodyTimeout`, which TypeScript sets to `httpIdleTimeoutMs`).
     idle: Option<Duration>,
+    /// How `client` was built, so a client presenting a certificate can be built alike (`None`: a caller's client).
+    config: Option<crate::net::ClientConfig>,
 }
 
 impl ReqwestTransport {
     pub fn new(timeout: Option<Duration>) -> Self {
-        Self::with_client(reqwest::Client::new(), timeout)
+        let config = crate::net::ClientConfig::default();
+        let client = config.client().unwrap_or_default();
+        ReqwestTransport {
+            config: Some(config),
+            ..Self::with_client(client, timeout)
+        }
+    }
+
+    /// A transport whose clients are built from `config` (an injected environment's proxies).
+    pub fn configured(config: crate::net::ClientConfig, timeout: Option<Duration>) -> Result<Self, String> {
+        let client = config.client()?;
+        Ok(ReqwestTransport {
+            config: Some(config),
+            ..Self::with_client(client, timeout)
+        })
+    }
+
+    /// [`ReqwestTransport::configured`] with the proxies of the environment `var` holds (`HTTP_PROXY`,
+    /// `HTTPS_PROXY`, `NO_PROXY`, as the TypeScript HTTP stack reads them).
+    pub fn for_env(var: &dyn Fn(&str) -> Option<String>, timeout: Option<Duration>) -> Self {
+        let config = crate::net::ClientConfig::from_lookup(var);
+        Self::configured(config, timeout).unwrap_or_else(|_| Self::new(timeout))
     }
 
     pub fn with_client(client: reqwest::Client, timeout: Option<Duration>) -> Self {
@@ -513,6 +543,7 @@ impl ReqwestTransport {
             client,
             timeout,
             idle: None,
+            config: None,
         }
     }
 
@@ -543,6 +574,30 @@ impl Body for ReqwestBody {
 }
 
 impl Transport for ReqwestTransport {
+    fn with_client_identity(&self, cert: &[u8], key: &[u8]) -> Result<Arc<dyn Transport>, String> {
+        let config = self
+            .config
+            .as_ref()
+            .ok_or("this HTTP transport cannot present a TLS client certificate")?;
+        let mut pem = cert.to_vec();
+        if !pem.ends_with(b"\n") {
+            pem.push(b'\n');
+        }
+        pem.extend_from_slice(key);
+        let identity = reqwest::Identity::from_pem(&pem).map_err(|e| e.to_string())?;
+        let client = config
+            .builder()?
+            .identity(identity)
+            .build()
+            .map_err(|e| e.to_string())?;
+        Ok(Arc::new(ReqwestTransport {
+            client,
+            timeout: self.timeout,
+            idle: self.idle,
+            config: self.config.clone(),
+        }))
+    }
+
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {
         Box::pin(async move {
             let method = reqwest::Method::from_bytes(request.method.as_bytes()).map_err(|e| e.to_string())?;

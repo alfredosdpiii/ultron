@@ -4,7 +4,10 @@
 //! upgrade (path, host subprotocol, the `--auth-token` bearer) and its `1000 Pi server stopped` close on SIGTERM;
 //! the client's listing, prompted turn and attachment over the relay (`runClient` over
 //! `createRadiusClientTransportFactory`); offline mode and missing credentials; a detached server's relay; and the
-//! client TUI recovering a dropped Radius connection with client-tui.ts's statuses.
+//! client TUI recovering a dropped Radius connection with client-tui.ts's statuses; a one-shot client whose relay
+//! drops mid-prompt reconnecting and rejoining its session (`openClientRuntime`'s `RadiusClientReconnect`); and a
+//! client without `--connect` over several discovered servers (`runClientOperation`). The server's `Radius: …`
+//! lines are the ones the TypeScript command printed (fixtures/radius_server.json).
 
 mod radius_bridge;
 mod tui_harness;
@@ -108,6 +111,17 @@ impl Drop for ServerProcess {
     }
 }
 
+/// The first `Radius: …` line the TypeScript `ultron server` printed in a recorded scenario (fixtures/radius_server.mjs).
+fn recorded_status(scenario: &str) -> String {
+    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/radius_server.json")).unwrap();
+    let cases: Vec<serde_json::Value> = serde_json::from_str(&text).unwrap();
+    let case = cases
+        .iter()
+        .find(|c| c["name"] == scenario)
+        .expect("a recorded scenario");
+    case["stdout"].as_str().unwrap().lines().nth(2).unwrap().to_string()
+}
+
 fn run(command: &mut Command) -> (String, String, Option<i32>) {
     let output = command.stdin(Stdio::null()).output().unwrap();
     (
@@ -135,7 +149,7 @@ fn cli_radius_server_relays_a_client_through_the_gateway() {
         "{socket}"
     );
     assert!(Path::new(socket.trim_start_matches("Socket: ")).exists(), "{socket}");
-    assert_eq!(server.line(), "Radius: connected");
+    assert_eq!(server.line(), recorded_status("connected"));
     let host = bridge.wait_upgrades(HOST, 1);
     assert_eq!(host[0].path, format!("/v1/session-relays/{SERVER_ID}/connect"));
     assert_eq!(host[0].authorization, "Bearer host-secret");
@@ -233,7 +247,7 @@ fn cli_radius_offline_and_missing_credentials_stay_local() {
     );
     assert_eq!(offline.line(), format!("Server: {SERVER_ID}"));
     offline.line();
-    assert_eq!(offline.line(), "Radius: not connected; local only");
+    assert_eq!(offline.line(), recorded_status("offline"));
     let address = format!("radius://{SERVER_ID}");
     let (out, err, code) = run(&mut ultron(
         &tmp.0,
@@ -255,7 +269,7 @@ fn cli_radius_offline_and_missing_credentials_stay_local() {
     let mut unauthenticated = ServerProcess::start(&tmp.0, &bridge.origin(), &["--server-id", SERVER_ID], &[]);
     assert_eq!(unauthenticated.line(), format!("Server: {SERVER_ID}"));
     unauthenticated.line();
-    assert_eq!(unauthenticated.line(), "Radius: not connected; local only");
+    assert_eq!(unauthenticated.line(), recorded_status("no-credential"));
     let (out, err, code) = run(&mut ultron(
         &tmp.0,
         &bridge.origin(),
@@ -381,7 +395,7 @@ fn cli_radius_client_tui_recovers_a_dropped_connection() {
     );
     server.line();
     server.line();
-    assert_eq!(server.line(), "Radius: connected");
+    assert_eq!(server.line(), recorded_status("connected"));
     bridge.wait_host(SERVER_ID);
     let address = format!("radius://{SERVER_ID}");
     let models = std::fs::read_to_string(tmp.0.join("agent/models.json")).unwrap();
@@ -447,4 +461,263 @@ fn cli_radius_client_tui_recovers_a_dropped_connection() {
     // The server stops first: the TUI's harness waits for every process working in this root to leave.
     assert_eq!(server.stop(), Some(0));
     drop(tui);
+}
+
+/// A child's stdout collected as it arrives; waits are on a condition variable.
+struct Output {
+    text: std::sync::Arc<(std::sync::Mutex<(String, bool)>, std::sync::Condvar)>,
+}
+
+impl Output {
+    fn of(child: &mut Child) -> Output {
+        let mut stdout = child.stdout.take().unwrap();
+        let text = std::sync::Arc::new((std::sync::Mutex::new((String::new(), false)), std::sync::Condvar::new()));
+        let filling = text.clone();
+        std::thread::spawn(move || {
+            use std::io::Read;
+            let mut buffer = [0u8; 4096];
+            loop {
+                let n = stdout.read(&mut buffer).unwrap_or(0);
+                let (lock, changed) = &*filling;
+                let mut state = lock.lock().unwrap();
+                if n == 0 {
+                    state.1 = true;
+                    changed.notify_all();
+                    break;
+                }
+                state.0.push_str(&String::from_utf8_lossy(&buffer[..n]));
+                changed.notify_all();
+            }
+        });
+        Output { text }
+    }
+
+    /// Wait until the output contains `want` (or it ended); returns it.
+    fn wait(&self, want: &str) -> String {
+        let (lock, changed) = &*self.text;
+        let deadline = std::time::Instant::now() + HANG_GUARD;
+        let mut state = lock.lock().unwrap();
+        while !state.0.contains(want) && !state.1 {
+            let now = std::time::Instant::now();
+            assert!(now < deadline, "no {want:?} in {:?}", state.0);
+            state = changed.wait_timeout(state, deadline - now).unwrap().0;
+        }
+        state.0.clone()
+    }
+
+    fn all(&self) -> String {
+        let (lock, changed) = &*self.text;
+        let mut state = lock.lock().unwrap();
+        while !state.1 {
+            state = changed.wait_timeout(state, HANG_GUARD).unwrap().0;
+        }
+        state.0.clone()
+    }
+}
+
+/// An Anthropic reply streaming `first` then `rest`, held after `first` until the mock is released.
+fn held_reply(first: &str, rest: &str) -> tui_harness::Reply {
+    let start = serde_json::json!({"type": "message_start", "message": {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-sonnet-4-5", "content": [], "stop_reason": null, "usage": {"input_tokens": 10, "output_tokens": 1}}});
+    tui_harness::Reply {
+        chunks: tui_harness::sse(&[
+            start,
+            serde_json::json!({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+            serde_json::json!({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": first}}),
+            serde_json::json!({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": rest}}),
+            serde_json::json!({"type": "content_block_stop", "index": 0}),
+            serde_json::json!({"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}}),
+            serde_json::json!({"type": "message_stop"}),
+        ]),
+        hold_after: Some(3),
+    }
+}
+
+#[test]
+fn cli_radius_client_prompt_survives_a_dropped_relay() {
+    // `openClientRuntime` gives the Radius route a `RadiusClientReconnect`: the one-shot client's relay drops while
+    // its turn streams; it reconnects (1 s after the loss), re-attaches the Session and rejoins it, and prints the
+    // rest of the answer once the turn ends.
+    let mock = Mock::start(vec![held_reply("Hello ", "world"), text_reply("Next answer")], None);
+    let tmp = root(mock.port);
+    let bridge = Bridge::start();
+    let mut server = ServerProcess::start(
+        &tmp.0,
+        &bridge.origin(),
+        &["--server-id", SERVER_ID, "--auth-token", "host-secret"],
+        &[],
+    );
+    server.line();
+    server.line();
+    assert_eq!(server.line(), recorded_status("connected"));
+    bridge.wait_host(SERVER_ID);
+    let address = format!("radius://{SERVER_ID}");
+    let mut client = ultron(
+        &tmp.0,
+        &bridge.origin(),
+        &["client", "--connect", &address, "--auth-token", "tok", "Say hello"],
+        &[],
+    )
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap();
+    let output = Output::of(&mut client);
+    assert_eq!(output.wait("Hello "), "Hello ");
+    // The gateway loses the client and holds its reconnection; the turn goes on in the worker meanwhile.
+    bridge.hold_clients(true);
+    bridge.drop_clients();
+    bridge.wait_held();
+    bridge.hold_clients(false);
+    assert_eq!(bridge.wait_upgrades(CLIENT, 2).len(), 2);
+    mock.release();
+    let status = client.wait().unwrap();
+    let mut errors = String::new();
+    std::io::Read::read_to_string(&mut client.stderr.take().unwrap(), &mut errors).unwrap();
+    assert_eq!((output.all().as_str(), errors.as_str()), ("Hello world\n", ""));
+    assert_eq!(status.code(), Some(0));
+    let clients = bridge.wait_upgrades(CLIENT, 2);
+    assert!(
+        clients
+            .iter()
+            .all(|u| u.authorization == "Bearer tok" && u.path == format!("/v1/session-relays/{SERVER_ID}/connect")),
+        "{clients:?}"
+    );
+    // The new relay connection closed as the client left; the session is the one the turn ran in.
+    let (listed, _, code) = run(&mut ultron(
+        &tmp.0,
+        &bridge.origin(),
+        &["client", "--connect", &address, "--auth-token", "tok"],
+        &[],
+    ));
+    assert_eq!(code, Some(0));
+    assert_eq!(listed.lines().count(), 1, "{listed}");
+    let clients = bridge.wait_upgrades(CLIENT, 3);
+    assert_eq!(clients[1].closed.as_deref(), Some("1000 Pi client closed"));
+    assert_eq!(server.stop(), Some(0));
+}
+
+const SERVER_B: &str = "00000000-0000-4000-8000-0000000000bb";
+const SERVER_C: &str = "00000000-0000-4000-8000-0000000000cc";
+
+#[test]
+fn cli_client_without_connect_works_across_several_servers() {
+    // experimental-remote-runtime.test.ts "reports missing and ambiguous session selections", and runClientOperation
+    // over several discovered servers: the listing spans them, a session is found on its own server, and a prompt
+    // without a session is refused.
+    let mock = Mock::start(
+        vec![
+            text_reply("From A"),
+            text_reply("From B"),
+            text_reply("Again on B"),
+            text_reply("Continued"),
+        ],
+        None,
+    );
+    let tmp = root(mock.port);
+    let bridge = Bridge::start();
+    let gateway = bridge.origin();
+    let start = |id: &str, sessions: &str| {
+        let dir = tmp.0.join(sessions).display().to_string();
+        let server = ServerProcess::start(&tmp.0, &gateway, &["--server-id", id, "--session-dir", &dir], &[]);
+        assert_eq!(server.line(), format!("Server: {id}"));
+        let socket = server.line().trim_start_matches("Socket: ").to_string();
+        assert_eq!(server.line(), recorded_status("no-credential"));
+        (server, format!("unix://{socket}"))
+    };
+    let client = |args: &[&str]| run(&mut ultron(&tmp.0, &gateway, args, &[]));
+    let (mut a, a_socket) = start(SERVER_ID, "sessions-a");
+    let (mut b, b_socket) = start(SERVER_B, "sessions-b");
+    let (out, err, code) = client(&["client", "--connect", &a_socket, "One"]);
+    assert_eq!((out.as_str(), code), ("From A\n", Some(0)), "{err}");
+    let (out, err, code) = client(&["client", "--connect", &b_socket, "Two"]);
+    assert_eq!((out.as_str(), code), ("From B\n", Some(0)), "{err}");
+
+    // The listing: every server's sessions, by server ID.
+    let (listed, err, code) = client(&["client"]);
+    assert_eq!((err.as_str(), code), ("", Some(0)));
+    let rows: Vec<(&str, &str)> = listed.lines().map(|l| l.split_once('\t').unwrap()).collect();
+    assert_eq!(
+        rows.iter().map(|r| r.0).collect::<Vec<_>>(),
+        vec![SERVER_ID, SERVER_B],
+        "{listed}"
+    );
+    let (on_a, on_b) = (rows[0].1.to_string(), rows[1].1.to_string());
+    // A session is attached on the server that holds it, and prompted there.
+    let (out, _, code) = client(&["client", "--session-id", &on_b]);
+    assert_eq!((out, code), (format!("{SERVER_B}\t{on_b}\tattached\n"), Some(0)));
+    let (out, err, code) = client(&["client", "--session-id", &on_b, "Three"]);
+    assert_eq!((out.as_str(), code), ("Again on B\n", Some(0)), "{err}");
+    // --continue takes the most recently modified session of any server (B's, just prompted).
+    let (out, err, code) = client(&["client", "-c", "Four"]);
+    assert_eq!((out.as_str(), code), ("Continued\n", Some(0)), "{err}");
+    let (listed_b, _, _) = client(&["client", "--connect", &b_socket]);
+    assert_eq!(listed_b, format!("{SERVER_B}\t{on_b}\n"));
+    let holds = |dir: &str, text: &str| {
+        let mut found = false;
+        let mut stack = vec![tmp.0.join(dir)];
+        while let Some(path) = stack.pop() {
+            if path.is_dir() {
+                stack.extend(std::fs::read_dir(&path).unwrap().map(|e| e.unwrap().path()));
+            } else if std::fs::read_to_string(&path).is_ok_and(|t| t.contains(text)) {
+                found = true;
+            }
+        }
+        found
+    };
+    assert!(holds("sessions-b", "Four") && !holds("sessions-a", "Four"));
+    let (out, _, code) = client(&["client", "--session-id", &on_a]);
+    assert_eq!((out, code), (format!("{SERVER_ID}\t{on_a}\tattached\n"), Some(0)));
+    for (args, error) in [
+        (
+            vec!["client", "--session-id", "missing"],
+            "Error: No discovered server contains session missing\n".to_string(),
+        ),
+        (
+            vec!["client", "--session-id", "missing", "Hi"],
+            "Error: No discovered server contains session missing\n".to_string(),
+        ),
+        (
+            vec!["client", "New"],
+            "Error: Client prompt requires exactly one discovered server to create a Session\n".to_string(),
+        ),
+        (
+            vec!["client", "-e", "./plugin"],
+            "Error: Plugin selection requires exactly one local server\n".to_string(),
+        ),
+        (
+            vec!["client", "--model", "m"],
+            "Error: Model selection is only valid when automatically activating a new server\n".to_string(),
+        ),
+    ] {
+        let (out, err, code) = client(&args);
+        assert_eq!(
+            (out.as_str(), err.as_str(), code),
+            ("", error.as_str(), Some(1)),
+            "{args:?}"
+        );
+    }
+    assert_eq!(b.stop(), Some(0));
+
+    // Two servers over one session directory: each of its sessions is on both.
+    let (mut c, _) = start(SERVER_C, "sessions-a");
+    let (listed, _, code) = client(&["client"]);
+    assert_eq!(code, Some(0));
+    assert_eq!(listed, format!("{SERVER_ID}\t{on_a}\n{SERVER_C}\t{on_a}\n"));
+    let ambiguous = format!("Error: Session {on_a} is available from more than one server\n");
+    for args in [
+        vec!["client", "--session-id", on_a.as_str()],
+        vec!["client", "--session-id", on_a.as_str(), "Hi"],
+        vec!["client", "--continue", "Hi"],
+    ] {
+        let (out, err, code) = client(&args);
+        assert_eq!(
+            (out.as_str(), err.as_str(), code),
+            ("", ambiguous.as_str(), Some(1)),
+            "{args:?}"
+        );
+    }
+    assert_eq!(c.stop(), Some(0));
+    assert_eq!(a.stop(), Some(0));
+    assert_eq!(bridge.upgrades(), Vec::new());
 }

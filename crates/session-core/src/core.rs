@@ -500,17 +500,33 @@ pub fn extension_shortcuts(
     host: Option<&Arc<extensions::ExtensionHost>>,
     keybindings: &[(String, Vec<String>)],
 ) -> Value {
+    extension_issues(&[], host, keybindings)
+}
+
+/// [`extension_shortcuts`] after the extensions that did not load (`resourceLoader.getExtensions().errors`, type
+/// `error`), as interactive-mode.ts lists them first under `[Extension issues]`.
+pub fn extension_issues(
+    load_errors: &[extensions::manifest::Diagnostic],
+    host: Option<&Arc<extensions::ExtensionHost>>,
+    keybindings: &[(String, Vec<String>)],
+) -> Value {
     let resolved = host.map(|host| host.shortcuts(keybindings)).unwrap_or_default();
+    let errors = load_errors
+        .iter()
+        .map(|d| json!({"type": "error", "message": d.message, "path": d.path.display().to_string()}));
     json!({
         "shortcuts": resolved
             .shortcuts
             .iter()
             .map(|(_, s)| json!({"key": s.key, "description": s.description, "extensionPath": s.extension_path}))
             .collect::<Vec<_>>(),
-        "diagnostics": resolved
-            .diagnostics
-            .iter()
-            .map(|(message, path)| json!({"type": "warning", "message": message, "path": path}))
+        "diagnostics": errors
+            .chain(
+                resolved
+                    .diagnostics
+                    .iter()
+                    .map(|(message, path)| json!({"type": "warning", "message": message, "path": path})),
+            )
             .collect::<Vec<_>>(),
     })
 }
@@ -576,6 +592,27 @@ impl Queues {
     }
 }
 
+/// `selectAcceptedInbox` (lane.ts): the queued messages a run's admission takes, in queue order: every next-run
+/// message and, when `take_queued`, every steering and follow-up message (only the first of a kind whose mode is
+/// one-at-a-time). Messages already waiting in the durable runtime's inbox belong to a run and are never taken.
+fn select_accepted(queues: &Queues, take_queued: bool) -> Vec<(String, Value)> {
+    let (mut steer_taken, mut follow_up_taken) = (false, false);
+    let mut selected = Vec::new();
+    for item in queues.items.iter().filter(|q| q.submission.is_none()) {
+        let eligible = match item.kind {
+            QueueKind::NextRun => true,
+            QueueKind::Steer => take_queued && (queues.steering_all || !steer_taken),
+            QueueKind::FollowUp => take_queued && (queues.follow_up_all || !follow_up_taken),
+        };
+        if eligible {
+            steer_taken |= item.kind == QueueKind::Steer;
+            follow_up_taken |= item.kind == QueueKind::FollowUp;
+            selected.push((item.entry_id.clone(), item.message.clone()));
+        }
+    }
+    selected
+}
+
 fn lock<T>(shared: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
@@ -586,7 +623,7 @@ struct Running {
     journal: RunJournal,
     /// The run's prompt (its transcript message), announced when the first generation starts.
     prompt: Value,
-    /// The `nextRun` messages its admission placed before the prompt, announced with it.
+    /// The queued messages its admission placed before the prompt, announced with it.
     captured: Vec<Value>,
     /// The durable runtime's submission of the prompt.
     submission: Option<durable::SubmissionId>,
@@ -1740,7 +1777,8 @@ impl Core {
             | Op::BeforeFork { .. } => {
                 unreachable!("answered in op")
             }
-            Op::ExtensionShortcuts { keybindings } => Ok(Some(extension_shortcuts(
+            Op::ExtensionShortcuts { keybindings } => Ok(Some(extension_issues(
+                &self.runtime.extension_errors,
                 self.runtime.extensions.as_ref(),
                 &keybindings,
             ))),
@@ -1959,6 +1997,8 @@ impl Core {
             Op::Commands => Ok(Some(Value::Array(self.lane.stack.commands()))),
             // Root-owned work whose completion may still re-invoke the root, asked through the inspector.
             Op::Inspect { request, .. } if request == "async.pending" => Ok(Some(self.async_pending())),
+            // The worker answers the pool itself (session-worker.ts `inspect`): kernels and guard statistics.
+            Op::Inspect { request, .. } if request == "rlm.pool" => Ok(Some(self.lane.stack.pool_stats())),
             Op::Inspect { request, payload } => {
                 let runtime = self.lane.stack.cell_handler(LANE, None);
                 crate::inspect::inspect(Some(&*runtime), &request, payload, &kernel::Signal::new()).map(Some)
@@ -2146,12 +2186,15 @@ impl Core {
     /// Start a run of `message`; `waiter` is answered when it ends. On failure the waiter comes back with the error.
     #[allow(clippy::result_large_err)]
     fn prompt(&mut self, message: String, images: Vec<Value>, waiter: Option<Reply>) -> Result<(), (String, Reply)> {
-        self.prompt_with(user_message(message, images), waiter)
+        self.prompt_with(user_message(message, images), waiter, true)
     }
 
     /// Start a run of the user message `prompt` (see [`Core::prompt`]).
     #[allow(clippy::result_large_err)]
-    fn prompt_with(&mut self, prompt: Value, waiter: Option<Reply>) -> Result<(), (String, Reply)> {
+    ///
+    /// `take_queued`: the admission also takes the steering and follow-up messages queued while the lane was idle
+    /// (by the queue modes); messages queued for the next run are always taken.
+    fn prompt_with(&mut self, prompt: Value, waiter: Option<Reply>, take_queued: bool) -> Result<(), (String, Reply)> {
         let fail = |error: String, waiter: Option<Reply>| -> Result<(), (String, Reply)> {
             match waiter {
                 Some(waiter) => Err((error, waiter)),
@@ -2219,13 +2262,13 @@ impl Core {
             .unwrap_or(Value::Null);
         let started_tip = self.tip().map_or(Value::Null, Value::from);
         let settings = self.run_settings();
-        // The run takes every message queued for the next run, placed before its prompt (`selectAcceptedInbox`).
-        let captured: Vec<(String, Value)> = lock(&self.queues)
-            .items
-            .iter()
-            .filter(|q| q.kind == QueueKind::NextRun)
-            .map(|q| (q.entry_id.clone(), q.message.clone()))
-            .collect();
+        // The run takes the messages queued while the lane was idle, placed before its prompt in the order they were
+        // queued (`selectAcceptedInbox`); the rest wait in the inbox and the run delivers them.
+        let captured: Vec<(String, Value)> = select_accepted(&lock(&self.queues), take_queued);
+        let mut inbox = self.lane_state()["inbox"].clone();
+        if let Some(items) = inbox.as_array_mut() {
+            items.retain(|item| !captured.iter().any(|(id, _)| item["entryId"] == id.as_str()));
+        }
         let mut journal = match RunJournal::admit_capturing(
             Some(&mut lock_session(&self.session)),
             lane_config,
@@ -2233,12 +2276,15 @@ impl Core {
             (self.model.max_tokens, self.model.context_window),
             settings,
             &captured,
+            inbox,
         ) {
             Ok(journal) => journal,
             Err(error) => return fail(error, waiter),
         };
         if !captured.is_empty() {
-            lock(&self.queues).items.retain(|q| q.kind != QueueKind::NextRun);
+            lock(&self.queues)
+                .items
+                .retain(|q| !captured.iter().any(|(id, _)| *id == q.entry_id));
             self.queue_update();
         }
         let captured: Vec<Value> = captured.into_iter().map(|(_, message)| message).collect();
@@ -2282,6 +2328,8 @@ impl Core {
         let _ = getrandom_fill(&mut random);
         let id = self.run_ids.next(now_ms(), random);
         self.branches.run_started();
+        // Per-turn guard times start from zero (`fileHooks.beginTurn()` on the root lane's `run_start`).
+        self.lane.stack.host.begin_turn();
         self.run = Some(Running {
             id: id.clone(),
             signal,
@@ -2366,7 +2414,9 @@ impl Core {
             };
             return answer(false, Value::Null, reason);
         };
-        match self.prompt_with(prompt, None) {
+        // Recovery runs the first queued message (or the continuation); the others are delivered by the run, in
+        // order, as before.
+        match self.prompt_with(prompt, None, false) {
             Ok(()) => answer(true, self.run_id(), reason),
             Err((error, _)) => Err(error),
         }

@@ -235,21 +235,28 @@ pub fn system_prompt_in_mode(
     guide: &resources::runtime_guide::RuntimeGuideOptions,
     mode: &PromptMode,
 ) -> Result<(String, Vec<String>), String> {
+    system_prompt_with_resources(env, cwd, loki_root, extensions, guide, mode, &Default::default())
+}
+
+/// [`system_prompt_in_mode`] with the session's `-e` and package resources (crate::session_resources): their
+/// skills join the listing (the `-e` ones also with `--no-skills`).
+pub fn system_prompt_with_resources(
+    env: &Env,
+    cwd: &str,
+    loki_root: Option<&Path>,
+    extensions: Option<&str>,
+    guide: &resources::runtime_guide::RuntimeGuideOptions,
+    mode: &PromptMode,
+    extra: &crate::session_resources::SessionResources,
+) -> Result<(String, Vec<String>), String> {
     use resources::system_prompt::{BuildOptions, build_system_prompt};
     let agent_dir = env.agent_dir().display().to_string();
     let bundled = config::paths::normalize(&env.docs.join("../skills"))
         .display()
         .to_string();
-    let mut skills = Vec::new();
+    let mut skills = crate::session_resources::skills(cwd, &agent_dir, extra, mode.no_skills);
     let mut warnings = Vec::new();
     if !mode.no_skills {
-        skills = resources::skills::load_skills(&resources::skills::LoadSkillsOptions {
-            cwd,
-            agent_dir: &agent_dir,
-            skill_paths: &[],
-            include_defaults: true,
-        })
-        .skills;
         skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
         // Skills the user set always on carry their text into the prompt (resource-loader.ts `applyAlwaysSkills`).
         warnings = resources::skills::apply_always_skills(&mut skills, &mode.always_skills)
@@ -607,6 +614,12 @@ pub fn api_supported(api: &str) -> bool {
 
 /// The model call for every API the Rust providers cover. A request whose signal is already aborted is not sent:
 /// it ends as an empty aborted message. `api_key` fills requests that carry none (a subagent's loop).
+/// A client with this process's proxy variables as Pi's HTTP stack reads them (`EnvHttpProxyAgent` over
+/// `process.env`): a session worker's environment carries the run's `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`.
+pub fn process_transport() -> ReqwestTransport {
+    ReqwestTransport::for_env(&|key| std::env::var(key).ok(), None)
+}
+
 pub struct Provider {
     transport: Arc<dyn Transport>,
     api_key: Option<String>,
@@ -617,7 +630,7 @@ pub struct Provider {
 impl Provider {
     pub fn new() -> Self {
         Provider {
-            transport: Arc::new(ReqwestTransport::new(None)),
+            transport: Arc::new(process_transport().with_idle_timeout(None)),
             api_key: None,
             router: ai::claude_subscription::fallback::global(),
         }
@@ -642,7 +655,7 @@ impl Provider {
     /// A provider whose requests fail when headers or the stream stall for `idle` (`httpIdleTimeoutMs`).
     pub fn with_idle_timeout(idle: Option<std::time::Duration>) -> Self {
         Provider {
-            transport: Arc::new(ReqwestTransport::new(None).with_idle_timeout(idle)),
+            transport: Arc::new(process_transport().with_idle_timeout(idle)),
             ..Provider::new()
         }
     }

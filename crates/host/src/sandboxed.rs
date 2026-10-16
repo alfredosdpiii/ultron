@@ -23,13 +23,21 @@ pub struct SandboxGuard {
 
 impl Guard for SandboxGuard {
     fn before_shell(&self, command: &str) -> Option<String> {
+        self.before_shell_on("main", command)
+    }
+
+    fn before_shell_on(&self, lane: &str, command: &str) -> Option<String> {
         if let Err(reason) = self.approvals.check("bash", Some(command)) {
             return Some(reason);
         }
-        self.inner.before_shell(command)
+        self.inner.before_shell_on(lane, command)
     }
 
     fn before_write(&self, path: &str, content: &str) -> Value {
+        self.before_write_on("main", path, content)
+    }
+
+    fn before_write_on(&self, lane: &str, path: &str, content: &str) -> Value {
         if let Err(reason) = self.approvals.check("files.before_write", Some(path)) {
             return json!({ "blocked": true, "reason": reason });
         }
@@ -39,7 +47,15 @@ impl Guard for SandboxGuard {
                 return json!({ "blocked": true, "reason": outside_message(&self.launcher.policy) });
             }
         }
-        self.inner.before_write(path, content)
+        self.inner.before_write_on(lane, path, content)
+    }
+
+    fn guard_stats(&self) -> Vec<Value> {
+        self.inner.guard_stats()
+    }
+
+    fn begin_turn(&self) {
+        self.inner.begin_turn();
     }
 
     fn cell_started(&self, lane: &str) {

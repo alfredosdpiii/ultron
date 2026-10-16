@@ -34,6 +34,7 @@ pub mod model_refresh;
 pub mod model_registry;
 pub mod model_resolver;
 pub mod models;
+pub mod net;
 pub mod oauth;
 pub mod oauth_flow;
 pub mod oauth_kimi;

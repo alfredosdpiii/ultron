@@ -167,3 +167,80 @@ fn host_loki_unported_check_writes_with_a_note() {
         ]})
     );
 }
+
+/// A checkout without `.loki/` (a branch switched to after the session started, or a worktree of a repository whose
+/// `.loki/` is untracked) leaves shell commands working under the default policy: the engine runs in-process, so
+/// no `.loki/loki.py` is needed. The TypeScript host ran the repository's loki.py and refused every bash() command
+/// when it was gone (`can't open file .../.loki/loki.py`).
+#[test]
+fn host_loki_shell_guard_works_without_a_loki_directory() {
+    use host::file_hooks::{FileWriteGuard, Verdict};
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    assert!(!root.join(".loki").exists());
+    let guard = LokiGuard::new(root, LokiMode::On);
+    let read = guard.before_shell("git status --short | head", root).unwrap();
+    assert!(matches!(read, Verdict::Allow(None)), "{read:?}");
+    // The default policy still applies: a shell write into source is refused.
+    let write = guard.before_shell("echo x > src/app.py", root).unwrap();
+    assert!(matches!(write, Verdict::Block(_)), "{write:?}");
+}
+
+/// A `.loki/` file a cell's `git checkout` brought in matches the commit and is not checked (TS reported
+/// `protected file: .loki/loki.json` on the cell that switched branches); the same file edited and not committed
+/// is still checked.
+#[test]
+fn host_loki_after_cell_skips_loki_files_that_match_the_commit() {
+    use host::file_hooks::{CellChanges, FileWriteGuard};
+    use std::sync::Mutex;
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
+    let git = |args: &[&str]| {
+        let status = Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(&root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(status.success(), "git {args:?}");
+    };
+    git(&["init", "-q"]);
+    std::fs::create_dir_all(root.join(".loki")).unwrap();
+    std::fs::write(root.join(".loki/loki.json"), "{}\n").unwrap();
+    git(&["add", "."]);
+    git(&["commit", "-q", "-m", "policy"]);
+    let asked: Arc<Mutex<Vec<Vec<String>>>> = Arc::default();
+    let seen = asked.clone();
+    let guard = LokiGuard::new(&root, LokiMode::On)
+        .with_post_write(true)
+        .with_hook(Arc::new(move |_: &Path, files: &[String]| {
+            seen.lock().unwrap().push(files.to_vec());
+            loki::run::Outcome {
+                status: 0,
+                stdout: String::new(),
+                stderr: String::new(),
+            }
+        }));
+    let changes = CellChanges {
+        files: vec![root.join(".loki/loki.json")],
+        complete: true,
+        ..Default::default()
+    };
+    assert!(guard.after_cell_changes(&changes, &root, "main").unwrap().is_none());
+    assert!(asked.lock().unwrap().is_empty(), "{:?}", asked.lock().unwrap());
+    std::fs::write(root.join(".loki/loki.json"), "{\"protected\": []}\n").unwrap();
+    guard.after_cell_changes(&changes, &root, "main").unwrap();
+    assert_eq!(*asked.lock().unwrap(), vec![vec![".loki/loki.json".to_string()]]);
+}

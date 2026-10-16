@@ -52,10 +52,24 @@ pub trait Guard: Send + Sync {
     fn before_shell(&self, _command: &str) -> Option<String> {
         None
     }
+    /// [`Self::before_shell`] for a command of the cell on `lane`.
+    fn before_shell_on(&self, _lane: &str, command: &str) -> Option<String> {
+        self.before_shell(command)
+    }
     /// One result per proposed write: `{blocked, reason?, notes?}` as runtime.py reads it.
     fn before_write(&self, _path: &str, _content: &str) -> Value {
         json!({ "blocked": false })
     }
+    /// [`Self::before_write`] for a write of the cell on `lane`.
+    fn before_write_on(&self, _lane: &str, path: &str, content: &str) -> Value {
+        self.before_write(path, content)
+    }
+    /// Each file-hook guard's statistics (`fileHooks.stats()`), for `rlm.pool`.
+    fn guard_stats(&self) -> Vec<Value> {
+        Vec::new()
+    }
+    /// A new root turn began: per-turn guard times start from zero.
+    fn begin_turn(&self) {}
     /// A cell on `lane` is starting (after-cell checks take their baseline).
     fn cell_started(&self, _lane: &str) {}
     /// A cell on `lane` ended (after-cell checks start in the background).
@@ -423,6 +437,16 @@ fn run_shell(
 }
 
 impl Host {
+    /// Each file-hook guard's statistics (`fileHooks.stats()`).
+    pub fn guard_stats(&self) -> Vec<Value> {
+        self.guard.guard_stats()
+    }
+
+    /// A new root turn began: per-turn guard times start from zero (`fileHooks.beginTurn()`).
+    pub fn begin_turn(&self) {
+        self.guard.begin_turn();
+    }
+
     /// A cell on `lane` is starting: the after-cell file hooks take their baseline picture if they have none.
     pub fn cell_started(&self, lane: &str) {
         self.guard.cell_started(lane);
@@ -617,13 +641,13 @@ impl Host {
             }
             let results: Vec<Value> = proposed
                 .into_iter()
-                .map(|(path, content)| self.guard.before_write(path, content))
+                .map(|(path, content)| self.guard.before_write_on(lane, path, content))
                 .collect();
             return Ok(json!({ "results": results }));
         }
         if matches!(kind, "bash" | "shell.bash" | "shell.run")
             && let Some(Value::String(command)) = payload.get("command")
-            && let Some(reason) = self.guard.before_shell(command)
+            && let Some(reason) = self.guard.before_shell_on(lane, command)
         {
             return Err(format!("bash command was not run: {reason}"));
         }

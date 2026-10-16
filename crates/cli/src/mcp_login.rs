@@ -11,7 +11,6 @@ use mcp::oauth::store::CredentialStore;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 /// `DEFAULT_LOGIN_TIMEOUT_SECONDS`.
@@ -77,36 +76,38 @@ impl mcp::oauth::signin::SignInPrompt for Prompt<'_> {
 
     fn prompt_for_redirect_url(&self, cancel: &mcp::CancelToken) -> Option<String> {
         let deadline = Instant::now() + self.timeout;
-        let answer = if self.interactive {
+        if self.interactive {
             use std::io::Write;
+            let mut err = std::io::stderr();
             let _ = write!(
-                std::io::stderr(),
+                err,
                 "If the browser cannot reach this machine, paste the URL it was redirected to: "
             );
-            let (tx, rx) = mpsc::channel();
-            // A terminal read cannot be interrupted; the thread ends with the process when the browser wins.
-            std::thread::spawn(move || {
-                let mut line = String::new();
-                if std::io::stdin().read_line(&mut line).is_ok() {
-                    let _ = tx.send(line);
-                }
-            });
-            Some(rx)
-        } else {
-            None
-        };
-        while !cancel.is_cancelled() && Instant::now() < deadline {
-            if let Some(rx) = &answer {
-                match rx.recv_timeout(Duration::from_millis(100)) {
-                    Ok(line) => return Some(line),
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return None,
-                }
-            } else {
-                std::thread::sleep(Duration::from_millis(100));
+            let _ = err.flush();
+            if let Ok(mut input) = crate::line_input::TerminalInput::open() {
+                return redirect_answer(&mut input, &mut err, cancel, deadline);
             }
         }
+        while !cancel.is_cancelled() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(100));
+        }
         None
+    }
+}
+
+/// `waitForRedirectUrl`'s question on the terminal: the pasted line, or `None` when Esc/Ctrl+C cancelled it, the
+/// input ended, the browser's callback arrived (`cancel`) or `deadline` passed. The read stops with it, so no reader
+/// is left behind to take later input.
+pub fn redirect_answer(
+    input: &mut dyn crate::line_input::Input,
+    echo: &mut dyn std::io::Write,
+    cancel: &mcp::CancelToken,
+    deadline: Instant,
+) -> Option<String> {
+    let stop = || cancel.is_cancelled() || Instant::now() >= deadline;
+    match crate::line_input::read_line(input, echo, &stop) {
+        crate::line_input::LineRead::Line(line) => Some(line),
+        _ => None,
     }
 }
 

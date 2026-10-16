@@ -28,7 +28,9 @@ path = "src/bin/ultron_inert_mcp.rs"
 test = false
 
 [dev-dependencies]
+rcgen = "=0.14.7"
 tempfile = "=3.27.0"
+tokio-rustls = { version = "=0.26.6", default-features = false }
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "system-proxy"] }
 tokio = { version = "=1.53.2", features = ["sync", "time", "macros", "rt", "rt-multi-thread", "net", "io-util", "test-util"] }
 
