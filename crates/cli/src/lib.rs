@@ -37,6 +37,8 @@ pub mod setup_core;
 pub mod setup_tui;
 pub mod setup_wizard;
 pub mod startup;
+pub mod startup_checks;
+pub mod terminal_settings;
 pub mod tui_login;
 pub mod usage;
 

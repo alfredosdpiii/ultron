@@ -18,6 +18,7 @@ pub mod journal;
 pub mod loki_guard;
 pub mod sandboxed;
 pub mod secrets;
+pub mod shell;
 pub mod shell_env;
 pub mod text;
 pub mod view_image;
@@ -94,6 +95,8 @@ pub struct Host {
     guard: Box<dyn Guard>,
     /// Runs shell commands isolated (see [`Host::sandboxed`]); None runs them as before.
     launcher: Option<Arc<sandbox::Launcher>>,
+    /// The `shellPath` setting (`~` expanded); None or empty runs the default shell ([`shell::shell_config`]).
+    shell_path: Option<String>,
     shared: Arc<Shared>,
 }
 
@@ -381,17 +384,19 @@ fn safe_integer(value: Option<&Value>, default: u64) -> Option<u64> {
 /// cleaned chunk and the raw byte count; `stop` is polled and kills the process group when it turns true.
 /// Returns the exit code (None when killed by a signal).
 fn run_shell(
+    shell: &shell::ShellConfig,
     command: &str,
     cwd: &Path,
     launcher: Option<&sandbox::Launcher>,
     mut on_text: impl FnMut(&str, usize),
     stop: impl Fn() -> bool,
 ) -> Result<Option<i32>, String> {
+    let argv = shell.argv(command);
     let mut process = match launcher {
-        Some(launcher) => launcher.command(&["bash".into(), "-c".into(), command.into()], cwd)?,
+        Some(launcher) => launcher.command(&argv, cwd)?,
         None => {
-            let mut process = Command::new("bash");
-            process.arg("-c").arg(command).current_dir(cwd);
+            let mut process = Command::new(&argv[0]);
+            process.args(&argv[1..]).current_dir(cwd);
             process
         }
     };
@@ -487,7 +492,19 @@ impl Host {
             spill_dir: spill_dir.into(),
             guard,
             launcher: None,
+            shell_path: None,
         }
+    }
+
+    /// Commands run under `shell_path` (the `shellPath` setting), resolved for each command as TypeScript's
+    /// `createLocalBashOperations({ shellPath })` does: a path that does not exist fails the command.
+    pub fn with_shell_path(mut self, shell_path: Option<String>) -> Self {
+        self.shell_path = shell_path;
+        self
+    }
+
+    fn shell(&self) -> Result<shell::ShellConfig, String> {
+        shell::system_shell_config(self.shell_path.as_deref())
     }
 
     /// Makes shell jobs durable: restores the jobs journal from `journal` and journals every start and end from now
@@ -748,8 +765,10 @@ impl Host {
                 }
                 Ok(())
             };
+        let shell = self.shell()?;
         let mut failure = None;
         let exit = run_shell(
+            &shell,
             &command,
             &self.cwd,
             self.launcher.as_deref(),
@@ -875,27 +894,30 @@ impl Host {
         // The keeper is spawned on the thread that follows it (its waiter); its sandbox is persistent
         // (`Launcher::command_persistent`), so neither that thread nor this worker ending stops it.
         let (started, spawned) = mpsc::channel();
-        let (runner, shared, cwd, launcher) = (
+        let (runner, shared, cwd, launcher, shell) = (
             job.clone(),
             self.shared.clone(),
             self.cwd.clone(),
             self.launcher.clone(),
+            self.shell(),
         );
-        std::thread::spawn(move || match spawn_keeper(&runner, &cwd, launcher.as_deref()) {
-            Ok(child) => {
-                let pid = child.id() as i32;
-                *lock(&runner.process) = Some((pid, process_start(pid)));
-                let _ = started.send(());
-                follow(&runner, Some(child), &shared);
-            }
-            Err(error) => {
-                let mut record = lock(&runner.record);
-                record.status = Status::Failed;
-                record.ended_at = Some(now_ms());
-                record.error = Some(error);
-                drop(record);
-                let _ = started.send(());
-                runner.finished();
+        std::thread::spawn(move || {
+            match shell.and_then(|shell| spawn_keeper(&runner, &shell, &cwd, launcher.as_deref())) {
+                Ok(child) => {
+                    let pid = child.id() as i32;
+                    *lock(&runner.process) = Some((pid, process_start(pid)));
+                    let _ = started.send(());
+                    follow(&runner, Some(child), &shared);
+                }
+                Err(error) => {
+                    let mut record = lock(&runner.record);
+                    record.status = Status::Failed;
+                    record.ended_at = Some(now_ms());
+                    record.error = Some(error);
+                    drop(record);
+                    let _ = started.send(());
+                    runner.finished();
+                }
             }
         });
         let _ = spawned.recv();
@@ -904,12 +926,18 @@ impl Host {
     }
 }
 
-/// The keeper: runs the command with bash (stdout and stderr together into the raw file, which is the keeper's
-/// stdout), then writes the command's exit status to its own stderr, the exit file. Files, not pipes, so the command
-/// keeps running and its end is recorded when the worker that started it is gone.
-const KEEPER: &str = r#"bash -c "$0" 2>&1 </dev/null; printf '%s\n' "$?" >&2"#;
+/// The keeper: runs the command with the session's shell (`$1 $2 "$0"`: the shell and its `-c`; stdout and stderr
+/// together into the raw file, which is the keeper's stdout), then writes the command's exit status to its own
+/// stderr, the exit file. Files, not pipes, so the command keeps running and its end is recorded when the worker
+/// that started it is gone. The keeper itself is POSIX shell run by bash, whatever shell the command uses.
+const KEEPER: &str = r#""$1" "$2" "$0" 2>&1 </dev/null; printf '%s\n' "$?" >&2"#;
 
-fn spawn_keeper(job: &Job, cwd: &Path, launcher: Option<&sandbox::Launcher>) -> Result<std::process::Child, String> {
+fn spawn_keeper(
+    job: &Job,
+    shell: &shell::ShellConfig,
+    cwd: &Path,
+    launcher: Option<&sandbox::Launcher>,
+) -> Result<std::process::Child, String> {
     let create = |path: &Path| {
         std::fs::OpenOptions::new()
             .write(true)
@@ -921,7 +949,9 @@ fn spawn_keeper(job: &Job, cwd: &Path, launcher: Option<&sandbox::Launcher>) -> 
     };
     let raw = create(&job.raw_path)?;
     let exit = create(&job.exit_path)?;
-    let argv = ["bash".to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
+    let mut argv = vec!["bash".to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
+    argv.push(shell.shell.clone());
+    argv.extend(shell.args.iter().cloned());
     let mut process = match launcher {
         // A job outlives the worker that started it (a successor adopts it): its sandbox is not tied to us.
         Some(launcher) => launcher.command_persistent(&argv, cwd)?,

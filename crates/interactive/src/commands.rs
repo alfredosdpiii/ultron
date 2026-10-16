@@ -273,7 +273,10 @@ fn notice_lines(t: &Rc<Theme>, title: &str, tokens: Vec<tui::markdown::Token>, w
         padding_y: 1,
         theme: markdown_theme(t),
         style: None,
-        options: MarkdownOptions::default(),
+        options: MarkdownOptions {
+            hyperlinks: crate::render_settings::hyperlinks(),
+            ..MarkdownOptions::default()
+        },
     };
     lines.extend(md.render(width));
     lines.push(border);

@@ -19,11 +19,14 @@ use serde_json::{Map, Value, json};
 /// The answer member of a command an extension failed closed: `{ "userBashFailed": <error> }`.
 pub const USER_BASH_FAILED: &str = "userBashFailed";
 
-/// Run `command` as a user's command: `user_bash`, then the shell (output chunks to `on_chunk`).
+/// Run `command` as a user's command: `user_bash` sees it as typed, then the shell runs it after the
+/// `shellCommandPrefix` setting (`prefix`; output chunks to `on_chunk`).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn run(
     extensions: Option<&ExtensionHost>,
     host: &Host,
     command: &str,
+    prefix: Option<&str>,
     exclude: bool,
     cwd: &str,
     signal: &Signal,
@@ -38,7 +41,7 @@ pub(super) fn run(
             Ok(None) => {}
         }
     }
-    let result = host.user_bash(command, signal, on_chunk)?;
+    let result = host.user_bash(&host::shell::prefixed_command(prefix, command), signal, on_chunk)?;
     Ok(BashOutcome::Ran(pi_result(&result)))
 }
 

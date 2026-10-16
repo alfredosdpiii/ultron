@@ -956,9 +956,14 @@ impl Core {
         )));
         child_context.observe(&context, runtime.extensions.clone());
         let _ = lane.stack.context.set(context.clone());
-        let provider = Arc::new(Provider::with_idle_timeout(ai::http::http_idle_timeout(
-            runtime.config.settings.get("httpIdleTimeoutMs"),
-        )));
+        let provider = Arc::new(
+            Provider::with_idle_timeout(ai::http::http_idle_timeout(
+                runtime.config.settings.get("httpIdleTimeoutMs"),
+            ))
+            .with_request_settings(crate::request_settings::RequestSettings::from_settings(
+                &runtime.config.settings,
+            )),
+        );
         let queues = Arc::new(Mutex::new(Queues {
             items: recovered
                 .queued
@@ -2633,12 +2638,21 @@ impl Core {
         let extensions = self.extension_host();
         let cwd = self.env.cwd.display().to_string();
         let tx = self.tx.clone();
+        // session-control-provider.ts `bash`: the `shellCommandPrefix` setting runs first; the message keeps the
+        // command as typed.
+        let prefix = self
+            .runtime
+            .config
+            .settings
+            .as_object()
+            .and_then(config::settings_keys::shell_command_prefix);
         std::thread::spawn(move || {
             // Off the actor: a handler may ask the session for anything while it decides.
             let result = user_bash::run(
                 extensions.as_deref(),
                 &host,
                 &command,
+                prefix.as_deref(),
                 exclude,
                 &cwd,
                 &signal,

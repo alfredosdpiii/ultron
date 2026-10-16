@@ -113,7 +113,7 @@ pub fn markdown_theme_with(theme: &Rc<Theme>, code_highlight: Option<&crate::qol
         strikethrough: Box::new(strikethrough),
         underline: Box::new(underline),
         highlight_code: Some(highlight_code),
-        code_block_indent: None,
+        code_block_indent: crate::render_settings::code_block_indent(),
     }
 }
 
@@ -141,7 +141,10 @@ fn markdown_with(
         padding_y: 0,
         theme: markdown_theme_with(theme, code_highlight),
         style,
-        options,
+        options: MarkdownOptions {
+            hyperlinks: options.hyperlinks || crate::render_settings::hyperlinks(),
+            ..options
+        },
     }
 }
 

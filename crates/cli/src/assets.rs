@@ -4,8 +4,9 @@
 //! from its directory and the model reads skills and docs by path, so they are installed as real files.
 //!
 //! Where the files come from (`ULTRON_DEV_ASSETS`):
-//! - unset or empty: a debug build reads the live checkout it was built from when that checkout still has
-//!   `runtime.py`; otherwise (every release build) the embedded files.
+//! - unset or empty: the package directory `PI_PACKAGE_DIR` names (`getPackageDir`'s override, for Nix/Guix store
+//!   paths; it must hold `src/ultron/rlm/runtime.py`); else a debug build reads the live checkout it was built from
+//!   when that checkout still has `runtime.py`; otherwise (every release build) the embedded files.
 //! - `0`: the embedded files.
 //! - `1`: the build checkout (debug builds only; a release binary records no build path).
 //! - any other value: that package directory (one holding `docs/`, `skills/` and `src/ultron/rlm/runtime.py`).
@@ -45,6 +46,8 @@ pub use generated::{CHECKOUT, FILES, HASH};
 
 /// The environment variable choosing where the package files come from.
 pub const DEV_ASSETS: &str = "ULTRON_DEV_ASSETS";
+/// `PI_PACKAGE_DIR`: the package directory to read instead of the embedded files (when `ULTRON_DEV_ASSETS` is unset).
+pub const PACKAGE_DIR: &str = "PI_PACKAGE_DIR";
 /// The file in an installed directory that names the hash it was installed from; written last.
 pub const MARKER: &str = ".ultron-assets";
 /// The runtime script, relative to the package directory.
@@ -61,20 +64,26 @@ pub enum Source {
 pub fn source(var: &dyn Fn(&str) -> Option<String>, home: &Path) -> Result<Source, String> {
     let checkout = || CHECKOUT.map(PathBuf::from).filter(|dir| dir.join(RUNTIME).is_file());
     let embedded = || Source::Embedded(config::paths::agent_dir(var, home).join("runtime"));
+    let live = |name: &str, dir: &str| {
+        let dir = config::paths::normalize(&config::paths::expand_tilde(dir, home));
+        match dir.join(RUNTIME).is_file() {
+            true => Ok(Source::Live(dir)),
+            false => Err(format!("{name}={}: no {RUNTIME} there", dir.display())),
+        }
+    };
     match var(DEV_ASSETS).as_deref().unwrap_or("") {
-        "" => Ok(checkout().map_or_else(embedded, Source::Live)),
+        // `getPackageDir()`: `PI_PACKAGE_DIR` names the package directory (Nix/Guix store paths).
+        "" => match var(PACKAGE_DIR).filter(|dir| !dir.is_empty()) {
+            // `getRlmRuntimePath`'s error when the directory has no runtime.
+            Some(dir) => live(PACKAGE_DIR, &dir).map_err(|_| "Ultron RLM runtime.py is not installed".to_string()),
+            None => Ok(checkout().map_or_else(embedded, Source::Live)),
+        },
         "0" => Ok(embedded()),
         "1" => checkout().map(Source::Live).ok_or_else(|| match CHECKOUT {
             Some(dir) => format!("{DEV_ASSETS}=1: the build checkout {dir} has no {RUNTIME}"),
             None => format!("{DEV_ASSETS}=1 needs a debug build; set {DEV_ASSETS} to a package directory instead"),
         }),
-        dir => {
-            let dir = config::paths::normalize(&config::paths::expand_tilde(dir, home));
-            match dir.join(RUNTIME).is_file() {
-                true => Ok(Source::Live(dir)),
-                false => Err(format!("{DEV_ASSETS}={}: no {RUNTIME} there", dir.display())),
-            }
-        }
+        dir => live(DEV_ASSETS, dir),
     }
 }
 

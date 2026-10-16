@@ -134,6 +134,21 @@ pub struct SessionOpened {
 }
 
 /// What a login flow reported (`AuthEvent`), as the dialog shows it.
+/// A notice interactive-mode.ts shows around startup.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StartupNotice {
+    /// `showStartupNoticesIfNeeded`: the new changelog entries; `collapse` is the `collapseChangelog` setting.
+    WhatsNew {
+        markdown: String,
+        collapse: bool,
+        version: String,
+    },
+    /// `showNewVersionNotification`: the newer release's version.
+    NewVersion(String),
+    /// `showWarning` with the Anthropic subscription-auth warning (once per run).
+    SubscriptionAuth,
+}
+
 /// How a `/scoped-models` catalog refresh ended.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CatalogRefresh {
@@ -336,6 +351,8 @@ pub enum LaneEvent {
     /// Configured packages behind their source, found by the startup update check (display names); the transcript
     /// shows [`crate::package_updates::PackageUpdateNotice`] when there are any.
     PackageUpdates(Vec<String>),
+    /// A startup notice from the client ([`crate::startup_notices`]); shown once the session is open.
+    StartupNotice(StartupNotice),
     /// The session's subagents for the RLM views (`rlm.list_subagents`: `{subagents: [...]}`).
     RlmStatus(Value),
     /// The session's subagents, for the agent hub.
@@ -519,6 +536,14 @@ pub trait LaneClient {
     }
     /// Read the changelog ([`LaneEvent::Changelog`]).
     fn changelog(&self) {}
+    /// `getChangelogForDisplay` for a session that opened without messages: the entries newer than the
+    /// `lastChangelogVersion` setting (which it records), as [`LaneEvent::StartupNotice`] when there are any.
+    fn startup_changelog(&self) {}
+    /// `maybeWarnAboutAnthropicSubscriptionAuth` for the session's model's `provider`: a
+    /// [`StartupNotice::Warning`] when its credential is a subscription login and the warning is on.
+    fn subscription_auth_warning(&self, provider: &str) {
+        let _ = provider;
+    }
     /// Run an extension's command `/name args` (`LegacyExtensionCommands.run`); statuses answer. `/mcp`'s dialogs
     /// and notices arrive as [`LaneEvent::ExtensionUi`].
     fn extension_command(&self, name: &str, args: &str) {

@@ -10,4 +10,5 @@ pub mod lock;
 pub mod models_store;
 pub mod paths;
 pub mod settings;
+pub mod settings_keys;
 pub mod trust;

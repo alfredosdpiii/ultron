@@ -70,7 +70,7 @@ fn keys() -> KeybindingsManager {
 
 fn theme(env: &Env) -> Rc<Theme> {
     let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
-    let caps = tui::image::detect_capabilities(&|k| (env.var)(k), false, false);
+    let caps = crate::terminal_settings::capabilities(env, &settings);
     let name = settings.theme().unwrap_or_else(|| "dark".into());
     let json = builtin_theme_json(&name)
         .or_else(|| builtin_theme_json("dark"))

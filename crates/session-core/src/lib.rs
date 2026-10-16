@@ -39,6 +39,7 @@ pub mod op_journal;
 pub mod packages;
 pub mod pi_view;
 pub mod recovery;
+pub mod request_settings;
 pub mod review_command;
 pub mod session_flags;
 pub mod session_resources;

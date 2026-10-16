@@ -306,6 +306,10 @@ pub struct App {
     session_id: Option<String>,
     /// Package updates found before the first session opened (opening clears the transcript), shown with it.
     early_package_updates: Vec<String>,
+    /// Startup notices that arrived before the first session opened, shown with it.
+    early_startup_notices: Vec<crate::lane::StartupNotice>,
+    /// `anthropicSubscriptionWarningShown`.
+    subscription_warning_shown: bool,
     session_file: Option<String>,
     session_name: Option<String>,
     transcript: Vec<Value>,
@@ -681,6 +685,8 @@ impl App {
             mode_request: None,
             session_id: None,
             early_package_updates: Vec::new(),
+            early_startup_notices: Vec::new(),
+            subscription_warning_shown: false,
             session_file: None,
             session_name: None,
             transcript: Vec::new(),
@@ -1401,6 +1407,47 @@ impl App {
         self.terminal_writes.push(format!("\x1b]0;{title}\x07"));
     }
 
+    /// One of interactive-mode.ts's startup notices (crate::startup_notices).
+    fn show_startup_notice(&mut self, notice: crate::lane::StartupNotice) {
+        use crate::lane::StartupNotice;
+        use crate::startup_notices::{
+            ANTHROPIC_SUBSCRIPTION_AUTH_WARNING, NewVersionNotice, WhatsNewNotice, warning_text,
+        };
+        match notice {
+            StartupNotice::WhatsNew {
+                markdown,
+                collapse,
+                version,
+            } => self.chat.append_notice(Box::new(WhatsNewNotice {
+                theme: Rc::clone(&self.theme),
+                markdown,
+                collapse,
+                version,
+                code_block_indent: None,
+                hyperlinks: crate::render_settings::hyperlinks(),
+            })),
+            StartupNotice::NewVersion(version) => self.chat.append_notice(Box::new(NewVersionNotice {
+                theme: Rc::clone(&self.theme),
+                version,
+                hyperlinks: crate::render_settings::hyperlinks(),
+            })),
+            StartupNotice::SubscriptionAuth => {
+                if !self.subscription_warning_shown {
+                    self.subscription_warning_shown = true;
+                    let text = warning_text(&self.theme, ANTHROPIC_SUBSCRIPTION_AUTH_WARNING);
+                    self.notice(&text);
+                }
+            }
+        }
+    }
+
+    /// `maybeWarnAboutAnthropicSubscriptionAuth`: only an `anthropic` model is checked, and only until it warned.
+    fn check_subscription_auth(&mut self) {
+        if !self.subscription_warning_shown && self.model.provider == "anthropic" {
+            self.client.subscription_auth_warning(&self.model.provider);
+        }
+    }
+
     /// The "Package Updates Available" notice, when there are any.
     fn show_package_updates(&mut self, packages: Vec<String>) {
         if !packages.is_empty() {
@@ -1448,8 +1495,16 @@ impl App {
                     .set_history(&history.iter().map(String::as_str).collect::<Vec<_>>());
                 if !switched {
                     self.status.clear();
+                    // `init`: the changelog of a session without messages, then the subscription-auth check.
+                    if self.transcript.is_empty() {
+                        self.client.startup_changelog();
+                    }
                     let packages = std::mem::take(&mut self.early_package_updates);
                     self.show_package_updates(packages);
+                    for notice in std::mem::take(&mut self.early_startup_notices) {
+                        self.show_startup_notice(notice);
+                    }
+                    self.check_subscription_auth();
                 }
                 self.update_title();
                 // `setupExtensionShortcuts`: the session's extensions under the effective keybindings.
@@ -1501,6 +1556,10 @@ impl App {
             }
             LaneEvent::Model(model) => {
                 self.model = model;
+                // A model change (selector, cycling, /model) checks the new model's credential.
+                if self.session_id.is_some() {
+                    self.check_subscription_auth();
+                }
             }
             LaneEvent::Thinking(level) => {
                 self.thinking_level = level;
@@ -1690,6 +1749,10 @@ impl App {
             LaneEvent::PackageUpdates(packages) => match self.session_id {
                 Some(_) => self.show_package_updates(packages),
                 None => self.early_package_updates = packages,
+            },
+            LaneEvent::StartupNotice(notice) => match self.session_id {
+                Some(_) => self.show_startup_notice(notice),
+                None => self.early_startup_notices.push(notice),
             },
             LaneEvent::SessionDeleted(result) => {
                 if let Some(Panel::Sessions(selector)) = self.panel.as_mut() {

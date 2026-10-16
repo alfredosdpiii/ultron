@@ -123,11 +123,20 @@ pub struct StdinBuffer {
     buffer: String,
     paste: Option<String>,
     pending_kitty_printable: Option<u32>,
+    /// How long a lone ESC waits for the rest of a sequence (`escapeTimeout`); None: 10 ms.
+    escape_timeout: Option<Duration>,
 }
 
 impl StdinBuffer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A buffer whose lone ESC waits `timeout` (`new StdinBuffer({ escapeTimeout })`, the terminal's
+    /// [`crate::terminal::resolve_escape_timeout`]).
+    pub fn with_escape_timeout(mut self, timeout: Duration) -> Self {
+        self.escape_timeout = Some(timeout);
+        self
     }
 
     /// Feed input; returns the complete events. Check [`StdinBuffer::flush_after`] for a pending partial sequence.
@@ -207,11 +216,12 @@ impl StdinBuffer {
         out.push(InputEvent::Data(seq.to_string()));
     }
 
-    /// How long to wait before calling [`StdinBuffer::flush`] (10 ms for a lone ESC, 50 ms otherwise).
+    /// How long to wait before calling [`StdinBuffer::flush`] (the escape timeout, 10 ms by default, for a lone ESC;
+    /// 50 ms otherwise).
     pub fn flush_after(&self) -> Option<Duration> {
         match self.buffer.as_str() {
             "" => None,
-            ESC => Some(Duration::from_millis(10)),
+            ESC => Some(self.escape_timeout.unwrap_or(Duration::from_millis(10))),
             _ => Some(Duration::from_millis(50)),
         }
     }

@@ -1,0 +1,617 @@
+{
+ "warning": "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.",
+ "changelog": [
+  {
+   "last": null,
+   "messages": 0,
+   "markdown": null,
+   "saved": "1.4.0"
+  },
+  {
+   "last": "1.3.0",
+   "messages": 0,
+   "markdown": "## [1.4.0] - 2026-10-01\n\n### Added\n- A [guide](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md) for the `x` flag\n\n```\nultron --x\n```\n\n## [1.3.2] - 2026-09-20\n\n### Fixed\n- Fixed a crash ([#12](https://github.com/alfredosdpiii/ultron/issues/12))",
+   "saved": "1.4.0"
+  },
+  {
+   "last": "1.3.2",
+   "messages": 0,
+   "markdown": "## [1.4.0] - 2026-10-01\n\n### Added\n- A [guide](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md) for the `x` flag\n\n```\nultron --x\n```",
+   "saved": "1.4.0"
+  },
+  {
+   "last": "1.4.0",
+   "messages": 0,
+   "markdown": null,
+   "saved": "1.4.0"
+  },
+  {
+   "last": "2.0.0",
+   "messages": 0,
+   "markdown": null,
+   "saved": "2.0.0"
+  },
+  {
+   "last": "1.3.0",
+   "messages": 2,
+   "markdown": null,
+   "saved": "1.3.0"
+  },
+  {
+   "last": "1.3",
+   "messages": 0,
+   "markdown": "## [1.4.0] - 2026-10-01\n\n### Added\n- A [guide](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md) for the `x` flag\n\n```\nultron --x\n```\n\n## [1.3.2] - 2026-09-20\n\n### Fixed\n- Fixed a crash ([#12](https://github.com/alfredosdpiii/ultron/issues/12))",
+   "saved": "1.4.0"
+  },
+  {
+   "last": "v1.3.1",
+   "messages": 0,
+   "markdown": "## [1.4.0] - 2026-10-01\n\n### Added\n- A [guide](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md) for the `x` flag\n\n```\nultron --x\n```\n\n## [1.3.2] - 2026-09-20\n\n### Fixed\n- Fixed a crash ([#12](https://github.com/alfredosdpiii/ultron/issues/12))\n\n## [1.3.0] - 2026-09-01\n\n- Old news",
+   "saved": "1.4.0"
+  }
+ ],
+ "warnings": [
+  {
+   "provider": "anthropic",
+   "settings": {},
+   "authType": "oauth",
+   "apiKey": null,
+   "shown": [
+    "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings."
+   ]
+  },
+  {
+   "provider": "anthropic",
+   "settings": {},
+   "authType": "api_key",
+   "apiKey": "sk-ant-oat01-abc",
+   "shown": [
+    "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings."
+   ]
+  },
+  {
+   "provider": "anthropic",
+   "settings": {},
+   "authType": "api_key",
+   "apiKey": "sk-ant-api03-abc",
+   "shown": []
+  },
+  {
+   "provider": "anthropic",
+   "settings": {},
+   "authType": null,
+   "apiKey": null,
+   "shown": []
+  },
+  {
+   "provider": "anthropic",
+   "settings": {
+    "warnings": {
+     "anthropicExtraUsage": false
+    }
+   },
+   "authType": "oauth",
+   "apiKey": null,
+   "shown": []
+  },
+  {
+   "provider": "anthropic",
+   "settings": {
+    "warnings": {
+     "anthropicExtraUsage": true
+    }
+   },
+   "authType": "oauth",
+   "apiKey": null,
+   "shown": [
+    "Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings."
+   ]
+  },
+  {
+   "provider": "openai",
+   "settings": {},
+   "authType": "oauth",
+   "apiKey": "sk-ant-oat01-abc",
+   "shown": []
+  },
+  {
+   "provider": "claude-subscription",
+   "settings": {},
+   "authType": "oauth",
+   "apiKey": null,
+   "shown": []
+  }
+ ],
+ "render": [
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "collapse": false,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m                             ",
+    "",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mAdded\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;2;138;190;183m- \u001b[39mA \u001b[38;2;129;162;190m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;2;102;102;102m                              ",
+    "   \u001b[38;2;102;102;102m(https://github.com/earendil-works/p ",
+    "   \u001b[38;2;102;102;102mi/blob/v1.4.0/packages/coding-agent/ ",
+    "   \u001b[38;2;102;102;102mdocs/guide.md)\u001b[39m for the \u001b[38;2;138;190;183mx\u001b[39m flag        ",
+    "                                        ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                    ",
+    "   \u001b[38;2;181;189;104multron --x\u001b[39m                           ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                    ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mFixed\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;2;138;190;183m- \u001b[39mFixed a crash (\u001b[38;2;129;162;190m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;2;102;102;102m                   ",
+    "   \u001b[38;2;102;102;102m(https://github.com/alfredosdpiii/ul ",
+    "   \u001b[38;2;102;102;102mtron/issues/12)\u001b[39m)                     ",
+    "",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "collapse": false,
+   "codeBlockIndent": "\t> ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m                             ",
+    "",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mAdded\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;2;138;190;183m- \u001b[39mA \u001b[38;2;129;162;190m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;2;102;102;102m                              ",
+    "   \u001b[38;2;102;102;102m(https://github.com/earendil-works/p ",
+    "   \u001b[38;2;102;102;102mi/blob/v1.4.0/packages/coding-agent/ ",
+    "   \u001b[38;2;102;102;102mdocs/guide.md)\u001b[39m for the \u001b[38;2;138;190;183mx\u001b[39m flag        ",
+    "                                        ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                    ",
+    " \t> \u001b[38;2;181;189;104multron --x\u001b[39m                        ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                    ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mFixed\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;2;138;190;183m- \u001b[39mFixed a crash (\u001b[38;2;129;162;190m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;2;102;102;102m                   ",
+    "   \u001b[38;2;102;102;102m(https://github.com/alfredosdpiii/ul ",
+    "   \u001b[38;2;102;102;102mtron/issues/12)\u001b[39m)                     ",
+    "",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "collapse": true,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m",
+    " Updated to v1.4.0. Use \u001b[1m/changelog\u001b[22m to   ",
+    " view full changelog.                   ",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "hyperlinks": false,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m                       ",
+    " \u001b[38;2;128;128;128mNew version 1.5.0 is available. Run    ",
+    " \u001b[38;2;128;128;128m\u001b[39m\u001b[38;2;138;190;183multron update\u001b[39m                          ",
+    " \u001b[38;2;128;128;128mRelease notes:                         ",
+    " \u001b[38;2;128;128;128m\u001b[39m\u001b[38;2;138;190;183mhttps://github.com/alfredosdpiii/ultro ",
+    " \u001b[38;2;138;190;183mn/releases/tag/v1.5.0\u001b[39m                  ",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "hyperlinks": true,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m                       ",
+    " \u001b[38;2;128;128;128mNew version 1.5.0 is available. Run    ",
+    " \u001b[38;2;128;128;128m\u001b[39m\u001b[38;2;138;190;183multron update\u001b[39m                          ",
+    " \u001b[38;2;128;128;128mRelease notes:                         ",
+    " \u001b[38;2;128;128;128m\u001b[39m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\\u001b[38;2;138;190;183mhttps://github.com/alfredosdpiii/ultro\u001b]8;;\u001b\\ ",
+    " \u001b[38;2;138;190;183m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\n/releases/tag/v1.5.0\u001b[39m\u001b]8;;\u001b\\                  ",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "warning",
+   "theme": "dark-truecolor",
+   "width": 40,
+   "lines": [
+    "",
+    " \u001b[38;2;255;255;0mWarning: Anthropic subscription auth   ",
+    " \u001b[38;2;255;255;0mis active. Third-party harness usage   ",
+    " \u001b[38;2;255;255;0mdraws from extra usage and is billed   ",
+    " \u001b[38;2;255;255;0mper token, not your Claude plan        ",
+    " \u001b[38;2;255;255;0mlimits. Manage extra usage at          ",
+    " \u001b[38;2;255;255;0mhttps://claude.ai/settings/usage.      ",
+    " \u001b[38;2;255;255;0mDisable this warning in /settings.\u001b[39m     "
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "collapse": false,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m                                                                                         ",
+    "",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mAdded\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;2;138;190;183m- \u001b[39mA \u001b[38;2;129;162;190m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;2;102;102;102m (https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md)\u001b[39m   ",
+    "   for the \u001b[38;2;138;190;183mx\u001b[39m flag                                                                                   ",
+    "                                                                                                    ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                                                                                ",
+    "   \u001b[38;2;181;189;104multron --x\u001b[39m                                                                                       ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                                                                                ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mFixed\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;2;138;190;183m- \u001b[39mFixed a crash (\u001b[38;2;129;162;190m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;2;102;102;102m (https://github.com/alfredosdpiii/ultron/issues/12)\u001b[39m)                          ",
+    "",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "collapse": false,
+   "codeBlockIndent": "\t> ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m                                                                                         ",
+    "",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mAdded\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;2;138;190;183m- \u001b[39mA \u001b[38;2;129;162;190m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;2;102;102;102m (https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md)\u001b[39m   ",
+    "   for the \u001b[38;2;138;190;183mx\u001b[39m flag                                                                                   ",
+    "                                                                                                    ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                                                                                ",
+    " \t> \u001b[38;2;181;189;104multron --x\u001b[39m                                                                                    ",
+    " \u001b[38;2;128;128;128m```\u001b[39m                                                                                                ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;2;240;198;116m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;2;240;198;116m\u001b[1mFixed\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;2;138;190;183m- \u001b[39mFixed a crash (\u001b[38;2;129;162;190m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;2;102;102;102m (https://github.com/alfredosdpiii/ultron/issues/12)\u001b[39m)                          ",
+    "",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "collapse": true,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " Updated to v1.4.0. Use \u001b[1m/changelog\u001b[22m to view full changelog.                                          ",
+    "\u001b[38;2;95;135;255m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "hyperlinks": false,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m                                                                                   ",
+    " \u001b[38;2;128;128;128mNew version 1.5.0 is available. Run \u001b[39m\u001b[38;2;138;190;183multron update\u001b[39m                                                  ",
+    " \u001b[38;2;128;128;128mRelease notes: \u001b[39m\u001b[38;2;138;190;183mhttps://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b[39m                         ",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "hyperlinks": true,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m                                                                                   ",
+    " \u001b[38;2;128;128;128mNew version 1.5.0 is available. Run \u001b[39m\u001b[38;2;138;190;183multron update\u001b[39m                                                  ",
+    " \u001b[38;2;128;128;128mRelease notes: \u001b[39m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\\u001b[38;2;138;190;183mhttps://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b[39m\u001b]8;;\u001b\\                         ",
+    "\u001b[38;2;255;255;0m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "warning",
+   "theme": "dark-truecolor",
+   "width": 100,
+   "lines": [
+    "",
+    " \u001b[38;2;255;255;0mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage   ",
+    " \u001b[38;2;255;255;0mand is billed per token, not your Claude plan limits. Manage extra usage at                        ",
+    " \u001b[38;2;255;255;0mhttps://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m                               "
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 40,
+   "collapse": false,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;66mWhat's New\u001b[39m\u001b[22m                             ",
+    "",
+    " \u001b[38;5;94m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mAdded\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;5;65m- \u001b[39mA \u001b[38;5;67m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;5;243m                              ",
+    "   \u001b[38;5;243m(https://github.com/earendil-works/p ",
+    "   \u001b[38;5;243mi/blob/v1.4.0/packages/coding-agent/ ",
+    "   \u001b[38;5;243mdocs/guide.md)\u001b[39m for the \u001b[38;5;66mx\u001b[39m flag        ",
+    "                                        ",
+    " \u001b[38;5;242m```\u001b[39m                                    ",
+    "   \u001b[38;5;65multron --x\u001b[39m                           ",
+    " \u001b[38;5;242m```\u001b[39m                                    ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mFixed\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;5;65m- \u001b[39mFixed a crash (\u001b[38;5;67m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;5;243m                   ",
+    "   \u001b[38;5;243m(https://github.com/alfredosdpiii/ul ",
+    "   \u001b[38;5;243mtron/issues/12)\u001b[39m)                     ",
+    "",
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 40,
+   "collapse": false,
+   "codeBlockIndent": "\t> ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;66mWhat's New\u001b[39m\u001b[22m                             ",
+    "",
+    " \u001b[38;5;94m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mAdded\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;5;65m- \u001b[39mA \u001b[38;5;67m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;5;243m                              ",
+    "   \u001b[38;5;243m(https://github.com/earendil-works/p ",
+    "   \u001b[38;5;243mi/blob/v1.4.0/packages/coding-agent/ ",
+    "   \u001b[38;5;243mdocs/guide.md)\u001b[39m for the \u001b[38;5;66mx\u001b[39m flag        ",
+    "                                        ",
+    " \u001b[38;5;242m```\u001b[39m                                    ",
+    " \t> \u001b[38;5;65multron --x\u001b[39m                        ",
+    " \u001b[38;5;242m```\u001b[39m                                    ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                   ",
+    "                                        ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mFixed\u001b[22m\u001b[39m                              ",
+    "                                        ",
+    " \u001b[38;5;65m- \u001b[39mFixed a crash (\u001b[38;5;67m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;5;243m                   ",
+    "   \u001b[38;5;243m(https://github.com/alfredosdpiii/ul ",
+    "   \u001b[38;5;243mtron/issues/12)\u001b[39m)                     ",
+    "",
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 40,
+   "collapse": true,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m",
+    " Updated to v1.4.0. Use \u001b[1m/changelog\u001b[22m to   ",
+    " view full changelog.                   ",
+    "\u001b[38;5;67m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "light-256color",
+   "width": 40,
+   "hyperlinks": false,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;5;94m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;94mUpdate Available\u001b[39m\u001b[22m                       ",
+    " \u001b[38;5;242mNew version 1.5.0 is available. Run    ",
+    " \u001b[38;5;242m\u001b[39m\u001b[38;5;66multron update\u001b[39m                          ",
+    " \u001b[38;5;242mRelease notes:                         ",
+    " \u001b[38;5;242m\u001b[39m\u001b[38;5;66mhttps://github.com/alfredosdpiii/ultro ",
+    " \u001b[38;5;66mn/releases/tag/v1.5.0\u001b[39m                  ",
+    "\u001b[38;5;94m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "light-256color",
+   "width": 40,
+   "hyperlinks": true,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;5;94m────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;94mUpdate Available\u001b[39m\u001b[22m                       ",
+    " \u001b[38;5;242mNew version 1.5.0 is available. Run    ",
+    " \u001b[38;5;242m\u001b[39m\u001b[38;5;66multron update\u001b[39m                          ",
+    " \u001b[38;5;242mRelease notes:                         ",
+    " \u001b[38;5;242m\u001b[39m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\\u001b[38;5;66mhttps://github.com/alfredosdpiii/ultro\u001b]8;;\u001b\\ ",
+    " \u001b[38;5;66m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\n/releases/tag/v1.5.0\u001b[39m\u001b]8;;\u001b\\                  ",
+    "\u001b[38;5;94m────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "warning",
+   "theme": "light-256color",
+   "width": 40,
+   "lines": [
+    "",
+    " \u001b[38;5;94mWarning: Anthropic subscription auth   ",
+    " \u001b[38;5;94mis active. Third-party harness usage   ",
+    " \u001b[38;5;94mdraws from extra usage and is billed   ",
+    " \u001b[38;5;94mper token, not your Claude plan        ",
+    " \u001b[38;5;94mlimits. Manage extra usage at          ",
+    " \u001b[38;5;94mhttps://claude.ai/settings/usage.      ",
+    " \u001b[38;5;94mDisable this warning in /settings.\u001b[39m     "
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 100,
+   "collapse": false,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;66mWhat's New\u001b[39m\u001b[22m                                                                                         ",
+    "",
+    " \u001b[38;5;94m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mAdded\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;5;65m- \u001b[39mA \u001b[38;5;67m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;5;243m (https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md)\u001b[39m   ",
+    "   for the \u001b[38;5;66mx\u001b[39m flag                                                                                   ",
+    "                                                                                                    ",
+    " \u001b[38;5;242m```\u001b[39m                                                                                                ",
+    "   \u001b[38;5;65multron --x\u001b[39m                                                                                       ",
+    " \u001b[38;5;242m```\u001b[39m                                                                                                ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mFixed\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;5;65m- \u001b[39mFixed a crash (\u001b[38;5;67m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;5;243m (https://github.com/alfredosdpiii/ultron/issues/12)\u001b[39m)                          ",
+    "",
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 100,
+   "collapse": false,
+   "codeBlockIndent": "\t> ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;66mWhat's New\u001b[39m\u001b[22m                                                                                         ",
+    "",
+    " \u001b[38;5;94m\u001b[1m[1.4.0] - 2026-10-01\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mAdded\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;5;65m- \u001b[39mA \u001b[38;5;67m\u001b[4mguide\u001b[24m\u001b[39m\u001b[38;5;243m (https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/guide.md)\u001b[39m   ",
+    "   for the \u001b[38;5;66mx\u001b[39m flag                                                                                   ",
+    "                                                                                                    ",
+    " \u001b[38;5;242m```\u001b[39m                                                                                                ",
+    " \t> \u001b[38;5;65multron --x\u001b[39m                                                                                    ",
+    " \u001b[38;5;242m```\u001b[39m                                                                                                ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m[1.3.2] - 2026-09-20\u001b[22m\u001b[39m                                                                               ",
+    "                                                                                                    ",
+    " \u001b[38;5;94m\u001b[1m### \u001b[22m\u001b[39m\u001b[38;5;94m\u001b[1mFixed\u001b[22m\u001b[39m                                                                                          ",
+    "                                                                                                    ",
+    " \u001b[38;5;65m- \u001b[39mFixed a crash (\u001b[38;5;67m\u001b[4m#12\u001b[24m\u001b[39m\u001b[38;5;243m (https://github.com/alfredosdpiii/ultron/issues/12)\u001b[39m)                          ",
+    "",
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "whats_new",
+   "theme": "light-256color",
+   "width": 100,
+   "collapse": true,
+   "codeBlockIndent": "  ",
+   "lines": [
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " Updated to v1.4.0. Use \u001b[1m/changelog\u001b[22m to view full changelog.                                          ",
+    "\u001b[38;5;67m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "light-256color",
+   "width": 100,
+   "hyperlinks": false,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;5;94m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;94mUpdate Available\u001b[39m\u001b[22m                                                                                   ",
+    " \u001b[38;5;242mNew version 1.5.0 is available. Run \u001b[39m\u001b[38;5;66multron update\u001b[39m                                                  ",
+    " \u001b[38;5;242mRelease notes: \u001b[39m\u001b[38;5;66mhttps://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b[39m                         ",
+    "\u001b[38;5;94m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "new_version",
+   "theme": "light-256color",
+   "width": 100,
+   "hyperlinks": true,
+   "version": "1.5.0",
+   "lines": [
+    "",
+    "\u001b[38;5;94m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m",
+    " \u001b[1m\u001b[38;5;94mUpdate Available\u001b[39m\u001b[22m                                                                                   ",
+    " \u001b[38;5;242mNew version 1.5.0 is available. Run \u001b[39m\u001b[38;5;66multron update\u001b[39m                                                  ",
+    " \u001b[38;5;242mRelease notes: \u001b[39m\u001b]8;;https://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b\\\u001b[38;5;66mhttps://github.com/alfredosdpiii/ultron/releases/tag/v1.5.0\u001b[39m\u001b]8;;\u001b\\                         ",
+    "\u001b[38;5;94m────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
+   ]
+  },
+  {
+   "kind": "warning",
+   "theme": "light-256color",
+   "width": 100,
+   "lines": [
+    "",
+    " \u001b[38;5;94mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage   ",
+    " \u001b[38;5;94mand is billed per token, not your Claude plan limits. Manage extra usage at                        ",
+    " \u001b[38;5;94mhttps://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m                               "
+   ]
+  }
+ ]
+}

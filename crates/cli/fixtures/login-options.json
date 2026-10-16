@@ -1,0 +1,568 @@
+{
+ "models": {
+  "providers": {
+   "gw": {
+    "oauth": "radius",
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "name": "My Radius"
+   },
+   "local": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "x",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "nokey": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "cmdkey": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "!echo k",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "envkey": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "LOGIN_FIXTURE_KEY",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "envunset": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "$LOGIN_FIXTURE_KEY",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "envset": {
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "${LOGIN_SET_KEY}",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "named": {
+    "name": "Named One",
+    "baseUrl": "http://127.0.0.1:9/v1",
+    "api": "openai-completions",
+    "apiKey": "y",
+    "models": [
+     {
+      "id": "m"
+     }
+    ]
+   },
+   "anthropic": {
+    "baseUrl": "http://127.0.0.1:9"
+   }
+  }
+ },
+ "env": {
+  "LOGIN_SET_KEY": "v"
+ },
+ "options": [
+  {
+   "id": "amazon-bedrock",
+   "name": "Amazon Bedrock",
+   "authType": "api_key",
+   "method": "AWS credentials or bearer token",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "ant-ling",
+   "name": "Ant Ling",
+   "authType": "api_key",
+   "method": "Ant Ling API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "anthropic",
+   "name": "Anthropic",
+   "authType": "oauth",
+   "method": "Anthropic (Claude Pro/Max)",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "anthropic",
+   "name": "Anthropic",
+   "authType": "api_key",
+   "method": "Anthropic API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "azure-openai-responses",
+   "name": "Azure OpenAI",
+   "authType": "api_key",
+   "method": "Azure OpenAI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "baseten",
+   "name": "Baseten",
+   "authType": "api_key",
+   "method": "Baseten API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "cerebras",
+   "name": "Cerebras",
+   "authType": "api_key",
+   "method": "Cerebras API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "claude-code",
+   "name": "Claude Code (CLI)",
+   "authType": "api_key",
+   "method": "Claude Code CLI",
+   "canLogin": false,
+   "status": null
+  },
+  {
+   "id": "cloudflare-ai-gateway",
+   "name": "Cloudflare AI Gateway",
+   "authType": "api_key",
+   "method": "Cloudflare API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "cloudflare-workers-ai",
+   "name": "Cloudflare Workers AI",
+   "authType": "api_key",
+   "method": "Cloudflare API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "cmdkey",
+   "name": "cmdkey",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": {
+    "type": "api_key",
+    "source": "models_json_command"
+   }
+  },
+  {
+   "id": "deepseek",
+   "name": "DeepSeek",
+   "authType": "api_key",
+   "method": "DeepSeek API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "envkey",
+   "name": "envkey",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": {
+    "type": "api_key",
+    "source": "models_json_key"
+   }
+  },
+  {
+   "id": "envset",
+   "name": "envset",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": {
+    "type": "api_key",
+    "source": "LOGIN_SET_KEY"
+   }
+  },
+  {
+   "id": "envunset",
+   "name": "envunset",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "fireworks",
+   "name": "Fireworks",
+   "authType": "api_key",
+   "method": "Fireworks API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "github-copilot",
+   "name": "GitHub Copilot",
+   "authType": "oauth",
+   "method": "GitHub Copilot",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "github-copilot",
+   "name": "GitHub Copilot",
+   "authType": "api_key",
+   "method": "GitHub Copilot token",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "google",
+   "name": "Google",
+   "authType": "api_key",
+   "method": "Gemini API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "google-vertex",
+   "name": "Google Vertex AI",
+   "authType": "api_key",
+   "method": "Google Cloud credentials",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "groq",
+   "name": "Groq",
+   "authType": "api_key",
+   "method": "Groq API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "huggingface",
+   "name": "Hugging Face",
+   "authType": "api_key",
+   "method": "Hugging Face token",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "kimi-coding",
+   "name": "Kimi For Coding",
+   "authType": "oauth",
+   "method": "Kimi Code (subscription)",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "kimi-coding",
+   "name": "Kimi For Coding",
+   "authType": "api_key",
+   "method": "Kimi API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "local",
+   "name": "local",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": {
+    "type": "api_key",
+    "source": "models_json_key"
+   }
+  },
+  {
+   "id": "meta",
+   "name": "Meta",
+   "authType": "oauth",
+   "method": "Meta (Muse subscription)",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "meta",
+   "name": "Meta",
+   "authType": "api_key",
+   "method": "Meta Model API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "minimax",
+   "name": "MiniMax",
+   "authType": "api_key",
+   "method": "MiniMax API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "minimax-cn",
+   "name": "MiniMax CN",
+   "authType": "api_key",
+   "method": "MiniMax CN API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "mistral",
+   "name": "Mistral",
+   "authType": "api_key",
+   "method": "Mistral API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "moonshotai",
+   "name": "Moonshot AI",
+   "authType": "api_key",
+   "method": "Moonshot AI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "moonshotai-cn",
+   "name": "Moonshot AI CN",
+   "authType": "api_key",
+   "method": "Moonshot AI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "gw",
+   "name": "My Radius",
+   "authType": "oauth",
+   "method": "My Radius",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "gw",
+   "name": "My Radius",
+   "authType": "api_key",
+   "method": "Radius API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "named",
+   "name": "Named One",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": {
+    "type": "api_key",
+    "source": "models_json_key"
+   }
+  },
+  {
+   "id": "nokey",
+   "name": "nokey",
+   "authType": "api_key",
+   "method": "API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "nvidia",
+   "name": "NVIDIA",
+   "authType": "api_key",
+   "method": "NVIDIA API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "openai",
+   "name": "OpenAI",
+   "authType": "api_key",
+   "method": "OpenAI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "openai-codex",
+   "name": "OpenAI Codex",
+   "authType": "oauth",
+   "method": "OpenAI (ChatGPT Plus/Pro)",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "opencode-go",
+   "name": "OpenCode Go",
+   "authType": "api_key",
+   "method": "OpenCode API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "opencode",
+   "name": "OpenCode Zen",
+   "authType": "api_key",
+   "method": "OpenCode API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "openrouter",
+   "name": "OpenRouter",
+   "authType": "oauth",
+   "method": "OpenRouter OAuth",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "openrouter",
+   "name": "OpenRouter",
+   "authType": "api_key",
+   "method": "OpenRouter API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "qwen-token-plan",
+   "name": "Qwen Token Plan",
+   "authType": "api_key",
+   "method": "Qwen Token Plan API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "qwen-token-plan-cn",
+   "name": "Qwen Token Plan CN",
+   "authType": "api_key",
+   "method": "Qwen Token Plan CN API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "qwen-token-plan-individual",
+   "name": "Qwen Token Plan Individual",
+   "authType": "api_key",
+   "method": "Qwen Token Plan Individual API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "radius",
+   "name": "Radius",
+   "authType": "oauth",
+   "method": "Radius",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "radius",
+   "name": "Radius",
+   "authType": "api_key",
+   "method": "Radius API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "together",
+   "name": "Together",
+   "authType": "api_key",
+   "method": "Together API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "vercel-ai-gateway",
+   "name": "Vercel AI Gateway",
+   "authType": "api_key",
+   "method": "Vercel AI Gateway API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xai",
+   "name": "xAI",
+   "authType": "oauth",
+   "method": "xAI (Grok/X subscription)",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xai",
+   "name": "xAI",
+   "authType": "api_key",
+   "method": "xAI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xiaomi",
+   "name": "Xiaomi",
+   "authType": "api_key",
+   "method": "Xiaomi API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xiaomi-token-plan-ams",
+   "name": "Xiaomi Token Plan AMS",
+   "authType": "api_key",
+   "method": "Xiaomi Token Plan AMS API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xiaomi-token-plan-cn",
+   "name": "Xiaomi Token Plan CN",
+   "authType": "api_key",
+   "method": "Xiaomi Token Plan CN API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "xiaomi-token-plan-sgp",
+   "name": "Xiaomi Token Plan SGP",
+   "authType": "api_key",
+   "method": "Xiaomi Token Plan SGP API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "zai",
+   "name": "Z.AI",
+   "authType": "api_key",
+   "method": "Z.AI API key",
+   "canLogin": true,
+   "status": null
+  },
+  {
+   "id": "zai-coding-cn",
+   "name": "Z.AI Coding CN",
+   "authType": "api_key",
+   "method": "Z.AI Coding CN API key",
+   "canLogin": true,
+   "status": null
+  }
+ ]
+}

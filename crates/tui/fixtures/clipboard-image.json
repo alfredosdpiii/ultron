@@ -1,0 +1,177 @@
+{
+ "scenarios": {
+  "wayland-png": {
+   "wl-paste.--list-types_": "text/plain\nimage/png\n",
+   "wl-paste.--type_image-png_--no-newline_": "PNG\r\n\u001a\nfake-png"
+  },
+  "wayland-jpeg-first": {
+   "wl-paste.--list-types_": "image/jpeg\nimage/png;charset=x\n",
+   "wl-paste.--type_image-png;charset=x_--no-newline_": "PNG\r\n\u001a\nfake-png"
+  },
+  "wayland-no-image": {
+   "wl-paste.--list-types_": "text/plain\n",
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "image/png\n",
+   "xclip.-selection_clipboard_-t_image-png_-o_": "PNG\r\n\u001a\nfake-png"
+  },
+  "wayland-empty-data": {
+   "wl-paste.--list-types_": "image/png\n",
+   "wl-paste.--type_image-png_--no-newline_": "",
+   "xclip.-selection_clipboard_-t_image-png_-o_": "PNG\r\n\u001a\nfake-png"
+  },
+  "wayland-broken-x11": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "TARGETS\nimage/png\n",
+   "xclip.-selection_clipboard_-t_image-png_-o_": "PNG\r\n\u001a\nfake-png"
+  },
+  "x11-png": {
+   "wl-paste.--list-types_": "image/png\n",
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "TARGETS\nimage/png\n",
+   "xclip.-selection_clipboard_-t_image-png_-o_": "PNG\r\n\u001a\nfake-png"
+  },
+  "x11-no-image": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "TARGETS\nUTF8_STRING\n"
+  },
+  "x11-no-targets": {
+   "xclip.-selection_clipboard_-t_image-jpeg_-o_": "jpeg-bytes"
+  },
+  "x11-gif-only": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "image/gif\n",
+   "xclip.-selection_clipboard_-t_image-gif_-o_": "GIF89a"
+  }
+ },
+ "cases": [
+  {
+   "scenario": "wayland-png",
+   "env": {
+    "WAYLAND_DISPLAY": "wayland-0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-png_--no-newline_\n"
+  },
+  {
+   "scenario": "wayland-png",
+   "env": {
+    "XDG_SESSION_TYPE": "wayland"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-png_--no-newline_\n"
+  },
+  {
+   "scenario": "wayland-png",
+   "env": {
+    "WSL_DISTRO_NAME": "Ubuntu"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-png_--no-newline_\n"
+  },
+  {
+   "scenario": "wayland-jpeg-first",
+   "env": {
+    "XDG_SESSION_TYPE": "wayland"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-png;charset=x_--no-newline_\n"
+  },
+  {
+   "scenario": "wayland-no-image",
+   "env": {
+    "WAYLAND_DISPLAY": "wayland-0"
+   },
+   "image": null,
+   "calls": "wl-paste --list-types_\n"
+  },
+  {
+   "scenario": "wayland-empty-data",
+   "env": {
+    "XDG_SESSION_TYPE": "wayland"
+   },
+   "image": null,
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-png_--no-newline_\n"
+  },
+  {
+   "scenario": "wayland-broken-x11",
+   "env": {
+    "WAYLAND_DISPLAY": "wayland-0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nxclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-png_-o_\n"
+  },
+  {
+   "scenario": "x11-png",
+   "env": {
+    "XDG_SESSION_TYPE": "x11",
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-png_-o_\n"
+  },
+  {
+   "scenario": "x11-png",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\nfake-png",
+    "mimeType": "image/png"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-png_-o_\n"
+  },
+  {
+   "scenario": "x11-no-image",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": null,
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\n"
+  },
+  {
+   "scenario": "x11-no-targets",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "jpeg-bytes",
+    "mimeType": "image/jpeg"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-png_-o_\nxclip -selection_clipboard_-t_image-jpeg_-o_\n"
+  },
+  {
+   "scenario": "x11-gif-only",
+   "env": {
+    "XDG_SESSION_TYPE": "x11",
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "GIF89a",
+    "mimeType": "image/gif"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-gif_-o_\n"
+  },
+  {
+   "scenario": "wayland-png",
+   "env": {
+    "XDG_SESSION_TYPE": "wayland",
+    "TERMUX_VERSION": "0.118"
+   },
+   "image": null,
+   "calls": ""
+  }
+ ]
+}

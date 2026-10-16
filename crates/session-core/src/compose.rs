@@ -872,14 +872,19 @@ impl Runtime {
         for dir in [&spill_dir, &tmp_dir] {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
-        Ok(
-            Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd))).sandboxed(
+        // `createLocalBashOperations({ shellPath: settingsManager.getShellPath() })`: the REPL's bash and its jobs.
+        let shell_path = config
+            .settings
+            .as_object()
+            .and_then(|settings| config::settings_keys::shell_path(settings, &config.home));
+        Ok(Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd)))
+            .with_shell_path(shell_path)
+            .sandboxed(
                 &config.settings,
                 &config.home,
                 Some(&tmp_dir),
                 self.services.approver.clone(),
-            ),
-        )
+            ))
     }
 }
 

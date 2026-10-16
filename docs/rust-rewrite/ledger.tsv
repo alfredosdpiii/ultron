@@ -2759,6 +2759,38 @@ W4T-05	interactive	app edits/paints while fd is held; run loop paints picker aft
 W4T-06	cli	steer/follow-up state read while the cell runs (touchAfter), regenerated TS fixture	cli_rpc_steer_and_follow_up_while_running_match_typescript
 W4T-07	delegation	spawn/background.start report the admitted state (TS), not a later one	delegation_agents_host_matches_native_rlm_host
 W4T-08	daemon	refused worker's coded refusal wins over its observed exit	cli_durable_two_servers_racing_for_one_session_one_is_refused
+W4S-01	host	shellPath picks the shell like getShellConfig (custom, /bin/bash, PATH bash, sh; missing path fails)	host_shell_config_matches_ts_get_shell_config
+W4S-02	host	shell resolution order fallbacks	host_shell_config_falls_back_from_bin_bash_to_path_to_sh
+W4S-03	host	REPL bash runs under shellPath as <shell> -c <cmd>	host_shell_path_runs_the_repl_bash_like_ts
+W4S-04	host	shellCommandPrefix composes the user ! command (prefix\ncommand)	host_shell_command_prefix_composes_the_user_command_like_ts
+W4S-05	host	shell jobs run under shellPath; a missing shell fails the job	host_shell_path_runs_shell_jobs_too
+W4S-06	config	getters for shellPath/prefix/thinkingBudgets/websocketConnectTimeoutMs/terminal/codeBlockIndent/warnings/defaultTools	config_settings_keys_getters_match_ts
+W4S-07	config	lastChangelogVersion read merged, written global	config_settings_keys_last_changelog_version_writes_global
+W4S-08	session-core	thinkingBudgets setting reaches the provider payload	session_core_thinking_budgets_setting_reaches_the_request_like_ts
+W4S-09	session-core	settings fill only unset request options	session_core_request_settings_fill_only_what_the_request_leaves_unset
+W4S-10	session-core	invalid websocketConnectTimeoutMs fails the request	session_core_invalid_websocket_timeout_setting_fails_the_request
+W4S-11	cli	terminal.* overrides over detected capabilities	cli_terminal_settings_override_detected_capabilities_like_ts
+W4S-12	cli	WSL_INTEROP/WSL_DISTRO_NAME select Windows keybindings	cli_terminal_settings_wsl_interop_selects_windows_keybindings
+W4S-13	interactive	codeBlockIndent and hyperlinks reach transcript markdown	interactive_render_settings_reach_the_transcript_markdown_like_ts
+W4S-14	interactive	getChangelogForDisplay entry selection	interactive_startup_changelog_selection_matches_ts
+W4S-15	interactive	What's New / Update Available / warning rendering	interactive_startup_notices_render_like_ts
+W4S-16	interactive	anthropic subscription-auth warning decision	interactive_subscription_auth_warning_decision_matches_ts
+W4S-17	interactive	changelog asked only for a session without messages	interactive_startup_asks_for_the_changelog_only_for_a_session_without_messages
+W4S-18	interactive	early notices shown once the session opens	interactive_startup_notices_show_once_the_session_is_open
+W4S-19	interactive	auth check on open and model change, warning once	interactive_subscription_auth_warning_is_checked_for_anthropic_and_shown_once
+W4S-20	cli	startup changelog reads CHANGELOG.md and records the version	cli_startup_changelog_shows_new_entries_and_records_the_version
+W4S-21	cli	first run records nothing; collapseChangelog	cli_startup_changelog_first_run_shows_and_records_nothing_and_collapses_on_request
+W4S-22	cli	subscription warning reads stored credential and setting	cli_subscription_auth_warning_reads_the_stored_credential_and_the_setting
+W4S-23	cli	checkForNewVersion against a 127.0.0.1 registry; skip/offline vars	cli_startup_version_check_matches_ts_check_for_new_version
+W4S-24	cli	default registry URL	cli_startup_version_check_defaults_to_the_npm_registry
+W4S-25	tui	PI_TUI_ESC_TIMEOUT and SSH escape wait	tui_escape_timeout_matches_ts_resolve_escape_timeout_ms
+W4S-26	tui	stdin buffer waits the configured escape timeout	tui_stdin_buffer_waits_the_configured_escape_timeout
+W4S-27	daemon	internal processes carry PI_CODING_AGENT/AI_AGENT	daemon_internal_processes_carry_the_agent_markers_like_ts
+W4S-28	cli	PI_PACKAGE_DIR selects the package directory	cli_pi_package_dir_selects_the_package_directory_like_ts
+W4S-29	tui	clipboard image reads gated by Wayland/WSL, wl-paste then xclip	tui_clipboard_image_reads_like_ts
+W4S-30	tui	XDG_SESSION_TYPE=wayland detection	tui_wayland_session_reads_xdg_session_type
+W4S-31	cli	/login options match loginProviderOptions (no extension providers, models.json providers)	cli_login_options_match_ts_login_provider_options
+W4S-32	cli	stored key status for a models.json provider	cli_login_options_show_a_stored_key_for_a_models_json_provider
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

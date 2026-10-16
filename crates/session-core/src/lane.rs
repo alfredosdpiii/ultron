@@ -625,6 +625,8 @@ pub struct Provider {
     api_key: Option<String>,
     /// Routes `claude-subscription` calls (subscription first, API credits when out of usage): the process's.
     router: Arc<ai::claude_subscription::fallback::Router>,
+    /// What the settings fill into every request (`thinkingBudgets`, `websocketConnectTimeoutMs`).
+    request: crate::request_settings::RequestSettings,
 }
 
 impl Provider {
@@ -633,7 +635,14 @@ impl Provider {
             transport: Arc::new(process_transport().with_idle_timeout(None)),
             api_key: None,
             router: ai::claude_subscription::fallback::global(),
+            request: Default::default(),
         }
+    }
+
+    /// Requests take `request`'s settings where they set none (crate::request_settings).
+    pub fn with_request_settings(mut self, request: crate::request_settings::RequestSettings) -> Self {
+        self.request = request;
+        self
     }
 
     /// A provider over `transport` whose Claude subscription calls go through `router` (tests and embedders).
@@ -642,6 +651,7 @@ impl Provider {
             transport,
             api_key: None,
             router,
+            request: Default::default(),
         }
     }
 
@@ -682,15 +692,14 @@ impl StreamFn for Provider {
                 message.error_message = None;
                 return message;
             }
-            let keyed;
-            let options = if options.base.api_key.is_none() && self.api_key.is_some() {
-                let mut with_key = options.clone();
-                with_key.base.api_key = self.api_key.clone();
-                keyed = with_key;
-                &keyed
-            } else {
-                options
-            };
+            let mut keyed = options.clone();
+            if keyed.base.api_key.is_none() && self.api_key.is_some() {
+                keyed.base.api_key = self.api_key.clone();
+            }
+            if let Err(error) = self.request.apply(&mut keyed) {
+                return error_message(model, error);
+            }
+            let options = &keyed;
             // A stored OAuth credential may name the request's base URL (Copilot's token endpoint) and headers
             // (Kimi's bearer); models.json headers (and `authHeader`'s bearer) go out over them, under the caller's.
             let (routed, prepared) = match ai::model_registry::prepare_request(model, options) {

@@ -928,7 +928,7 @@ fn strings_or_values(value: Option<&Value>) -> Vec<Value> {
 }
 
 fn theme_for(env: &Env, settings: &SettingsManager) -> Result<Rc<Theme>, String> {
-    let caps = tui::image::detect_capabilities(&|k| (env.var)(k), false, false);
+    let caps = crate::terminal_settings::capabilities(env, settings);
     let name = settings.theme().unwrap_or_else(|| "dark".into());
     let json = builtin_theme_json(&name)
         .or_else(|| builtin_theme_json("dark"))

@@ -23,7 +23,7 @@ use session_file::Env as _;
 use std::io::{BufRead, IsTerminal, Write};
 use std::rc::Rc;
 use std::sync::{Arc, mpsc};
-use tui::keybindings::{KeybindingsManager, Platform};
+use tui::keybindings::KeybindingsManager;
 use tui::qol_keys::native_app_keybindings;
 use tui::theme::{ColorMode, builtin_theme_json, create_theme};
 
@@ -308,6 +308,23 @@ impl LaneClient for DaemonLane {
     }
     fn changelog(&self) {
         self.send(Command::Changelog);
+    }
+    fn startup_changelog(&self) {
+        let (env, ui) = (self.env.clone(), self.ui.clone());
+        std::thread::spawn(move || {
+            if let Some(notice) = crate::startup_checks::startup_changelog(&env) {
+                let _ = ui.send(UiEvent::Lane(LaneEvent::StartupNotice(notice)));
+            }
+        });
+    }
+    fn subscription_auth_warning(&self, provider: &str) {
+        let (env, ui, provider) = (self.env.clone(), self.ui.clone(), provider.to_string());
+        std::thread::spawn(move || {
+            if crate::startup_checks::subscription_auth_warns(&env, &provider) {
+                let notice = interactive::lane::StartupNotice::SubscriptionAuth;
+                let _ = ui.send(UiEvent::Lane(LaneEvent::StartupNotice(notice)));
+            }
+        });
     }
     fn extension_command(&self, name: &str, args: &str) {
         self.send(Command::RunExtension(name.to_string(), args.to_string()));
@@ -1733,7 +1750,7 @@ fn credentials_saved(link: &Link, env: &Env, send: &dyn Fn(LaneEvent), action: &
 
 /// `loginProviderOptions`: every built-in provider's sign-in options with what is configured (a stored credential,
 /// else the variables that supply a key), sorted by name.
-pub(crate) fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selectors::AuthProvider> {
+pub fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selectors::AuthProvider> {
     use interactive::selectors::{AuthProvider, locale_compare, provider_logins};
     let stored: std::collections::HashMap<String, String> = config::auth::AuthStorage::create(auth.to_path_buf())
         .list()
@@ -1814,8 +1831,55 @@ pub(crate) fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactiv
         options.push(base);
         options.extend(api_key);
     }
+    // models.json's own providers (not a built-in's override, not a Radius gateway) sign in with an API key
+    // (`provider-composer.ts`: "API key", saved through the generic prompt), their status from the stored credential
+    // or the configured `apiKey` (`configuredRequestAuthStatus`).
+    for id in registry.config().provider_ids() {
+        let builtin = ai::models::builtin_providers().any(|p| p == id);
+        if builtin || registry.radius_gateway(id).is_some() {
+            continue;
+        }
+        let config = registry.config().provider(id);
+        let name = config
+            .and_then(|c| c.get("name"))
+            .and_then(Value::as_str)
+            .unwrap_or(id)
+            .to_string();
+        let status = match stored.get(id) {
+            Some(kind) => Some((kind.clone(), Some("stored credential".to_string()))),
+            None => config
+                .and_then(|c| c.get("apiKey"))
+                .and_then(Value::as_str)
+                .and_then(|key| configured_key_status(key, &*env.var)),
+        };
+        options.push(AuthProvider {
+            id: id.to_string(),
+            name,
+            auth_type: "api_key".into(),
+            status,
+            api_key_method: Some(("API key".into(), true)),
+            login_label: None,
+            generic_login: true,
+        });
+    }
     options.sort_by(|a, b| locale_compare(&a.name, &b.name));
     options
+}
+
+/// `configuredRequestAuthStatus` of a models.json `apiKey`: a `!command`, the environment variables a template names
+/// (when all are set), or the key itself.
+fn configured_key_status(key: &str, var: &dyn Fn(&str) -> Option<String>) -> Option<(String, Option<String>)> {
+    if key.starts_with('!') {
+        return Some(("api_key".into(), Some("models_json_command".into())));
+    }
+    let names = ai::model_registry::env_names(key);
+    if names.is_empty() {
+        return Some(("api_key".into(), Some("models_json_key".into())));
+    }
+    names
+        .iter()
+        .all(|name| var(name).is_some_and(|v| !v.is_empty()))
+        .then(|| ("api_key".into(), Some(names.join(", "))))
 }
 
 /// [`Op::ExtensionShortcuts`]'s answer as the TUI's event (nothing when the session did not answer).
@@ -2144,19 +2208,20 @@ fn run_tui(
         !(env.var)("ULTRON_SPLASH").is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
     let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
     let qol = interactive::qol::from_settings(&Value::Object(settings.settings().clone()), &|k| (env.var)(k));
-    let caps = tui::image::detect_capabilities(&|k| (env.var)(k), false, false);
+    let caps = crate::terminal_settings::capabilities(env, &settings);
     let theme_name = settings.theme().unwrap_or_else(|| "dark".into());
     let theme_json = builtin_theme_json(&theme_name)
         .or_else(|| builtin_theme_json("dark"))
         .ok_or("the dark theme is missing")?;
     let theme = Rc::new(create_theme(&theme_json, ColorMode::from_capabilities(&caps), None)?);
-    let keys = || {
-        KeybindingsManager::new(
-            native_app_keybindings(Platform::new("linux", false)),
-            Vec::new(),
-            Default::default(),
-        )
-    };
+    // What every transcript markdown reads (`getCapabilities().hyperlinks`, `markdown.codeBlockIndent`); this thread
+    // paints.
+    interactive::render_settings::set(interactive::render_settings::RenderSettings {
+        hyperlinks: caps.hyperlinks,
+        code_block_indent: Some(settings.code_block_indent()),
+    });
+    let platform = crate::terminal_settings::platform(env);
+    let keys = || KeybindingsManager::new(native_app_keybindings(platform), Vec::new(), Default::default());
     let fd_path = std::env::split_paths(&(env.var)("PATH").unwrap_or_default())
         .map(|dir| dir.join("fd"))
         .find(|p| p.is_file());
@@ -2299,6 +2364,16 @@ fn run_tui(
         .or_else(|| (env.var)("EDITOR").filter(|v| !v.is_empty()))
         .or_else(|| Some("nano".to_string()));
     app.set_external_editor(external_editor);
+    // `checkForNewVersion`: the registry's latest release, off the UI thread; the transcript shows a newer one.
+    {
+        let (env, ui) = (env.clone(), ui_tx.clone());
+        std::thread::spawn(move || {
+            if let Some(version) = crate::startup_checks::check_for_new_version(&env, &crate::version()) {
+                let notice = interactive::lane::StartupNotice::NewVersion(version);
+                let _ = ui.send(UiEvent::Lane(LaneEvent::StartupNotice(notice)));
+            }
+        });
+    }
     // `checkForPackageUpdates`: the configured packages behind their source, checked off the UI thread (npm and
     // git output captured); the transcript shows them when there are any.
     {

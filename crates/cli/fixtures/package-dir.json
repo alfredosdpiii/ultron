@@ -1,0 +1,40 @@
+{
+ "cases": [
+  {
+   "value": "~/pkg",
+   "packageDir": "<home>/pkg",
+   "docs": "<home>/pkg/docs",
+   "changelog": "<home>/pkg/CHANGELOG.md",
+   "runtime": {
+    "value": "<home>/pkg/src/ultron/rlm/runtime.py"
+   }
+  },
+  {
+   "value": "<home>/pkg",
+   "packageDir": "<home>/pkg",
+   "docs": "<home>/pkg/docs",
+   "changelog": "<home>/pkg/CHANGELOG.md",
+   "runtime": {
+    "value": "<home>/pkg/src/ultron/rlm/runtime.py"
+   }
+  },
+  {
+   "value": "<home>/pkg",
+   "packageDir": "<home>/pkg",
+   "docs": "<home>/pkg/docs",
+   "changelog": "<home>/pkg/CHANGELOG.md",
+   "runtime": {
+    "value": "<home>/pkg/src/ultron/rlm/runtime.py"
+   }
+  },
+  {
+   "value": "~/empty",
+   "packageDir": "<home>/empty",
+   "docs": "<home>/empty/docs",
+   "changelog": "<home>/empty/CHANGELOG.md",
+   "runtime": {
+    "error": "Ultron RLM runtime.py is not installed"
+   }
+  }
+ ]
+}

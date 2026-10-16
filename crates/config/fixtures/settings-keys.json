@@ -1,0 +1,1276 @@
+{
+ "cases": [
+  {
+   "settings": {},
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "shellPath": "/usr/local/bin/bash",
+    "shellCommandPrefix": "shopt -s expand_aliases"
+   },
+   "shellPath": {
+    "value": "/usr/local/bin/bash"
+   },
+   "shellCommandPrefix": {
+    "value": "shopt -s expand_aliases"
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "shellPath": "~/bin/zsh",
+    "shellCommandPrefix": ""
+   },
+   "shellPath": {
+    "value": "<home>/bin/zsh"
+   },
+   "shellCommandPrefix": {
+    "value": ""
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "shellPath": "~",
+    "shellCommandPrefix": "set -e\nalias ll='ls -l'"
+   },
+   "shellPath": {
+    "value": "<home>"
+   },
+   "shellCommandPrefix": {
+    "value": "set -e\nalias ll='ls -l'"
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "shellPath": "",
+    "shellPath2": "x"
+   },
+   "shellPath": {
+    "value": ""
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "shellPath": "file:///opt/sh%20ell/bash"
+   },
+   "shellPath": {
+    "value": "/opt/sh ell/bash"
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "thinkingBudgets": {
+     "minimal": 512,
+     "low": 1024,
+     "medium": 4096,
+     "high": 16000
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": {
+     "minimal": 512,
+     "low": 1024,
+     "medium": 4096,
+     "high": 16000
+    }
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "thinkingBudgets": {
+     "low": 2000
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": {
+     "low": 2000
+    }
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": 15000
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 15000
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": 0
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 0
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": 1234.9
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 1234
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": "2500"
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 2500
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": " disabled "
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 0
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": "  "
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting:   "
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": -5
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: -5"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": "soon"
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: soon"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": true
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: true"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": null
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: null"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": [
+     1,
+     2
+    ]
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: 1,2"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": {
+     "ms": 1
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "error": "Invalid websocketConnectTimeoutMs setting: [object Object]"
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "websocketConnectTimeoutMs": 1.5e+21
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": 1.5e+21
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {
+     "trueColor": false,
+     "hyperlinks": true,
+     "images": "kitty"
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {
+     "images": "kitty",
+     "trueColor": false,
+     "hyperlinks": true
+    }
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": false,
+     "images": "iterm2"
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {
+     "images": "iterm2",
+     "trueColor": true,
+     "hyperlinks": false
+    }
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {
+     "images": null
+    }
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "yes",
+     "hyperlinks": 1
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {
+     "images": "sixel"
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "terminal": {}
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "markdown": {
+     "codeBlockIndent": ""
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": ""
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "markdown": {
+     "codeBlockIndent": "\t"
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "\t"
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "markdown": {
+     "codeBlockIndent": "    "
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "    "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "markdown": {
+     "mermaid": "off"
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "lastChangelogVersion": "0.4.2"
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": "0.4.2"
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "warnings": {
+     "anthropicExtraUsage": false
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {
+     "anthropicExtraUsage": false
+    }
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "warnings": {
+     "anthropicExtraUsage": true
+    }
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {
+     "anthropicExtraUsage": true
+    }
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "warnings": {}
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": null
+   }
+  },
+  {
+   "settings": {
+    "defaultTools": [
+     "read",
+     "bash"
+    ]
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": [
+     "read",
+     "bash"
+    ]
+   }
+  },
+  {
+   "settings": {
+    "defaultTools": []
+   },
+   "shellPath": {
+    "value": null
+   },
+   "shellCommandPrefix": {
+    "value": null
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "websocketConnectTimeoutMs": {
+    "value": null
+   },
+   "terminalCapabilityOverrides": {
+    "value": {}
+   },
+   "codeBlockIndent": {
+    "value": "  "
+   },
+   "lastChangelogVersion": {
+    "value": null
+   },
+   "warnings": {
+    "value": {}
+   },
+   "defaultTools": {
+    "value": []
+   }
+  }
+ ],
+ "writes": [
+  {
+   "before": null,
+   "seen": "9.9.9",
+   "after": "9.9.9",
+   "global": "{\n  \"lastChangelogVersion\": \"1.2.3\"\n}",
+   "project": "{\"lastChangelogVersion\":\"9.9.9\"}"
+  },
+  {
+   "before": {
+    "theme": "dark",
+    "lastChangelogVersion": "0.1.0"
+   },
+   "seen": "9.9.9",
+   "after": "9.9.9",
+   "global": "{\n  \"theme\": \"dark\",\n  \"lastChangelogVersion\": \"1.2.3\"\n}",
+   "project": "{\"lastChangelogVersion\":\"9.9.9\"}"
+  }
+ ]
+}

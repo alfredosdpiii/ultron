@@ -58,8 +58,8 @@ impl Default for SystemClipboard {
     }
 }
 
-/// Run a clipboard tool found on `path`; its stdout when it succeeded with output.
-fn tool_output(path: Option<&str>, program: &str, args: &[&str]) -> Option<Vec<u8>> {
+/// Run a clipboard tool found on `path`: its stdout when it exited 0, even empty (`runClipboardCommand`).
+pub fn tool_run(path: Option<&str>, program: &str, args: &[&str]) -> Option<Vec<u8>> {
     let program = std::env::split_paths(path?)
         .map(|dir| dir.join(program))
         .find(|candidate| candidate.is_file())?;
@@ -69,7 +69,7 @@ fn tool_output(path: Option<&str>, program: &str, args: &[&str]) -> Option<Vec<u
         .stderr(Stdio::null())
         .output()
         .ok()?;
-    (out.status.success() && !out.stdout.is_empty()).then_some(out.stdout)
+    out.status.success().then_some(out.stdout)
 }
 
 impl Clipboard for SystemClipboard {
@@ -93,12 +93,22 @@ impl Clipboard for SystemClipboard {
         self.board()?.set_text(text.to_string()).map_err(|e| e.to_string())
     }
 
+    /// `readClipboardImage` (crate::clipboard_image): `wl-paste` in a Wayland session or WSL, then `xclip`; only a PNG
+    /// image is taken.
     fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
-        let path = self.path.as_deref();
-        tool_output(path, "wl-paste", &["--no-newline", "--type", "image/png"])
-            .or_else(|| tool_output(path, "xclip", &["-selection", "clipboard", "-t", "image/png", "-o"]))
-            .filter(|b| b.starts_with(b"\x89PNG"))
-            .ok_or_else(|| "no image on the clipboard".to_string())
+        let path = self.path.clone();
+        let vars = &self.vars;
+        let var = |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
+        let proc_version = std::fs::read_to_string("/proc/version").ok();
+        let mut run = |program: &str, args: &[&str]| tool_run(path.as_deref(), program, args);
+        match crate::clipboard_image::read_clipboard_image(&var, proc_version.as_deref(), &mut run) {
+            crate::clipboard_image::ImageRead::Image { bytes, mime_type }
+                if mime_type == "image/png" && bytes.starts_with(b"\x89PNG") =>
+            {
+                Ok(bytes)
+            }
+            _ => Err("no image on the clipboard".to_string()),
+        }
     }
 }
 

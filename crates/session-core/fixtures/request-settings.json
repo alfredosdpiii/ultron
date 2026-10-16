@@ -1,0 +1,171 @@
+{
+ "model": {
+  "id": "claude-sonnet-4-5",
+  "name": "Claude Sonnet 4.5",
+  "api": "anthropic-messages",
+  "provider": "anthropic",
+  "baseUrl": "http://127.0.0.1:9",
+  "reasoning": true,
+  "input": [
+   "text"
+  ],
+  "cost": {
+   "input": 3,
+   "output": 15,
+   "cacheRead": 0.3,
+   "cacheWrite": 3.75
+  },
+  "contextWindow": 200000,
+  "maxTokens": 64000
+ },
+ "cases": [
+  {
+   "thinkingBudgets": null,
+   "reasoning": "minimal",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 1024,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": null,
+   "reasoning": "low",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": null,
+   "reasoning": "medium",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 8192,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": null,
+   "reasoning": "high",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 16384,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "minimal": 512,
+    "low": 2000,
+    "medium": 6000,
+    "high": 20000
+   },
+   "reasoning": "minimal",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 512,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "minimal": 512,
+    "low": 2000,
+    "medium": 6000,
+    "high": 20000
+   },
+   "reasoning": "low",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2000,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "minimal": 512,
+    "low": 2000,
+    "medium": 6000,
+    "high": 20000
+   },
+   "reasoning": "medium",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 6000,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "minimal": 512,
+    "low": 2000,
+    "medium": 6000,
+    "high": 20000
+   },
+   "reasoning": "high",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 20000,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "low": 3000
+   },
+   "reasoning": "minimal",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 1024,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "low": 3000
+   },
+   "reasoning": "low",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 3000,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "low": 3000
+   },
+   "reasoning": "medium",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 8192,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  },
+  {
+   "thinkingBudgets": {
+    "low": 3000
+   },
+   "reasoning": "high",
+   "thinking": {
+    "type": "enabled",
+    "budget_tokens": 16384,
+    "display": "summarized"
+   },
+   "max_tokens": 64000
+  }
+ ]
+}

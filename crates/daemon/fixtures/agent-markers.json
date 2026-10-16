@@ -1,0 +1,10 @@
+{
+ "markers": {
+  "PI_CODING_AGENT": "true",
+  "AI_AGENT": "pi"
+ },
+ "withOptionsEnv": {
+  "PI_CODING_AGENT": "true",
+  "AI_AGENT": "from-options"
+ }
+}

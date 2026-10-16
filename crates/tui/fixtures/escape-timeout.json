@@ -1,0 +1,100 @@
+{
+ "cases": [
+  {
+   "env": {},
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "50"
+   },
+   "ms": 50
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": " 75 "
+   },
+   "ms": 75
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "12.5"
+   },
+   "ms": 12.5
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "0"
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "-5"
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": ""
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "abc"
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "Infinity"
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "1e2"
+   },
+   "ms": 100
+  },
+  {
+   "env": {
+    "PI_TUI_ESC_TIMEOUT": "0x20"
+   },
+   "ms": 32
+  },
+  {
+   "env": {
+    "SSH_CONNECTION": "10.0.0.1 5555 10.0.0.2 22"
+   },
+   "ms": 100
+  },
+  {
+   "env": {
+    "SSH_TTY": "/dev/pts/3"
+   },
+   "ms": 100
+  },
+  {
+   "env": {
+    "SSH_TTY": ""
+   },
+   "ms": 10
+  },
+  {
+   "env": {
+    "SSH_CONNECTION": "x",
+    "PI_TUI_ESC_TIMEOUT": "30"
+   },
+   "ms": 30
+  },
+  {
+   "env": {
+    "SSH_CONNECTION": "x",
+    "PI_TUI_ESC_TIMEOUT": "0"
+   },
+   "ms": 100
+  }
+ ]
+}

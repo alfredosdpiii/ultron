@@ -1,0 +1,121 @@
+{
+ "configs": [
+  {
+   "custom": "<dir>/fake-shell",
+   "result": {
+    "value": {
+     "shell": "<dir>/fake-shell",
+     "args": [
+      "-c"
+     ]
+    }
+   }
+  },
+  {
+   "custom": "<dir>/missing-shell",
+   "result": {
+    "error": "Custom shell path not found: <dir>/missing-shell"
+   }
+  },
+  {
+   "custom": "",
+   "result": {
+    "value": {
+     "shell": "/bin/bash",
+     "args": [
+      "-c"
+     ]
+    }
+   }
+  },
+  {
+   "custom": null,
+   "result": {
+    "value": {
+     "shell": "/bin/bash",
+     "args": [
+      "-c"
+     ]
+    }
+   }
+  }
+ ],
+ "host": [
+  {
+   "shellPath": "<dir>/fake-shell",
+   "command": "echo hi; echo err >&2; exit 3",
+   "result": {
+    "value": {
+     "output": "hi\nerr\n",
+     "exit_code": 3
+    }
+   },
+   "argv": "[-c]\n[echo hi; echo err >&2; exit 3]\n"
+  },
+  {
+   "shellPath": "<dir>/fake-shell",
+   "command": "printf '%s' \"$0\"",
+   "result": {
+    "value": {
+     "output": "/bin/bash",
+     "exit_code": 0
+    }
+   },
+   "argv": "[-c]\n[printf '%s' \"$0\"]\n"
+  },
+  {
+   "shellPath": "<dir>/missing-shell",
+   "command": "echo never",
+   "result": {
+    "error": "Custom shell path not found: <dir>/missing-shell"
+   },
+   "argv": ""
+  }
+ ],
+ "user": [
+  {
+   "prefix": "shopt -s expand_aliases\nalias greet='echo hello from alias'",
+   "command": "greet",
+   "result": {
+    "value": {
+     "output": "hello from alias\n",
+     "exitCode": 0
+    }
+   },
+   "argv": "[-c]\n[shopt -s expand_aliases\nalias greet='echo hello from alias'\ngreet]\n"
+  },
+  {
+   "prefix": "set -e",
+   "command": "false; echo unreachable",
+   "result": {
+    "value": {
+     "output": "",
+     "exitCode": 1
+    }
+   },
+   "argv": "[-c]\n[set -e\nfalse; echo unreachable]\n"
+  },
+  {
+   "prefix": "",
+   "command": "echo plain",
+   "result": {
+    "value": {
+     "output": "plain\n",
+     "exitCode": 0
+    }
+   },
+   "argv": "[-c]\n[echo plain]\n"
+  },
+  {
+   "prefix": null,
+   "command": "echo none",
+   "result": {
+    "value": {
+     "output": "none\n",
+     "exitCode": 0
+    }
+   },
+   "argv": "[-c]\n[echo none]\n"
+  }
+ ]
+}

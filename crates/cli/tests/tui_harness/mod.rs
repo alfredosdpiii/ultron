@@ -328,6 +328,8 @@ impl Tui {
             ("TERM".into(), "xterm-256color".into()),
             ("COLORTERM".into(), "truecolor".into()),
             ("LANG".into(), "C.UTF-8".into()),
+            // The startup update check never reaches the npm registry from a test.
+            ("PI_SKIP_VERSION_CHECK".into(), "1".into()),
         ];
         vars.extend(env.iter().map(|(k, v)| (k.to_string(), v.to_string())));
         let script = root.join("run.sh");

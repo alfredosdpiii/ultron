@@ -65,8 +65,13 @@ pub fn executable() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("ultron"))
 }
 
+/// What cli/setup.ts `setupCli` puts in the CLI's environment (`PI_CODING_AGENT=true`, `AI_AGENT=pi`), so every
+/// process the session starts (its bash commands, the Python kernel, extensions, MCP servers) inherits it. Rust
+/// cannot set its own environment without `unsafe`, so the internal processes, which run every session, get it.
+pub const AGENT_MARKERS: [(&str, &str); 2] = [("PI_CODING_AGENT", "true"), ("AI_AGENT", "pi")];
+
 /// Spawn a detached internal process in its own process group; output is discarded unless
-/// `ULTRON_DEBUG_INTERNAL=1`.
+/// `ULTRON_DEBUG_INTERNAL=1`. It runs with [`AGENT_MARKERS`] (under `env`, which wins as `options.env` does).
 pub fn spawn(role: Role, args: &[String], env: &[(String, String)]) -> std::io::Result<Child> {
     use std::os::unix::process::CommandExt;
     let debug = std::env::var("ULTRON_DEBUG_INTERNAL").as_deref() == Ok("1");
@@ -75,6 +80,7 @@ pub fn spawn(role: Role, args: &[String], env: &[(String, String)]) -> std::io::
         .arg(INTERNAL_ARGUMENT)
         .arg(role.name())
         .args(args)
+        .envs(AGENT_MARKERS)
         .envs(env.iter().map(|(k, v)| (k, v)))
         .stdin(Stdio::null())
         .stdout(if debug { Stdio::inherit() } else { Stdio::null() })

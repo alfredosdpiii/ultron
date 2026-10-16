@@ -623,9 +623,9 @@ fn fetch_error(error: &reqwest::Error) -> String {
     "fetch failed".into()
 }
 
-/// `getLatestRelease(VERSION, { retry: true })`: up to two retries after a failure or a transient status, within
-/// ten seconds. `Ok(None)`: offline, an error status, or no valid version in the document.
-fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
+/// `getLatestRelease(VERSION, { retry: true })`: up to `retries` (2 with `retry`, else 0) retries after a failure or a
+/// transient status, within ten seconds. `Ok(None)`: offline, an error status, or no valid version in the document.
+pub(crate) fn latest_release(env: &Env, url: &str, retries: u32) -> Result<Option<String>, String> {
     if (env.var)("PI_OFFLINE").is_some_and(|v| !v.is_empty()) {
         return Ok(None);
     }
@@ -648,7 +648,7 @@ fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
                     .send()
                     .await;
                 match sent {
-                    Ok(response) if RETRYABLE.contains(&response.status().as_u16()) && attempt < 2 => {}
+                    Ok(response) if RETRYABLE.contains(&response.status().as_u16()) && attempt < retries => {}
                     Ok(response) => {
                         if !response.status().is_success() {
                             return Ok(None);
@@ -660,7 +660,7 @@ fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
                             .filter(|v| crate::packages::semver::valid(v).is_some())
                             .map(str::to_string));
                     }
-                    Err(error) if attempt >= 2 => return Err(fetch_error(&error)),
+                    Err(error) if attempt >= retries => return Err(fetch_error(&error)),
                     Err(_) => {}
                 }
                 attempt += 1;
@@ -674,7 +674,7 @@ fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
 }
 
 /// `isNewerPackageVersion`.
-fn is_newer(candidate: &str, current: &str) -> bool {
+pub(crate) fn is_newer(candidate: &str, current: &str) -> bool {
     match crate::packages::semver::compare(candidate.trim(), current.trim()) {
         Some(order) => order == std::cmp::Ordering::Greater,
         None => candidate.trim() != current.trim(),
@@ -684,7 +684,7 @@ fn is_newer(candidate: &str, current: &str) -> bool {
 /// `ultron update --self` for the self-contained binary.
 fn self_update(env: &Env, force: bool, io: &mut Io, endpoints: &Endpoints) -> Result<i32, String> {
     let env_version = crate::version();
-    let latest = match latest_release(env, &endpoints.latest_version_url) {
+    let latest = match latest_release(env, &endpoints.latest_version_url, 2) {
         Ok(Some(version)) => version,
         Ok(None) => return Err("Could not determine latest ultron version.".into()),
         Err(error) => return Err(format!("Could not determine latest ultron version: {error}")),

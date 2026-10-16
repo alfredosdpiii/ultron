@@ -5,6 +5,7 @@
 use std::io::{self, Read, Write};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread;
+use std::time::Duration;
 
 use crate::stdin_buffer::{InputEvent, StdinBuffer};
 
@@ -107,7 +108,58 @@ fn deliver(events: Vec<InputEvent>, tx: &mpsc::Sender<String>) -> bool {
     })
 }
 
-/// Reads `input` on a thread, splits it with [`StdinBuffer`] (flushing partial sequences after its timeout) and
+/// `resolveEscapeTimeoutMs(env)`: how long a lone ESC waits for the rest of an escape sequence before it is the
+/// Escape key. `PI_TUI_ESC_TIMEOUT` (milliseconds, a positive number), else 100 ms over SSH (`SSH_CONNECTION` or
+/// `SSH_TTY` set: legacy Alt+key is ESC plus a byte, and high-latency links split them), else 10 ms.
+pub fn resolve_escape_timeout(env: &dyn Fn(&str) -> Option<String>) -> Duration {
+    let configured = js_number(env("PI_TUI_ESC_TIMEOUT").as_deref());
+    if configured.is_finite() && configured > 0.0 {
+        return Duration::from_secs_f64(configured / 1000.0);
+    }
+    let set = |name: &str| env(name).is_some_and(|v| !v.is_empty());
+    if set("SSH_CONNECTION") || set("SSH_TTY") {
+        return Duration::from_millis(100);
+    }
+    Duration::from_millis(10)
+}
+
+/// JavaScript's `Number(value)` for an environment value: `undefined` is NaN, blank is 0, `0x`/`0o`/`0b` integers
+/// and decimals (with exponent) parse, anything else is NaN.
+fn js_number(value: Option<&str>) -> f64 {
+    let Some(value) = value else { return f64::NAN };
+    let text = value.trim();
+    if text.is_empty() {
+        return 0.0;
+    }
+    for (prefix, radix) in [("0x", 16), ("0o", 8), ("0b", 2)] {
+        if let Some(digits) = text
+            .get(..2)
+            .filter(|p| p.eq_ignore_ascii_case(prefix))
+            .map(|_| &text[2..])
+        {
+            return u64::from_str_radix(digits, radix).map_or(f64::NAN, |n| n as f64);
+        }
+    }
+    match text.trim_start_matches(['+', '-']) {
+        "Infinity" => {
+            if text.starts_with('-') {
+                f64::NEG_INFINITY
+            } else {
+                f64::INFINITY
+            }
+        }
+        rest if rest
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '.' | 'e' | 'E' | '+' | '-')) =>
+        {
+            text.parse().unwrap_or(f64::NAN)
+        }
+        _ => f64::NAN,
+    }
+}
+
+/// Reads `input` on a thread, splits it with [`StdinBuffer`] (flushing partial sequences after its timeout, a lone
+/// ESC after [`resolve_escape_timeout`] of this process's environment, as `ProcessTerminal` reads `process.env`) and
 /// sends each input sequence. Ends at EOF or when the receiver is dropped.
 pub fn spawn_input_pump<R: Read + Send + 'static>(mut input: R) -> Receiver<String> {
     let (bytes_tx, bytes_rx) = mpsc::channel::<Vec<u8>>();
@@ -121,7 +173,7 @@ pub fn spawn_input_pump<R: Read + Send + 'static>(mut input: R) -> Receiver<Stri
         }
     });
     thread::spawn(move || {
-        let mut sb = StdinBuffer::new();
+        let mut sb = StdinBuffer::new().with_escape_timeout(resolve_escape_timeout(&|k| std::env::var(k).ok()));
         loop {
             let chunk = match sb.flush_after() {
                 Some(t) => bytes_rx.recv_timeout(t),

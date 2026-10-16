@@ -1,0 +1,1693 @@
+{
+ "cases": [
+  {
+   "env": {},
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {},
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "ghostty"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "iTerm.app"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "vscode"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "screen-256color"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TMUX": "/tmp/tmux-1/default,1,0",
+    "PI_HYPERLINKS": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM_PROGRAM": "kitty",
+    "PI_HYPERLINKS": "0",
+    "PI_IMAGE_PROTOCOL": "none",
+    "PI_TRUE_COLOR": "0"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {},
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": false
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": false,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": true
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "hyperlinks": false
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": "kitty"
+    }
+   },
+   "capabilities": {
+    "images": "kitty",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": false
+    }
+   },
+   "capabilities": {
+    "images": null,
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "images": true,
+     "trueColor": "x"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": false
+   }
+  },
+  {
+   "env": {
+    "TERM": "xterm",
+    "PI_IMAGE_PROTOCOL": "iterm2",
+    "PI_TRUE_COLOR": "1"
+   },
+   "settings": {
+    "terminal": {
+     "trueColor": true,
+     "hyperlinks": true,
+     "images": "iterm2"
+    }
+   },
+   "capabilities": {
+    "images": "iterm2",
+    "trueColor": true,
+    "hyperlinks": true
+   }
+  }
+ ]
+}
