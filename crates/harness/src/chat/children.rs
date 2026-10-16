@@ -12,8 +12,8 @@
 use std::sync::{Arc, LazyLock, OnceLock};
 
 use durable::{
-    ConversationId, ConversationOwnership, SubmissionId, SubmissionStatus, TaskDefinition, TaskId, TaskOptions,
-    TaskOutcome, TaskOutcomeError, TaskOwnership, TaskRecord, TaskState, TaskStatus, Tx,
+    ConversationId, ConversationOwnership, EntryDraft, EntryId, SubmissionId, SubmissionStatus, TaskDefinition, TaskId,
+    TaskOptions, TaskOutcome, TaskOutcomeError, TaskOwnership, TaskRecord, TaskState, TaskStatus, Tx,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -53,6 +53,21 @@ pub struct ChildInput {
     /// The usage root the child's model turns are charged to (the root turn that started it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage_root: Option<String>,
+    /// `rlm.spawn(fork=True)`: the child's conversation is its parent's, forked at a visible entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fork: Option<ChildFork>,
+    /// `rlm.spawn(fork=True)` from a conversation that does not keep its history in the runtime (the root's is the
+    /// session transcript): the messages the child's conversation starts with, before its brief.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub history: Vec<Value>,
+}
+
+/// Where a forked child's conversation starts: a visible entry of its parent's conversation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChildFork {
+    pub conversation: ConversationId,
+    pub entry: EntryId,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -147,8 +162,21 @@ fn start_phase(_services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -
     let now = runtime.now()?;
     runtime.commit(&runtime.ctx(), |tx, _| {
         let _ = parent;
-        let conversation = tx.create_conversation(ConversationOwnership::Task(task_id))?.id;
-        create_documents(tx, conversation, false)?;
+        // A forked child's conversation starts as its parent's history up to the fork entry.
+        let conversation = match input.fork {
+            Some(fork) => {
+                let id = tx
+                    .fork_conversation(fork.conversation, fork.entry, ConversationOwnership::Task(task_id))?
+                    .id;
+                create_documents(tx, id, true)?;
+                id
+            }
+            None => {
+                let id = tx.create_conversation(ConversationOwnership::Task(task_id))?.id;
+                create_documents(tx, id, false)?;
+                id
+            }
+        };
         if let Some(model) = &model {
             configure(tx, conversation, &AgentChange::model(model.clone()))?;
         }
@@ -158,6 +186,20 @@ fn start_phase(_services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -
                 thinking_level: Some(Some(level.clone())),
             };
             configure(tx, conversation, &change)?;
+        }
+        for message in &input.history {
+            let kind = match message["role"].as_str() {
+                Some("assistant") => super::entries::ASSISTANT,
+                Some("toolResult") => super::entries::TOOL_RESULT,
+                _ => super::entries::USER,
+            };
+            tx.append_entry(
+                conversation,
+                EntryDraft {
+                    model: Some(vec![message.clone()]),
+                    ..EntryDraft::new(kind)
+                },
+            )?;
         }
         let submission = place_initial_input(tx, conversation, &json!(input.prompt), now)?;
         // The registry learns what the child holds: its brief is its first work.
@@ -230,7 +272,25 @@ fn wait_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -> 
         });
     }
     let linked = Cancel::any(&[runtime.signal(), &deadline]);
-    let settled = submissions.wait(submission, &Ctx::with_signal(linked.signal()));
+    let ctx = Ctx::with_signal(linked.signal());
+    let mut settled = submissions.wait(submission, &ctx);
+    // A message steered into the child while it answered continues it: the final boundary that settles the brief
+    // starts a run for what it placed, and the child answers when that run (and any after it) settles, as an agent
+    // loop takes steering before it ends.
+    let mut waited = submission;
+    while let Ok(record) = &settled
+        && record.status == SubmissionStatus::Done
+    {
+        let live = runtime.snapshot(&super::docs::LIVE, super::util::owner(conversation))?;
+        let next = live
+            .as_ref()
+            .and_then(|live| live["run"]["inputs"].as_array()?.last()?.as_u64())
+            .map(SubmissionId)
+            .filter(|next| *next != waited);
+        let Some(next) = next else { break };
+        waited = next;
+        settled = submissions.wait(next, &ctx);
+    }
     runtime.signal().check()?;
     let settled = match settled {
         Ok(settled) => settled,

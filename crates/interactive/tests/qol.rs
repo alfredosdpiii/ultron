@@ -372,7 +372,9 @@ impl Clipboard for FakeClipboard {
 }
 
 fn poll_until(app: &mut App, done: impl Fn(&App) -> bool) {
-    for _ in 0..200 {
+    // The deadline only guards a hang; the reply is an event the loop waits for.
+    let deadline = std::time::Instant::now() + Duration::from_secs(120);
+    while std::time::Instant::now() < deadline {
         app.poll_services();
         if done(app) {
             return;
@@ -437,13 +439,28 @@ fn interactive_qol_clipboard_paste_image_then_text_fallback() {
     poll_until(&mut app, |a| !a.editor_text().is_empty());
     assert_eq!(app.editor_text(), "clip text");
 
-    // Parity: the key does nothing even with a clipboard.
+    // Parity (client-tui-actions.ts `clipboardPasteText`): an image is saved to a temp file and its path inserted;
+    // otherwise the clipboard's text is inserted as typed text.
+    let dir = std::env::temp_dir().join(format!("qol-paste-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
     let (mut parity, _) = fresh(QolSettings::parity());
+    parity.set_temp_dir(dir.clone());
     parity.set_clipboard(ClipboardService::spawn(FakeClipboard(png(2, 3))));
     parity.handle_input("\x16");
-    std::thread::sleep(Duration::from_millis(50));
-    parity.poll_services();
-    assert_eq!(parity.editor_text(), "");
+    poll_until(&mut parity, |a| !a.editor_text().is_empty());
+    let path = parity.editor_text();
+    assert!(
+        path.starts_with(&format!("{}/ultron-clipboard-", dir.display())) && path.ends_with(".png"),
+        "{path}"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), png(2, 3));
+    assert!(parity.attachments().images.is_empty());
+    let (mut parity, _) = fresh(QolSettings::parity());
+    parity.set_clipboard(ClipboardService::spawn(FakeClipboard(Vec::new())));
+    parity.handle_input("\x16");
+    poll_until(&mut parity, |a| !a.editor_text().is_empty());
+    assert_eq!(parity.editor_text(), "clip text");
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 // ---- highlighting ----
@@ -461,7 +478,7 @@ fn rlm_transcript() -> Vec<Value> {
 
 #[test]
 fn interactive_qol_highlight_styles_rlm_cells_and_fenced_code() {
-    let keyword = theme().fg_ansi("syntaxKeyword").unwrap().to_string();
+    let keyword = theme().fg_ansi("syntaxKeyword").unwrap();
     let render = |qol: QolSettings| {
         let (mut app, _) = fresh(qol);
         app.apply(LaneEvent::Opened(SessionOpened {

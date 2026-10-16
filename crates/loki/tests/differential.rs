@@ -116,7 +116,7 @@ fn loki_protect_matches_loki_py_corpus() {
 }
 
 #[test]
-fn loki_unported_checks_fail_closed() {
+fn loki_init_without_minimal_fails_closed() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().to_str().unwrap().to_string();
     let args = |rest: &[&str]| -> Vec<String> {
@@ -126,17 +126,6 @@ fn loki_unported_checks_fail_closed() {
             .map(|s| s.to_string())
             .collect()
     };
-    let record = run(
-        dir.path(),
-        &args(&["hook", "--file", "a.txt", "--record", "--format", "json"]),
-        &[],
-        "",
-    );
-    assert_eq!(record.status, 2);
-    assert_eq!(
-        record.stdout,
-        "{\"loki\": \"0.1.4\", \"command\": \"hook\", \"status\": \"error\", \"blocking\": [], \"advisory\": [], \"not_checked\": [], \"error\": \"guard error: NotPorted: --record is not ported to the Rust engine\"}\n"
-    );
     let init = run(dir.path(), &args(&["init", "--dir", root.as_str()]), &[], "");
     assert_eq!(init.status, 1);
     assert!(
@@ -146,12 +135,6 @@ fn loki_unported_checks_fail_closed() {
         init.stderr
     );
     assert!(!dir.path().join(".loki").exists());
-    let daemon = run(dir.path(), &args(&["daemon", "status"]), &[], "");
-    assert_eq!(daemon.status, 2);
-    assert_eq!(
-        daemon.stderr,
-        "loki: guard error: NotPorted: the daemon command is not ported to the Rust engine\n"
-    );
 }
 
 /// `protect` stops at MAX_VIOLATIONS (40) lines, against `loki.py --root R protect --file .loki/f0 ... --file

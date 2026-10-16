@@ -9,7 +9,11 @@ pub mod args;
 pub mod assets;
 pub mod auth;
 pub mod autoreview_cli;
+pub mod autoreview_toggle;
+pub mod config_selector;
+pub mod experimental;
 pub mod export_html;
+pub mod file_args;
 pub mod instances;
 pub mod interactive;
 pub mod js;
@@ -17,13 +21,20 @@ pub mod link;
 pub mod list_models;
 pub mod localtime;
 pub mod mcp_cli;
+pub mod mcp_login;
 pub mod migrate;
 pub mod package_cli;
+pub mod packages;
 pub mod print_mode;
+pub mod radius_relay;
 pub mod rpc;
 pub mod sandbox_cli;
 pub mod session;
 pub mod setup;
+pub mod setup_core;
+pub mod setup_tui;
+pub mod setup_wizard;
+pub mod startup;
 pub mod tui_login;
 pub mod usage;
 
@@ -95,6 +106,13 @@ pub fn run(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write)
 
 fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> Result<i32, String> {
     let io = |e: std::io::Error| e.to_string();
+    // main.ts: `--offline` (or PI_OFFLINE) holds for every command, the subcommands included.
+    let offline = startup::offline_env(argv, env);
+    let env = &offline;
+    // `runExperimentalCommand` (PI_EXPERIMENTAL=1): `ultron server` and `ultron client`.
+    if let Some(code) = experimental::run(argv, env, out, err) {
+        return Ok(code);
+    }
     match argv.first().map(String::as_str) {
         Some("instances") => return instances::list(env, out),
         Some("durable") => return instances::durable(&argv[1..], env, out),
@@ -121,6 +139,9 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if let Some(code) = mcp_cli::run(argv, env, out, err) {
         return Ok(code);
     }
+    // `applyHttpProxySettings`: the global `httpProxy` setting, for the package commands and every run below.
+    let proxied = startup::proxy_env(env);
+    let env = &proxied;
     if let Some(code) = package_cli::run_package(argv, env, out, err) {
         return Ok(code);
     }
@@ -181,6 +202,12 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             ListModels::All => None,
             ListModels::Search(p) => Some(p.as_str()),
         };
+        // The extensions' providers are listed too (TypeScript lists after the extensions load).
+        let _extensions = session_core::extension_providers::load_headless(
+            env,
+            &print_mode::session_flags(&parsed, env)?,
+            parsed.no_extensions,
+        );
         if let Some(warning) = list_models::models_json_warning(env) {
             err.write_all(warning.as_bytes()).map_err(io)?;
         }
@@ -211,27 +238,87 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             }
         }
     }
-    let json_mode = parsed.mode.as_deref() == Some("json");
     let rpc_mode = parsed.mode.as_deref() == Some("rpc");
     if rpc_mode && !parsed.file_args.is_empty() {
         writeln!(err, "Error: @file arguments are not supported in RPC mode").map_err(io)?;
         return Ok(1);
     }
-    let prompted = rpc_mode || ((parsed.print || json_mode) && !parsed.messages.is_empty());
-    let selection = match native_command(&parsed, env, prompted) {
-        Ok(selection) => selection,
-        Err(message) => {
+    // An interactive start with no usable model offers the guided setup; other modes are never prompted.
+    if !rpc_mode && !setup::offer_setup_on_first_run(&parsed, env, out) {
+        return Ok(0);
+    }
+    // RPC reads its commands from stdin, so it is not read as a prompt.
+    let stdin = startup::read_piped_stdin(&parsed);
+    for warning in startup::tool_flag_warnings(&parsed) {
+        writeln!(err, "Warning: {warning}").map_err(io)?;
+    }
+    match native_run(&parsed, env, stdin, out, err) {
+        Ok(code) => Ok(code),
+        Err(NativeError::Exit(message)) => {
+            // processFileArguments reports and exits on its own (no setup hint).
             writeln!(err, "Error: {message}").map_err(io)?;
-            if let Some(hint) = no_model_hint(env) {
+            Ok(1)
+        }
+        Err(NativeError::Failed(message)) => {
+            writeln!(err, "Error: {message}").map_err(io)?;
+            if let Some(hint) = startup::no_model_hint(env) {
                 writeln!(err, "{hint}").map_err(io)?;
             }
-            return Ok(1);
+            Ok(1)
         }
+    }
+}
+
+/// How `runNativeUltronCommand` ends when it fails.
+enum NativeError {
+    /// `process.exit(1)` after its own message.
+    Exit(String),
+    /// A thrown error: reported with the setup hint.
+    Failed(String),
+}
+
+impl From<String> for NativeError {
+    fn from(message: String) -> Self {
+        NativeError::Failed(message)
+    }
+}
+
+/// `runNativeUltronCommand`: select the session, assemble the prompt (piped stdin, `@file`s, messages), then run
+/// RPC mode, the TUI (no prompt, not `-p`, on a terminal), or the client: a prompt's answer (`-p` prints it,
+/// `--mode json` prints the result, otherwise the text streams as it arrives), or without a prompt the attached
+/// session or the server's sessions.
+fn native_run(
+    parsed: &Args,
+    env: &Env,
+    stdin: Option<String>,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> Result<i32, NativeError> {
+    let io = |e: std::io::Error| NativeError::Failed(e.to_string());
+    let json_mode = parsed.mode.as_deref() == Some("json");
+    let rpc_mode = parsed.mode.as_deref() == Some("rpc");
+    let terminal = interactive::is_terminal();
+    let has_prompt = stdin.is_some() || !parsed.file_args.is_empty() || !parsed.messages.is_empty();
+    let selection = native_command(parsed, env, rpc_mode || has_prompt, terminal)?;
+    let files = if parsed.file_args.is_empty() {
+        file_args::ProcessedFiles::default()
+    } else {
+        file_args::process_file_arguments(&parsed.file_args, &env.cwd, &env.home).map_err(NativeError::Exit)?
     };
-    let interactive_mode = !prompted && parsed.messages.is_empty() && interactive::is_terminal();
+    let parts: Vec<String> = stdin
+        .into_iter()
+        .chain(std::iter::once(files.text))
+        .chain(parsed.messages.iter().cloned())
+        .filter(|part| !part.is_empty())
+        .collect();
+    let prompt = (!parts.is_empty()).then(|| print_mode::Prompt {
+        text: parts.join("\n\n"),
+        images: files.images,
+    });
+    let runs_tui = !rpc_mode && prompt.is_none() && !parsed.print && terminal;
     let target = match selection {
         // On a terminal, `ultron -r` picks one of this directory's sessions and opens it in the TUI.
-        Selection::List(sessions) if interactive_mode => {
+        Selection::List(sessions) if runs_tui => {
             let stdin = std::io::stdin();
             match interactive::pick_session(&sessions, &mut std::io::stdout(), &mut stdin.lock()) {
                 Some(metadata) => Target::Open(metadata),
@@ -246,37 +333,48 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
         Selection::Target(target) => target,
     };
     if rpc_mode {
-        return rpc::remote::run(
-            &parsed,
+        return Ok(rpc::remote::run(
+            parsed,
             env,
             target,
             Box::new(std::io::stdin()),
             Box::new(std::io::stdout()),
-        );
+        )?);
     }
-    if prompted {
-        // ponytail: piped stdin and @file arguments are not folded into the prompt yet.
-        let prompt = parsed.messages.join("\n\n");
-        return match print_mode::run_prompt(&parsed, env, prompt, target) {
-            Ok(prompted) => {
-                // A Claude turn that switched to API credits (or back) says so, beside the answer.
-                for notice in &prompted.notices {
-                    writeln!(err, "{notice}").map_err(io)?;
-                }
-                out.write_all(print_mode::render(json_mode, &prompted).as_bytes())
-                    .map_err(io)?;
-                Ok(0)
+    if runs_tui {
+        return Ok(interactive::run_interactive(parsed, env, target)?);
+    }
+    let Some(prompt) = prompt else {
+        out.write_all(print_mode::run_unprompted(parsed, env, target)?.as_bytes())
+            .map_err(io)?;
+        return Ok(0);
+    };
+    // Neither `-p` nor `--mode json`: the answer streams to stdout as it arrives (`onEvent` text deltas).
+    let streaming = !parsed.print && !json_mode;
+    let on_event: Option<client::runtime::EventListener> = streaming.then(|| {
+        std::sync::Arc::new(|event: &serde_json::Value| {
+            if event["type"] == "message_update"
+                && event["frame"]["type"] == "text_delta"
+                && let Some(delta) = event["frame"]["delta"].as_str()
+            {
+                let mut stdout = std::io::stdout();
+                let _ = stdout.write_all(delta.as_bytes());
+                let _ = stdout.flush();
             }
-            Err(message) => {
-                writeln!(err, "Error: {message}").map_err(io)?;
-                Ok(1)
-            }
-        };
+        }) as client::runtime::EventListener
+    });
+    let prompted = print_mode::run_prompt(parsed, env, prompt, target, on_event)?;
+    // A Claude turn that switched to API credits (or back) says so, beside the answer.
+    for notice in &prompted.notices {
+        writeln!(err, "{notice}").map_err(io)?;
     }
-    if interactive_mode {
-        return interactive::run_interactive(&parsed, env, target);
-    }
-    Err("running a prompt or an interactive session is not implemented in the Rust build yet".into())
+    let text = if streaming {
+        "\n".to_string()
+    } else {
+        print_mode::render(json_mode, &prompted)
+    };
+    out.write_all(text.as_bytes()).map_err(io)?;
+    Ok(0)
 }
 
 /// What the session flags select.
@@ -326,7 +424,7 @@ fn session_by_id(repo: &SessionRepo, id: &str) -> Result<Option<Metadata>, Strin
 }
 
 /// The checks `runNativeUltronCommand` makes before it starts a server, and its session selection.
-fn native_command(parsed: &Args, env: &Env, prompted: bool) -> Result<Selection, String> {
+fn native_command(parsed: &Args, env: &Env, prompted: bool, terminal: bool) -> Result<Selection, String> {
     if parsed.fork.is_some()
         && (parsed.continue_ || parsed.resume || parsed.session.is_some() || parsed.session_id.is_some())
     {
@@ -377,9 +475,15 @@ fn native_command(parsed: &Args, env: &Env, prompted: bool) -> Result<Selection,
         if !prompted {
             return Ok(Selection::List(listed));
         }
-        // ponytail: the interactive picker is not ported; a prompted run takes this directory's newest session.
-        return Ok(Selection::Target(match listed.into_iter().next() {
-            Some(newest) => Target::Open(newest.metadata),
+        // `selectedSessionId`: on a terminal the user picks one (`selectInteractiveSession`); otherwise the newest.
+        let picked = if terminal {
+            let stdin = std::io::stdin();
+            interactive::pick_session(&listed, &mut std::io::stdout(), &mut stdin.lock())
+        } else {
+            listed.into_iter().next().map(|newest| newest.metadata)
+        };
+        return Ok(Selection::Target(match picked {
+            Some(metadata) => Target::Open(metadata),
             None => Target::New { id: None },
         }));
     }
@@ -402,19 +506,4 @@ fn native_command(parsed: &Args, env: &Env, prompted: bool) -> Result<Selection,
     } else {
         Target::New { id: None }
     }))
-}
-
-/// `noModelHint` for the "none" state: no saved default model and no model with credentials.
-fn no_model_hint(env: &Env) -> Option<String> {
-    let agent_dir = env.agent_dir();
-    let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir, false);
-    let has_default = settings.default_provider().is_some() && settings.default_model().is_some();
-    if has_default || !list_models::available_models(env).is_empty() {
-        // ponytail: the "default-without-credentials" hint is not ported; it needs the model registry.
-        return None;
-    }
-    Some(
-        "No model is configured. Run \"ultron setup\", or set a provider key such as ANTHROPIC_API_KEY or OPENAI_API_KEY."
-            .into(),
-    )
 }

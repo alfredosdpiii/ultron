@@ -21,6 +21,8 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
 
+mod extension;
+
 /// An environment variable lookup.
 pub type Lookup<'a> = &'a dyn Fn(&str) -> Option<String>;
 
@@ -207,6 +209,8 @@ pub struct ModelRegistry {
     config: ModelConfig,
     /// models-store.json: provider id to its stored catalog (`refreshModels` restores it without the network).
     stored: Map<String, Value>,
+    /// Providers extensions registered (`registerProvider`), in registration order (crate::model_registry::extension).
+    extensions: Map<String, Value>,
 }
 
 impl ModelRegistry {
@@ -214,6 +218,7 @@ impl ModelRegistry {
         ModelRegistry {
             config,
             stored: Map::new(),
+            extensions: Map::new(),
         }
     }
 
@@ -329,6 +334,11 @@ impl ModelRegistry {
                 ids.push(id.to_string());
             }
         }
+        for id in self.extension_provider_ids() {
+            if !ids.iter().any(|known| known == id) {
+                ids.push(id.to_string());
+            }
+        }
         ids
     }
 
@@ -340,6 +350,11 @@ impl ModelRegistry {
 
     /// A provider's models: composed with models.json, else (no entry, or one that does not compose) built-in.
     pub fn models(&self, provider: &str) -> Vec<Model> {
+        if let Some(extension) = self.extension(provider) {
+            return self
+                .compose_extension(provider, extension)
+                .unwrap_or_else(|_| self.base_models(provider));
+        }
         match self.provider_config(provider) {
             Some(config) => self
                 .compose(provider, config)
@@ -355,6 +370,9 @@ impl ModelRegistry {
 
     /// `getModel(provider, id)`.
     pub fn find(&self, provider: &str, id: &str) -> Option<Model> {
+        if self.extension(provider).is_some() {
+            return self.models(provider).into_iter().find(|m| m.id == id);
+        }
         match self.provider_config(provider) {
             Some(config) => self.models(provider).into_iter().find(|m| m.id == id).or_else(|| {
                 // A provider whose catalog takes any id (claude-subscription): models.json applies to that model.
@@ -430,9 +448,12 @@ impl ModelRegistry {
     pub fn error(&self) -> Option<String> {
         let mut errors: Vec<String> = self.config.error().map(str::to_string).into_iter().collect();
         for provider in self.provider_ids() {
-            if let Some(config) = self.provider_config(&provider)
-                && let Err(error) = self.compose(&provider, config)
-            {
+            let composed = match (self.extension(&provider), self.provider_config(&provider)) {
+                (Some(extension), _) => self.compose_extension(&provider, extension).map(|_| ()),
+                (None, Some(config)) => self.compose(&provider, config).map(|_| ()),
+                (None, None) => Ok(()),
+            };
+            if let Err(error) = composed {
                 errors.push(format!("Provider \"{provider}\": {error}"));
             }
         }
@@ -441,6 +462,9 @@ impl ModelRegistry {
 
     /// The provider's models.json `apiKey` when its configuration composes.
     fn raw_key(&self, provider: &str) -> Option<&str> {
+        if self.extension(provider).is_some() {
+            return self.extension_raw_key(provider);
+        }
         let config = self.provider_config(provider)?;
         self.compose(provider, config).ok()?;
         config.get("apiKey").and_then(Value::as_str)
@@ -481,6 +505,9 @@ impl ModelRegistry {
     /// The [`RequestConfig`] of `model` (None when models.json has nothing for its provider): the raw headers and
     /// `authHeader`, resolved with `lookup` at each request.
     pub fn request_config(&self, model: &Model, lookup: Option<SharedLookup>) -> Option<RequestConfig> {
+        if self.extension(&model.provider).is_some() {
+            return self.extension_request_config(model, lookup);
+        }
         let config = self.provider_config(&model.provider)?;
         let strings = |value: Option<&Value>| -> Vec<(String, String)> {
             value

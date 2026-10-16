@@ -5,7 +5,6 @@ use crate::config::{self, Config};
 use crate::git::{self, FileChange, git_output};
 use crate::hook::{self, run_command};
 use crate::proc::{self, Deadline};
-use crate::py;
 use crate::rules;
 use crate::{CheckError, MAX_VIOLATIONS};
 use serde_json::Value;
@@ -190,70 +189,6 @@ fn mix_project(path: &Path, root: &Path) -> Option<PathBuf> {
     }
 }
 
-/// `elixir_analysis` at the project tier: format, Credo, compile and Sobelow statuses.
-fn elixir_analysis(project: &Path) -> Vec<(String, String, String)> {
-    let checks: [(&str, &[&str], Option<&str>); 4] = [
-        ("format", &["mix", "format", "--check-formatted"], None),
-        (
-            "credo",
-            &["mix", "credo", "--strict", "--format", "json"],
-            Some("credo"),
-        ),
-        ("compile", &["mix", "compile", "--warnings-as-errors"], None),
-        (
-            "sobelow",
-            &["mix", "sobelow", "--private", "--format", "json", "--exit", "high"],
-            Some("sobelow"),
-        ),
-    ];
-    let mut report = Vec::new();
-    for (tool, command, dependency) in checks {
-        let mut status = "NOT CHECKED".to_string();
-        let output;
-        if proc::which("mix").is_none() {
-            output = "mix is missing".into();
-        } else if let Some(dependency) = dependency.filter(|d| !project.join("deps").join(d).join("mix.exs").is_file())
-        {
-            output = format!("required analyzer dependency missing: {dependency}");
-        } else {
-            let command: Vec<String> = command.iter().map(|s| s.to_string()).collect();
-            let result = Deadline::none()
-                .timeout()
-                .and_then(|t| proc::run(&command, project, None, &[("MIX_ENV", "dev")], t).map_err(CheckError::from));
-            match result {
-                Ok(result) => {
-                    let stdout = proc::text(&result.stdout);
-                    let stderr = proc::text(&result.stderr);
-                    let mut text: String = [&stdout, &stderr]
-                        .iter()
-                        .map(|p| py::strip(p))
-                        .filter(|p| !p.is_empty())
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    status = if result.code == 0 { "PASS".into() } else { "FAIL".into() };
-                    if dependency.is_some() {
-                        match serde_json::from_str::<Value>(&stdout) {
-                            Err(_) => {
-                                status = "NOT CHECKED".into();
-                                text = format!("analyzer did not return valid JSON: {text}");
-                            }
-                            Ok(payload) if !payload.is_object() => {
-                                status = "NOT CHECKED".into();
-                                text = "analyzer JSON must be an object".into();
-                            }
-                            Ok(_) => {}
-                        }
-                    }
-                    output = text;
-                }
-                Err(error) => output = error.message().to_string(),
-            }
-        }
-        report.push((tool.to_string(), status, output));
-    }
-    report
-}
-
 fn relative_files(files: &[PathBuf], root: &Path) -> Vec<String> {
     files.iter().map(|f| hook::relative_display(f, root)).collect()
 }
@@ -409,7 +344,11 @@ pub fn scan(
             }
             let unique: BTreeSet<PathBuf> = projects.into_iter().flatten().collect();
             for project in unique {
-                for (tool, status, output) in elixir_analysis(&project) {
+                let report = crate::elixir::elixir_analysis(&project, "project", &[]).unwrap_or_default();
+                for crate::elixir::Check {
+                    tool, status, output, ..
+                } in report
+                {
                     let relative = project
                         .strip_prefix(crate::resolve(root))
                         .map(|p| p.to_string_lossy().into_owned())
@@ -472,7 +411,13 @@ pub fn scan(
         entry(&mut violations, "typescript").extend(found);
     }
     if online {
-        return Err(CheckError::not_ported("scan --online (registry lookups)"));
+        let issues = crate::registry::slopsquatting_violations(root, &config);
+        if !issues.is_empty() {
+            match violations.iter_mut().find(|(l, _)| l == "dependencies") {
+                Some((_, list)) => *list = issues,
+                None => violations.push(("dependencies".into(), issues)),
+            }
+        }
     }
     let mut failed = false;
     for (language, messages) in &violations {
@@ -488,7 +433,7 @@ pub fn scan(
     Ok(i32::from(failed))
 }
 
-const ENGINE: &[u8] = include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/loki.py");
+pub(crate) const ENGINE: &[u8] = include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/loki.py");
 const TEMPLATE: &[u8] = include_bytes!("../../../packages/coding-agent/src/ultron/loki-engine/templates/loki.json");
 
 /// `init --minimal`: the engine and default policy in `.loki/`, nothing else.

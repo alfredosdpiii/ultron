@@ -139,10 +139,11 @@ fn cli_interactive_reattaches_after_the_session_worker_dies() {
     submit(&tui, "first", "Before.");
     let kill = || {
         let pattern = format!("session-worker.*{}", tui.root().display());
-        std::process::Command::new("pkill")
+        let status = std::process::Command::new("pkill")
             .args(["-KILL", "-f", &pattern])
             .status()
             .unwrap();
+        assert!(status.success(), "no session worker matched {pattern}");
     };
     kill();
     let screen = tui.wait("was restarted");

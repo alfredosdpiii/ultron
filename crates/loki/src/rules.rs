@@ -211,6 +211,9 @@ pub fn content_rule_violations(
         for key in new_order {
             let (count, line) = new_counts[&key];
             let extra = count.saturating_sub(old_counts.get(&key).copied().unwrap_or(0));
+            if extra > 0 {
+                crate::evidence::finding(key.0, Some(relative));
+            }
             for _ in 0..extra {
                 violations.push(format!("{relative}:{line}: {}: {}", key.0, key.1));
             }

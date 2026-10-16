@@ -1,0 +1,2214 @@
+{
+ "scenarios": [
+  {
+   "name": "uv-lock-with-mise-python",
+   "tree": [
+    {
+     "path": "repo/pyproject.toml",
+     "content": "[project]\nname = \"x\"\nrequires-python = \">=3.11\"\n"
+    },
+    {
+     "path": "repo/uv.lock",
+     "content": "version = 1\n"
+    },
+    {
+     "path": "repo/mise.toml",
+     "content": "[tools]\npython = \"3.12\"\n"
+    },
+    {
+     "path": "bin/mise",
+     "content": ""
+    },
+    {
+     "path": "bin/uv",
+     "content": ""
+    },
+    {
+     "path": "installs/python/3.12.4/bin/python3",
+     "content": ""
+    },
+    {
+     "path": "installs/python/3.12.10/bin/python3",
+     "content": ""
+    },
+    {
+     "path": "installs/python/3.12.9/bin/python",
+     "content": ""
+    },
+    {
+     "path": "installs/python/3.11.1",
+     "dir": true
+    },
+    {
+     "path": "installs/python/3.12.99",
+     "dir": true
+    },
+    {
+     "path": "installs/python/latest",
+     "link": "<root>/installs/python/3.12.10"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/bin:/nonexistent"
+   },
+   "rules": [
+    {
+     "match": "<root>/bin/mise ls --json",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "{\"python\":[{\"version\":\"3.12.4\",\"install_path\":\"<root>/installs/python/3.12.4\",\"installed\":true},{\"version\":\"3.12.10\",\"install_path\":\"<root>/installs/python/latest\"},{\"version\":\"3.12.9\",\"install_path\":\"<root>/installs/python/3.12.9\",\"installed\":true},{\"version\":\"3.11.1\",\"install_path\":\"<root>/installs/python/3.11.1\",\"installed\":true},{\"version\":\"3.12.99\",\"install_path\":\"<root>/installs/python/3.12.99\",\"installed\":false},{\"version\":\"3.12.50\",\"install_path\":\"<root>/installs/python/missing\",\"installed\":true},{\"version\":\"3.120\",\"install_path\":\"<root>/installs/python/3.12.4\",\"installed\":true}],\"node\":[{\"version\":\"20.1.0\",\"install_path\":\"<root>/installs/python/3.12.4\"}]}",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv sync",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "Resolved 3 packages",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {},
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:/nonexistent"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "<root>/installs/python/3.12.10/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.10/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "sync",
+        "--frozen",
+        "--all-extras",
+        "--project",
+        "<root>/repo"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.10/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false",
+        "UV_PROJECT_ENVIRONMENT": "<root>/cache/envs/<hash>/.venv"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv sync --frozen --all-extras (uv.lock)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.12.10\",\n   \"path\": \"<root>/installs/python/3.12.10\",\n   \"source\": \"mise\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {},
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv sync --frozen --all-extras (uv.lock)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.12.10\",\n   \"path\": \"<root>/installs/python/3.12.10\",\n   \"source\": \"mise\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {
+      "force": true,
+      "timeoutMs": 5000
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:/nonexistent"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "<root>/installs/python/3.12.10/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.10/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 5000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "sync",
+        "--frozen",
+        "--all-extras",
+        "--project",
+        "<root>/repo"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.10/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false",
+        "UV_PROJECT_ENVIRONMENT": "<root>/cache/envs/<hash>/.venv"
+       },
+       "timeoutMs": 5000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv sync --frozen --all-extras (uv.lock)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.12.10\",\n   \"path\": \"<root>/installs/python/3.12.10\",\n   \"source\": \"mise\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.10",
+        "path": "<root>/installs/python/3.12.10",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {
+      "python": "3.12.4"
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.4",
+        "path": "<root>/installs/python/3.12.4",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:/nonexistent"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "<root>/installs/python/3.12.4/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.4/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "sync",
+        "--frozen",
+        "--all-extras",
+        "--project",
+        "<root>/repo"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "<root>/installs/python/3.12.4/bin:<root>/fakehome/.local/bin:<root>/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false",
+        "UV_PROJECT_ENVIRONMENT": "<root>/cache/envs/<hash>/.venv"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv sync --frozen --all-extras (uv.lock)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.12.4\",\n   \"path\": \"<root>/installs/python/3.12.4\",\n   \"source\": \"mise\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv sync --frozen --all-extras (uv.lock)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.12.4",
+        "path": "<root>/installs/python/3.12.4",
+        "source": "mise"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    }
+   ]
+  },
+  {
+   "name": "editable-installs-and-requirements",
+   "tree": [
+    {
+     "path": "repo/pyproject.toml",
+     "content": "[project]\nname = \"x\"\n"
+    },
+    {
+     "path": "repo/requirements.txt",
+     "content": "a\n"
+    },
+    {
+     "path": "repo/requirements/dev.txt",
+     "content": "b\n"
+    },
+    {
+     "path": "repo/services/api/pyproject.toml",
+     "content": "[project]\n"
+    },
+    {
+     "path": "repo/backend/setup.py",
+     "content": "x"
+    },
+    {
+     "path": "repo/.python-version",
+     "content": "3.10\n"
+    },
+    {
+     "path": "fakehome/.local/bin/uv",
+     "content": ""
+    },
+    {
+     "path": "sys/python3",
+     "link": "/usr/bin/env"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/empty:<root>/sys"
+   },
+   "rules": [
+    {
+     "match": "<root>/fakehome/.local/bin/uv venv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -e <root>/repo[dev,test]",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "no extra dev"
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -e <root>/repo[dev]",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "no extra dev"
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -e <root>/repo[test]",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -e <root>/repo/services/api",
+     "results": [
+      {
+       "code": 2,
+       "stdout": "  bad project  \n",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -e <root>/repo/backend[dev,test]",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -r <root>/repo/requirements.txt",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/fakehome/.local/bin/uv pip install --python <root>/cache/envs/<hash>/.venv/bin/python -r <root>/repo/requirements/dev.txt",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "   xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz  \n"
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv pip install -e .[test]",
+       "python: uv pip install -e backend[dev,test]",
+       "python: uv pip install -r requirements.txt"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.10",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [
+       "uv pip install -e services/api failed: bad project",
+       "uv pip install -r requirements/dev.txt failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "/usr/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[dev]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/backend[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[dev]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-r",
+        "<root>/repo/requirements.txt"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-r",
+        "<root>/repo/requirements/dev.txt"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv pip install -e .[test]\",\n  \"python: uv pip install -e backend[dev,test]\",\n  \"python: uv pip install -r requirements.txt\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.10\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [\n  \"uv pip install -e services/api failed: bad project\",\n  \"uv pip install -r requirements/dev.txt failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": null
+    },
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: uv pip install -e .[test]",
+       "python: uv pip install -e backend[dev,test]",
+       "python: uv pip install -r requirements.txt"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.10",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [
+       "uv pip install -e services/api failed: bad project",
+       "uv pip install -r requirements/dev.txt failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "/usr/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[dev]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo[test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/backend[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[dev,test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[dev]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api[test]"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-e",
+        "<root>/repo/services/api"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-r",
+        "<root>/repo/requirements.txt"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/fakehome/.local/bin/uv",
+        "pip",
+        "install",
+        "--python",
+        "<root>/cache/envs/<hash>/.venv/bin/python",
+        "-r",
+        "<root>/repo/requirements/dev.txt"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/empty:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: uv pip install -e .[test]\",\n  \"python: uv pip install -e backend[dev,test]\",\n  \"python: uv pip install -r requirements.txt\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.10\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [\n  \"uv pip install -e services/api failed: bad project\",\n  \"uv pip install -r requirements/dev.txt failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "node-pnpm-with-mise-install",
+   "tree": [
+    {
+     "path": "repo/package.json",
+     "content": "{\"name\":\"web\",\"engines\":{\"node\":\">=20\"}}"
+    },
+    {
+     "path": "repo/pnpm-lock.yaml",
+     "content": "lockfileVersion: 9\n"
+    },
+    {
+     "path": "repo/yarn.lock",
+     "content": ""
+    },
+    {
+     "path": "repo/.npmrc",
+     "content": "ignore-scripts=true\n"
+    }
+   ],
+   "env": {
+    "PATH": "/nonexistent"
+   },
+   "rules": [
+    {
+     "match": "<root>/m/mise ls",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "{\"node\":[]}",
+       "stderr": ""
+      },
+      {
+       "code": 0,
+       "stdout": "{\"node\":[{\"version\":\"20.0.0\",\"install_path\":\"<root>/installs/node/20.0.0\",\"installed\":true}]}",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/m/mise install node@20",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "installed",
+       "stderr": "",
+       "mkdirs": [
+        "<root>/installs/node/20.0.0/bin"
+       ]
+      }
+     ]
+    },
+    {
+     "match": "pnpm install",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": "<root>/m/mise",
+      "timeoutMs": 7000
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: pnpm install --frozen-lockfile --ignore-scripts (pnpm-lock.yaml)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "20.0.0",
+        "path": "<root>/installs/node/20.0.0",
+        "source": "mise",
+        "installed": true
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/m/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "/nonexistent"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/m/mise",
+        "install",
+        "node@20"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "/nonexistent"
+       },
+       "timeoutMs": 7000
+      },
+      {
+       "argv": [
+        "<root>/m/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "/nonexistent"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/installs/node/20.0.0/bin:<root>/fakehome/.local/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 7000
+      }
+     ],
+     "logs": [
+      "prepare: mise install node@20"
+     ],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"node: pnpm install --frozen-lockfile --ignore-scripts (pnpm-lock.yaml)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"node\",\n   \"version\": \"20.0.0\",\n   \"path\": \"<root>/installs/node/20.0.0\",\n   \"source\": \"mise\",\n   \"installed\": true\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      ".npmrc",
+      "package.json",
+      "pnpm-lock.yaml",
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: pnpm install --frozen-lockfile --ignore-scripts (pnpm-lock.yaml)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "20.0.0",
+        "path": "<root>/installs/node/20.0.0",
+        "source": "mise",
+        "installed": true
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    }
+   ]
+  },
+  {
+   "name": "everything-fails",
+   "tree": [
+    {
+     "path": "repo/setup.cfg",
+     "content": "[metadata]\n"
+    },
+    {
+     "path": "repo/package.json",
+     "content": "{}"
+    },
+    {
+     "path": "repo/.tool-versions",
+     "content": "python 3.11\n"
+    },
+    {
+     "path": "bin/mise",
+     "content": ""
+    },
+    {
+     "path": "opt/py/bin/python3",
+     "content": ""
+    },
+    {
+     "path": "opt/py/lib",
+     "dir": true
+    },
+    {
+     "path": "opt/nolib/bin/node",
+     "content": ""
+    },
+    {
+     "path": "managed/python3",
+     "link": "<root>/opt/py/bin/python3"
+    },
+    {
+     "path": "managed/node",
+     "link": "<root>/opt/nolib/bin/node"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/bin:<root>/managed"
+   },
+   "rules": [
+    {
+     "match": "<root>/bin/mise ls",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "mise: no config"
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/mise install",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "  boom !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {},
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "3.11",
+        "path": "<root>/opt/py",
+        "source": "mise"
+       }
+      ],
+      "failures": [
+       "mise install python@3.11 failed: boom !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+       "no node found on PATH",
+       "uv is not installed (https://docs.astral.sh/uv/): the Python environment was not prepared",
+       "no Node lockfile (package-lock.json, pnpm-lock.yaml, yarn.lock): node_modules was not prepared"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:<root>/managed"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "install",
+        "python@3.11"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:<root>/managed"
+       },
+       "timeoutMs": 600000
+      }
+     ],
+     "logs": [
+      "prepare: mise install python@3.11"
+     ],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"3.11\",\n   \"path\": \"<root>/opt/py\",\n   \"source\": \"mise\"\n  }\n ],\n \"failures\": [\n  \"mise install python@3.11 failed: boom !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\",\n  \"no node found on PATH\",\n  \"uv is not installed (https://docs.astral.sh/uv/): the Python environment was not prepared\",\n  \"no Node lockfile (package-lock.json, pnpm-lock.yaml, yarn.lock): node_modules was not prepared\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "venv-without-dependency-list",
+   "tree": [
+    {
+     "path": "repo/setup.cfg",
+     "content": "[metadata]\n"
+    },
+    {
+     "path": "repo/.python-version",
+     "content": "3.9\n"
+    },
+    {
+     "path": "bin/uv",
+     "content": ""
+    }
+   ],
+   "env": {
+    "PATH": "<root>/bin"
+   },
+   "rules": [
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: .venv (no dependency list found)"
+      ],
+      "cached": false,
+      "toolchain": [],
+      "failures": [
+       "no python found on PATH for the requested 3.9"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "3.9"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/fakehome/.local/bin:<root>/bin",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: .venv (no dependency list found)\"\n ],\n \"cached\": false,\n \"toolchain\": [],\n \"failures\": [\n  \"no python found on PATH for the requested 3.9\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "mise-listing-unreadable",
+   "tree": [
+    {
+     "path": "repo/requirements.txt",
+     "content": "a\n"
+    },
+    {
+     "path": "repo/.tool-versions",
+     "content": "python ^3.12\n"
+    },
+    {
+     "path": "bin/mise",
+     "content": ""
+    },
+    {
+     "path": "bin/uv",
+     "content": ""
+    },
+    {
+     "path": "sys/python3",
+     "link": "/usr/bin/env"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/bin:<root>/sys"
+   },
+   "rules": [
+    {
+     "match": "<root>/bin/mise ls",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "not json",
+       "stderr": ""
+      },
+      {
+       "code": 0,
+       "stdout": "null",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/mise install python@^3.12",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 2,
+       "stdout": "out msg    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz  \n",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {},
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "^3.12",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [
+       "uv venv failed: out msg    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:<root>/sys"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "install",
+        "python@^3.12"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:<root>/sys"
+       },
+       "timeoutMs": 600000
+      },
+      {
+       "argv": [
+        "<root>/bin/mise",
+        "ls",
+        "--json"
+       ],
+       "cwd": null,
+       "env": {
+        "PATH": "<root>/bin:<root>/sys"
+       },
+       "timeoutMs": 60000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "/usr/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/bin:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [
+      "prepare: mise install python@^3.12"
+     ],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"^3.12\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [\n  \"uv venv failed: out msg    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "toolchain.json"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "uv-sync-and-npm-ci-fail",
+   "tree": [
+    {
+     "path": "repo/pyproject.toml",
+     "content": "[project]\nname = \"x\"\n"
+    },
+    {
+     "path": "repo/uv.lock",
+     "content": "version = 1\n"
+    },
+    {
+     "path": "repo/package.json",
+     "content": "{}"
+    },
+    {
+     "path": "repo/package-lock.json",
+     "content": "{}"
+    },
+    {
+     "path": "bin/uv",
+     "content": ""
+    },
+    {
+     "path": "bin/python3",
+     "link": "/usr/bin/env"
+    },
+    {
+     "path": "bin/node",
+     "link": "/usr/bin/env"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/bin"
+   },
+   "rules": [
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv sync",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "   xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz  \n"
+      }
+     ]
+    },
+    {
+     "match": "npm ci",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "   xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz  \n",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "python: .venv (no dependency list found)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "python",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       },
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [
+       "uv sync failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀",
+       "npm ci --ignore-scripts --no-audit --no-fund failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "venv",
+        "<root>/cache/envs/<hash>/.venv",
+        "--python",
+        "/usr/bin/python3"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:/usr/bin:<root>/fakehome/.local/bin:<root>/bin",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "<root>/bin/uv",
+        "sync",
+        "--frozen",
+        "--all-extras",
+        "--project",
+        "<root>/repo"
+       ],
+       "cwd": "<root>/repo",
+       "env": {
+        "PATH": "/usr/bin:/usr/bin:<root>/fakehome/.local/bin:<root>/bin",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false",
+        "UV_PROJECT_ENVIRONMENT": "<root>/cache/envs/<hash>/.venv"
+       },
+       "timeoutMs": 900000
+      },
+      {
+       "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:/usr/bin:<root>/fakehome/.local/bin:<root>/bin",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"python: .venv (no dependency list found)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"python\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  },\n  {\n   \"tool\": \"node\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [\n  \"uv sync failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀\",\n  \"npm ci --ignore-scripts --no-audit --no-fund failed: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxéyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy😀\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "yarn-failure-and-explicit-python",
+   "tree": [
+    {
+     "path": "repo/package.json",
+     "content": "{\"name\":\"web\"}"
+    },
+    {
+     "path": "repo/yarn.lock",
+     "content": ""
+    }
+   ],
+   "env": {
+    "PATH": "/nonexistent"
+   },
+   "rules": [
+    {
+     "match": "yarn install",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "yarn out",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": false,
+      "python": "3.13"
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [],
+      "cached": false,
+      "toolchain": [],
+      "failures": [
+       "no node found on PATH",
+       "yarn install --frozen-lockfile --ignore-scripts --non-interactive failed: yarn out"
+      ],
+      "ms": 0,
+      "ok": false,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "yarn",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts",
+        "--non-interactive"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "<root>/fakehome/.local/bin:/nonexistent",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [],\n \"cached\": false,\n \"toolchain\": [],\n \"failures\": [\n  \"no node found on PATH\",\n  \"yarn install --frozen-lockfile --ignore-scripts --non-interactive failed: yarn out\"\n ],\n \"ms\": 0,\n \"ok\": false,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package.json",
+      "toolchain.json",
+      "yarn.lock"
+     ],
+     "cached": null
+    }
+   ]
+  },
+  {
+   "name": "cache-records",
+   "tree": [
+    {
+     "path": "repo/package.json",
+     "content": "{\"name\":\"web\"}"
+    },
+    {
+     "path": "repo/package-lock.json",
+     "content": "{}"
+    },
+    {
+     "path": "repo/npm-shrinkwrap.json",
+     "content": "{}"
+    },
+    {
+     "path": "sys/node",
+     "link": "/usr/bin/env"
+    }
+   ],
+   "env": {
+    "PATH": "<root>/sys"
+   },
+   "rules": [
+    {
+     "match": "npm ci",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [
+      {
+       "record": "not json"
+      }
+     ],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"node\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"node\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [
+      {
+       "record": "{\"ok\": 1, \"dir\": \"/elsewhere\", \"hash\": \"h\", \"prepared\": [\"x\"], \"cached\": false, \"toolchain\": [], \"failures\": [], \"ms\": 5, \"extra\": true}"
+      }
+     ],
+     "result": {
+      "ok": 1,
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "x"
+      ],
+      "cached": true,
+      "toolchain": [],
+      "failures": [],
+      "ms": 0,
+      "extra": true
+     },
+     "error": null,
+     "calls": [],
+     "logs": [],
+     "record": "{\"ok\": 1, \"dir\": \"/elsewhere\", \"hash\": \"h\", \"prepared\": [\"x\"], \"cached\": false, \"toolchain\": [], \"failures\": [], \"ms\": 0, \"extra\": true}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": {
+      "ok": 1,
+      "dir": "/elsewhere",
+      "hash": "h",
+      "prepared": [
+       "x"
+      ],
+      "cached": true,
+      "toolchain": [],
+      "failures": [],
+      "ms": 0,
+      "extra": true
+     }
+    },
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [
+      {
+       "record": "null"
+      }
+     ],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"node\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    },
+    {
+     "options": {
+      "mise": false
+     },
+     "before": [
+      {
+       "record": "{\"ok\": 0, \"prepared\": [\"old\"]}"
+      }
+     ],
+     "result": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": false,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     },
+     "error": null,
+     "calls": [
+      {
+       "argv": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+       ],
+       "cwd": "<root>/cache/envs/<hash>",
+       "env": {
+        "PATH": "/usr/bin:<root>/fakehome/.local/bin:<root>/sys",
+        "UV_NO_PROGRESS": "1",
+        "npm_config_update_notifier": "false"
+       },
+       "timeoutMs": 900000
+      }
+     ],
+     "logs": [],
+     "record": "{\n \"dir\": \"<root>/cache/envs/<hash>\",\n \"hash\": \"<hash>\",\n \"prepared\": [\n  \"node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)\"\n ],\n \"cached\": false,\n \"toolchain\": [\n  {\n   \"tool\": \"node\",\n   \"version\": \"\",\n   \"path\": \"/usr\",\n   \"source\": \"system\"\n  }\n ],\n \"failures\": [],\n \"ms\": 0,\n \"ok\": true,\n \"at\": \"<at>\",\n \"repo\": \"<root>/repo\"\n}",
+     "files": [
+      "package-lock.json",
+      "package.json",
+      "toolchain.json"
+     ],
+     "cached": {
+      "dir": "<root>/cache/envs/<hash>",
+      "hash": "<hash>",
+      "prepared": [
+       "node: npm ci --ignore-scripts --no-audit --no-fund (package-lock.json)"
+      ],
+      "cached": true,
+      "toolchain": [
+       {
+        "tool": "node",
+        "version": "",
+        "path": "/usr",
+        "source": "system"
+       }
+      ],
+      "failures": [],
+      "ms": 0,
+      "ok": true,
+      "at": "<at>",
+      "repo": "<root>/repo"
+     }
+    }
+   ]
+  }
+ ]
+}

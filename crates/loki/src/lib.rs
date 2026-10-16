@@ -7,15 +7,21 @@
 //! `shell-writes` and `explain`. Python source is parsed by CPython (`pyast`), as
 //! loki.py does. Checks that are not ported refuse with a guard error.
 
+pub mod apply;
 pub mod config;
+pub mod daemon;
+pub mod elixir;
+pub mod evidence;
 pub mod git;
 pub mod hook;
+pub mod installation;
 pub mod jsrules;
 pub mod langrules;
 pub mod proc;
 pub mod py;
 pub mod pyast;
 pub mod pyjson;
+pub mod registry;
 pub mod rules;
 pub mod run;
 pub mod scan;
@@ -206,12 +212,23 @@ pub fn valid_path(path: &str) -> Result<(), CheckError> {
 
 /// `protect_path`: root confinement, directory targets and protected files.
 pub fn protect_path(path: &str, root: &Path, config: &Config) -> Result<Option<String>, CheckError> {
+    protect_path_with(path, root, config, true)
+}
+
+/// [`protect_path`]; without `allow_override`, `LOKI_ALLOW_PROTECTED=1` does not lift the protection (`apply`).
+pub fn protect_path_with(
+    path: &str,
+    root: &Path,
+    config: &Config,
+    allow_override: bool,
+) -> Result<Option<String>, CheckError> {
     valid_path(path)?;
     let patterns = config::protected_patterns(config).map_err(CheckError::Value)?;
     let root = resolve(root);
     let lexical = lexical_path(&root, path);
     let resolved = resolve(&lexical);
     let (Some(first), Some(second)) = (relative_posix(&lexical, &root), relative_posix(&resolved, &root)) else {
+        evidence::finding("root-confinement", Some(path));
         return Ok(Some(format!("loki: outside project root: {path}")));
     };
     let relatives = [
@@ -219,12 +236,14 @@ pub fn protect_path(path: &str, root: &Path, config: &Config) -> Result<Option<S
         if second.is_empty() { ".".into() } else { second },
     ];
     if resolved.is_dir() {
+        evidence::finding("directory-target", Some(path));
         return Ok(Some(format!("loki: directory target is not a file: {path}")));
     }
-    if std::env::var("LOKI_ALLOW_PROTECTED").as_deref() == Ok("1") {
+    if allow_override && std::env::var("LOKI_ALLOW_PROTECTED").as_deref() == Ok("1") {
         return Ok(None);
     }
     if relatives.iter().any(|r| patterns.iter().any(|p| path_matches(r, p))) {
+        evidence::finding("protected-path", Some(&relatives[0]));
         return Ok(Some(format!(
             "loki: protected file: {} (set LOKI_ALLOW_PROTECTED=1 to override)",
             relatives[0]
@@ -476,6 +495,7 @@ fn preview_oxlint(
     }
     let mut violations = Vec::new();
     for (key, count) in after.minus(&before) {
+        evidence::finding(&format!("preview-{}", key.1), Some(&key.0));
         for _ in 0..count {
             violations.push(format!("{}:{}: {}: {}", key.0, locations[&key], key.1, key.2));
         }
@@ -530,6 +550,7 @@ pub fn preview_violations(
             if !javascript {
                 return Ok(violations);
             }
+            evidence::finding("preview-unavailable", None);
             let suffix = if previewed {
                 "; built-in fallback rules applied"
             } else {

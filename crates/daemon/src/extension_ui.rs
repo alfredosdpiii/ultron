@@ -300,3 +300,23 @@ impl mcp::gateway::CommandUi for BridgeUi {
         answer.get("value").and_then(Value::as_str).map(String::from)
     }
 }
+
+/// Third-party extensions' dialogs and notifications (session-core `extension_host`) over the bridge.
+impl session_core::extension_host::ExtensionUi for ExtensionUiBridge {
+    fn serving(&self) -> bool {
+        ExtensionUiBridge::serving(self)
+    }
+
+    fn dialog(
+        &self,
+        request: Map<String, Value>,
+        timeout: Option<Duration>,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Option<Value> {
+        ExtensionUiBridge::dialog(self, request, timeout, cancelled)
+    }
+
+    fn emit(&self, request: Map<String, Value>) {
+        ExtensionUiBridge::emit(self, request)
+    }
+}

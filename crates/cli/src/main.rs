@@ -38,6 +38,12 @@ fn main() {
             std::process::exit(1);
         }
     };
+    let env = cli::Env {
+        cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        var: std::sync::Arc::new(|k| std::env::var(k).ok()),
+        docs: source.dir().join("docs"),
+        home,
+    };
     match daemon::process::role(&argv) {
         Err(message) => {
             eprintln!("{message}");
@@ -46,7 +52,10 @@ fn main() {
         Ok(Some((role, args))) => {
             let result = match role {
                 daemon::process::Role::Coordinator => daemon::coordinator::run(args).map_err(|e| e.to_string()),
-                daemon::process::Role::Server => daemon::server::run_server_process(args),
+                // A detached server runs its relay too (opt-out: PI_OFFLINE), with the stored Radius credential.
+                daemon::process::Role::Server => {
+                    daemon::server::run_server_process(args, Some(cli::radius_relay::relay_config(&env)))
+                }
                 daemon::process::Role::SessionWorker => daemon::worker::run(args, ready_docs()),
             };
             if let Err(message) = result {
@@ -57,12 +66,6 @@ fn main() {
         }
         Ok(None) => {}
     }
-    let env = cli::Env {
-        cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        var: std::sync::Arc::new(|k| std::env::var(k).ok()),
-        docs: source.dir().join("docs"),
-        home,
-    };
     // Unlocked handles: threads of the interactive TUI (its terminal writer) and of RPC mode write too.
     let code = cli::run(&argv, &env, &mut std::io::stdout(), &mut std::io::stderr());
     std::process::exit(code);

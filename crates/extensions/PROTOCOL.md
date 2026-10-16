@@ -64,9 +64,14 @@ Locations, in the order the TypeScript package manager resolves extensions (`cor
 4. `<agentDir>/extensions/*/extension.json`.
 
 An entry is a manifest file, a directory with `extension.json`, or a directory whose subdirectories have one (one
-level). The same manifest loads once, at its first position, and that order is the dispatch order below. Entries
-that are JavaScript/TypeScript extensions (`*.ts`, `*.js`, `index.ts`, `package.json` with `pi.extensions`), glob
-or `!`/`+`/`-` patterns, missing paths and invalid manifests are reported as diagnostics and skipped.
+level). The same manifest loads once, at its first position, and that order is the dispatch order below. Settings
+entries may be patterns, applied as the package manager applies them to an extension's entry file (here its
+`extension.json`, matched with minimatch against its path relative to the settings' directory, its file name or its
+absolute path): plain globs and `!glob` filter the manifests that scope's entries list, `+path` / `-path` force one in
+or out, and the scope's `!`/`+`/`-` entries also apply to its auto-discovered directory. A disabled manifest keeps its
+place (a later listing does not enable it). Entries that are JavaScript/TypeScript extensions (`*.ts`, `*.js`,
+`index.ts`, `package.json` with `pi.extensions`), missing paths and invalid manifests are reported as diagnostics and
+skipped.
 
 Lifecycle:
 
@@ -120,7 +125,14 @@ Result:
 }
 ```
 
-`protocolVersion` must equal the host's. Function names must be Python identifiers. The extension may later replace
+`protocolVersion` must equal the host's. Function names must be Python identifiers. A flag's `type` is `boolean` or
+`string`, and a `default` must have that type (`Invalid default for flag "<name>": expected <type>, got <typeof>`
+fails the load, as `registerFlag` throws). The first registered default of a name is the session's value;
+command-line values given in `initialize.session` flags override it (`applyExtensionFlags`: a boolean flag becomes
+`true`, a string flag needs a value). `flags/get` answers only for a flag the asking extension registered. A restart's
+`initialize.flags` holds the session's values of the flags the extension registered. `providers` declares
+`registerProvider(name, config)` without code: `[{ name, baseUrl?, apiKey?, api?, headers?, authHeader?, models? }]`,
+the shape of a models.json provider. The extension may later replace
 its whole registration set with the notification `registrations/changed` (same shape as `capabilities`), which is
 how `registerCommand`/`on` after load and `setActiveTools`-style changes are expressed.
 
@@ -226,7 +238,7 @@ ends aborted, as AgentSession ends it whatever a hook returns after the abort. A
 | `on(event, handler)` | `capabilities.events` + `event` requests (section 5); the returned unsubscribe is `registrations/changed`. |
 | `registerTool(tool)` | `capabilities.functions` + `functions/call`: a kernel-API function `ext.<extension>.<name>(**arguments)`, never a model tool. `renderCall`/`renderResult` and tool `state` are dropped (render code). |
 | `registerCommand(name, { description, getArgumentCompletions, handler })` | `capabilities.commands` + `commands/run`, `commands/complete`. Duplicate names get `name:1`, `name:2`, ... in load order (`getRegisteredCommands`). |
-| `registerShortcut(key, { description, handler })` | `capabilities.shortcuts` + `shortcuts/run`. The reserved-key conflict rules of `getShortcuts` apply (not yet ported). |
+| `registerShortcut(key, { description, handler })` | `capabilities.shortcuts` + `shortcuts/run`. The conflict rules of `getShortcuts` apply (`ExtensionHost::shortcuts`): keys of reserved editor actions are refused, other built-in keys and keys two extensions register warn and go to the later one. |
 | `registerFlag(name, options)`, `getFlag(name)` | `capabilities.flags`; values in `initialize.flags` and `flags/get`. |
 | `registerMessageRenderer`, `registerEntryRenderer`, `registerMarkdownTransformer` | Dropped: arbitrary render code. Custom messages and entries render with the host's generic renderer; their `display` text is the declarative form. |
 | `sendMessage`, `sendUserMessage`, `appendEntry` | `session/sendMessage`, `session/sendUserMessage`, `session/appendEntry`. |
@@ -235,7 +247,7 @@ ends aborted, as AgentSession ends it whatever a hook returns after the abort. A
 | `getActiveTools`, `getAllTools`, `setActiveTools`, `refreshTools` | `tools/list`. Setting active tools is dropped: the model has one tool. |
 | `getCommands` | `commands/list`. |
 | `setModel`, `getThinkingLevel`, `setThinkingLevel` | `model/set`, `thinking/get`, `thinking/set`. |
-| `registerProvider`, `unregisterProvider` | Dropped for now: providers carry code (`streamSimple`, OAuth `login`/`refreshToken`). Declarative provider/model entries belong in `models.json`; built-in providers are Rust (`crates/ai`). |
+| `registerProvider`, `unregisterProvider` | `capabilities.providers` (declarative config only; `registrations/changed` without one unregisters it), read with `ExtensionHost::providers` and applied to the model registry in load order (a later declaration of a name merges over an earlier one). Code members (`streamSimple`, OAuth `login`/`refreshToken`, `refreshModels`) cannot cross the process boundary. |
 | `events` (EventBus `emit`/`on`) | `bus/emit` notification; subscribers list channels in `capabilities.bus` and get `bus/message` (the sender too, like `EventEmitter`). |
 | `ctx.ui.select`, `confirm`, `input`, `editor`, `notify`, `setStatus`, `setWidget(string[])`, `setWorkingMessage`, `setWorkingVisible`, `setHiddenThinkingLabel`, `setTitle`, `pasteToEditor`, `setEditorText`, `getEditorText`, `setTheme(name)`, `getAllThemes`, `getToolsExpanded`, `setToolsExpanded` | The `ui/*` methods; `setWidget` is `ui/setPanel`. |
 | `ctx.ui.custom`, `setWidget(factory)`, `setFooter`, `setHeader`, `setEditorComponent`, `getEditorComponent`, `addAutocompleteProvider`, `onTerminalInput`, `setWorkingIndicator(frames)`, `getTheme`/`theme` objects | Dropped: TUI components and raw input handlers are code in the host's render loop. Declarative replacements: panels, status lines, selectors (`ui/select`), command completions. |
@@ -248,10 +260,25 @@ ends aborted, as AgentSession ends it whatever a hook returns after the abort. A
 
 ## 7. Host implementation status (`crates/extensions`)
 
-Implemented and tested: transport and peer (timeouts, cancellation both ways, concurrent requests), discovery,
-handshake and registrations, `event` fan-out with every rule in section 5 (compared with the TypeScript runner on
-recorded scripted extension sets), `functions/call`, `commands/run`, command invocation names, `registrations/changed`,
-`bus/*`, UI notifications into a `UiModel`, prompt brackets and no-UI defaults, crash isolation, restart and
-disable, shutdown. Not yet: the shortcut conflict rules (`getShortcuts`), `registerProvider` in any form, and
-`settings.json` override patterns. The `session/*`, `host/*`, `agent/*`, `model/*`, `tools/*` requests are passed to the product's
-`HostApi` implementation; wiring them to the agent, kernel and TUI is the composition root's job.
+Implemented and tested: transport and peer (timeouts, cancellation both ways, concurrent requests), discovery with
+settings patterns, handshake and registrations, `event` fan-out with every rule in section 5 (compared with the
+TypeScript runner on recorded scripted extension sets), `functions/call`, `commands/run`, command invocation names,
+shortcut conflict rules, flags (`flags/get`, defaults, command-line values), `registrations/changed`, `bus/*`, UI
+notifications into a `UiModel`, prompt brackets and no-UI defaults (`hasUI` follows `HostApi::has_ui`), `host/exec`
+(`exec.rs`), crash isolation, restart and disable, shutdown.
+
+The session (`crates/session-core` `extension_host`, `core/extension_ops`) answers the `session/*`, `host/*`,
+`agent/*`, `model/*`, `thinking/*`, `tools/list`, `commands/list` and `ui/*` requests as the TypeScript worker's
+`LegacyExtensionAdapter` binds them, sends UI to the client over the worker's extension UI bridge, and emits the
+events that worker emits: `session_start`, `before_agent_start`, `context`/`context_with_system`, `agent_end`,
+`session_before_fork`, `session_shutdown`, `before_file_write`, the compaction and tree events, `ui_prompt_*`. The
+worker emits no other AgentSession events (`turn_*`, `message_*`, `tool_*`, `input`, `user_bash`, provider hooks,
+`model_select`, ...), so neither does the Rust session.
+
+Declared `providers` join the model registry of the session's profile while its extensions run
+(`session-core` `extension_providers`, the `ai` registry's extension layer): `/model`, Ctrl+P, `--list-models` and
+model selection list them, and requests go to their base URL with their api, key and headers; a declaration that does
+not compose is a load diagnostic `Extension "<path>" error: <message>`. The TUI asks the session for the shortcuts in
+force under its effective keybindings (`extensionShortcuts`), checks them before its own bindings, runs a match
+through the session (`extensionShortcut` -> `shortcuts/run`), lists them in `/hotkeys` and shows the conflict warnings
+as `[Extension issues]`.

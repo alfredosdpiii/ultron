@@ -27,7 +27,7 @@ use delegation::child::agent_runner;
 use delegation::host::{ChildRun, ChildRunner, CollectMode, Delegation, DelegationOptions, DetachedEnd, Park};
 use delegation::lanes::{CellEnd, Lanes, LanesOptions};
 use delegation::usage::UsageLedger;
-use extensions::{ExtensionHost, NoHost, SessionInfo};
+use extensions::{ExtensionHost, SessionInfo};
 use host::Host;
 use host::file_hooks::FileHooks;
 use host::loki_guard::{LokiGuard, LokiMode, git_root, loki_mode};
@@ -75,6 +75,12 @@ pub struct Services {
     pub mcp_notices: Option<mcp::gateway::NoticeSink>,
     /// Pi `--no-extensions`: no extensions are loaded, and no MCP servers (MCP is user configuration like them).
     pub no_extensions: bool,
+    /// The client UI extension dialogs and notifications reach (the worker's extension UI bridge); none: headless.
+    pub extension_ui: Option<Arc<dyn crate::extension_host::ExtensionUi>>,
+    /// What an extension's `ctx.shutdown()` does (`host/shutdown`); none: nothing, as in the TypeScript worker.
+    pub on_extension_shutdown: Option<crate::extension_host::ShutdownAction>,
+    /// `--system-prompt`, `-e`, `--no-skills`, `--no-context-files` (crate::session_flags).
+    pub session: crate::session_flags::SessionFlags,
 }
 
 /// What every lane of this process shares: settings, locations, guards, extensions and the snapshot key. Owned
@@ -190,6 +196,23 @@ impl Config {
         crate::lane::catalog_model(provider, id, &env).ok()
     }
 
+    /// `rlm.find_models` (session-worker.ts): the available models (`registry.getAvailable()`) as
+    /// `{provider, id, name}`, whatever the query.
+    pub fn find_models(&self) -> Value {
+        let env = Env {
+            cwd: self.cwd.clone(),
+            home: self.home.clone(),
+            var: self.var.clone(),
+            docs: PathBuf::new(),
+        };
+        Value::Array(
+            crate::lane::available_models(&env)
+                .iter()
+                .map(|m| json!({"provider": m.provider, "id": m.id, "name": m.name}))
+                .collect(),
+        )
+    }
+
     /// Refuses a spawn's `model=` unless it names a model of the built-in catalog or models.json.
     fn model_check(self: &Arc<Self>) -> delegation::host::ModelCheck {
         let config = self.clone();
@@ -208,14 +231,30 @@ impl Config {
     /// setting turns it off.
     /// In `cwd` (a worktree subagent's own), Loki checks that tree.
     fn file_hooks_in(&self, cwd: &Path) -> FileHooks {
-        let mut hooks = FileHooks::new(cwd);
+        // After-cell checks picture the directory between cells (workspace-snapshot.ts).
+        let snapshot: host::file_hooks::Snapshotter = std::sync::Arc::new(|dir: &Path| {
+            let picture = delegation::workspace::snapshot_workspace(
+                dir,
+                delegation::workspace::DEFAULT_MAX_SNAPSHOT_ENTRIES,
+                true,
+            );
+            Ok(host::file_hooks::Snapshot {
+                root: picture.root,
+                entries: picture.entries,
+                complete: picture.complete,
+            })
+        });
+        let mut hooks = FileHooks::with_snapshots(cwd, snapshot);
         if let Some(root) = &self.loki_root {
             let root = if cwd == self.cwd {
                 root.clone()
             } else {
                 git_root(cwd).unwrap_or_else(|| cwd.to_path_buf())
             };
-            hooks.add(Box::new(LokiGuard::new(&root, self.loki)));
+            // Post-write checks compare against the committed policy and a base revision: only in a repository
+            // with a `.loki/` policy (TS: after its auto-install there).
+            let post_write = git_root(cwd).is_some() && root.join(".loki").is_dir();
+            hooks.add(Box::new(LokiGuard::new(&root, self.loki).with_post_write(post_write)));
         }
         hooks
     }
@@ -316,11 +355,17 @@ impl SystemPrompt {
         trusted: bool,
         extensions: Option<String>,
         guide: resources::runtime_guide::RuntimeGuideOptions,
+        flags: &crate::session_flags::SessionFlags,
     ) -> Result<SystemPrompt, String> {
         let (cwd, agent_dir) = (env.cwd.clone(), config.agent_dir.clone());
+        let (no_skills, no_context_files) = (flags.no_skills, flags.no_context_files);
         let mode = move || {
             let settings = config::settings::SettingsManager::create(&cwd, &agent_dir, trusted);
-            crate::lane::PromptMode::from_settings(&settings)
+            crate::lane::PromptMode {
+                no_skills,
+                no_context_files,
+                ..crate::lane::PromptMode::from_settings(&settings)
+            }
         };
         let (env, loki_root) = (env.clone(), config.loki_root.clone());
         let render = move |mode: &crate::lane::PromptMode| {
@@ -371,6 +416,8 @@ pub struct Runtime {
     pub services: Services,
     /// Problems found loading extensions (reported once, as warnings).
     pub diagnostics: Vec<String>,
+    /// What extension processes ask the session (crate::extension_host), bound to the session actor once it opens.
+    pub extension_api: Arc<crate::extension_host::SessionHost>,
     /// The root lane's system prompt (subagents use it too).
     pub system: SystemPrompt,
     /// Where session-scoped host files (job logs, inference context) live: the cwd's session directory.
@@ -380,6 +427,8 @@ pub struct Runtime {
     /// The Hindsight server and bank every instance shares (`ULTRON_HINDSIGHT_URL`, the global `hindsightUrl`
     /// setting, else localhost:8888; `ULTRON_HINDSIGHT_BANK`, else "ultron"); `None`: memory is off.
     pub hindsight: Option<hindsight::Endpoint>,
+    /// Keeps the extensions' providers in the model registry of this profile (crate::extension_providers).
+    pub extension_providers: Option<crate::extension_providers::Installed>,
 }
 
 impl Runtime {
@@ -391,25 +440,37 @@ impl Runtime {
         // The worker's project trust (`workerProjectTrusted`): a trusted project's extensions load too.
         let trusted = crate::extension_commands::worker_project_trusted(&env.cwd, &config.agent_dir, &env.home);
         let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted);
-        let discovery = extensions::discover_with_settings(&env.cwd, &config.agent_dir, &env.home, &manager);
+        let discovery = crate::session_flags::extension_discovery(
+            env,
+            &config.agent_dir,
+            &manager,
+            &services.session,
+            services.no_extensions,
+        );
         let mut diagnostics: Vec<String> = discovery
             .diagnostics
             .iter()
             .map(|d| format!("{}: {}", d.path.display(), d.message))
             .collect();
-        // `--no-extensions`: extensions are not discovered or loaded.
-        let extensions = (!services.no_extensions && !discovery.manifests.is_empty()).then(|| {
+        let extension_api = Arc::new(crate::extension_host::SessionHost::new(
+            env.cwd.clone(),
+            config.agent_dir.clone(),
+            env.home.clone(),
+            mode,
+            trusted,
+            services.extension_ui.clone(),
+            services.on_extension_shutdown.clone(),
+        ));
+        // `--no-extensions`: extensions are not discovered (`-e` ones still load).
+        let extensions = (!discovery.manifests.is_empty()).then(|| {
             let session = SessionInfo {
                 cwd: env.cwd.display().to_string(),
                 mode: mode.into(),
-                has_ui: false,
+                has_ui: extension_api.ui_capable(),
                 flags: Map::new(),
             };
-            Arc::new(ExtensionHost::load(discovery.manifests, session, Arc::new(NoHost)))
+            Arc::new(ExtensionHost::load(discovery.manifests, session, extension_api.clone()))
         });
-        if services.no_extensions {
-            diagnostics.clear();
-        }
         if let Some(host) = &extensions {
             diagnostics.extend(
                 host.diagnostics
@@ -423,17 +484,34 @@ impl Runtime {
             .and_then(|host| extensions::kernel_api::guide_section(&host.functions()));
         // The `mcp` gateway lives in the REPL: the runtime guide lists it with its servers (`mcpServerNames`).
         let runtime_guide = mcp_runtime_guide(&config);
-        let system = SystemPrompt::rendered(env, &config, trusted, guide, runtime_guide)?;
+        let system = match &services.session.system_prompt {
+            // `--system-prompt`: exactly the given text (`currentSystemPrompt`).
+            Some(text) => SystemPrompt::fixed(text.clone()),
+            None => SystemPrompt::rendered(env, &config, trusted, guide, runtime_guide, &services.session)?,
+        };
         diagnostics.extend(system.warnings());
+        if let Some(host) = &extensions {
+            extension_api.bind_extensions(host, system.clone());
+        }
+        // `registerProvider`: the declared providers join the model registry; one that does not compose is reported.
+        let extension_providers = extensions.as_ref().map(|host| {
+            let source = crate::extension_providers::from_host(host);
+            let models = ::config::paths::AgentPaths::new(&config.agent_dir).models();
+            let mut registry = ai::model_registry::ModelRegistry::load(&models, &env.home);
+            diagnostics.extend(crate::extension_providers::apply(&mut registry, &source()));
+            crate::extension_providers::install(&config.agent_dir, source)
+        });
         Ok(Runtime {
             config: Arc::new(config),
             extensions,
             services,
             diagnostics,
+            extension_api,
             system,
             sessions_dir,
             mode: mode.to_string(),
             hindsight,
+            extension_providers,
         })
     }
 
@@ -490,7 +568,15 @@ impl Runtime {
             None => None,
         };
         let skills_config = config.clone();
-        let loader: kernel_apis::SkillLoader = Arc::new(move || Ok(skill_sources(&skills_config)));
+        // `--no-skills`: the catalog is empty.
+        let no_skills = self.services.session.no_skills;
+        let loader: kernel_apis::SkillLoader = Arc::new(move || {
+            Ok(if no_skills {
+                Vec::new()
+            } else {
+                skill_sources(&skills_config)
+            })
+        });
         let code = CodeSkills::new(CodeSkillsOptions::new(&config.skills_dir, &config.runtime_path));
         let clock = kernel_apis::util::system_clock();
         let artifacts = kernel_apis::artifacts::Artifacts::new(
@@ -574,6 +660,11 @@ impl Runtime {
         };
         let mut built: Result<(), String> = Ok(());
         let (schedules_store, goal_store) = (modules("schedules"), modules("goal"));
+        let images = Arc::new(crate::view_images::ViewImages::new(
+            model.clone(),
+            config.cwd.clone(),
+            config.agent_dir.clone(),
+        ));
         let stack = Arc::new_cyclic(|me: &Weak<Stack>| {
             let runner_stack = me.clone();
             let (store, inner, agent_stores) = match subagents.take() {
@@ -637,6 +728,8 @@ impl Runtime {
             options.workspace = Some(config.cwd.clone());
             options.now = Box::new(|| crate::lane::now_ms() as f64);
             let (delegation, child_ends) = Delegation::new(options);
+            // Workflow nodes with worktree=True run as subagents of the workflow's caller (worktrees live there).
+            agents.set_worktree_children(Arc::new(delegation.clone()));
             // A spawn naming a model the session cannot run is refused, never run on the root's model (A04).
             delegation.set_model_check(config.model_check());
             let factory_stack = me.clone();
@@ -708,6 +801,10 @@ impl Runtime {
                 work: std::sync::OnceLock::new(),
                 cell_hints,
                 context: std::sync::OnceLock::new(),
+                images,
+                swarm: std::sync::OnceLock::new(),
+                budget_note: Arc::new(std::sync::OnceLock::new()),
+                lane_steer: Arc::new(std::sync::OnceLock::new()),
             }
         });
         built?;
@@ -722,6 +819,18 @@ impl Runtime {
         Ok(stack)
     }
 
+    /// The file hooks of a host in `cwd`: Loki's (see [`Config::file_hooks_in`]), then extensions'
+    /// `after_cell_changes`.
+    fn file_hooks_in(&self, cwd: &Path) -> FileHooks {
+        let mut hooks = self.config.file_hooks_in(cwd);
+        if let Some(extensions) = &self.extensions {
+            hooks.add(Box::new(crate::extension_file_hooks::ExtensionAfterCell::new(
+                extensions.clone(),
+            )));
+        }
+        hooks
+    }
+
     /// A sandboxed host with its working directory at `cwd` (the session's, or a worktree subagent's).
     fn host_in(&self, cwd: &Path, session_id: &str, spill: &str) -> Result<Host, String> {
         let config = &self.config;
@@ -734,7 +843,7 @@ impl Runtime {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         Ok(
-            Host::new(cwd, jobs_dir, spill_dir, Box::new(config.file_hooks_in(cwd))).sandboxed(
+            Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd))).sandboxed(
                 &config.settings,
                 &config.home,
                 Some(&tmp_dir),
@@ -838,6 +947,14 @@ pub struct Stack {
     cell_hints: Arc<kernel_apis::cell_hints::CellHints>,
     /// Model-owned context of every lane (`ctx.*`; collapse on return on the root), once the session actor opened it.
     pub context: std::sync::OnceLock<Arc<kernel_apis::ContextControl>>,
+    /// The images each lane's running cell attached with `view_image`, and the model each lane's results go to.
+    pub images: Arc<crate::view_images::ViewImages>,
+    /// `swarm.*`, `board.*`, `notes.*` and persistent children, once the session actor opened the durable runtime.
+    pub swarm: std::sync::OnceLock<Arc<crate::swarm_ops::SwarmOps>>,
+    /// The budget line every lane's cell results end with, once the session actor wired it (crate::budget_note).
+    pub budget_note: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
+    /// Steering into a child lane's running conversation (crate::agent_hub), once the session actor wired it.
+    pub lane_steer: Arc<std::sync::OnceLock<crate::agent_hub::LaneSteer>>,
 }
 
 impl Stack {
@@ -856,12 +973,18 @@ impl Stack {
             Some((signal, park)) => Arc::new(self.delegation.cell_handler(lane, signal, park)),
             None => Arc::new(self.delegation.lane_handler(lane)),
         };
+        let cwd = lock(&self.workspaces)
+            .get(lane)
+            .map_or_else(|| self.config.cwd.clone(), |w| w.cwd.clone());
         let router = Router {
             delegation,
             extensions: self.extensions.clone(),
+            cwd,
             host: self.host_of(lane),
             progress: (lane == crate::lane::MAIN).then(|| self.cell_progress.clone()),
             lane: lane.to_string(),
+            config: self.config.clone(),
+            swarm: self.swarm.get().cloned(),
         };
         let inference = Inference::new(
             Arc::new(router),
@@ -892,12 +1015,12 @@ impl Stack {
         };
         // Typed agents answer their requests (and their own lanes' `rlm.finish`) outside the delegation router.
         let typed: Arc<dyn HostHandler> = Arc::new(self.agents.handler(lane, frames));
-        let mut apis = KernelApis::new(typed).with_host(Arc::new(self.agents.clone()), lane);
-        if lane == crate::lane::MAIN {
-            apis = apis
-                .with(self.schedules.clone() as Arc<dyn kernel_apis::ApiModule>)
-                .with(self.goal.clone() as Arc<dyn kernel_apis::ApiModule>);
-        }
+        // `schedules.*` and `goal.*` from every lane, as session-worker.ts registers them: the goal module itself
+        // refuses lanes other than the root and the goal's job.
+        let mut apis = KernelApis::new(typed)
+            .with_host(Arc::new(self.agents.clone()), lane)
+            .with(self.schedules.clone() as Arc<dyn kernel_apis::ApiModule>)
+            .with(self.goal.clone() as Arc<dyn kernel_apis::ApiModule>);
         // `ctx.*` from any lane edits that lane's own branch (core::context_children).
         if let Some(context) = self.context.get() {
             apis = apis.with(context.clone() as Arc<dyn kernel_apis::ApiModule>);
@@ -913,13 +1036,30 @@ impl Stack {
             .with(self.apis.gates.clone())
             .with(self.apis.instances.clone())
             .with(self.apis.progress.clone())
-            .with(self.apis.family.clone());
-        if !self.cell_hints.enabled() {
-            return Arc::new(apis);
-        }
-        Arc::new(ObservedByHints {
-            inner: Arc::new(apis),
-            hints: self.cell_hints.clone(),
+            .with(Arc::new(crate::agent_hub::Family::new(
+                self.apis.family.clone(),
+                self.delegation.clone(),
+                self.lane_steer.clone(),
+            )) as Arc<dyn kernel_apis::ApiModule>)
+            .with(Arc::new(crate::extension_apis::ExtensionCommandsApi::new(
+                self.extensions.clone(),
+                self.config.cwd.clone(),
+                self.config.agent_dir.clone(),
+                self.config.home.clone(),
+            )) as Arc<dyn kernel_apis::ApiModule>);
+        let observed: Arc<dyn HostHandler> = if self.cell_hints.enabled() {
+            Arc::new(ObservedByHints {
+                inner: Arc::new(apis),
+                hints: self.cell_hints.clone(),
+                lane: lane.to_string(),
+            })
+        } else {
+            Arc::new(apis)
+        };
+        // `view_image` is the cell's own (`executeCell`), outside what the hints observe.
+        Arc::new(crate::view_images::ViewImageLayer {
+            inner: observed,
+            images: self.images.clone(),
             lane: lane.to_string(),
         })
     }
@@ -959,6 +1099,17 @@ impl Stack {
         options.continuity = Some(ContinuityPolicy::default());
         // The Python process itself runs inside the session's shell sandbox, so direct writes are contained too.
         options.sandbox = self.kernel_launcher(lane)?;
+        // The whole process tree is capped (ULTRON_RLM_MAX_TREE_MEMORY_MB, default twice the per-process limit) by the
+        // host watchdog; ULTRON_RLM_TREE_MEMORY_BACKEND=auto|cgroup opts into a systemd scope where one is available.
+        options.tree_memory = Some(kernel::TreeMemoryOptions {
+            backend: Some(
+                std::env::var("ULTRON_RLM_TREE_MEMORY_BACKEND")
+                    .ok()
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_else(|| "watchdog".into()),
+            ),
+            ..kernel::TreeMemoryOptions::default()
+        });
         Kernel::new(options, self.cell_handler(lane, None)).map_err(|e| e.to_string())
     }
 
@@ -992,7 +1143,16 @@ impl Stack {
             .session_dir("rlm-output", &self.session_id)
             .join(lane_dir(lane));
         let hints = self.cell_hints.enabled().then(|| self.cell_hints.clone());
-        Ok(rlm_over(&self.config, self.lanes.clone(), lane, spill_dir, hints))
+        Ok(rlm_over(
+            &self.config,
+            self.lanes.clone(),
+            lane,
+            spill_dir,
+            hints,
+            self.images.clone(),
+            Some(self.host_of(lane)),
+        )
+        .with_budget_note(self.budget_note.clone()))
     }
 
     /// `listCommands`: the extensions' slash commands, `/review`, prompt templates and skills (crate::commands).
@@ -1023,12 +1183,13 @@ impl Stack {
             .ancestors()
             .nth(4)
             .map(|root| root.join("skills"));
-        crate::commands::list_commands(
+        let commands = crate::commands::list_commands(
             &self.config.cwd.display().to_string(),
             &self.config.agent_dir.display().to_string(),
             &bundled.unwrap_or_default().display().to_string(),
             &extensions,
-        )
+        );
+        crate::session_flags::filter_commands(commands, &self.services.session)
     }
 
     /// Runs the extension command `/name args` (`LegacyExtensionCommands.run`): `{notifications: []}` once its
@@ -1172,12 +1333,10 @@ fn typed_agents(
             None,
         ),
     };
-    let settings = &config.settings;
-    let env = config.frame_env.clone();
-    let limits = delegation::usage::limits_from_env(
-        &|key| std::env::var(key).ok().or_else(|| env.get(key).cloned()),
-        settings,
-    );
+    // `nativeUsageLimitsFromEnv(process.env, settingsManager.getRootBudgetSettings())`: the session's environment
+    // and the `rootBudget` settings.
+    let var = config.var.clone();
+    let limits = delegation::usage::limits_from_env(&|key| var(key), &config.settings["rootBudget"]);
     let usage = UsageLedger::new(
         usage_store,
         delegation::usage::UsageOptions {
@@ -1320,10 +1479,20 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             extensions: None,
             services: stack.services.clone(),
             diagnostics: Vec::new(),
+            extension_api: Arc::new(crate::extension_host::SessionHost::new(
+                PathBuf::new(),
+                PathBuf::new(),
+                PathBuf::new(),
+                "",
+                false,
+                None,
+                None,
+            )),
             system: SystemPrompt::fixed(""),
             sessions_dir: stack.sessions_dir.clone(),
             mode: String::new(),
             hindsight: None,
+            extension_providers: None,
         }
         .host_in(Path::new(cwd), &stack.session_id, &lane_dir(&run.lane_name));
         match host {
@@ -1341,6 +1510,8 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             Err(error) => system.push_str(&format!("\n\nThe worktree could not be prepared: {error}")),
         }
     }
+    // A subagent's `view_image` resizes for its own model.
+    stack.images.set_model(Some(&run.lane_name), model.clone());
     ChildSetup {
         model,
         system,
@@ -1381,15 +1552,29 @@ struct ChildDefaults {
 struct Router {
     delegation: Arc<dyn HostHandler>,
     extensions: Option<Arc<ExtensionHost>>,
+    /// The lane's working directory (a worktree subagent's own): extensions' `before_file_write` sees it.
+    cwd: PathBuf,
     host: Arc<Host>,
     /// The root lane's cell progress (crate::turns): shell output is published as the cell's partial output.
     progress: Option<Arc<Mutex<Option<harness::chat::CellProgress>>>>,
     /// The lane the requests come from: its shell jobs are its own.
     lane: String,
+    config: Arc<Config>,
+    /// `swarm.*`, `board.*`, `notes.*`, `rlm.ask` and persistent children, once the durable runtime is open.
+    swarm: Option<Arc<crate::swarm_ops::SwarmOps>>,
 }
 
 impl HostHandler for Router {
     fn handle(&self, kind: &str, payload: Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        // The worker answers this itself, before the host (session-worker.ts `hostHandler`).
+        if kind == "rlm.find_models" {
+            return Ok(self.config.find_models());
+        }
+        if let Some(swarm) = &self.swarm
+            && let Some(result) = swarm.handle(&self.lane, kind, &payload, signal)
+        {
+            return result;
+        }
         if kind == crate::turns::CELL_OUTPUT {
             if let Some(progress) = &self.progress {
                 crate::turns::publish_output(progress, payload.get("text").and_then(Value::as_str).unwrap_or(""));
@@ -1426,6 +1611,19 @@ impl HostHandler for Router {
             cancel.cancel(None);
             let _ = watcher.join();
             return result;
+        }
+        if kind == "files.before_write"
+            && let Some(extensions) = &self.extensions
+        {
+            let checked = self.host.handle_lane(&self.lane, kind, payload.clone(), signal)?;
+            return Ok(crate::extension_host::before_write(
+                extensions,
+                &payload,
+                checked,
+                &self.cwd,
+                &self.lane,
+                crate::extension_host::BEFORE_WRITE_TIMEOUT,
+            ));
         }
         let shell = matches!(kind, "bash" | "shell.bash" | "shell.run" | "shell.result");
         let result = self.host.handle_lane(&self.lane, kind, payload, signal);

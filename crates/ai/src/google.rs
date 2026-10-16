@@ -184,11 +184,19 @@ fn model_path(id: &str, vertex: bool) -> String {
     }
 }
 
-/// Where and how a Google request goes: the versioned base URL, the API key, and which SDK transform applies.
+/// Where and how a Google request goes: the versioned base URL, the credential, the Vertex resource path
+/// (`projects/<p>/locations/<l>`, when the SDK prepends it), and which SDK transform applies.
 pub(crate) struct Endpoint {
     pub base: String,
-    pub api_key: String,
+    pub auth: EndpointAuth,
+    pub resource: Option<String>,
     pub vertex: bool,
+}
+
+/// An API key header, or Google application default credentials resolved when the request is sent.
+pub(crate) enum EndpointAuth {
+    ApiKey(String),
+    Google(Option<crate::env::ProviderEnv>),
 }
 
 /// Stream one Gemini API response; failures end with an `error` event.
@@ -206,7 +214,8 @@ pub async fn stream(
             } else {
                 model.base_url.trim_end_matches('/').into()
             },
-            api_key: key.clone(),
+            auth: EndpointAuth::ApiKey(key.clone()),
+            resource: None,
             vertex: false,
         }),
         None => Err(format!("No API key for provider: {}", model.provider)),
@@ -273,12 +282,26 @@ async fn drive(
     }
     let mut headers = HeaderBuilder::default();
     headers.set("Content-Type", "application/json");
-    headers.set("x-goog-api-key", endpoint.api_key.clone());
+    if let EndpointAuth::ApiKey(key) = &endpoint.auth {
+        headers.set("x-goog-api-key", key.clone());
+    }
     headers.set("User-Agent", pi_user_agent());
     headers.extend_set(model.headers.iter().flatten());
     for (name, value) in base.headers.iter().flatten() {
         if let Some(value) = value {
             headers.set(name, value.clone());
+        }
+    }
+    let mut headers = headers.build();
+    if let EndpointAuth::Google(env) = &endpoint.auth {
+        // `NodeAuth.addGoogleAuthHeaders`: a header the caller already set wins.
+        let auth = tokio::select! {
+            auth = crate::google_auth::request_headers(env.as_ref(), transport) => auth.map_err(Failure::plain)?,
+            () = cancelled(signal) => return Err(Failure::plain("Request aborted")),
+        };
+        headers.entry("authorization".into()).or_insert(auth.authorization);
+        if let Some(project) = auth.user_project {
+            headers.entry("x-goog-user-project".into()).or_insert(project);
         }
     }
     let id = params
@@ -289,11 +312,16 @@ async fn drive(
     let request = HttpRequest {
         method: "POST".into(),
         url: format!(
-            "{}/{}:streamGenerateContent?alt=sse",
+            "{}/{}{}:streamGenerateContent?alt=sse",
             endpoint.base,
+            endpoint
+                .resource
+                .as_ref()
+                .filter(|_| !id.starts_with("projects/"))
+                .map_or_else(String::new, |r| format!("{r}/")),
             model_path(&id, endpoint.vertex)
         ),
-        headers: headers.build(),
+        headers,
         body: serde_json::to_string(&params_to_wire(&params, endpoint.vertex)).unwrap_or_default(),
     };
     let mut response = send_with_google_retry(transport, &request, base.retry(), signal).await?;

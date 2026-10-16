@@ -123,6 +123,8 @@ pub struct DurableChildren {
     root: Mutex<Option<String>>,
     /// The worker handed the session over (`SessionValueStore::handed_over`).
     handed_over: Arc<AtomicBool>,
+    /// The session whose transcript is the root lane's history (a forked child of the root starts on it).
+    session: OnceLock<SharedSession>,
 }
 
 impl DurableChildren {
@@ -148,6 +150,7 @@ impl DurableChildren {
 
     /// The subagent host of a session: its journal in `session`, its children run durably.
     pub fn host(self: &Arc<Self>, session: SharedSession) -> SubagentHost {
+        let _ = self.session.set(session.clone());
         let children = self.clone();
         let lanes = self.clone();
         let value = |namespace, key| {
@@ -193,6 +196,15 @@ impl DurableChildren {
             env: run.env.clone(),
             agent: false,
             usage_root: lock_map(&self.root).clone(),
+            fork: run.fork_at.as_deref().and_then(parse_fork_anchor),
+            history: match run
+                .fork_at
+                .as_deref()
+                .and_then(|anchor| anchor.strip_prefix(ROOT_ANCHOR))
+            {
+                Some(entry) => self.root_history(entry)?,
+                None => Vec::new(),
+            },
         };
         let task = chat
             .commit(|tx| spawn_child(tx, ROOT_CONVERSATION_ID, None, &input))
@@ -232,6 +244,85 @@ impl DurableChildren {
         Ok(LaneReply {
             text,
             ..LaneReply::default()
+        })
+    }
+
+    /// `rlm.spawn(fork=True)` of `lane`: where its forked child starts (`forkPoint` over the lane's conversation),
+    /// none while it has no finished conversation. The root's history is the session transcript (its runtime
+    /// conversation starts afresh every turn): `root:<transcript entry>`; another conversation's is in the runtime:
+    /// `<conversation>:<entry>`.
+    pub fn fork_point(&self, lane: &str) -> Result<Option<String>, String> {
+        if lane == crate::lane::MAIN {
+            let entries = self.root_context()?;
+            let messages: Vec<(String, Vec<Value>)> = entries
+                .iter()
+                .map(|entry| {
+                    let id = entry["id"].as_str().unwrap_or_default().to_string();
+                    (id, session_journal::context::entry_context_messages(entry))
+                })
+                .collect();
+            let at = delegation::fork::fork_point(messages.iter().map(|(id, m)| (id.clone(), m.as_slice())));
+            return Ok(at.map(|entry| format!("{ROOT_ANCHOR}{entry}")));
+        }
+        let chat = self.chat.get().cloned().ok_or("The durable runtime is not open")?;
+        let conversation = match lane.strip_prefix(CONVERSATION_LANE_PREFIX) {
+            Some(id) => id.parse().ok().map(ConversationId),
+            None => self.conversation_of_lane(lane),
+        };
+        let conversation =
+            conversation.ok_or_else(|| format!("rlm.spawn fork=True: lane {lane} has no conversation"))?;
+        let handle = chat
+            .conversation(conversation)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("rlm.spawn fork=True: lane {lane} has no conversation"))?;
+        let entries = handle.entries().map_err(|e| e.to_string())?;
+        // From the conversation's newest context start: what came before a reset is not its context.
+        let start = entries
+            .iter()
+            .rposition(|e| e.kind == harness::chat::entries::RESET)
+            .map_or(0, |i| i + 1);
+        let at = delegation::fork::fork_point(
+            entries[start..]
+                .iter()
+                .map(|entry| (entry.id.0.to_string(), entry.model.as_deref().unwrap_or_default())),
+        );
+        Ok(at.map(|entry| format!("{}:{entry}", conversation.0)))
+    }
+
+    /// The root lane's context entries (from its newest compaction), as the next root request would build them.
+    fn root_context(&self) -> Result<Vec<Value>, String> {
+        let session = self.session.get().ok_or("The session is not open")?;
+        let session = lock(session);
+        Ok(session_journal::context::build_context_entries(
+            &session.branch_entries(crate::lane::MAIN)?,
+        ))
+    }
+
+    /// The root's history up to its transcript entry `entry`, as model messages for a forked child.
+    fn root_history(&self, entry: &str) -> Result<Vec<Value>, String> {
+        let entries = self.root_context()?;
+        let end = entries
+            .iter()
+            .position(|e| e["id"] == entry)
+            .ok_or("rlm.spawn fork=True: the fork point is no longer in the root's context")?;
+        let applied = session_journal::context::apply_context_edits(&entries[..=end]);
+        let messages: Vec<Value> = applied
+            .iter()
+            .flat_map(session_journal::context::entry_context_messages)
+            .collect();
+        Ok(crate::lane::to_llm(&messages)
+            .into_iter()
+            .filter(|message| !matches!(message, ai::Message::System(_)))
+            .filter_map(|message| serde_json::to_value(message).ok())
+            .collect())
+    }
+
+    /// [`Self::fork_point`] as the delegation host's hook.
+    pub fn fork_point_hook(self: &Arc<Self>) -> delegation::fork::ForkPointHook {
+        let children = Arc::downgrade(self);
+        Arc::new(move |lane: &str| match children.upgrade() {
+            Some(children) => children.fork_point(lane),
+            None => Err("The session is closed".into()),
         })
     }
 
@@ -397,6 +488,7 @@ impl DurableChildren {
             timeout_ms: input.timeout_ms.unwrap_or_default(),
             cwd: input.cwd.clone(),
             env: input.env.clone(),
+            fork_at: None,
             signal: Signal::new(),
             host: stack.delegation.clone(),
         };
@@ -404,6 +496,18 @@ impl DurableChildren {
         lock_map(&self.systems).insert(input.name.clone(), setup.system);
     }
 }
+
+/// A fork anchor (`<conversation>:<entry>`, from [`DurableChildren::fork_point`]) as the child's fork.
+fn parse_fork_anchor(anchor: &str) -> Option<harness::chat::children::ChildFork> {
+    let (conversation, entry) = anchor.split_once(':')?;
+    Some(harness::chat::children::ChildFork {
+        conversation: ConversationId(conversation.parse().ok()?),
+        entry: durable::EntryId(entry.parse().ok()?),
+    })
+}
+
+/// The fork anchor prefix of the root lane's transcript entries.
+const ROOT_ANCHOR: &str = "root:";
 
 /// The runtime's child tasks by name, with their input and whether they ended.
 fn child_tasks(chat: &ChatHarness) -> Result<HashMap<String, (TaskId, ChildInput, bool)>, String> {

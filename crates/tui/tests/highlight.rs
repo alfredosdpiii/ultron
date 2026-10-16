@@ -126,7 +126,7 @@ fn tui_highlight_theme_colors_and_markdown_hook() {
     let theme = tui::theme::create_theme(&json, tui::theme::ColorMode::Truecolor, None).unwrap();
     let c = HighlightColors::from_theme(&theme);
     assert_eq!(c.keyword, theme.fg_ansi("syntaxKeyword").unwrap());
-    assert_eq!(c.inserted.as_deref(), theme.fg_ansi("toolDiffAdded").ok());
+    assert_eq!(c.inserted, theme.fg_ansi("toolDiffAdded").ok());
     let hook = markdown_highlighter(colors());
     assert_eq!(hook("x = 1\ny", Some("python")).len(), 2);
     assert!(hook("x = 1\ny", Some("python"))[0].contains("<n>1\x1b[39m"));

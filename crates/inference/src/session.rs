@@ -11,7 +11,7 @@
 
 use super::{
     Engine, Kind, LAST_OUTPUTS, Ledger, MAX_DEPTH, MIN_TRANCHE, OUTPUT_PREVIEW_CHARS, Options, Outcome,
-    REQUEST_OVERHEAD_TOKENS, View, bounded, charged_tokens, frame_prompt, frame_system_prompt, js_len, js_trim, lock,
+    REQUEST_OVERHEAD_TOKENS, View, bounded, charged_tokens, frame_prompt, frame_system, js_len, js_trim, lock,
     parse_reply, repair_prompt, trace,
 };
 use crate::trace::{Budget, Frame, Spec, TraceStore, Traces};
@@ -362,7 +362,7 @@ impl FrameSession {
         let options = &live.options;
         let engine = &live.engine;
         let deadline = Instant::now() + options.timeout;
-        let system = frame_system_prompt(options.depth);
+        let system = frame_system(options);
         let mut conversation_chars = js_len(&system) as u64;
         let mut message = {
             let mut frame = lock(&live.frame);
@@ -454,7 +454,7 @@ impl FrameSession {
             Err(error) => return Outcome::Error(error),
         };
         let deadline = Instant::now() + options.timeout;
-        let system = frame_system_prompt(options.depth);
+        let system = frame_system(options);
         let mut message = {
             let mut frame = lock(&live.frame);
             frame.model = Some(engine.own_model());

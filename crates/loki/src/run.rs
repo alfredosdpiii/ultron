@@ -4,7 +4,7 @@
 use crate::config::{self, Config};
 use crate::{CheckError, MAX_VIOLATIONS, hook_report, protect_path, py, resolve};
 use serde_json::Value;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A command's exit status and output streams.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +28,19 @@ pub fn fail(command: &str, error: &CheckError, json: bool) -> Outcome {
     }
 }
 
+/// The evidence of a check that raised: `kind` for a `ValueError` (`invalid-input`, `invalid-policy`), else
+/// `guard-error`.
+pub fn failure_evidence(error: &CheckError, kind: &str) {
+    crate::evidence::finding(
+        if matches!(error, CheckError::Value(_)) {
+            kind
+        } else {
+            "guard-error"
+        },
+        None,
+    );
+}
+
 /// `load_config` with loki.py's error kinds.
 pub fn load(root: &Path) -> Result<Config, CheckError> {
     config::load_config(root).map_err(|e| match e {
@@ -48,7 +61,10 @@ pub fn protect(
     let root = resolve(root);
     match load(&root) {
         Ok(config) => protect_with(&root, &config, files, preview, json, payload),
-        Err(error) => fail("protect", &error, json),
+        Err(error) => {
+            failure_evidence(&error, "invalid-policy");
+            fail("protect", &error, json)
+        }
     }
 }
 
@@ -68,6 +84,7 @@ pub fn protect_with(
             None => None,
         };
         let paths = file_paths(files)?;
+        crate::evidence::targets(&paths);
         let mut warnings = Vec::new();
         let messages = protect_violations(
             root,
@@ -82,7 +99,10 @@ pub fn protect_with(
     };
     match checked() {
         Ok((messages, warnings)) => report("protect", &messages, warnings, json, false),
-        Err(error) => fail("protect", &error, json),
+        Err(error) => {
+            failure_evidence(&error, "invalid-input");
+            fail("protect", &error, json)
+        }
     }
 }
 
@@ -96,6 +116,99 @@ pub fn file_paths(files: &[String]) -> Result<Vec<String>, CheckError> {
         }
     }
     Ok(paths)
+}
+
+/// `hook`'s check of written files: protected paths, then (when none is protected) the write guardrails, the
+/// TypeScript checks, written slop and each file's analyzers. `python` is `--python`.
+pub fn hook_violations(
+    root: &Path,
+    config: &Config,
+    paths: &[String],
+    python: Option<&str>,
+    deadline: crate::proc::Deadline,
+    warnings: &mut Vec<String>,
+) -> Result<Vec<String>, CheckError> {
+    let mut messages = protected(root, config, paths)?;
+    if messages.is_empty() {
+        let targets: Vec<PathBuf> = paths.iter().map(|p| crate::abspath(root, p)).collect();
+        messages.extend(crate::hook::write_guardrail_violations(
+            &targets, root, config, deadline,
+        )?);
+        let typescript = targets.iter().any(|t| {
+            let name = t
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            name.rfind('.')
+                .filter(|&i| i > 0)
+                .is_some_and(|i| crate::typescript::TYPESCRIPT_SUFFIXES.contains(&&name[i..]))
+        });
+        if messages.is_empty() && typescript {
+            messages.extend(crate::typescript::typescript_findings(
+                root, config, deadline, warnings,
+            )?);
+        }
+        if messages.is_empty() {
+            let notes = match crate::slop::written_slop(root, &targets, deadline) {
+                Ok(notes) => notes,
+                Err(error) if matches!(error, CheckError::Value(_)) || error.is_os() => {
+                    vec![format!("NOT CHECKED slop: {}", error.message())]
+                }
+                Err(other) => return Err(other),
+            };
+            if config::slop_block(config).map_err(CheckError::Value)? {
+                for note in notes {
+                    if note.contains("NOT CHECKED") {
+                        warnings.push(note)
+                    } else {
+                        messages.push(note)
+                    }
+                }
+            } else {
+                warnings.extend(notes);
+            }
+            let strict = std::env::var("LOKI_STRICT").as_deref() == Ok("1");
+            let mut batch = crate::hook::Batch::default();
+            for target in &targets {
+                messages.extend(crate::hook::check_file(
+                    target, root, config, strict, deadline, warnings, &targets, &mut batch, python,
+                )?);
+            }
+        }
+    }
+    Ok(messages)
+}
+
+/// `loki --root ROOT hook --file F... [--format json]`: the post-write check of written files, as the command
+/// prints and returns it.
+pub fn hook(root: &Path, files: &[String], json: bool) -> Outcome {
+    let root = resolve(root);
+    let config = match load(&root) {
+        Ok(config) => config,
+        Err(error) => {
+            failure_evidence(&error, "invalid-policy");
+            return fail("hook", &error, json);
+        }
+    };
+    let mut warnings = Vec::new();
+    let checked = file_paths(files).and_then(|paths| {
+        crate::evidence::targets(&paths);
+        hook_violations(
+            &root,
+            &config,
+            &paths,
+            None,
+            crate::proc::Deadline::after(20.0),
+            &mut warnings,
+        )
+    });
+    match checked {
+        Ok(messages) => report("hook", &messages, warnings, json, false),
+        Err(error) => {
+            failure_evidence(&error, "invalid-input");
+            fail("hook", &error, json)
+        }
+    }
 }
 
 /// The protected-path refusals for `paths`.

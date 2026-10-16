@@ -35,6 +35,18 @@ pub(super) struct Durable {
     pub children: Arc<crate::subagents::DurableChildren>,
 }
 
+/// The durable generation's retry policy: the same attempts and delays the operation journal records
+/// (`crate::compaction_op::SummaryRetry::from_settings`).
+fn retry_policy(settings: &Value, enabled: bool) -> RetryPolicy {
+    let policy = crate::compaction_op::SummaryRetry::from_settings(settings, enabled);
+    RetryPolicy {
+        enabled: policy.max_attempts > 1,
+        max_retries: policy.max_attempts - 1,
+        base_delay_ms: policy.base_delay_ms,
+        max_delay_ms: policy.max_delay_ms,
+    }
+}
+
 fn harness_error(error: harness::scheduler::HarnessError) -> String {
     error.to_string()
 }
@@ -63,6 +75,12 @@ pub(super) fn open_durable(
         .map_err(|e| e.message().to_string())?;
     let auto_retry = Arc::new(AtomicBool::new(true));
     let retry = auto_retry.clone();
+    // settings.json's `retry` (`getRetrySettings`); `set_auto_retry` turns it off for the session.
+    let retry_settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false)
+        .settings()
+        .get("retry")
+        .cloned()
+        .unwrap_or(Value::Null);
     let settings_queues = queues;
     let settings: harness::chat::SettingsSource = Arc::new(move || {
         let (steering, follow_up) = {
@@ -71,10 +89,7 @@ pub(super) fn open_durable(
         };
         let mode = |all: bool| if all { QueueMode::All } else { QueueMode::OneAtATime };
         Settings {
-            retry: RetryPolicy {
-                enabled: retry.load(Ordering::SeqCst),
-                ..RetryPolicy::default()
-            },
+            retry: retry_policy(&retry_settings, retry.load(Ordering::SeqCst)),
             compaction: CompactionPolicy {
                 enabled: false,
                 ..CompactionPolicy::default()
@@ -100,8 +115,10 @@ pub(super) fn open_durable(
         charge: Some(charge_turns(children.clone(), lane.stack.clone())),
         transform_child: Some({
             let context = child_context.clone();
+            let budget = crate::view_images::context_image_budget((env.var)("ULTRON_CONTEXT_IMAGES").as_deref());
             Arc::new(move |conversation, messages: &mut Vec<ai::Message>| {
-                context.transform_request(conversation, messages)
+                context.transform_request(conversation, messages);
+                crate::view_images::apply_image_budget(messages, budget);
             })
         }),
     };
@@ -186,6 +203,11 @@ fn text_of(message: &Message) -> String {
 }
 
 impl Core {
+    /// `ULTRON_CONTEXT_IMAGES`: tool-result images a request keeps (0: all).
+    fn image_budget(&self) -> usize {
+        crate::view_images::context_image_budget((self.env.var)("ULTRON_CONTEXT_IMAGES").as_deref())
+    }
+
     /// The operation of the run in progress.
     pub(super) fn operation_id(&self) -> Option<String> {
         self.run
@@ -231,10 +253,11 @@ impl Core {
 
     /// Queue every queued message that is not waiting in the runtime's inbox yet (a run is in progress).
     pub(super) fn submit_queued(&mut self) -> Result<(), String> {
+        // A message queued for the next run waits for it in the lane's inbox, never in the runtime's.
         let pending: Vec<Queued> = lock(&self.queues)
             .items
             .iter()
-            .filter(|q| q.submission.is_none())
+            .filter(|q| q.submission.is_none() && q.kind != QueueKind::NextRun)
             .cloned()
             .collect();
         for queued in pending {
@@ -246,7 +269,7 @@ impl Core {
                 _ => {
                     let when = match queued.kind {
                         QueueKind::Steer => WhenBusy::Steer,
-                        QueueKind::FollowUp => WhenBusy::FollowUp,
+                        QueueKind::FollowUp | QueueKind::NextRun => WhenBusy::FollowUp,
                     };
                     let draft = SubmissionDraft::Input {
                         content: queued.message["content"].clone(),
@@ -430,11 +453,21 @@ impl Core {
 
     /// The transcript messages of the run in progress, from its prompt, as committed: no context edits and no
     /// projected custom entries, so they match the durable runtime's own messages one to one.
+    ///
+    /// An error answer counts too, though it is never context: the runtime committed it as well (a retried attempt's
+    /// answer commits with `assistant.retry_wait`), so a worker reopening during the wait must not take it for an
+    /// answer the transcript lacks (it would commit it again and schedule another attempt).
     fn run_messages(&self, source_tip: Option<&str>) -> Result<Vec<Value>, String> {
         let (entries, split) = self.context_entries(source_tip)?;
         Ok(entries[split..]
             .iter()
-            .flat_map(session_journal::context::entry_context_messages)
+            .flat_map(|entry| {
+                let message = &entry["message"];
+                if entry["type"] == "message" && message["role"] == "assistant" && message["stopReason"] == "error" {
+                    return vec![message.clone()];
+                }
+                session_journal::context::entry_context_messages(entry)
+            })
             .collect())
     }
 
@@ -478,8 +511,12 @@ impl Core {
             .into_iter()
             .collect();
         messages.extend(lane::to_llm(&history));
+        // `before_agent_start` messages follow the run's prompt (core::extension_ops).
+        let prompt_end = run.first().filter(|m| m["role"] == "user").map(|_| messages.len() + 1);
         messages.extend(lane::to_llm(&run));
-        Ok(messages)
+        // Old view_image results beyond the image budget leave the request (image-budget.ts).
+        crate::view_images::apply_image_budget(&mut messages, self.image_budget());
+        Ok(self.extension_request(messages, prompt_end))
     }
 
     /// A generation is about to request the model: the turn's `turn_start`, the user messages it takes (queued ones
@@ -490,13 +527,26 @@ impl Core {
         };
         // The run's prompt (admitted with the run) is announced first, then the checkpoint before the request
         // compacts when due (crate::core::auto_compact).
-        if run.prompt_pending
-            && let Ok(message) = serde_json::from_value::<Message>(run.prompt.clone())
-        {
-            self.on_agent_event(AgentEvent::MessageStart {
-                message: message.clone(),
-            });
-            self.on_agent_event(AgentEvent::MessageEnd { message });
+        if run.prompt_pending {
+            // The next-run messages its admission placed come first, as they are on the branch (already committed).
+            let (captured, run_id) = (run.captured.clone(), run.id.clone());
+            for message in captured {
+                for kind in ["message_start", "message_end"] {
+                    self.emit(event(vec![
+                        ("type", json!(kind)),
+                        ("runId", json!(run_id)),
+                        ("lane", json!(LANE)),
+                        ("message", message.clone()),
+                    ]));
+                }
+            }
+            let prompt = self.run.as_ref().map(|r| r.prompt.clone()).unwrap_or(Value::Null);
+            if let Ok(message) = serde_json::from_value::<Message>(prompt) {
+                self.on_agent_event(AgentEvent::MessageStart {
+                    message: message.clone(),
+                });
+                self.on_agent_event(AgentEvent::MessageEnd { message });
+            }
         }
         if let Err(error) = self.checkpoint_compaction() {
             return answer.give(Err(StartError::Checkpoint(error)));
@@ -565,6 +615,10 @@ impl Core {
             Request::Generation { users, answer } => self.generation(users, answer),
             Request::Event(event) => self.on_agent_event(*event),
             Request::Overflow { message, answer } => self.overflow(*message, answer),
+            Request::RoundEnded { calls, failed, answer } => {
+                self.turn_ended(calls, failed);
+                answer.give(());
+            }
         }
     }
 
@@ -622,6 +676,7 @@ impl Core {
             waiter: None,
             cancelled,
             prompt: prompt.clone(),
+            captured: Vec::new(),
             submission: submission.as_ref().map(|s| s.id),
             compaction_failed: false,
             resume_overflow,

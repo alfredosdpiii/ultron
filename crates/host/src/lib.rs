@@ -56,6 +56,14 @@ pub trait Guard: Send + Sync {
     fn before_write(&self, _path: &str, _content: &str) -> Value {
         json!({ "blocked": false })
     }
+    /// A cell on `lane` is starting (after-cell checks take their baseline).
+    fn cell_started(&self, _lane: &str) {}
+    /// A cell on `lane` ended (after-cell checks start in the background).
+    fn cell_ended(&self, _lane: &str) {}
+    /// What after-cell checks found for `lane` and it has not been shown yet.
+    fn take_pending(&self, _lane: &str) -> Option<String> {
+        None
+    }
 }
 
 pub struct AllowAll;
@@ -415,6 +423,21 @@ fn run_shell(
 }
 
 impl Host {
+    /// A cell on `lane` is starting: the after-cell file hooks take their baseline picture if they have none.
+    pub fn cell_started(&self, lane: &str) {
+        self.guard.cell_started(lane);
+    }
+
+    /// A cell on `lane` ended: the after-cell file hooks check what it changed, in the background.
+    pub fn cell_ended(&self, lane: &str) {
+        self.guard.cell_ended(lane);
+    }
+
+    /// Findings of after-cell checks not yet shown to `lane` (and forget them), for its next cell result.
+    pub fn take_pending(&self, lane: &str) -> Option<String> {
+        self.guard.take_pending(lane)
+    }
+
     /// `cwd` is where commands run; job spill files go to `jobs_dir/<id>.log`, blocking-bash spill files to
     /// `spill_dir/pi-bash-<hex>.log` (TS: the OS temp dir).
     pub fn new(

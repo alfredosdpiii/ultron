@@ -1,0 +1,5166 @@
+{
+	"generator": "generate-watch.mjs",
+	"statuses": [
+		{},
+		{
+			"cwd": "/work/app",
+			"claudeSessionId": "0123456789abcdef",
+			"ready": false,
+			"frameModel": "anthropic/claude-x",
+			"children": "2/4",
+			"cells": 3,
+			"pendingEvents": 2
+		},
+		{
+			"cwd": "/work/app",
+			"ready": true,
+			"cells": 0,
+			"pendingEvents": 0
+		}
+	],
+	"wires": {
+		"idle": {
+			"now": 1000000,
+			"agentsStatus": {
+				"tasks": [],
+				"usage": {
+					"admittedTasks": 0,
+					"turns": {
+						"turns": 0,
+						"tokens": 0
+					}
+				},
+				"limits": {
+					"maxAdmittedTasks": 24,
+					"maxTotalTokens": 10000000
+				}
+			},
+			"pool": {
+				"live": 0,
+				"maxLive": 16,
+				"lanes": [],
+				"evictions": 0
+			}
+		},
+		"rich": {
+			"now": 1000000,
+			"turn": {
+				"startedAt": 928000,
+				"prompt": "Summarize the reviews and benchmark in the background"
+			},
+			"cells": [
+				{
+					"toolCallId": "call-1",
+					"code": "h = await rlm.load('reviews.csv')\nprint(h)",
+					"status": "ok",
+					"startedAt": 940000,
+					"endedAt": 941200
+				},
+				{
+					"toolCallId": "call-2",
+					"code": "# fan out\nvs = await rlm.map('Classify', h.chunks(4000), contract=str)",
+					"status": "running",
+					"startedAt": 986000
+				}
+			],
+			"agentsStatus": {
+				"tasks": [
+					{
+						"id": "ultron-task-aaaa1111",
+						"definition": "reviewer@1",
+						"state": "completed",
+						"startedAt": 940500,
+						"endedAt": 941000,
+						"cost": 0.012,
+						"tokens": 3400,
+						"result": {
+							"status": "succeeded",
+							"preview": "LGTM with 2 nits"
+						}
+					},
+					{
+						"id": "ultron-task-bbbb2222",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"startedAt": 987000,
+						"lane": "ultron.rlm-child.bbbb2222"
+					},
+					{
+						"id": "ultron-task-cccc3333",
+						"definition": "planner@1",
+						"state": "completed",
+						"parentId": "ultron-task-bbbb2222",
+						"startedAt": 988000,
+						"endedAt": 991000
+					},
+					{
+						"id": "ultron-task-w1",
+						"definition": "coder@1",
+						"state": "completed",
+						"startedAt": 989000,
+						"endedAt": 992000,
+						"workflow": {
+							"run": "wf-12345678",
+							"node": "plan",
+							"dependsOn": [],
+							"join": "all"
+						}
+					},
+					{
+						"id": "ultron-task-w2",
+						"definition": "coder@1",
+						"state": "completed",
+						"startedAt": 990000,
+						"endedAt": 993000,
+						"workflow": {
+							"run": "wf-12345678",
+							"node": "code",
+							"dependsOn": [],
+							"join": "all"
+						}
+					},
+					{
+						"id": "ultron-task-w3",
+						"definition": "reviewer@1",
+						"state": "running",
+						"startedAt": 994000,
+						"input": "{\"diff\":\"...\"}",
+						"workflow": {
+							"run": "wf-12345678",
+							"node": "review",
+							"dependsOn": [
+								"plan",
+								"code"
+							],
+							"join": "all"
+						}
+					},
+					{
+						"id": "ultron-task-f0",
+						"definition": "rlm-frame@1",
+						"state": "completed"
+					},
+					{
+						"id": "ultron-task-old1",
+						"definition": "reviewer@1",
+						"state": "completed",
+						"startedAt": 400000,
+						"endedAt": 410000
+					}
+				],
+				"jobs": [
+					{
+						"id": "job-1",
+						"status": "running",
+						"command": "sleep 30 && echo done",
+						"exitCode": null,
+						"startedAt": 990600,
+						"lane": "main"
+					},
+					{
+						"id": "job-2",
+						"status": "running",
+						"command": "pytest -q",
+						"exitCode": null,
+						"startedAt": 995000,
+						"lane": "ultron.rlm-child.bbbb2222",
+						"tail": "....F.."
+					}
+				],
+				"usage": {
+					"admittedTasks": 5,
+					"remainingWallMs": 1560000,
+					"usage": {
+						"totalTokens": 38200,
+						"cost": 0.042
+					},
+					"cost": {
+						"spentUsd": 0.042,
+						"maxCostUsd": null
+					}
+				},
+				"limits": {
+					"maxAdmittedTasks": 24,
+					"maxWallMs": 1800000
+				}
+			},
+			"frames": {
+				"frames": [
+					{
+						"id": "frame-00000000",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f0",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000001",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f1",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000002",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f2",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000003",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f3",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000004",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f4",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000005",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f5",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000006",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f6",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000007",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f7",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000008",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f8",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000009",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f9",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000010",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f10",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000011",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f11",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000012",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f12",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000013",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f13",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000014",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f14",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000015",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f15",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000016",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f16",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000017",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f17",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000018",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f18",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000019",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f19",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000020",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f20",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000021",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f21",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000022",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f22",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000023",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f23",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000024",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f24",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000025",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f25",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000026",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f26",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000027",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f27",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000028",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f28",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000029",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f29",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000030",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f30",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000031",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f31",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000032",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f32",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000033",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f33",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000034",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f34",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000035",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f35",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000036",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f36",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000037",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f37",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000038",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f38",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000039",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f39",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000040",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f40",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000041",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f41",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000042",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f42",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000043",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f43",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000044",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f44",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000045",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f45",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000046",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f46",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000047",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f47",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000048",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f48",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000049",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f49",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000050",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f50",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000051",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f51",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000052",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f52",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000053",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f53",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000054",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f54",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000055",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f55",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000056",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f56",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000057",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f57",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000058",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f58",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000059",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f59",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000060",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f60",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000061",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f61",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000062",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f62",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000063",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f63",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000064",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f64",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000065",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f65",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000066",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f66",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000067",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f67",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000068",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f68",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000069",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f69",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000070",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f70",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000071",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f71",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000072",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f72",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000073",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f73",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000074",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f74",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000075",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f75",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000076",
+						"status": "complete",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f76",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000077",
+						"status": "incomplete",
+						"reason": "contract_unmet",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f77",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000078",
+						"status": "incomplete",
+						"reason": "contract_unmet",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f78",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000079",
+						"status": "incomplete",
+						"reason": "contract_unmet",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"endedAt": 999000,
+						"taskId": "ultron-task-f79",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000080",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f80",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000081",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f81",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000082",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f82",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000083",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f83",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000084",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f84",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000085",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f85",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000086",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f86",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000087",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 1,
+							"tokens": 400
+						},
+						"startedAt": 988000,
+						"taskId": "ultron-task-f87",
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000088",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000089",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000090",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000091",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000092",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000093",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000094",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000095",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000096",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000097",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-00000098",
+						"status": "running",
+						"task": "Classify the sentiment of each review",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"startedAt": 988000,
+						"taskId": null,
+						"kind": "map",
+						"batch": 99,
+						"callerTaskId": null,
+						"lane": null,
+						"budget": {
+							"id": "budget-map00001",
+							"calls": 120,
+							"tokens": null,
+							"depth": 1
+						}
+					}
+				]
+			},
+			"pool": {
+				"live": 3,
+				"maxLive": 16,
+				"lanes": [
+					{
+						"lane": "main",
+						"running": 1,
+						"pinnedBy": []
+					},
+					{
+						"lane": "ultron.rlm-child.bbbb2222",
+						"running": 1,
+						"pinnedBy": []
+					},
+					{
+						"lane": "ultron.planner.x",
+						"running": 0,
+						"pinnedBy": [
+							"instance-1"
+						]
+					}
+				],
+				"evictions": 2,
+				"memoryBytes": 222298112,
+				"guards": [
+					{
+						"name": "Loki",
+						"checks": 4,
+						"blocked": 1,
+						"afterChecks": 2,
+						"turnMs": 85,
+						"totalMs": 1430
+					}
+				]
+			}
+		},
+		"reference": {
+			"now": 1000000,
+			"turn": {
+				"startedAt": 970000,
+				"prompt": "Linear gates integration evidence"
+			},
+			"agentsStatus": {
+				"tasks": [
+					{
+						"id": "ultron-task-aaaa1111",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"startedAt": 979000,
+						"lane": "ultron.rlm-child.aaaa1111",
+						"workflow": {
+							"run": "wf-01a07520",
+							"node": "navigation",
+							"dependsOn": [],
+							"join": "all"
+						},
+						"input": "{\"prompt\":\"Map shell navigation integration against HEAD, then list every route\"}",
+						"model": "cliproxyapi/gpt-6-astra",
+						"turns": 1,
+						"toolCallCount": 1,
+						"lastText": "I read this as fact collection - I'll map the navigation contract first"
+					},
+					{
+						"id": "ultron-task-bbbb2222",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"startedAt": 979000,
+						"lane": "ultron.rlm-child.bbbb2222",
+						"workflow": {
+							"run": "wf-01a07520",
+							"node": "gate-wiring",
+							"dependsOn": [],
+							"join": "all"
+						},
+						"input": "{\"prompt\":\"Collect the changed component props, imports, and gates\"}",
+						"model": "cliproxyapi/gpt-6-astra",
+						"turns": 1,
+						"toolCallCount": 1,
+						"lastText": "I read this as evidence collection - I'll compare the scoped wiring"
+					},
+					{
+						"id": "ultron-task-cccc3333",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"startedAt": 979000,
+						"lane": "ultron.rlm-child.cccc3333",
+						"workflow": {
+							"run": "wf-01a07520",
+							"node": "test-coverage",
+							"dependsOn": [],
+							"join": "all"
+						},
+						"input": "{\"prompt\":\"Check test coverage\"}"
+					}
+				],
+				"workflows": [
+					{
+						"run": "wf-01a07520",
+						"startedAt": 979000,
+						"nodes": [
+							{
+								"id": "navigation",
+								"definition": "rlm-child@1",
+								"dependsOn": [],
+								"join": "all"
+							},
+							{
+								"id": "gate-wiring",
+								"definition": "rlm-child@1",
+								"dependsOn": [],
+								"join": "all"
+							},
+							{
+								"id": "test-coverage",
+								"definition": "rlm-child@1",
+								"dependsOn": [],
+								"join": "all"
+							},
+							{
+								"id": "verify-evidence",
+								"definition": "rlm-child@1",
+								"dependsOn": [
+									"navigation",
+									"gate-wiring",
+									"test-coverage"
+								],
+								"join": "all"
+							},
+							{
+								"id": "skipped-one",
+								"definition": "x@1",
+								"dependsOn": [
+									"verify-evidence"
+								],
+								"join": "any",
+								"status": "skipped",
+								"reason": "gate closed"
+							}
+						]
+					}
+				]
+			}
+		},
+		"turnRuns": {
+			"now": 1000000,
+			"turn": {
+				"startedAt": 990000,
+				"prompt": "compare the drafts"
+			},
+			"cells": [
+				{
+					"toolCallId": "call-1",
+					"code": "x = 1",
+					"status": "ok",
+					"startedAt": 990500,
+					"endedAt": 992000
+				},
+				{
+					"toolCallId": "call-2",
+					"code": "x = 2\ny = 3",
+					"status": "running",
+					"startedAt": 997000
+				}
+			],
+			"agentsStatus": {
+				"tasks": [
+					{
+						"id": "ultron-task-c1",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"startedAt": 991000,
+						"input": "{\"prompt\":\"one\"}"
+					},
+					{
+						"id": "ultron-task-c2",
+						"definition": "rlm-child@1",
+						"state": "completed",
+						"startedAt": 991000,
+						"endedAt": 996000,
+						"result": {
+							"status": "succeeded",
+							"preview": "two done"
+						}
+					},
+					{
+						"id": "ultron-task-t3",
+						"definition": "reviewer@1",
+						"state": "admitted",
+						"startedAt": 991100
+					},
+					{
+						"id": "ultron-task-n1",
+						"definition": "rlm-child@1",
+						"state": "running",
+						"parentId": "ultron-task-c1",
+						"startedAt": 995000
+					}
+				],
+				"toolCalls": [
+					{
+						"id": "tc1",
+						"name": "web_search",
+						"label": "web_search foo",
+						"status": "completed",
+						"source": "repl",
+						"startedAt": 991200,
+						"endedAt": 991300,
+						"preview": "3 hits"
+					},
+					{
+						"id": "tc2",
+						"name": "web_fetch",
+						"label": "web_fetch bar",
+						"status": "running",
+						"source": "repl",
+						"startedAt": 991400
+					},
+					{
+						"id": "tc3",
+						"name": "read",
+						"label": "read notes.md",
+						"status": "failed",
+						"source": "native",
+						"startedAt": 998000,
+						"endedAt": 998100,
+						"error": "ENOENT"
+					}
+				],
+				"usage": {
+					"admittedTasks": 4,
+					"turns": {
+						"turns": 3,
+						"tokens": 150000,
+						"maxTotalTokens": 200000,
+						"maxTotalTurns": 10
+					},
+					"cost": {
+						"spentUsd": 0.9,
+						"maxCostUsd": 1
+					}
+				}
+			}
+		},
+		"failed": {
+			"now": 1000000,
+			"turn": {
+				"startedAt": 995000,
+				"prompt": "a\nmultiline   prompt that is quite long and keeps going past sixty characters for sure"
+			},
+			"rootCell": {
+				"toolCallId": "call-9",
+				"code": "raise ValueError('x')",
+				"status": "error",
+				"startedAt": 996000,
+				"endedAt": 996500,
+				"output": "Traceback\nValueError: x"
+			},
+			"agentsStatus": {
+				"tasks": [
+					{
+						"id": "ultron-task-bad1",
+						"definition": "coder@1",
+						"state": "failed",
+						"startedAt": 996100,
+						"endedAt": 996400,
+						"result": {
+							"status": "failed",
+							"error": "budget exhausted\nafter 3 turns"
+						}
+					},
+					{
+						"id": "ultron-task-ok2",
+						"definition": "coder@1",
+						"state": "completed",
+						"result": {
+							"status": "succeeded",
+							"value": {
+								"n": 2
+							}
+						}
+					},
+					{
+						"id": "ultron-task-cut3",
+						"definition": "coder@1",
+						"state": "interrupted"
+					},
+					{
+						"id": "ultron-instance-ret4",
+						"definition": "keeper@2",
+						"state": "running",
+						"worktree": "ultron/ab12/fix · merged",
+						"fetch": "await x()"
+					},
+					{
+						"id": "ultron-task-bg5",
+						"definition": "background-job@1",
+						"state": "cancelled"
+					}
+				],
+				"jobs": [
+					{
+						"id": "job-x",
+						"status": "completed",
+						"command": "make",
+						"exitCode": 2,
+						"startedAt": 996200,
+						"endedAt": 996300,
+						"lane": "main"
+					},
+					{
+						"id": "job-y",
+						"status": "timed_out",
+						"command": "sleep 99",
+						"exitCode": null,
+						"startedAt": 996200
+					}
+				],
+				"usage": {
+					"admittedTasks": 22,
+					"remainingWallMs": 60000,
+					"rootId": "root-0199abcdef12",
+					"startedAt": 994000
+				},
+				"limits": {
+					"maxAdmittedTasks": 24,
+					"maxWallMs": 600000,
+					"maxCostUsd": 2
+				},
+				"truncatedTasks": 7
+			},
+			"instances": [
+				{
+					"task_id": "ultron-instance-ret4",
+					"state": "open",
+					"invocations": [
+						{
+							"task_id": "ultron-task-ok2"
+						}
+					]
+				}
+			],
+			"progress": {
+				"ultron-instance-ret4": {
+					"classification": "advancing",
+					"receipts": [
+						{},
+						{}
+					]
+				}
+			},
+			"timing": {
+				"ultron-task-cut3": {
+					"startedAt": 997000,
+					"endedAt": 999000
+				}
+			},
+			"ctx": {
+				"forgotten": [
+					{
+						"id": "e1",
+						"kind": "toolResult",
+						"preview": "big output",
+						"reason": "done"
+					},
+					{
+						"id": "e2",
+						"kind": "cell",
+						"preview": "x",
+						"source": "model"
+					}
+				],
+				"forgottenCount": 2,
+				"collapsedCount": 1,
+				"pinned": [
+					{
+						"id": "p1",
+						"kind": "note",
+						"preview": "remember the schema"
+					}
+				],
+				"pinnedCount": 1,
+				"notes": 3
+			},
+			"pool": {
+				"live": 30,
+				"maxLive": 32,
+				"lanes": [],
+				"memoryBytes": 3221225472,
+				"memoryCapBytes": 536870912
+			},
+			"error": "worker restarted"
+		},
+		"inference": {
+			"now": 1000000,
+			"agentsStatus": {
+				"tasks": [
+					{
+						"id": "ultron-task-frame1",
+						"definition": "rlm-frame@1",
+						"state": "completed"
+					},
+					{
+						"id": "ultron-task-loose1",
+						"definition": "rlm-frame@1",
+						"state": "completed",
+						"parentId": "ultron-task-parent"
+					},
+					{
+						"id": "ultron-task-loose2",
+						"definition": "rlm-frame@1",
+						"state": "failed",
+						"parentId": "ultron-task-parent"
+					},
+					{
+						"id": "ultron-task-parent",
+						"definition": "reviewer@1",
+						"state": "running",
+						"startedAt": 999900
+					},
+					{
+						"id": "ultron-task-a",
+						"definition": "reviewer@1",
+						"state": "running",
+						"parentId": "ultron-task-b"
+					},
+					{
+						"id": "ultron-task-b",
+						"definition": "reviewer@1",
+						"state": "running",
+						"parentId": "ultron-task-a"
+					}
+				]
+			},
+			"frames": {
+				"frames": [
+					{
+						"id": "frame-aaaaaaaa1",
+						"status": "complete",
+						"task": "outer",
+						"spent": {
+							"calls": 1,
+							"tokens": 10
+						},
+						"startedAt": 999950,
+						"endedAt": 999990,
+						"taskId": "ultron-task-frame1",
+						"kind": "infer",
+						"batch": 1,
+						"callerTaskId": null,
+						"budget": {
+							"id": "budget-outer",
+							"calls": 3,
+							"tokens": 5000,
+							"depth": 2
+						}
+					},
+					{
+						"id": "frame-bbbbbbbb2",
+						"status": "incomplete",
+						"reason": "budget_exhausted",
+						"task": "inner",
+						"spent": {
+							"calls": 1,
+							"tokens": 5
+						},
+						"startedAt": 999960,
+						"endedAt": 999980,
+						"taskId": "ultron-task-frame2",
+						"kind": "infer",
+						"batch": 1,
+						"callerTaskId": "ultron-task-frame1",
+						"budget": {
+							"id": "budget-inner",
+							"calls": 1,
+							"tokens": null,
+							"depth": 1
+						}
+					},
+					{
+						"id": "frame-cccccccc3",
+						"status": "running",
+						"task": "queued",
+						"spent": {
+							"calls": 0,
+							"tokens": 0
+						},
+						"taskId": null
+					}
+				]
+			}
+		}
+	},
+	"cases": [
+		{
+			"name": "idle",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "idle",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" "
+			]
+		},
+		{
+			"name": "idle",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "idle",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "idle",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" "
+			]
+		},
+		{
+			"name": "idle",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "idle",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "idle",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" "
+			]
+		},
+		{
+			"name": "idle",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM idle 0 nodes",
+				" tasks ▱▱▱▱▱▱ 0/24  tokens ▱▱▱▱▱▱ 0/10.0M",
+				" ◆ turn",
+				" kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted",
+				"",
+				" RLM",
+				" RLM pane",
+				" ",
+				" ",
+				" No RLM work in this turn yet.",
+				" Spawned children and workflows.run nodes",
+				" appear here as dependency waves.",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-4/4",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                           1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                      14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                           3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                     5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the se\u001b[0m…\u001b[0m 12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                            11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                    3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                    3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                             6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                            9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] plan                 │  │   [-] code                 │",
+				"                   │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                   │ Start node                 │  │ Start node                 │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │ > [-] review               │",
+				"                                   │ ● Running  6.0s            │",
+				"                                   │ ← plan, code               │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k",
+				" cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the\u001b[0m…\u001b[0m 1m12s",
+				"    ↑ 4 more",
+				"    │  ├─ ✓ agent planner@1 cccc3333                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▱ 80/99 · 8 running · 3\u001b[0m…\u001b[0m 12s",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▱▱ 2/3 · 1 runni\u001b[0m…\u001b[0m 11s",
+				"    │  ├─ ✓ plan coder@1 w1                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] plan               │  │   [-] code               │",
+				" │ ✓ Done  3.0s             │  │ ✓ Done  3.0s             │"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                                                        1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                                                                   1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                                                              14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                                                                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                                                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the sentiment of each review                    12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                                                                    11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                                                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                                                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                                                                     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                                                                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s 1 blocked",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] plan                 │  │   [-] code                 │",
+				"                                       │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                                       │ Start node                 │  │ Start node                 │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │ > [-] review               │",
+				"                                                       │ ● Running  6.0s            │",
+				"                                                       │ ← plan, code               │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✓ plan                                                                                                                                  │",
+				" │ plan · coder@1                                                                                                                          │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/37",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                           1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                      14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                           3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                     5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the se\u001b[0m…\u001b[0m 12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                            11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                    3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                    3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                             6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                            9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] plan                 │  │   [-] code                 │",
+				"                   │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                   │ Start node                 │  │ Start node                 │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │ > [-] review               │",
+				"                                   │ ● Running  6.0s            │",
+				"                                   │ ← plan, code               │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k",
+				" cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the\u001b[0m…\u001b[0m 1m12s",
+				"    ↑ 4 more",
+				"    │  ├─ ✓ agent planner@1 cccc3333                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▱ 80/99 · 8 running · 3\u001b[0m…\u001b[0m 12s",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▱▱ 2/3 · 1 runni\u001b[0m…\u001b[0m 11s",
+				"    │  ├─ ✓ plan coder@1 w1                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] plan               │  │   [-] code               │",
+				" │ ✓ Done  3.0s             │  │ ✓ Done  3.0s             │"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                                                        1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                                                                   1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                                                              14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                                                                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                                                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the sentiment of each review                    12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                                                                    11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                                                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                                                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                                                                     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                                                                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s 1 blocked",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] plan                 │  │   [-] code                 │",
+				"                                       │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                                       │ Start node                 │  │ Start node                 │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │ > [-] review               │",
+				"                                                       │ ● Running  6.0s            │",
+				"                                                       │ ← plan, code               │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✓ plan                                                                                                                                  │",
+				" │ plan · coder@1                                                                                                                          │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/37",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                           1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                      14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                           3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                     5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the se\u001b[0m…\u001b[0m 12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                            11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                    3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                    3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                             6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                            9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] plan                 │  │   [-] code                 │",
+				"                   │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                   │ Start node                 │  │ Start node                 │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │ > [-] review               │",
+				"                                   │ ● Running  6.0s            │",
+				"                                   │ ← plan, code               │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k",
+				" cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the\u001b[0m…\u001b[0m 1m12s",
+				"    ↑ 4 more",
+				"    │  ├─ ✓ agent planner@1 cccc3333                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▱ 80/99 · 8 running · 3\u001b[0m…\u001b[0m 12s",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▱▱ 2/3 · 1 runni\u001b[0m…\u001b[0m 11s",
+				"    │  ├─ ✓ plan coder@1 w1                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evi\u001b[0m…\u001b[0m",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] plan               │  │   [-] code               │",
+				" │ ✓ Done  3.0s             │  │ ✓ Done  3.0s             │"
+			]
+		},
+		{
+			"name": "rich",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 13 nodes · 7 active",
+				" tasks ▰▱▱▱▱▱ 5/24  wall ▰▱▱▱▱▱ 4m/30m  tokens 38k  cost $0.04  calls ▰▰▰▰▱▱ 88/120  depth 1",
+				" ⠋ turn  “Summarize the reviews and benchmark in the background”                                                        1m12s 38k tok $0.04",
+				" ├─ ✓ [+1] earlier turns · 1 finished",
+				" ├─ ✓ [+1] cell 1  h = await rlm.load('reviews.csv')                                                                                   1.2s",
+				" └─ ⠋ cell 2  vs = await rlm.map('Classify', h.chunks(4000), contract=str)                                                              14s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       13s",
+				"    │  ├─ ✓ agent planner@1 cccc3333                                                                                                   3.0s",
+				"    │  └─ ⠋ bash pytest -q                                                                                                             5.0s",
+				"    ├─ ⠋ rlm.map 99 frames ▰▰▰▰▰▰▰▰▱▱ 80/99 · 8 running · 3 incomplete Classify the sentiment of each review                    12s 35k tok",
+				"    ├─ ⠋ workflow 12345678 3 nodes ▰▰▰▰▰▰▰▱▱▱ 2/3 · 1 running 1 join                                                                    11s",
+				"    │  ├─ ✓ plan coder@1 w1                                                                                                            3.0s",
+				"    │  ├─ ✓ code coder@1 w2                                                                                                            3.0s",
+				"    │  └─ ⠋ review reviewer@1 w3 ⇐ plan+code (all)                                                                                     6.0s",
+				"    └─ ⠋ bash sleep 30 && echo done                                                                                                    9.4s",
+				" kernels ■■◆············· 3/16 · 2 busy · 1 pinned · 2 evicted · mem 212 MiB · loki 85ms turn/1.4s 1 blocked",
+				"",
+				" RLM · 12345678",
+				" RLM pane / workflow  Tasks (8)",
+				" Summarize the reviews and benchmark in the background  2/2",
+				" Running · Done 2/3 · 1 running · wave 2/2",
+				" ",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] plan                 │  │   [-] code                 │",
+				"                                       │ ✓ Done  3.0s               │  │ ✓ Done  3.0s               │",
+				"                                       │ Start node                 │  │ Start node                 │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │ > [-] review               │",
+				"                                                       │ ● Running  6.0s            │",
+				"                                                       │ ← plan, code               │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				"   plan → review",
+				"   code → review",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✓ plan                                                                                                                                  │",
+				" │ plan · coder@1                                                                                                                          │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/37",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                    30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                      21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                               21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                               21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"   │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"   │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                            ┌──────────────────────────────────────────┐",
+				"                            │   [-] verify-evidence                    │",
+				"                            │ ○ Pending                                │",
+				"                            │ ← navigation, gate-wiring, test-coverage │",
+				"                            └──────────────────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] skipped-one          │",
+				"                                   │ ⊘ Skipped                  │",
+				"                                   │ ← verify-evidence          │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱ 0/3 · 3 running   21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] navigation         │  │   [-] gate-wiring        │",
+				" │ ● Running  21s           │  │ ● Running  21s           │",
+				" │ Start node               │  │ Start node               │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				"                ┌──────────────────────────┐",
+				"                │   [-] test-coverage      │",
+				"                │ ● Running  21s           │",
+				"                │ Start node               │",
+				"                └──────────────────────────┘"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                                                            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                                                              21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                                                                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                                                                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"                       │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"                       │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                ┌──────────────────────────────────────────┐",
+				"                                                │   [-] verify-evidence                    │",
+				"                                                │ ○ Pending                                │",
+				"                                                │ ← navigation, gate-wiring, test-coverage │",
+				"                                                └──────────────────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] skipped-one          │",
+				"                                                       │ ⊘ Skipped                  │",
+				"                                                       │ ← verify-evidence          │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                    30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                      21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                               21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                               21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"   │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"   │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                            ┌──────────────────────────────────────────┐",
+				"                            │   [-] verify-evidence                    │",
+				"                            │ ○ Pending                                │",
+				"                            │ ← navigation, gate-wiring, test-coverage │",
+				"                            └──────────────────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] skipped-one          │",
+				"                                   │ ⊘ Skipped                  │",
+				"                                   │ ← verify-evidence          │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱ 0/3 · 3 running   21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] navigation         │  │   [-] gate-wiring        │",
+				" │ ● Running  21s           │  │ ● Running  21s           │",
+				" │ Start node               │  │ Start node               │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				"                ┌──────────────────────────┐",
+				"                │   [-] test-coverage      │",
+				"                │ ● Running  21s           │",
+				"                │ Start node               │",
+				"                └──────────────────────────┘"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                                                            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                                                              21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                                                                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                                                                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"                       │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"                       │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                ┌──────────────────────────────────────────┐",
+				"                                                │   [-] verify-evidence                    │",
+				"                                                │ ○ Pending                                │",
+				"                                                │ ← navigation, gate-wiring, test-coverage │",
+				"                                                └──────────────────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] skipped-one          │",
+				"                                                       │ ⊘ Skipped                  │",
+				"                                                       │ ← verify-evidence          │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                    30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                      21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                               21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                               21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                               21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"   │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"   │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                            ┌──────────────────────────────────────────┐",
+				"                            │   [-] verify-evidence                    │",
+				"                            │ ○ Pending                                │",
+				"                            │ ← navigation, gate-wiring, test-coverage │",
+				"                            └──────────────────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] skipped-one          │",
+				"                                   │ ⊘ Skipped                  │",
+				"                                   │ ← verify-evidence          │",
+				"                                   └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱ 0/3 · 3 running   21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] navigation         │  │   [-] gate-wiring        │",
+				" │ ● Running  21s           │  │ ● Running  21s           │",
+				" │ Start node               │  │ Start node               │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				"                ┌──────────────────────────┐",
+				"                │   [-] test-coverage      │",
+				"                │ ● Running  21s           │",
+				"                │ Start node               │",
+				"                └──────────────────────────┘"
+			]
+		},
+		{
+			"name": "reference",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 4 nodes · 4 active",
+				" ⠋ turn  “Linear gates integration evidence”                                                                                            30s",
+				" └─ ⠋ workflow 01a07520 3 nodes ▱▱▱▱▱▱▱▱▱▱ 0/3 · 3 running                                                                              21s",
+				"    ├─ ⠋ rlm.spawn child aaaa1111                                                                                                       21s",
+				"    ├─ ⠋ rlm.spawn child bbbb2222                                                                                                       21s",
+				"    └─ ⠋ rlm.spawn child cccc3333                                                                                                       21s",
+				"",
+				" RLM · 01a07520",
+				" RLM pane / workflow  Tasks (3)",
+				" Linear gates integration evidence  2/2",
+				" Running · Done 0/5 · 3 running · wave 1/3",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │ > [-] navigation           │  │   [-] gate-wiring          │  │   [-] test-coverage        │",
+				"                       │ ● Running  21s             │  │ ● Running  21s             │  │ ● Running  21s             │",
+				"                       │ Start node                 │  │ Start node                 │  │ Start node                 │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                ┌──────────────────────────────────────────┐",
+				"                                                │   [-] verify-evidence                    │",
+				"                                                │ ○ Pending                                │",
+				"                                                │ ← navigation, gate-wiring, test-coverage │",
+				"                                                └──────────────────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] skipped-one          │",
+				"                                                       │ ⊘ Skipped                  │",
+				"                                                       │ ← verify-evidence          │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/58",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                    10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                            1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                    9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                 5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                         5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                   8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                              100ms",
+				" │  └─ ⠋ web_fetch bar                                                                         8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                            3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                    100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] child c1      │  │   [-] child c2      │  │   [-] reviewer t3   │  │   [-] 2 tool calls  │",
+				" │ ● Running  9.0s     │  │ ✓ Done  5.0s        │  │ ○ Pending  8.9s     │  │ ● Running  8.8s     │",
+				" │ cell 1              │  │ cell 1              │  │ cell 1              │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2      │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] child n1             │",
+				"                                   │ ● Running  5.0s            │",
+				"                                   │ ← child c1                 │",
+				"                                   └────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] 1 tool call          │",
+				"                                   │ ✗ Failed  100ms            │",
+				"                                   │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                   └────────────────────────────┘",
+				" "
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10",
+				" cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                           10s",
+				"    ↑ 1 more",
+				" │  ├─ ⠋ rlm.spawn child c1                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2                            5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                           8.9s",
+				" │  ├─ ✓ web_search foo                               100ms",
+				" │  └─ ⠋ web_fetch bar                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                    3.0s",
+				" └─ ✗ read notes.md                                   100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] child c1           │  │   [-] child c2           │",
+				" │ ● Running  9.0s          │  │ ✓ Done  5.0s             │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                                                            10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                                                                    1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                                                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                                                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                                                                 5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                                                           8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                                                                      100ms",
+				" │  └─ ⠋ web_fetch bar                                                                                                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                                                                    3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                                                            100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				"       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"       │ > [-] child c1             │  │   [-] child c2             │  │   [-] reviewer t3          │  │   [-] 2 tool calls         │",
+				"       │ ● Running  9.0s            │  │ ✓ Done  5.0s               │  │ ○ Pending  8.9s            │  │ ● Running  8.8s            │",
+				"       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2             │",
+				"       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] child n1             │",
+				"                                                       │ ● Running  5.0s            │",
+				"                                                       │ ← child c1                 │",
+				"                                                       └────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] 1 tool call          │",
+				"                                                       │ ✗ Failed  100ms            │",
+				"                                                       │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/61",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                    10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                            1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                    9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                 5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                         5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                   8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                              100ms",
+				" │  └─ ⠋ web_fetch bar                                                                         8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                            3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                    100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] child c1      │  │   [-] child c2      │  │   [-] reviewer t3   │  │   [-] 2 tool calls  │",
+				" │ ● Running  9.0s     │  │ ✓ Done  5.0s        │  │ ○ Pending  8.9s     │  │ ● Running  8.8s     │",
+				" │ cell 1              │  │ cell 1              │  │ cell 1              │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2      │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] child n1             │",
+				"                                   │ ● Running  5.0s            │",
+				"                                   │ ← child c1                 │",
+				"                                   └────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] 1 tool call          │",
+				"                                   │ ✗ Failed  100ms            │",
+				"                                   │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                   └────────────────────────────┘",
+				" "
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10",
+				" cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                           10s",
+				"    ↑ 1 more",
+				" │  ├─ ⠋ rlm.spawn child c1                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2                            5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                           8.9s",
+				" │  ├─ ✓ web_search foo                               100ms",
+				" │  └─ ⠋ web_fetch bar                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                    3.0s",
+				" └─ ✗ read notes.md                                   100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] child c1           │  │   [-] child c2           │",
+				" │ ● Running  9.0s          │  │ ✓ Done  5.0s             │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                                                            10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                                                                    1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                                                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                                                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                                                                 5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                                                           8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                                                                      100ms",
+				" │  └─ ⠋ web_fetch bar                                                                                                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                                                                    3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                                                            100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				"       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"       │ > [-] child c1             │  │   [-] child c2             │  │   [-] reviewer t3          │  │   [-] 2 tool calls         │",
+				"       │ ● Running  9.0s            │  │ ✓ Done  5.0s               │  │ ○ Pending  8.9s            │  │ ● Running  8.8s            │",
+				"       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2             │",
+				"       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] child n1             │",
+				"                                                       │ ● Running  5.0s            │",
+				"                                                       │ ← child c1                 │",
+				"                                                       └────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] 1 tool call          │",
+				"                                                       │ ✗ Failed  100ms            │",
+				"                                                       │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/61",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                    10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                            1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                    9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                 5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                         5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                   8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                              100ms",
+				" │  └─ ⠋ web_fetch bar                                                                         8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                            3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                    100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] child c1      │  │   [-] child c2      │  │   [-] reviewer t3   │  │   [-] 2 tool calls  │",
+				" │ ● Running  9.0s     │  │ ✓ Done  5.0s        │  │ ○ Pending  8.9s     │  │ ● Running  8.8s     │",
+				" │ cell 1              │  │ cell 1              │  │ cell 1              │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2      │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] child n1             │",
+				"                                   │ ● Running  5.0s            │",
+				"                                   │ ← child c1                 │",
+				"                                   └────────────────────────────┘",
+				"                                                  │",
+				"                                                  ▼",
+				"                                   ┌────────────────────────────┐",
+				"                                   │   [-] 1 tool call          │",
+				"                                   │ ✗ Failed  100ms            │",
+				"                                   │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                   └────────────────────────────┘",
+				" "
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10",
+				" cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                           10s",
+				"    ↑ 1 more",
+				" │  ├─ ⠋ rlm.spawn child c1                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2                            5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                           8.9s",
+				" │  ├─ ✓ web_search foo                               100ms",
+				" │  └─ ⠋ web_fetch bar                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                    3.0s",
+				" └─ ✗ read notes.md                                   100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] child c1           │  │   [-] child c2           │",
+				" │ ● Running  9.0s          │  │ ✓ Done  5.0s             │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "turnRuns",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 9 nodes · 5 active",
+				" tasks 4  tokens ▰▰▰▰▰▱ 150k/200k  turns ▰▰▱▱▱▱ 3/10  cost ▰▰▰▰▰▱ $0.90/$1.00",
+				" ⠋ turn  “compare the drafts”                                                                                            10s 150k tok $0.90",
+				" ├─ ✓ cell 1  x = 1                                                                                                                    1.5s",
+				" │  ├─ ⠋ rlm.spawn child c1                                                                                                            9.0s",
+				" │  │  └─ ⠋ rlm.spawn child n1                                                                                                         5.0s",
+				" │  ├─ ✓ rlm.spawn child c2 → two done                                                                                                 5.0s",
+				" │  ├─ ○ agent reviewer@1 t3                                                                                                           8.9s",
+				" │  ├─ ✓ web_search foo → 3 hits                                                                                                      100ms",
+				" │  └─ ⠋ web_fetch bar                                                                                                                 8.6s",
+				" ├─ ⠋ cell 2  x = 2                                                                                                                    3.0s",
+				" └─ ✗ read notes.md ENOENT                                                                                                            100ms",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (4)",
+				" compare the drafts  1/1",
+				" Running · Done 1/6 · 3 running · 1 failed · wave 1/3",
+				" ",
+				"       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"       │ > [-] child c1             │  │   [-] child c2             │  │   [-] reviewer t3          │  │   [-] 2 tool calls         │",
+				"       │ ● Running  9.0s            │  │ ✓ Done  5.0s               │  │ ○ Pending  8.9s            │  │ ● Running  8.8s            │",
+				"       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │  │ ▰▰▰▰▰▱▱▱▱▱ 1/2             │",
+				"       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] child n1             │",
+				"                                                       │ ● Running  5.0s            │",
+				"                                                       │ ← child c1                 │",
+				"                                                       └────────────────────────────┘",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                                       ┌────────────────────────────┐",
+				"                                                       │   [-] 1 tool call          │",
+				"                                                       │ ✗ Failed  100ms            │",
+				"                                                       │ ▰▰▰▰▰▰▰▰▰▰ 1/1             │",
+				"                                                       └────────────────────────────┘",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/61",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                        5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                        500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                       2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"   │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"   │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                   │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                   │ turn                       │  │ turn                       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                    │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: wor\u001b[0m…\u001b[0m",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m",
+				" cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and k\u001b[0m…\u001b[0m 5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x')              500ms",
+				" ├─ ◐ agent coder@1 cut3                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going\u001b[0m…\u001b[0m  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] coder bad1         │  │   [-] bash make          │",
+				" │ ✗ Failed  300ms          │  │ ✗ Failed  100ms          │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                                                                5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                                                                500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                                                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB (cap 512 MiB/kernel)",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"                       │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"                       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                                       │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                                       │ turn                       │  │ turn                       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                                                            │",
+				" │ coder bad1 · coder@1                                                                                                                    │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Inspection failed: worker restarted  1-22/49",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                        5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                        500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                       2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"   │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"   │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                   │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                   │ turn                       │  │ turn                       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                    │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: wor\u001b[0m…\u001b[0m",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m",
+				" cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and k\u001b[0m…\u001b[0m 5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x')              500ms",
+				" ├─ ◐ agent coder@1 cut3                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going\u001b[0m…\u001b[0m  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] coder bad1         │  │   [-] bash make          │",
+				" │ ✗ Failed  300ms          │  │ ✗ Failed  100ms          │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                                                                5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                                                                500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                                                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB (cap 512 MiB/kernel)",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"                       │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"                       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                                       │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                                       │ turn                       │  │ turn                       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                                                            │",
+				" │ coder bad1 · coder@1                                                                                                                    │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Inspection failed: worker restarted  1-22/49",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                        5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                        500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                       2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"   ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"   │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"   │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"   │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"   └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                   │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                   │ turn                       │  │ turn                       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                    │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: wor\u001b[0m…\u001b[0m",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m",
+				" cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and k\u001b[0m…\u001b[0m 5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x')              500ms",
+				" ├─ ◐ agent coder@1 cut3                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going\u001b[0m…\u001b[0m  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] coder bad1         │  │   [-] bash make          │",
+				" │ ✗ Failed  300ms          │  │ ✗ Failed  100ms          │",
+				" │ cell 1                   │  │ cell 1                   │"
+			]
+		},
+		{
+			"name": "failed",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 1 active · inspection failed: worker restarted",
+				" tasks ▰▰▰▰▰▱ 22/24  wall ▰▰▰▰▰▱ 9m/10m  cost ▱▱▱▱▱▱ $0.000/$2.00",
+				" ⠋ turn  “a multiline prompt that is quite long and keeps going past …”                                                                5.0s",
+				" ├─ ◐ [+2] earlier turns · 2 finished",
+				" ├─ ✗ [+3] cell 1  raise ValueError('x') ValueError: x                                                                                500ms",
+				" ├─ ◐ agent coder@1 cut3                                                                                                               2.0s",
+				" └─ ⠋ agent keeper@2 ret4",
+				" kernels 30/32 · 0 busy · 0 pinned · mem 3.0 GiB (cap 512 MiB/kernel)",
+				" context: 2 forgotten · 1 collapsed · 1 pinned · 3 notes",
+				"   forgot e1 toolResult big output (done)",
+				"   forgot e2 cell x (model)",
+				"   pinned p1 note remember the schema",
+				"",
+				" RLM · 0199abcd",
+				" RLM pane / turn  Tasks (5)",
+				" a multiline prompt that is quite long and keeps going past sixty characters for sure  1/1",
+				" Running · Done 0/5 · 1 running · 2 failed · wave 2/2",
+				" ",
+				"                       ┌────────────────────────────┐  ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                       │   [-] coder bad1           │  │   [-] bash make            │  │   [-] bash sleep 99        │",
+				"                       │ ✗ Failed  300ms            │  │ ✗ Failed  100ms            │  │ ◐ Incomplete  3.8s         │",
+				"                       │ cell 1                     │  │ cell 1                     │  │ cell 1                     │",
+				"                       └────────────────────────────┘  └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] coder cut3           │  │ > [-] keeper ret4          │",
+				"                                       │ ◐ Incomplete  2.0s         │  │ ● Running                  │",
+				"                                       │ turn                       │  │ turn                       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   none · each cell's work is one frontier",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ ✗ coder bad1                                                                                                                            │",
+				" │ coder bad1 · coder@1                                                                                                                    │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Inspection failed: worker restarted  1-22/49",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 0,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                 100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                     40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] reviewer par\u001b[0m…\u001b[0m │  │   [-] rlm.infer aa\u001b[0m…\u001b[0m │  │   [-] rlm.infer cc\u001b[0m…\u001b[0m │  │   [-] reviewer a    │",
+				" │ ● Running  100ms    │  │ ✓ Done  40ms        │  │ ○ Pending           │  │ ● Running           │",
+				" │ turn                │  │ turn                │  │ turn                │  │ turn                │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				" ",
+				"                                       ┌─────────────────────┐",
+				"                                       │   [-] reviewer b    │",
+				"                                       │ ● Running           │",
+				"                                       │ turn                │",
+				"                                       └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                   │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                   │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/68"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 0,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa                          40ms",
+				" ├─ ○ rlm.infer cccccccc",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] reviewer parent    │  │   [-] rlm.infer aaaaaaaa │",
+				" │ ● Running  100ms         │  │ ✓ Done  40ms             │",
+				" │ turn                     │  │ turn                     │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] rlm.infer cccccccc │  │   [-] reviewer a         │"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 0,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron ",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                                                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                                                             40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐",
+				" │ > [-] reviewer parent  │  │   [-] rlm.infer aaaaa\u001b[0m…\u001b[0m │  │   [-] rlm.infer ccccc\u001b[0m…\u001b[0m │  │   [-] reviewer a       │  │   [-] reviewer b       │",
+				" │ ● Running  100ms       │  │ ✓ Done  40ms           │  │ ○ Pending              │  │ ● Running              │  │ ● Running              │",
+				" │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │",
+				" └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                                       │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                                       │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   reviewer parent → frames 2",
+				"   rlm.infer aaaaaaaa → rlm.infer bbbbbbbb",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ > ● reviewer parent                                                                                                                     │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/62",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 1,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells \u001b[0m…\u001b[0m",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                 100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                     40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] reviewer par\u001b[0m…\u001b[0m │  │   [-] rlm.infer aa\u001b[0m…\u001b[0m │  │   [-] rlm.infer cc\u001b[0m…\u001b[0m │  │   [-] reviewer a    │",
+				" │ ● Running  100ms    │  │ ✓ Done  40ms        │  │ ○ Pending           │  │ ● Running           │",
+				" │ turn                │  │ turn                │  │ turn                │  │ turn                │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				" ",
+				"                                       ┌─────────────────────┐",
+				"                                       │   [-] reviewer b    │",
+				"                                       │ ● Running           │",
+				"                                       │ turn                │",
+				"                                       └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                   │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                   │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/68"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 1,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anth\u001b[0m…\u001b[0m",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa                          40ms",
+				" ├─ ○ rlm.infer cccccccc",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] reviewer parent    │  │   [-] rlm.infer aaaaaaaa │",
+				" │ ● Running  100ms         │  │ ✓ Done  40ms             │",
+				" │ turn                     │  │ turn                     │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] rlm.infer cccccccc │  │   [-] reviewer a         │"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 1,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · claude 01234567 · starting · frames anthropic/claude-x · children 2/4 · 3 cells · 2 events waiting",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                                                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                                                             40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐",
+				" │ > [-] reviewer parent  │  │   [-] rlm.infer aaaaa\u001b[0m…\u001b[0m │  │   [-] rlm.infer ccccc\u001b[0m…\u001b[0m │  │   [-] reviewer a       │  │   [-] reviewer b       │",
+				" │ ● Running  100ms       │  │ ✓ Done  40ms           │  │ ○ Pending              │  │ ● Running              │  │ ● Running              │",
+				" │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │",
+				" └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                                       │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                                       │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   reviewer parent → frames 2",
+				"   rlm.infer aaaaaaaa → rlm.infer bbbbbbbb",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ > ● reviewer parent                                                                                                                     │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/62",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 2,
+			"width": 100,
+			"height": 40,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                 100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                     40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐",
+				" │ > [-] reviewer par\u001b[0m…\u001b[0m │  │   [-] rlm.infer aa\u001b[0m…\u001b[0m │  │   [-] rlm.infer cc\u001b[0m…\u001b[0m │  │   [-] reviewer a    │",
+				" │ ● Running  100ms    │  │ ✓ Done  40ms        │  │ ○ Pending           │  │ ● Running           │",
+				" │ turn                │  │ turn                │  │ turn                │  │ turn                │",
+				" └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘",
+				" ",
+				"                                       ┌─────────────────────┐",
+				"                                       │   [-] reviewer b    │",
+				"                                       │ ● Running           │",
+				"                                       │ turn                │",
+				"                                       └─────────────────────┘",
+				"   · Same frontier",
+				"                                                  │",
+				"                                                  ▼",
+				"                   ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                   │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                   │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                   │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                   └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/68"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 2,
+			"width": 60,
+			"height": 24,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa                          40ms",
+				" ├─ ○ rlm.infer cccccccc",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │ > [-] reviewer parent    │  │   [-] rlm.infer aaaaaaaa │",
+				" │ ● Running  100ms         │  │ ✓ Done  40ms             │",
+				" │ turn                     │  │ turn                     │",
+				" └──────────────────────────┘  └──────────────────────────┘",
+				" ",
+				" ┌──────────────────────────┐  ┌──────────────────────────┐",
+				" │   [-] rlm.infer cccccccc │  │   [-] reviewer a         │"
+			]
+		},
+		{
+			"name": "inference",
+			"status": 2,
+			"width": 140,
+			"height": 50,
+			"lines": [
+				"Ultron /work/app · 0 cells",
+				" RLM ⠋ running 7 nodes · 4 active",
+				" calls ▰▰▰▰▰▰ 1/1  depth 1",
+				" ⠋ turn",
+				" ├─ ⠋ agent reviewer@1 parent                                                                                                         100ms",
+				" │  └─ ◐ frames 2 ▰▰▰▰▰▰▰▰▰▰ 2/2 · 1 failed",
+				" ├─ ✓ [+1] rlm.infer aaaaaaaa outer                                                                                             40ms 10 tok",
+				" ├─ ○ rlm.infer cccccccc queued",
+				" ├─ ⠋ agent reviewer@1 a",
+				" └─ ⠋ agent reviewer@1 b",
+				"",
+				" RLM · turn",
+				" RLM pane / turn  Tasks (6)",
+				" current turn  1/1",
+				" Running · Done 1/7 · 3 running · wave 1/2",
+				" ",
+				" ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐",
+				" │ > [-] reviewer parent  │  │   [-] rlm.infer aaaaa\u001b[0m…\u001b[0m │  │   [-] rlm.infer ccccc\u001b[0m…\u001b[0m │  │   [-] reviewer a       │  │   [-] reviewer b       │",
+				" │ ● Running  100ms       │  │ ✓ Done  40ms           │  │ ○ Pending              │  │ ● Running              │  │ ● Running              │",
+				" │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │  │ turn                   │",
+				" └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘  └────────────────────────┘",
+				"   · Same frontier",
+				"                                                                      │",
+				"                                                                      ▼",
+				"                                       ┌────────────────────────────┐  ┌────────────────────────────┐",
+				"                                       │   [-] frames 2             │  │   [-] rlm.infer bbbbbbbb   │",
+				"                                       │ ◐ Incomplete               │  │ ◐ Incomplete  20ms         │",
+				"                                       │ ▰▰▰▰▰▰▰▰▰▰ 2/2             │  │ ← rlm.infer aaaaaaaa       │",
+				"                                       └────────────────────────────┘  └────────────────────────────┘",
+				"   · Same frontier",
+				" ",
+				" Dependencies",
+				"   reviewer parent → frames 2",
+				"   rlm.infer aaaaaaaa → rlm.infer bbbbbbbb",
+				" ",
+				" Node details",
+				" ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐",
+				" │ > ● reviewer parent                                                                                                                     │",
+				" ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────",
+				" ● Connected  1-22/62",
+				" Tab/n next  Shift-Tab/p prev  Space/Enter fold  d Details  ↑↓ Scroll  ←→ Runs  q/Esc Close"
+			]
+		}
+	]
+}

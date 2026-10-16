@@ -4,6 +4,8 @@
 // openai-completions model). Each cell lists its scripted replies (`{fail: true}` makes the lane's run fail),
 // env and model settings; every provider request is recorded. Frame ids are normalized. Also records INFERENCE_PROMPT.
 // Usage: node crates/inference/fixtures/map.mjs
+// Every socket must stay on loopback (offline-guard.mjs): checked at the end.
+import { assertOffline } from "../../cli/fixtures/offline-guard.mjs";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -135,6 +137,39 @@ const cells = [
 		replies: [{ text: "one", usage: u(19900, 10) }],
 		env: { ULTRON_RLM_MAP_TOKENS: " 20000 " },
 	},
+	// shared_prefix=True: the shared context goes once into every frame's system prompt (byte-identical), not into
+	// the frames' user messages; a handle in the prefix is materialized even for a frame with depth.
+	{
+		code: `r = await rlm.map("Judge", ["item one", "item two"], context=["the diff", "the brief"], shared_prefix=True, concurrency=1)\n${show}`,
+		replies: [{ text: "ok1", usage: u(10, 1) }, { text: "ok2", usage: u(10, 1) }],
+	},
+	{
+		code: `h = await rlm.load("shared handle text " * 20)\nr = await rlm.map(["T1", "T2"], context=[h, h.lines(1, 1)], shared_prefix=True, concurrency=1)\n${show}`,
+		replies: [{ text: "x", usage: u(10, 1) }, { text: "y", usage: u(10, 1) }],
+	},
+	// The prefix counts toward each request's estimate, so it shrinks the output tranche under a tight budget.
+	{
+		code: `r = await rlm.map("Size", ["a"], context=["p" * 3000], shared_prefix=True, budget=Budget(tokens=1500))\n${show}`,
+		replies: [{ text: "s", usage: u(1100, 3) }],
+	},
+	{
+		code: `r = await rlm.map("Size", ["a"], context=["p" * 3000], budget=Budget(tokens=1500))\n${show}`,
+		replies: [{ text: "s", usage: u(1100, 3) }],
+	},
+	{
+		code: `r = await rlm.map("Empty", ["a"], context=[], shared_prefix=True)\n${show}`,
+		replies: [{ text: "e", usage: u(10, 1) }],
+	},
+	{
+		code: [
+			"for bad in [dict(prefix='x'), dict(prefix=[1]), dict(prefix=[{'kind': 'text'}])]:",
+			"    try:",
+			"        await rlm._bridge.request('rlm.map', {'frames': [{'task': 't'}], **bad})",
+			"    except Exception as error:",
+			"        print(type(error).__name__, str(error)[:200])",
+		].join("\n"),
+		replies: [],
+	},
 ];
 
 function lanes(queue, calls) {
@@ -250,4 +285,5 @@ try {
 } finally {
 	rmSync(cwd, { recursive: true, force: true });
 }
+assertOffline(process.env.ULTRON_GUARD_LOG);
 writeFileSync(join(here, "map.json"), `${JSON.stringify({ model: MODEL, inferencePrompt: INFERENCE_PROMPT, cells: results }, null, "\t")}\n`);

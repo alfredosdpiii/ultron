@@ -14,17 +14,33 @@ pub trait Clipboard: Send {
     fn set_text(&mut self, text: &str) -> Result<(), String>;
     /// PNG bytes of a clipboard image.
     fn get_image_png(&mut self) -> Result<Vec<u8>, String>;
+    /// A user-visible copy (`copyToClipboard`): the OSC 52 sequence to write when one is due, else why it failed.
+    fn copy_checked(&mut self, text: &str) -> Result<Option<String>, String> {
+        self.set_text(text).map(|()| None)
+    }
 }
 
 /// The desktop clipboard through arboard; images through `wl-paste` or `xclip`.
 pub struct SystemClipboard {
     inner: Option<arboard::Clipboard>,
+    /// The PATH clipboard tools are looked up on (the injected environment's; `None`: no tool runs).
+    path: Option<String>,
+    /// The environment the copy decisions read (`DISPLAY`, `SSH_CONNECTION`, ...).
+    vars: Vec<(String, String)>,
 }
 
 impl SystemClipboard {
+    /// The process environment's clipboard (tools on its PATH).
     pub fn new() -> Self {
+        Self::with_env(std::env::var("PATH").ok(), std::env::vars().collect())
+    }
+
+    /// A clipboard whose tools come from `path` and whose decisions read `vars`.
+    pub fn with_env(path: Option<String>, vars: Vec<(String, String)>) -> Self {
         Self {
             inner: arboard::Clipboard::new().ok(),
+            path,
+            vars,
         }
     }
 
@@ -42,8 +58,11 @@ impl Default for SystemClipboard {
     }
 }
 
-/// Run a clipboard tool; its stdout when it succeeded with output.
-fn tool_output(program: &str, args: &[&str]) -> Option<Vec<u8>> {
+/// Run a clipboard tool found on `path`; its stdout when it succeeded with output.
+fn tool_output(path: Option<&str>, program: &str, args: &[&str]) -> Option<Vec<u8>> {
+    let program = std::env::split_paths(path?)
+        .map(|dir| dir.join(program))
+        .find(|candidate| candidate.is_file())?;
     let out = Command::new(program)
         .args(args)
         .stdin(Stdio::null())
@@ -58,13 +77,26 @@ impl Clipboard for SystemClipboard {
         self.board()?.get_text().map_err(|e| e.to_string())
     }
 
+    fn copy_checked(&mut self, text: &str) -> Result<Option<String>, String> {
+        let vars = &self.vars;
+        let var = |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
+        let env = crate::clipboard_copy::CopyEnv {
+            platform: crate::clipboard_copy::platform(),
+            var: &var,
+            proc_version: std::fs::read_to_string("/proc/version").ok(),
+        };
+        let mut io = crate::clipboard_copy::SystemCopyIo::new(self.path.clone());
+        crate::clipboard_copy::copy_to_clipboard(text, &env, &mut io)
+    }
+
     fn set_text(&mut self, text: &str) -> Result<(), String> {
         self.board()?.set_text(text.to_string()).map_err(|e| e.to_string())
     }
 
     fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
-        tool_output("wl-paste", &["--no-newline", "--type", "image/png"])
-            .or_else(|| tool_output("xclip", &["-selection", "clipboard", "-t", "image/png", "-o"]))
+        let path = self.path.as_deref();
+        tool_output(path, "wl-paste", &["--no-newline", "--type", "image/png"])
+            .or_else(|| tool_output(path, "xclip", &["-selection", "clipboard", "-t", "image/png", "-o"]))
             .filter(|b| b.starts_with(b"\x89PNG"))
             .ok_or_else(|| "no image on the clipboard".to_string())
     }
@@ -77,6 +109,9 @@ pub enum ClipboardReply {
     /// Base64 PNG.
     Image(String),
     Error(String),
+    /// A [`ClipboardService::copy_checked`] finished: the OSC 52 sequence to write when one is due, or why the
+    /// copy failed.
+    Copied(Result<Option<String>, String>),
 }
 
 /// Which read to perform.
@@ -90,6 +125,7 @@ pub enum ClipboardRead {
 
 enum Job {
     Copy(String),
+    CopyChecked(String),
     Read(ClipboardRead),
     Stop,
 }
@@ -115,6 +151,7 @@ impl ClipboardService {
                             let _ = clipboard.set_text(&text);
                             continue;
                         }
+                        Job::CopyChecked(text) => Ok(ClipboardReply::Copied(clipboard.copy_checked(&text))),
                         Job::Read(ClipboardRead::Text) => clipboard.get_text().map(ClipboardReply::Text),
                         Job::Read(ClipboardRead::Image) => {
                             clipboard.get_image_png().map(|b| ClipboardReply::Image(B64.encode(b)))
@@ -146,6 +183,13 @@ impl ClipboardService {
     pub fn copy(&self, text: &str) {
         if let Some(tx) = &self.tx {
             let _ = tx.send(Job::Copy(text.to_string()));
+        }
+    }
+
+    /// A user-visible copy (`/copy`, the copy keys): answered by a [`ClipboardReply::Copied`]. Never blocks.
+    pub fn copy_checked(&self, text: &str) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.send(Job::CopyChecked(text.to_string()));
         }
     }
 
@@ -193,4 +237,9 @@ impl Drop for ClipboardService {
             let _ = tx.send(Job::Stop);
         }
     }
+}
+
+/// The bytes of a [`ClipboardReply::Image`] (standard base64).
+pub fn image_bytes(data: &str) -> Option<Vec<u8>> {
+    B64.decode(data).ok()
 }

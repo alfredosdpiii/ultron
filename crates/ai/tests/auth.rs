@@ -569,3 +569,28 @@ async fn ai_auth_images_resolve_through_the_credential_store() {
     .await;
     assert_eq!(explicit.api_key.as_deref(), Some("explicit"));
 }
+
+#[tokio::test]
+async fn ai_auth_openrouter_oauth_credential_gives_its_key() {
+    // auth/oauth/openrouter.ts: the login stores a permanent key as an OAuth credential; requests use its access.
+    use ai::images::ImagesAuthOverrides;
+    let store = Arc::new(InMemoryCredentialStore::new());
+    let resolver = ai::auth::StoredProviderAuth {
+        auth: builtin_provider_auth_with_clock("openrouter", Arc::new(Mock::default()), || NOW as i64).unwrap(),
+        credentials: store.clone(),
+        ctx: Arc::new(FixedContext {
+            env: HashMap::new(),
+            files: Vec::new(),
+        }),
+    };
+    let credential = json!({"type": "oauth", "access": "or-key", "refresh": "", "expires": 9_007_199_254_740_991_i64});
+    store
+        .modify("openrouter", set(Credential::from_json(&credential).unwrap()), None)
+        .await
+        .unwrap();
+    let resolved = ai::images::ImagesAuth::resolve(&resolver, "openrouter", &ImagesAuthOverrides::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(resolved.api_key.as_deref(), Some("or-key"));
+}

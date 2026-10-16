@@ -3,8 +3,9 @@
 //! the session. Concurrent callers share one connection attempt. The tools, resources and instructions are what
 //! the server listed at the last connect or change notification.
 //!
-//! OAuth sign-in is not ported: an HTTP server that answers 401 while it authenticates with OAuth (or a `/login`
-//! provider) reads as `needs-auth`, as in TypeScript before signing in.
+//! An OAuth server sends the stored access token (`mcp-auth.json`, crate::oauth) and refreshes it after a 401; when
+//! no token works it reads as `needs-auth` until `/mcp login` or `ultron mcp login` signs in (crate::oauth::signin).
+//! A server with `auth.provider` sends that `/login` provider's current key.
 
 use crate::client::{Client, ClientOptions, ConnState, RequestOptions};
 use crate::config::ServerEntry;
@@ -134,6 +135,8 @@ struct Data {
     state: ServerState,
     error: Option<String>,
     tools: Vec<Value>,
+    /// Whether the server declared the resources capability at the last connect (`hasResources`).
+    has_resources: bool,
     resources: Vec<Value>,
     resource_templates: Vec<Value>,
     instructions: Option<String>,
@@ -188,6 +191,7 @@ impl Connection {
                 state: ServerState::Connecting,
                 error: None,
                 tools: Vec::new(),
+                has_resources: false,
                 resources: Vec::new(),
                 resource_templates: Vec::new(),
                 instructions: None,
@@ -270,6 +274,14 @@ impl Connection {
     pub fn has_listed_resources(&self) -> bool {
         let data = lock(&self.data);
         !data.resources.is_empty() || !data.resource_templates.is_empty()
+    }
+
+    /// `hasResources` with the lists of the last connect or change, without MCP App resources: how many resources
+    /// and URI templates a server offering resources listed (`None` without the capability).
+    pub fn listed_resource_counts(&self) -> Option<(usize, usize)> {
+        let data = lock(&self.data);
+        data.has_resources
+            .then(|| (data.resources.len(), data.resource_templates.len()))
     }
 
     /// The per-request timeout: `timeout` seconds of the config, default 60.
@@ -469,6 +481,7 @@ impl Connection {
             }
             data.client = Some((generation, client.clone()));
             data.tools = tools;
+            data.has_resources = has_resources;
             data.resources = resources;
             data.resource_templates = templates;
             data.instructions = client

@@ -334,6 +334,25 @@ fn cli_rpc_watch_events_decode_as_lane_events() {
             json!({"type": "summarization_retry_scheduled", "attempt": 1, "maxAttempts": 3, "delayMs": 2000, "errorMessage": "Overloaded"})
         ]
     );
+    // A run's retry is rpc-events.ts `auto_retry_start` / `auto_retry_end`; a success has no `finalError`.
+    let scheduled = json!({"type": "retry_scheduled", "lane": "main", "runId": "r1", "step": 0, "attempt": 1,
+        "maxAttempts": 3, "delayMs": 2000, "errorMessage": "Overloaded"});
+    let ended = |success: bool, error: Value| json!({"type": "retry_end", "lane": "main", "runId": "r1", "success": success, "attempt": 2, "finalError": error});
+    let translate = |event: &Value| RpcEventTranslator::default().translate(LaneEvent::from_watch(event).unwrap());
+    assert_eq!(
+        translate(&scheduled),
+        [
+            json!({"type": "auto_retry_start", "attempt": 1, "maxAttempts": 3, "delayMs": 2000, "errorMessage": "Overloaded"})
+        ]
+    );
+    assert_eq!(
+        translate(&ended(true, Value::Null)),
+        [json!({"type": "auto_retry_end", "success": true, "attempt": 2})]
+    );
+    assert_eq!(
+        translate(&ended(false, json!("Overloaded"))),
+        [json!({"type": "auto_retry_end", "success": false, "attempt": 2, "finalError": "Overloaded"})]
+    );
     // Only a failed run carries its error; an aborted one ends without.
     let failed = json!({"type": "run_end", "status": "failed", "error": {"message": "boom"}, "endedAt": 5});
     let aborted = json!({"type": "run_end", "status": "aborted", "endedAt": 6});

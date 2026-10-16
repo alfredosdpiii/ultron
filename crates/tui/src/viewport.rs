@@ -65,6 +65,11 @@ pub struct ViewportRenderer {
     painted: bool,
     force_repaint: bool,
     pub show_hardware_cursor: bool,
+    /// `setClearOnShrink`: a viewport that shrinks below the most rows it has drawn since its last full paint is
+    /// painted whole (TUI main-screen `clearOnShrink`) instead of diffed.
+    pub clear_on_shrink: bool,
+    /// The most viewport rows painted since the last full paint (`maxLinesRendered`).
+    max_rows: usize,
     /// Viewport rows written over the renderer's lifetime (diff efficiency, tests).
     pub rows_written: usize,
     pub history_rows_written: usize,
@@ -132,8 +137,9 @@ impl ViewportRenderer {
         let geometry_changed = self.painted && (width != self.width || height != self.height);
         let replay = history.is_some_and(|h| h.kind == HistoryKind::Replay);
 
+        let shrunk = self.painted && self.clear_on_shrink && rows.len() < self.max_rows;
         let mut out = String::from(SYNC_BEGIN);
-        if !self.painted || history.is_some() || geometry_changed || self.force_repaint {
+        if !self.painted || history.is_some() || geometry_changed || self.force_repaint || shrunk {
             if replay {
                 out.push_str("\x1b[H\x1b[2J\x1b[3J");
             } else if self.painted {
@@ -155,7 +161,9 @@ impl ViewportRenderer {
             self.rows_written += rows.len();
             self.cursor_row = rows.len().saturating_sub(1);
             self.drawn = rows.len().max(1);
+            self.max_rows = rows.len();
         } else {
+            self.max_rows = self.max_rows.max(rows.len());
             for (i, row) in rows.iter().enumerate() {
                 if self.prev.get(i) != Some(row) {
                     self.goto(&mut out, i);

@@ -244,14 +244,25 @@ pub fn resolve_theme_colors(json: &ThemeJson) -> Result<Vec<(String, Resolved)>,
         .collect()
 }
 
+/// The colors of a theme: one ANSI sequence per foreground and background token.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Palette {
+    mode: ColorMode,
+    fg: Vec<String>,
+    bg: Vec<String>,
+}
+
 /// A resolved palette: one ANSI sequence per foreground and background token.
+///
+/// TypeScript keeps the active theme in one module global that every component reads when it renders, so a theme
+/// change (`/settings`, a preview while browsing, the terminal turning light) recolors everything at once. Here the
+/// views share one `Rc<Theme>`; [`Theme::adopt`] swaps its palette in place, which every holder of the `Rc` sees on
+/// its next render.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Theme {
     pub name: Option<String>,
     pub source_path: Option<String>,
-    mode: ColorMode,
-    fg: Vec<String>,
-    bg: Vec<String>,
+    palette: std::cell::RefCell<Palette>,
 }
 
 impl Theme {
@@ -281,27 +292,32 @@ impl Theme {
         Ok(Self {
             name: None,
             source_path: None,
-            mode,
-            fg,
-            bg,
+            palette: std::cell::RefCell::new(Palette { mode, fg, bg }),
         })
     }
 
+    /// Take `other`'s colors (`setTheme` on the global theme): every view sharing this theme draws with them from its
+    /// next render on. The name and source path stay this theme's.
+    pub fn adopt(&self, other: &Theme) {
+        let palette = other.palette.borrow().clone();
+        *self.palette.borrow_mut() = palette;
+    }
+
     /// `getFgAnsi`.
-    pub fn fg_ansi(&self, color: &str) -> Result<&str, String> {
+    pub fn fg_ansi(&self, color: &str) -> Result<String, String> {
         THEME_COLORS
             .iter()
             .position(|c| *c == color)
-            .map(|i| self.fg[i].as_str())
+            .map(|i| self.palette.borrow().fg[i].clone())
             .ok_or_else(|| format!("Unknown theme color: {color}"))
     }
 
     /// `getBgAnsi`.
-    pub fn bg_ansi(&self, color: &str) -> Result<&str, String> {
+    pub fn bg_ansi(&self, color: &str) -> Result<String, String> {
         THEME_BGS
             .iter()
             .position(|c| *c == color)
-            .map(|i| self.bg[i].as_str())
+            .map(|i| self.palette.borrow().bg[i].clone())
             .ok_or_else(|| format!("Unknown theme background color: {color}"))
     }
 
@@ -316,7 +332,7 @@ impl Theme {
     }
 
     pub fn color_mode(&self) -> ColorMode {
-        self.mode
+        self.palette.borrow().mode
     }
 
     /// `getThinkingBorderColor(level)(text)`; unknown levels use `thinkingOff`.
@@ -332,13 +348,13 @@ impl Theme {
         };
         format!(
             "{}{text}\x1b[39m",
-            self.fg[THEME_COLORS.iter().position(|c| *c == token).unwrap_or(0)]
+            self.palette.borrow().fg[THEME_COLORS.iter().position(|c| *c == token).unwrap_or(0)]
         )
     }
 
     /// `getBashModeBorderColor()(text)`.
     pub fn bash_mode_border(&self, text: &str) -> String {
-        format!("{}{text}\x1b[39m", self.fg[THEME_COLORS.len() - 1])
+        format!("{}{text}\x1b[39m", self.palette.borrow().fg[THEME_COLORS.len() - 1])
     }
 }
 

@@ -13,7 +13,8 @@
 //!   finding's `kind`, the earlier findings' ids, and the whole result for the dry-run file. A result that
 //!   `plan::EngineResult` cannot read fails the review like an engine error.
 //! - Without an [`EnvironmentPreparer`] no environment is prepared (the TypeScript always tried); the review then
-//!   falls back to a local checkout, as it did when nothing could be prepared.
+//!   falls back to a local checkout, as it did when nothing could be prepared. The command line's daemon always
+//!   supplies one (`crate::prepare_env::RunnerPreparer`).
 //! - `mentions` checks the character after the login by hand (the Rust regex has no lookahead).
 
 use std::collections::{HashMap, HashSet};

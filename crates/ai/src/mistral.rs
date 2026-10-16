@@ -462,9 +462,12 @@ async fn drive(
         .clone()
         .filter(|k| !k.is_empty())
         .ok_or_else(|| MistralError::plain(format!("No API key for provider: {}", model.provider)))?;
-    let normalizer = RefCell::new(IdNormalizer::default());
-    let normalize = |id: &str, _: &AssistantMessage| normalizer.borrow_mut().normalize(id);
-    let messages = transform_messages(&context.messages, model, Some(&normalize), run.output.timestamp);
+    // Scoped so the future stays `Send`: nothing borrowed from the cell lives across an await.
+    let messages = {
+        let normalizer = RefCell::new(IdNormalizer::default());
+        let normalize = |id: &str, _: &AssistantMessage| normalizer.borrow_mut().normalize(id);
+        transform_messages(&context.messages, model, Some(&normalize), run.output.timestamp)
+    };
     let mut payload = build_payload(model, context, &messages, options).map_err(MistralError::plain)?;
     if let Some(next) = base.on_payload.as_ref().and_then(|hook| hook(&payload, model)) {
         payload = next;

@@ -81,6 +81,8 @@ pub struct WorkerOptions {
     pub no_naming: bool,
     /// `noExtensions` (Pi `--no-extensions`): no extensions, and no MCP servers.
     pub no_extensions: bool,
+    /// `systemPrompt`, `extensionPaths`, `noSkills`, `noContextFiles`.
+    pub session_flags: session_core::session_flags::SessionFlags,
 }
 
 pub fn parse_options(argument: &str) -> Result<WorkerOptions, String> {
@@ -108,12 +110,15 @@ pub fn parse_options(argument: &str) -> Result<WorkerOptions, String> {
             model: text("model"),
             api_key: std::env::var(API_KEY_ENV).ok(),
             thinking: text("thinking"),
-            // The worker protocol carries no `--models` (as TypeScript's); the settings' `enabledModels` apply.
-            models: None,
+            // `--models` (a Rust addition to the worker options): else the settings' `enabledModels` apply.
+            models: options["models"]
+                .as_array()
+                .map(|m| m.iter().filter_map(Value::as_str).map(str::to_string).collect()),
         },
         mode: text("extensionMode").unwrap_or_else(|| "interactive".into()),
         no_naming: options["noNaming"] == true,
         no_extensions: options["noExtensions"] == true,
+        session_flags: session_core::session_flags::SessionFlags::from_worker_options(&options),
     })
 }
 
@@ -138,6 +143,8 @@ struct Shared {
     stuck_after: Option<Duration>,
     /// The ordered operation thread.
     jobs: Mutex<mpsc::Sender<Box<dyn FnOnce() + Send>>>,
+    /// Operations in progress by request id: their scope and call (`activeRequests`).
+    active: Mutex<HashMap<String, (Value, String, String)>>,
 }
 
 impl Shared {
@@ -276,6 +283,36 @@ fn call_core(core: &Sender<Input>, op: Op) -> ServiceResult {
     session_core::core::call(core, op).map_err(|message| ServiceError::coded("session_operation_failed", message))
 }
 
+/// The agent controller's `steer`, `followUp` and `nextRun` (agent-controller-provider.ts `queue`): queue the
+/// request's message and images as `kind`, answered as an `AgentQueueResponse` (`{accepted, entryId, error}`); a
+/// refused message is an answer, not a failure of the call.
+fn queue(core: &Sender<Input>, kind: QueueKind, args: &[Value]) -> ServiceResult {
+    let request = request(args);
+    let op = Op::Enqueue {
+        kind,
+        message: request["message"].as_str().unwrap_or_default().to_string(),
+        images: request["images"].as_array().cloned().unwrap_or_default(),
+        entry_id: None,
+    };
+    Ok(Some(queue_response(session_core::core::call(core, op))))
+}
+
+/// An enqueue's answer as the agent controller reports it (`toAgentError` codes: an empty message is
+/// `invalid_message`, a closed session `closed`).
+pub fn queue_response(result: session_core::core::OpResult) -> Value {
+    match result {
+        Ok(entry) => json!({"accepted": true, "entryId": entry.unwrap_or(Value::Null), "error": null}),
+        Err(message) => {
+            let code = match message.as_str() {
+                session_core::core::EMPTY_QUEUED => "invalid_message",
+                "Session is closed" => "closed",
+                _ => "operation_failed",
+            };
+            json!({"accepted": false, "entryId": null, "error": {"code": code, "message": message}})
+        }
+    }
+}
+
 /// The first argument of a call as a request object.
 fn request(args: &[Value]) -> &Value {
     args.first().unwrap_or(&Value::Null)
@@ -295,6 +332,10 @@ struct Watch {
 struct Extensions {
     ui: Arc<crate::extension_ui::ExtensionUiBridge>,
     mcp: Arc<OnceLock<Arc<mcp::gateway::Gateway>>>,
+    /// The worker's settings side of `ultron.session-control` (crate::session_control).
+    control: Arc<crate::session_control::ControlContext>,
+    /// This worker's environment (`models.refresh` reads the catalogs and credentials through it).
+    env: RunEnv,
 }
 
 fn services(
@@ -315,7 +356,9 @@ fn services(
         core.clone(),
         core.clone(),
     );
+    let next_core = core.clone();
     let prompt_lifecycle = lifecycle.clone();
+    let (resume_core, resume_progress) = (core.clone(), watch.progress.clone());
     let agent = Service::new("pi.agent-controller")
         .method("cancelQueued", move |args| {
             let entry_id = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
@@ -325,18 +368,7 @@ fn services(
             let instructions = request(&args)["customInstructions"].as_str().map(str::to_string);
             call_core(&compact_core, Op::Compact { instructions })
         })
-        .method("followUp", move |args| {
-            let message = request(&args)["message"].as_str().unwrap_or_default().to_string();
-            call_core(
-                &follow_core,
-                Op::Enqueue {
-                    kind: QueueKind::FollowUp,
-                    message,
-                    images: Vec::new(),
-                    entry_id: None,
-                },
-            )
-        })
+        .method("followUp", move |args| queue(&follow_core, QueueKind::FollowUp, &args))
         .method("navigate", move |args| {
             // `{targetId, summarize, label, customInstructions}`; a long operation (a summary is a model call).
             let request = request(&args);
@@ -350,7 +382,7 @@ fn services(
                 },
             )
         })
-        .unported("nextRun")
+        .method("nextRun", move |args| queue(&next_core, QueueKind::NextRun, &args))
         .method("prompt", move |args| {
             let message = request(&args)["message"]
                 .as_str()
@@ -369,19 +401,19 @@ fn services(
             result
         })
         .method("requestAbort", move |_| call_core(&abort_core, Op::Abort))
-        .unported("resume")
-        .method("steer", move |args| {
-            let message = request(&args)["message"].as_str().unwrap_or_default().to_string();
-            call_core(
-                &steer_core,
-                Op::Enqueue {
-                    kind: QueueKind::Steer,
-                    message,
-                    images: Vec::new(),
-                    entry_id: None,
-                },
-            )
-        });
+        .method("resume", move |_| {
+            // `lane.resume`: continue what the session left (the interrupted run, else the first queued message)
+            // and answer when that run ends.
+            let recovered = call_core(&resume_core, Op::Recover)?.unwrap_or_default();
+            let response = crate::session_control::resume_response(&recovered, resume_progress.run());
+            if let Some(run) = response["operationId"].as_str() {
+                while resume_progress.run().as_deref() == Some(run) {
+                    std::thread::sleep(Duration::from_millis(25));
+                }
+            }
+            Ok(Some(response))
+        })
+        .method("steer", move |args| queue(&steer_core, QueueKind::Steer, &args));
     let plugins = Service::new("pi.session-plugins").method("reload", |_| Ok(None));
     // The extension processes' commands (session_core::extension_commands) and `/mcp`, the built-in MCP extension's
     // command (extensions/mcp): `/mcp` runs here, its dialogs and notices go to the client through the extension UI.
@@ -427,7 +459,7 @@ fn services(
         core.clone(),
     );
     let commands_core = core.clone();
-    let mut control = Service::new("ultron.session-control")
+    let control = Service::new("ultron.session-control")
         .method("abortBash", move |_| call_core(&abort_bash_core, Op::AbortBash))
         .method("bash", move |args| {
             let command = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
@@ -473,22 +505,12 @@ fn services(
                 session_core::extension_commands::session_command_infos(commands).into(),
             ))
         });
-    for name in [
-        "beforeFork",
-        "debugInfo",
-        "getSettings",
-        "readSettings",
-        "reloadAuth",
-        "setAutoCompaction",
-        "setAutoRetry",
-        "setFollowUpMode",
-        "setLabel",
-        "setProjectTrust",
-        "setSetting",
-        "setSteeringMode",
-    ] {
-        control = control.unported(name);
-    }
+    let settings_core = core.clone();
+    let control = crate::session_control::members(
+        control,
+        Arc::new(move |op| session_core::core::call(&settings_core, op)),
+        extensions.control.clone(),
+    );
     let (poll_ui, respond_ui) = (extensions.ui.clone(), extensions.ui);
     let extension_ui = Service::new("ultron.extension-ui")
         .method("poll", move |args| {
@@ -502,14 +524,42 @@ fn services(
             }
             Ok(None)
         });
-    let (cycle_core, levels_core, select_core, thinking_core) = (core.clone(), core.clone(), core.clone(), core);
-    let (select_state, thinking_state) = (models_state.clone(), models_state.clone());
+    let (cycle_core, levels_core, select_core, thinking_core, models_core) =
+        (core.clone(), core.clone(), core.clone(), core.clone(), core);
+    let (select_state, thinking_state, refresh_state) =
+        (models_state.clone(), models_state.clone(), models_state.clone());
+    let (refresh_core, refresh_env) = (models_core, extensions.env.clone());
     let models = Service::new("pi.models")
         .method("cycleThinking", move |_| call_core(&cycle_core, Op::CycleThinking))
         .method("getThinkingLevels", move |_| {
             call_core(&levels_core, Op::ThinkingLevels)
         })
-        .unported("refresh")
+        .method("refresh", move |_| {
+            let session = call_core(&refresh_core, Op::State)?.unwrap_or_default();
+            let env = refresh_env.clone();
+            crate::session_control::refresh_models(
+                &refresh_state,
+                || {
+                    // From the network unless offline (`PI_OFFLINE`), as the model runtime's refresh.
+                    if (env.var)("PI_OFFLINE").is_some() {
+                        return Ok(Vec::new());
+                    }
+                    session_core::model_refresh::refresh_catalogs(
+                        &env,
+                        ai::model_refresh::DEFAULT_CATALOG_BASE_URL,
+                        &ai::model_refresh::management_user_agent(&crate::session_control::version()),
+                        false,
+                    )
+                },
+                || {
+                    session_core::lane::available_models(&refresh_env)
+                        .iter()
+                        .filter_map(|m| serde_json::to_value(m).ok())
+                        .collect()
+                },
+                &session,
+            )
+        })
         .method("select", move |args| {
             let target = request(&args);
             let provider = target["provider"].as_str().unwrap_or_default().to_string();
@@ -638,6 +688,8 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     )
     .map_err(|e| fail(e.to_string()))?;
     let env = RunEnv::process(PathBuf::from(metadata["cwd"].as_str().unwrap_or_default()), docs);
+    let run_env = env.clone();
+    let control_context = crate::session_control::context(&env, &path);
     let session_metadata = session_journal::repo::read_metadata(&path)
         .ok_or_else(|| fail(format!("Not a session file: {}", path.display())))?;
     let session_root = PathBuf::from(options.session_dir.clone());
@@ -663,6 +715,8 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
                 mcp::gateway::CommandUi::notify(&crate::extension_ui::BridgeUi(notice_ui.clone()), message, level);
             })),
             no_extensions: options.no_extensions,
+            extension_ui: Some(ui.clone() as Arc<dyn session_core::extension_host::ExtensionUi>),
+            session: options.session_flags.clone(),
             ..Services::default()
         },
         auto_name: !options.no_naming,
@@ -732,6 +786,8 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         Extensions {
             ui: ui.clone(),
             mcp: gateway_slot,
+            control: control_context,
+            env: run_env,
         },
     ));
     let (jobs, queue) = mpsc::channel::<Box<dyn FnOnce() + Send>>();
@@ -759,6 +815,7 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         health: health_state,
         stuck_after,
         jobs: Mutex::new(jobs),
+        active: Mutex::new(HashMap::new()),
     });
     let _ = shared_slot.set(Arc::downgrade(&shared));
     let retiring = Arc::downgrade(&shared);
@@ -816,6 +873,8 @@ fn handle_input(shared: &Arc<Shared>, message: &Value, discovery_grace: Duration
         Some("server_disconnected") => {
             let server = message["serverConnectionId"].as_str().unwrap_or_default().to_string();
             shared.remove_subscriptions(|scope| scope["serverConnectionId"] == json!(server));
+            // A crashed server's calls stop waiting; lane operations they started are not aborted.
+            cancel_requests(shared, |_, scope| scope["serverConnectionId"] == json!(server));
             lifecycle.server_disconnected(&server);
         }
         Some("message") => {
@@ -838,7 +897,10 @@ fn handle_input(shared: &Arc<Shared>, message: &Value, discovery_grace: Duration
                 Some("release") => release(shared, &lifecycle, command),
                 Some("session_demand") => demand(shared, &lifecycle, command),
                 Some("operation") => operation(shared, &lifecycle, command.clone()),
-                // Cancelling a call never aborts the run it started (AgentController): nothing to stop here.
+                Some("operation_cancel") => {
+                    let request = command["requestId"].as_str().unwrap_or_default();
+                    cancel_requests(shared, |id, scope| id == request && *scope == command["scope"]);
+                }
                 _ => {}
             }
         }
@@ -919,6 +981,13 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
         .is_some_and(|c| LONG_OPERATIONS.contains(&(c.service_id.as_str(), c.member.as_str())));
     let jobs = shared.jobs.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let shared = shared.clone();
+    let request_id = request["requestId"].as_str().unwrap_or_default().to_string();
+    if let Some(call) = &call {
+        shared.active.lock().unwrap_or_else(|e| e.into_inner()).insert(
+            request_id.clone(),
+            (scope.clone(), call.service_id.clone(), call.member.clone()),
+        );
+    }
     let execute = move || {
         let result: ServiceResult = match (hold, call) {
             (Err(message), _) => Err(ServiceError::internal(message)),
@@ -965,6 +1034,11 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
                 response
             }
         };
+        shared
+            .active
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&request_id);
         let event = json!({"type": "operation_response", "token": shared.token, "sessionKey": shared.session_key,
             "response": std::mem::take(&mut response)});
         if shared.send(event, None).is_err() {
@@ -975,6 +1049,26 @@ fn operation(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, request: Value) {
         std::thread::spawn(execute);
     } else {
         let _ = jobs.send(Box::new(execute));
+    }
+}
+
+/// Cancel the context of the operations `matches` selects (`onOperationCancel`, a departed server's calls). Only a
+/// user's `!` command observes it (its shell is aborted, as TypeScript aborts the call's bash); every other call runs
+/// on, and a run a call started is never aborted (AgentController). The server no longer waits for any of them.
+fn cancel_requests(shared: &Arc<Shared>, matches: impl Fn(&str, &Value) -> bool) {
+    let bash = shared
+        .active
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .any(|(id, (scope, service, member))| {
+            matches(id, scope) && service == "ultron.session-control" && member == "bash"
+        });
+    if bash {
+        let core = shared.core.clone();
+        std::thread::spawn(move || {
+            let _ = session_core::core::call(&core, Op::AbortBash);
+        });
     }
 }
 

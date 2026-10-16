@@ -1,0 +1,2531 @@
+{
+	"generator": "crates/server/fixtures/generate-radius-relay.mjs",
+	"serverId": "00000000-0000-4000-8000-000000000001",
+	"scenarios": [
+		{
+			"name": "host/bridges-multiplexed-clients",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "secret"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"binary": "010100000000000040008000000000000002010203"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-0000000000a3\",\"code\":1000}"
+				},
+				{
+					"binary": "0101000000000000400080000000000000a3"
+				},
+				{
+					"serverSend": [
+						0,
+						"040506"
+					]
+				},
+				{
+					"serverSend": [
+						1,
+						"ff"
+					]
+				},
+				{
+					"sync": true
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"serverSend": [
+						0,
+						"07"
+					]
+				},
+				{
+					"serverClose": [
+						1,
+						"0809"
+					]
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer secret",
+					"sent": [
+						{
+							"binary": "010100000000000040008000000000000002040506"
+						},
+						{
+							"binary": "0101000000000000400080000000000000a3ff"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						},
+						{
+							"binary": "0101000000000000400080000000000000a30809"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-0000000000a3\",\"code\":1000}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [
+				0,
+				1
+			],
+			"events": [
+				{
+					"connection": 0,
+					"data": "010203"
+				},
+				{
+					"connection": 1,
+					"data": ""
+				},
+				{
+					"connection": 0,
+					"close": true
+				},
+				{
+					"sendError": "Radius relay connection is closed"
+				}
+			]
+		},
+		{
+			"name": "host/ping-pong-and-ignored-pong",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"pong\"}"
+				},
+				{
+					"sync": true
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/data-for-unknown-connection",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"binary": "010100000000000040008000000000000002aa"
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":1000}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/refused-connection",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				}
+			],
+			"refuse": true,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"binary": "010100000000000040008000000000000002bb"
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":1012}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":1000}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [
+				0
+			],
+			"events": []
+		},
+		{
+			"name": "host/server-closes-without-final-chunk",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"serverClose": [
+						0,
+						null
+					]
+				},
+				{
+					"serverClose": [
+						0,
+						null
+					]
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":1000}"
+						},
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [
+				0
+			],
+			"events": []
+		},
+		{
+			"name": "host/protocol-error-invalid-json",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{nope"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-array",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "[1]"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-version-2",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":2,\"type\":\"ping\"}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Unsupported Radius relay control version"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Unsupported Radius relay control version",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Unsupported Radius relay control version"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-unknown-type",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"hello\"}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-bad-connection-id",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-1000-8000-000000000002\"}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-uppercase-connection-id",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-00000000000A\"}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-code-out-of-range",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":999}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-code-not-integer",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\",\"code\":1000.5}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay control message"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay control message",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay control message"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-short-binary",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"binary": "0101"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay data frame"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay data frame",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay data frame"
+				}
+			]
+		},
+		{
+			"name": "host/protocol-error-binary-wrong-version",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"binary": "02010000000000004000800000000000000200"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Invalid Radius relay data frame"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Invalid Radius relay data frame",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Invalid Radius relay data frame"
+				}
+			]
+		},
+		{
+			"name": "host/reused-connection-id",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": {
+						"code": 4000,
+						"reason": "Radius relay protocol error"
+					}
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius relay reused a connection ID"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Radius relay reused a connection ID",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Radius relay reused a connection ID"
+				}
+			]
+		},
+		{
+			"name": "host/remote-close-normal",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"close": [
+						1000,
+						"bye"
+					]
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius relay host disconnected"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Radius relay host disconnected",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"close": true
+				}
+			]
+		},
+		{
+			"name": "host/remote-close-abnormal-with-reason",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"close": [
+						4003,
+						"evicted"
+					]
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius relay host closed (4003: evicted)"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Radius relay host closed (4003: evicted)",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Radius relay host closed (4003: evicted)"
+				}
+			]
+		},
+		{
+			"name": "host/remote-close-without-reason",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"close": [
+						1011,
+						""
+					]
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius relay host closed (1011)"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Radius relay host closed (1011)",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/connection-dropped",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "t"
+				},
+				{
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "{\"version\":1,\"type\":\"connection_open\",\"connection_id\":\"00000000-0000-4000-8000-000000000002\"}"
+				},
+				{
+					"drop": true
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius WebSocket connection failed"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected",
+				"Radius: reconnecting: Radius WebSocket connection failed",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [
+				0
+			],
+			"events": [
+				{
+					"connection": 0,
+					"error": "Radius WebSocket connection failed"
+				}
+			]
+		},
+		{
+			"name": "host/backoff-doubles-then-resets",
+			"kind": "host",
+			"auth": [
+				{
+					"token": "a"
+				},
+				{
+					"token": "b"
+				},
+				{
+					"token": "c"
+				},
+				{
+					"token": "d"
+				},
+				{
+					"token": "e"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {
+						"fail": true
+					}
+				},
+				{
+					"connect": {
+						"fail": true
+					}
+				},
+				{
+					"connect": {
+						"fail": true
+					}
+				},
+				{
+					"connect": {}
+				},
+				{
+					"close": [
+						1001,
+						"going"
+					]
+				},
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer a",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer b",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer c",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer d",
+					"sent": [],
+					"closed": null
+				},
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer e",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius WebSocket connection failed"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius WebSocket connection failed"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius WebSocket connection failed"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				},
+				{
+					"status": "retrying",
+					"error": "Radius relay host closed (1001: going)"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: reconnecting: Radius WebSocket connection failed",
+				"Radius: connected",
+				"Radius: reconnecting: Radius relay host closed (1001: going)",
+				"Radius: connected"
+			],
+			"delays": [
+				1000,
+				2000,
+				4000,
+				1000
+			],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/missing-auth-then-token",
+			"kind": "host",
+			"auth": [
+				{
+					"none": true
+				},
+				{
+					"none": true
+				},
+				{
+					"token": "late"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer late",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "not_authenticated"
+				},
+				{
+					"status": "not_authenticated"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: not connected; local only",
+				"Radius: connected"
+			],
+			"delays": [
+				30000,
+				30000
+			],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/auth-error-retries",
+			"kind": "host",
+			"auth": [
+				{
+					"error": "Radius authentication token must not be empty"
+				},
+				{
+					"token": "ok"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer ok",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "retrying",
+					"error": "Radius authentication token must not be empty"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: reconnecting: Radius authentication token must not be empty",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/unsupported-gateway-protocol",
+			"kind": "host",
+			"auth": [
+				{
+					"gateway": "ftp://radius.example.test",
+					"token": "t"
+				},
+				{
+					"gateway": "http://127.0.0.1:9",
+					"token": "t2"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "ws:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t2",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "retrying",
+					"error": "Unsupported Radius gateway protocol: ftp:"
+				},
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: reconnecting: Unsupported Radius gateway protocol: ftp:",
+				"Radius: connected"
+			],
+			"delays": [
+				1000
+			],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "host/gateway-with-path",
+			"kind": "host",
+			"auth": [
+				{
+					"gateway": "https://radius.example.test/base/",
+					"token": "t"
+				}
+			],
+			"refuse": false,
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"sync": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.host.v1",
+					"authorization": "Bearer t",
+					"sent": [
+						{
+							"text": "{\"version\":1,\"type\":\"pong\"}"
+						}
+					],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi server stopped"
+					}
+				}
+			],
+			"statuses": [
+				{
+					"status": "connecting"
+				},
+				{
+					"status": "connected"
+				}
+			],
+			"statusLines": [
+				"Radius: connected"
+			],
+			"delays": [],
+			"accepted": [],
+			"events": []
+		},
+		{
+			"name": "client/data-both-ways-then-remote-close",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"clientSend": "010203"
+				},
+				{
+					"binary": "040506"
+				},
+				{
+					"binary": ""
+				},
+				{
+					"close": [
+						1000,
+						""
+					]
+				},
+				{
+					"clientSend": "07"
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [
+						{
+							"binary": "010203"
+						}
+					],
+					"closed": null
+				}
+			],
+			"openError": null,
+			"events": [
+				{
+					"data": "040506"
+				},
+				{
+					"data": ""
+				},
+				{
+					"close": true
+				},
+				{
+					"sendError": "Radius relay client is closed"
+				}
+			]
+		},
+		{
+			"name": "client/abnormal-closure-is-an-error",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"drop": true
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [],
+					"closed": null
+				}
+			],
+			"openError": null,
+			"events": [
+				{
+					"error": "Radius WebSocket connection failed"
+				}
+			]
+		},
+		{
+			"name": "client/text-message-is-a-transport-error",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"text": "hello"
+				},
+				{
+					"binary": "01"
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [],
+					"closed": {
+						"code": 4001,
+						"reason": "Radius relay transport error"
+					}
+				}
+			],
+			"openError": null,
+			"events": [
+				{
+					"error": "Radius relay client received a non-binary message"
+				}
+			]
+		},
+		{
+			"name": "client/local-close",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"clientClose": true
+				},
+				{
+					"clientSend": "01"
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [],
+					"closed": {
+						"code": 1000,
+						"reason": "Pi client closed"
+					}
+				}
+			],
+			"openError": null,
+			"events": [
+				{
+					"sendError": "Radius relay client is closed"
+				}
+			]
+		},
+		{
+			"name": "client/handshake-failure",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {
+						"fail": true
+					}
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [],
+					"closed": null
+				}
+			],
+			"openError": "Radius WebSocket connection failed",
+			"events": []
+		},
+		{
+			"name": "client/remote-close-with-code",
+			"kind": "client",
+			"steps": [
+				{
+					"connect": {}
+				},
+				{
+					"close": [
+						4004,
+						"gone"
+					]
+				}
+			],
+			"sockets": [
+				{
+					"scheme": "wss:",
+					"path": "/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+					"protocol": "pi-session-relay.client.v1",
+					"authorization": "Bearer secret",
+					"sent": [],
+					"closed": null
+				}
+			],
+			"openError": null,
+			"events": [
+				{
+					"close": true
+				}
+			]
+		},
+		{
+			"name": "reconnect/retries-then-restores-session",
+			"kind": "reconnect",
+			"attached": "demo-1",
+			"reconnects": [
+				"temporary failure",
+				"ok"
+			],
+			"reattaches": [],
+			"steps": [
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"reconnect",
+				"reattach demo-1",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000,
+				2000
+			]
+		},
+		{
+			"name": "reconnect/backoff-caps-at-thirty-seconds",
+			"kind": "reconnect",
+			"attached": "s",
+			"reconnects": [
+				"e1",
+				"e2",
+				"e3",
+				"e4",
+				"e5",
+				"e6",
+				"ok"
+			],
+			"reattaches": [],
+			"steps": [
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"reconnect",
+				"reconnect",
+				"reconnect",
+				"reconnect",
+				"reconnect",
+				"reconnect",
+				"reattach s",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000,
+				2000,
+				4000,
+				8000,
+				16000,
+				30000,
+				30000
+			]
+		},
+		{
+			"name": "reconnect/reattach-failure-disconnects-and-retries",
+			"kind": "reconnect",
+			"attached": "s",
+			"reconnects": [
+				"ok",
+				"ok"
+			],
+			"reattaches": [
+				"session gone",
+				"ok"
+			],
+			"steps": [
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"reattach s",
+				"disconnect: session gone",
+				"reconnect",
+				"reattach s",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000,
+				2000
+			]
+		},
+		{
+			"name": "reconnect/follows-the-latest-attachment",
+			"kind": "reconnect",
+			"attached": "a",
+			"reconnects": [
+				"ok"
+			],
+			"reattaches": [],
+			"steps": [
+				{
+					"attach": "b"
+				},
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"reattach b",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000
+			]
+		},
+		{
+			"name": "reconnect/detach-while-connected-forgets-the-session",
+			"kind": "reconnect",
+			"attached": "a",
+			"reconnects": [
+				"ok"
+			],
+			"reattaches": [],
+			"steps": [
+				{
+					"attach": null
+				},
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000
+			]
+		},
+		{
+			"name": "reconnect/no-session",
+			"kind": "reconnect",
+			"attached": null,
+			"reconnects": [
+				"ok"
+			],
+			"reattaches": [],
+			"steps": [
+				"disconnect"
+			],
+			"log": [
+				"disconnect: lost",
+				"reconnect",
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": [
+				1000
+			]
+		},
+		{
+			"name": "reconnect/dispose-disconnects-a-connected-client",
+			"kind": "reconnect",
+			"attached": "a",
+			"reconnects": [],
+			"reattaches": [],
+			"steps": [
+				"dispose"
+			],
+			"log": [
+				"disconnect: Radius reconnect stopped"
+			],
+			"delays": []
+		}
+	]
+}

@@ -293,6 +293,7 @@ struct Inner {
     root_turns: bool,
     now: Clock,
     events: Mutex<Sender<TaskEnd>>,
+    worktree_children: std::sync::OnceLock<Arc<dyn WorktreeChildren>>,
 }
 
 /// The typed agent host; clones share it.
@@ -519,6 +520,29 @@ struct Node {
     timeout_ms: u64,
     /// The node's brief as written (its hop is the workflow caller's plus one).
     brief: Option<Value>,
+    /// `worktree=True` or `"auto"`: an `rlm-child@1` node that runs as a subagent in its own worktree.
+    worktree: Option<Value>,
+    /// The lane that ran `workflows.run` (a worktree node is that lane's subagent).
+    lane: String,
+}
+
+/// Subagents with worktrees, for `rlm-child@1` workflow nodes with `worktree=True` / `"auto"`
+/// (`workflowTask` + `newWorktree` of native-host.ts). The subagent host owns worktrees: their creation, setup,
+/// commit at the end, `rlm.merge` and cleanup, so a worktree node is a subagent of the workflow's caller there.
+pub trait WorktreeChildren: Send + Sync {
+    /// Admit the node's child for `lane` (`rlm.spawn(prompt, name=, model=, timeout_ms=, worktree=)`); its id.
+    fn spawn(
+        &self,
+        lane: &str,
+        name: &str,
+        prompt: &str,
+        model: Option<&str>,
+        timeout_ms: u64,
+        worktree: &Value,
+    ) -> Result<String, String>;
+    /// Wait for the child's terminal result (`{status, value?, error?, verdict?, worktree?}`); once `cell` is
+    /// aborted the child is cancelled and its cancelled result returned.
+    fn result(&self, id: &str, cell: Option<&Signal>) -> Value;
 }
 
 impl Agents {
@@ -558,6 +582,7 @@ impl Agents {
                 steer: options.steer,
                 pin_lane: options.pin_lane,
                 unpin_lane: options.unpin_lane,
+                worktree_children: std::sync::OnceLock::new(),
                 root_turns: options.root_turns,
                 now: options.now,
                 events: Mutex::new(sender),
@@ -1741,11 +1766,19 @@ impl Agents {
             }
             "rlm.finish" => self.finish_request(payload, parent),
             "workflows.run" => {
-                let nodes = self.workflow(&payload)?;
+                let mut nodes = self.workflow(&payload)?;
+                for node in &mut nodes {
+                    node.lane = lane.to_string();
+                }
                 self.run_workflow(nodes, cell, parent)
             }
             other => Err(format!("Ultron RLM host request is not wired: {other}")),
         }
+    }
+
+    /// Run `rlm-child@1` workflow nodes with `worktree=True` / `"auto"` as subagents of `children` (set once).
+    pub fn set_worktree_children(&self, children: Arc<dyn WorktreeChildren>) {
+        let _ = self.inner.worktree_children.set(children);
     }
 
     /// Admit an `rlm-frame@1` task for `lane` (as `agents.spawn` with this payload, under the lane's task) without
@@ -1992,33 +2025,30 @@ impl Agents {
             )?;
             let id = nonempty_string(node.get("id"), "Workflow node ID")?;
             let definition = definition_key(node.get("definition"))?;
-            match node.get("worktree") {
-                None | Some(Value::Null) | Some(Value::Bool(false)) => {}
-                Some(Value::Bool(true)) => {
-                    if definition != "rlm-child@1" {
-                        return Err(format!(
-                            "Workflow node {id}: worktree applies only to rlm-child@1 nodes (subagents)"
-                        ));
-                    }
-                    return Err(format!(
-                        "Workflow node {id}: worktree nodes are not available in this host; spawn the subagent with rlm.spawn(worktree=True)"
-                    ));
-                }
-                Some(Value::String(s)) if s == "auto" => {
-                    if definition != "rlm-child@1" {
-                        return Err(format!(
-                            "Workflow node {id}: worktree applies only to rlm-child@1 nodes (subagents)"
-                        ));
-                    }
-                    return Err(format!(
-                        "Workflow node {id}: worktree nodes are not available in this host; spawn the subagent with rlm.spawn(worktree=True)"
-                    ));
-                }
+            let worktree = match node.get("worktree") {
+                None | Some(Value::Null) | Some(Value::Bool(false)) => None,
+                Some(mode @ Value::Bool(true)) => Some(mode.clone()),
+                Some(mode @ Value::String(s)) if s == "auto" => Some(mode.clone()),
                 Some(_) => {
                     return Err(format!(
                         "Workflow node {id} worktree must be True, False or \"auto\" (each worktree child gets its own private worktree)"
                     ));
                 }
+            };
+            if worktree.is_some() && definition != "rlm-child@1" {
+                return Err(format!(
+                    "Workflow node {id}: worktree applies only to rlm-child@1 nodes (subagents)"
+                ));
+            }
+            if worktree.is_some() && node.contains_key("revise") {
+                return Err(format!(
+                    "Workflow node {id}: a revised node cannot use a worktree (each round would start over from your tree)"
+                ));
+            }
+            if worktree.is_some() && self.inner.worktree_children.get().is_none() {
+                return Err(format!(
+                    "Workflow node {id}: worktree nodes are not available in this host; spawn the subagent with rlm.spawn(worktree=True)"
+                ));
             }
             let item = self.definition(&definition)?;
             // A node that could never execute is a validation error, not a runtime failure after effects.
@@ -2131,6 +2161,8 @@ impl Agents {
             };
             nodes.push(Node {
                 brief,
+                worktree,
+                lane: String::new(),
                 key: key.or_else(|| workflow_key.as_ref().map(|k| format!("{k}:{id}"))),
                 id,
                 definition,
@@ -2298,6 +2330,28 @@ impl Agents {
                 }
             },
         };
+        if let (Some(mode), Some(children)) = (&node.worktree, self.inner.worktree_children.get()) {
+            // A worktree node branches from the caller's tree as it is when the node starts.
+            let base = input["prompt"].as_str().unwrap_or_default().to_string();
+            let prompt = match &brief {
+                Some(brief) => brief.prompt(&base),
+                None => base,
+            };
+            let spawned = children.spawn(
+                &node.lane,
+                &node.id,
+                &prompt,
+                node.model.as_deref(),
+                node.timeout_ms,
+                mode,
+            );
+            signal_admitted();
+            let result = match spawned {
+                Ok(id) => children.result(&id, cell),
+                Err(error) => return failed(format!("Admission refused: {error}")),
+            };
+            return if gate { verdict_gate(result) } else { result };
+        }
         let request = TaskRequest {
             definition: node.definition.clone(),
             input,

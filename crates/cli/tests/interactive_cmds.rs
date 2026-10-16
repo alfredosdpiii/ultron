@@ -88,14 +88,6 @@ const USAGE_UNRECORDED: [(&str, &str); 3] = [
     ),
 ];
 
-/// The session selector lists this directory's sessions only (a user requirement): no all-projects scope, so its
-/// header has no `◉ Current Folder | ○ All` part (the right-aligned rest keeps its place) and no Tab hint.
-fn without_scope_toggle(row: &str) -> String {
-    row.replace("◉ Current Folder | ○ All  ", &" ".repeat(26))
-        .replace("tab scope · ", "")
-        .replace(" Press Tab to view all.", "")
-}
-
 fn replay(name: &str) {
     replay_with(name, &[]);
 }
@@ -176,7 +168,7 @@ fn replay_full(name: &str, divergences: &[(&str, &str)], last: Option<&dyn Fn(&s
                 divergences
                     .iter()
                     .find(|(ts, _)| *ts == row)
-                    .map_or_else(|| without_scope_toggle(row), |(_, rust)| (*rust).to_string())
+                    .map_or_else(|| row.to_string(), |(_, rust)| (*rust).to_string())
             })
             .collect::<Vec<_>>()
             .join("\n");

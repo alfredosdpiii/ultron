@@ -2,9 +2,9 @@
 //! and session-selector-search.ts): search (fuzzy tokens, `"phrase"`, `re:<pattern>`), sort (threaded, recent,
 //! fuzzy relevance), the named filter, path display, rename and delete with confirmation.
 //!
-//! User requirements: it lists this working directory's sessions only (no all-projects scope, so no Tab scope
-//! toggle or `◉ Current Folder | ○ All` header part), by name when a session has one. The selector owns no session:
-//! it returns [`SessionAction`]s and the client switches, renames or deletes.
+//! Tab toggles the scope between this working directory's sessions and every project's (`◉ Current Folder | ○ All`),
+//! the first switch asking the client for the All listing ([`SessionAction::LoadAll`]). The selector owns no session:
+//! it returns [`SessionAction`]s and the client switches, renames, deletes or lists.
 
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -36,6 +36,9 @@ pub enum SessionAction {
     Delete(String),
     /// Rename the session at this path.
     Rename(String, String),
+    /// Tab moved to the All scope before its sessions were listed: list every project's sessions
+    /// ([`SessionSelector::set_all_sessions`] answers).
+    LoadAll,
 }
 
 /// One parsed search token.
@@ -197,6 +200,15 @@ pub struct SessionSelector {
     rename: Option<(String, Input)>,
     max_visible: usize,
     now_ms: i64,
+    /// This directory's sessions (the Current Folder scope).
+    current: Vec<SessionListing>,
+    /// Every project's sessions, once listed (the All scope).
+    all: Option<Vec<SessionListing>>,
+    /// The All scope shows.
+    scope_all: bool,
+    /// The All listing was asked for and has not arrived.
+    loading_all: bool,
+    show_rename_hint: bool,
 }
 
 impl SessionSelector {
@@ -229,13 +241,56 @@ impl SessionSelector {
             rename: None,
             max_visible: 10,
             now_ms,
+            current: Vec::new(),
+            all: None,
+            scope_all: false,
+            loading_all: false,
+            show_rename_hint: true,
         };
         selector.set_sessions(sessions);
         selector
     }
 
-    /// `setSessions`: a fresh listing (after a delete or rename), keeping a touched selection.
-    pub fn set_sessions(&mut self, mut sessions: Vec<SessionListing>) {
+    /// This directory's sessions: a fresh listing (after a delete or rename), keeping a touched selection.
+    pub fn set_sessions(&mut self, sessions: Vec<SessionListing>) {
+        self.current = sessions.clone();
+        if !self.scope_all {
+            self.show(sessions);
+        }
+    }
+
+    /// Every project's sessions (the All scope's listing arrived).
+    pub fn set_all_sessions(&mut self, sessions: Vec<SessionListing>) {
+        self.all = Some(sessions.clone());
+        self.loading_all = false;
+        if self.scope_all {
+            self.show(sessions);
+        }
+    }
+
+    /// `showRenameHint` (off for Pi's read-only sessions).
+    pub fn set_show_rename_hint(&mut self, show: bool) {
+        self.show_rename_hint = show;
+    }
+
+    /// `toggleScope`.
+    fn toggle_scope(&mut self) -> Option<SessionAction> {
+        self.scope_all = !self.scope_all;
+        let sessions = if self.scope_all {
+            self.all.clone().unwrap_or_default()
+        } else {
+            self.current.clone()
+        };
+        self.show(sessions);
+        if self.scope_all && self.all.is_none() && !self.loading_all {
+            self.loading_all = true;
+            return Some(SessionAction::LoadAll);
+        }
+        None
+    }
+
+    /// `sessionList.setSessions`: the listing the active scope shows.
+    fn show(&mut self, mut sessions: Vec<SessionListing>) {
         sessions.sort_by_key(|s| std::cmp::Reverse(s.modified));
         let selected = self.touched.then(|| self.selected_path()).flatten();
         self.sessions = sessions;
@@ -319,8 +374,7 @@ impl SessionSelector {
             return None;
         }
         if k("tui.input.tab") {
-            // This directory's sessions only (no all-projects scope).
-            return None;
+            return self.toggle_scope();
         }
         if k("app.session.toggleSort") {
             self.sort = match self.sort {
@@ -401,16 +455,40 @@ impl SessionSelector {
 
     fn header(&mut self, width: usize) -> Vec<String> {
         let t = Rc::clone(&self.theme);
-        let left_text = bold("Resume Session (Current Folder)");
+        let left_text = bold(if self.scope_all {
+            "Resume Session (All)"
+        } else {
+            "Resume Session (Current Folder)"
+        });
         let sort = match self.sort {
             SortMode::Threaded => "Threaded",
             SortMode::Recent => "Recent",
             SortMode::Relevance => "Fuzzy",
         };
         let name = if self.named_only { "Named" } else { "All" };
+        let loading = self.scope_all && self.loading_all;
+        let scope = if loading {
+            format!(
+                "{}{}",
+                fg(&t, "muted", "○ Current Folder | "),
+                fg(&t, "accent", "Loading ...")
+            )
+        } else if self.scope_all {
+            format!(
+                "{}{}",
+                fg(&t, "muted", "○ Current Folder | "),
+                fg(&t, "accent", "◉ All")
+            )
+        } else {
+            format!(
+                "{}{}",
+                fg(&t, "accent", "◉ Current Folder"),
+                fg(&t, "muted", " | ○ All")
+            )
+        };
         let right = truncate_to_width(
             &format!(
-                "{}{}  {}{}",
+                "{scope}  {}{}  {}{}",
                 fg(&t, "muted", "Name: "),
                 fg(&t, "accent", name),
                 fg(&t, "muted", "Sort: "),
@@ -448,16 +526,22 @@ impl SessionSelector {
             )
         } else {
             let sep = fg(&t, "muted", " · ");
-            let hint1 = fg(&t, "muted", "re:<pattern> regex · \"phrase\" exact");
+            let hint1 = format!(
+                "{}{sep}{}",
+                hint("tui.input.tab", "scope"),
+                fg(&t, "muted", "re:<pattern> regex · \"phrase\" exact")
+            );
             let path_state = if self.show_path { "(on)" } else { "(off)" };
-            let hint2 = [
+            let mut parts = vec![
                 hint("app.session.toggleSort", "sort"),
                 hint("app.session.toggleNamedFilter", "named"),
                 hint("app.session.delete", "delete"),
                 hint("app.session.togglePath", &format!("path {path_state}")),
-                hint("app.session.rename", "rename"),
-            ]
-            .join(&sep);
+            ];
+            if self.show_rename_hint {
+                parts.push(hint("app.session.rename", "rename"));
+            }
+            let hint2 = parts.join(&sep);
             (
                 truncate_to_width(&hint1, width, "…", false),
                 truncate_to_width(&hint2, width, "…", false),
@@ -471,13 +555,14 @@ impl SessionSelector {
         let mut lines = self.search.render(width);
         lines.push(String::new());
         if self.filtered.is_empty() {
-            let message = if self.named_only {
-                format!(
-                    "  No named sessions in current folder. Press {} to show all.",
-                    key_text(&self.keys, "app.session.toggleNamedFilter", false)
-                )
-            } else {
-                "  No sessions in current folder.".to_string()
+            let toggle = key_text(&self.keys, "app.session.toggleNamedFilter", false);
+            let message = match (self.named_only, self.scope_all) {
+                (true, true) => format!("  No named sessions found. Press {toggle} to show all."),
+                (true, false) => {
+                    format!("  No named sessions in current folder. Press {toggle} to show all, or Tab to view all.")
+                }
+                (false, true) => "  No sessions found".to_string(),
+                (false, false) => "  No sessions in current folder. Press Tab to view all.".to_string(),
             };
             lines.push(fg(&t, "muted", &truncate_to_width(&message, width, "…", false)));
             return lines;
@@ -505,6 +590,9 @@ impl SessionSelector {
                 .trim()
                 .to_string();
             let mut right = format!("{} {}", s.message_count, format_age(self.now_ms, s.modified));
+            if self.scope_all && !s.cwd.is_empty() {
+                right = format!("{} {right}", self.shorten(&s.cwd));
+            }
             if self.show_path {
                 right = format!("{} {right}", self.shorten(&s.path));
             }

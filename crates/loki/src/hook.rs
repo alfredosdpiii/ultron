@@ -158,21 +158,26 @@ pub fn test_integrity_violations(changes: &[&FileChange]) -> Result<Vec<String>,
             }
         }
         if test && change.before.is_some() && change.after.is_none() {
+            crate::evidence::finding("test-file-deleted", Some(path));
             violations.push(format!("{path}: test file deleted"));
         }
         if test {
             let count = |lines: &[&str], re: &Regex| lines.iter().filter(|l| re.is_match(l)).count();
             if count(&removed, &TEST_DECLARATION) > count(&added, &TEST_DECLARATION) {
+                crate::evidence::finding("test-deleted", Some(path));
                 violations.push(format!("{path}: test deleted"));
             }
             if count(&removed, &ASSERTION) > count(&added, &ASSERTION) {
+                crate::evidence::finding("assertion-removed", Some(path));
                 violations.push(format!("{path}: assertion removed"));
             }
             if added.iter().any(|l| SKIP.is_match(l)) {
+                crate::evidence::finding("test-skip-added", Some(path));
                 violations.push(format!("{path}: test skip added"));
             }
         }
         if quality && removed.iter().chain(&added).any(|l| QUALITY_POLICY.is_match(l)) {
+            crate::evidence::finding("quality-threshold-changed", Some(path));
             violations.push(format!("{path}: quality threshold changed"));
         }
     }
@@ -580,11 +585,17 @@ pub fn python_ast_violations(
     };
     let source = match proc::read_text(path) {
         Ok(source) => source,
-        Err(error) => return Ok(vec![format!("{display}: python-ast: {error}")]),
+        Err(error) => {
+            crate::evidence::finding("python-syntax", Some(&display));
+            return Ok(vec![format!("{display}: python-ast: {error}")]);
+        }
     };
     let tree = match pyast::parse_named(&source, Some(&path.to_string_lossy()))? {
         pyast::Parsed::Tree(tree) => tree,
-        pyast::Parsed::Error(error) => return Ok(vec![format!("{display}: python-ast: {error}")]),
+        pyast::Parsed::Error(error) => {
+            crate::evidence::finding("python-syntax", Some(&display));
+            return Ok(vec![format!("{display}: python-ast: {error}")]);
+        }
     };
     let declared = match dependencies {
         Some(d) => d.clone(),
@@ -670,11 +681,15 @@ pub fn run_command(command: &[String], root: &Path, label: &str, deadline: Deadl
         .and_then(|t| proc::run(command, root, None, &[], t).map_err(CheckError::from));
     let output = match result {
         Ok(output) => output,
-        Err(error) => return vec![format!("{label}: {}", error.message())],
+        Err(error) => {
+            crate::evidence::finding("checker-unavailable", None);
+            return vec![format!("{label}: {}", error.message())];
+        }
     };
     if output.code == 0 {
         return vec![];
     }
+    crate::evidence::finding("external-check-failed", None);
     let mut lines = command_output(&proc::text(&output.stdout), &proc::text(&output.stderr));
     if lines.is_empty() {
         lines = vec![format!("exited {}", output.code)];
@@ -756,6 +771,7 @@ pub fn ruff_delta(
             counts.push(counter);
         }
         for ((code, message, _), count) in counts[1].minus(&counts[0]) {
+            crate::evidence::finding(&format!("ruff:{code}"), Some(path));
             for _ in 0..count {
                 violations.push(format!("{path}: {code}: {message}"));
             }
@@ -802,6 +818,7 @@ pub fn ruff_new_violations(
         return Err(RuffError::MissingConfig("no committed .ruff.toml".into()));
     }
     let raw = git_output(root, &["show", &format!("{base}:.ruff.toml")], deadline, None)?;
+    crate::evidence::policy("base", ".ruff.toml", Some(&raw), Some(&base));
     let pairs: Vec<(String, Vec<u8>, Vec<u8>)> = changes
         .into_iter()
         .filter(|c| paths.is_none_or(|p| p.contains(&c.path)) && c.path.ends_with(".py"))
@@ -824,8 +841,10 @@ pub fn preview_ruff(
     if pairs.is_empty() || proc::which("ruff").is_none() {
         return Ok(vec![]);
     }
-    let result = git_output(root, &["show", "HEAD:.ruff.toml"], deadline, None)
-        .and_then(|raw| ruff_delta(&raw, &pairs, deadline));
+    let result = git_output(root, &["show", "HEAD:.ruff.toml"], deadline, None).and_then(|raw| {
+        crate::evidence::policy("base", ".ruff.toml", Some(&raw), Some("HEAD"));
+        ruff_delta(&raw, &pairs, deadline)
+    });
     match result {
         Err(e) if matches!(e, CheckError::Value(_)) || e.is_os() || e.is_timeout() => Ok(vec![]),
         other => other,
@@ -990,6 +1009,7 @@ fn mypy_violations(root: &Path, paths: &[String], deadline: Deadline) -> Result<
     }
     let mut violations = Vec::new();
     for (key, count) in current.minus(&previous) {
+        crate::evidence::finding(&format!("mypy:{}", key.1), Some(&key.0));
         for _ in 0..count {
             violations.push(format!("{}:{}: mypy[{}]: {}", key.0, numbers[&key], key.1, key.2));
         }
@@ -1006,7 +1026,10 @@ fn oxlint_violations(root: &Path, display: &str, deadline: Deadline, warnings: &
         .and_then(|t| proc::run(&command, root, None, &[], t).map_err(CheckError::from));
     let output = match result {
         Ok(output) => output,
-        Err(error) => return vec![format!("oxlint: {}", error.message())],
+        Err(error) => {
+            crate::evidence::finding("checker-unavailable", None);
+            return vec![format!("oxlint: {}", error.message())];
+        }
     };
     let stdout = proc::text(&output.stdout);
     let findings: Vec<String> = py::splitlines(&stdout, false)
@@ -1027,6 +1050,7 @@ fn oxlint_violations(root: &Path, display: &str, deadline: Deadline, warnings: &
     if output.code == 0 {
         return vec![];
     }
+    crate::evidence::finding("external-check-failed", None);
     let errors: Vec<String> = findings.iter().filter(|l| l.contains("[Error/")).cloned().collect();
     let lines = if errors.is_empty() {
         command_output(&stdout, &proc::text(&output.stderr))
@@ -1184,7 +1208,9 @@ fn clippy_violations(path: &Path, root: &Path, deadline: Deadline) -> Result<Vec
             remaining.decrement(&key);
             continue;
         }
-        violations.push(format!("{}:{line}: {}: {}", join_posix(&prefix, &key.0), key.1, key.2));
+        let name = join_posix(&prefix, &key.0);
+        crate::evidence::finding(&format!("clippy:{}", key.1), Some(&name));
+        violations.push(format!("{name}:{line}: {}: {}", key.1, key.2));
     }
     violations.truncate(MAX_VIOLATIONS);
     Ok(violations)
@@ -1230,26 +1256,6 @@ fn golangci_violations(root: &Path, package: &str, deadline: Deadline) -> Result
     let mut found: Vec<String> = issues.into_iter().map(|i| format!("golangci-lint: {i}")).collect();
     found.truncate(MAX_VIOLATIONS);
     Ok(found)
-}
-
-fn mix_project(path: &Path, root: &Path) -> Result<Option<PathBuf>, CheckError> {
-    let root = resolve(root);
-    let mut project = resolve(path.parent().unwrap_or(&root));
-    if !project.starts_with(&root) {
-        return Err(invalid("Mix project target outside repository"));
-    }
-    loop {
-        if project.join("mix.exs").is_file() {
-            return Ok(Some(project));
-        }
-        if project == root {
-            return Ok(None);
-        }
-        project = match project.parent() {
-            Some(parent) => parent.to_path_buf(),
-            None => return Ok(None),
-        };
-    }
 }
 
 /// Per-hook state shared by every target: projects already analyzed.
@@ -1412,15 +1418,24 @@ pub fn check_file(
             batch.checked.insert(key);
         }
     } else if language == "elixir" {
-        if mix_project(path, root)?.is_none() {
+        let Some(project) = crate::elixir::mix_project(path, root)? else {
             let message = "NOT CHECKED elixir: enclosing Mix project required".to_string();
             if strict {
                 return Ok(vec![message]);
             }
             warnings.push(message);
             return Ok(vec![]);
+        };
+        let key = ("elixir".to_string(), project.clone());
+        let reused = batch.checked.contains(&key);
+        violations.extend(crate::elixir::check_elixir_file(
+            path, &project, config, strict, deadline, warnings, reused,
+        )?);
+        if reused {
+            violations.truncate(MAX_VIOLATIONS);
+            return Ok(violations);
         }
-        return Err(CheckError::not_ported("Elixir analysis (mix format, Credo, Sobelow)"));
+        batch.checked.insert(key);
     }
     if language == "python" {
         let base = match head_text(root, &display, deadline) {

@@ -1,5 +1,5 @@
 //! `ultron mcp add|remove|list|help` (`extensions/mcp/cli.ts`): add, remove and check the MCP servers Ultron connects
-//! to, outside a session. `login`/`logout` (OAuth sign-in through the browser) are not ported and say so.
+//! to, outside a session, and sign in to OAuth servers (`login`/`logout`, crate::mcp_login).
 //!
 //! `ultron mcp` with none of these subcommands is Ultron's own stdio MCP server for Claude Code, a different program.
 
@@ -216,27 +216,35 @@ pub fn run(argv: &[String], env: &Env, out: &mut dyn std::io::Write, err: &mut d
                 ));
                 return Some(1);
             };
-            let oauth = entry.config.contains_key("url")
-                && entry
-                    .config
-                    .get("auth")
-                    .is_none_or(|a| a.is_null() || a == &Value::Bool(false))
-                && !entry
-                    .config
-                    .get("headers")
-                    .and_then(Value::as_object)
-                    .is_some_and(|h| h.keys().any(|k| k.eq_ignore_ascii_case("authorization")));
-            if !oauth {
+            let connection =
+                mcp::connection::Connection::new(entry.clone(), crate::mcp_login::connection_env(env, &agent_dir));
+            let Some(url) = connection.oauth_url() else {
                 io.error(&format!(
                     "MCP server \"{name}\" does not use OAuth. Only HTTP servers without an Authorization header do."
                 ));
                 return Some(1);
+            };
+            let outcome = if command == "logout" {
+                crate::mcp_login::logout(entry, &url, &agent_dir)
+            } else {
+                let timeout = parsed.values.get("timeout").cloned().flatten();
+                match crate::mcp_login::login_timeout(timeout.as_deref()) {
+                    Ok(seconds) => crate::mcp_login::login(&connection, &url, seconds, env),
+                    Err(message) => crate::mcp_login::Outcome {
+                        err: vec![message],
+                        code: 1,
+                        ..Default::default()
+                    },
+                }
+            };
+            connection.close();
+            for line in &outcome.out {
+                io.log(line);
             }
-            // ponytail: OAuth sign-in and the credential store (mcp-auth.json) are not ported.
-            io.error(&format!(
-                "`ultron mcp {command}` is not implemented in the Rust build yet"
-            ));
-            Some(1)
+            for line in &outcome.err {
+                io.error(line);
+            }
+            Some(outcome.code)
         }
     }
 }
@@ -523,7 +531,45 @@ fn file_url(path: &Path) -> String {
     out
 }
 
+/// An OAuth server, connected with its stored credentials (`createConnection(entry, options, credentials)`): signed
+/// in, it lists its tools; otherwise it needs sign-in.
+fn connect_oauth(entry: &ServerEntry, env: &Env) -> Connection {
+    let connection =
+        mcp::connection::Connection::new(entry.clone(), crate::mcp_login::connection_env(env, &env.agent_dir()));
+    let report = match connection.get_client() {
+        Ok(_) => Connection {
+            state: "connected",
+            tools: connection
+                .tools()
+                .iter()
+                .filter_map(|t| t.get("name").and_then(Value::as_str).map(str::to_string))
+                .collect(),
+            // `connection.hasResources`: the counts listed at connect, zero included.
+            resources: connection.listed_resource_counts(),
+            error: None,
+        },
+        Err(message) => Connection {
+            state: connection.state().as_str(),
+            tools: Vec::new(),
+            resources: None,
+            // A server that needs sign-in reports no error (the list says how to sign in).
+            error: match connection.state() {
+                mcp::connection::ServerState::NeedsAuth => None,
+                _ => connection.error().or(Some(message)),
+            },
+        },
+    };
+    connection.close();
+    report
+}
+
 fn connect(entry: &ServerEntry, env: &Env) -> Connection {
+    if mcp::connection::Connection::new(entry.clone(), Default::default())
+        .oauth_url()
+        .is_some()
+    {
+        return connect_oauth(entry, env);
+    }
     let failed = |error: String| Connection {
         state: "failed",
         tools: Vec::new(),

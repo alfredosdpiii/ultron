@@ -5189,6 +5189,3734 @@
 				"stdout": "",
 				"stderr": "usage: loki [-h] [--version] [--root ROOT]\n            {verify-installation,explain,context,elixir,apply,shell,shell-writes,protect,hook,scan,slop,daemon,init} ...\nloki: error: argument --root: expected one argument\n"
 			}
+		},
+		{
+			"name": "record-hook-clean",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				"a.txt": "y\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "allow",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "3722f5fc72c2308a5740968381859baa6e90d7cb",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-secret",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				"a.txt": "x\nkey = '@@AWS@@'\n"
+			},
+			"args": [
+				"--record",
+				"hook",
+				"--file",
+				"a.txt"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki [-h] [--version] [--root ROOT]\n            {verify-installation,explain,context,elixir,apply,shell,shell-writes,protect,hook,scan,slop,daemon,init} ...\nloki: error: unrecognized arguments: --record\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-cli",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-secret-json-policy",
+			"events": true,
+			"files": {
+				".loki/loki.json": "{\"rule_packs\":[\"core\"]}",
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				"a.txt": "key = '@@GH@@'\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--format",
+				"json",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "{\"loki\": \"0.1.4\", \"command\": \"hook\", \"status\": \"blocked\", \"blocking\": [{\"text\": \"a.txt:1: loki/secret: hardcoded credential (GitHub token); load it from the environment or a secret store and rotate the exposed value\", \"path\": \"a.txt\", \"line\": 1, \"rule\": \"loki/secret\"}], \"advisory\": [], \"not_checked\": []}\n",
+				"stderr": "loki: post-write check failed; files are already changed.\na.txt:1: loki/secret: hardcoded credential (GitHub token); load it from the environment or a secret store and rotate the exposed value\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "loki/secret",
+								"path": "a.txt"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": "8009419ebc790490413a3254618d6f063d287ff8a2578f78406361d347f8fd60"
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "4631cc2c64d613292f3caaf568bf4fd5404feb66",
+								"sha256": "8009419ebc790490413a3254618d6f063d287ff8a2578f78406361d347f8fd60"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-test-deleted",
+			"events": true,
+			"files": {
+				"tests/a_test.txt": "def test_one():\n    assert x\n\ndef test_two():\n    assert y\n"
+			},
+			"git": true,
+			"after": {
+				"tests/a_test.txt": "def test_one():\n    assert x\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"tests/a_test.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\ntests/a_test.txt: test deleted\ntests/a_test.txt: assertion removed\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"tests/a_test.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "test-deleted",
+								"path": "tests/a_test.txt"
+							},
+							{
+								"rule": "assertion-removed",
+								"path": "tests/a_test.txt"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "9920d78c80ac20f10e098e6da4cde37d91738b74",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-test-file-deleted",
+			"events": true,
+			"files": {
+				"spec/c.txt": "test(\"x\")\n",
+				"a.txt": ""
+			},
+			"git": true,
+			"after": {
+				"spec/c.txt": null
+			},
+			"args": [
+				"hook",
+				"--file",
+				"spec/c.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nspec/c.txt: test file deleted\nspec/c.txt: test deleted\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"spec/c.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "test-file-deleted",
+								"path": "spec/c.txt"
+							},
+							{
+								"rule": "test-deleted",
+								"path": "spec/c.txt"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "b42378083e26f10a7bd8175330f2238fd8d06d69",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-quality",
+			"events": true,
+			"files": {
+				"pyproject.toml": "[tool.coverage.report]\nfail_under = 90\n"
+			},
+			"git": true,
+			"after": {
+				"pyproject.toml": "[tool.coverage.report]\nfail_under = 10\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"pyproject.toml",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\npyproject.toml: quality threshold changed\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"pyproject.toml"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "quality-threshold-changed",
+								"path": "pyproject.toml"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "4eaa9642c70b30cf82caaa70fd8393b59e733e21",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-protected-content",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				".ruff.toml": "x = 1\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\n.ruff.toml: protected content changed\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "protected-content",
+								"path": ".ruff.toml"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "3722f5fc72c2308a5740968381859baa6e90d7cb",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-protected-target",
+			"events": true,
+			"git": true,
+			"files": {
+				"a.txt": ""
+			},
+			"args": [
+				"hook",
+				"--file",
+				".ruff.toml",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nloki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							".ruff.toml"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "protected-path",
+								"path": ".ruff.toml"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-outside",
+			"events": true,
+			"git": true,
+			"files": {
+				"a.txt": ""
+			},
+			"args": [
+				"hook",
+				"--file",
+				"../x.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nloki: outside project root: ../x.txt\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"../x.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "root-confinement",
+								"path": "../x.txt"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-directory",
+			"events": true,
+			"git": true,
+			"files": {
+				"d/a.txt": ""
+			},
+			"args": [
+				"hook",
+				"--file",
+				"d",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nloki: directory target is not a file: d\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"d"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "directory-target",
+								"path": "d"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-ruff-new",
+			"events": true,
+			"bin": {
+				"ruff": "#!/usr/bin/env python3\nimport json, sys\nargs = sys.argv[1:]\nif \"--output-format\" in args:\n    text = sys.stdin.read()\n    out = []\n    for i, line in enumerate(text.splitlines(), 1):\n        if \"BADX\" in line:\n            out.append({\"code\": \"X100\", \"message\": \"bad thing here\", \"location\": {\"row\": i, \"column\": 1}})\n        if \"SYNTAXERR\" in line:\n            out.append({\"code\": None, \"message\": \"SyntaxError: nope\", \"location\": {\"row\": i, \"column\": 1}})\n    print(json.dumps(out))\n    sys.exit(1 if out else 0)\nfiles = [a for a in args if a.endswith(\".py\")]\nbad = []\nfor name in files:\n    text = open(name).read()\n    if args[0] == \"check\" and \"BADX\" in text:\n        bad.append(name + \":1:1: X100 bad thing here\")\n    if args[0] == \"format\" and \"UNFORMATTED\" in text:\n        bad.append(\"Would reformat: \" + name)\nprint(\"\\n\".join(bad))\nsys.exit(1 if bad else 0)\n"
+			},
+			"files": {
+				".ruff.toml": "line-length = 100\n",
+				"app/a.py": "y = 1  # BADX\n"
+			},
+			"git": true,
+			"after": {
+				"app/a.py": "y = 1  # BADX\nz = 2  # BADX\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"app/a.py",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\napp/a.py: X100: bad thing here\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"app/a.py"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "ruff:X100",
+								"path": "app/a.py"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "96ee854e2f72b4ec82958716ce206c5182ac35d4",
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".ruff.toml",
+								"base": "96ee854e2f72b4ec82958716ce206c5182ac35d4",
+								"sha256": "719557362456a2848728ec234781934fb2961387d45acb3c590a8067d1a115db"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-python-syntax",
+			"events": true,
+			"files": {
+				"app/a.py": "x = 1\n"
+			},
+			"git": true,
+			"after": {
+				"app/a.py": "def (:\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"app/a.py",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\napp/a.py: python-ast: invalid syntax (a.py, line 1)\nNOT CHECKED python: missing ruff\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"app/a.py"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "python-syntax",
+								"path": "app/a.py"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "4312a429eeba3436c61f76efebfdcdf50cb13e31",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-stub",
+			"events": true,
+			"files": {
+				"app/a.py": "x = 1\n"
+			},
+			"git": true,
+			"after": {
+				"app/a.py": "def stub():\n    pass\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"app/a.py",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\napp/a.py:1: python-ast: stub body in stub\nNOT CHECKED python: missing ruff\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"app/a.py"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "unclassified-failure",
+								"path": null
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "4312a429eeba3436c61f76efebfdcdf50cb13e31",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-warning",
+			"events": true,
+			"files": {
+				"a.ts": "export const a = 1;\n"
+			},
+			"git": true,
+			"after": {
+				"a.ts": "export const a = 2;\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.ts",
+				"--record"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED typescript: missing oxlint\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "warning",
+						"targets": [
+							"a.ts"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "48da47b413dbeea7a7708c991bd70191f98a2794",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-secret-after",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				"a.txt": "x\nkey = '@@AWS@@'\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\na.txt:2: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "loki/secret",
+								"path": "a.txt"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "3722f5fc72c2308a5740968381859baa6e90d7cb",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-invalid-policy",
+			"events": true,
+			"files": {
+				"a.txt": "x\n",
+				".loki/loki.json": "{\"rule_packs\": 3}"
+			},
+			"git": true,
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid hook input: loki: rule_packs must contain known rule-pack names\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-policy",
+								"path": null
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": "78b1cab53c5a0b32dfef07e6fa97b471061b54455445635e4c8ebf744c43344f"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-no-git",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\ngit: fatal: not a git repository (or any parent up to mount point /)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "unclassified-failure",
+								"path": null
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-protect-preview-secret",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"protect",
+				"--file",
+				"app/s.py",
+				"--preview",
+				"ultron",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "write",
+				"tool_input": {
+					"path": "x",
+					"content": "key = '@@AWS@@'\n"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "app/s.py:1: loki/secret: hardcoded credential (AWS access key); load it from the environment or a secret store and rotate the exposed value\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "protect",
+						"outcome": "deny",
+						"targets": [
+							"app/s.py"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "loki/secret",
+								"path": "app/s.py"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-protect-loki-policy",
+			"events": true,
+			"git": true,
+			"files": {
+				"a.txt": ""
+			},
+			"args": [
+				"protect",
+				"--file",
+				".loki/loki.json",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "protect",
+						"outcome": "deny",
+						"targets": [
+							".loki/loki.json"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "protected-path",
+								"path": ".loki/loki.json"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-twice",
+			"events": true,
+			"files": {
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"after": {
+				"a.txt": "y\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"a.txt",
+				"--record"
+			],
+			"runs": [
+				[
+					"hook",
+					"--file",
+					"a.txt",
+					"--record"
+				]
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "",
+				"runs": [
+					{
+						"status": 0,
+						"stdout": "",
+						"stderr": ""
+					}
+				],
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "allow",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "3722f5fc72c2308a5740968381859baa6e90d7cb",
+								"sha256": null
+							}
+						]
+					},
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "allow",
+						"targets": [
+							"a.txt"
+						],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							},
+							{
+								"source": "base",
+								"path": ".loki/loki.json",
+								"base": "3722f5fc72c2308a5740968381859baa6e90d7cb",
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-missing-target",
+			"events": true,
+			"args": [
+				"hook",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki hook [-h] [--root ROOT] (--file FILE |\n                 --harness {claude,codex,factory}) [--record]\n                 [--format {text,json}] [--python PYTHON]\nloki hook: error: one of the arguments --file --harness is required\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-cli",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-scan-invalid",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"scan",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki [-h] [--version] [--root ROOT]\n            {verify-installation,explain,context,elixir,apply,shell,shell-writes,protect,hook,scan,slop,daemon,init} ...\nloki: error: unrecognized arguments: --record\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "invalid",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-cli",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-hook-help",
+			"events": true,
+			"args": [
+				"hook",
+				"--help",
+				"--record"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "usage: loki hook [-h] [--root ROOT] (--file FILE |\n                 --harness {claude,codex,factory}) [--record]\n                 [--format {text,json}] [--python PYTHON]\n\noptions:\n  -h, --help            show this help message and exit\n  --root ROOT\n  --file FILE\n  --harness {claude,codex,factory}\n  --record\n  --format {text,json}\n  --python PYTHON       the project's Python interpreter\n",
+				"stderr": "",
+				"events": [
+					{
+						"time": 0,
+						"operation": "hook",
+						"outcome": "allow",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-cli",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-destructive",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git reset --hard HEAD"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: blocked destructive Git command `git reset --hard HEAD`: it can discard uncommitted work or rewrite history; ask the user to run it\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-destructive-git",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-redirect-source",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo x > src/app.py"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect into src/app.py bypasses write checks; use file edit tools for source and configuration files\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-redirect-write",
+								"path": "src/app.py"
+							}
+						],
+						"policies": [
+							{
+								"source": "candidate",
+								"path": ".loki/loki.json",
+								"base": null,
+								"sha256": null
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-redirect-other",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "cat a.txt > b.txt"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell redirect from a command other than echo/printf requires review; use file edit tools for writes\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-redirect-write",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-review",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git commit -m x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell command requires review; use verified file tools for writes\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-command-review",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-git-option",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git diff --output=x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: shell Git option requires review\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-option-review",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-syntax",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "echo 'x"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "No closing quotation\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "shell-syntax-review",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-ok",
+			"events": true,
+			"files": {
+				"a.txt": ""
+			},
+			"git": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"stdin": {
+				"tool_name": "Bash",
+				"cwd": "<ROOT>",
+				"tool_input": {
+					"command": "git status"
+				}
+			},
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "allow",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "record-shell-bad-envelope",
+			"events": true,
+			"args": [
+				"shell",
+				"--harness",
+				"claude",
+				"--record"
+			],
+			"rawStdin": "[]",
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: invalid shell input: invalid shell envelope\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "shell",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "unclassified-failure",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "verify-pass",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"/usr/bin/env",
+				"--registration",
+				"/usr/bin/git",
+				"--agent-uid",
+				"99999"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Ownership/mode checks passed; ACLs, privileged access and host activation require operator verification\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-symlink",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"/usr/bin/env",
+				"--registration",
+				"/usr/bin/sh",
+				"--agent-uid",
+				"99999"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "/usr/bin/sh: regular non-symlink file required\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-agent-owned",
+			"files": {
+				"eng.py": "x"
+			},
+			"args": [
+				"verify-installation",
+				"--engine",
+				"<ROOT>/eng.py",
+				"--registration",
+				"/usr/bin/git",
+				"--registration",
+				"<ROOT>/missing",
+				"--agent-uid",
+				"<UID>"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "<ROOT>/eng.py: agent-owned or group/world writable\n<ROOT>/missing: regular non-symlink file required\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-world-writable",
+			"files": {
+				"eng.py": "x"
+			},
+			"chmod": {
+				"eng.py": 438
+			},
+			"args": [
+				"verify-installation",
+				"--engine",
+				"<ROOT>/eng.py",
+				"--registration",
+				"/usr/bin/git",
+				"--agent-uid",
+				"99999"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "<ROOT>/eng.py: agent-owned or group/world writable\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-root-agent",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"/usr/bin/env",
+				"--registration",
+				"/usr/bin/git",
+				"--agent-uid",
+				"0"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "root agents cannot be confined by ownership checks\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-directory",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"/usr/bin",
+				"--registration",
+				"/usr/bin/git",
+				"--agent-uid",
+				"99999"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "/usr/bin: regular non-symlink file required\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "verify-missing-args",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"x"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki verify-installation [-h] --engine ENGINE\n                                --registration REGISTRATION\n                                --agent-uid AGENT_UID\nloki verify-installation: error: the following arguments are required: --registration, --agent-uid\n"
+			}
+		},
+		{
+			"name": "verify-bad-uid",
+			"args": [
+				"verify-installation",
+				"--engine",
+				"x",
+				"--registration",
+				"y",
+				"--agent-uid",
+				"me"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki verify-installation [-h] --engine ENGINE\n                                --registration REGISTRATION\n                                --agent-uid AGENT_UID\nloki verify-installation: error: argument --agent-uid: invalid int value: 'me'\n"
+			}
+		},
+		{
+			"name": "verify-help",
+			"args": [
+				"verify-installation",
+				"-h"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "usage: loki verify-installation [-h] --engine ENGINE\n                                --registration REGISTRATION\n                                --agent-uid AGENT_UID\n\noptions:\n  -h, --help            show this help message and exit\n  --engine ENGINE\n  --registration REGISTRATION\n  --agent-uid AGENT_UID\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "apply-write",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"y\\n\"},{\"op\":\"write\",\"path\":\"docs/new.md\",\"content\":\"# New\\n\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Applied 2 targets; not an OS-atomic multi-file commit\n",
+				"stderr": "",
+				"tree": {
+					"a.txt": "644 3bb2abb69ebb27fbfe63c7639624c6ec5e331b841a5bc8c3ebc10b9285e90877",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"docs/new.md": "644 f676b43bd55f91451babc1663739064abb7e11e2b5f4a7efe62c29e4eeb0d117",
+					"m.json": "644 c220008d21d88b4852e91d36a663fc89e223d6044d2462efefad28d535ea9b5d"
+				}
+			}
+		},
+		{
+			"name": "apply-check-only",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"y\\n\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json",
+				"--check-only"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Transaction checks passed; no files written\n",
+				"stderr": "",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 153d1b187ea005339aa7373288fe30928081b441db16884e2e2e5329405ecf78"
+				}
+			}
+		},
+		{
+			"name": "apply-delete",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"delete\",\"path\":\"a.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Applied 1 targets; not an OS-atomic multi-file commit\n",
+				"stderr": "",
+				"tree": {
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 fe8aa73d99f30568b6c4a0643f39c0dd5b4694bd51279c33e4af569e9fff2422"
+				}
+			}
+		},
+		{
+			"name": "apply-move-executable",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"move\",\"path\":\"bin/run.sh\",\"to\":\"bin/go.sh\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Applied 2 targets; not an OS-atomic multi-file commit\n",
+				"stderr": "",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/go.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 e8b880de046828793696ee94ea8734442dbab9962419ac25e8ab9c341fcb90be"
+				}
+			}
+		},
+		{
+			"name": "apply-secret",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"key = '@@AWS@@'\\n\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "Applied 1 targets; not an OS-atomic multi-file commit\n",
+				"stderr": "",
+				"tree": {
+					"a.txt": "644 12da5af0a63b5b0154f0e63a98290ab488433dc2c9725134392aa1ce7bca6716",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 a36e91b70fe4ff7ad312cdd882e9e9a5d4b28d0137f11b95b8bd75291a382504"
+				}
+			}
+		},
+		{
+			"name": "apply-python-stub",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"app/m.py\",\"content\":\"def stub():\\n    pass\\n\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: app/m.py: loki: missing ruff; app/m.py:1: python-ast: stub body in stub\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 781aa78c1c3486c2801378db6ab7015538bdde39322d907663ddd4c4953efc6a"
+				}
+			}
+		},
+		{
+			"name": "apply-protected",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\".ruff.toml\",\"content\":\"x = 1\\n\"}]"
+			},
+			"env": {
+				"LOKI_ALLOW_PROTECTED": "1"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: loki: protected file: .ruff.toml (set LOKI_ALLOW_PROTECTED=1 to override)\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 4b2f66972d0362e9ff8c9e942cbbc30e2dbf1cc73c56cc82bdca8a0bde62f891"
+				}
+			}
+		},
+		{
+			"name": "apply-existing-protected-change",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"y\\n\"}]",
+				".ruff.toml": "x = 1\n"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: .ruff.toml: protected content changed\n",
+				"tree": {
+					".ruff.toml": "644 9e26bf369911c45c243c684147b23fc9e1dcfcf257d299a1c632016a6fcd33f4",
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 153d1b187ea005339aa7373288fe30928081b441db16884e2e2e5329405ecf78"
+				}
+			}
+		},
+		{
+			"name": "apply-not-a-list",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "{\"op\":\"write\"}"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction requires a nonempty operation list\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 b2fdb125ef1c810856ddca89fe350d0d5b1abb06e51d8d3bfad2566262635860"
+				}
+			}
+		},
+		{
+			"name": "apply-empty",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction requires a nonempty operation list\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+				}
+			}
+		},
+		{
+			"name": "apply-bad-json",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 8b351adb56355ffc40a4986ab30267eecae89710c63d09cba764a35adfda3ef5"
+				}
+			}
+		},
+		{
+			"name": "apply-bad-op",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"copy\",\"path\":\"a.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: operation must be write, delete or move\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 2c8d11ea1e35447706a974897e3ee62f8993baa6f54b0b63c1efb74b83decc25"
+				}
+			}
+		},
+		{
+			"name": "apply-not-object",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[\"a.txt\"]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: operation must be write, delete or move\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 3169ba9e29527082ac0a22ae78e46eca5efc1f58ff2b47d42c36100b4d9252a8"
+				}
+			}
+		},
+		{
+			"name": "apply-missing-path",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"content\":\"x\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: path must be a nonempty string without NUL\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 49e137c069b36950caad12f700a8f4c2e2192c242a9d9af9aa7ade2e46d65910"
+				}
+			}
+		},
+		{
+			"name": "apply-noncanonical-dot",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"./a.txt\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction paths must use canonical POSIX spelling\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 02027c382c15b1b5533a12ec0c4d58e08ef7c3a41e0642e75521892757b1684e"
+				}
+			}
+		},
+		{
+			"name": "apply-noncanonical-slashes",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"docs//a.md\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction paths must use canonical POSIX spelling\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 6162906114f38cabda300ca5194404331d34ecde9277f6c4f26c0452f518719e"
+				}
+			}
+		},
+		{
+			"name": "apply-noncanonical-trailing",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"docs/\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction paths must use canonical POSIX spelling\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 3a099eb23c60a1d27384cf4767cea51e7a58b6b13a4547c5cdad992272b0cd67"
+				}
+			}
+		},
+		{
+			"name": "apply-absolute",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"/tmp/x\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction paths must be repository-relative\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 c5587d111dd4bd76306a63b9fcbf16f8c05d60f9240e6d374830b9f4fb5a4e11"
+				}
+			}
+		},
+		{
+			"name": "apply-parent",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"../x\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction paths must be repository-relative\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 247167dee908ae8bf7b10b7b9d7fdc3b267a61310a7fa90e2663a22b95bdf7df"
+				}
+			}
+		},
+		{
+			"name": "apply-git-metadata",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\".git/config\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction cannot mutate Git metadata or dependencies\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 e8eff4dcdd0e19dfc711d6689ef921d27571c5ae5f984afa079072e287553f54"
+				}
+			}
+		},
+		{
+			"name": "apply-node-modules",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"node_modules/x.js\",\"content\":\"y\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction cannot mutate Git metadata or dependencies\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 6849aa81af46c75f78d821afd5e2fd3cb0946397dca83bfa735a997e79d99c25"
+				}
+			}
+		},
+		{
+			"name": "apply-duplicate",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"y\"},{\"op\":\"delete\",\"path\":\"a.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: duplicate transaction target: a.txt\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 91f406f87f11cce1403fb3f0fa46acfbe59efe15f0cc88733ccb150f644e8ae8"
+				}
+			}
+		},
+		{
+			"name": "apply-content-not-string",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":3}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: write content must be a string\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 ddd6a79f5c05b74dc341b7c7a17f0311a523a8a91d066550f844755b0b9eb7fa"
+				}
+			}
+		},
+		{
+			"name": "apply-delete-missing",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"delete\",\"path\":\"nope.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction source is missing: nope.txt\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 0afdae4ee58756c72879919027495763ff55806414d481aedb3b1866226bed02"
+				}
+			}
+		},
+		{
+			"name": "apply-move-same",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"move\",\"path\":\"a.txt\",\"to\":\"a.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: move requires a distinct canonical destination\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 9c1163ba763181c126e30c462bded0920dcc3b307cf8819d6608552fa378d472"
+				}
+			}
+		},
+		{
+			"name": "apply-move-onto-existing",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"move\",\"path\":\"a.txt\",\"to\":\"app/m.py\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: move destination already exists\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 750af75dd69196f51789f48332f68acb4a6c238441d4287a44cd44dfdcf35b8c"
+				}
+			}
+		},
+		{
+			"name": "apply-move-missing-to",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"move\",\"path\":\"a.txt\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: path must be a nonempty string without NUL\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 52f41fda04db693823bc435a9247c58ec8ad4f76851030a6dffe208d80c0fc96"
+				}
+			}
+		},
+		{
+			"name": "apply-symlink-target",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"link.txt\",\"content\":\"y\"}]"
+			},
+			"links": {
+				"link.txt": "a.txt"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction symlink targets are unsupported\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"link.txt": "link a.txt",
+					"m.json": "644 fb39840dfa88cf9965e720fb7b84cb909f735d93cec5535794769cd48fc0292f"
+				}
+			}
+		},
+		{
+			"name": "apply-symlinked-parent",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"lnk/x.txt\",\"content\":\"y\"}]"
+			},
+			"links": {
+				"lnk": "app"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction symlinked parents are unsupported\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"lnk": "link app",
+					"m.json": "644 d760dc4f0c497fcb30838573bf4eee2dede86153bd271be19c68c61c679d922a"
+				}
+			}
+		},
+		{
+			"name": "apply-no-commits",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": false,
+			"gitInit": true,
+			"after": {
+				"m.json": "[{\"op\":\"write\",\"path\":\"a.txt\",\"content\":\"y\\n\"}]"
+			},
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"m.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: transaction requires committed base\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35",
+					"m.json": "644 153d1b187ea005339aa7373288fe30928081b441db16884e2e2e5329405ecf78"
+				}
+			}
+		},
+		{
+			"name": "apply-missing-manifest",
+			"files": {
+				"a.txt": "x\n",
+				"bin/run.sh": {
+					"exec": "#!/bin/sh\necho run\n"
+				},
+				"app/m.py": "VALUE = 1\n"
+			},
+			"git": true,
+			"tree": true,
+			"args": [
+				"apply",
+				"--manifest",
+				"absent.json"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: [Errno 2] No such file or directory: 'absent.json'\n",
+				"tree": {
+					"a.txt": "644 73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac",
+					"app/m.py": "644 e13df8c44af5dea1e412403910b99cc5a48f2ccbf68a66b3374d6ab9cef9fc65",
+					"bin/run.sh": "755 a4e0317eafab5cf1bc4a0041c7c8aeb6ece56fe72e7b2b3017a8a6574614cd35"
+				}
+			}
+		},
+		{
+			"name": "apply-missing-args",
+			"args": [
+				"apply"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki apply [-h] --manifest MANIFEST [--check-only]\nloki apply: error: the following arguments are required: --manifest\n"
+			}
+		},
+		{
+			"name": "elixir-project-pass",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "[format] PASS\n[credo] PASS\n{\"issues\": []}\n[compile] PASS\nCompiling 1 file (.ex)\n[sobelow] PASS\n{\"findings\": {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-fast-fail",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# UNFORMATTED\n# CREDOBAD\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--tier",
+				"fast"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[format] FAIL\n** (Mix) mix format failed due to --check-formatted.\n  * lib/app.ex\n[credo] FAIL\n{\"issues\": [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": \"lib/app.ex\", \"line_no\": 2, \"message\": \"bad code\"}]}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-deep-json",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# WARNME\n# SOBELOW_HIGH\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--tier",
+				"deep",
+				"--json"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[{\"tool\": \"format\", \"status\": \"PASS\", \"output\": \"\", \"duration_ms\": 0}, {\"tool\": \"credo\", \"status\": \"PASS\", \"output\": \"{\\\"issues\\\": []}\", \"duration_ms\": 0}, {\"tool\": \"compile\", \"status\": \"FAIL\", \"output\": \"warning: variable x is unused\", \"duration_ms\": 0}, {\"tool\": \"sobelow\", \"status\": \"PASS\", \"output\": \"{\\\"findings\\\": {\\\"high_confidence\\\": [{\\\"type\\\": \\\"XSS.Raw: XSS\\\", \\\"file\\\": \\\"lib/app.ex\\\", \\\"line\\\": 2, \\\"variable\\\": \\\"x\\\"}], \\\"medium_confidence\\\": [], \\\"low_confidence\\\": []}}\", \"duration_ms\": 0}, {\"tool\": \"dialyzer\", \"status\": \"PASS\", \"output\": \"done: dialyzer\", \"duration_ms\": 0}]\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-files",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				"lib/b.ex": "# CREDOBAD\n"
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--file",
+				"lib/b.ex",
+				"--file",
+				"./lib/app.ex",
+				"--tier",
+				"fast"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[format] PASS\n[credo] FAIL\n{\"issues\": [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": \"lib/b.ex\", \"line_no\": 1, \"message\": \"bad code\"}]}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-file-missing",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--file",
+				"lib/nope.ex"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: Elixir analysis unavailable: Elixir target is not a file: lib/nope.ex\n"
+			}
+		},
+		{
+			"name": "elixir-file-outside",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				"../x.ex": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--file",
+				"../x.ex"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: Elixir analysis unavailable: Elixir target outside Mix project\n"
+			}
+		},
+		{
+			"name": "elixir-sobelow-not-json",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# NOTJSON\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[format] PASS\n[credo] PASS\n{\"issues\": []}\n[compile] PASS\nCompiling 1 file (.ex)\n[sobelow] NOT CHECKED\nanalyzer did not return valid JSON: Sobelow crashed\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-deps-missing",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "x",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n"
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--tier",
+				"deep"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[format] PASS\n[credo] NOT CHECKED\nrequired analyzer dependency missing: credo\n[compile] PASS\nCompiling 1 file (.ex)\n[sobelow] NOT CHECKED\nrequired analyzer dependency missing: sobelow\n[dialyzer] NOT CHECKED\nrequired analyzer dependency missing: dialyxir\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-no-mix",
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--tier",
+				"fast"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[format] NOT CHECKED\nmix is missing\n[credo] NOT CHECKED\nmix is missing\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-no-project",
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: Elixir analysis unavailable: Mix project required; use --project api for nested projects\n"
+			}
+		},
+		{
+			"name": "elixir-bad-tier",
+			"args": [
+				"elixir",
+				"--tier",
+				"slow"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki elixir [-h] [--project PROJECT] [--tier {fast,project,deep}]\n                   [--file FILE] [--json] [--credo-new]\nloki elixir: error: argument --tier: invalid choice: 'slow' (choose from 'fast', 'project', 'deep')\n"
+			}
+		},
+		{
+			"name": "elixir-record-evidence",
+			"events": true,
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# CREDOBAD\n# SOBELOW_HIGH\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--record"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki [-h] [--version] [--root ROOT]\n            {verify-installation,explain,context,elixir,apply,shell,shell-writes,protect,hook,scan,slop,daemon,init} ...\nloki: error: unrecognized arguments: --record\n",
+				"events": [
+					{
+						"time": 0,
+						"operation": "invalid",
+						"outcome": "deny",
+						"targets": [],
+						"duration_ms": 0,
+						"scope": "delivered event only",
+						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"resolution": "inspect diagnostic; protected changes need independent review",
+						"schema_version": 2,
+						"findings": [
+							{
+								"rule": "invalid-cli",
+								"path": null
+							}
+						],
+						"policies": []
+					}
+				]
+			}
+		},
+		{
+			"name": "elixir-credo-new",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# CREDOBAD old\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# CREDOBAD old\n# CREDOBAD new\n"
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--credo-new"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "lib/app.ex: Credo.Check.Readability.Bad: bad code\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-credo-new-json-clean",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "defmodule App do\n  def ok, do: 2\nend\n"
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--credo-new",
+				"--json"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "{\"tool\": \"credo\", \"findings\": []}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "elixir-credo-new-config-change",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				".credo.exs": "%{}\n"
+			},
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--credo-new"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: Elixir analysis unavailable: .credo.exs: analyzer configuration change requires review\n"
+			}
+		},
+		{
+			"name": "elixir-credo-new-no-commits",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"gitInit": true,
+			"args": [
+				"elixir",
+				"--project",
+				"<ROOT>",
+				"--credo-new"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: Elixir analysis unavailable: Credo comparison requires committed base\n"
+			}
+		},
+		{
+			"name": "elixir-hook-credo",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "defmodule App do\n  # CREDOBAD\nend\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nlib/app.ex: Credo.Check.Readability.Bad: bad code\n"
+			}
+		},
+		{
+			"name": "elixir-hook-format",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# UNFORMATTED\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nmix format: ** (Mix) mix format failed due to --check-formatted.\nmix format: * <ROOT>/lib/app.ex\n"
+			}
+		},
+		{
+			"name": "elixir-hook-phoenix-sobelow",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				".loki/loki.json": "{\"rule_packs\":[\"core\",\"phoenix\"]}"
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# SOBELOW_HIGH\n# SOBELOW_LOW\n# SOBELOW_PARTIAL\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nlib/app.ex:1: Sobelow high: XSS.Raw: XSS\nloki: advisory (not blocking):\nNOT BLOCKED INFO lib/app.ex:2: Sobelow low: XSS.Raw: XSS\nNOT CHECKED Sobelow coverage: some files were skipped\n"
+			}
+		},
+		{
+			"name": "elixir-hook-sobelow-config-change",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				".loki/loki.json": "{\"rule_packs\":[\"core\",\"phoenix\"]}",
+				"config/config.exs": "x\n"
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# x\n",
+				"config/config.exs": "y\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED Sobelow: config/config.exs: analyzer configuration change requires review\n"
+			}
+		},
+		{
+			"name": "elixir-hook-strict",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				".loki/loki.json": "{\"rule_packs\":[\"core\",\"phoenix\"]}"
+			},
+			"git": true,
+			"env": {
+				"LOKI_STRICT": "1"
+			},
+			"after": {
+				"lib/app.ex": "# SOBELOW_MEDIUM\n# SOBELOW_PARTIAL\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nNOT CHECKED Sobelow coverage: some files were skipped\nloki: advisory (not blocking):\nNOT BLOCKED WARN lib/app.ex:1: Sobelow medium: XSS.Raw: XSS\n"
+			}
+		},
+		{
+			"name": "elixir-hook-two-files",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": "",
+				"lib/b.ex": "defmodule App do\n  def ok, do: 1\nend\n"
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# CREDOBAD 1\n",
+				"lib/b.ex": "# UNFORMATTED\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex",
+				"--file",
+				"lib/b.ex"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "loki: post-write check failed; files are already changed.\nlib/app.ex: Credo.Check.Readability.Bad: bad code\nmix format: ** (Mix) mix format failed due to --check-formatted.\nmix format: * <ROOT>/lib/b.ex\n"
+			}
+		},
+		{
+			"name": "elixir-hook-no-credo-build",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# x\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED Credo: compiled dev Credo required; prepare dependencies first\n"
+			}
+		},
+		{
+			"name": "elixir-hook-no-mix-project",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"lib/app.ex": "defmodule App do\n  def ok, do: 1\nend\n"
+			},
+			"git": true,
+			"after": {
+				"lib/app.ex": "# x\n"
+			},
+			"args": [
+				"hook",
+				"--file",
+				"lib/app.ex"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": "NOT CHECKED elixir: enclosing Mix project required\n"
+			}
+		},
+		{
+			"name": "elixir-scan",
+			"bin": {
+				"mix": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\ncommand, rest = args[0], args[1:]\nfiles = [a for a in rest if a.endswith((\".ex\", \".exs\"))] or sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif command == \"format\":\n    bad = [f for f in files if \"UNFORMATTED\" in open(f).read()]\n    if bad:\n        print(\"** (Mix) mix format failed due to --check-formatted.\", file=sys.stderr)\n        for f in bad:\n            print(\"  * \" + f, file=sys.stderr)\n        sys.exit(1)\n    sys.exit(0)\nif command == \"credo\":\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\nif command == \"compile\":\n    if any(\"WARNME\" in open(f).read() for f in files):\n        print(\"warning: variable x is unused\", file=sys.stderr)\n        sys.exit(1)\n    print(\"Compiling 1 file (.ex)\")\n    sys.exit(0)\nif command == \"sobelow\":\n    if any(\"NOTJSON\" in open(f).read() for f in files):\n        print(\"Sobelow crashed\")\n        sys.exit(0)\n    high = [{\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"} for f in files for n, line in enumerate(lines(f), 1) if \"SOBELOW_HIGH\" in line]\n    print(json.dumps({\"findings\": {\"high_confidence\": high, \"medium_confidence\": [], \"low_confidence\": []}}))\n    sys.exit(0)\nprint(\"done: \" + command)\n",
+				"elixir": "#!/usr/bin/env python3\nimport glob, json, sys\nargs = sys.argv[1:]\nrunner = args[args.index(\"-e\") + 1]\nfiles = sorted(glob.glob(\"lib/**/*.ex\", recursive=True))\ndef lines(name):\n    return open(name).read().splitlines()\nif \"Credo\" in runner:\n    issues = [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": f, \"line_no\": n, \"message\": \"bad code\"} for f in files for n, line in enumerate(lines(f), 1) if \"CREDOBAD\" in line]\n    print(json.dumps({\"issues\": issues}))\n    sys.exit(2 if issues else 0)\ngroups = {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}\nfor f in files:\n    for n, line in enumerate(lines(f), 1):\n        for level in (\"high\", \"medium\", \"low\"):\n            if \"SOBELOW_\" + level.upper() in line:\n                groups[level + \"_confidence\"].append({\"type\": \"XSS.Raw: XSS\", \"file\": f, \"line\": n, \"variable\": \"x\"})\nif any(\"SOBELOW_PARTIAL\" in open(f).read() for f in files):\n    print(\"some files were skipped\", file=sys.stderr)\nprint(json.dumps({\"findings\": groups}))\n"
+			},
+			"files": {
+				"mix.exs": "defmodule App.MixProject do\nend\n",
+				".credo.exs": "%{configs: []}\n",
+				".gitignore": "_build/\ndeps/\n",
+				"lib/app.ex": "# CREDOBAD\n",
+				"deps/credo/mix.exs": "x",
+				"deps/sobelow/mix.exs": "x",
+				"deps/dialyxir/mix.exs": "x",
+				"_build/dev/lib/credo/ebin/.keep": "",
+				"_build/dev/lib/jason/ebin/.keep": "",
+				"_build/dev/lib/sobelow/ebin/.keep": ""
+			},
+			"git": true,
+			"args": [
+				"scan"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[.:format] PASS\n[.:credo] FAIL\n[.:compile] PASS\nCompiling 1 file (.ex)\n[.:sobelow] PASS\n{\"findings\": {\"high_confidence\": [], \"medium_confidence\": [], \"low_confidence\": []}}\n[elixir]\n.:credo: {\"issues\": [{\"check\": \"Credo.Check.Readability.Bad\", \"filename\": \"lib/app.ex\", \"line_no\": 1, \"message\": \"bad code\"}]}\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-npm",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"package.json": "{\"dependencies\":{\"left-pad\":\"1\",\"missing-pkg\":\"1\",\"@scope/missing-thing\":\"1\"},\"devDependencies\":{\"broken-tool\":\"1\",\"redirect-pkg\":\"1\"}}"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[dependencies]\nnpm: package not found: @scope/missing-thing\nnpm: registry check unavailable: broken-tool: HTTP 503\nnpm: package not found: missing-pkg\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-private",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"package.json": "{\"dependencies\":{\"@acme/missing-internal\":\"1\",\"missing-public\":\"1\"}}",
+				".loki/loki.json": "{\"private_packages\":[\"@acme/\"]}"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[dependencies]\nnpm: package not found: missing-public\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-pypi-crates-go-hex",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"requirements.txt": "requests==2.0\nmissing_lib>=1\n# comment\n-r other.txt\n",
+				"Cargo.toml": "[package]\nname = 'x'\n[dependencies]\nserde = '1'\nmissing-crate = '1'\n",
+				"go.mod": "module example.com/m\n\nrequire (\n\tgithub.com/Missing/Mod v1.0.0\n\tgolang.org/x/text v0.3.0\n)\nrequire example.com/broken v1.0.0\n",
+				"mix.exs": "defp deps do\n  [{:phoenix, \"~> 1.7\"}, {:missing_hex, \"~> 0.1\"}]\nend\n"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[.:format] NOT CHECKED\nmix is missing\n[.:credo] NOT CHECKED\nmix is missing\n[.:compile] NOT CHECKED\nmix is missing\n[.:sobelow] NOT CHECKED\nmix is missing\n[dependencies]\ncrates: package not found: missing-crate\ngo: registry check unavailable: example.com/broken: HTTP 503\ngo: package not found: github.com/Missing/Mod\nhex: package not found: missing_hex\npypi: package not found: missing-lib\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-clean",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"package.json": "{\"dependencies\":{\"left-pad\":\"1\"}}"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-none",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"a.txt": "x\n"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "online-strict",
+			"files": {
+				"node_modules/.site/sitecustomize.py": "import os, urllib.request\nbase = os.environ.get('LOKI_REGISTRY_OVERRIDE')\nif base:\n    original = urllib.request.urlopen\n    def urlopen(request, *args, **kwargs):\n        url = request.full_url if hasattr(request, 'full_url') else request\n        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]\n        if hasattr(request, 'full_url'):\n            request.full_url = moved\n        else:\n            request = moved\n        return original(request, *args, **kwargs)\n    urllib.request.urlopen = urlopen\n",
+				".gitignore": "node_modules/\n",
+				"package.json": "{\"dependencies\":{\"missing-pkg\":\"1\"}}"
+			},
+			"git": true,
+			"env": {
+				"LOKI_REGISTRY_OVERRIDE": "<REGISTRY>",
+				"PYTHONPATH": "<ROOT>/node_modules/.site"
+			},
+			"args": [
+				"scan",
+				"--online",
+				"--strict"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "[dependencies]\nnpm: package not found: missing-pkg\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "daemon-status",
+			"env": {
+				"HOME": "/nonexistent-loki-home"
+			},
+			"args": [
+				"daemon",
+				"status"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "loki daemon: not running (/nonexistent-loki-home/.cache/loki/d/<ID>)\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "daemon-stop",
+			"env": {
+				"HOME": "/nonexistent-loki-home"
+			},
+			"args": [
+				"daemon",
+				"stop"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "loki daemon: not running (/nonexistent-loki-home/.cache/loki/d/<ID>)\n",
+				"stderr": ""
+			}
+		},
+		{
+			"name": "daemon-path-too-long",
+			"env": {
+				"HOME": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+			},
+			"args": [
+				"daemon",
+				"status"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: daemon unavailable: socket path too long\n"
+			}
+		},
+		{
+			"name": "daemon-serve-path-too-long",
+			"env": {
+				"HOME": "/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+			},
+			"args": [
+				"daemon",
+				"serve"
+			],
+			"expected": {
+				"status": 1,
+				"stdout": "",
+				"stderr": "loki: daemon socket path too long\n"
+			}
+		},
+		{
+			"name": "daemon-bad-action",
+			"args": [
+				"daemon",
+				"restart"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki daemon [-h] {serve,start,stop,status}\nloki daemon: error: argument action: invalid choice: 'restart' (choose from 'serve', 'start', 'stop', 'status')\n"
+			}
+		},
+		{
+			"name": "daemon-missing-action",
+			"args": [
+				"daemon"
+			],
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "usage: loki daemon [-h] {serve,start,stop,status}\nloki daemon: error: the following arguments are required: action\n"
+			}
+		},
+		{
+			"name": "daemon-help",
+			"args": [
+				"daemon",
+				"--help"
+			],
+			"expected": {
+				"status": 0,
+				"stdout": "usage: loki daemon [-h] {serve,start,stop,status}\n\npositional arguments:\n  {serve,start,stop,status}\n\noptions:\n  -h, --help            show this help message and exit\n",
+				"stderr": ""
+			}
 		}
 	]
 }

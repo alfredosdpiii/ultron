@@ -9,14 +9,20 @@
 //! - [`pi_view`] / [`view`]: the session as Pi entries and Pi's read views (tree, messages, stats);
 //! - [`core`]: the session actor that owns all of it and reports lane-watch events.
 
+pub mod agent_hub;
 pub mod async_events;
 pub mod auto_compaction;
+pub mod budget_note;
 pub mod commands;
 pub mod compaction_op;
 pub mod compose;
 pub mod core;
 pub mod durable_store;
+pub mod extension_apis;
 pub mod extension_commands;
+pub mod extension_file_hooks;
+pub mod extension_host;
+pub mod extension_providers;
 pub mod extension_tools;
 pub mod frames;
 pub mod inspect;
@@ -26,14 +32,18 @@ pub mod lane_reuse;
 pub mod migration;
 pub mod model_refresh;
 pub mod naming;
+pub mod nudge;
 pub mod op_journal;
 pub mod pi_view;
 pub mod recovery;
+pub mod session_flags;
 pub mod session_tools;
 pub mod stored_auth;
 pub mod subagents;
+pub mod swarm_ops;
 pub mod turns;
 pub mod view;
+pub mod view_images;
 
 use std::path::PathBuf;
 use std::sync::Arc;

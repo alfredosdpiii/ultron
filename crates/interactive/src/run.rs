@@ -118,6 +118,15 @@ pub fn edit_externally(command: &str, content: &str) -> Option<String> {
     result
 }
 
+/// Pi's Ctrl+Z (`suspendTui`): stop this process with SIGTSTP; the shell's `fg` (SIGCONT) continues it and the call
+/// returns. Only the product's run loop installs it ([`run_stdout`]); tests inject their own hook.
+fn suspend_process() -> Result<(), String> {
+    if cfg!(windows) {
+        return Err("Suspend to background is not supported on Windows".into());
+    }
+    rustix::process::kill_process(rustix::process::getpid(), rustix::process::Signal::TSTP).map_err(|e| e.to_string())
+}
+
 /// Forward stdin input sequences into `tx`.
 pub fn spawn_input(tx: Sender<UiEvent>) {
     let input = tui::terminal::spawn_stdin_pump();
@@ -145,6 +154,7 @@ pub fn run<W: Write>(
 /// ([`crate::qol::install_services`]) and paints through the writer thread when `qol.tty_writer` is on.
 pub fn run_stdout(app: &mut App, events: &Receiver<UiEvent>, size: &dyn Fn() -> (u16, u16)) -> std::io::Result<()> {
     crate::qol::install_services(app, std::env::var("PATH").ok());
+    app.set_suspend_hook(Box::new(suspend_process));
     let mut terminal = Terminal::new(std::io::stdout());
     if app.qol().tty_writer {
         let tty = TtyWriter::stdout()?;
@@ -240,6 +250,31 @@ pub fn paint_loop(
             app.finish_edit(edited);
             app.reset_display = true;
         }
+        if app.take_suspend_request() && app.can_suspend() {
+            // Pi's Ctrl+Z: the TUI stops (input paused, alternate screen left, cooked mode), the process suspends,
+            // and on continue everything is painted again.
+            let gate = app.input_gate();
+            gate.store(true, Ordering::SeqCst);
+            out(if split {
+                "\x1b[?2004l\x1b[?25h\r\n"
+            } else {
+                "\x1b[?2004l\x1b[?25h\x1b[?1049l"
+            })?;
+            let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
+            if raw {
+                let _ = crossterm::terminal::disable_raw_mode();
+            }
+            app.suspend();
+            if raw {
+                let _ = crossterm::terminal::enable_raw_mode();
+            }
+            out("\x1b[?2004h")?;
+            gate.store(false, Ordering::SeqCst);
+            app.reset_display = true;
+        }
+        if app.poll_rlm() {
+            dirty = true;
+        }
         if app.take_reset_display() {
             // Alt+L: forget what the terminal shows and paint everything again.
             out("\x1b[2J\x1b[3J\x1b[H")?;
@@ -268,6 +303,9 @@ pub fn paint_loop(
                 for write in app.terminal_writes.drain(..) {
                     out(&write)?;
                 }
+                screen.show_hardware_cursor = app.show_hardware_cursor;
+                viewport.show_hardware_cursor = app.show_hardware_cursor;
+                viewport.clear_on_shrink = app.clear_on_shrink;
                 if split {
                     let plan = app.frame_plan(cols as usize, rows as usize);
                     out(&viewport.render(&plan, cols as usize, rows as usize).bytes)?;
@@ -313,6 +351,7 @@ pub fn paint_loop(
         }
     }
     let width = last_size.0 as usize;
+    app.stop_terminal_notifications();
     if split {
         for write in app.terminal_writes.drain(..) {
             out(&write)?;
@@ -320,6 +359,9 @@ pub fn paint_loop(
         let plan = app.exit_plan(width);
         out(&viewport.render(&plan, width, last_size.1 as usize).bytes)?;
         return out("\r\n\x1b[?25h");
+    }
+    for write in app.terminal_writes.drain(..) {
+        out(&write)?;
     }
     let document = app.exit_document(width);
     out(&screen.exit(&document, width))

@@ -1,0 +1,249 @@
+{
+ "cols": 100,
+ "rows": 60,
+ "scenarios": [
+  {
+   "name": "skip every step",
+   "files": {
+    "agent/settings.json": "{\"hindsightUrl\":\"off\"}"
+   },
+   "steps": [
+    {
+     "wait": "How should Ultron reach a model?"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Turn memory on?"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Keep these settings"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "captures": [
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n→ Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n  Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n  Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Turn memory on?\n\n→ Yes, set a Hindsight URL\n  No, leave it off\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n\n Step 4/5: Loki guardrails\n  Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and\n  write() are checked before the file changes, other writes after the cell.\n  ✓ Bundled Loki 0.1.4 (f5ecc8e6aaaf)\n  – ruff (Python): not found. uv tool install ruff (or pipx install ruff)\n  – mypy (Python types): not found. uv tool install mypy (or pipx install mypy)\n  – tsc (TypeScript types): not found. npm i -D typescript in the project (node_modules/.bin/tsc\n  is used when present)\n  – oxlint (JavaScript/TypeScript): not found. npm i -D oxlint @oxlint/plugins in the project\n  (node_modules/.bin/oxlint is used when present)\n  – golangci-lint (Go): not found. https://golangci-lint.run/welcome/install/\n  – clippy (Rust): not found. rustup component add clippy\n  – credo (Elixir): not found. install Elixir, then add {:credo, only: [:dev, :test]} to the\n  project's mix.exs deps\n  – sobelow (Phoenix security): not found. install Elixir, then add {:sobelow, only: [:dev,\n  :test]} to the project's mix.exs deps\n  Missing analyzers are reported as NOT CHECKED, never as clean.\n  Loki: blocking, auto-install on, auto-commit on.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Loki guardrails\n\n→ Keep these settings\n  Turn auto-install off              Create .loki/ (engine and default policy) in a Git repository\n  Turn auto-commit off               Commit the .loki/ Ultron created, and only it; on a fork the\n  Advise only (report, never block)\n  Turn Loki off\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n\n Step 4/5: Loki guardrails\n  Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and\n  write() are checked before the file changes, other writes after the cell.\n  ✓ Bundled Loki 0.1.4 (f5ecc8e6aaaf)\n  – ruff (Python): not found. uv tool install ruff (or pipx install ruff)\n  – mypy (Python types): not found. uv tool install mypy (or pipx install mypy)\n  – tsc (TypeScript types): not found. npm i -D typescript in the project (node_modules/.bin/tsc\n  is used when present)\n  – oxlint (JavaScript/TypeScript): not found. npm i -D oxlint @oxlint/plugins in the project\n  (node_modules/.bin/oxlint is used when present)\n  – golangci-lint (Go): not found. https://golangci-lint.run/welcome/install/\n  – clippy (Rust): not found. rustup component add clippy\n  – credo (Elixir): not found. install Elixir, then add {:credo, only: [:dev, :test]} to the\n  project's mix.exs deps\n  – sobelow (Phoenix security): not found. install Elixir, then add {:sobelow, only: [:dev,\n  :test]} to the project's mix.exs deps\n  Missing analyzers are reported as NOT CHECKED, never as clean.\n  Loki: blocking, auto-install on, auto-commit on.\n\n Step 5/5: Summary\n  Provider and model: skipped — no model\n  Hindsight: unchanged — off\n  Loki: unchanged — blocking, auto-install on, auto-commit on\n  Configuration lives in <TMP>/agent (settings.json, auth.json, models.json).\n  Run `ultron setup` again at any time to change it; start working with `ultron`.\n\n\n\nSetup finished. Start with: ultron\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ],
+   "artifacts": {},
+   "requests": []
+  },
+  {
+   "name": "custom endpoint",
+   "files": {
+    "agent/settings.json": "{\"hindsightUrl\":\"off\"}"
+   },
+   "steps": [
+    {
+     "wait": "How should Ultron reach a model?"
+    },
+    {
+     "keys": [
+      "Down",
+      "Down"
+     ],
+     "wait": "→ Custom OpenAI-compatible endpoint"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Base URL of the endpoint"
+    },
+    {
+     "keys": [
+      "C-u"
+     ],
+     "type": "http://127.0.0.1:<PORT>/v1",
+     "wait": "<PORT>/v1"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "API key (leave empty"
+    },
+    {
+     "type": "sk-test",
+     "then": [
+      "Enter"
+     ],
+     "wait": "A short name for this provider"
+    },
+    {
+     "keys": [
+      "C-u"
+     ],
+     "type": "proxy",
+     "wait": "proxy"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Which API does it speak?"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Model ids to use"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Default model ("
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "Turn memory on?"
+    },
+    {
+     "keys": [
+      "Escape"
+     ],
+     "wait": "Keep these settings"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "artifacts": {
+    "agent/models.json": "{\n  \"providers\": {\n    \"proxy\": {\n      \"baseUrl\": \"http://127.0.0.1:<PORT>/v1\",\n      \"api\": \"openai-completions\",\n      \"apiKey\": \"sk-test\",\n      \"models\": [\n        {\n          \"id\": \"model-one\"\n        }\n      ]\n    }\n  }\n}\n",
+    "agent/settings.json": "{\n  \"hindsightUrl\": \"off\",\n  \"defaultProvider\": \"proxy\",\n  \"defaultModel\": \"model-one\"\n}"
+   },
+   "captures": [
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n→ Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n  Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n  Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n  Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n  Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n→ Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Base URL of the endpoint (including /v1)\n\n> http://localhost:11434/v1\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Base URL of the endpoint (including /v1)\n\n> http://127.0.0.1:<PORT>/v1\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n API key (leave empty if the endpoint needs none)\n Input is hidden. Paste the value and press Enter.\n\n>\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n A short name for this provider\n\n> custom\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n A short name for this provider\n\n> proxy\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Which API does it speak?\n\n→ OpenAI Chat Completions  most proxies, Ollama, vLLM, LM Studio\n  OpenAI Responses         /v1/responses\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n  The endpoint lists 1 model: model-one\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Model ids to use (comma-separated)\n\n> model-one\n enter submit  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n  The endpoint lists 1 model: model-one\n  ✓ Added provider \"proxy\" in <TMP>/agent/models.json.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Default model (1 from proxy)\n\n→ model-one\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n  The endpoint lists 1 model: model-one\n  ✓ Added provider \"proxy\" in <TMP>/agent/models.json.\n  ✓ Live test passed in <S>s: \"ok\"\n  ✓ Default model saved: proxy/model-one.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Turn memory on?\n\n→ Yes, set a Hindsight URL\n  No, leave it off\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n  The endpoint lists 1 model: model-one\n  ✓ Added provider \"proxy\" in <TMP>/agent/models.json.\n  ✓ Live test passed in <S>s: \"ok\"\n  ✓ Default model saved: proxy/model-one.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n\n Step 4/5: Loki guardrails\n  Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and\n  write() are checked before the file changes, other writes after the cell.\n  ✓ Bundled Loki 0.1.4 (f5ecc8e6aaaf)\n  – ruff (Python): not found. uv tool install ruff (or pipx install ruff)\n  – mypy (Python types): not found. uv tool install mypy (or pipx install mypy)\n  – tsc (TypeScript types): not found. npm i -D typescript in the project (node_modules/.bin/tsc\n  is used when present)\n  – oxlint (JavaScript/TypeScript): not found. npm i -D oxlint @oxlint/plugins in the project\n  (node_modules/.bin/oxlint is used when present)\n  – golangci-lint (Go): not found. https://golangci-lint.run/welcome/install/\n  – clippy (Rust): not found. rustup component add clippy\n  – credo (Elixir): not found. install Elixir, then add {:credo, only: [:dev, :test]} to the\n  project's mix.exs deps\n  – sobelow (Phoenix security): not found. install Elixir, then add {:sobelow, only: [:dev,\n  :test]} to the project's mix.exs deps\n  Missing analyzers are reported as NOT CHECKED, never as clean.\n  Loki: blocking, auto-install on, auto-commit on.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n Loki guardrails\n\n→ Keep these settings\n  Turn auto-install off              Create .loki/ (engine and default policy) in a Git repository\n  Turn auto-commit off               Commit the .loki/ Ultron created, and only it; on a fork the\n  Advise only (report, never block)\n  Turn Loki off\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  The endpoint is saved in <TMP>/agent/models.json (readable only by you).\n  The endpoint lists 1 model: model-one\n  ✓ Added provider \"proxy\" in <TMP>/agent/models.json.\n  ✓ Live test passed in <S>s: \"ok\"\n  ✓ Default model saved: proxy/model-one.\n\n Step 3/5: Hindsight memory server\n  Hindsight stores what the model keeps on purpose (memory.propose) and returns it when the model\n  asks (memory.prepare).\n  Memory is turned off.\n\n Step 4/5: Loki guardrails\n  Loki checks every file the agent writes with deterministic rules and real analyzers: edit() and\n  write() are checked before the file changes, other writes after the cell.\n  ✓ Bundled Loki 0.1.4 (f5ecc8e6aaaf)\n  – ruff (Python): not found. uv tool install ruff (or pipx install ruff)\n  – mypy (Python types): not found. uv tool install mypy (or pipx install mypy)\n  – tsc (TypeScript types): not found. npm i -D typescript in the project (node_modules/.bin/tsc\n  is used when present)\n  – oxlint (JavaScript/TypeScript): not found. npm i -D oxlint @oxlint/plugins in the project\n  (node_modules/.bin/oxlint is used when present)\n  – golangci-lint (Go): not found. https://golangci-lint.run/welcome/install/\n  – clippy (Rust): not found. rustup component add clippy\n  – credo (Elixir): not found. install Elixir, then add {:credo, only: [:dev, :test]} to the\n  project's mix.exs deps\n  – sobelow (Phoenix security): not found. install Elixir, then add {:sobelow, only: [:dev,\n  :test]} to the project's mix.exs deps\n  Missing analyzers are reported as NOT CHECKED, never as clean.\n  Loki: blocking, auto-install on, auto-commit on.\n\n Step 5/5: Summary\n  Provider and model: configured — proxy/model-one, live test passed\n  Hindsight: unchanged — off\n  Loki: unchanged — blocking, auto-install on, auto-commit on\n  Configuration lives in <TMP>/agent (settings.json, auth.json, models.json).\n  Run `ultron setup` again at any time to change it; start working with `ultron`.\n\n\n\nSetup finished. Start with: ultron\n<exited>\n\n\n\n\n\n\n\n\n\n\n"
+   ],
+   "requests": [
+    "GET /v1/models",
+    "POST /v1/chat/completions"
+   ]
+  },
+  {
+   "name": "first run offer, run setup, quit",
+   "args": [],
+   "files": {
+    "agent/settings.json": "{\"hindsightUrl\":\"off\"}"
+   },
+   "steps": [
+    {
+     "wait": "Run the guided setup now?"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "How should Ultron reach a model?"
+    },
+    {
+     "keys": [
+      "C-c"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "captures": [
+    "────────────────────────────────────────────────────────────────────────────────────────────────────\n\n No model is set up for ultron yet. Run the guided setup now?\n\n → Run setup (recommended)\n   Not now\n   Don't ask again\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n→ Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n  Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n  Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  Setup stopped. Anything saved before this point is kept.\n\n Step 5/5: Summary\n  Not all steps ran.\n  Configuration lives in <TMP>/agent (settings.json, auth.json, models.json).\n  Run `ultron setup` again at any time to change it; start working with `ultron`.\n\n\nNo model is set up yet. Run \"ultron setup\" to continue.\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ],
+   "artifacts": {},
+   "requests": []
+  },
+  {
+   "name": "first run offer, never",
+   "args": [],
+   "files": {
+    "agent/settings.json": "{\"hindsightUrl\":\"off\"}"
+   },
+   "steps": [
+    {
+     "wait": "Run the guided setup now?"
+    },
+    {
+     "keys": [
+      "Down",
+      "Down"
+     ],
+     "wait": "→ Don't ask again"
+    },
+    {
+     "keys": [
+      "Enter"
+     ],
+     "wait": "You can run \"ultron setup\" at any time.",
+     "partial": true
+    }
+   ],
+   "artifacts": {
+    "agent/settings.json": "{\n  \"hindsightUrl\": \"off\",\n  \"skipSetupPrompt\": true\n}"
+   },
+   "captures": [
+    "────────────────────────────────────────────────────────────────────────────────────────────────────\n\n No model is set up for ultron yet. Run the guided setup now?\n\n → Run setup (recommended)\n   Not now\n   Don't ask again\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "────────────────────────────────────────────────────────────────────────────────────────────────────\n\n No model is set up for ultron yet. Run the guided setup now?\n\n   Run setup (recommended)\n   Not now\n → Don't ask again\n\n ↑↓ navigate  enter select  escape/ctrl+c cancel\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "You can run \"ultron setup\" at any time.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ],
+   "requests": []
+  },
+  {
+   "name": "quit with ctrl+c",
+   "files": {
+    "agent/settings.json": "{\"hindsightUrl\":\"off\"}"
+   },
+   "steps": [
+    {
+     "wait": "How should Ultron reach a model?"
+    },
+    {
+     "keys": [
+      "Down"
+     ],
+     "wait": "→ Use an API key"
+    },
+    {
+     "keys": [
+      "C-c"
+     ],
+     "wait": "<exited>"
+    }
+   ],
+   "captures": [
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n→ Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n  Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n  Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n────────────────────────────────────────────────────────────────────────────────────────────────────\n How should Ultron reach a model?\n\n  Sign in with a subscription        Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, … (Pi's /lo\n→ Use an API key                     Anthropic, OpenAI, Google, OpenRouter, …\n  Custom OpenAI-compatible endpoint  A proxy, Ollama, LM Studio, vLLM, … (written to models.json)\n  Skip this step\n\n ↑↓ navigate  enter select  esc skip/back  ctrl+c quit setup\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    " Ultron setup\n\n Step 1/5: Environment\n  ✓ Node.js: v26.8.1\n  ✓ python3: Python 3.12.0\n  – Docker: not found (only needed to install Hindsight)\n\n Step 2/5: Provider and model\n  No provider is configured yet.\n  Setup stopped. Anything saved before this point is kept.\n\n Step 5/5: Summary\n  Not all steps ran.\n  Configuration lives in <TMP>/agent (settings.json, auth.json, models.json).\n  Run `ultron setup` again at any time to change it; start working with `ultron`.\n\n\nSetup stopped. Run \"ultron setup\" to continue.\n<exited>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+   ],
+   "artifacts": {},
+   "requests": []
+  }
+ ]
+}

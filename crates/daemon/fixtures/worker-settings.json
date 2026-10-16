@@ -1,0 +1,2916 @@
+{
+	"reads": [
+		{
+			"name": "empty",
+			"files": {},
+			"projectTrusted": false,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 300000,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": null,
+					"hideThinkingBlock": false,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 60,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "logo",
+					"defaultProjectTrust": "ask",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-1/project",
+				"agentDir": "<root>/case-1/agent",
+				"projectTrusted": false,
+				"savedTrust": null,
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "everything-set",
+			"files": {
+				"global": {
+					"transport": "websocket",
+					"httpIdleTimeoutMs": "disabled",
+					"cacheWarming": "idle",
+					"modelThinkingLevels": {
+						"anthropic/claude-sonnet-4-5": "high"
+					},
+					"defaultThinkingLevel": "low",
+					"defaultProvider": "openai",
+					"defaultModel": "gpt-5",
+					"theme": "light",
+					"hideThinkingBlock": true,
+					"terminal": {
+						"showImages": false,
+						"imageWidthCells": 12.7,
+						"clearOnShrink": true,
+						"showTerminalProgress": true
+					},
+					"images": {
+						"autoResize": false,
+						"blockImages": true
+					},
+					"enableSkillCommands": false,
+					"markdown": {
+						"mermaid": "final"
+					},
+					"showCacheMissNotices": true,
+					"collapseChangelog": true,
+					"enableInstallTelemetry": false,
+					"quietStartup": true,
+					"rlmPaneAutoOpen": false,
+					"autoreview": {
+						"enabled": false,
+						"ack": false,
+						"ackArt": "custom-art"
+					},
+					"defaultProjectTrust": "never",
+					"doubleEscapeAction": "fork",
+					"treeFilterMode": "user-only",
+					"showHardwareCursor": true,
+					"editorPaddingX": 2,
+					"outputPad": 0,
+					"autocompleteMaxVisible": 9,
+					"tuiMode": "fullscreen",
+					"fullscreenExitOutput": "resume-hint",
+					"fullscreenScrollbar": "always",
+					"fullscreenCopyOnSelect": false,
+					"warnings": {
+						"anthropicExtraUsage": false
+					},
+					"enabledModels": [
+						"anthropic/*",
+						"gpt-5"
+					],
+					"rlm": {
+						"frameModel": " openai/gpt-5 ",
+						"childModel": "claude-code/opus",
+						"frameThinking": "xhigh"
+					},
+					"review": {
+						"model": "anthropic/claude-opus-4-1"
+					},
+					"claudeCode": {
+						"frameModel": "claude-code/opus",
+						"childModel": " sonnet ",
+						"ultronChildModel": "openai/gpt-5",
+						"model": ""
+					}
+				}
+			},
+			"projectTrusted": false,
+			"live": {
+				"compaction": false,
+				"retry": false,
+				"steeringMode": "all",
+				"followUpMode": "all"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": false,
+					"retry.enabled": false,
+					"steeringMode": "all",
+					"followUpMode": "all",
+					"transport": "websocket",
+					"httpIdleTimeoutMs": 0,
+					"cacheWarming": "idle",
+					"modelThinkingLevels": {
+						"anthropic/claude-sonnet-4-5": "high"
+					},
+					"defaultThinkingLevel": "low",
+					"defaultProvider": "openai",
+					"defaultModel": "gpt-5",
+					"theme": "light",
+					"hideThinkingBlock": true,
+					"terminal.showImages": false,
+					"terminal.imageWidthCells": 12,
+					"images.autoResize": false,
+					"images.blockImages": true,
+					"enableSkillCommands": false,
+					"markdown.mermaid": "final",
+					"showCacheMissNotices": true,
+					"collapseChangelog": true,
+					"enableInstallTelemetry": false,
+					"quietStartup": true,
+					"rlmPaneAutoOpen": false,
+					"autoreview.enabled": false,
+					"autoreview.ack": false,
+					"autoreview.ackArt": "custom",
+					"defaultProjectTrust": "never",
+					"doubleEscapeAction": "fork",
+					"treeFilterMode": "user-only",
+					"showHardwareCursor": true,
+					"editorPaddingX": 2,
+					"outputPad": 0,
+					"autocompleteMaxVisible": 9,
+					"terminal.clearOnShrink": true,
+					"terminal.showTerminalProgress": true,
+					"tuiMode": "fullscreen",
+					"fullscreenExitOutput": "resume-hint",
+					"fullscreenScrollbar": "always",
+					"fullscreenCopyOnSelect": false,
+					"warnings": {
+						"anthropicExtraUsage": false
+					},
+					"enabledModels": [
+						"anthropic/*",
+						"gpt-5"
+					],
+					"rlm.frameModel": "openai/gpt-5",
+					"rlm.childModel": null,
+					"rlm.frameThinking": "xhigh",
+					"review.model": "anthropic/claude-opus-4-1",
+					"claudeCode.frameModel": "claude-code/opus",
+					"claudeCode.childModel": "sonnet",
+					"claudeCode.ultronChildModel": "openai/gpt-5",
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-2/project",
+				"agentDir": "<root>/case-2/agent",
+				"projectTrusted": false,
+				"savedTrust": null,
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "invalid-values-fall-back",
+			"files": {
+				"global": {
+					"cacheWarming": "sometimes",
+					"theme": 7,
+					"terminal": {
+						"imageWidthCells": "wide"
+					},
+					"markdown": {
+						"mermaid": "always"
+					},
+					"autoreview": {
+						"ackArt": false
+					},
+					"defaultProjectTrust": "maybe",
+					"treeFilterMode": "weird",
+					"outputPad": 3,
+					"tuiMode": "big",
+					"fullscreenExitOutput": "x",
+					"fullscreenScrollbar": "x",
+					"rlm": {
+						"frameModel": "no-slash",
+						"frameThinking": "huge"
+					},
+					"review": "openai/gpt-5",
+					"claudeCode": "opus"
+				}
+			},
+			"projectTrusted": false,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 300000,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": null,
+					"hideThinkingBlock": false,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 60,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "none",
+					"defaultProjectTrust": "ask",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-3/project",
+				"agentDir": "<root>/case-3/agent",
+				"projectTrusted": false,
+				"savedTrust": null,
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "ack-art-logo-and-negative-width",
+			"files": {
+				"global": {
+					"autoreview": {
+						"ackArt": "logo"
+					},
+					"terminal": {
+						"imageWidthCells": -4
+					},
+					"httpIdleTimeoutMs": 1234.9
+				}
+			},
+			"projectTrusted": false,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 1234,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": null,
+					"hideThinkingBlock": false,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 1,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "logo",
+					"defaultProjectTrust": "ask",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-4/project",
+				"agentDir": "<root>/case-4/agent",
+				"projectTrusted": false,
+				"savedTrust": null,
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "project-overrides-when-trusted",
+			"files": {
+				"global": {
+					"theme": "dark",
+					"defaultProjectTrust": "always",
+					"hideThinkingBlock": false
+				},
+				"project": {
+					"theme": "light",
+					"hideThinkingBlock": true,
+					"defaultProjectTrust": "never",
+					"cacheWarming": "off"
+				},
+				"trust": [
+					{
+						"path": ".",
+						"decision": true
+					}
+				]
+			},
+			"projectTrusted": true,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 300000,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": "light",
+					"hideThinkingBlock": true,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 60,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "logo",
+					"defaultProjectTrust": "always",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-5/project",
+				"agentDir": "<root>/case-5/agent",
+				"projectTrusted": true,
+				"savedTrust": {
+					"path": "<root>/case-5/project",
+					"decision": true
+				},
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "untrusted-project-ignored-inherited-decision",
+			"files": {
+				"global": {},
+				"project": {
+					"theme": "light"
+				},
+				"trust": [
+					{
+						"path": "..",
+						"decision": false
+					}
+				]
+			},
+			"projectTrusted": false,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 300000,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": null,
+					"hideThinkingBlock": false,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 60,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "logo",
+					"defaultProjectTrust": "ask",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-6/project",
+				"agentDir": "<root>/case-6/agent",
+				"projectTrusted": false,
+				"savedTrust": {
+					"path": "<root>/case-6",
+					"decision": false
+				},
+				"envOverrides": {}
+			}
+		},
+		{
+			"name": "env-overrides",
+			"files": {},
+			"projectTrusted": false,
+			"live": {
+				"compaction": true,
+				"retry": true,
+				"steeringMode": "one-at-a-time",
+				"followUpMode": "one-at-a-time"
+			},
+			"env": {
+				"ULTRON_RLM_FRAME_MODEL": " openai/gpt-5 ",
+				"ULTRON_REVIEW_MODEL": "not-a-model",
+				"ULTRON_CLAUDE_FRAME_MODEL": "opus",
+				"ULTRON_CLAUDE_CHILD_MODEL": " sonnet ",
+				"ULTRON_CLAUDE_MODEL": "   "
+			},
+			"read": {
+				"values": {
+					"compaction.enabled": true,
+					"retry.enabled": true,
+					"steeringMode": "one-at-a-time",
+					"followUpMode": "one-at-a-time",
+					"transport": "auto",
+					"httpIdleTimeoutMs": 300000,
+					"cacheWarming": "streaming",
+					"modelThinkingLevels": {},
+					"defaultThinkingLevel": "medium",
+					"defaultProvider": null,
+					"defaultModel": null,
+					"theme": null,
+					"hideThinkingBlock": false,
+					"terminal.showImages": true,
+					"terminal.imageWidthCells": 60,
+					"images.autoResize": true,
+					"images.blockImages": false,
+					"enableSkillCommands": true,
+					"markdown.mermaid": "streaming",
+					"showCacheMissNotices": false,
+					"collapseChangelog": false,
+					"enableInstallTelemetry": true,
+					"quietStartup": false,
+					"rlmPaneAutoOpen": true,
+					"autoreview.enabled": true,
+					"autoreview.ack": true,
+					"autoreview.ackArt": "logo",
+					"defaultProjectTrust": "ask",
+					"doubleEscapeAction": "tree",
+					"treeFilterMode": "default",
+					"showHardwareCursor": false,
+					"editorPaddingX": 0,
+					"outputPad": 1,
+					"autocompleteMaxVisible": 5,
+					"terminal.clearOnShrink": false,
+					"terminal.showTerminalProgress": false,
+					"tuiMode": "regular",
+					"fullscreenExitOutput": "transcript",
+					"fullscreenScrollbar": "auto",
+					"fullscreenCopyOnSelect": true,
+					"warnings": {},
+					"enabledModels": null,
+					"rlm.frameModel": null,
+					"rlm.childModel": null,
+					"rlm.frameThinking": null,
+					"review.model": null,
+					"claudeCode.frameModel": null,
+					"claudeCode.childModel": null,
+					"claudeCode.ultronChildModel": null,
+					"claudeCode.model": null
+				},
+				"cwd": "<root>/case-7/project",
+				"agentDir": "<root>/case-7/agent",
+				"projectTrusted": false,
+				"savedTrust": null,
+				"envOverrides": {
+					"rlm.frameModel": {
+						"name": "ULTRON_RLM_FRAME_MODEL",
+						"value": "openai/gpt-5"
+					},
+					"claudeCode.childModel": {
+						"name": "ULTRON_CLAUDE_CHILD_MODEL",
+						"value": "sonnet"
+					}
+				}
+			}
+		}
+	],
+	"applies": [
+		{
+			"name": "live-session-settings",
+			"files": {},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "compaction.enabled",
+					"value": false,
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"compaction false"
+					],
+					"file": {
+						"compaction": {
+							"enabled": false
+						}
+					}
+				},
+				{
+					"key": "retry.enabled",
+					"value": false,
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"retry false"
+					],
+					"file": {
+						"compaction": {
+							"enabled": false
+						},
+						"retry": {
+							"enabled": false
+						}
+					}
+				},
+				{
+					"key": "steeringMode",
+					"value": "all",
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"steeringMode all"
+					],
+					"file": {
+						"compaction": {
+							"enabled": false
+						},
+						"retry": {
+							"enabled": false
+						},
+						"steeringMode": "all"
+					}
+				},
+				{
+					"key": "followUpMode",
+					"value": "all",
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"followUpMode all"
+					],
+					"file": {
+						"compaction": {
+							"enabled": false
+						},
+						"retry": {
+							"enabled": false
+						},
+						"steeringMode": "all",
+						"followUpMode": "all"
+					}
+				},
+				{
+					"key": "steeringMode",
+					"value": "sometimes",
+					"error": "steeringMode must be one of: all, one-at-a-time",
+					"live": [],
+					"file": {
+						"compaction": {
+							"enabled": false
+						},
+						"retry": {
+							"enabled": false
+						},
+						"steeringMode": "all",
+						"followUpMode": "all"
+					}
+				},
+				{
+					"key": "compaction.enabled",
+					"value": "yes",
+					"error": "compaction.enabled must be true or false",
+					"live": [],
+					"file": {
+						"compaction": {
+							"enabled": false
+						},
+						"retry": {
+							"enabled": false
+						},
+						"steeringMode": "all",
+						"followUpMode": "all"
+					}
+				}
+			]
+		},
+		{
+			"name": "transport-and-idle-timeout",
+			"files": {},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "transport",
+					"value": "websocket",
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"transport websocket"
+					],
+					"file": {
+						"transport": "websocket"
+					}
+				},
+				{
+					"key": "transport",
+					"value": "carrier-pigeon",
+					"error": "transport must be one of: sse, websocket, websocket-cached, auto",
+					"live": [],
+					"file": {
+						"transport": "websocket"
+					}
+				},
+				{
+					"key": "httpIdleTimeoutMs",
+					"value": 0,
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"httpIdleTimeout 0",
+						"streamTimeout 2147483647"
+					],
+					"file": {
+						"transport": "websocket",
+						"httpIdleTimeoutMs": 0
+					}
+				},
+				{
+					"key": "httpIdleTimeoutMs",
+					"value": 120000.9,
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"httpIdleTimeout 120000",
+						"streamTimeout 120000"
+					],
+					"file": {
+						"transport": "websocket",
+						"httpIdleTimeoutMs": 120000
+					}
+				},
+				{
+					"key": "httpIdleTimeoutMs",
+					"value": -1,
+					"error": "httpIdleTimeoutMs must be a number of at least 0",
+					"live": [],
+					"file": {
+						"transport": "websocket",
+						"httpIdleTimeoutMs": 120000
+					}
+				},
+				{
+					"key": "cacheWarming",
+					"value": "off",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"transport": "websocket",
+						"httpIdleTimeoutMs": 120000,
+						"cacheWarming": "off"
+					}
+				},
+				{
+					"key": "cacheWarming",
+					"value": "always",
+					"error": "cacheWarming must be one of: off, streaming, idle",
+					"live": [],
+					"file": {
+						"transport": "websocket",
+						"httpIdleTimeoutMs": 120000,
+						"cacheWarming": "off"
+					}
+				}
+			]
+		},
+		{
+			"name": "idle-timeout-pinned-by-provider-retry",
+			"files": {
+				"global": {
+					"retry": {
+						"provider": {
+							"timeoutMs": 5000
+						}
+					}
+				}
+			},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "httpIdleTimeoutMs",
+					"value": 60000,
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"httpIdleTimeout 60000"
+					],
+					"file": {
+						"retry": {
+							"provider": {
+								"timeoutMs": 5000
+							}
+						},
+						"httpIdleTimeoutMs": 60000
+					}
+				}
+			]
+		},
+		{
+			"name": "model-thinking-levels",
+			"files": {},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "anthropic",
+						"modelId": "claude-sonnet-4-5",
+						"level": "high"
+					},
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"thinking high"
+					],
+					"file": {
+						"modelThinkingLevels": {
+							"anthropic/claude-sonnet-4-5": "high"
+						}
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "openai",
+						"modelId": "gpt-5",
+						"level": "low"
+					},
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"anthropic/claude-sonnet-4-5": "high",
+							"openai/gpt-5": "low"
+						}
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "anthropic",
+						"modelId": "claude-sonnet-4-5",
+						"level": null
+					},
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"thinking medium"
+					],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						}
+					}
+				},
+				{
+					"key": "defaultThinkingLevel",
+					"value": "minimal",
+					"result": {
+						"applied": "restart"
+					},
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "anthropic",
+						"modelId": "claude-sonnet-4-5",
+						"level": null
+					},
+					"result": {
+						"applied": "live"
+					},
+					"live": [
+						"thinking minimal"
+					],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "openai",
+						"modelId": "gpt-5",
+						"level": "extreme"
+					},
+					"error": "modelThinkingLevel: invalid thinking level extreme",
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": "high",
+					"error": "modelThinkingLevel must be an object",
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				},
+				{
+					"key": "modelThinkingLevel",
+					"value": {
+						"provider": "",
+						"modelId": "x",
+						"level": "low"
+					},
+					"error": "modelThinkingLevel must be a non-empty string",
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				},
+				{
+					"key": "defaultThinkingLevel",
+					"value": "lots",
+					"error": "defaultThinkingLevel: invalid thinking level lots",
+					"live": [],
+					"file": {
+						"modelThinkingLevels": {
+							"openai/gpt-5": "low"
+						},
+						"defaultThinkingLevel": "minimal"
+					}
+				}
+			]
+		},
+		{
+			"name": "presentation-settings",
+			"files": {},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "theme",
+					"value": "light",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light"
+					}
+				},
+				{
+					"key": "theme",
+					"value": "",
+					"error": "theme must be a non-empty string",
+					"live": [],
+					"file": {
+						"theme": "light"
+					}
+				},
+				{
+					"key": "hideThinkingBlock",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true
+					}
+				},
+				{
+					"key": "terminal.showImages",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false
+						}
+					}
+				},
+				{
+					"key": "terminal.imageWidthCells",
+					"value": 0,
+					"error": "terminal.imageWidthCells must be a number of at least 1",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false
+						}
+					}
+				},
+				{
+					"key": "terminal.imageWidthCells",
+					"value": 33.6,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						}
+					}
+				},
+				{
+					"key": "images.autoResize",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false
+						}
+					}
+				},
+				{
+					"key": "images.blockImages",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						}
+					}
+				},
+				{
+					"key": "enableSkillCommands",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false
+					}
+				},
+				{
+					"key": "markdown.mermaid",
+					"value": "off",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						}
+					}
+				},
+				{
+					"key": "markdown.mermaid",
+					"value": "sometimes",
+					"error": "markdown.mermaid must be one of: off, final, streaming",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						}
+					}
+				},
+				{
+					"key": "showCacheMissNotices",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true
+					}
+				},
+				{
+					"key": "collapseChangelog",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true
+					}
+				},
+				{
+					"key": "enableInstallTelemetry",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false
+					}
+				},
+				{
+					"key": "quietStartup",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true
+					}
+				},
+				{
+					"key": "rlmPaneAutoOpen",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false
+					}
+				},
+				{
+					"key": "doubleEscapeAction",
+					"value": "none",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none"
+					}
+				},
+				{
+					"key": "treeFilterMode",
+					"value": "labeled-only",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only"
+					}
+				},
+				{
+					"key": "showHardwareCursor",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true
+					}
+				},
+				{
+					"key": "editorPaddingX",
+					"value": 7.5,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3
+					}
+				},
+				{
+					"key": "editorPaddingX",
+					"value": -1,
+					"error": "editorPaddingX must be a number of at least 0",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3
+					}
+				},
+				{
+					"key": "outputPad",
+					"value": 5,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 1
+					}
+				},
+				{
+					"key": "outputPad",
+					"value": 0,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0
+					}
+				},
+				{
+					"key": "autocompleteMaxVisible",
+					"value": 1,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 3
+					}
+				},
+				{
+					"key": "autocompleteMaxVisible",
+					"value": 0,
+					"error": "autocompleteMaxVisible must be a number of at least 1",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 3
+					}
+				},
+				{
+					"key": "autocompleteMaxVisible",
+					"value": 50,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20
+					}
+				},
+				{
+					"key": "terminal.clearOnShrink",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20
+					}
+				},
+				{
+					"key": "terminal.showTerminalProgress",
+					"value": true,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20
+					}
+				},
+				{
+					"key": "tuiMode",
+					"value": "fullscreen",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen"
+					}
+				},
+				{
+					"key": "fullscreenExitOutput",
+					"value": "resume-hint",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint"
+					}
+				},
+				{
+					"key": "fullscreenScrollbar",
+					"value": "hidden",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden"
+					}
+				},
+				{
+					"key": "fullscreenCopyOnSelect",
+					"value": false,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false
+					}
+				},
+				{
+					"key": "warnings",
+					"value": {
+						"anthropicExtraUsage": false
+					},
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false,
+						"warnings": {
+							"anthropicExtraUsage": false
+						}
+					}
+				},
+				{
+					"key": "warnings",
+					"value": {},
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false,
+						"warnings": {}
+					}
+				},
+				{
+					"key": "warnings",
+					"value": {
+						"anthropicExtraUsage": "no"
+					},
+					"error": "warnings must be true or false",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false,
+						"warnings": {}
+					}
+				},
+				{
+					"key": "warnings",
+					"value": [],
+					"error": "warnings must be an object",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false,
+						"warnings": {}
+					}
+				},
+				{
+					"key": "unknownKey",
+					"value": 1,
+					"error": "Unknown setting: unknownKey",
+					"live": [],
+					"file": {
+						"theme": "light",
+						"hideThinkingBlock": true,
+						"terminal": {
+							"showImages": false,
+							"imageWidthCells": 33,
+							"clearOnShrink": true,
+							"showTerminalProgress": true
+						},
+						"images": {
+							"autoResize": false,
+							"blockImages": true
+						},
+						"enableSkillCommands": false,
+						"markdown": {
+							"mermaid": "off"
+						},
+						"showCacheMissNotices": true,
+						"collapseChangelog": true,
+						"enableInstallTelemetry": false,
+						"quietStartup": true,
+						"rlmPaneAutoOpen": false,
+						"doubleEscapeAction": "none",
+						"treeFilterMode": "labeled-only",
+						"showHardwareCursor": true,
+						"editorPaddingX": 3,
+						"outputPad": 0,
+						"autocompleteMaxVisible": 20,
+						"tuiMode": "fullscreen",
+						"fullscreenExitOutput": "resume-hint",
+						"fullscreenScrollbar": "hidden",
+						"fullscreenCopyOnSelect": false,
+						"warnings": {}
+					}
+				}
+			]
+		},
+		{
+			"name": "autoreview-and-trust",
+			"files": {
+				"global": {
+					"autoreview": {
+						"accounts": [
+							"octo"
+						],
+						"pollSeconds": 30
+					}
+				}
+			},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "engineering",
+					"value": true,
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview.enabled",
+					"value": false,
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30,
+							"enabled": false
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview.ack",
+					"value": false,
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30,
+							"enabled": false,
+							"ack": false
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview.ackArt",
+					"value": "none",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30,
+							"enabled": false,
+							"ack": false,
+							"ackArt": false
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview.ackArt",
+					"value": "logo",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30,
+							"enabled": false,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview.ackArt",
+					"value": "custom",
+					"error": "autoreview.ackArt must be one of: logo, none",
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"octo"
+							],
+							"pollSeconds": 30,
+							"enabled": false,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview",
+					"value": {
+						"enabled": true,
+						"accounts": [
+							"a",
+							"b"
+						]
+					},
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"accounts": [
+								"a",
+								"b"
+							],
+							"pollSeconds": 30,
+							"enabled": true,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview",
+					"value": {
+						"enabled": null,
+						"accounts": null
+					},
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview",
+					"value": {
+						"accounts": [
+							1
+						]
+					},
+					"error": "autoreview.accounts must be an array of strings or null",
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview",
+					"value": {
+						"pollSeconds": 5
+					},
+					"error": "autoreview.pollSeconds cannot be set this way",
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "autoreview",
+					"value": "on",
+					"error": "autoreview must be an object",
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true
+					}
+				},
+				{
+					"key": "defaultProjectTrust",
+					"value": "always",
+					"result": {
+						"applied": "restart"
+					},
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true,
+						"defaultProjectTrust": "always"
+					}
+				},
+				{
+					"key": "defaultProjectTrust",
+					"value": "sometimes",
+					"error": "defaultProjectTrust must be one of: ask, always, never",
+					"live": [],
+					"file": {
+						"autoreview": {
+							"pollSeconds": 30,
+							"ack": false,
+							"ackArt": "logo"
+						},
+						"engineering": true,
+						"defaultProjectTrust": "always"
+					}
+				}
+			]
+		},
+		{
+			"name": "model-settings",
+			"files": {},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "rlm.frameModel",
+					"value": " openai/gpt-5 ",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"frameModel": "openai/gpt-5"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameModel",
+					"value": "claude-code/opus",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"frameModel": "claude-code/opus"
+						}
+					}
+				},
+				{
+					"key": "rlm.childModel",
+					"value": "anthropic/claude-haiku-4-5",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"frameModel": "claude-code/opus",
+							"childModel": "anthropic/claude-haiku-4-5"
+						}
+					}
+				},
+				{
+					"key": "rlm.childModel",
+					"value": "claude-code/sonnet",
+					"error": "rlm.childModel must be a tool-capable model: claude-code/sonnet runs on the Claude Code CLI, which has no tool calling. Use claude-code models for frames (rlm.frameModel, review.model).",
+					"live": [],
+					"file": {
+						"rlm": {
+							"frameModel": "claude-code/opus",
+							"childModel": "anthropic/claude-haiku-4-5"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameModel",
+					"value": "gpt-5",
+					"error": "rlm.frameModel must be provider/model (or null to clear it)",
+					"live": [],
+					"file": {
+						"rlm": {
+							"frameModel": "claude-code/opus",
+							"childModel": "anthropic/claude-haiku-4-5"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameModel",
+					"value": null,
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameThinking",
+					"value": "max",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5",
+							"frameThinking": "max"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameThinking",
+					"value": "loud",
+					"error": "rlm.frameThinking must be one of: off, minimal, low, medium, high, xhigh, max",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5",
+							"frameThinking": "max"
+						}
+					}
+				},
+				{
+					"key": "rlm.frameThinking",
+					"value": null,
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						}
+					}
+				},
+				{
+					"key": "review.model",
+					"value": "openai/o3",
+					"result": {
+						"applied": "live"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						}
+					}
+				},
+				{
+					"key": "review.model",
+					"value": 5,
+					"error": "review.model must be provider/model (or null to clear it)",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.frameModel",
+					"value": "claude-code/opus",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.ultronChildModel",
+					"value": "openai/gpt-5",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.ultronChildModel",
+					"value": "claude-code/opus",
+					"error": "claudeCode.ultronChildModel must be a tool-capable model: claude-code/opus runs on the Claude Code CLI, which has no tool calling. Use claude-code models for frames (rlm.frameModel, review.model).",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.childModel",
+					"value": "claude-code/sonnet",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.model",
+					"value": " opus[1m] ",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet",
+							"model": "opus[1m]"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.model",
+					"value": "-bad alias",
+					"error": "claudeCode.model must be a Claude Code model such as opus or sonnet",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet",
+							"model": "opus[1m]"
+						}
+					}
+				},
+				{
+					"key": "claudeCode.model",
+					"value": null,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						}
+					}
+				},
+				{
+					"key": "enabledModels",
+					"value": [
+						"anthropic/*",
+						"gpt-5"
+					],
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						},
+						"enabledModels": [
+							"anthropic/*",
+							"gpt-5"
+						]
+					}
+				},
+				{
+					"key": "enabledModels",
+					"value": [
+						"ok",
+						""
+					],
+					"error": "enabledModels must be a non-empty string",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						},
+						"enabledModels": [
+							"anthropic/*",
+							"gpt-5"
+						]
+					}
+				},
+				{
+					"key": "enabledModels",
+					"value": "anthropic/*",
+					"error": "enabledModels must be a list",
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						},
+						"enabledModels": [
+							"anthropic/*",
+							"gpt-5"
+						]
+					}
+				},
+				{
+					"key": "enabledModels",
+					"value": null,
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": {
+						"rlm": {
+							"childModel": "anthropic/claude-haiku-4-5"
+						},
+						"review": {
+							"model": "openai/o3"
+						},
+						"claudeCode": {
+							"frameModel": "claude-code/opus",
+							"ultronChildModel": "openai/gpt-5",
+							"childModel": "sonnet"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "malformed-file-is-not-overwritten",
+			"files": {
+				"raw": "{ not json"
+			},
+			"model": {
+				"provider": "anthropic",
+				"id": "claude-sonnet-4-5"
+			},
+			"steps": [
+				{
+					"key": "theme",
+					"value": "light",
+					"result": {
+						"applied": "saved"
+					},
+					"live": [],
+					"file": "{ not json"
+				}
+			]
+		}
+	],
+	"envOverrides": [
+		{
+			"env": {},
+			"overrides": {}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_FRAME_MODEL": "openai/gpt-5",
+				"ULTRON_REVIEW_MODEL": " a/b/c ",
+				"ULTRON_CLAUDE_FRAME_MODEL": "x/y"
+			},
+			"overrides": {
+				"rlm.frameModel": {
+					"name": "ULTRON_RLM_FRAME_MODEL",
+					"value": "openai/gpt-5"
+				},
+				"review.model": {
+					"name": "ULTRON_REVIEW_MODEL",
+					"value": "a/b/c"
+				},
+				"claudeCode.frameModel": {
+					"name": "ULTRON_CLAUDE_FRAME_MODEL",
+					"value": "x/y"
+				}
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_FRAME_MODEL": "a /b",
+				"ULTRON_CLAUDE_MODEL": "opus",
+				"ULTRON_CLAUDE_CHILD_MODEL": ""
+			},
+			"overrides": {
+				"claudeCode.model": {
+					"name": "ULTRON_CLAUDE_MODEL",
+					"value": "opus"
+				}
+			}
+		}
+	],
+	"debugEnvironments": [
+		{
+			"env": {
+				"PATH": "/usr/bin",
+				"ULTRON_CODING_AGENT_DIR": "/a",
+				"PI_OFFLINE": "1",
+				"ULTRON_API_KEY": "k",
+				"PI_SESSION_WORKER_SESSION_KEY_BASE64": "x",
+				"ULTRON_GH_Token": "t",
+				"ULTRON_PASSWD_FILE": "p",
+				"pi_lower": "l",
+				"ULTRON_COOKIE_JAR": "c",
+				"ULTRON_AUTHOR": "me",
+				"ULTRON_CREDENTIALS": "c",
+				"ULTRON_Z": "z",
+				"ULTRON_a": "lower",
+				"ULTRON_B": "B",
+				"PI_SECRETARY": "s",
+				"ULTRON_PASSWORD_X": "pw",
+				"ULTRONX": "no"
+			},
+			"environment": {
+				"PI_OFFLINE": "1",
+				"PI_SECRETARY": "<redacted>",
+				"PI_SESSION_WORKER_SESSION_KEY_BASE64": "<redacted>",
+				"ULTRON_a": "lower",
+				"ULTRON_API_KEY": "<redacted>",
+				"ULTRON_AUTHOR": "<redacted>",
+				"ULTRON_B": "B",
+				"ULTRON_CODING_AGENT_DIR": "/a",
+				"ULTRON_COOKIE_JAR": "<redacted>",
+				"ULTRON_CREDENTIALS": "<redacted>",
+				"ULTRON_GH_Token": "<redacted>",
+				"ULTRON_PASSWD_FILE": "<redacted>",
+				"ULTRON_PASSWORD_X": "<redacted>",
+				"ULTRON_Z": "z"
+			}
+		}
+	]
+}

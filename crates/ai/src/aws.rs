@@ -1,11 +1,9 @@
 //! The AWS pieces the Bedrock provider needs without the AWS SDK: SigV4 request signing (`@smithy/signature-v4`), the
-//! `application/vnd.amazon.eventstream` binary framing (`@smithy/core/event-streams`), static credentials and regions
-//! from the environment and the shared `credentials`/`config` files, and the standard retry classification.
+//! `application/vnd.amazon.eventstream` binary framing (`@smithy/core/event-streams`) and the standard retry
+//! classification. Credentials and shared config files are `aws_credentials.rs`.
 
-use crate::env::{ProviderEnv, provider_env_value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
 // --------------------------------------------------------------------------------------------------------- SigV4
 
@@ -362,77 +360,6 @@ pub fn encode_message(headers: &[(&str, &str)], body: &[u8]) -> Vec<u8> {
     out.extend_from_slice(body);
     out.extend_from_slice(&crc32fast::hash(&out).to_be_bytes());
     out
-}
-
-// ------------------------------------------------------------------------------------------ credentials and region
-
-/// An INI file as `section -> key -> value`.
-type Ini = BTreeMap<String, BTreeMap<String, String>>;
-
-fn parse_ini(text: &str) -> Ini {
-    let mut out = Ini::new();
-    let mut section: Option<String> = None;
-    for raw in text.lines() {
-        let line = raw.split(['#', ';']).next().unwrap_or_default().trim();
-        if line.is_empty() {
-            continue;
-        }
-        if let Some(name) = line.strip_prefix('[').and_then(|l| l.strip_suffix(']')) {
-            section = Some(name.trim().to_string());
-            out.entry(name.trim().to_string()).or_default();
-            continue;
-        }
-        if let (Some(section), Some((key, value))) = (&section, line.split_once('=')) {
-            out.entry(section.clone())
-                .or_default()
-                .insert(key.trim().to_string(), value.trim().to_string());
-        }
-    }
-    out
-}
-
-fn home_path(relative: &str) -> Option<PathBuf> {
-    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(relative))
-}
-
-fn shared_file(name: &str, default: &str, env: Option<&ProviderEnv>) -> Option<PathBuf> {
-    match provider_env_value(name, env) {
-        Some(path) if path.starts_with("~/") => home_path(&path[2..]),
-        Some(path) => Some(PathBuf::from(path)),
-        None => home_path(default),
-    }
-}
-
-/// The merged settings of `profile` from the config file (`[profile name]`, `[default]`) and the credentials file
-/// (`[name]`), the credentials file winning.
-pub fn profile_settings(profile: &str, env: Option<&ProviderEnv>) -> BTreeMap<String, String> {
-    let read = |path: Option<PathBuf>| {
-        path.and_then(|p| std::fs::read_to_string(p).ok())
-            .map(|text| parse_ini(&text))
-            .unwrap_or_default()
-    };
-    let config = read(shared_file("AWS_CONFIG_FILE", ".aws/config", env));
-    let credentials = read(shared_file("AWS_SHARED_CREDENTIALS_FILE", ".aws/credentials", env));
-    let config_section = if profile == "default" {
-        config.get("default").or_else(|| config.get("profile default"))
-    } else {
-        config.get(&format!("profile {profile}"))
-    };
-    let mut merged = config_section.cloned().unwrap_or_default();
-    if let Some(section) = credentials.get(profile) {
-        merged.extend(section.clone());
-    }
-    merged
-}
-
-/// Static keys from a profile.
-pub fn profile_credentials(profile: &str, env: Option<&ProviderEnv>) -> Option<AwsCredentials> {
-    let settings = profile_settings(profile, env);
-    Some(AwsCredentials {
-        access_key_id: settings.get("aws_access_key_id").filter(|v| !v.is_empty())?.clone(),
-        secret_access_key: settings.get("aws_secret_access_key").filter(|v| !v.is_empty())?.clone(),
-        session_token: settings.get("aws_session_token").filter(|v| !v.is_empty()).cloned(),
-    })
 }
 
 // ---------------------------------------------------------------------------------------------------------- retries

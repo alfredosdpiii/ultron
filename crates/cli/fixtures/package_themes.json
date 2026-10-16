@@ -1,0 +1,74 @@
+{
+	"registered": [
+		{
+			"name": "solo",
+			"sourcePath": "<root>/extra/solo.json"
+		},
+		{
+			"name": "custom",
+			"sourcePath": "<root>/agent/themes/custom.json"
+		},
+		{
+			"name": "abyss",
+			"sourcePath": "<root>/pkgs/ocean/themes/abyss.json"
+		},
+		{
+			"name": "ocean",
+			"sourcePath": "<root>/pkgs/ocean/themes/ocean.json"
+		},
+		{
+			"name": "zest",
+			"sourcePath": "<root>/pkgs/second/themes/zest.json"
+		},
+		{
+			"name": "kept",
+			"sourcePath": "<root>/pkgs/filtered/themes/kept.json"
+		}
+	],
+	"diagnostics": [
+		{
+			"type": "warning",
+			"message": "Failed to parse theme <root>/extra/broken.json: SyntaxError: Expected property name or '}' in JSON at position 2 (line 1 column 3)",
+			"path": "<root>/extra/broken.json"
+		},
+		{
+			"type": "collision",
+			"message": "name \"ocean\" collision",
+			"path": "<root>/pkgs/second/themes/ocean.json"
+		}
+	],
+	"available": [
+		{
+			"name": "abyss",
+			"path": "<root>/pkgs/ocean/themes/abyss.json"
+		},
+		{
+			"name": "custom",
+			"path": "<root>/agent/themes/custom.json"
+		},
+		{
+			"name": "dark",
+			"path": "<builtin>/dark.json"
+		},
+		{
+			"name": "kept",
+			"path": "<root>/pkgs/filtered/themes/kept.json"
+		},
+		{
+			"name": "light",
+			"path": "<builtin>/light.json"
+		},
+		{
+			"name": "ocean",
+			"path": "<root>/pkgs/ocean/themes/ocean.json"
+		},
+		{
+			"name": "solo",
+			"path": "<root>/extra/solo.json"
+		},
+		{
+			"name": "zest",
+			"path": "<root>/pkgs/second/themes/zest.json"
+		}
+	]
+}

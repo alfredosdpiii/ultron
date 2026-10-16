@@ -177,6 +177,8 @@ pub struct ServerOptions {
     pub keep_alive: bool,
     /// The project root, recorded for `ultron instances`.
     pub root: Option<PathBuf>,
+    /// The Radius relay host each generation runs (`startServerGeneration`'s `RadiusRelayHost`); `None` runs none.
+    pub relay: Option<server::radius_relay::RelayConfig>,
 }
 
 struct Closed {
@@ -198,6 +200,7 @@ pub struct RunningServer {
     record: PathBuf,
     closed: Arc<Closed>,
     closing: Mutex<bool>,
+    relay: Mutex<Option<server::radius_relay::RadiusRelayHost>>,
 }
 
 impl RunningServer {
@@ -211,6 +214,10 @@ impl RunningServer {
             return self.wait_closed();
         }
         self.lifetime.stop();
+        let relay = self.relay.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(relay) = relay {
+            relay.close();
+        }
         let lost = self.coordinator.was_lost();
         if !lost {
             self.manager.prepare_shutdown();
@@ -356,6 +363,10 @@ fn start_generation(
         "sessionDir": options.session_dir.display().to_string(),
     });
     let _ = std::fs::write(&record, format!("{record_value}\n"));
+    let relay = options
+        .relay
+        .as_ref()
+        .map(|relay| relay.start(server_id, endpoint_path.clone()));
     let running = Arc::new(RunningServer {
         server_id: server_id.to_string(),
         socket_path,
@@ -370,6 +381,7 @@ fn start_generation(
             changed: Condvar::new(),
         }),
         closing: Mutex::new(false),
+        relay: Mutex::new(relay),
     });
     // Only losing the coordinator itself ends a generation early.
     let lost = Arc::downgrade(&running);
@@ -495,8 +507,10 @@ fn parse_model(value: Option<&String>) -> Result<WorkerModel, String> {
     })
 }
 
-/// `runServerProcess`: an automatically activated server, until its client and session demand disappears.
-pub fn run_server_process(args: &[String]) -> Result<(), String> {
+/// `runServerProcess`: an automatically activated server, until its client and session demand disappears. Its
+/// generations run `relay` (`startServerGeneration`'s `RadiusRelayHost` with the stored credential), which the
+/// composition root builds from this process's environment.
+pub fn run_server_process(args: &[String], relay: Option<server::radius_relay::RelayConfig>) -> Result<(), String> {
     if args.len() > 4 {
         return Err("Internal server received unexpected arguments".into());
     }
@@ -514,6 +528,7 @@ pub fn run_server_process(args: &[String]) -> Result<(), String> {
         model,
         keep_alive: std::env::var(KEEP_ALIVE_ENV).as_deref() == Ok("1"),
         root: std::env::var_os("__ULTRON_SERVER_ROOT").map(PathBuf::from),
+        relay,
     })
     .map_err(|e| e.to_string())?;
     // A signal closes the generation (busy workers keep running detached) and removes its endpoint.

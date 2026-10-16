@@ -1,9 +1,11 @@
-//! `api/google-vertex.ts`: Gemini on Vertex AI in API-key mode, sharing the stream of `google.rs`. ADC mode (project
-//! and location with Google application credentials) is not ported: it needs google-auth-library's token exchange.
+//! `api/google-vertex.ts`: Gemini on Vertex AI, sharing the stream of `google.rs`. With an API key the request goes to
+//! the global endpoint; without one (application default credentials) it goes to the project and location's endpoint
+//! with the bearer token `google_auth.rs` obtains when the request is sent. `GOOGLE_VERTEX_BASE_URL` replaces the default
+//! host when the model sets no base URL of its own.
 
 use crate::Transport;
 use crate::env::provider_env_value;
-use crate::google::{Endpoint, GoogleOptions, GoogleThinking, simple_options, stream_endpoint};
+use crate::google::{Endpoint, EndpointAuth, GoogleOptions, GoogleThinking, simple_options, stream_endpoint};
 use crate::options::{SimpleStreamOptions, StreamOptions};
 use crate::types::{AssistantMessage, EventSink, Model, TranscriptContext};
 use serde::Deserialize;
@@ -53,6 +55,36 @@ fn includes_api_version(base_url: &str) -> bool {
         })
 }
 
+/// `resolveCustomBaseUrl` plus the SDK's version segment: a custom base is a collection-scoped resource root.
+fn custom_base(model: &Model) -> Option<String> {
+    let custom = model.base_url.trim();
+    if custom.is_empty() || custom.contains("{location}") {
+        None
+    } else if includes_api_version(custom) {
+        Some(custom.trim_end_matches('/').to_string())
+    } else {
+        Some(format!("{}/{API_VERSION}", custom.trim_end_matches('/')))
+    }
+}
+
+/// The SDK's Vertex base URL for a project and location: global, a multi-region `rep` endpoint, or a region.
+fn location_base(location: &str) -> String {
+    match location {
+        "global" => GLOBAL_BASE_URL.to_string(),
+        "us" | "eu" => format!("https://aiplatform.{location}.rep.googleapis.com"),
+        _ => format!("https://{location}-aiplatform.googleapis.com"),
+    }
+}
+
+/// The SDK's `GOOGLE_VERTEX_BASE_URL` (trimmed, read only when the model has no custom base): it replaces the default
+/// host and keeps the version segment and, with a project, the project path. One trailing slash is dropped, as
+/// `getRequestUrlInternal` does.
+fn env_base(options: &GoogleVertexOptions) -> Option<String> {
+    let value = provider_env_value("GOOGLE_VERTEX_BASE_URL", options.base.env.as_ref())?;
+    let value = value.trim();
+    (!value.is_empty()).then(|| value.strip_suffix('/').unwrap_or(value).to_string())
+}
+
 fn endpoint(model: &Model, options: &GoogleVertexOptions) -> Result<Endpoint, String> {
     let Some(api_key) = resolve_api_key(&options.base) else {
         let env = options.base.env.as_ref();
@@ -61,36 +93,39 @@ fn endpoint(model: &Model, options: &GoogleVertexOptions) -> Result<Endpoint, St
             .clone()
             .filter(|p| !p.is_empty())
             .or_else(|| provider_env_value("GOOGLE_CLOUD_PROJECT", env))
-            .or_else(|| provider_env_value("GCLOUD_PROJECT", env));
-        if project.is_none() {
-            return Err(
+            .or_else(|| provider_env_value("GCLOUD_PROJECT", env))
+            .ok_or_else(|| {
                 "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass project in options."
-                    .into(),
-            );
-        }
+                    .to_string()
+            })?;
         let location = options
             .location
             .clone()
             .filter(|l| !l.is_empty())
-            .or_else(|| provider_env_value("GOOGLE_CLOUD_LOCATION", env));
-        if location.is_none() {
-            return Err("Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options.".into());
-        }
-        return Err(
-            "Vertex AI application-default credentials are not supported by the Rust port; pass an API key".into(),
-        );
-    };
-    let custom = model.base_url.trim();
-    let base = if custom.is_empty() || custom.contains("{location}") {
-        format!("{GLOBAL_BASE_URL}/{API_VERSION}")
-    } else if includes_api_version(custom) {
-        custom.trim_end_matches('/').to_string()
-    } else {
-        format!("{}/{API_VERSION}", custom.trim_end_matches('/'))
+            .or_else(|| provider_env_value("GOOGLE_CLOUD_LOCATION", env))
+            .ok_or_else(|| {
+                "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options.".to_string()
+            })?;
+        let custom = custom_base(model);
+        return Ok(Endpoint {
+            resource: custom
+                .is_none()
+                .then(|| format!("projects/{project}/locations/{location}")),
+            base: custom.unwrap_or_else(|| {
+                let host = env_base(options).unwrap_or_else(|| location_base(&location));
+                format!("{host}/{API_VERSION}")
+            }),
+            auth: EndpointAuth::Google(options.base.env.clone()),
+            vertex: true,
+        });
     };
     Ok(Endpoint {
-        base,
-        api_key,
+        base: custom_base(model).unwrap_or_else(|| {
+            let host = env_base(options).unwrap_or_else(|| GLOBAL_BASE_URL.to_string());
+            format!("{host}/{API_VERSION}")
+        }),
+        auth: EndpointAuth::ApiKey(api_key),
+        resource: None,
         vertex: true,
     })
 }

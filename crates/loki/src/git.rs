@@ -409,9 +409,13 @@ pub fn git_changes(
 
 /// The committed `.loki/loki.json` of `base`, validated.
 pub fn base_policy(root: &Path, base: Option<&str>, deadline: Deadline) -> Result<Option<Config>, CheckError> {
-    let Some(base) = base else { return Ok(None) };
+    let Some(base) = base else {
+        crate::evidence::policy("base", ".loki/loki.json", None, None);
+        return Ok(None);
+    };
     let entry = git_output(root, &["ls-tree", "-z", base, "--", ".loki/loki.json"], deadline, None)?;
     if entry.is_empty() {
+        crate::evidence::policy("base", ".loki/loki.json", None, Some(base));
         return Ok(None);
     }
     let trimmed: &[u8] = entry.strip_suffix(b"\0").unwrap_or(&entry);
@@ -422,6 +426,7 @@ pub fn base_policy(root: &Path, base: Option<&str>, deadline: Deadline) -> Resul
         return Err(invalid("loki: base policy must be a regular file"));
     }
     let raw = git_output(root, &["cat-file", "blob", parts[2]], deadline, None)?;
+    crate::evidence::policy("base", ".loki/loki.json", Some(&raw), Some(base));
     let text = proc::decode(&raw).map_err(invalid)?;
     let value: serde_json::Value =
         serde_json::from_str(&text).map_err(|e| invalid(crate::pyjson::error_text(&text, &e)))?;
@@ -434,7 +439,10 @@ pub fn protected_change_violations(changes: &[FileChange], base: &Config) -> Res
     Ok(changes
         .iter()
         .filter(|c| patterns.iter().any(|p| path_matches(&c.path, p)))
-        .map(|c| format!("{}: protected content changed", c.path))
+        .map(|c| {
+            crate::evidence::finding("protected-content", Some(&c.path));
+            format!("{}: protected content changed", c.path)
+        })
         .collect())
 }
 
@@ -478,6 +486,10 @@ pub fn materialize_base(root: &Path, base: &str, destination: &Path, deadline: D
     let oids: Vec<String> = entries.iter().map(|e| e.2.clone()).collect();
     let blobs = git_blobs(root, &oids, deadline)?;
     for (name, mode, oid) in entries {
+        let file_name = name.rsplit('/').next().unwrap_or(&name);
+        if file_name.starts_with("tsconfig") && name.ends_with(".json") {
+            crate::evidence::policy("base", &name, Some(&blobs[&oid]), Some(base));
+        }
         let path: PathBuf = destination.join(&name);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(os)?;

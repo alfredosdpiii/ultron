@@ -1,0 +1,172 @@
+{
+	"cases": [
+		{
+			"value": null,
+			"budget": 8
+		},
+		{
+			"value": "",
+			"budget": 8
+		},
+		{
+			"value": "   ",
+			"budget": 8
+		},
+		{
+			"value": "8",
+			"budget": 8
+		},
+		{
+			"value": "0",
+			"budget": 0
+		},
+		{
+			"value": "3",
+			"budget": 3
+		},
+		{
+			"value": " 12 ",
+			"budget": 12
+		},
+		{
+			"value": "\t5\n",
+			"budget": 5
+		},
+		{
+			"value": "0x10",
+			"budget": 16
+		},
+		{
+			"value": "0X1f",
+			"budget": 31
+		},
+		{
+			"value": "0x",
+			"budget": 8
+		},
+		{
+			"value": "0x1g",
+			"budget": 8
+		},
+		{
+			"value": "-0x10",
+			"budget": 8
+		},
+		{
+			"value": "+0x10",
+			"budget": 8
+		},
+		{
+			"value": "0o17",
+			"budget": 15
+		},
+		{
+			"value": "0O7",
+			"budget": 7
+		},
+		{
+			"value": "0o8",
+			"budget": 8
+		},
+		{
+			"value": "0b101",
+			"budget": 5
+		},
+		{
+			"value": "0B11",
+			"budget": 3
+		},
+		{
+			"value": "0b2",
+			"budget": 8
+		},
+		{
+			"value": "010",
+			"budget": 10
+		},
+		{
+			"value": "1e1",
+			"budget": 10
+		},
+		{
+			"value": "1E2",
+			"budget": 100
+		},
+		{
+			"value": "1e",
+			"budget": 8
+		},
+		{
+			"value": "1.0",
+			"budget": 1
+		},
+		{
+			"value": "1.5",
+			"budget": 8
+		},
+		{
+			"value": "5.",
+			"budget": 5
+		},
+		{
+			"value": ".0",
+			"budget": 0
+		},
+		{
+			"value": "-1",
+			"budget": 8
+		},
+		{
+			"value": "-0",
+			"budget": 0
+		},
+		{
+			"value": "+3",
+			"budget": 3
+		},
+		{
+			"value": "Infinity",
+			"budget": 8
+		},
+		{
+			"value": "-Infinity",
+			"budget": 8
+		},
+		{
+			"value": "inf",
+			"budget": 8
+		},
+		{
+			"value": "NaN",
+			"budget": 8
+		},
+		{
+			"value": "nan",
+			"budget": 8
+		},
+		{
+			"value": "1_0",
+			"budget": 8
+		},
+		{
+			"value": "1e400",
+			"budget": 8
+		},
+		{
+			"value": "0x7fffffffffffffffffff",
+			"budget": 6.044629098073146e+23
+		},
+		{
+			"value": "abc",
+			"budget": 8
+		},
+		{
+			"value": " 7 ",
+			"budget": 7
+		},
+		{
+			"value": "﻿9",
+			"budget": 9
+		}
+	]
+}

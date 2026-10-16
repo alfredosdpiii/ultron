@@ -83,6 +83,15 @@ impl Editor {
         self.autocomplete_max_visible = max_visible.clamp(3, 20);
     }
 
+    /// `setPaddingX`: the editor's horizontal padding.
+    pub fn set_padding_x(&mut self, padding: usize) {
+        self.padding_x = padding;
+    }
+
+    pub fn padding_x(&self) -> usize {
+        self.padding_x
+    }
+
     pub fn is_showing_autocomplete(&self) -> bool {
         self.picker.is_some()
     }

@@ -161,6 +161,14 @@ impl ChatView {
         }
     }
 
+    /// A new rendering context (a theme change): every item renders again with it.
+    pub fn set_style(&mut self, style: ChatStyle) {
+        self.style = style;
+        for item in &mut self.items {
+            item.cache = None;
+        }
+    }
+
     /// A `!` command's component (`BashExecutionComponent`), running.
     pub fn bash_component(&self, command: &str, exclude: bool) -> BashExecution {
         let mut bash = BashExecution::new(
@@ -610,6 +618,7 @@ impl ChatView {
             let label = match q.kind {
                 QueueKind::Steer => "Steering",
                 QueueKind::FollowUp => "Follow-up",
+                QueueKind::NextRun => "Next run",
             };
             let text: Vec<&str> = q.text.split_whitespace().collect();
             let line = fg(t, "dim", &format!("{label}: {}", text.join(" ")));

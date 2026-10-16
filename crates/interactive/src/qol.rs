@@ -316,9 +316,10 @@ impl PrLookup for NoPr {
 /// grammar warm-up (highlighting). Call once at startup, before the paint loop.
 pub fn install_services(app: &mut App, path_var: Option<String>) {
     let qol = app.qol().clone();
-    if qol.attachments || qol.vim {
-        app.set_clipboard(tui::clipboard::ClipboardService::system());
-    }
+    // Pi's Ctrl+V and copies use the clipboard in every mode (its tools come from `path_var`).
+    app.set_clipboard(tui::clipboard::ClipboardService::spawn(
+        tui::clipboard::SystemClipboard::with_env(path_var.clone(), std::env::vars().collect()),
+    ));
     if qol.status_line {
         let cwd = PathBuf::from(app.cwd());
         let watcher = if qol.status_pr {

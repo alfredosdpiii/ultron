@@ -3,15 +3,123 @@
 //! - before `edit()`/`write()` change a file: `protect --file <path> --preview ultron` on the proposed content; a
 //!   finding blocks the write (with `advise`, it is only reported);
 //! - before a shell command that may write files: `shell-writes`, which refuses a write into source or configuration
-//!   that would skip the before-write check.
+//!   that would skip the before-write check;
+//! - after a cell, on the files it changed by other means (`hook --file ... --format json`): new findings to fix,
+//!   findings shown earlier and still open as one line, advisory lines once, at most 40 files per check.
 //!
 //! The policy is the repository's `.loki/loki.json` under the root (the Git work tree, else the session directory).
 
-use crate::file_hooks::{FileWriteGuard, Verdict, inside};
+use crate::file_hooks::{AfterCellReport, AfterOutcome, CellChanges, FileWriteGuard, Verdict, inside};
+use fancy_regex::Regex;
 use serde_json::{Map, Value, json};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{LazyLock, Mutex};
+
+/// Files one after-cell check takes; the rest are named as not checked.
+const MAX_HOOK_FILES: usize = 40;
+static PROTECTED_LOKI: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\.loki/\S*: protected content changed$").expect("static pattern"));
+static FINDING_PATH: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([^:\s][^:\n]*?)(?::\d+)?: ").expect("static pattern"));
+static ADVISORY_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(: loki/slop-[\w-]+: |\[Warning/|^oxlint advisory \(not blocking\))").expect("static pattern")
+});
+static ENGINE_ERROR: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^loki: (invalid hook input|guard error)").expect("static pattern"));
+
+/// A check's lines by tier (`LokiReport`).
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct LokiReport {
+    pub blocking: Vec<String>,
+    pub advisory: Vec<String>,
+    pub not_checked: Vec<String>,
+    pub error: Option<String>,
+}
+
+fn texts(value: &Value) -> Vec<String> {
+    value
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|item| match item {
+            Value::String(text) => text.clone(),
+            Value::Object(map) => map.get("text").and_then(Value::as_str).unwrap_or_default().to_string(),
+            _ => String::new(),
+        })
+        .filter(|text| !text.trim().is_empty())
+        .collect()
+}
+
+/// `parseLokiReport`: the `--format json` document, or none when stdout is not one.
+pub fn parse_loki_report(stdout: &str) -> Option<LokiReport> {
+    let parsed: Value = serde_json::from_str(stdout).ok()?;
+    let map = parsed.as_object()?;
+    if !map.contains_key("status") || !map.contains_key("blocking") {
+        return None;
+    }
+    Some(LokiReport {
+        blocking: texts(&map["blocking"]),
+        advisory: texts(map.get("advisory").unwrap_or(&Value::Null)),
+        not_checked: texts(map.get("not_checked").unwrap_or(&Value::Null)),
+        error: map.get("error").and_then(Value::as_str).map(str::to_string),
+    })
+}
+
+/// `classifyLokiText`: the tiers from the text an engine prints on stderr: `NOT CHECKED` lines, slop and analyzer
+/// warnings as advisory, and when the check failed everything else (after the advisory label: advisory) blocking.
+pub fn classify_loki_text(stderr: &str, failed: bool) -> LokiReport {
+    let mut report = LokiReport::default();
+    let mut labelled = false;
+    for raw in stderr.split('\n') {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("loki: post-write check failed") {
+            continue;
+        }
+        if failed && ENGINE_ERROR.is_match(line).unwrap_or(false) {
+            return LokiReport {
+                error: Some(line.to_string()),
+                ..LokiReport::default()
+            };
+        }
+        if line == "loki: advisory (not blocking):" {
+            labelled = true;
+        } else if line.starts_with("NOT CHECKED") {
+            report.not_checked.push(line.to_string());
+        } else if !failed || labelled || ADVISORY_LINE.is_match(line).unwrap_or(false) {
+            report.advisory.push(line.to_string());
+        } else {
+            report.blocking.push(line.to_string());
+        }
+    }
+    report
+}
+
+/// `findingKey`: a finding's file and its identity without the line number, which moves as the file is edited.
+fn finding_key(line: &str) -> (String, String) {
+    match FINDING_PATH.captures(line).ok().flatten() {
+        Some(found) => {
+            let path = found[1].to_string();
+            let rest = &line[found[0].len()..];
+            (path.clone(), format!("{path}: {rest}"))
+        }
+        None => (String::new(), line.to_string()),
+    }
+}
+
+fn count(n: usize, noun: &str) -> String {
+    format!("{n} {noun}{}", if n == 1 { "" } else { "s" })
+}
+
+fn first_line(text: &str) -> String {
+    text.split('\n')
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .unwrap_or_default()
+        .to_string()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LokiMode {
@@ -77,6 +185,23 @@ pub struct LokiGuard {
     mode: LokiMode,
     /// NOT CHECKED lines are shown once per session, not after every write.
     shown_notices: Mutex<Vec<String>>,
+    /// Findings already shown and not fixed since, per tier and file, so a later cell is not told again in full.
+    open: Mutex<HashMap<&'static str, HashMap<String, HashSet<String>>>>,
+    paused_shown: AtomicBool,
+    /// Runs `hook --file ... --format json` in `root` (default: the Rust engine in-process).
+    hook: HookRunner,
+    /// Post-write checks run (`postWrite`): they compare against a base revision, so only in a repository.
+    post_write: bool,
+}
+
+/// Runs Loki's post-write `hook` on repository-relative files: its exit status, stdout and stderr.
+pub type HookRunner = std::sync::Arc<dyn Fn(&Path, &[String]) -> loki::run::Outcome + Send + Sync>;
+
+/// One tier's lines not yet shown for their file, how many shown earlier are still there, and their files.
+struct Unseen {
+    fresh: Vec<String>,
+    earlier: usize,
+    paths: Vec<String>,
 }
 
 impl LokiGuard {
@@ -86,6 +211,63 @@ impl LokiGuard {
             root: root.into(),
             mode,
             shown_notices: Mutex::new(Vec::new()),
+            open: Mutex::new(HashMap::new()),
+            paused_shown: AtomicBool::new(false),
+            hook: std::sync::Arc::new(|root: &Path, files: &[String]| loki::run::hook(root, files, true)),
+            post_write: true,
+        }
+    }
+
+    /// Whether the files each cell changed are checked after it (`postWrite`; default on). Outside a Git
+    /// repository only before-write checks run.
+    pub fn with_post_write(mut self, post_write: bool) -> Self {
+        self.post_write = post_write;
+        self
+    }
+
+    /// The same guard with another post-write engine (tests: a stand-in that answers scripted reports).
+    pub fn with_hook(mut self, hook: HookRunner) -> Self {
+        self.hook = hook;
+        self
+    }
+
+    /// `#unseen`: the lines of one tier not yet shown for their file; a finding gone from a file checked now was
+    /// fixed, and is new again if it comes back.
+    fn unseen(&self, tier: &'static str, lines: &[String], checked: &[String]) -> Unseen {
+        let mut open = self.open.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let memory = open.entry(tier).or_default();
+        let mut now: Vec<(String, HashSet<String>)> = Vec::new();
+        let mut fresh = Vec::new();
+        let mut stale: Vec<String> = Vec::new();
+        for line in lines {
+            let (path, key) = finding_key(line);
+            if !path.is_empty() && memory.get(&path).is_some_and(|keys| keys.contains(&key)) {
+                if !stale.contains(&path) {
+                    stale.push(path.clone());
+                }
+            } else {
+                fresh.push(line.clone());
+            }
+            // A line that names no file cannot be followed from cell to cell.
+            if !path.is_empty() {
+                match now.iter_mut().find(|(p, _)| *p == path) {
+                    Some((_, keys)) => {
+                        keys.insert(key);
+                    }
+                    None => now.push((path, HashSet::from([key]))),
+                }
+            }
+        }
+        for path in checked {
+            memory.remove(path);
+        }
+        for (path, keys) in now {
+            memory.insert(path, keys);
+        }
+        Unseen {
+            earlier: lines.len() - fresh.len(),
+            fresh,
+            paths: stale,
         }
     }
 
@@ -154,6 +336,103 @@ impl FileWriteGuard for LokiGuard {
             outcome.status,
             "would block this write (advise-only mode)",
         ))
+    }
+
+    fn watches_cells(&self) -> bool {
+        self.post_write && self.mode != LokiMode::Off
+    }
+
+    /// `afterCellChanges`: `hook` on the files a cell changed inside the repository (at most 40).
+    fn after_cell_changes(
+        &self,
+        changes: &CellChanges,
+        _cwd: &Path,
+        _lane: &str,
+    ) -> Result<Option<AfterCellReport>, String> {
+        let mut targets: Vec<String> = Vec::new();
+        for path in changes.files.iter().chain(&changes.checked) {
+            if let Some(relative) = inside(&self.root, path)
+                && !targets.contains(&relative)
+            {
+                targets.push(relative);
+            }
+        }
+        if targets.is_empty() {
+            return Ok(None);
+        }
+        let checked: Vec<String> = targets.iter().take(MAX_HOOK_FILES).cloned().collect();
+        let outcome = (self.hook)(&self.root, &checked);
+        let failed = outcome.status != 0;
+        let report = parse_loki_report(&outcome.stdout).unwrap_or_else(|| classify_loki_text(&outcome.stderr, failed));
+        if let Some(error) = report.error {
+            return Err(error);
+        }
+        if failed && report.blocking.is_empty() {
+            let line = first_line(&outcome.stderr);
+            return Err(if line.is_empty() {
+                format!("the checker failed (exit status {})", outcome.status)
+            } else {
+                line
+            });
+        }
+        // Loki compares against the committed policy: while .loki/ itself has uncommitted changes every post-write
+        // check reports that and stops. Say so once.
+        if !report.blocking.is_empty()
+            && report
+                .blocking
+                .iter()
+                .all(|line| PROTECTED_LOKI.is_match(line.trim()).unwrap_or(false))
+        {
+            if self.paused_shown.swap(true, Ordering::SeqCst) {
+                return Ok(None);
+            }
+            return Ok(Some(AfterCellReport {
+                outcome: AfterOutcome::Clean,
+                message: Some("post-write checks are paused: .loki/ has uncommitted changes, and Loki checks against the committed policy. Before-write checks of edit() and write() still run. Commit .loki/ to resume them (git add .loki && git commit -m 'Add Loki guardrails' -- .loki).".into()),
+            }));
+        }
+        let blocking = self.unseen("blocking", &report.blocking, &checked);
+        let advisory = self.unseen("advisory", &report.advisory, &checked);
+        let mut sections = Vec::new();
+        if !blocking.fresh.is_empty() {
+            sections.push(format!(
+                "{} from this cell's changes; fix these:\n{}",
+                count(blocking.fresh.len(), "new finding"),
+                blocking.fresh.join("\n")
+            ));
+        }
+        if blocking.earlier > 0 {
+            sections.push(format!(
+                "{} reported earlier {} still open in {}.",
+                count(blocking.earlier, "finding"),
+                if blocking.earlier == 1 { "is" } else { "are" },
+                blocking.paths.join(", ")
+            ));
+        }
+        if !advisory.fresh.is_empty() {
+            sections.push(format!(
+                "FYI (advisory, not blocking; no change required):\n{}",
+                advisory.fresh.join("\n")
+            ));
+        }
+        sections.extend(self.notice(&report.not_checked));
+        if targets.len() > checked.len() {
+            sections.push(format!(
+                "({} more changed files were not checked)",
+                targets.len() - checked.len()
+            ));
+        }
+        let outcome = if !report.blocking.is_empty() {
+            AfterOutcome::Findings
+        } else if !advisory.fresh.is_empty() {
+            AfterOutcome::Advisory
+        } else {
+            AfterOutcome::Clean
+        };
+        Ok((!sections.is_empty()).then(|| AfterCellReport {
+            outcome,
+            message: Some(sections.join("\n")),
+        }))
     }
 
     fn before_shell(&self, command: &str, cwd: &Path) -> Result<Verdict, String> {

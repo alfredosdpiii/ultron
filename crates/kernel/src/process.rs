@@ -4,9 +4,11 @@ use rustix::process::{Pid, Signal, kill_process, kill_process_group};
 use std::collections::HashMap;
 use std::time::Duration;
 
-struct ProcStat {
-    state: String,
-    ppid: i32,
+pub(crate) struct ProcStat {
+    pub state: String,
+    pub ppid: i32,
+    /// Start time in clock ticks since boot: tells a live process apart from a later one reusing its pid.
+    pub start_time: u64,
 }
 
 /// Fields after the parenthesized command name of /proc/<pid>/stat: state(3), ppid(4), ...
@@ -16,11 +18,13 @@ fn stat_fields(pid: i32) -> Option<Vec<String>> {
     Some(rest.split(' ').map(str::to_string).collect())
 }
 
-fn process_stat(pid: i32) -> Option<ProcStat> {
+/// Parent, state and start time of one process (`processStat`), or none when it is gone.
+pub(crate) fn process_stat(pid: i32) -> Option<ProcStat> {
     let fields = stat_fields(pid)?;
     Some(ProcStat {
         state: fields.first()?.clone(),
         ppid: fields.get(1)?.parse().ok()?,
+        start_time: fields.get(19)?.parse().ok()?,
     })
 }
 
@@ -67,10 +71,20 @@ fn signal(pid: i32, signal: Signal) {
     }
 }
 
+/// What else a tree kill reaches (`KillTreeOptions` of tree-memory.ts).
+#[derive(Default)]
+pub(crate) struct KillExtras<'a> {
+    /// Processes seen in the tree earlier (pid to start time), killed when still the same process.
+    pub known: Option<&'a HashMap<i32, u64>>,
+    /// The kernel's cgroup scope: every process still in it is killed.
+    pub cgroup_dir: Option<&'a std::path::Path>,
+}
+
 /// SIGKILLs `root` and every process in its tree. The root is stopped first so it can neither start new processes
 /// nor exit while its descendants are killed; as a child subreaper it adopts their orphans, which later sweeps kill.
-/// `root_alive`: the root is still the host's unreaped child, so its pid cannot belong to another process.
-pub(crate) fn kill_process_tree(root: i32, owns_process_group: bool, root_alive: bool) {
+/// `root_alive`: the root is still the host's unreaped child, so its pid cannot belong to another process. Processes
+/// seen in earlier watchdog scans and the members of the kernel's scope are killed too.
+pub(crate) fn kill_process_tree(root: i32, owns_process_group: bool, root_alive: bool, extras: KillExtras<'_>) {
     if root_alive {
         signal(root, Signal::STOP);
         for sweep in 0..20 {
@@ -89,6 +103,23 @@ pub(crate) fn kill_process_tree(root: i32, owns_process_group: bool, root_alive:
     }
     if root_alive {
         signal(root, Signal::KILL);
+    }
+    for (&pid, &start_time) in extras.known.into_iter().flatten() {
+        if process_stat(pid).is_some_and(|stat| stat.start_time == start_time && stat.state != "Z") {
+            signal(pid, Signal::KILL);
+        }
+    }
+    // Only a scope of the kernel's own: never the host's cgroup or an ancestor of it (see `is_foreign_scope`).
+    if let Some(dir) = extras
+        .cgroup_dir
+        .filter(|dir| crate::tree_memory::is_foreign_scope(dir))
+    {
+        let own = std::process::id() as i32;
+        for pid in crate::tree_memory::cgroup_pids(dir) {
+            if pid != own {
+                signal(pid, Signal::KILL);
+            }
+        }
     }
 }
 

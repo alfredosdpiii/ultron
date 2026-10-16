@@ -1,0 +1,457 @@
+{
+	"mains": [
+		[
+			"hello",
+			"\u001b[31mred text that runs long past the column edge\u001b[39m",
+			"",
+			"日本語の行です、長い行"
+		],
+		[
+			"one"
+		]
+	],
+	"sides": [
+		[
+			" pane",
+			" \u001b[1mbold\u001b[22m row",
+			" 日本語"
+		],
+		[
+			" a",
+			" b",
+			" c",
+			" d",
+			" e"
+		]
+	],
+	"cases": [
+		{
+			"main": 0,
+			"side": 0,
+			"width": 20,
+			"open": true,
+			"mainWidth": 1,
+			"sideWidth": 18,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007h\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane             \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mr\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row         \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語           \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007                  \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 20,
+			"open": false,
+			"mainWidth": 20,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 50,
+			"open": true,
+			"mainWidth": 5,
+			"sideWidth": 44,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred t\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                   \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                     \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007                                            \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 50,
+			"open": false,
+			"mainWidth": 50,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 120,
+			"open": true,
+			"mainWidth": 71,
+			"sideWidth": 48,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello                                                                  \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                           \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred text that runs long past the column edge\u001b[39m                           \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                         \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本語の行です、長い行                                                 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007                                                \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 120,
+			"open": false,
+			"mainWidth": 120,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 160,
+			"open": true,
+			"mainWidth": 95,
+			"sideWidth": 64,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello                                                                                          \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                                           \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred text that runs long past the column edge\u001b[39m                                                   \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                                         \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本語の行です、長い行                                                                         \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007                                                                \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 0,
+			"width": 160,
+			"open": false,
+			"mainWidth": 160,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 20,
+			"open": true,
+			"mainWidth": 1,
+			"sideWidth": 18,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007h\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mr\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 20,
+			"open": false,
+			"mainWidth": 20,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 50,
+			"open": true,
+			"mainWidth": 5,
+			"sideWidth": 44,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred t\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                          \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 50,
+			"open": false,
+			"mainWidth": 50,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 120,
+			"open": true,
+			"mainWidth": 71,
+			"sideWidth": 48,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello                                                                  \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred text that runs long past the column edge\u001b[39m                           \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本語の行です、長い行                                                 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                              \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 120,
+			"open": false,
+			"mainWidth": 120,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 160,
+			"open": true,
+			"mainWidth": 95,
+			"sideWidth": 64,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007hello                                                                                          \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007\u001b[31mred text that runs long past the column edge\u001b[39m                                                   \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007日本語の行です、長い行                                                                         \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                                              \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 0,
+			"side": 1,
+			"width": 160,
+			"open": false,
+			"mainWidth": 160,
+			"sideWidth": 0,
+			"lines": [
+				"hello",
+				"\u001b[31mred text that runs long past the column edge\u001b[39m",
+				"",
+				"日本語の行です、長い行"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 20,
+			"open": true,
+			"mainWidth": 1,
+			"sideWidth": 18,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007o\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane             \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row         \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語           \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 20,
+			"open": false,
+			"mainWidth": 20,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 50,
+			"open": true,
+			"mainWidth": 5,
+			"sideWidth": 44,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one  \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                   \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                     \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 50,
+			"open": false,
+			"mainWidth": 50,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 120,
+			"open": true,
+			"mainWidth": 71,
+			"sideWidth": 48,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one                                                                    \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                           \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                         \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 120,
+			"open": false,
+			"mainWidth": 120,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 160,
+			"open": true,
+			"mainWidth": 95,
+			"sideWidth": 64,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one                                                                                            \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 pane                                                           \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 \u001b[1mbold\u001b[22m row                                                       \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 日本語                                                         \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 0,
+			"width": 160,
+			"open": false,
+			"mainWidth": 160,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 20,
+			"open": true,
+			"mainWidth": 1,
+			"sideWidth": 18,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007o\u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007 \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 20,
+			"open": false,
+			"mainWidth": 20,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 50,
+			"open": true,
+			"mainWidth": 5,
+			"sideWidth": 44,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one  \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                          \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007     \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                          \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 50,
+			"open": false,
+			"mainWidth": 50,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 120,
+			"open": true,
+			"mainWidth": 71,
+			"sideWidth": 48,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one                                                                    \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                       \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                              \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 120,
+			"open": false,
+			"mainWidth": 120,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 160,
+			"open": true,
+			"mainWidth": 95,
+			"sideWidth": 64,
+			"lines": [
+				"\u001b[0m\u001b]8;;\u0007one                                                                                            \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 a                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 b                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 c                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 d                                                              \u001b[0m\u001b]8;;\u0007",
+				"\u001b[0m\u001b]8;;\u0007                                                                                               \u001b[0m\u001b]8;;\u0007\u001b[90m│\u001b[0m\u001b]8;;\u0007 e                                                              \u001b[0m\u001b]8;;\u0007"
+			]
+		},
+		{
+			"main": 1,
+			"side": 1,
+			"width": 160,
+			"open": false,
+			"mainWidth": 160,
+			"sideWidth": 0,
+			"lines": [
+				"one"
+			]
+		}
+	]
+}

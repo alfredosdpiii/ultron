@@ -5,9 +5,9 @@
 // Every case runs in a fresh temp dir with HOME there and PATH limited to a bin dir of
 // git/sh/python3 (node only when asked) plus the case's fake tools, so results do
 // not depend on what the machine has installed.
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -120,6 +120,65 @@ if json_mode:
     print(json.dumps({"reason": "build-finished", "success": True}))
     sys.exit(0)
 sys.exit(1 if found else 0)
+`;
+
+// A stand-in Mix: format fails on UNFORMATTED, Credo reports CREDOBAD lines, compile fails on WARNME, Sobelow
+// reports SOBELOW_HIGH / SOBELOW_LOW lines (NOTJSON: not a report), Dialyzer passes.
+const MIX = `#!/usr/bin/env python3
+import glob, json, sys
+args = sys.argv[1:]
+command, rest = args[0], args[1:]
+files = [a for a in rest if a.endswith((".ex", ".exs"))] or sorted(glob.glob("lib/**/*.ex", recursive=True))
+def lines(name):
+    return open(name).read().splitlines()
+if command == "format":
+    bad = [f for f in files if "UNFORMATTED" in open(f).read()]
+    if bad:
+        print("** (Mix) mix format failed due to --check-formatted.", file=sys.stderr)
+        for f in bad:
+            print("  * " + f, file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+if command == "credo":
+    issues = [{"check": "Credo.Check.Readability.Bad", "filename": f, "line_no": n, "message": "bad code"} for f in files for n, line in enumerate(lines(f), 1) if "CREDOBAD" in line]
+    print(json.dumps({"issues": issues}))
+    sys.exit(2 if issues else 0)
+if command == "compile":
+    if any("WARNME" in open(f).read() for f in files):
+        print("warning: variable x is unused", file=sys.stderr)
+        sys.exit(1)
+    print("Compiling 1 file (.ex)")
+    sys.exit(0)
+if command == "sobelow":
+    if any("NOTJSON" in open(f).read() for f in files):
+        print("Sobelow crashed")
+        sys.exit(0)
+    high = [{"type": "XSS.Raw: XSS", "file": f, "line": n, "variable": "x"} for f in files for n, line in enumerate(lines(f), 1) if "SOBELOW_HIGH" in line]
+    print(json.dumps({"findings": {"high_confidence": high, "medium_confidence": [], "low_confidence": []}}))
+    sys.exit(0)
+print("done: " + command)
+`;
+// A stand-in \`elixir -pa ... -e <runner> -- <args>\` for the compiled Credo and Sobelow the hook runs.
+const ELIXIR = `#!/usr/bin/env python3
+import glob, json, sys
+args = sys.argv[1:]
+runner = args[args.index("-e") + 1]
+files = sorted(glob.glob("lib/**/*.ex", recursive=True))
+def lines(name):
+    return open(name).read().splitlines()
+if "Credo" in runner:
+    issues = [{"check": "Credo.Check.Readability.Bad", "filename": f, "line_no": n, "message": "bad code"} for f in files for n, line in enumerate(lines(f), 1) if "CREDOBAD" in line]
+    print(json.dumps({"issues": issues}))
+    sys.exit(2 if issues else 0)
+groups = {"high_confidence": [], "medium_confidence": [], "low_confidence": []}
+for f in files:
+    for n, line in enumerate(lines(f), 1):
+        for level in ("high", "medium", "low"):
+            if "SOBELOW_" + level.upper() in line:
+                groups[level + "_confidence"].append({"type": "XSS.Raw: XSS", "file": f, "line": n, "variable": "x"})
+if any("SOBELOW_PARTIAL" in open(f).read() for f in files):
+    print("some files were skipped", file=sys.stderr)
+print(json.dumps({"findings": groups}))
 `;
 
 // --- helpers ----------------------------------------------------------------
@@ -453,7 +512,198 @@ const cases = [
 	{ name: "args-init-dir-missing", args: ["init", "--dir"] },
 	{ name: "args-context-root-missing", args: ["context", "--root"] },
 	{ name: "args-top-root-missing", noRoot: true, args: ["--root"] },
+	// --- --record: each run's event (time and duration zeroed) in ~/.local/state/loki/<root>/events.jsonl ---
+	{ name: "record-hook-clean", events: true, files: { "a.txt": "x\n" }, git: true, after: { "a.txt": "y\n" }, args: [...hook("a.txt"), "--record"] },
+	{ name: "record-hook-secret", events: true, files: { "a.txt": "x\n" }, git: true, after: { "a.txt": "x\nkey = '@@AWS@@'\n" }, args: ["--record", ...hook("a.txt")] },
+	{ name: "record-hook-secret-json-policy", events: true, files: { ...cfg({ rule_packs: ["core"] }), "a.txt": "x\n" }, git: true, after: { "a.txt": "key = '@@GH@@'\n" }, args: [...hookJson("a.txt"), "--record"] },
+	{ name: "record-hook-test-deleted", events: true, files: { "tests/a_test.txt": "def test_one():\n    assert x\n\ndef test_two():\n    assert y\n" }, git: true, after: { "tests/a_test.txt": "def test_one():\n    assert x\n" }, args: [...hook("tests/a_test.txt"), "--record"] },
+	{ name: "record-hook-test-file-deleted", events: true, files: { "spec/c.txt": "test(\"x\")\n", "a.txt": "" }, git: true, after: { "spec/c.txt": null }, args: [...hook("spec/c.txt"), "--record"] },
+	{ name: "record-hook-quality", events: true, files: { "pyproject.toml": "[tool.coverage.report]\nfail_under = 90\n" }, git: true, after: { "pyproject.toml": "[tool.coverage.report]\nfail_under = 10\n" }, args: [...hook("pyproject.toml"), "--record"] },
+	{ name: "record-hook-protected-content", events: true, files: { "a.txt": "x\n" }, git: true, after: { ".ruff.toml": "x = 1\n" }, args: [...hook("a.txt"), "--record"] },
+	{ name: "record-hook-protected-target", events: true, git: true, files: { "a.txt": "" }, args: [...hook(".ruff.toml"), "--record"] },
+	{ name: "record-hook-outside", events: true, git: true, files: { "a.txt": "" }, args: [...hook("../x.txt"), "--record"] },
+	{ name: "record-hook-directory", events: true, git: true, files: { "d/a.txt": "" }, args: [...hook("d"), "--record"] },
+	{ name: "record-hook-ruff-new", events: true, bin: { ruff: RUFF }, files: { ...ruffConfig, "app/a.py": "y = 1  # BADX\n" }, git: true, after: { "app/a.py": "y = 1  # BADX\nz = 2  # BADX\n" }, args: [...hook("app/a.py"), "--record"] },
+	{ name: "record-hook-python-syntax", events: true, files: { "app/a.py": "x = 1\n" }, git: true, after: { "app/a.py": "def (:\n" }, args: [...hook("app/a.py"), "--record"] },
+	{ name: "record-hook-stub", events: true, files: { "app/a.py": "x = 1\n" }, git: true, after: { "app/a.py": "def stub():\n    pass\n" }, args: [...hook("app/a.py"), "--record"] },
+	{ name: "record-hook-warning", events: true, files: { "a.ts": "export const a = 1;\n" }, git: true, after: { "a.ts": "export const a = 2;\n" }, args: [...hook("a.ts"), "--record"] },
+	{ name: "record-hook-secret-after", events: true, files: { "a.txt": "x\n" }, git: true, after: { "a.txt": "x\nkey = '@@AWS@@'\n" }, args: [...hook("a.txt"), "--record"] },
+	{ name: "record-hook-invalid-policy", events: true, files: { "a.txt": "x\n", ".loki/loki.json": "{\"rule_packs\": 3}" }, git: true, args: [...hook("a.txt"), "--record"] },
+	{ name: "record-hook-no-git", events: true, files: { "a.txt": "x\n" }, args: [...hook("a.txt"), "--record"] },
+	{ name: "record-protect-preview-secret", events: true, files: { "a.txt": "" }, git: true, args: ["protect", "--file", "app/s.py", "--preview", "ultron", "--record"], stdin: write("key = '@@AWS@@'\n") },
+	{ name: "record-protect-loki-policy", events: true, git: true, files: { "a.txt": "" }, args: ["protect", "--file", ".loki/loki.json", "--record"] },
+	{ name: "record-hook-twice", events: true, files: { "a.txt": "x\n" }, git: true, after: { "a.txt": "y\n" }, args: [...hook("a.txt"), "--record"], runs: [[...hook("a.txt"), "--record"]] },
+	{ name: "record-hook-missing-target", events: true, args: ["hook", "--record"] },
+	{ name: "record-scan-invalid", events: true, files: { "a.txt": "" }, git: true, args: ["scan", "--record"] },
+	{ name: "record-hook-help", events: true, args: ["hook", "--help", "--record"] },
+	{ name: "record-shell-destructive", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "git reset --hard HEAD" } } },
+	{ name: "record-shell-redirect-source", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "echo x > src/app.py" } } },
+	{ name: "record-shell-redirect-other", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "cat a.txt > b.txt" } } },
+	{ name: "record-shell-review", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "git commit -m x" } } },
+	{ name: "record-shell-git-option", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "git diff --output=x" } } },
+	{ name: "record-shell-syntax", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "echo 'x" } } },
+	{ name: "record-shell-ok", events: true, files: { "a.txt": "" }, git: true, args: ["shell", "--harness", "claude", "--record"], stdin: { tool_name: "Bash", cwd: "<ROOT>", tool_input: { command: "git status" } } },
+	{ name: "record-shell-bad-envelope", events: true, args: ["shell", "--harness", "claude", "--record"], rawStdin: "[]" },
+	// --- verify-installation (ownership and modes; /usr/bin is root's, the temp tree the test user's) ---
+	{ name: "verify-pass", args: ["verify-installation", "--engine", "/usr/bin/env", "--registration", "/usr/bin/git", "--agent-uid", "99999"] },
+	{ name: "verify-symlink", args: ["verify-installation", "--engine", "/usr/bin/env", "--registration", "/usr/bin/sh", "--agent-uid", "99999"] },
+	{ name: "verify-agent-owned", files: { "eng.py": "x" }, args: ["verify-installation", "--engine", "<ROOT>/eng.py", "--registration", "/usr/bin/git", "--registration", "<ROOT>/missing", "--agent-uid", "<UID>"] },
+	{ name: "verify-world-writable", files: { "eng.py": "x" }, chmod: { "eng.py": 0o666 }, args: ["verify-installation", "--engine", "<ROOT>/eng.py", "--registration", "/usr/bin/git", "--agent-uid", "99999"] },
+	{ name: "verify-root-agent", args: ["verify-installation", "--engine", "/usr/bin/env", "--registration", "/usr/bin/git", "--agent-uid", "0"] },
+	{ name: "verify-directory", args: ["verify-installation", "--engine", "/usr/bin", "--registration", "/usr/bin/git", "--agent-uid", "99999"] },
+	{ name: "verify-missing-args", args: ["verify-installation", "--engine", "x"] },
+	{ name: "verify-bad-uid", args: ["verify-installation", "--engine", "x", "--registration", "y", "--agent-uid", "me"] },
+	{ name: "verify-help", args: ["verify-installation", "-h"] },
+	// --- apply: a checked multi-file transaction (the manifest is an untracked file of the work tree) ---
+	...applyCases(),
+	// --- Elixir: the elixir command's tiers and the hook's Credo/Sobelow comparison, with a stand-in Mix ---
+	...elixirCases(),
+	// --- scan --online: registry lookups against a stand-in registry (missing → 404, broken → 503, redirect → 302) ---
+	...onlineCases(),
+	// --- daemon management without a daemon (a serving daemon is exercised by tests/daemon.rs) ---
+	{ name: "daemon-status", env: { HOME: "/nonexistent-loki-home" }, args: ["daemon", "status"] },
+	{ name: "daemon-stop", env: { HOME: "/nonexistent-loki-home" }, args: ["daemon", "stop"] },
+	{ name: "daemon-path-too-long", env: { HOME: `/${"h".repeat(100)}` }, args: ["daemon", "status"] },
+	{ name: "daemon-serve-path-too-long", env: { HOME: `/${"h".repeat(100)}` }, args: ["daemon", "serve"] },
+	{ name: "daemon-bad-action", args: ["daemon", "restart"] },
+	{ name: "daemon-missing-action", args: ["daemon"] },
+	{ name: "daemon-help", args: ["daemon", "--help"] },
 ];
+
+function onlineCases() {
+	// loki.py reaches the stand-in through this sitecustomize (urlopen rewritten); the Rust engine through
+	// LOKI_REGISTRY_OVERRIDE itself. node_modules keeps it out of every scan.
+	const site = {
+		"node_modules/.site/sitecustomize.py": [
+			"import os, urllib.request",
+			"base = os.environ.get('LOKI_REGISTRY_OVERRIDE')",
+			"if base:",
+			"    original = urllib.request.urlopen",
+			"    def urlopen(request, *args, **kwargs):",
+			"        url = request.full_url if hasattr(request, 'full_url') else request",
+			"        moved = base.rstrip('/') + '/' + url.split('://', 1)[1]",
+			"        if hasattr(request, 'full_url'):",
+			"            request.full_url = moved",
+			"        else:",
+			"            request = moved",
+			"        return original(request, *args, **kwargs)",
+			"    urllib.request.urlopen = urlopen",
+			"",
+		].join("\n"),
+		".gitignore": "node_modules/\n",
+	};
+	const env = { LOKI_REGISTRY_OVERRIDE: "<REGISTRY>", PYTHONPATH: "<ROOT>/node_modules/.site" };
+	const online = (name, files, extra = {}) => ({ name: `online-${name}`, files: { ...site, ...files }, git: true, env: { ...env, ...(extra.env ?? {}) }, args: ["scan", "--online", ...(extra.args ?? [])] });
+	return [
+		online("npm", { "package.json": JSON.stringify({ dependencies: { "left-pad": "1", "missing-pkg": "1", "@scope/missing-thing": "1" }, devDependencies: { "broken-tool": "1", "redirect-pkg": "1" } }) }),
+		online("private", { "package.json": JSON.stringify({ dependencies: { "@acme/missing-internal": "1", "missing-public": "1" } }), ...cfg({ private_packages: ["@acme/"] }) }),
+		online("pypi-crates-go-hex", {
+			"requirements.txt": "requests==2.0\nmissing_lib>=1\n# comment\n-r other.txt\n",
+			"Cargo.toml": "[package]\nname = 'x'\n[dependencies]\nserde = '1'\nmissing-crate = '1'\n",
+			"go.mod": "module example.com/m\n\nrequire (\n\tgithub.com/Missing/Mod v1.0.0\n\tgolang.org/x/text v0.3.0\n)\nrequire example.com/broken v1.0.0\n",
+			"mix.exs": "defp deps do\n  [{:phoenix, \"~> 1.7\"}, {:missing_hex, \"~> 0.1\"}]\nend\n",
+		}),
+		online("clean", { "package.json": JSON.stringify({ dependencies: { "left-pad": "1" } }) }),
+		online("none", { "a.txt": "x\n" }),
+		online("strict", { "package.json": JSON.stringify({ dependencies: { "missing-pkg": "1" } }) }, { args: ["--strict"] }),
+	];
+}
+
+function elixirCases() {
+	const mixProject = (lib, extra = {}) => ({
+		"mix.exs": "defmodule App.MixProject do\nend\n",
+		".credo.exs": "%{configs: []}\n",
+		".gitignore": "_build/\ndeps/\n",
+		"lib/app.ex": lib,
+		"deps/credo/mix.exs": "x",
+		"deps/sobelow/mix.exs": "x",
+		"deps/dialyxir/mix.exs": "x",
+		"_build/dev/lib/credo/ebin/.keep": "",
+		"_build/dev/lib/jason/ebin/.keep": "",
+		"_build/dev/lib/sobelow/ebin/.keep": "",
+		...extra,
+	});
+	const tools = { mix: MIX, elixir: ELIXIR };
+	const phoenix = cfg({ rule_packs: ["core", "phoenix"] });
+	const clean = "defmodule App do\n  def ok, do: 1\nend\n";
+	return [
+		{ name: "elixir-project-pass", bin: tools, files: mixProject(clean), args: ["elixir", "--project", "<ROOT>"] },
+		{ name: "elixir-fast-fail", bin: tools, files: mixProject("# UNFORMATTED\n# CREDOBAD\n"), args: ["elixir", "--project", "<ROOT>", "--tier", "fast"] },
+		{ name: "elixir-deep-json", bin: tools, files: mixProject("# WARNME\n# SOBELOW_HIGH\n"), args: ["elixir", "--project", "<ROOT>", "--tier", "deep", "--json"] },
+		{ name: "elixir-files", bin: tools, files: mixProject(clean, { "lib/b.ex": "# CREDOBAD\n" }), args: ["elixir", "--project", "<ROOT>", "--file", "lib/b.ex", "--file", "./lib/app.ex", "--tier", "fast"] },
+		{ name: "elixir-file-missing", bin: tools, files: mixProject(clean), args: ["elixir", "--project", "<ROOT>", "--file", "lib/nope.ex"] },
+		{ name: "elixir-file-outside", bin: tools, files: { ...mixProject(clean), "../x.ex": "" }, args: ["elixir", "--project", "<ROOT>", "--file", "../x.ex"] },
+		{ name: "elixir-sobelow-not-json", bin: tools, files: mixProject("# NOTJSON\n"), args: ["elixir", "--project", "<ROOT>"] },
+		{ name: "elixir-deps-missing", bin: tools, files: { "mix.exs": "x", "lib/app.ex": clean }, args: ["elixir", "--project", "<ROOT>", "--tier", "deep"] },
+		{ name: "elixir-no-mix", files: mixProject(clean), args: ["elixir", "--project", "<ROOT>", "--tier", "fast"] },
+		{ name: "elixir-no-project", args: ["elixir", "--project", "<ROOT>"] },
+		{ name: "elixir-bad-tier", args: ["elixir", "--tier", "slow"] },
+		{ name: "elixir-record-evidence", events: true, bin: tools, files: mixProject("# CREDOBAD\n# SOBELOW_HIGH\n"), args: ["elixir", "--project", "<ROOT>", "--record"] },
+		{ name: "elixir-credo-new", bin: tools, files: mixProject("# CREDOBAD old\n"), git: true, after: { "lib/app.ex": "# CREDOBAD old\n# CREDOBAD new\n" }, args: ["elixir", "--project", "<ROOT>", "--credo-new"] },
+		{ name: "elixir-credo-new-json-clean", bin: tools, files: mixProject(clean), git: true, after: { "lib/app.ex": clean.replace("1", "2") }, args: ["elixir", "--project", "<ROOT>", "--credo-new", "--json"] },
+		{ name: "elixir-credo-new-config-change", bin: tools, files: mixProject(clean), git: true, after: { ".credo.exs": "%{}\n" }, args: ["elixir", "--project", "<ROOT>", "--credo-new"] },
+		{ name: "elixir-credo-new-no-commits", bin: tools, files: mixProject(clean), gitInit: true, args: ["elixir", "--project", "<ROOT>", "--credo-new"] },
+		{ name: "elixir-hook-credo", bin: tools, files: mixProject(clean), git: true, after: { "lib/app.ex": "defmodule App do\n  # CREDOBAD\nend\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-format", bin: tools, files: mixProject(clean), git: true, after: { "lib/app.ex": "# UNFORMATTED\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-phoenix-sobelow", bin: tools, files: { ...mixProject(clean), ...phoenix }, git: true, after: { "lib/app.ex": "# SOBELOW_HIGH\n# SOBELOW_LOW\n# SOBELOW_PARTIAL\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-sobelow-config-change", bin: tools, files: { ...mixProject(clean), ...phoenix, "config/config.exs": "x\n" }, git: true, after: { "lib/app.ex": "# x\n", "config/config.exs": "y\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-strict", bin: tools, files: { ...mixProject(clean), ...phoenix }, git: true, env: { LOKI_STRICT: "1" }, after: { "lib/app.ex": "# SOBELOW_MEDIUM\n# SOBELOW_PARTIAL\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-two-files", bin: tools, files: mixProject(clean, { "lib/b.ex": clean }), git: true, after: { "lib/app.ex": "# CREDOBAD 1\n", "lib/b.ex": "# UNFORMATTED\n" }, args: hook("lib/app.ex", "lib/b.ex") },
+		{ name: "elixir-hook-no-credo-build", bin: tools, files: Object.fromEntries(Object.entries(mixProject(clean)).filter(([path]) => !path.startsWith("_build/dev/lib/credo"))), git: true, after: { "lib/app.ex": "# x\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-hook-no-mix-project", bin: tools, files: { "lib/app.ex": clean }, git: true, after: { "lib/app.ex": "# x\n" }, args: hook("lib/app.ex") },
+		{ name: "elixir-scan", bin: tools, files: mixProject("# CREDOBAD\n"), git: true, args: ["scan"] },
+	];
+}
+
+function applyCases() {
+	const manifest = (ops) => ({ "m.json": typeof ops === "string" ? ops : JSON.stringify(ops) });
+	const base = { "a.txt": "x\n", "bin/run.sh": { exec: "#!/bin/sh\necho run\n" }, "app/m.py": "VALUE = 1\n" };
+	const apply = (name, ops, extra = {}) => ({
+		name: `apply-${name}`,
+		files: { ...base, ...(extra.files ?? {}) },
+		git: extra.git ?? true,
+		gitInit: extra.gitInit,
+		after: { ...manifest(ops), ...(extra.after ?? {}) },
+		env: extra.env,
+		links: extra.links,
+		tree: true,
+		args: ["apply", "--manifest", "m.json", ...(extra.args ?? [])],
+	});
+	return [
+		apply("write", [{ op: "write", path: "a.txt", content: "y\n" }, { op: "write", path: "docs/new.md", content: "# New\n" }]),
+		apply("check-only", [{ op: "write", path: "a.txt", content: "y\n" }], { args: ["--check-only"] }),
+		apply("delete", [{ op: "delete", path: "a.txt" }]),
+		apply("move-executable", [{ op: "move", path: "bin/run.sh", to: "bin/go.sh" }]),
+		apply("secret", [{ op: "write", path: "a.txt", content: "key = '@@AWS@@'\n" }]),
+		apply("python-stub", [{ op: "write", path: "app/m.py", content: "def stub():\n    pass\n" }]),
+		apply("protected", [{ op: "write", path: ".ruff.toml", content: "x = 1\n" }], { env: { LOKI_ALLOW_PROTECTED: "1" } }),
+		apply("existing-protected-change", [{ op: "write", path: "a.txt", content: "y\n" }], { after: { ".ruff.toml": "x = 1\n" } }),
+		apply("not-a-list", { op: "write" }),
+		apply("empty", []),
+		apply("bad-json", "[{"),
+		apply("bad-op", [{ op: "copy", path: "a.txt" }]),
+		apply("not-object", ["a.txt"]),
+		apply("missing-path", [{ op: "write", content: "x" }]),
+		apply("noncanonical-dot", [{ op: "write", path: "./a.txt", content: "y" }]),
+		apply("noncanonical-slashes", [{ op: "write", path: "docs//a.md", content: "y" }]),
+		apply("noncanonical-trailing", [{ op: "write", path: "docs/", content: "y" }]),
+		apply("absolute", [{ op: "write", path: "/tmp/x", content: "y" }]),
+		apply("parent", [{ op: "write", path: "../x", content: "y" }]),
+		apply("git-metadata", [{ op: "write", path: ".git/config", content: "y" }]),
+		apply("node-modules", [{ op: "write", path: "node_modules/x.js", content: "y" }]),
+		apply("duplicate", [{ op: "write", path: "a.txt", content: "y" }, { op: "delete", path: "a.txt" }]),
+		apply("content-not-string", [{ op: "write", path: "a.txt", content: 3 }]),
+		apply("delete-missing", [{ op: "delete", path: "nope.txt" }]),
+		apply("move-same", [{ op: "move", path: "a.txt", to: "a.txt" }]),
+		apply("move-onto-existing", [{ op: "move", path: "a.txt", to: "app/m.py" }]),
+		apply("move-missing-to", [{ op: "move", path: "a.txt" }]),
+		apply("symlink-target", [{ op: "write", path: "link.txt", content: "y" }], { links: { "link.txt": "a.txt" } }),
+		apply("symlinked-parent", [{ op: "write", path: "lnk/x.txt", content: "y" }], { links: { lnk: "app" } }),
+		apply("no-commits", [{ op: "write", path: "a.txt", content: "y\n" }], { git: false, gitInit: true }),
+		{ name: "apply-missing-manifest", files: base, git: true, tree: true, args: ["apply", "--manifest", "absent.json"] },
+		{ name: "apply-missing-args", args: ["apply"] },
+	];
+}
 
 const gitRun = (cwd, ...args) => {
 	const result = spawnSync("git", ["-c", "user.name=loki", "-c", "user.email=loki@example.invalid", "-c", "commit.gpgsign=false", "-c", "init.defaultBranch=main", ...args], {
@@ -488,11 +738,33 @@ function tree(root) {
 			const path = join(dir, name);
 			const relative = path.slice(root.length + 1);
 			const info = lstatSync(path);
-			if (info.isDirectory()) walk(path);
+			if (name === ".git") continue;
+			if (info.isSymbolicLink()) found[relative] = `link ${readlinkSync(path)}`;
+			else if (info.isDirectory()) walk(path);
 			else found[relative] = `${(info.mode & 0o777).toString(8)} ${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 		}
 	};
 	walk(root);
+	return found;
+}
+
+/** Every `--record` event under HOME, oldest first, with its wall-clock fields zeroed and its paths scrubbed. */
+function events(home, scrub) {
+	const state = join(home, ".local/state/loki");
+	const found = [];
+	let directories = [];
+	try {
+		directories = readdirSync(state).sort();
+	} catch {
+		return found;
+	}
+	for (const directory of directories)
+		for (const line of readFileSync(join(state, directory, "events.jsonl"), "utf8").split("\n").filter(Boolean)) {
+			const event = JSON.parse(scrub(line));
+			if ("time" in event) event.time = 0;
+			if ("duration_ms" in event) event.duration_ms = 0;
+			found.push(event);
+		}
 	return found;
 }
 
@@ -536,22 +808,65 @@ function run(testCase) {
 			spawnSync("git", ["merge", "-q", "other"], { cwd: work, env: { PATH: process.env.PATH, HOME: work } });
 		}
 		const root = testCase.rootSub ? join(work, testCase.rootSub) : work;
-		const fill = (text) => text.split("<ROOT>").join(root).split("<PYTHON>").join(python);
+		const fill = (text) =>
+			text.split("<ROOT>").join(root).split("<PYTHON>").join(python).split("<UID>").join(String(process.getuid())).split("<REGISTRY>").join(registry);
 		const stdin = testCase.rawStdin ?? (testCase.stdin === undefined ? "" : fill(expand(JSON.stringify(testCase.stdin))));
 		const env = { PATH: bin, HOME: top, LOKI_DAEMON: "0" };
 		for (const [key, value] of Object.entries(testCase.env ?? {})) env[key] = fill(value);
-		const args = testCase.args.map(fill);
-		const result = spawnSync(python, [engine, ...(testCase.noRoot ? [] : ["--root", root]), ...args], { cwd: root, env, input: stdin, encoding: "utf8" });
-		const scrub = (text) => text.split(work).join("<ROOT>").split(top).join("<TOP>");
+		const once = (args) =>
+			spawnSync(python, [engine, ...(testCase.noRoot ? [] : ["--root", root]), ...args.map(fill)], { cwd: root, env, input: stdin, encoding: "utf8" });
+		const result = once(testCase.args);
+		const scrub = (text) =>
+			text
+				.split(work)
+				.join("<ROOT>")
+				.split(top)
+				.join("<TOP>")
+				.replace(/"duration_ms": [0-9.]+/g, '"duration_ms": 0')
+				.replace(/\.cache\/loki\/d\/[0-9a-f]{16}/g, ".cache/loki/d/<ID>");
 		const expected = { status: result.status, stdout: scrub(result.stdout), stderr: scrub(result.stderr) };
 		if (testCase.tree) expected.tree = tree(work);
+		if (testCase.runs)
+			expected.runs = testCase.runs.map((args) => {
+				const next = once(args);
+				return { status: next.status, stdout: scrub(next.stdout), stderr: scrub(next.stderr) };
+			});
+		if (testCase.events) expected.events = events(top, scrub);
 		return expected;
 	} finally {
 		rmSync(top, { recursive: true, force: true });
 	}
 }
 
-const recorded = cases.map((testCase) => ({ ...testCase, expected: run(testCase) }));
+// The stand-in registry for `scan --online`: the status follows the package name in the path.
+const server = spawn(python, ["-c", [
+	"import http.server, sys",
+	"class Handler(http.server.BaseHTTPRequestHandler):",
+	"    def do_GET(self):",
+	"        path = self.path",
+	"        status = 404 if 'missing' in path.lower() else 503 if 'broken' in path else 200",
+	"        if 'redirect' in path and not path.endswith('/landed'):",
+	"            self.send_response(302)",
+	"            self.send_header('Location', path + '/landed')",
+	"            self.end_headers()",
+	"            return",
+	"        self.send_response(status)",
+	"        self.send_header('Content-Length', '2')",
+	"        self.end_headers()",
+	"        self.wfile.write(b'{}')",
+	"    def log_message(self, *args):",
+	"        pass",
+	"server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)",
+	"print(server.server_address[1], flush=True)",
+	"server.serve_forever()",
+].join("\n")], { stdio: ["ignore", "pipe", "inherit"] });
+const registry = await new Promise((resolve) => server.stdout.once("data", (chunk) => resolve(`http://127.0.0.1:${String(chunk).trim()}`)));
+let recorded;
+try {
+	recorded = cases.map((testCase) => ({ ...testCase, expected: run(testCase) }));
+} finally {
+	server.kill();
+}
 writeFileSync(
 	join(here, "hook-corpus.json"),
 	`${JSON.stringify({ engine: "packages/coding-agent/src/ultron/loki-engine/loki.py", tokens, cases: recorded }, null, "\t")}\n`,

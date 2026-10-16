@@ -1,0 +1,61 @@
+{
+	"generator": "crates/session-core/fixtures/generate-budget-line.mjs",
+	"cases": {
+		"turn-cap": {
+			"env": {
+				"ULTRON_MAX_TOTAL_TURNS": "5"
+			},
+			"settings": null,
+			"toolResults": [
+				"one\n[budget left for this request: 4 model turns]",
+				"(no result)\n[budget left for this request: 3 model turns]"
+			],
+			"requests": 3
+		},
+		"turn-and-token-caps": {
+			"env": {
+				"ULTRON_MAX_TOTAL_TURNS": "9",
+				"ULTRON_MAX_TOTAL_TOKENS": "1000"
+			},
+			"settings": null,
+			"toolResults": [
+				"one\n[budget left for this request: 8 model turns, 983 tokens]",
+				"(no result)\n[budget left for this request: 7 model turns, 966 tokens]"
+			],
+			"requests": 3
+		},
+		"token-cap-only": {
+			"env": {
+				"ULTRON_MAX_TOTAL_TOKENS": "123456"
+			},
+			"settings": null,
+			"toolResults": [
+				"one\n[budget left for this request: 123,439 tokens]",
+				"(no result)\n[budget left for this request: 123,422 tokens]"
+			],
+			"requests": 3
+		},
+		"settings-turn-cap": {
+			"env": {},
+			"settings": {
+				"rootBudget": {
+					"maxTotalTurns": 4
+				}
+			},
+			"toolResults": [
+				"one\n[budget left for this request: 3 model turns]",
+				"(no result)\n[budget left for this request: 2 model turns]"
+			],
+			"requests": 3
+		},
+		"no-caps": {
+			"env": {},
+			"settings": null,
+			"toolResults": [
+				"one",
+				"(no result)"
+			],
+			"requests": 3
+		}
+	}
+}

@@ -128,9 +128,9 @@ fn cli_binary_matches_typescript_cli() {
 }
 
 #[test]
-fn cli_prompt_and_subcommands_report_not_implemented() {
-    // `ultron claude` (crates/claude-root) and `ultron autoreview` (tests/autoreview.rs) are ported; a bare prompt
-    // without a provider set up still reports this.
+fn cli_bare_prompt_without_a_model_reports_the_setup_hint() {
+    // `ultron "hello"` runs the prompt (native-command.ts); with no model set up it fails with `noModelHint`'s "none"
+    // hint after the error.
     let tmp = tempfile::tempdir().unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_ultron"))
         .arg("hello")
@@ -142,7 +142,7 @@ fn cli_prompt_and_subcommands_report_not_implemented() {
         .unwrap();
     assert_eq!(
         String::from_utf8_lossy(&output.stderr),
-        "Error: running a prompt or an interactive session is not implemented in the Rust build yet\n"
+        "Error: No model selected: pass --model <provider>/<id>\nNo model is configured. Run \"ultron setup\", or set a provider key such as ANTHROPIC_API_KEY or OPENAI_API_KEY.\n"
     );
     assert_eq!(output.status.code(), Some(1));
 }

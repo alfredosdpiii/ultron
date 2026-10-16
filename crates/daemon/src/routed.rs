@@ -38,6 +38,22 @@ pub struct Conn {
     session_subscriptions: Mutex<HashSet<String>>,
     services: Mutex<Option<Arc<Endpoint>>>,
     closed: AtomicBool,
+    /// Requests not answered yet, by request id (server.ts `activeRequests`): a `cancel` finds them here.
+    active: Mutex<HashMap<String, Active>>,
+    next_request: AtomicU64,
+    /// The plugin package paths `pi.presentation-plugins.prepareSession` selected for this client (`reload` rebuilds
+    /// them); `None` until it prepared a session.
+    prepared_plugins: Mutex<Option<Vec<String>>>,
+}
+
+/// One request in flight on a connection.
+struct Active {
+    target: RpcTarget,
+    /// Tells this request apart from a later one reusing its id.
+    generation: u64,
+    /// The worker operation a session call became ([`Manager::cancel_operation`]).
+    operation: Option<String>,
+    cancelled: bool,
 }
 
 impl Conn {
@@ -64,6 +80,10 @@ impl Conn {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .shutdown(std::net::Shutdown::Both);
+    }
+
+    fn active(&self) -> MutexGuard<'_, HashMap<String, Active>> {
+        self.active.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     fn subscriptions(&self) -> MutexGuard<'_, HashMap<String, Subscription>> {
@@ -509,8 +529,8 @@ impl Hub {
             hub.clone(),
             hub.clone(),
         );
-        let (c1, c2) = (conn_of.clone(), conn_of);
-        let h8 = hub.clone();
+        let (c1, c2, c3, c4) = (conn_of.clone(), conn_of.clone(), conn_of.clone(), conn_of);
+        let (h8, h9) = (hub.clone(), hub.clone());
         let management = Service::new("pi.session-management")
             .method("attach", move |args| {
                 let (hub, conn) = (h1()?, c1()?);
@@ -571,14 +591,34 @@ impl Hub {
             });
         let plugins = Service::new("pi.presentation-plugins")
             .method("prepareSession", move |args| {
-                let hub = h7()?;
-                let id = args.first().and_then(|r| r["sessionId"].as_str()).unwrap_or_default();
-                hub.resolve(id)?;
-                // Plugin packages are not ported: every session has the empty selection.
-                Ok(Some(json!({"presentationFacetBundles": []})))
+                let (hub, conn) = (h7()?, c3()?);
+                let request = args.first().unwrap_or(&Value::Null);
+                let id = request["sessionId"].as_str().unwrap_or_default();
+                hub.serialized(|| {
+                    hub.resolve(id)?;
+                    // The selection the client asked for (none: the session's own). Plugin packages are not built
+                    // by the Rust server: every selection has no presentation bundles.
+                    let paths: Vec<String> = request["packagePaths"]
+                        .as_array()
+                        .map(|p| p.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                        .unwrap_or_default();
+                    *conn.prepared_plugins.lock().unwrap_or_else(|e| e.into_inner()) = Some(paths);
+                    Ok(Some(presentation_facet_data()))
+                })
             })
-            .method("reload", |_| {
-                Err(ServiceError::internal("No Session plugin selection is prepared"))
+            .method("reload", move |_| {
+                let (hub, conn) = (h9()?, c4()?);
+                hub.serialized(|| {
+                    if conn
+                        .prepared_plugins
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .is_none()
+                    {
+                        return Err(ServiceError::internal("No Session plugin selection is prepared"));
+                    }
+                    Ok(Some(presentation_facet_data()))
+                })
             });
         Provider {
             services: vec![directory, management, plugins],
@@ -616,6 +656,9 @@ impl Hub {
             session_subscriptions: Mutex::new(HashSet::new()),
             services: Mutex::new(None),
             closed: AtomicBool::new(false),
+            active: Mutex::new(HashMap::new()),
+            next_request: AtomicU64::new(1),
+            prepared_plugins: Mutex::new(None),
         });
         self.conns
             .lock()
@@ -634,6 +677,11 @@ impl Hub {
         }
         if let Some(endpoint) = conn.services.lock().unwrap_or_else(|e| e.into_inner()).take() {
             endpoint.dispose();
+        }
+        // Calls still running stop waiting (server.ts `disconnect` aborts them); their workers are told.
+        let operations: Vec<String> = conn.active().drain().filter_map(|(_, a)| a.operation).collect();
+        for operation in operations {
+            self.manager.cancel_operation(&operation);
         }
         self.conns.lock().unwrap_or_else(|e| e.into_inner()).remove(&conn.id);
         self.connection_count_changed();
@@ -704,15 +752,42 @@ impl Hub {
                             "hello may only be sent as the first message".into(),
                         );
                     }
-                    // ponytail: cancellation is not ported; calls run to completion.
-                    (true, ClientMessage::Cancel { .. }) => {}
+                    (true, ClientMessage::Cancel { id, target }) => self.cancel(conn, &id, &target),
                     (true, ClientMessage::Request { id, target, call }) => self.request(conn, id, target, call),
                 }
             }
         }
     }
 
+    /// `handleCancel`: abort an active request with the same target. A session call stops waiting for its worker
+    /// and answers `cancelled`; a server call runs to completion (server services answer before the next message
+    /// is read, so one is never active when a cancel arrives).
+    fn cancel(&self, conn: &Arc<Conn>, id: &str, target: &RpcTarget) {
+        if target.server_id() != self.server_id {
+            return;
+        }
+        let operation = match conn.active().get_mut(id) {
+            Some(active) if &active.target == target => {
+                active.cancelled = true;
+                active.operation.clone()
+            }
+            _ => return,
+        };
+        if let Some(operation) = operation {
+            self.manager.cancel_operation(&operation);
+        }
+    }
+
     fn request(self: &Arc<Self>, conn: &Arc<Conn>, id: String, target: RpcTarget, call: protocol::Value) {
+        if conn.active().contains_key(&id) {
+            return respond(
+                conn,
+                &id,
+                None,
+                Err(coded("invalid_request", "Request ID is already active")),
+                self,
+            );
+        }
         let call_json = to_json(&call).unwrap_or(Value::Null);
         let Some(parsed) = Call::parse(&call_json) else {
             return respond(
@@ -744,10 +819,34 @@ impl Hub {
             conn.subscriptions()
                 .insert(sub.clone(), Subscription::Pending(Vec::new()));
         }
+        let generation = conn.next_request.fetch_add(1, Ordering::SeqCst);
+        conn.active().insert(
+            id.clone(),
+            Active {
+                target: target.clone(),
+                generation,
+                operation: None,
+                cancelled: false,
+            },
+        );
         let finish = {
             let (conn, hub, id) = (conn.clone(), self.clone(), id.clone());
             let subscription = subscription.clone();
             move |result: ServiceResult| {
+                let cancelled = {
+                    let mut active = conn.active();
+                    match active.get(&id) {
+                        Some(a) if a.generation == generation => active.remove(&id).is_some_and(|a| a.cancelled),
+                        _ => false,
+                    }
+                };
+                // A request aborted by its client answers `cancelled` unless it completed anyway.
+                let result = match result {
+                    Err(_) if cancelled => {
+                        Err(coded(crate::workers::CANCELLED_CODE, crate::workers::CANCELLED_MESSAGE))
+                    }
+                    other => other,
+                };
                 if result.is_ok()
                     && let Some(sub) = &unsubscribe
                 {
@@ -792,8 +891,19 @@ impl Hub {
                         .unwrap_or_else(|e| e.into_inner())
                         .insert(sub.clone());
                 }
-                self.manager
-                    .invoke(&handle, &attachment, call_json, conn.publisher(), Box::new(finish));
+                let operation =
+                    self.manager
+                        .invoke(&handle, &attachment, call_json, conn.publisher(), Box::new(finish));
+                // A cancel that came while the call was being sent applies now.
+                let cancel_now = operation.and_then(|operation| {
+                    let mut active = conn.active();
+                    let entry = active.get_mut(&id).filter(|a| a.generation == generation)?;
+                    entry.operation = Some(operation.clone());
+                    entry.cancelled.then_some(operation)
+                });
+                if let Some(operation) = cancel_now {
+                    self.manager.cancel_operation(&operation);
+                }
             }
         }
     }
@@ -835,6 +945,11 @@ impl Hub {
             let _ = thread.join();
         }
     }
+}
+
+/// `createPresentationFacetData` of the selection's bundles (none in the Rust build).
+fn presentation_facet_data() -> Value {
+    json!({"presentationFacetBundles": []})
 }
 
 fn respond(conn: &Arc<Conn>, id: &str, subscription: Option<&str>, result: ServiceResult, hub: &Hub) {

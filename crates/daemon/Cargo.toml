@@ -26,6 +26,7 @@ protocol = { path = "../protocol" }
 resources = { path = "../resources" }
 rustix = { version = "=1.1.5", features = ["process", "std"] }
 serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+server = { path = "../server" }
 session-core = { path = "../session-core" }
 session-file = { path = "../session-file" }
 session-journal = { path = "../session-journal" }

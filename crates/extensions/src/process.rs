@@ -43,6 +43,11 @@ pub trait HostApi: Send + Sync {
     fn exited(&self, extension: &str, reason: &str) {
         let _ = (extension, reason);
     }
+    /// Whether a UI serves the session right now (the worker's `hasUI`: an interactive client polls the extension UI,
+    /// or the one it was started for has not arrived yet). Only consulted when the session has a UI at all.
+    fn has_ui(&self) -> bool {
+        true
+    }
 }
 
 /// A host with no UI and no host operations (print mode, tests).
@@ -60,6 +65,24 @@ pub struct SessionInfo {
     pub flags: Map<String, Value>,
 }
 
+/// `registerFlag(name, { type, default?, description? })`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FlagSpec {
+    pub name: String,
+    /// "boolean" or "string".
+    pub kind: String,
+    pub default: Option<Value>,
+    pub description: Option<String>,
+}
+
+/// `registerProvider(name, config)` without code: the declarative provider configuration (`baseUrl`, `apiKey`,
+/// `api`, `headers`, `authHeader`, `models`), the shape of a models.json provider.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProviderSpec {
+    pub name: String,
+    pub config: Map<String, Value>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionSpec {
     pub name: String,
@@ -74,8 +97,72 @@ pub struct Registrations {
     pub functions: Vec<FunctionSpec>,
     pub commands: Vec<(String, Option<String>)>,
     pub shortcuts: Vec<(String, Option<String>)>,
-    pub flags: Vec<Value>,
+    pub flags: Vec<FlagSpec>,
+    pub providers: Vec<ProviderSpec>,
     pub bus: Vec<String>,
+}
+
+/// JavaScript's `typeof` for a JSON value.
+fn type_of(value: &Value) -> &'static str {
+    match value {
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Null | Value::Array(_) | Value::Object(_) => "object",
+    }
+}
+
+/// `registerFlag`'s checks: a name, a type of "boolean" or "string", and a default of that type
+/// (`Invalid default for flag "<name>": expected <type>, got <typeof default>`).
+fn parse_flags(value: Option<&Value>) -> Result<Vec<FlagSpec>, String> {
+    let Some(value) = value else { return Ok(Vec::new()) };
+    let items = value.as_array().ok_or("flags must be an array")?;
+    items
+        .iter()
+        .map(|item| {
+            let name = item
+                .get("name")
+                .and_then(Value::as_str)
+                .filter(|n| !n.is_empty())
+                .ok_or("each of flags needs a \"name\"")?;
+            let kind = match item.get("type").and_then(Value::as_str) {
+                Some(kind @ ("boolean" | "string")) => kind.to_string(),
+                _ => return Err(format!("flag \"{name}\" needs a \"type\" of \"boolean\" or \"string\"")),
+            };
+            let default = item.get("default").cloned();
+            if let Some(default) = &default
+                && type_of(default) != kind
+            {
+                return Err(format!(
+                    "Invalid default for flag \"{name}\": expected {kind}, got {}",
+                    type_of(default)
+                ));
+            }
+            Ok(FlagSpec {
+                name: name.to_string(),
+                kind,
+                default,
+                description: item.get("description").and_then(Value::as_str).map(str::to_string),
+            })
+        })
+        .collect()
+}
+
+fn parse_providers(value: Option<&Value>) -> Result<Vec<ProviderSpec>, String> {
+    let Some(value) = value else { return Ok(Vec::new()) };
+    let items = value.as_array().ok_or("providers must be an array")?;
+    items
+        .iter()
+        .map(|item| {
+            let mut config = item.as_object().cloned().ok_or("each provider must be an object")?;
+            let name = config
+                .remove("name")
+                .and_then(|n| n.as_str().map(str::to_string))
+                .filter(|n| !n.is_empty())
+                .ok_or("each provider needs a \"name\"")?;
+            Ok(ProviderSpec { name, config })
+        })
+        .collect()
 }
 
 fn strings(value: Option<&Value>, what: &str) -> Result<Vec<String>, String> {
@@ -148,11 +235,8 @@ impl Registrations {
             functions,
             commands: named(capabilities.get("commands"), "commands", "name")?,
             shortcuts: named(capabilities.get("shortcuts"), "shortcuts", "key")?,
-            flags: capabilities
-                .get("flags")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default(),
+            flags: parse_flags(capabilities.get("flags"))?,
+            providers: parse_providers(capabilities.get("providers"))?,
             bus: strings(capabilities.get("bus"), "bus")?,
         })
     }
@@ -175,9 +259,29 @@ struct Shared {
     processes: Mutex<Vec<Weak<ExtensionProcess>>>,
     /// `withUIPrompt`: nesting depth and the outer prompt.
     prompt: Mutex<PromptDepth>,
+    /// `runtime.flagValues`: one value per flag name for the whole session (the first registered default, or the
+    /// command line's value).
+    flag_values: Mutex<Map<String, Value>>,
 }
 
 impl Shared {
+    /// The session has a UI and it is served now.
+    fn has_ui(&self) -> bool {
+        self.session.has_ui && self.host.has_ui()
+    }
+
+    /// `registerFlag` after load: a default fills a flag that has no value yet.
+    fn register_defaults(&self, flags: &[FlagSpec]) {
+        let mut values = lock(&self.flag_values);
+        for flag in flags {
+            if let Some(default) = &flag.default
+                && !values.contains_key(&flag.name)
+            {
+                values.insert(flag.name.clone(), default.clone());
+            }
+        }
+    }
+
     fn processes(&self) -> Vec<Arc<ExtensionProcess>> {
         lock(&self.processes).iter().filter_map(Weak::upgrade).collect()
     }
@@ -301,17 +405,29 @@ impl ExtensionProcess {
     fn request_handler(&self) -> RequestHandler {
         let shared = Arc::downgrade(&self.shared);
         let name = self.manifest.name.clone();
+        let me = self.me.clone();
         Arc::new(move |method, params, cancel| {
             let Some(shared) = shared.upgrade() else {
                 return Err(RpcError::Closed("host stopped".into()));
             };
             let params = params.cloned().unwrap_or(Value::Null);
+            if method == "flags/get" {
+                // `getFlag`: only a flag this extension registered has a value for it.
+                let flag = params.get("name").and_then(Value::as_str).unwrap_or_default();
+                let registered = me
+                    .upgrade()
+                    .is_some_and(|p| p.registrations().flags.iter().any(|f| f.name == flag));
+                return Ok(match registered {
+                    true => lock(&shared.flag_values).get(flag).cloned().unwrap_or(Value::Null),
+                    false => Value::Null,
+                });
+            }
             let Some(kind) = prompt_kind(method) else {
                 return shared.host.request(&name, method, &params, cancel);
             };
             let title = params.get("title").and_then(Value::as_str).map(str::to_string);
             shared.prompt_start(kind, title.as_deref());
-            let answer = if shared.session.has_ui {
+            let answer = if shared.has_ui() {
                 shared.host.request(&name, method, &params, cancel)
             } else {
                 Ok(no_ui_answer(method).unwrap_or_default())
@@ -330,7 +446,10 @@ impl ExtensionProcess {
             let name = &process.manifest.name;
             match method {
                 "registrations/changed" => match Registrations::parse(&params) {
-                    Ok(registrations) => lock(&process.state).registrations = registrations,
+                    Ok(registrations) => {
+                        process.shared.register_defaults(&registrations.flags);
+                        lock(&process.state).registrations = registrations;
+                    }
                     Err(error) => host.log(name, "error", &format!("registrations/changed rejected: {error}")),
                 },
                 "bus/emit" => {
@@ -349,7 +468,7 @@ impl ExtensionProcess {
                 }
                 _ => match parse_update(method, &params) {
                     Ok(Some(update)) => {
-                        if process.shared.session.has_ui {
+                        if process.shared.has_ui() {
                             host.ui(name, update);
                         }
                     }
@@ -373,14 +492,26 @@ impl ExtensionProcess {
         let peer = Peer::start(transport.clone(), self.request_handler(), self.notification_handler())
             .map_err(|e| e.to_string())?;
         let session = &self.shared.session;
+        // The first start gets the command line's values; a restart the session's values of the flags it registered.
+        let flags = if restart == 0 {
+            session.flags.clone()
+        } else {
+            let values = lock(&self.shared.flag_values);
+            self.registrations()
+                .flags
+                .iter()
+                .filter_map(|f| values.get(&f.name).map(|v| (f.name.clone(), v.clone())))
+                .collect()
+        };
+        let has_ui = self.shared.has_ui();
         let params = json!({
             "protocolVersion": PROTOCOL_VERSION,
             "hostInfo": { "name": "ultron", "version": env!("CARGO_PKG_VERSION") },
-            "session": { "cwd": session.cwd, "mode": session.mode, "hasUI": session.has_ui },
-            "flags": session.flags,
+            "session": { "cwd": session.cwd, "mode": session.mode, "hasUI": has_ui },
+            "flags": flags,
             "restart": restart,
             "capabilities": {
-                "ui": { "status": true, "panels": true, "prompts": session.has_ui },
+                "ui": { "status": true, "panels": true, "prompts": has_ui },
                 "events": EVENTS.as_slice(),
             },
         });
@@ -626,7 +757,50 @@ pub struct ExtensionHost {
     processes: Vec<Arc<ExtensionProcess>>,
     router: Router,
     pub diagnostics: Vec<Diagnostic>,
+    /// Problems with the command line's extension flags (`applyExtensionFlags`): unknown options, a string flag
+    /// without a value.
+    pub flag_diagnostics: Vec<String>,
     shared: Arc<Shared>,
+}
+
+/// `applyExtensionFlags` (agent-session-services.ts) over `SessionInfo.flags`, the command line's unknown options: a
+/// registered boolean flag becomes `true`, a string flag takes its string value; anything else is reported.
+fn apply_cli_flags(shared: &Shared, processes: &[Arc<ExtensionProcess>]) -> Vec<String> {
+    let mut registered: Vec<(String, String)> = Vec::new();
+    for process in processes {
+        for flag in process.registrations().flags {
+            match registered.iter_mut().find(|(n, _)| *n == flag.name) {
+                Some(slot) => slot.1 = flag.kind,
+                None => registered.push((flag.name, flag.kind)),
+            }
+        }
+    }
+    let mut diagnostics = Vec::new();
+    let mut unknown: Vec<String> = Vec::new();
+    for (name, value) in &shared.session.flags {
+        let Some((_, kind)) = registered.iter().find(|(n, _)| n == name) else {
+            unknown.push(name.clone());
+            continue;
+        };
+        let mut values = lock(&shared.flag_values);
+        match (kind.as_str(), value) {
+            ("boolean", _) => {
+                values.insert(name.clone(), Value::Bool(true));
+            }
+            (_, Value::String(_)) => {
+                values.insert(name.clone(), value.clone());
+            }
+            _ => diagnostics.push(format!("Extension flag \"--{name}\" requires a value")),
+        }
+    }
+    if !unknown.is_empty() {
+        diagnostics.push(format!(
+            "Unknown option{}: {}",
+            if unknown.len() == 1 { "" } else { "s" },
+            unknown.iter().map(|n| format!("--{n}")).collect::<Vec<_>>().join(", ")
+        ));
+    }
+    diagnostics
 }
 
 impl ExtensionHost {
@@ -638,6 +812,7 @@ impl ExtensionHost {
             session,
             processes: Mutex::new(Vec::new()),
             prompt: Mutex::new((0, None)),
+            flag_values: Mutex::new(Map::new()),
         });
         let candidates: Vec<Arc<ExtensionProcess>> = manifests
             .into_iter()
@@ -681,13 +856,58 @@ impl ExtensionHost {
             }
         }
         *lock(&shared.processes) = processes.iter().map(Arc::downgrade).collect();
+        // Defaults commit in load order (the first registration of a name wins), then the command line's values.
+        for process in &processes {
+            shared.register_defaults(&process.registrations().flags);
+        }
+        let flag_diagnostics = apply_cli_flags(&shared, &processes);
         let endpoints: Vec<Arc<dyn Endpoint>> = processes.iter().map(|p| p.clone() as Arc<dyn Endpoint>).collect();
         ExtensionHost {
             router: Router::new(endpoints),
             processes,
             diagnostics,
+            flag_diagnostics,
             shared,
         }
+    }
+
+    /// `getFlags`: every registered flag, the first registration of a name winning, with its extension's path.
+    pub fn flags(&self) -> Vec<(FlagSpec, String)> {
+        let mut out: Vec<(FlagSpec, String)> = Vec::new();
+        for process in &self.processes {
+            for flag in process.registrations().flags {
+                if !out.iter().any(|(f, _)| f.name == flag.name) {
+                    out.push((flag, process.display_path.clone()));
+                }
+            }
+        }
+        out
+    }
+
+    /// `getFlagValues`: the session's flag values.
+    pub fn flag_values(&self) -> Map<String, Value> {
+        lock(&self.shared.flag_values).clone()
+    }
+
+    /// `setFlagValue`.
+    pub fn set_flag_value(&self, name: &str, value: Value) {
+        lock(&self.shared.flag_values).insert(name.to_string(), value);
+    }
+
+    /// Providers the extensions declared (`registerProvider` without code) with the extension's path, every
+    /// declaration in load order: the model registry applies them in turn, a later declaration of a name merging over
+    /// an earlier one as `registerProvider` does.
+    pub fn providers(&self) -> Vec<(ProviderSpec, String)> {
+        self.processes
+            .iter()
+            .flat_map(|process| {
+                process
+                    .registrations()
+                    .providers
+                    .into_iter()
+                    .map(|provider| (provider, process.display_path.clone()))
+            })
+            .collect()
     }
 
     pub fn router(&self) -> &Router {
@@ -736,6 +956,31 @@ impl ExtensionHost {
             return Err(RpcError::Other(format!("Extension {extension} has no function {name}")));
         }
         process.call_function(name, arguments, timeout, cancel)
+    }
+
+    /// `getShortcuts`: the extension shortcuts the TUI binds given its resolved keybindings (action, keys), and the
+    /// conflict warnings ([`crate::shortcuts::resolve`]).
+    pub fn shortcuts(&self, keybindings: &[(String, Vec<String>)]) -> crate::shortcuts::Shortcuts {
+        let extensions: Vec<crate::shortcuts::Registered> = self
+            .processes
+            .iter()
+            .map(|p| (p.display_path.clone(), p.registrations().shortcuts))
+            .collect();
+        crate::shortcuts::resolve(&extensions, keybindings)
+    }
+
+    /// Runs the shortcut bound to `key` (`shortcuts/run` to the extension that owns it under `keybindings`).
+    pub fn run_shortcut(&self, key: &str, keybindings: &[(String, Vec<String>)]) -> Result<Value, RpcError> {
+        let resolved = self.shortcuts(keybindings);
+        let shortcut = resolved
+            .get(key)
+            .ok_or_else(|| RpcError::Other(format!("No extension shortcut {key}")))?;
+        let process = self
+            .processes
+            .iter()
+            .find(|p| p.display_path == shortcut.extension_path)
+            .ok_or_else(|| RpcError::Other(format!("No extension shortcut {key}")))?;
+        process.run_shortcut(&shortcut.key)
     }
 
     /// Runs `/invocation_name args` (names from `Router::registered_commands`).

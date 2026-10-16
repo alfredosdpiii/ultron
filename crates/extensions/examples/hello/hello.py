@@ -4,6 +4,7 @@ Registers:
   functions  greet(name), slow(seconds), cancelled(), crash(), info() (running: slow calls in flight),
              shout(channel, data)
   command    /hello            asks ui/select, then sets a status line and a panel
+  shortcut   alt+h             notifies "Hello from a shortcut"
   events     session_before_switch (vetoes "resume"), tool_call (blocks "rm -rf"), input ("hi" -> "hello"),
              session_start (status line), turn_start (exits when HELLO_CRASH_ON_TURN matches), ui_prompt_start / ui_prompt_end (recorded)
   bus        "greetings"       messages are recorded and returned by info()
@@ -158,6 +159,7 @@ def handle_request(message):
                         {"name": "shout", "description": "Emit on the extension bus"},
                     ],
                     "commands": [{"name": "hello", "description": "Say hello"}],
+                    "shortcuts": [{"key": "alt+h", "description": "Say hello"}],
                     "bus": ["greetings"],
                 },
             }
@@ -167,6 +169,9 @@ def handle_request(message):
             result = call_function(request_id, params["name"], params.get("arguments") or {})
         elif method == "commands/run":
             result = run_command(params["name"], params.get("args", ""))
+        elif method == "shortcuts/run":
+            notify("ui/notify", {"message": "Hello from a shortcut", "type": "info"})
+            result = None
         elif method == "shutdown":
             result = {}
         else:

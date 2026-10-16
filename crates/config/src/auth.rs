@@ -147,8 +147,9 @@ impl AuthStorage {
     }
 }
 
-/// `FileAuthStorage.read`'s key resolution: an `api_key` credential's `key` template (`$VAR`, `${VAR}`) resolved
-/// against its own `env`, then `process_env`; a key naming an unset variable is removed. Other credentials as given.
+/// `AuthStorage.read`'s key resolution: an `api_key` credential's `key` template (`$VAR`, `${VAR}`) resolved
+/// against its own `env`, then `process_env`, or its `!command` run (auth-storage.ts:446); a key naming an unset
+/// variable, or whose command fails, is removed. Other credentials as given.
 pub fn resolve_stored_api_key(
     mut credential: Value,
     process_env: &dyn Fn(&str) -> Option<String>,
@@ -248,11 +249,76 @@ pub fn parse_template(config: &str) -> Vec<TemplatePart> {
     parts
 }
 
-/// `resolveConfigValue` for templates: `None` when a referenced variable is unset or empty. Command values
-/// (`!cmd`) are refused: running them is not ported yet.
+/// How long a `!command` value may run (`execSync`'s `timeout: 10000`).
+const COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// `commandResultCache`: every `!command` runs once per process; failures are cached too.
+static COMMAND_CACHE: std::sync::Mutex<Option<std::collections::HashMap<String, Option<String>>>> =
+    std::sync::Mutex::new(None);
+
+/// `executeWithDefaultShell`: `/bin/sh -c <command>` with stdin and stderr ignored; its trimmed stdout, or `None`
+/// when it fails, times out, or prints nothing.
+fn run_command(command: &str) -> Option<String> {
+    use std::io::Read;
+    use std::process::{Command, Stdio};
+    let mut child = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(command)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let mut stdout = child.stdout.take()?;
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut out = Vec::new();
+        let _ = stdout.read_to_end(&mut out);
+        let _ = tx.send(out);
+    });
+    let Ok(out) = rx.recv_timeout(COMMAND_TIMEOUT) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return None;
+    };
+    if !child.wait().ok()?.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&out).trim().to_string();
+    (!text.is_empty()).then_some(text)
+}
+
+/// `executeCommand`: a `!command` value (the command without its `!`), cached for the process's lifetime.
+pub fn command_value(command: &str) -> Option<String> {
+    let key = format!("!{command}");
+    if let Some(cached) = COMMAND_CACHE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+        .and_then(|cache| cache.get(&key))
+    {
+        return cached.clone();
+    }
+    let value = run_command(command);
+    COMMAND_CACHE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get_or_insert_with(Default::default)
+        .insert(key, value.clone());
+    value
+}
+
+/// `clearConfigValueCache`: forget every cached `!command` result.
+pub fn clear_command_cache() {
+    *COMMAND_CACHE.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+}
+
+/// `resolveConfigValue`: a `!command`'s trimmed output (run once per process, failures included), or the template
+/// with its variables filled; `None` when the command fails or prints nothing, or a referenced variable is unset or
+/// empty.
 pub fn resolve_config_value(config: &str, env: &dyn Fn(&str) -> Option<String>) -> Result<Option<String>, String> {
-    if config.starts_with('!') {
-        return Err("command-backed config values are not supported by the Rust host yet".into());
+    if let Some(command) = config.strip_prefix('!') {
+        return Ok(command_value(command));
     }
     let mut out = String::new();
     for part in parse_template(config) {

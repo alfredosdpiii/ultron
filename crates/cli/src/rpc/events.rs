@@ -56,6 +56,19 @@ pub enum LaneEvent {
     /// AgentSession's `summarization_retry_scheduled` / `_attempt_start` / `_finished` (a compaction's or branch
     /// summary's retry), as the RPC stream carries them.
     SummarizationRetry(Value),
+    /// The run's generation failed and is retried (`retry_scheduled`, rpc-events.ts `auto_retry_start`).
+    AutoRetryStart {
+        attempt: Value,
+        max_attempts: Value,
+        delay_ms: Value,
+        error: Value,
+    },
+    /// The run's retries ended (`retry_end`, rpc-events.ts `auto_retry_end`).
+    AutoRetryEnd {
+        success: bool,
+        attempt: Value,
+        final_error: Option<Value>,
+    },
 }
 
 impl LaneEvent {
@@ -124,6 +137,17 @@ impl LaneEvent {
                 shown.remove("lane");
                 LaneEvent::SummarizationRetry(Value::Object(shown))
             }
+            "retry_scheduled" => LaneEvent::AutoRetryStart {
+                attempt: event["attempt"].clone(),
+                max_attempts: event["maxAttempts"].clone(),
+                delay_ms: event["delayMs"].clone(),
+                error: event["errorMessage"].clone(),
+            },
+            "retry_end" => LaneEvent::AutoRetryEnd {
+                success: event["success"] == true,
+                attempt: event["attempt"].clone(),
+                final_error: event.get("finalError").filter(|e| !e.is_null()).cloned(),
+            },
             _ => return None,
         })
     }
@@ -237,6 +261,26 @@ impl RpcEventTranslator {
             LaneEvent::EntryAdded(entry) => vec![json!({"type": "entry_appended", "entry": entry})],
             LaneEvent::ThinkingLevel(level) => vec![json!({"type": "thinking_level_changed", "level": level})],
             LaneEvent::SummarizationRetry(event) => vec![event],
+            LaneEvent::AutoRetryStart {
+                attempt,
+                max_attempts,
+                delay_ms,
+                error,
+            } => vec![
+                json!({"type": "auto_retry_start", "attempt": attempt, "maxAttempts": max_attempts,
+                "delayMs": delay_ms, "errorMessage": error}),
+            ],
+            LaneEvent::AutoRetryEnd {
+                success,
+                attempt,
+                final_error,
+            } => {
+                let mut event = json!({"type": "auto_retry_end", "success": success, "attempt": attempt});
+                if let Some(error) = final_error {
+                    event["finalError"] = error;
+                }
+                vec![event]
+            }
         }
     }
 

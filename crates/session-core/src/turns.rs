@@ -88,6 +88,13 @@ pub enum Request {
         message: Box<AssistantMessage>,
         answer: Answer<Settled>,
     },
+    /// The root's tool round ran its last cell (`turn_end`, before its results commit and the boundary places
+    /// queued messages): `calls` calls, `failed` of them errors. The actor answers once it steered the run if due.
+    RoundEnded {
+        calls: usize,
+        failed: usize,
+        answer: Answer<()>,
+    },
 }
 
 /// Why the actor could not start a generation.
@@ -195,6 +202,21 @@ impl Bridge {
                 args,
             });
         }
+    }
+
+    /// The calls and failures of the current round once every call has a result (run here or committed).
+    fn round_complete(&self) -> Option<(usize, usize)> {
+        let round = lock(&self.round);
+        let results = lock(&self.results);
+        if round.calls.is_empty() {
+            return None;
+        }
+        let mut failed = 0;
+        for (id, _) in &round.calls {
+            let reported = results.get(id).or_else(|| round.done.get(id))?;
+            failed += usize::from(reported.is_error);
+        }
+        Some((round.calls.len(), failed))
     }
 
     /// The start of a tool round whose calls already started before a restart (no new start events).
@@ -687,6 +709,16 @@ impl CellExecutor for TurnCells {
             return Err(signal
                 .reason()
                 .map_or_else(|| "cancelled".to_string(), |r| r.to_string()));
+        }
+        // The round's last cell: the turn ends now, so a steer it earns is placed with the round's results.
+        if let Some((calls, failed)) = self.bridge.round_complete() {
+            let answer = Answer::default();
+            self.bridge.request(Request::RoundEnded {
+                calls,
+                failed,
+                answer: answer.clone(),
+            });
+            let _ = answer.wait(signal);
         }
         Ok(cell_result(result, is_error))
     }

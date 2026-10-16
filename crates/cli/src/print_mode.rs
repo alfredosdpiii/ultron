@@ -92,9 +92,9 @@ pub fn flags(parsed: &Args) -> ModelFlags {
         model: parsed.model.clone(),
         api_key: parsed.api_key.clone(),
         thinking: parsed.thinking.clone(),
-        // TypeScript's native command forwards no `--models` to the worker (native-command.ts): only the settings'
-        // `enabledModels` scope applies.
-        models: None,
+        // `--models` chooses a new session's model (Pi's `buildSessionOptions`; TypeScript's native command drops
+        // it, decisions row "scoped models ... accepted"); without it the settings' `enabledModels` apply.
+        models: parsed.models.clone(),
     }
 }
 
@@ -139,10 +139,57 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
             extension_mode: Some(extension_mode.into()),
             no_naming: parsed.no_session,
             no_extensions: parsed.no_extensions,
+            models: parsed.models.clone(),
+            session: session_flags(parsed, env)?,
+            env: crate::startup::worker_env(env),
         },
         keep_alive: true,
         root: instance.root().map(std::path::Path::to_path_buf),
+        relay: Some(crate::radius_relay::relay_config(env)),
     })
+}
+
+/// The session's resource flags (native-command.ts `startForegroundServer` options): `-e` paths resolved against the
+/// cwd when local (`isLocalPath` / `resolvePath`); a package source (`npm:`, `git:`, a URL) is installed for this run
+/// under the agent's temp folder (`resolveExtensionSources(sources, { temporary: true })`) and its install directory
+/// takes its place, where the session finds the package's extension manifests. Offline, a source not yet installed is
+/// left out; a failed install fails the start.
+pub fn session_flags(parsed: &Args, env: &Env) -> Result<session_core::session_flags::SessionFlags, String> {
+    let mut manager = None;
+    let mut extension_paths = Vec::new();
+    for path in parsed.extensions.iter().flatten() {
+        if extensions::manifest::is_local_path(path) {
+            extension_paths.push(
+                crate::file_args::resolve_to_cwd(path, &env.cwd, &env.home)
+                    .display()
+                    .to_string(),
+            );
+            continue;
+        }
+        let manager = manager.get_or_insert_with(|| {
+            let mut manager = crate::packages::manager::PackageManager::new(
+                env,
+                crate::package_cli::settings_manager(env, None, false),
+            );
+            // npm and git write to stderr, so a print or JSON run's stdout stays the answer alone.
+            manager.child_stdout_to_stderr = true;
+            manager
+        });
+        extension_paths.extend(manager.resolve_extension_sources(std::slice::from_ref(path))?.roots);
+    }
+    Ok(session_core::session_flags::SessionFlags {
+        system_prompt: parsed.system_prompt.clone(),
+        extension_paths,
+        no_skills: parsed.no_skills,
+        no_context_files: parsed.no_context_files,
+    })
+}
+
+/// What one prompted run sends: the prompt text and its images.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Prompt {
+    pub text: String,
+    pub images: Vec<serde_json::Value>,
 }
 
 /// The client command a target selects: an existing session by id, a fork of one, a new one (with its id), or
@@ -155,6 +202,7 @@ pub fn client_command(parsed: &Args, target: &Target, prompt: Option<String>) ->
         prompt,
         fork_from_session_id: None,
         no_session: false,
+        images: None,
     };
     match target {
         Target::New { id } => command.session_id = id.clone(),
@@ -171,7 +219,13 @@ pub const PROMPT_ABORT_WAIT: std::time::Duration = std::time::Duration::from_mil
 /// Run one prompted turn through this process's own server generation. A signal aborts the turn and exits with the
 /// signal's code once it ended; a lost worker or server is rejoined (the server restarted) and the turn's session
 /// followed to its end.
-pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> Result<Prompted, String> {
+pub fn run_prompt(
+    parsed: &Args,
+    env: &Env,
+    prompt: Prompt,
+    target: Target,
+    on_event: Option<client::runtime::EventListener>,
+) -> Result<Prompted, String> {
     use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
     use std::sync::{Arc, Mutex};
     preflight(parsed, env, &target)?;
@@ -195,6 +249,7 @@ pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> R
     }));
     let (restarted, server_options) = (servers.clone(), options.clone());
     let run_options = RunOptions {
+        on_event,
         interrupt: Some(interrupt.clone()),
         reconnect: Some(Arc::new(move || {
             // The server generation went away with its coordinator: start a new one (and coordinator).
@@ -213,7 +268,8 @@ pub fn run_prompt(parsed: &Args, env: &Env, prompt: String, target: Target) -> R
         Target::Open(metadata) => std::fs::metadata(&metadata.path).map_or(0, |m| m.len()),
         _ => 0,
     };
-    let mut command = client_command(parsed, &target, Some(prompt));
+    let mut command = client_command(parsed, &target, Some(prompt.text));
+    command.images = (!prompt.images.is_empty()).then_some(prompt.images);
     let ephemeral = std::mem::replace(&mut command.no_session, false);
     let result = run_client_with(&command, &route, &run_options);
     let notices = match &result {
@@ -259,5 +315,39 @@ pub fn render(json_mode: bool, prompted: &Prompted) -> String {
         format!("{result}\n")
     } else {
         format!("{}\n", prompted.text)
+    }
+}
+
+/// A run without a prompt and without the TUI (`runClient` with no prompt): the session a selector names is
+/// attached (`<server>\t<session>\tattached`), else the server's sessions are listed (`<server>\t<session>` each).
+pub fn run_unprompted(parsed: &Args, env: &Env, target: Target) -> Result<String, String> {
+    let mode = if parsed.mode.as_deref() == Some("json") {
+        "json"
+    } else {
+        "print"
+    };
+    let options = server_options(parsed, env, mode)?;
+    let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
+    let route = Route {
+        server_id: server.server_id.clone(),
+        path: server.endpoint_path.clone(),
+    };
+    let command = client_command(parsed, &target, None);
+    let result = run_client_with(&command, &route, &RunOptions::default());
+    server.close();
+    Ok(render_unprompted(
+        &result.map_err(|e| daemon::lost::describe(&e).unwrap_or(e))?,
+    ))
+}
+
+/// What a run without a prompt prints for its client result.
+pub fn render_unprompted(result: &ClientResult) -> String {
+    match result {
+        ClientResult::Attached { server_id, session_id } => format!("{server_id}\t{session_id}\tattached\n"),
+        ClientResult::List(sessions) => sessions
+            .iter()
+            .map(|(server, session)| format!("{server}\t{session}\n"))
+            .collect(),
+        ClientResult::Prompted { text, .. } => format!("{text}\n"),
     }
 }

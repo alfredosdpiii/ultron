@@ -33,6 +33,8 @@ fn uuid() -> String {
 
 /// What the TUI asks of the link thread.
 enum Command {
+    /// The link saw the session's worker restart under it (its `connection` event `reconnecting`).
+    WorkerStopped,
     Op(Op),
     /// Start a turn, then report the session's (automatic) name.
     Prompt(Op),
@@ -44,6 +46,8 @@ enum Command {
     SelectModel(String, String),
     /// The run ended: report the session's name (a model title may have replaced the automatic one).
     RefreshName,
+    /// The session was re-attached after its Radius connection recovered: show it again (`#openLane`).
+    Reopen,
     Bash(String, bool),
     Compact(Option<String>),
     SetThinking(String),
@@ -59,8 +63,13 @@ enum Command {
     /// A read-only inspection request and the title its answer is rendered under.
     Inspect(String, String, Value),
     KillAgent(String),
+    SteerAgent(String, String),
+    ReviveAgent(String),
+    AgentTranscript(String),
     ReadSettings,
     ReadMode,
+    /// `/autoreview`.
+    Autoreview(interactive::lane::AutoreviewRequest),
     RlmStatus,
     Credentials,
     Logout(String, String),
@@ -70,9 +79,22 @@ enum Command {
     RunExtension(String, String),
     /// An extension command's argument completions for a prefix (`commands/complete`).
     CompleteExtension(String, String),
-    Share,
+    /// The extensions' shortcuts under these effective keybindings (`getShortcuts`).
+    ExtensionShortcuts(Vec<(String, Vec<String>)>),
+    /// Run the extension shortcut bound to the key (`shortcuts/run`).
+    RunShortcut(String, Vec<(String, Vec<String>)>),
+    /// `/share`; the flag is set when the user cancels the gist upload.
+    Share(Arc<std::sync::atomic::AtomicBool>),
     LoginProviders(String),
     SaveApiKey(String, String),
+    /// A credential a multi-field API-key login produced (provider, `{type, key?, env?}`).
+    SaveCredential(String, Value),
+    /// A read-only inspection for the RLM views, answered as [`LaneEvent::RlmInspected`] with the tag.
+    RlmInspect(String, String, Value),
+    /// Every project's native sessions (`/resume`'s All scope).
+    ListAllSessions,
+    /// Pi's sessions of every project (`/import`'s All scope).
+    ListAllPiSessions,
     /// A subscription login saved its credential (provider, name): report it as `runLoginDialog` does.
     LoginSaved(String, String),
     /// Refresh the model catalogs (`/scoped-models`).
@@ -86,6 +108,14 @@ enum Command {
     SetLabel(String, Option<String>),
     /// The answer to an extension dialog.
     ExtensionUiRespond(String, Value),
+    /// `/trust`: the worker's trust state.
+    ReadTrust,
+    /// A `/trust` choice: trusted, and its `(path, decision)` updates.
+    SetProjectTrust(bool, Vec<(String, Option<bool>)>),
+    /// `/debug`: what the TUI shows.
+    WriteDebugLog(interactive::debug_log::DebugCapture),
+    /// `/reload`.
+    ReloadPlugins,
     Shutdown,
 }
 
@@ -140,6 +170,8 @@ struct DaemonLane {
     ui: mpsc::Sender<UiEvent>,
     /// The subscription login running now (its pending prompt).
     login: Arc<crate::tui_login::LoginSlot>,
+    /// Set when the user cancels `/share`'s gist upload.
+    share_cancel: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl DaemonLane {
@@ -189,6 +221,9 @@ impl LaneClient for DaemonLane {
     }
     fn abort(&self) {
         self.send(Command::Op(Op::Abort));
+    }
+    fn abort_retry(&self) {
+        self.send(Command::Op(Op::AbortRetry));
     }
     fn new_session(&self) {
         self.send(Command::NewSession);
@@ -253,6 +288,9 @@ impl LaneClient for DaemonLane {
     fn read_mode(&self) {
         self.send(Command::ReadMode);
     }
+    fn autoreview(&self, request: interactive::lane::AutoreviewRequest) {
+        self.send(Command::Autoreview(request));
+    }
     fn rlm_status(&self) {
         self.send(Command::RlmStatus);
     }
@@ -267,6 +305,12 @@ impl LaneClient for DaemonLane {
     }
     fn extension_completions(&self, name: &str, prefix: &str) {
         self.send(Command::CompleteExtension(name.to_string(), prefix.to_string()));
+    }
+    fn extension_shortcuts(&self, keybindings: Vec<(String, Vec<String>)>) {
+        self.send(Command::ExtensionShortcuts(keybindings));
+    }
+    fn extension_shortcut(&self, key: &str, keybindings: Vec<(String, Vec<String>)>) {
+        self.send(Command::RunShortcut(key.to_string(), keybindings));
     }
     fn login_providers(&self, query: &str) {
         self.send(Command::LoginProviders(query.to_string()));
@@ -304,7 +348,23 @@ impl LaneClient for DaemonLane {
         self.send(Command::RefreshCatalog);
     }
     fn share(&self) {
-        self.send(Command::Share);
+        self.share_cancel.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.send(Command::Share(self.share_cancel.clone()));
+    }
+    fn cancel_share(&self) {
+        self.share_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+    fn save_credential(&self, provider: &str, credential: Value) {
+        self.send(Command::SaveCredential(provider.to_string(), credential));
+    }
+    fn rlm_inspect(&self, tag: &str, request: &str, payload: Value) {
+        self.send(Command::RlmInspect(tag.to_string(), request.to_string(), payload));
+    }
+    fn list_all_sessions(&self) {
+        self.send(Command::ListAllSessions);
+    }
+    fn list_all_pi_sessions(&self) {
+        self.send(Command::ListAllPiSessions);
     }
     fn logout(&self, provider: &str, done: &str) {
         self.send(Command::Logout(provider.to_string(), done.to_string()));
@@ -334,8 +394,29 @@ impl LaneClient for DaemonLane {
     fn kill_agent(&self, id: &str) {
         self.send(Command::KillAgent(id.to_string()));
     }
+    fn steer_agent(&self, id: &str, text: &str) {
+        self.send(Command::SteerAgent(id.to_string(), text.to_string()));
+    }
+    fn revive_agent(&self, id: &str) {
+        self.send(Command::ReviveAgent(id.to_string()));
+    }
+    fn agent_transcript(&self, id: &str) {
+        self.send(Command::AgentTranscript(id.to_string()));
+    }
     fn extension_ui_respond(&self, id: &str, answer: Value) {
         self.send(Command::ExtensionUiRespond(id.to_string(), answer));
+    }
+    fn read_trust(&self) {
+        self.send(Command::ReadTrust);
+    }
+    fn set_project_trust(&self, trusted: bool, updates: Vec<(String, Option<bool>)>) {
+        self.send(Command::SetProjectTrust(trusted, updates));
+    }
+    fn write_debug_log(&self, capture: interactive::debug_log::DebugCapture) {
+        self.send(Command::WriteDebugLog(capture));
+    }
+    fn reload_plugins(&self) {
+        self.send(Command::ReloadPlugins);
     }
 }
 
@@ -369,6 +450,32 @@ impl ExtensionUiPoll {
     }
 }
 
+/// The agent hub's notice for what a steer (`agent_message.send`'s `{state, steered}`) or a revive (`{id}`) did.
+pub fn agent_notice(id: &str, action: &str, answer: Result<Option<Value>, String>) -> String {
+    let error = |error: String| {
+        let error = error
+            .strip_prefix("session_operation_failed: ")
+            .unwrap_or(&error)
+            .to_string();
+        format!("Error: {error}")
+    };
+    match (action, answer) {
+        (_, Err(e)) => error(e),
+        ("steer", Ok(answer)) if answer.as_ref().is_some_and(|a| a["steered"] == true) => {
+            format!("Steered \"{id}\".")
+        }
+        ("steer", Ok(_)) => format!("\"{id}\" has no live run: the message waits in its inbox."),
+        (_, Ok(answer)) => {
+            let new = answer
+                .as_ref()
+                .and_then(|a| a["id"].as_str())
+                .unwrap_or_default()
+                .to_string();
+            format!("Revived \"{id}\" as \"{new}\".")
+        }
+    }
+}
+
 /// The agent hub's rows from `rlm.list_subagents` (`{id, definition, state, parentId?, result?}`): running children
 /// run, finished ones are idle, failed or cancelled ones aborted.
 pub fn agent_views(listed: &Value) -> Vec<interactive::agent_hub::AgentView> {
@@ -384,7 +491,9 @@ pub fn agent_views(listed: &Value) -> Vec<interactive::agent_hub::AgentView> {
             status: match a["state"].as_str() {
                 Some("running" | "pending" | "queued") => AgentStatus::Running,
                 Some("completed" | "succeeded") => AgentStatus::Idle,
-                Some("failed" | "cancelled" | "interrupted") => AgentStatus::Aborted,
+                Some("failed" | "cancelled") => AgentStatus::Aborted,
+                // Left by a worker that died while it ran: the hub can revive it.
+                Some("interrupted") => AgentStatus::Parked,
                 _ => AgentStatus::Parked,
             },
             unread: 0,
@@ -448,10 +557,10 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
                 .filter(|item| item["type"] == "message")
                 .map(|item| Queued {
                     entry_id: item["entryId"].as_str().unwrap_or_default().to_string(),
-                    kind: if item["kind"] == "steer" {
-                        QueueKind::Steer
-                    } else {
-                        QueueKind::FollowUp
+                    kind: match item["kind"].as_str() {
+                        Some("steer") => QueueKind::Steer,
+                        Some("nextRun") => QueueKind::NextRun,
+                        _ => QueueKind::FollowUp,
                     },
                     text: session_core::view::message_text(&item["message"]),
                 })
@@ -479,6 +588,16 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
             reason: event["reason"].as_str().unwrap_or("manual").to_string(),
         }],
         Some("summarization_retry_finished") => vec![LaneEvent::SummarizationRetryFinished],
+        Some("retry_scheduled") => vec![LaneEvent::AutoRetryStart {
+            attempt: event["attempt"].as_u64().unwrap_or(0),
+            max_attempts: event["maxAttempts"].as_u64().unwrap_or(0),
+            delay_ms: event["delayMs"].as_u64().unwrap_or(0),
+        }],
+        Some("retry_end") => vec![LaneEvent::AutoRetryEnd {
+            attempt: event["attempt"].as_u64().unwrap_or(0),
+            failed: (event["success"] != true)
+                .then(|| event["finalError"].as_str().unwrap_or("Unknown error").to_string()),
+        }],
         Some("entry_added") if event["entry"]["type"] == "compaction" => {
             vec![LaneEvent::Compacted(Ok(event["entry"].clone()))]
         }
@@ -595,6 +714,22 @@ fn link_thread(
     let open = |link: &Link, name: &mut Option<String>| match opened(link) {
         Ok((session, model, entries)) => {
             *name = session.name.clone();
+            // `plugins.prepareSession` for the attached session (client-tui.ts): `/reload` rebuilds this selection.
+            let connection = link.connection();
+            let _ = connection.call(
+                connection.server_target(),
+                "pi.presentation-plugins",
+                "prepareSession",
+                json!([{"sessionId": session.session_id, "packagePaths": null}]),
+            );
+            // The session's extensions may declare providers: their models join the catalog before the session
+            // shows (a key pressed then already cycles over them).
+            let mut models = catalog(&catalog_env);
+            let extras = session_extras(link, &models);
+            if !extras.is_empty() {
+                models.extend(extras);
+                send(LaneEvent::Catalog(models));
+            }
             send(LaneEvent::Opened(session));
             send(LaneEvent::Entries(entries));
             send(LaneEvent::Model(model));
@@ -611,48 +746,48 @@ fn link_thread(
     };
     open(&link, &mut name);
     let mut last_recovery: Option<std::time::Instant> = None;
-    let mut gave_up = false;
     let mut extension_ui = ExtensionUiPoll::default();
     loop {
         extension_ui.poll(&link, &send);
         let command = match commands.recv_timeout(std::time::Duration::from_millis(250)) {
             Ok(command) => command,
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                // The worker went away without being asked to (it crashed or was killed): the session file is
-                // intact, so attach again, which starts a fresh worker (`#handleLocalAttachmentState`).
-                if link.connection().attachment().is_none() {
-                    let now = std::time::Instant::now();
-                    if last_recovery.is_some_and(|t| now.duration_since(t) < WORKER_RECOVERY_INTERVAL) {
-                        if !gave_up {
-                            gave_up = true;
-                            send(LaneEvent::Status(format!(
-                                "Error: The session worker stopped again; {}",
-                                daemon::lost::RESUME_HINT
-                            )));
-                        }
-                        continue;
-                    }
-                    last_recovery = Some(now);
-                    gave_up = false;
-                    send(LaneEvent::Status(
-                        "The session worker stopped unexpectedly; reattaching the Session…".into(),
-                    ));
-                    let id = link.session_id();
-                    match link.attach(&id) {
-                        Ok(()) => {
-                            open(&link, &mut name);
-                            send(LaneEvent::Status(
-                                "The session worker stopped unexpectedly and was restarted; the Session is intact, but work running in the old worker (such as background jobs) was lost.".into(),
-                            ));
-                        }
-                        Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
-                    }
-                }
-                continue;
-            }
+            Err(mpsc::RecvTimeoutError::Timeout) => continue,
         };
         match command {
+            // The worker went away without being asked to (it crashed or was killed) and the link re-attached the
+            // session to a fresh worker: the session file is intact, so show it again (`#handleLocalAttachmentState`).
+            // A second stop within WORKER_RECOVERY_INTERVAL is reported instead.
+            Command::WorkerStopped => {
+                if link
+                    .remote_route()
+                    .is_some_and(|route| matches!(route, crate::link::RemoteRoute::Radius { .. }))
+                {
+                    continue;
+                }
+                let now = std::time::Instant::now();
+                if last_recovery.is_some_and(|t| now.duration_since(t) < WORKER_RECOVERY_INTERVAL) {
+                    send(LaneEvent::Status(format!(
+                        "Error: The session worker stopped again; {}",
+                        daemon::lost::RESUME_HINT
+                    )));
+                    continue;
+                }
+                last_recovery = Some(now);
+                send(LaneEvent::Status(
+                    "The session worker stopped unexpectedly; reattaching the Session…".into(),
+                ));
+                let id = link.session_id();
+                match link.attach(&id) {
+                    Ok(()) => {
+                        open(&link, &mut name);
+                        send(LaneEvent::Status(
+                            "The session worker stopped unexpectedly and was restarted; the Session is intact, but work running in the old worker (such as background jobs) was lost.".into(),
+                        ));
+                    }
+                    Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
+                }
+            }
             Command::Op(op) => {
                 if let Err(error) = link.op(&op) {
                     send(LaneEvent::Error(error));
@@ -664,6 +799,7 @@ fn link_thread(
                 Err(error) => send(LaneEvent::Error(error)),
             },
             Command::RefreshName => report_name(&link, &mut name),
+            Command::Reopen => open(&link, &mut name),
             Command::NewSession => match link.create(json!({})).and_then(|id| link.attach(&id)) {
                 Ok(()) => {
                     open(&link, &mut name);
@@ -835,6 +971,22 @@ fn link_thread(
                     let _ = ui.send(UiEvent::Lane(LaneEvent::ExtensionCompletions { name, prefix, items }));
                 });
             }
+            Command::ExtensionShortcuts(keybindings) => {
+                let listed = link.op(&Op::ExtensionShortcuts { keybindings }).ok().flatten();
+                send(extension_shortcuts_event(listed.as_ref()));
+            }
+            Command::RunShortcut(key, keybindings) => {
+                // Off the link thread: the handler may prompt, and input goes on meanwhile (interactive-mode.ts runs
+                // it without blocking input).
+                let (ops, ui) = (link.ops(), ui.clone());
+                std::thread::spawn(move || {
+                    if let Err(error) = ops.op(&Op::ExtensionShortcut { key, keybindings }) {
+                        let _ = ui.send(UiEvent::Lane(LaneEvent::Error(format!(
+                            "Shortcut handler error: {error}"
+                        ))));
+                    }
+                });
+            }
             Command::RunExtension(name, args) => {
                 // Off the link thread: a command may run long, and its dialogs wait on this client, so the link
                 // keeps polling meanwhile. The worker dispatches `/mcp` to the gateway, the rest to their process.
@@ -961,6 +1113,27 @@ fn link_thread(
                     send(LaneEvent::Status(format!("Error: {error}")));
                 }
             }
+            Command::SteerAgent(id, message) => {
+                let answer = link.op(&Op::SteerAgent {
+                    id: id.clone(),
+                    message,
+                });
+                send(LaneEvent::AgentNotice(agent_notice(&id, "steer", answer)));
+            }
+            Command::ReviveAgent(id) => {
+                let answer = link.op(&Op::ReviveAgent { id: id.clone() });
+                send(LaneEvent::AgentNotice(agent_notice(&id, "revive", answer)));
+            }
+            Command::AgentTranscript(id) => match link.op(&Op::AgentTranscript { id: id.clone() }) {
+                Ok(read) => send(LaneEvent::AgentTranscript {
+                    id,
+                    messages: read.unwrap_or_default()["messages"]
+                        .as_array()
+                        .cloned()
+                        .unwrap_or_default(),
+                }),
+                Err(error) => send(LaneEvent::AgentNotice(format!("Error: {error}"))),
+            },
             Command::SaveSetting(key, value) => {
                 let (cwd, agent_dir) = &settings_path;
                 let mut settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
@@ -995,7 +1168,60 @@ fn link_thread(
                     let _ = ui.send(UiEvent::Lane(LaneEvent::Changelog(tokens)));
                 });
             }
-            Command::Share => share_session(&link, &send),
+            Command::Share(cancel) => share_session(&link, &send, &cancel),
+            Command::SaveCredential(provider, credential) => {
+                let auth = config::paths::AgentPaths::new(settings_path.1.clone()).auth();
+                let name = interactive::selectors::provider_name(&provider);
+                let saved = config::auth::AuthStorage::create(auth.clone()).modify(&provider, |_| Some(credential));
+                match saved {
+                    Err(error) => send(LaneEvent::Status(format!(
+                        "Error: Failed to save API key for {name}: {error}"
+                    ))),
+                    Ok(_) => credentials_saved(&link, &catalog_env, &send, "Saved API key for", &provider, &name),
+                }
+            }
+            Command::RlmInspect(tag, request, payload) => send(LaneEvent::RlmInspected {
+                tag,
+                result: link
+                    .op(&Op::Inspect { request, payload })
+                    .map(Option::unwrap_or_default),
+            }),
+            Command::ListAllSessions => {
+                let dir = crate::session::session_directory(None, &catalog_env);
+                let repo = session_journal::SessionRepo::new(&dir, session_journal::SystemClock::shared());
+                let listed = session_journal::names::list_all_sessions(&repo)
+                    .into_iter()
+                    .map(|s| SessionListing {
+                        path: s.metadata.path.display().to_string(),
+                        id: s.metadata.id,
+                        name: s.name,
+                        modified: s.metadata.modified_at as i64,
+                        message_count: s.message_count,
+                        first_message: s.first_message,
+                        all_messages_text: s.all_messages_text,
+                        cwd: s.metadata.cwd,
+                    })
+                    .collect();
+                send(LaneEvent::AllSessions(listed));
+            }
+            Command::ListAllPiSessions => {
+                let dir = std::path::Path::new(&pi_agent_dir(&catalog_env)).join("sessions");
+                let listed =
+                    session_file::list_all_sessions(&session_file::SystemEnv, Some(&dir.display().to_string()))
+                        .into_iter()
+                        .map(|s| SessionListing {
+                            path: s.path,
+                            id: s.id,
+                            name: s.name,
+                            modified: s.modified.unwrap_or(0),
+                            message_count: s.message_count,
+                            first_message: s.first_message,
+                            all_messages_text: s.all_messages_text,
+                            cwd: s.cwd,
+                        })
+                        .collect();
+                send(LaneEvent::PiAllSessions(listed));
+            }
             Command::LoginProviders(query) => {
                 let auth = config::paths::AgentPaths::new(settings_path.1.clone()).auth();
                 send(LaneEvent::LoginProviders {
@@ -1016,7 +1242,9 @@ fn link_thread(
                 }
             }
             Command::RefreshCatalog => {
-                // `models.refresh()`: from the network unless offline (`PI_OFFLINE`), on its own thread.
+                // `models.refresh()`: from the network unless offline (`PI_OFFLINE`), on its own thread. The
+                // extensions' providers do not change with it.
+                let extras = session_extras(&link, &catalog(&catalog_env));
                 let (env, ui) = (catalog_env.clone(), ui.clone());
                 std::thread::spawn(move || {
                     let refresh = if (env.var)("PI_OFFLINE").is_none() {
@@ -1037,7 +1265,13 @@ fn link_thread(
                     } else {
                         CatalogRefresh::Done(Vec::new())
                     };
-                    let _ = ui.send(UiEvent::Lane(LaneEvent::Catalog(catalog(&env))));
+                    let mut models = catalog(&env);
+                    let extras: Vec<ModelInfo> = extras
+                        .into_iter()
+                        .filter(|e| !models.iter().any(|m| m.provider == e.provider && m.id == e.id))
+                        .collect();
+                    models.extend(extras);
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::Catalog(models)));
                     let _ = ui.send(UiEvent::Lane(LaneEvent::CatalogRefreshed(refresh)));
                 });
             }
@@ -1072,7 +1306,7 @@ fn link_thread(
                 match config::auth::AuthStorage::create(path).delete(&provider) {
                     Ok(()) => {
                         // The session reads credentials per request; the client's catalog follows the providers.
-                        send(LaneEvent::Catalog(catalog(&catalog_env)));
+                        send(LaneEvent::Catalog(session_catalog(&link, &catalog_env)));
                         send(LaneEvent::Status(done));
                     }
                     Err(error) => send(LaneEvent::Status(format!("Error: Logout failed: {error}"))),
@@ -1136,6 +1370,35 @@ fn link_thread(
                     always_skills: mode.always_skills,
                 });
             }
+            Command::Autoreview(request) => send(crate::autoreview_toggle::autoreview(
+                request,
+                &catalog_env,
+                crate::autoreview_cli::platform(),
+                &crate::autoreview_toggle::run_command,
+            )),
+            Command::ReadTrust => send(match read_trust(&link) {
+                Ok(view) => LaneEvent::Trust(view),
+                Err(error) => LaneEvent::Status(format!("Error: {error}")),
+            }),
+            Command::SetProjectTrust(trusted, updates) => {
+                let updates: Vec<Value> = updates
+                    .into_iter()
+                    .map(|(path, decision)| json!({"path": path, "decision": decision}))
+                    .collect();
+                send(LaneEvent::Status(
+                    match session_call(&link, "ultron.session-control", "setProjectTrust", json!([updates])) {
+                        Ok(_) => interactive::trust_selector::saved_status(trusted),
+                        Err(error) => format!("Error: {error}"),
+                    },
+                ));
+            }
+            Command::WriteDebugLog(capture) => {
+                send(write_debug_log(&link, &catalog_env, &settings_path.1, &capture));
+            }
+            Command::ReloadPlugins => send(LaneEvent::Status(match reload_plugins(&link) {
+                Ok(()) => "Reloaded plugins.".into(),
+                Err(error) => format!("Error: {error}"),
+            })),
             Command::Shutdown => break,
         }
     }
@@ -1147,6 +1410,116 @@ fn link_thread(
     } else {
         link.close(false);
     }
+}
+
+/// One call of the attached session's services.
+fn session_call(link: &Link, service: &str, member: &str, args: Value) -> Result<Option<Value>, String> {
+    let connection = link.connection();
+    connection
+        .session_target()
+        .and_then(|target| connection.call(target, service, member, args))
+        .map_err(|e| e.to_string())
+}
+
+/// `/trust`: the worker's `readSettings` and the trust choices for its cwd (`getProjectTrustOptions`).
+fn read_trust(link: &Link) -> Result<interactive::trust_selector::TrustView, String> {
+    let read = session_call(link, "ultron.session-control", "readSettings", json!([]))?.unwrap_or_default();
+    let cwd = read["cwd"].as_str().unwrap_or_default().to_string();
+    let display = |p: &std::path::Path| p.display().to_string();
+    let choices = config::trust::trust_options(std::path::Path::new(&cwd), false)
+        .into_iter()
+        .map(|option| interactive::trust_selector::TrustChoice {
+            label: option.label,
+            trusted: option.trusted,
+            updates: option.updates.iter().map(|u| (display(&u.path), u.decision)).collect(),
+            saved_path: option.saved_path.as_deref().map(display),
+        })
+        .collect();
+    Ok(interactive::trust_selector::TrustView {
+        cwd,
+        choices,
+        saved: read["savedTrust"]["path"]
+            .as_str()
+            .map(|path| (path.to_string(), read["savedTrust"]["decision"] == true)),
+        project_trusted: read["projectTrusted"] == true,
+    })
+}
+
+/// `/debug`: the worker's `debugInfo` and this client's and server's facts with what the TUI shows, written to
+/// `<agentDir>/ultron-debug.log` (0600).
+fn write_debug_log(
+    link: &Link,
+    env: &Env,
+    agent_dir: &std::path::Path,
+    capture: &interactive::debug_log::DebugCapture,
+) -> LaneEvent {
+    let worker = session_call(link, "ultron.session-control", "debugInfo", json!([]))
+        .map(Option::unwrap_or_default)
+        .map_err(|e| {
+            if e == "Session is not attached" {
+                "No Session is attached".into()
+            } else {
+                e
+            }
+        });
+    let server_id = link.connection().server_id.clone();
+    let socket = [false, true]
+        .into_iter()
+        .map(|durable| crate::instance(env, durable).dir.join(format!("{server_id}.sock")))
+        .find(|p| p.exists());
+    let client = interactive::debug_log::ClientFacts {
+        time: session_file::js::iso_string(daemon::paths::now_ms()),
+        process: format!(
+            "ultron {} · rust · {} · pid {}",
+            crate::version(),
+            daemon::session_control::platform(),
+            std::process::id()
+        ),
+        cwd: std::env::current_dir()
+            .map(|d| d.display().to_string())
+            .unwrap_or_default(),
+        server_id: Some(server_id),
+        transport: Some(link.remote_route().map_or("unix", |r| r.transport()).into()),
+        socket_path: match link.remote_route() {
+            Some(route) => route.socket_path().map(|p| p.display().to_string()),
+            None => socket.map(|p| p.display().to_string()),
+        },
+    };
+    let (data, summary) = interactive::debug_log::debug_log(capture, &client, &worker);
+    let path = agent_dir.join(interactive::debug_log::DEBUG_LOG_NAME);
+    let written = std::fs::create_dir_all(agent_dir).and_then(|()| {
+        use std::os::unix::fs::OpenOptionsExt;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)
+            .and_then(|mut file| std::io::Write::write_all(&mut file, data.as_bytes()))
+    });
+    match written {
+        Ok(()) => LaneEvent::DebugLogWritten {
+            path: path.display().to_string(),
+            summary,
+        },
+        Err(error) => LaneEvent::Status(format!("Error: Could not write debug log: {error}")),
+    }
+}
+
+/// `/reload` (slash-commands-provider.ts): the server rebuilds this client's prepared presentation plugins, then the
+/// attached worker reloads its session plugins.
+fn reload_plugins(link: &Link) -> Result<(), String> {
+    let connection = link.connection();
+    connection
+        .call(
+            connection.server_target(),
+            "pi.presentation-plugins",
+            "reload",
+            json!([]),
+        )
+        .map_err(|e| e.to_string())?;
+    session_call(link, "pi.session-plugins", "reload", json!([]))?;
+    Ok(())
 }
 
 /// Save one setting the way the worker's `setSetting` does: dotted keys into their object, per-model thinking
@@ -1170,7 +1543,7 @@ fn save_setting(settings: &mut config::settings::SettingsManager, key: &str, val
 
 /// Pi's `/share`: the session as HTML in a secret gist (`gh gist create --public=false`), then the viewer and gist
 /// URLs.
-fn share_session(link: &Link, send: &dyn Fn(LaneEvent)) {
+fn share_session(link: &Link, send: &dyn Fn(LaneEvent), cancel: &std::sync::atomic::AtomicBool) {
     let status = |text: String| send(LaneEvent::Status(text));
     let auth = std::process::Command::new("gh")
         .args(["auth", "status"])
@@ -1193,13 +1566,13 @@ fn share_session(link: &Link, send: &dyn Fn(LaneEvent)) {
     let result = (|| {
         export_session(link, Some(&file.display().to_string()))
             .map_err(|e| format!("Error: Failed to export session: {e}"))?;
-        status("Creating gist...".into());
-        let out = std::process::Command::new("gh")
-            .args(["gist", "create", "--public=false"])
-            .arg(&file)
-            .stdin(std::process::Stdio::null())
-            .output()
-            .map_err(|e| format!("Error: Failed to create gist: {e}"))?;
+        // The "Creating gist..." loader shows while gh runs; Esc on it kills this gh and reports nothing more.
+        send(LaneEvent::ShareLoader(true));
+        let out = gist_create(&file, cancel);
+        send(LaneEvent::ShareLoader(false));
+        let Some(out) = out.map_err(|e| format!("Error: Failed to create gist: {e}"))? else {
+            return Ok(None);
+        };
         if !out.status.success() {
             let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
             return Err(format!(
@@ -1222,14 +1595,44 @@ fn share_session(link: &Link, send: &dyn Fn(LaneEvent)) {
         };
         let base = std::env::var("PI_SHARE_VIEWER_URL").unwrap_or_else(|_| "https://pi.dev/session/".into());
         let preview = format!("{base}#{gist_id}");
-        Ok(format!(
+        Ok(Some(format!(
             "Share URL: {}\nGist: {}",
             tui::image::hyperlink(&preview, &preview),
             tui::image::hyperlink(&gist_url, &gist_url)
-        ))
+        )))
     })();
     let _ = std::fs::remove_dir_all(&dir);
-    status(result.unwrap_or_else(|e| e));
+    match result {
+        Ok(Some(text)) | Err(text) => status(text),
+        Ok(None) => {}
+    }
+}
+
+/// `gh gist create --public=false <file>`, killed when `cancel` is set (`None` then).
+fn gist_create(
+    file: &std::path::Path,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> std::io::Result<Option<std::process::Output>> {
+    use std::sync::atomic::Ordering;
+    let mut child = std::process::Command::new("gh")
+        .args(["gist", "create", "--public=false"])
+        .arg(file)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+    loop {
+        if child.try_wait()?.is_some() {
+            return child.wait_with_output().map(Some);
+        }
+        if cancel.load(Ordering::SeqCst) {
+            // Only the gh this call started.
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 /// What follows saving a credential (`runLoginDialog`): where it went, the refreshed catalog, and whether the session's
@@ -1241,7 +1644,7 @@ fn credentials_saved(link: &Link, env: &Env, send: &dyn Fn(LaneEvent), action: &
         "{done}. Reloading the Session's credentials…"
     )));
     // The session reads credentials per request; the catalog follows the providers.
-    send(LaneEvent::Catalog(catalog(env)));
+    send(LaneEvent::Catalog(session_catalog(link, env)));
     let model = link.op(&Op::Describe).ok().flatten().map(|d| model_info(&d["model"]));
     let hint = match model {
         None => format!(". Use /model to select one of {name}'s models"),
@@ -1257,7 +1660,7 @@ fn credentials_saved(link: &Link, env: &Env, send: &dyn Fn(LaneEvent), action: &
 
 /// `loginProviderOptions`: every built-in provider's sign-in options with what is configured (a stored credential,
 /// else the variables that supply a key), sorted by name.
-fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selectors::AuthProvider> {
+pub(crate) fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selectors::AuthProvider> {
     use interactive::selectors::{AuthProvider, locale_compare, provider_logins};
     let stored: std::collections::HashMap<String, String> = config::auth::AuthStorage::create(auth.to_path_buf())
         .list()
@@ -1342,12 +1745,57 @@ fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::selector
     options
 }
 
+/// [`Op::ExtensionShortcuts`]'s answer as the TUI's event (nothing when the session did not answer).
+fn extension_shortcuts_event(listed: Option<&Value>) -> LaneEvent {
+    use interactive::extension_shortcuts::{ExtensionShortcut, ShortcutDiagnostic};
+    let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
+    let items = |key: &str| listed.and_then(|l| l[key].as_array().cloned()).unwrap_or_default();
+    LaneEvent::ExtensionShortcuts {
+        shortcuts: items("shortcuts")
+            .iter()
+            .map(|s| ExtensionShortcut {
+                key: text(&s["key"]),
+                description: s["description"].as_str().map(str::to_string),
+                extension_path: text(&s["extensionPath"]),
+            })
+            .collect(),
+        diagnostics: items("diagnostics")
+            .iter()
+            .map(|d| ShortcutDiagnostic {
+                message: text(&d["message"]),
+                path: text(&d["path"]),
+            })
+            .collect(),
+    }
+}
+
 /// The models the providers with credentials make available.
 fn catalog(env: &Env) -> Vec<ModelInfo> {
     session_core::lane::available_models(env)
         .iter()
         .map(catalog_info)
         .collect()
+}
+
+/// The session's available models this process does not list itself: those of the providers its extensions declare
+/// (`registerProvider`), which only the session that runs the extensions knows.
+fn session_extras(link: &Link, local: &[ModelInfo]) -> Vec<ModelInfo> {
+    let Ok(Some(Value::Array(models))) = link.op(&Op::AvailableModels) else {
+        return Vec::new();
+    };
+    models
+        .iter()
+        .map(model_info)
+        .filter(|m| !local.iter().any(|l| l.provider == m.provider && l.id == m.id))
+        .collect()
+}
+
+/// [`catalog`] with the session's extension providers' models after it.
+fn session_catalog(link: &Link, env: &Env) -> Vec<ModelInfo> {
+    let mut models = catalog(env);
+    let extras = session_extras(link, &models);
+    models.extend(extras);
+    models
 }
 
 /// Start a long call of the attached session (one the worker runs on its own thread, so later calls such as
@@ -1378,6 +1826,18 @@ fn bash_result(value: &Value) -> BashResult {
 
 /// `#forkSession`: a new session from this one's `forkPath`, the fork recorded in it, then attached.
 fn fork_to(link: &mut Link, fork_path: Value) -> Result<(), String> {
+    // Pi's session_before_fork, before the fork (the leaf for a clone).
+    let entry_id = match fork_path["entryId"].as_str() {
+        Some(id) => id.to_string(),
+        None => link.op(&Op::Entries { since: None })?.unwrap_or_default()["leafId"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+    };
+    let position = fork_path["position"].as_str().unwrap_or("before").to_string();
+    if link.op(&Op::BeforeFork { entry_id, position })?.unwrap_or_default()["cancelled"] == true {
+        return Err("Fork cancelled by an extension".into());
+    }
     let source = link.session_id();
     let created = link.create(json!({"forkFromSessionId": source, "forkPath": fork_path}))?;
     if let Some(file) = link.session_file(&created)? {
@@ -1481,11 +1941,117 @@ const WORKER_RECOVERY_INTERVAL: std::time::Duration = std::time::Duration::from_
 /// How long exit waits for the session's server to stop.
 const SHUTDOWN_WAIT: std::time::Duration = std::time::Duration::from_secs(30);
 
+/// interactive-mode.ts `checkForPackageUpdates`: nothing when `PI_OFFLINE` is set or the check fails, else the
+/// display names of the packages with updates.
+pub fn package_updates(env: &Env) -> Vec<String> {
+    if (env.var)("PI_OFFLINE").is_some_and(|v| !v.is_empty()) {
+        return Vec::new();
+    }
+    let settings = crate::package_cli::settings_manager(env, None, false);
+    crate::packages::manager::PackageManager::new(env, settings)
+        .check_for_available_updates()
+        .map(|updates| updates.into_iter().map(|u| u.display_name).collect())
+        .unwrap_or_default()
+}
+
 /// Run the interactive TUI on `target`'s session until the user exits.
 pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, String> {
     if matches!(target, Target::New { .. } | Target::Ephemeral) {
         crate::print_mode::resolve_model(parsed, env)?;
     }
+    let (open_args, open_env) = (parsed.clone(), env.clone());
+    run_tui(
+        parsed,
+        env,
+        Box::new(move |watch| Link::open(&open_args, &open_env, &target, "interactive", watch)),
+    )
+}
+
+/// The client TUI (`runClientTui`) on a server this client reaches but does not run (`ultron client --connect`):
+/// the session `selection` names on it. A Radius route's connection is recovered while the TUI waits, with its
+/// statuses (`Radius disconnected; retrying…`, `Reconnecting to Radius…`, `Reattaching Session…`); a Unix route's
+/// loss is reported.
+pub fn run_remote_interactive(
+    parsed: &Args,
+    env: &Env,
+    route: crate::link::RemoteRoute,
+    selection: crate::link::RemoteSelection,
+) -> Result<i32, String> {
+    run_tui(
+        parsed,
+        env,
+        Box::new(move |watch| Link::open_remote(route, &selection, watch)),
+    )
+}
+
+/// Whether a link watch event says the session's worker restarted under it (crate::link `needs_rejoin`): the link
+/// re-attaches by itself; the TUI shows the session again. A Radius route recovers through its own events.
+pub fn is_worker_restart(event: &Value) -> bool {
+    event["type"] == "connection"
+        && event["state"] == "reconnecting"
+        && event["message"] == crate::link::WORKER_RESTARTED
+}
+
+/// What a remote link's recovery events show (client-tui.ts `#handleConnectionState`, `#handleAttachmentState`,
+/// `#handleLocalConnectionState`), given whether the lane is open: the TUI events, and whether the session is to be
+/// shown again (the lane reopened after a reattachment).
+pub fn recovery_events(event: &Value, lane_open: &mut bool) -> (Vec<LaneEvent>, bool) {
+    use client::radius::{AttachmentState, ConnectionState, attachment_state_view, connection_state_view};
+    let view = match event["type"].as_str() {
+        Some("radius_connection") => {
+            let state = match event["state"].as_str() {
+                Some("connecting") => ConnectionState::Connecting,
+                Some("connected") => ConnectionState::Connected,
+                _ => ConnectionState::Disconnected,
+            };
+            connection_state_view(state, *lane_open)
+        }
+        Some("radius_attachment") => {
+            let id = event["sessionId"].as_str().unwrap_or_default().to_string();
+            let state = if event["state"] == "attached" {
+                AttachmentState::Attached(id.clone())
+            } else {
+                AttachmentState::Attaching(id.clone())
+            };
+            attachment_state_view(&state, &id)
+        }
+        Some("connection") if event["state"] == "lost" => {
+            let message = event["message"].as_str().unwrap_or_default();
+            return (
+                vec![LaneEvent::Recovery {
+                    busy: false,
+                    status: format!("Error: {message}"),
+                }],
+                false,
+            );
+        }
+        _ => return (Vec::new(), false),
+    };
+    let Some(view) = view else {
+        return (Vec::new(), false);
+    };
+    let reopen = event["type"] == "radius_attachment" && !view.busy && !*lane_open;
+    if view.close_lane {
+        *lane_open = false;
+    }
+    if !view.busy {
+        *lane_open = true;
+    }
+    (
+        vec![LaneEvent::Recovery {
+            busy: view.busy,
+            status: view.status.to_string(),
+        }],
+        reopen,
+    )
+}
+
+/// Run the TUI over the link `open_link` opens (its watch events go to the TUI) until the user exits.
+fn run_tui(
+    parsed: &Args,
+    env: &Env,
+    open_link: Box<dyn FnOnce(crate::link::WatchSink) -> Result<Link, String>>,
+) -> Result<i32, String> {
     let model = crate::print_mode::resolve_model(parsed, env).ok();
     let models = catalog(env);
     let splash =
@@ -1513,16 +2079,24 @@ pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, 
     let (command_tx, command_rx) = mpsc::channel::<Command>();
     let watch = {
         let (ui, commands) = (ui_tx.clone(), command_tx.clone());
+        let lane_open = std::sync::Mutex::new(true);
         move |event: Value| {
             if event["type"] == "run_end" {
                 let _ = commands.send(Command::RefreshName);
             }
-            for lane_event in tui_events(&event) {
+            if is_worker_restart(&event) {
+                let _ = commands.send(Command::WorkerStopped);
+            }
+            let (recovery, reopen) = recovery_events(&event, &mut lane_open.lock().unwrap_or_else(|e| e.into_inner()));
+            for lane_event in tui_events(&event).into_iter().chain(recovery) {
                 let _ = ui.send(UiEvent::Lane(lane_event));
+            }
+            if reopen {
+                let _ = commands.send(Command::Reopen);
             }
         }
     };
-    let link = Link::open(parsed, env, &target, "interactive", Arc::new(watch))?;
+    let link = open_link(Arc::new(watch))?;
     let server_id = link.connection().server_id.clone();
     let no_session = parsed.no_session;
     let signalled = Arc::new(std::sync::atomic::AtomicI32::new(0));
@@ -1538,6 +2112,7 @@ pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, 
         env: env.clone(),
         ui: ui_tx.clone(),
         login: Arc::default(),
+        share_cancel: Arc::default(),
     };
     let model = model.map_or_else(
         || ModelInfo {
@@ -1589,6 +2164,21 @@ pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, 
     }));
     app.set_hide_thinking(hide_thinking);
     app.set_enabled_models(enabled_models);
+    // The theme setting (custom themes from `<agent dir>/themes`, automatic light/dark pairs) and the presentation
+    // settings the TUI applies to itself.
+    let mut registry = tui::theme::registry::ThemeRegistry::new(
+        std::path::PathBuf::new(),
+        env.agent_dir().join("themes"),
+        ColorMode::from_capabilities(&caps),
+    );
+    // `setRegisteredThemes(resourceLoader.getThemes().themes)`: the themes packages and settings register.
+    let _ = registry.set_registered_themes(crate::packages::themes::load(env, registry.mode).themes);
+    app.set_theme_controller(interactive::theme_setup::ThemeController::new(
+        registry,
+        settings.theme(),
+        (env.var)("COLORFGBG").as_deref(),
+    ));
+    app.apply_startup_settings(&Value::Object(settings.settings().clone()), &|k| (env.var)(k));
     let tree_filter = settings
         .settings()
         .get("treeFilterMode")
@@ -1609,6 +2199,14 @@ pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, 
         .or_else(|| (env.var)("EDITOR").filter(|v| !v.is_empty()))
         .or_else(|| Some("nano".to_string()));
     app.set_external_editor(external_editor);
+    // `checkForPackageUpdates`: the configured packages behind their source, checked off the UI thread (npm and
+    // git output captured); the transcript shows them when there are any.
+    {
+        let (env, ui) = (env.clone(), ui_tx.clone());
+        std::thread::spawn(move || {
+            let _ = ui.send(UiEvent::Lane(LaneEvent::PackageUpdates(package_updates(&env))));
+        });
+    }
     spawn_gated_input(ui_tx, app.input_gate());
     let result = run_stdout(&mut app, &ui_rx, &tui::terminal::size);
     // Its prompt history is written before the process can exit.
@@ -1666,6 +2264,35 @@ mod tests {
                 .map(|m| m.id)
                 .as_deref(),
             Some("a1")
+        );
+    }
+
+    #[test]
+    fn cli_interactive_run_retry_events_become_tui_events() {
+        assert_eq!(
+            tui_events(
+                &json!({"type": "retry_scheduled", "lane": "main", "attempt": 2, "maxAttempts": 3,
+                "delayMs": 4000, "errorMessage": "Overloaded"})
+            ),
+            [LaneEvent::AutoRetryStart {
+                attempt: 2,
+                max_attempts: 3,
+                delay_ms: 4000
+            }]
+        );
+        assert_eq!(
+            tui_events(&json!({"type": "retry_end", "success": true, "attempt": 2})),
+            [LaneEvent::AutoRetryEnd {
+                attempt: 2,
+                failed: None
+            }]
+        );
+        assert_eq!(
+            tui_events(&json!({"type": "retry_end", "success": false, "attempt": 3, "finalError": "Overloaded"})),
+            [LaneEvent::AutoRetryEnd {
+                attempt: 3,
+                failed: Some("Overloaded".into())
+            }]
         );
     }
 
@@ -1781,7 +2408,57 @@ mod tests {
     }
 
     #[test]
+    fn cli_interactive_agent_hub_notices_and_parked_subagents() {
+        assert_eq!(
+            agent_notice("t1", "steer", Ok(Some(json!({"state": "delivered", "steered": true})))),
+            "Steered \"t1\"."
+        );
+        assert_eq!(
+            agent_notice("t1", "steer", Ok(Some(json!({"state": "pending", "steered": false})))),
+            "\"t1\" has no live run: the message waits in its inbox."
+        );
+        assert_eq!(
+            agent_notice("t1", "revive", Ok(Some(json!({"id": "t2", "revived": "t1"})))),
+            "Revived \"t1\" as \"t2\"."
+        );
+        assert_eq!(
+            agent_notice(
+                "t1",
+                "steer",
+                Err("session_operation_failed: Receiver task has already finished".into())
+            ),
+            "Error: Receiver task has already finished"
+        );
+        use interactive::agent_hub::AgentStatus;
+        let listed = json!({"subagents": [
+            {"id": "a", "state": "running"}, {"id": "b", "state": "interrupted"},
+            {"id": "c", "state": "cancelled"}, {"id": "d", "state": "completed"}
+        ]});
+        let statuses: Vec<AgentStatus> = agent_views(&listed).iter().map(|v| v.status).collect();
+        assert_eq!(
+            statuses,
+            [
+                AgentStatus::Running,
+                AgentStatus::Parked,
+                AgentStatus::Aborted,
+                AgentStatus::Idle
+            ]
+        );
+    }
+
+    #[test]
     fn cli_interactive_watch_events_become_tui_events() {
+        // Only the link's report of a worker restart starts the TUI's recovery (not a lost server or a rejoin).
+        use crate::link::{WORKER_RESTARTED, connection_event};
+        assert!(is_worker_restart(&connection_event(
+            "reconnecting",
+            Some(WORKER_RESTARTED)
+        )));
+        assert!(!is_worker_restart(&connection_event(
+            "reconnecting",
+            Some("The Ultron server went away")
+        )));
+        assert!(!is_worker_restart(&connection_event("rejoined", None)));
         let queued = json!({"type": "queue_update", "lane": "main", "queues": [
             {"type": "message", "kind": "steer", "entryId": "e1", "message": {"role": "user", "content": [{"type": "text", "text": "go"}]}}
         ]});
@@ -1792,6 +2469,25 @@ mod tests {
                 kind: QueueKind::Steer,
                 text: "go".into()
             }])]
+        );
+        let next = json!({"type": "queue_update", "lane": "main", "queues": [
+            {"type": "message", "kind": "nextRun", "entryId": "e2", "message": {"role": "user", "content": [{"type": "text", "text": "later"}]}},
+            {"type": "message", "kind": "followUp", "entryId": "e3", "message": {"role": "user", "content": [{"type": "text", "text": "after"}]}}
+        ]});
+        assert_eq!(
+            tui_events(&next),
+            [LaneEvent::Queues(vec![
+                Queued {
+                    entry_id: "e2".into(),
+                    kind: QueueKind::NextRun,
+                    text: "later".into()
+                },
+                Queued {
+                    entry_id: "e3".into(),
+                    kind: QueueKind::FollowUp,
+                    text: "after".into()
+                }
+            ])]
         );
         let failed = json!({"type": "run_end", "status": "failed", "error": {"message": "boom"}});
         assert_eq!(

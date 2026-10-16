@@ -28,6 +28,7 @@ pub mod local;
 pub mod merge;
 pub mod plan;
 pub mod prepare;
+pub mod prepare_env;
 pub mod prompt_text;
 pub mod prompts;
 pub mod py;

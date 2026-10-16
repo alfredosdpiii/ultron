@@ -1,0 +1,7933 @@
+{
+ "units": {
+  "git": [
+   [
+    "https://github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://github.com/user/repo.git",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo.git",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://github.com/user/repo@v1.2.0",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "v1.2.0",
+     "pinned": true
+    }
+   ],
+   [
+    "https://github.com/user/repo#main",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo#main",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "main",
+     "pinned": true
+    }
+   ],
+   [
+    "https://github.com/user/repo/tree/dev",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo/tree/dev",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "dev",
+     "pinned": true
+    }
+   ],
+   [
+    "https://GitHub.com/User/Repo",
+    {
+     "type": "git",
+     "repo": "https://GitHub.com/User/Repo",
+     "host": "github.com",
+     "path": "User/Repo",
+     "pinned": false
+    }
+   ],
+   [
+    "http://github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "http://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "ssh://git@github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "ssh://git@github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "ssh://git@github.com/user/repo.git@abc123",
+    {
+     "type": "git",
+     "repo": "ssh://git@github.com/user/repo.git",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "abc123",
+     "pinned": true
+    }
+   ],
+   [
+    "git://github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https:////github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:github.com/user/repo@v1",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "v1",
+     "pinned": true
+    }
+   ],
+   [
+    "git:git@github.com:user/repo",
+    {
+     "type": "git",
+     "repo": "git@github.com:user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:git@github.com:user/repo.git@v2",
+    {
+     "type": "git",
+     "repo": "git@github.com:user/repo.git",
+     "host": "github.com",
+     "path": "user/repo",
+     "ref": "v2",
+     "pinned": true
+    }
+   ],
+   [
+    "git:user/repo",
+    {
+     "type": "git",
+     "repo": "https://user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:gitlab.com/group/sub/proj",
+    {
+     "type": "git",
+     "repo": "https://gitlab.com/group/sub/proj",
+     "host": "gitlab.com",
+     "path": "group/sub/proj",
+     "pinned": false
+    }
+   ],
+   [
+    "https://gitlab.com/group/sub/proj",
+    {
+     "type": "git",
+     "repo": "https://gitlab.com/group/sub/proj",
+     "host": "gitlab.com",
+     "path": "group/sub/proj",
+     "pinned": false
+    }
+   ],
+   [
+    "https://gitlab.com/group/proj/-/tree/main",
+    {
+     "type": "git",
+     "repo": "https://gitlab.com/group/proj/-/tree/main",
+     "host": "gitlab.com",
+     "path": "group/proj/-/tree/main",
+     "pinned": false
+    }
+   ],
+   [
+    "git:bitbucket.org/team/repo",
+    {
+     "type": "git",
+     "repo": "https://bitbucket.org/team/repo",
+     "host": "bitbucket.org",
+     "path": "team/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://bitbucket.org/team/repo/get/x",
+    {
+     "type": "git",
+     "repo": "https://bitbucket.org/team/repo/get/x",
+     "host": "bitbucket.org",
+     "path": "team/repo/get/x",
+     "pinned": false
+    }
+   ],
+   [
+    "git:git.sr.ht/~user/repo",
+    {
+     "type": "git",
+     "repo": "https://git.sr.ht/~user/repo",
+     "host": "git.sr.ht",
+     "path": "~user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://gist.github.com/abc123",
+    {
+     "type": "git",
+     "repo": "https://gist.github.com/abc123",
+     "host": "gist.github.com",
+     "path": "null/abc123",
+     "pinned": false
+    }
+   ],
+   [
+    "https://gist.github.com/user/abc123",
+    {
+     "type": "git",
+     "repo": "https://gist.github.com/user/abc123",
+     "host": "gist.github.com",
+     "path": "user/abc123",
+     "pinned": false
+    }
+   ],
+   [
+    "git:github:user/repo",
+    {
+     "type": "git",
+     "repo": "https://github:user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:gitlab:user/repo#v3",
+    {
+     "type": "git",
+     "repo": "https://gitlab:user/repo#v3",
+     "host": "gitlab.com",
+     "path": "user/repo",
+     "ref": "v3",
+     "pinned": true
+    }
+   ],
+   [
+    "https://example.com/org/repo",
+    {
+     "type": "git",
+     "repo": "https://example.com/org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://example.com/org/repo@ref",
+    {
+     "type": "git",
+     "repo": "https://example.com/org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "ref": "ref",
+     "pinned": true
+    }
+   ],
+   [
+    "https://example.com:8443/org/repo.git",
+    {
+     "type": "git",
+     "repo": "https://example.com:8443/org/repo.git",
+     "host": "example.com",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "ssh://git@example.com:2222/org/repo",
+    {
+     "type": "git",
+     "repo": "ssh://git@example.com:2222/org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:example.com/org/repo",
+    {
+     "type": "git",
+     "repo": "https://example.com/org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:example.com/org/repo@feature/x",
+    {
+     "type": "git",
+     "repo": "https://example.com/org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "ref": "feature/x",
+     "pinned": true
+    }
+   ],
+   [
+    "git:git@example.com:org/repo",
+    {
+     "type": "git",
+     "repo": "git@example.com:org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:git@example.com:org/repo@v1",
+    {
+     "type": "git",
+     "repo": "git@example.com:org/repo",
+     "host": "example.com",
+     "path": "org/repo",
+     "ref": "v1",
+     "pinned": true
+    }
+   ],
+   [
+    "git:localhost/org/repo",
+    {
+     "type": "git",
+     "repo": "https://localhost/org/repo",
+     "host": "localhost",
+     "path": "org/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git:nodots/org/repo",
+    null
+   ],
+   [
+    "https://example.com/onlyone",
+    null
+   ],
+   [
+    "https://example.com/org/../repo",
+    null
+   ],
+   [
+    "https://example.com/org/%2e%2e/repo",
+    null
+   ],
+   [
+    "https://example.com/org/re%zzpo",
+    null
+   ],
+   [
+    "git:example.com/a\\b/c",
+    null
+   ],
+   [
+    "github.com/user/repo",
+    null
+   ],
+   [
+    "git@github.com:user/repo",
+    null
+   ],
+   [
+    "  https://github.com/user/repo  ",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "git: github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https://github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://user:pw@github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https://user:pw@github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ],
+   [
+    "https://www.github.com/user/repo",
+    {
+     "type": "git",
+     "repo": "https://www.github.com/user/repo",
+     "host": "github.com",
+     "path": "user/repo",
+     "pinned": false
+    }
+   ]
+  ],
+  "npm": [
+   [
+    "npm:foo",
+    {
+     "type": "npm",
+     "spec": "foo",
+     "name": "foo",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:foo@1.2.3",
+    {
+     "type": "npm",
+     "spec": "foo@1.2.3",
+     "name": "foo",
+     "version": "1.2.3",
+     "range": "1.2.3",
+     "pinned": true
+    }
+   ],
+   [
+    "npm:foo@^1.2.0",
+    {
+     "type": "npm",
+     "spec": "foo@^1.2.0",
+     "name": "foo",
+     "version": "^1.2.0",
+     "range": ">=1.2.0 <2.0.0-0",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:@scope/pkg",
+    {
+     "type": "npm",
+     "spec": "@scope/pkg",
+     "name": "@scope/pkg",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:@scope/pkg@~2.0",
+    {
+     "type": "npm",
+     "spec": "@scope/pkg@~2.0",
+     "name": "@scope/pkg",
+     "version": "~2.0",
+     "range": ">=2.0.0 <2.1.0-0",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:foo@latest",
+    {
+     "type": "npm",
+     "spec": "foo@latest",
+     "name": "foo",
+     "version": "latest",
+     "pinned": false
+    }
+   ],
+   [
+    "npm: spaced@1.0.0 ",
+    {
+     "type": "npm",
+     "spec": "spaced@1.0.0",
+     "name": "spaced",
+     "version": "1.0.0",
+     "range": "1.0.0",
+     "pinned": true
+    }
+   ],
+   [
+    "npm:@scope",
+    {
+     "type": "npm",
+     "spec": "@scope",
+     "name": "@scope",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:a@b@c",
+    {
+     "type": "npm",
+     "spec": "a@b@c",
+     "name": "a",
+     "version": "b@c",
+     "pinned": false
+    }
+   ],
+   [
+    "npm:foo@v1.0.0",
+    {
+     "type": "npm",
+     "spec": "foo@v1.0.0",
+     "name": "foo",
+     "version": "v1.0.0",
+     "range": "1.0.0",
+     "pinned": true
+    }
+   ]
+  ],
+  "semver": {
+   "valid": [
+    [
+     "1.0.0",
+     "1.0.0"
+    ],
+    [
+     "1.2.3",
+     "1.2.3"
+    ],
+    [
+     "v1.2.3",
+     "1.2.3"
+    ],
+    [
+     "=1.2.3",
+     null
+    ],
+    [
+     " 1.2.3 ",
+     "1.2.3"
+    ],
+    [
+     "1.2",
+     null
+    ],
+    [
+     "01.2.3",
+     null
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.2.3-beta.1"
+    ],
+    [
+     "1.2.3-0",
+     "1.2.3-0"
+    ],
+    [
+     "1.2.3+build.5",
+     "1.2.3"
+    ],
+    [
+     "2.0.0-rc.1",
+     "2.0.0-rc.1"
+    ],
+    [
+     "1.2.3-01",
+     null
+    ],
+    [
+     "latest",
+     null
+    ],
+    [
+     "",
+     null
+    ],
+    [
+     "1.2.3-beta..1",
+     null
+    ],
+    [
+     "0.0.4",
+     "0.0.4"
+    ],
+    [
+     "0.3.0",
+     "0.3.0"
+    ],
+    [
+     "1.3.0",
+     "1.3.0"
+    ],
+    [
+     "2.0.0",
+     "2.0.0"
+    ],
+    [
+     "3.0.0-alpha",
+     "3.0.0-alpha"
+    ]
+   ],
+   "validRange": [
+    [
+     "^1.2.0",
+     true
+    ],
+    [
+     "~1.2",
+     true
+    ],
+    [
+     "~1.2.3",
+     true
+    ],
+    [
+     "^0.2.3",
+     true
+    ],
+    [
+     "^0.0.3",
+     true
+    ],
+    [
+     "1.x",
+     true
+    ],
+    [
+     "1",
+     true
+    ],
+    [
+     "*",
+     true
+    ],
+    [
+     "",
+     true
+    ],
+    [
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     ">1.2",
+     true
+    ],
+    [
+     "<=1.2",
+     true
+    ],
+    [
+     "<1",
+     true
+    ],
+    [
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "1.2 - 2",
+     true
+    ],
+    [
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "1.2.3",
+     true
+    ],
+    [
+     "=1.2.3",
+     true
+    ],
+    [
+     "^1 || ^2",
+     true
+    ],
+    [
+     "~>1.2",
+     true
+    ],
+    [
+     "> 1.2.3",
+     true
+    ],
+    [
+     "^ 1",
+     true
+    ],
+    [
+     "latest",
+     false
+    ],
+    [
+     "next",
+     false
+    ],
+    [
+     "1.2.3.4",
+     false
+    ],
+    [
+     "x.1.2",
+     false
+    ],
+    [
+     ">*",
+     true
+    ],
+    [
+     "<*",
+     true
+    ],
+    [
+     "^0.x",
+     true
+    ],
+    [
+     "^0.0",
+     true
+    ]
+   ],
+   "satisfies": [
+    [
+     "1.0.0",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3",
+     "^1.2.0",
+     true
+    ],
+    [
+     "v1.2.3",
+     "^1.2.0",
+     true
+    ],
+    [
+     "=1.2.3",
+     "^1.2.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^1.2.0",
+     true
+    ],
+    [
+     "1.2",
+     "^1.2.0",
+     false
+    ],
+    [
+     "01.2.3",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^1.2.0",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^1.2.0",
+     false
+    ],
+    [
+     "latest",
+     "^1.2.0",
+     false
+    ],
+    [
+     "",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^1.2.0",
+     false
+    ],
+    [
+     "0.0.4",
+     "^1.2.0",
+     false
+    ],
+    [
+     "0.3.0",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.3.0",
+     "^1.2.0",
+     true
+    ],
+    [
+     "2.0.0",
+     "^1.2.0",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^1.2.0",
+     false
+    ],
+    [
+     "1.0.0",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3",
+     "~1.2",
+     true
+    ],
+    [
+     "v1.2.3",
+     "~1.2",
+     true
+    ],
+    [
+     "=1.2.3",
+     "~1.2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "~1.2",
+     true
+    ],
+    [
+     "1.2",
+     "~1.2",
+     false
+    ],
+    [
+     "01.2.3",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "~1.2",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "~1.2",
+     false
+    ],
+    [
+     "latest",
+     "~1.2",
+     false
+    ],
+    [
+     "",
+     "~1.2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "~1.2",
+     false
+    ],
+    [
+     "0.0.4",
+     "~1.2",
+     false
+    ],
+    [
+     "0.3.0",
+     "~1.2",
+     false
+    ],
+    [
+     "1.3.0",
+     "~1.2",
+     false
+    ],
+    [
+     "2.0.0",
+     "~1.2",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "~1.2",
+     false
+    ],
+    [
+     "1.0.0",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "~1.2.3",
+     true
+    ],
+    [
+     "v1.2.3",
+     "~1.2.3",
+     true
+    ],
+    [
+     "=1.2.3",
+     "~1.2.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "~1.2.3",
+     true
+    ],
+    [
+     "1.2",
+     "~1.2.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "~1.2.3",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "~1.2.3",
+     false
+    ],
+    [
+     "latest",
+     "~1.2.3",
+     false
+    ],
+    [
+     "",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "~1.2.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "~1.2.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "~1.2.3",
+     false
+    ],
+    [
+     "2.0.0",
+     "~1.2.3",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "~1.2.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "^0.2.3",
+     false
+    ],
+    [
+     "v1.2.3",
+     "^0.2.3",
+     false
+    ],
+    [
+     "=1.2.3",
+     "^0.2.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2",
+     "^0.2.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^0.2.3",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^0.2.3",
+     false
+    ],
+    [
+     "latest",
+     "^0.2.3",
+     false
+    ],
+    [
+     "",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^0.2.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "^0.2.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "^0.2.3",
+     false
+    ],
+    [
+     "2.0.0",
+     "^0.2.3",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^0.2.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "^0.0.3",
+     false
+    ],
+    [
+     "v1.2.3",
+     "^0.0.3",
+     false
+    ],
+    [
+     "=1.2.3",
+     "^0.0.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2",
+     "^0.0.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^0.0.3",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^0.0.3",
+     false
+    ],
+    [
+     "latest",
+     "^0.0.3",
+     false
+    ],
+    [
+     "",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^0.0.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "^0.0.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "^0.0.3",
+     false
+    ],
+    [
+     "2.0.0",
+     "^0.0.3",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^0.0.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.x",
+     true
+    ],
+    [
+     "1.2.3",
+     "1.x",
+     true
+    ],
+    [
+     "v1.2.3",
+     "1.x",
+     true
+    ],
+    [
+     "=1.2.3",
+     "1.x",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1.x",
+     true
+    ],
+    [
+     "1.2",
+     "1.x",
+     false
+    ],
+    [
+     "01.2.3",
+     "1.x",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.x",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1.x",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1.x",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "1.x",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1.x",
+     false
+    ],
+    [
+     "latest",
+     "1.x",
+     false
+    ],
+    [
+     "",
+     "1.x",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1.x",
+     false
+    ],
+    [
+     "0.0.4",
+     "1.x",
+     false
+    ],
+    [
+     "0.3.0",
+     "1.x",
+     false
+    ],
+    [
+     "1.3.0",
+     "1.x",
+     true
+    ],
+    [
+     "2.0.0",
+     "1.x",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "1.x",
+     false
+    ],
+    [
+     "1.0.0",
+     "1",
+     true
+    ],
+    [
+     "1.2.3",
+     "1",
+     true
+    ],
+    [
+     "v1.2.3",
+     "1",
+     true
+    ],
+    [
+     "=1.2.3",
+     "1",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1",
+     true
+    ],
+    [
+     "1.2",
+     "1",
+     false
+    ],
+    [
+     "01.2.3",
+     "1",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "1",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1",
+     false
+    ],
+    [
+     "latest",
+     "1",
+     false
+    ],
+    [
+     "",
+     "1",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1",
+     false
+    ],
+    [
+     "0.0.4",
+     "1",
+     false
+    ],
+    [
+     "0.3.0",
+     "1",
+     false
+    ],
+    [
+     "1.3.0",
+     "1",
+     true
+    ],
+    [
+     "2.0.0",
+     "1",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "1",
+     false
+    ],
+    [
+     "1.0.0",
+     "*",
+     true
+    ],
+    [
+     "1.2.3",
+     "*",
+     true
+    ],
+    [
+     "v1.2.3",
+     "*",
+     true
+    ],
+    [
+     "=1.2.3",
+     "*",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "*",
+     true
+    ],
+    [
+     "1.2",
+     "*",
+     false
+    ],
+    [
+     "01.2.3",
+     "*",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "*",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "*",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "*",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "*",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "*",
+     false
+    ],
+    [
+     "latest",
+     "*",
+     false
+    ],
+    [
+     "",
+     "*",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "*",
+     false
+    ],
+    [
+     "0.0.4",
+     "*",
+     true
+    ],
+    [
+     "0.3.0",
+     "*",
+     true
+    ],
+    [
+     "1.3.0",
+     "*",
+     true
+    ],
+    [
+     "2.0.0",
+     "*",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "*",
+     false
+    ],
+    [
+     "1.0.0",
+     "",
+     true
+    ],
+    [
+     "1.2.3",
+     "",
+     true
+    ],
+    [
+     "v1.2.3",
+     "",
+     true
+    ],
+    [
+     "=1.2.3",
+     "",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "",
+     true
+    ],
+    [
+     "1.2",
+     "",
+     false
+    ],
+    [
+     "01.2.3",
+     "",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "",
+     false
+    ],
+    [
+     "latest",
+     "",
+     false
+    ],
+    [
+     "",
+     "",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "",
+     false
+    ],
+    [
+     "0.0.4",
+     "",
+     true
+    ],
+    [
+     "0.3.0",
+     "",
+     true
+    ],
+    [
+     "1.3.0",
+     "",
+     true
+    ],
+    [
+     "2.0.0",
+     "",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "",
+     false
+    ],
+    [
+     "1.0.0",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3",
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     "v1.2.3",
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     "=1.2.3",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     "1.2",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "01.2.3",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3-0",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "latest",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "0.0.4",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "0.3.0",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.3.0",
+     ">=1.2.0 <2.0.0",
+     true
+    ],
+    [
+     "2.0.0",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     ">=1.2.0 <2.0.0",
+     false
+    ],
+    [
+     "1.0.0",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3",
+     ">1.2",
+     false
+    ],
+    [
+     "v1.2.3",
+     ">1.2",
+     false
+    ],
+    [
+     "=1.2.3",
+     ">1.2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2",
+     ">1.2",
+     false
+    ],
+    [
+     "01.2.3",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     ">1.2",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     ">1.2",
+     false
+    ],
+    [
+     "latest",
+     ">1.2",
+     false
+    ],
+    [
+     "",
+     ">1.2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     ">1.2",
+     false
+    ],
+    [
+     "0.0.4",
+     ">1.2",
+     false
+    ],
+    [
+     "0.3.0",
+     ">1.2",
+     false
+    ],
+    [
+     "1.3.0",
+     ">1.2",
+     true
+    ],
+    [
+     "2.0.0",
+     ">1.2",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     ">1.2",
+     false
+    ],
+    [
+     "1.0.0",
+     "<=1.2",
+     true
+    ],
+    [
+     "1.2.3",
+     "<=1.2",
+     true
+    ],
+    [
+     "v1.2.3",
+     "<=1.2",
+     true
+    ],
+    [
+     "=1.2.3",
+     "<=1.2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "<=1.2",
+     true
+    ],
+    [
+     "1.2",
+     "<=1.2",
+     false
+    ],
+    [
+     "01.2.3",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "<=1.2",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "<=1.2",
+     false
+    ],
+    [
+     "latest",
+     "<=1.2",
+     false
+    ],
+    [
+     "",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "<=1.2",
+     false
+    ],
+    [
+     "0.0.4",
+     "<=1.2",
+     true
+    ],
+    [
+     "0.3.0",
+     "<=1.2",
+     true
+    ],
+    [
+     "1.3.0",
+     "<=1.2",
+     false
+    ],
+    [
+     "2.0.0",
+     "<=1.2",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "<=1.2",
+     false
+    ],
+    [
+     "1.0.0",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3",
+     "<1",
+     false
+    ],
+    [
+     "v1.2.3",
+     "<1",
+     false
+    ],
+    [
+     "=1.2.3",
+     "<1",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "<1",
+     false
+    ],
+    [
+     "1.2",
+     "<1",
+     false
+    ],
+    [
+     "01.2.3",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "<1",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "<1",
+     false
+    ],
+    [
+     "latest",
+     "<1",
+     false
+    ],
+    [
+     "",
+     "<1",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "<1",
+     false
+    ],
+    [
+     "0.0.4",
+     "<1",
+     true
+    ],
+    [
+     "0.3.0",
+     "<1",
+     true
+    ],
+    [
+     "1.3.0",
+     "<1",
+     false
+    ],
+    [
+     "2.0.0",
+     "<1",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "<1",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "v1.2.3",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "=1.2.3",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "1.2",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "01.2.3",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "latest",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "0.0.4",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "0.3.0",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.3.0",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "2.0.0",
+     "1.2.3 - 2.0.0",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "1.2.3 - 2.0.0",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "v1.2.3",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "=1.2.3",
+     "1.2 - 2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "1.2",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "01.2.3",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "latest",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "0.0.4",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "0.3.0",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.3.0",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "2.0.0",
+     "1.2 - 2",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "1.2 - 2",
+     false
+    ],
+    [
+     "1.0.0",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "v1.2.3",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "=1.2.3",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "1.2",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "01.2.3",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "1.2.3-0",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "latest",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "0.0.4",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "0.3.0",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.3.0",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "2.0.0",
+     ">=1.2.3-beta.0",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     ">=1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.0.0",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "v1.2.3",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "=1.2.3",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "1.2",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "01.2.3",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "1.2.3-0",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "latest",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "0.0.4",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "0.3.0",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.3.0",
+     "^1.2.3-beta.0",
+     true
+    ],
+    [
+     "2.0.0",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^1.2.3-beta.0",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "1.2.3",
+     true
+    ],
+    [
+     "v1.2.3",
+     "1.2.3",
+     true
+    ],
+    [
+     "=1.2.3",
+     "1.2.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1.2.3",
+     true
+    ],
+    [
+     "1.2",
+     "1.2.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1.2.3",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1.2.3",
+     false
+    ],
+    [
+     "latest",
+     "1.2.3",
+     false
+    ],
+    [
+     "",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1.2.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "1.2.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "1.2.3",
+     false
+    ],
+    [
+     "2.0.0",
+     "1.2.3",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "1.2.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "=1.2.3",
+     true
+    ],
+    [
+     "v1.2.3",
+     "=1.2.3",
+     true
+    ],
+    [
+     "=1.2.3",
+     "=1.2.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "=1.2.3",
+     true
+    ],
+    [
+     "1.2",
+     "=1.2.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "=1.2.3",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "=1.2.3",
+     false
+    ],
+    [
+     "latest",
+     "=1.2.3",
+     false
+    ],
+    [
+     "",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "=1.2.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "=1.2.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "=1.2.3",
+     false
+    ],
+    [
+     "2.0.0",
+     "=1.2.3",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "=1.2.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "1.2.3",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "v1.2.3",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "=1.2.3",
+     "^1 || ^2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "1.2",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "01.2.3",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "latest",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "0.0.4",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "0.3.0",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.3.0",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "2.0.0",
+     "^1 || ^2",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "^1 || ^2",
+     false
+    ],
+    [
+     "1.0.0",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3",
+     "~>1.2",
+     true
+    ],
+    [
+     "v1.2.3",
+     "~>1.2",
+     true
+    ],
+    [
+     "=1.2.3",
+     "~>1.2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "~>1.2",
+     true
+    ],
+    [
+     "1.2",
+     "~>1.2",
+     false
+    ],
+    [
+     "01.2.3",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "~>1.2",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "~>1.2",
+     false
+    ],
+    [
+     "latest",
+     "~>1.2",
+     false
+    ],
+    [
+     "",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "~>1.2",
+     false
+    ],
+    [
+     "0.0.4",
+     "~>1.2",
+     false
+    ],
+    [
+     "0.3.0",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.3.0",
+     "~>1.2",
+     false
+    ],
+    [
+     "2.0.0",
+     "~>1.2",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "~>1.2",
+     false
+    ],
+    [
+     "1.0.0",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "v1.2.3",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "=1.2.3",
+     "> 1.2.3",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "01.2.3",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "latest",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "0.0.4",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "0.3.0",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.3.0",
+     "> 1.2.3",
+     true
+    ],
+    [
+     "2.0.0",
+     "> 1.2.3",
+     true
+    ],
+    [
+     "3.0.0-alpha",
+     "> 1.2.3",
+     false
+    ],
+    [
+     "1.0.0",
+     "^ 1",
+     true
+    ],
+    [
+     "1.2.3",
+     "^ 1",
+     true
+    ],
+    [
+     "v1.2.3",
+     "^ 1",
+     true
+    ],
+    [
+     "=1.2.3",
+     "^ 1",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^ 1",
+     true
+    ],
+    [
+     "1.2",
+     "^ 1",
+     false
+    ],
+    [
+     "01.2.3",
+     "^ 1",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^ 1",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^ 1",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^ 1",
+     true
+    ],
+    [
+     "2.0.0-rc.1",
+     "^ 1",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^ 1",
+     false
+    ],
+    [
+     "latest",
+     "^ 1",
+     false
+    ],
+    [
+     "",
+     "^ 1",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^ 1",
+     false
+    ],
+    [
+     "0.0.4",
+     "^ 1",
+     false
+    ],
+    [
+     "0.3.0",
+     "^ 1",
+     false
+    ],
+    [
+     "1.3.0",
+     "^ 1",
+     true
+    ],
+    [
+     "2.0.0",
+     "^ 1",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^ 1",
+     false
+    ],
+    [
+     "1.0.0",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3",
+     "latest",
+     false
+    ],
+    [
+     "v1.2.3",
+     "latest",
+     false
+    ],
+    [
+     "=1.2.3",
+     "latest",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "latest",
+     false
+    ],
+    [
+     "1.2",
+     "latest",
+     false
+    ],
+    [
+     "01.2.3",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "latest",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "latest",
+     false
+    ],
+    [
+     "latest",
+     "latest",
+     false
+    ],
+    [
+     "",
+     "latest",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "latest",
+     false
+    ],
+    [
+     "0.0.4",
+     "latest",
+     false
+    ],
+    [
+     "0.3.0",
+     "latest",
+     false
+    ],
+    [
+     "1.3.0",
+     "latest",
+     false
+    ],
+    [
+     "2.0.0",
+     "latest",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "latest",
+     false
+    ],
+    [
+     "1.0.0",
+     "next",
+     false
+    ],
+    [
+     "1.2.3",
+     "next",
+     false
+    ],
+    [
+     "v1.2.3",
+     "next",
+     false
+    ],
+    [
+     "=1.2.3",
+     "next",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "next",
+     false
+    ],
+    [
+     "1.2",
+     "next",
+     false
+    ],
+    [
+     "01.2.3",
+     "next",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "next",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "next",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "next",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "next",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "next",
+     false
+    ],
+    [
+     "latest",
+     "next",
+     false
+    ],
+    [
+     "",
+     "next",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "next",
+     false
+    ],
+    [
+     "0.0.4",
+     "next",
+     false
+    ],
+    [
+     "0.3.0",
+     "next",
+     false
+    ],
+    [
+     "1.3.0",
+     "next",
+     false
+    ],
+    [
+     "2.0.0",
+     "next",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "next",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "v1.2.3",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "=1.2.3",
+     "1.2.3.4",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "01.2.3",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "latest",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "0.0.4",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "0.3.0",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.3.0",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "2.0.0",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "1.2.3.4",
+     false
+    ],
+    [
+     "1.0.0",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3",
+     "x.1.2",
+     false
+    ],
+    [
+     "v1.2.3",
+     "x.1.2",
+     false
+    ],
+    [
+     "=1.2.3",
+     "x.1.2",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2",
+     "x.1.2",
+     false
+    ],
+    [
+     "01.2.3",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "x.1.2",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "x.1.2",
+     false
+    ],
+    [
+     "latest",
+     "x.1.2",
+     false
+    ],
+    [
+     "",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "x.1.2",
+     false
+    ],
+    [
+     "0.0.4",
+     "x.1.2",
+     false
+    ],
+    [
+     "0.3.0",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.3.0",
+     "x.1.2",
+     false
+    ],
+    [
+     "2.0.0",
+     "x.1.2",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "x.1.2",
+     false
+    ],
+    [
+     "1.0.0",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3",
+     ">*",
+     false
+    ],
+    [
+     "v1.2.3",
+     ">*",
+     false
+    ],
+    [
+     "=1.2.3",
+     ">*",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     ">*",
+     false
+    ],
+    [
+     "1.2",
+     ">*",
+     false
+    ],
+    [
+     "01.2.3",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3-0",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     ">*",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3-01",
+     ">*",
+     false
+    ],
+    [
+     "latest",
+     ">*",
+     false
+    ],
+    [
+     "",
+     ">*",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     ">*",
+     false
+    ],
+    [
+     "0.0.4",
+     ">*",
+     false
+    ],
+    [
+     "0.3.0",
+     ">*",
+     false
+    ],
+    [
+     "1.3.0",
+     ">*",
+     false
+    ],
+    [
+     "2.0.0",
+     ">*",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     ">*",
+     false
+    ],
+    [
+     "1.0.0",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3",
+     "<*",
+     false
+    ],
+    [
+     "v1.2.3",
+     "<*",
+     false
+    ],
+    [
+     "=1.2.3",
+     "<*",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "<*",
+     false
+    ],
+    [
+     "1.2",
+     "<*",
+     false
+    ],
+    [
+     "01.2.3",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "<*",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "<*",
+     false
+    ],
+    [
+     "latest",
+     "<*",
+     false
+    ],
+    [
+     "",
+     "<*",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "<*",
+     false
+    ],
+    [
+     "0.0.4",
+     "<*",
+     false
+    ],
+    [
+     "0.3.0",
+     "<*",
+     false
+    ],
+    [
+     "1.3.0",
+     "<*",
+     false
+    ],
+    [
+     "2.0.0",
+     "<*",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "<*",
+     false
+    ],
+    [
+     "1.0.0",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3",
+     "^0.x",
+     false
+    ],
+    [
+     "v1.2.3",
+     "^0.x",
+     false
+    ],
+    [
+     "=1.2.3",
+     "^0.x",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2",
+     "^0.x",
+     false
+    ],
+    [
+     "01.2.3",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^0.x",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^0.x",
+     false
+    ],
+    [
+     "latest",
+     "^0.x",
+     false
+    ],
+    [
+     "",
+     "^0.x",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^0.x",
+     false
+    ],
+    [
+     "0.0.4",
+     "^0.x",
+     true
+    ],
+    [
+     "0.3.0",
+     "^0.x",
+     true
+    ],
+    [
+     "1.3.0",
+     "^0.x",
+     false
+    ],
+    [
+     "2.0.0",
+     "^0.x",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^0.x",
+     false
+    ],
+    [
+     "1.0.0",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3",
+     "^0.0",
+     false
+    ],
+    [
+     "v1.2.3",
+     "^0.0",
+     false
+    ],
+    [
+     "=1.2.3",
+     "^0.0",
+     false
+    ],
+    [
+     " 1.2.3 ",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2",
+     "^0.0",
+     false
+    ],
+    [
+     "01.2.3",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3-beta.1",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3-0",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3+build.5",
+     "^0.0",
+     false
+    ],
+    [
+     "2.0.0-rc.1",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3-01",
+     "^0.0",
+     false
+    ],
+    [
+     "latest",
+     "^0.0",
+     false
+    ],
+    [
+     "",
+     "^0.0",
+     false
+    ],
+    [
+     "1.2.3-beta..1",
+     "^0.0",
+     false
+    ],
+    [
+     "0.0.4",
+     "^0.0",
+     true
+    ],
+    [
+     "0.3.0",
+     "^0.0",
+     false
+    ],
+    [
+     "1.3.0",
+     "^0.0",
+     false
+    ],
+    [
+     "2.0.0",
+     "^0.0",
+     false
+    ],
+    [
+     "3.0.0-alpha",
+     "^0.0",
+     false
+    ]
+   ],
+   "maxSatisfying": [
+    [
+     "^1.2.0",
+     "1.3.0"
+    ],
+    [
+     "~1.2",
+     "1.2.3"
+    ],
+    [
+     "~1.2.3",
+     "1.2.3"
+    ],
+    [
+     "^0.2.3",
+     null
+    ],
+    [
+     "^0.0.3",
+     null
+    ],
+    [
+     "1.x",
+     "1.3.0"
+    ],
+    [
+     "1",
+     "1.3.0"
+    ],
+    [
+     "*",
+     "2.1.0"
+    ],
+    [
+     "",
+     "2.1.0"
+    ],
+    [
+     ">=1.2.0 <2.0.0",
+     "1.3.0"
+    ],
+    [
+     ">1.2",
+     "2.1.0"
+    ],
+    [
+     "<=1.2",
+     "1.2.3"
+    ],
+    [
+     "<1",
+     "0.3.0"
+    ],
+    [
+     "1.2.3 - 2.0.0",
+     "2.0.0"
+    ],
+    [
+     "1.2 - 2",
+     "2.1.0"
+    ],
+    [
+     ">=1.2.3-beta.0",
+     "2.1.0"
+    ],
+    [
+     "^1.2.3-beta.0",
+     "1.3.0"
+    ],
+    [
+     "1.2.3",
+     "1.2.3"
+    ],
+    [
+     "=1.2.3",
+     "1.2.3"
+    ],
+    [
+     "^1 || ^2",
+     "2.1.0"
+    ],
+    [
+     "~>1.2",
+     "1.2.3"
+    ],
+    [
+     "> 1.2.3",
+     "2.1.0"
+    ],
+    [
+     "^ 1",
+     "1.3.0"
+    ],
+    [
+     "latest",
+     null
+    ],
+    [
+     "next",
+     null
+    ],
+    [
+     "1.2.3.4",
+     null
+    ],
+    [
+     "x.1.2",
+     null
+    ],
+    [
+     ">*",
+     null
+    ],
+    [
+     "<*",
+     null
+    ],
+    [
+     "^0.x",
+     "0.3.0"
+    ],
+    [
+     "^0.0",
+     "0.0.4"
+    ]
+   ],
+   "gt": [
+    [
+     "1.2.0",
+     "1.1.9",
+     true
+    ],
+    [
+     "1.2.0-beta",
+     "1.2.0",
+     false
+    ],
+    [
+     "1.2.0-beta.2",
+     "1.2.0-beta.10",
+     false
+    ],
+    [
+     "1.2.0-alpha",
+     "1.2.0-1",
+     true
+    ],
+    [
+     "2.0.0",
+     "10.0.0",
+     false
+    ],
+    [
+     "1.0.0",
+     "1.0.0",
+     false
+    ]
+   ],
+   "highest": [
+    [
+     [
+      "1.0.0",
+      "1.10.0",
+      "1.9.0"
+     ],
+     "1.10.0"
+    ],
+    [
+     [
+      "2.0.0-beta",
+      "2.0.0",
+      "1.9.9"
+     ],
+     "2.0.0"
+    ],
+    [
+     [
+      "1.0.0-a",
+      "1.0.0-b"
+     ],
+     "1.0.0-b"
+    ]
+   ]
+  },
+  "minimatch": [
+   [
+    "extensions/a.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "*.ts",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "*.ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/*.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/*.ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/**",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/**",
+    true
+   ],
+   [
+    "a.ts",
+    "extensions/**",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/**",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/**",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/**",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/**",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/**",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/**",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/**/*.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/**/*.ts",
+    true
+   ],
+   [
+    "a.ts",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/**/*.ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "**/*.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "**/*.ts",
+    true
+   ],
+   [
+    "a.ts",
+    "**/*.ts",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "**/*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "**/*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "**/*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "**/*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "**/*.ts",
+    true
+   ],
+   [
+    "Extensions/A.ts",
+    "**/*.ts",
+    true
+   ],
+   [
+    "extensions/a.ts",
+    "**",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "**",
+    true
+   ],
+   [
+    "a.ts",
+    "**",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "**",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "**",
+    true
+   ],
+   [
+    "prompts/p.md",
+    "**",
+    true
+   ],
+   [
+    "extensions/.dot.ts",
+    "**",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "**",
+    true
+   ],
+   [
+    "Extensions/A.ts",
+    "**",
+    true
+   ],
+   [
+    "extensions/a.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "a.ts",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "a.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "a.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "a.ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "a.ts",
+    "!a.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "skills/x/SKILL.md",
+    "!a.ts",
+    true
+   ],
+   [
+    "prompts/p.md",
+    "!a.ts",
+    true
+   ],
+   [
+    "extensions/.dot.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "Extensions/A.ts",
+    "!a.ts",
+    true
+   ],
+   [
+    "extensions/a.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "a.ts",
+    "skills/*",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "skills/*",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "skills/*",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "skills/*",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "a.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "skills/**/SKILL.md",
+    true
+   ],
+   [
+    "prompts/p.md",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "skills/**/SKILL.md",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "a.ts",
+    "*.{ts,md}",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "*.{ts,md}",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/[ab].ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "a.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/[ab].ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/?.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/?.ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    "a.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "/abs/**",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "/abs/**",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "/abs/**",
+    true
+   ],
+   [
+    "Extensions/A.ts",
+    "/abs/**",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "#c",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "#c",
+    false
+   ],
+   [
+    "a.ts",
+    "#c",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "#c",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "#c",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "#c",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "#c",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "#c",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "#c",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "extensions/*",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    "a.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "extensions/*",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "extensions/*",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "extensions/*",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "*/*.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "*/*.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "*/*.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "*/*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "*/*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "*/*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "*/*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "*/*.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "*/*.ts",
+    true
+   ],
+   [
+    "extensions/a.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "extensions/sub/b.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "a.ts",
+    "+(a|b).ts",
+    true
+   ],
+   [
+    ".hidden/x.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "+(a|b).ts",
+    false
+   ],
+   [
+    "extensions/a.ts",
+    "@(extensions)/*.ts",
+    true
+   ],
+   [
+    "extensions/sub/b.ts",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "a.ts",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    ".hidden/x.ts",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "skills/x/SKILL.md",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "prompts/p.md",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "extensions/.dot.ts",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "/abs/extensions/a.ts",
+    "@(extensions)/*.ts",
+    false
+   ],
+   [
+    "Extensions/A.ts",
+    "@(extensions)/*.ts",
+    false
+   ]
+  ],
+  "ignore": {
+   "paths": [
+    "node_modules/",
+    "node_modules/x.ts",
+    "a.log",
+    "dir/a.log",
+    "build/",
+    "build/x.ts",
+    "src/build/",
+    "src/build",
+    "docs/a.md",
+    "docs/sub/a.md",
+    "tmp/",
+    "x/tmp/",
+    "a/b",
+    "a/x/y/b",
+    "a/",
+    "a/z.ts",
+    "keep.ts",
+    "other.ts",
+    "lib/x.ts",
+    "lib/y.ts",
+    "lib/",
+    "a.ts",
+    "b.ts",
+    "c.ts",
+    "foo1.ts",
+    "foo12.ts",
+    "#hash.ts",
+    "!bang.ts",
+    "trailing",
+    "real.ts",
+    "sub/",
+    "Sub/x.ts",
+    "x/y",
+    "x/",
+    "x/y/z",
+    "a.md",
+    "d/a.md",
+    "1.ts",
+    "bx.ts",
+    "abc[.ts",
+    "z.ts"
+   ],
+   "cases": [
+    [
+     [
+      "node_modules"
+     ],
+     [
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "*.log"
+     ],
+     [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "/build"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "build/"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "docs/*.md"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "**/tmp"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "a/**/b"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "a/**"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "a/**/"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "*.ts",
+      "!keep.ts"
+     ],
+     [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      "!keep.ts",
+      "*.ts"
+     ],
+     [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      "lib",
+      "!lib/x.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "[ab].ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "[!a].ts"
+     ],
+     [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+     ]
+    ],
+    [
+     [
+      "foo?.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "\\#hash.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "\\!bang.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "trailing   "
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "# comment",
+      "",
+      "real.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "SUB/"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "x/*"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "*"
+     ],
+     [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      "/*.md"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "**"
+     ],
+     [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      "[a-c]x.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "[z-a].ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+     ]
+    ],
+    [
+     [
+      "[[:digit:]].ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      "abc[.ts"
+     ],
+     [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+     ]
+    ]
+   ]
+  },
+  "resolve": [
+   {
+    "name": "conventions and manifests",
+    "files": {
+     "agent/extensions/one.ts": "",
+     "agent/extensions/dir/index.ts": "",
+     "agent/extensions/dir2/package.json": "{\"pi\":{\"extensions\":[\"./main.js\",\"./missing.ts\"]}}",
+     "agent/extensions/dir2/main.js": "",
+     "agent/extensions/notes.txt": "",
+     "agent/skills/alpha/SKILL.md": "",
+     "agent/skills/loose.md": "",
+     "agent/skills/nested/deep/SKILL.md": "",
+     "agent/skills/nested/deep/more/SKILL.md": "",
+     "agent/prompts/p.md": "",
+     "agent/prompts/sub/q.md": "",
+     "agent/themes/t.json": "",
+     "home/.agents/skills/s1/SKILL.md": "",
+     "home/.agents/skills/top.md": "",
+     "home/.agents/skills/grp/inner.md": "",
+     "agent/npm/node_modules/pkg/package.json": "{\"name\":\"pkg\",\"version\":\"1.0.0\",\"pi\":{\"extensions\":[\"extensions/*.ts\",\"!extensions/skip.ts\"],\"skills\":[\"skills\"]}}",
+     "agent/npm/node_modules/pkg/extensions/a.ts": "",
+     "agent/npm/node_modules/pkg/extensions/skip.ts": "",
+     "agent/npm/node_modules/pkg/skills/k/SKILL.md": "",
+     "local-pkg/extensions/l.ts": "",
+     "local-pkg/prompts/lp.md": "",
+     "local-pkg/.gitignore": "ignored.md\n",
+     "local-pkg/prompts/ignored.md": "",
+     "single.ts": ""
+    },
+    "global": {
+     "packages": [
+      "npm:pkg",
+      "../local-pkg",
+      {
+       "source": "../single.ts"
+      }
+     ],
+     "extensions": [
+      "-extensions/one.ts"
+     ],
+     "skills": [
+      "!**/loose.md"
+     ]
+    },
+    "resolved": {
+     "extensions": [
+      {
+       "path": "<TMP>/agent/extensions/dir/index.ts",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/agent/extensions/dir2/main.js",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/agent/extensions/one.ts",
+       "enabled": false,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/agent/npm/node_modules/pkg/extensions/a.ts",
+       "enabled": true,
+       "source": "npm:pkg",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/pkg"
+      },
+      {
+       "path": "<TMP>/local-pkg/extensions/l.ts",
+       "enabled": true,
+       "source": "../local-pkg",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/local-pkg"
+      },
+      {
+       "path": "<TMP>/single.ts",
+       "enabled": true,
+       "source": "../single.ts",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>"
+      }
+     ],
+     "skills": [
+      {
+       "path": "<TMP>/agent/skills/alpha/SKILL.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/agent/skills/loose.md",
+       "enabled": false,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/agent/skills/nested/deep/SKILL.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/home/.agents/skills/grp/inner.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/home/.agents"
+      },
+      {
+       "path": "<TMP>/home/.agents/skills/s1/SKILL.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/home/.agents"
+      },
+      {
+       "path": "<TMP>/agent/npm/node_modules/pkg/skills/k/SKILL.md",
+       "enabled": true,
+       "source": "npm:pkg",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/pkg"
+      }
+     ],
+     "prompts": [
+      {
+       "path": "<TMP>/agent/prompts/p.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      },
+      {
+       "path": "<TMP>/local-pkg/prompts/ignored.md",
+       "enabled": true,
+       "source": "../local-pkg",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/local-pkg"
+      },
+      {
+       "path": "<TMP>/local-pkg/prompts/lp.md",
+       "enabled": true,
+       "source": "../local-pkg",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/local-pkg"
+      }
+     ],
+     "themes": [
+      {
+       "path": "<TMP>/agent/themes/t.json",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      }
+     ]
+    }
+   },
+   {
+    "name": "filters and project",
+    "trust": true,
+    "files": {
+     "agent/npm/node_modules/flt/package.json": "{\"name\":\"flt\",\"version\":\"2.0.0\"}",
+     "agent/npm/node_modules/flt/extensions/x.ts": "",
+     "agent/npm/node_modules/flt/extensions/y.ts": "",
+     "agent/npm/node_modules/flt/prompts/a.md": "",
+     "agent/npm/node_modules/flt/themes/dark.json": "",
+     "work/.pi/extensions/pe.ts": "",
+     "work/.pi/skills/ps/SKILL.md": "",
+     "work/.pi/prompts/pp.md": "",
+     "work/.agents/skills/as/SKILL.md": "",
+     "work/.git/HEAD": "",
+     "extra/e.ts": "",
+     "extra/f.ts": ""
+    },
+    "global": {
+     "packages": [
+      {
+       "source": "npm:flt",
+       "extensions": [
+        "x.ts"
+       ],
+       "prompts": [],
+       "themes": [
+        "+themes/dark.json"
+       ]
+      }
+     ],
+     "extensions": [
+      "../extra",
+      "!**/f.ts"
+     ]
+    },
+    "project": {
+     "packages": [
+      {
+       "source": "npm:flt",
+       "autoload": false,
+       "extensions": [
+        "-extensions/x.ts",
+        "+extensions/y.ts"
+       ]
+      }
+     ],
+     "prompts": [
+      "-prompts/pp.md"
+     ]
+    },
+    "resolved": {
+     "extensions": [
+      {
+       "path": "<TMP>/work/.pi/extensions/pe.ts",
+       "enabled": true,
+       "source": "auto",
+       "scope": "project",
+       "origin": "top-level",
+       "baseDir": "<TMP>/work/.pi"
+      },
+      {
+       "path": "<TMP>/extra/e.ts",
+       "enabled": true,
+       "source": "local",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": null
+      },
+      {
+       "path": "<TMP>/extra/f.ts",
+       "enabled": false,
+       "source": "local",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": null
+      },
+      {
+       "path": "<TMP>/agent/npm/node_modules/flt/extensions/x.ts",
+       "enabled": false,
+       "source": "npm:flt",
+       "scope": "project",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/flt"
+      },
+      {
+       "path": "<TMP>/agent/npm/node_modules/flt/extensions/y.ts",
+       "enabled": true,
+       "source": "npm:flt",
+       "scope": "project",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/flt"
+      }
+     ],
+     "skills": [
+      {
+       "path": "<TMP>/work/.pi/skills/ps/SKILL.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "project",
+       "origin": "top-level",
+       "baseDir": "<TMP>/work/.pi"
+      },
+      {
+       "path": "<TMP>/work/.agents/skills/as/SKILL.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "project",
+       "origin": "top-level",
+       "baseDir": "<TMP>/work/.agents"
+      }
+     ],
+     "prompts": [
+      {
+       "path": "<TMP>/work/.pi/prompts/pp.md",
+       "enabled": false,
+       "source": "auto",
+       "scope": "project",
+       "origin": "top-level",
+       "baseDir": "<TMP>/work/.pi"
+      },
+      {
+       "path": "<TMP>/agent/npm/node_modules/flt/prompts/a.md",
+       "enabled": false,
+       "source": "npm:flt",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/flt"
+      }
+     ],
+     "themes": [
+      {
+       "path": "<TMP>/agent/npm/node_modules/flt/themes/dark.json",
+       "enabled": true,
+       "source": "npm:flt",
+       "scope": "user",
+       "origin": "package",
+       "baseDir": "<TMP>/agent/npm/node_modules/flt"
+      }
+     ]
+    }
+   },
+   {
+    "name": "project wins over user",
+    "trust": true,
+    "files": {
+     "agent/npm/node_modules/dup/package.json": "{\"name\":\"dup\",\"version\":\"1.0.0\"}",
+     "agent/npm/node_modules/dup/extensions/u.ts": "",
+     "work/.pi/npm/node_modules/dup/package.json": "{\"name\":\"dup\",\"version\":\"1.0.0\"}",
+     "work/.pi/npm/node_modules/dup/extensions/p.ts": "",
+     "work/.pi/local/index.ts": ""
+    },
+    "global": {
+     "packages": [
+      "npm:dup"
+     ]
+    },
+    "project": {
+     "packages": [
+      "npm:dup",
+      "./local"
+     ]
+    },
+    "resolved": {
+     "extensions": [
+      {
+       "path": "<TMP>/work/.pi/npm/node_modules/dup/extensions/p.ts",
+       "enabled": true,
+       "source": "npm:dup",
+       "scope": "project",
+       "origin": "package",
+       "baseDir": "<TMP>/work/.pi/npm/node_modules/dup"
+      },
+      {
+       "path": "<TMP>/work/.pi/local",
+       "enabled": true,
+       "source": "./local",
+       "scope": "project",
+       "origin": "package",
+       "baseDir": "<TMP>/work/.pi/local"
+      }
+     ],
+     "skills": [],
+     "prompts": [],
+     "themes": []
+    }
+   },
+   {
+    "name": "untrusted project",
+    "files": {
+     "work/.pi/extensions/pe.ts": "",
+     "work/.agents/skills/as/SKILL.md": "",
+     "agent/prompts/z.md": ""
+    },
+    "global": {},
+    "project": {
+     "packages": [
+      "./nothing"
+     ]
+    },
+    "resolved": {
+     "extensions": [],
+     "skills": [],
+     "prompts": [
+      {
+       "path": "<TMP>/agent/prompts/z.md",
+       "enabled": true,
+       "source": "auto",
+       "scope": "user",
+       "origin": "top-level",
+       "baseDir": "<TMP>/agent"
+      }
+     ],
+     "themes": []
+    }
+   }
+  ]
+ },
+ "fakeNpm": "#!/usr/bin/python3\nimport json, os, sys\nargs = sys.argv[1:]\nwith open(os.environ[\"FAKE_NPM_LOG\"], \"a\") as log:\n    log.write(os.path.basename(sys.argv[0]) + \" [\" + os.getcwd() + \"] \" + \" \".join(args) + \"\\n\")\nregistry = json.load(open(os.environ[\"FAKE_NPM_REGISTRY\"]))\ndef split(spec):\n    at = spec.find(\"@\", 1)\n    return (spec, None) if at < 0 else (spec[:at], spec[at + 1:])\ndef option(name):\n    return args[args.index(name) + 1] if name in args else None\nif args[:1] == [\"view\"]:\n    name, version = split(args[1])\n    entry = registry.get(name)\n    if entry is None:\n        sys.stderr.write(\"npm ERR! 404 Not Found - \" + name + \"\\n\"); sys.exit(1)\n    print(json.dumps(entry[\"versions\"] if version else entry[\"latest\"]))\n    sys.exit(0)\nif args[:2] == [\"root\", \"-g\"]:\n    print(os.environ.get(\"FAKE_NPM_GLOBAL_ROOT\", \"/nonexistent\")); sys.exit(0)\nif args[:1] == [\"install\"]:\n    root = option(\"--prefix\") or option(\"--cwd\")\n    specs = [a for a in args[1:] if not a.startswith(\"-\") and a != root]\n    if root is None:\n        open(os.path.join(os.getcwd(), \"deps-installed\"), \"w\").write(\" \".join(args))\n        print(\"installed dependencies\"); sys.exit(0)\n    for spec in specs:\n        name, version = split(spec)\n        entry = registry.get(name)\n        if entry is None:\n            sys.stderr.write(\"npm ERR! 404 Not Found - \" + name + \"\\n\"); sys.exit(1)\n        version = entry[\"latest\"] if version in (None, \"latest\") or version not in entry[\"versions\"] else version\n        target = os.path.join(root, \"node_modules\", name)\n        os.makedirs(os.path.join(target, \"extensions\"), exist_ok=True)\n        json.dump({\"name\": name, \"version\": version}, open(os.path.join(target, \"package.json\"), \"w\"))\n        open(os.path.join(target, \"extensions\", \"index.ts\"), \"w\").write(\"// \" + version)\n    print(\"added \" + str(len(specs)) + \" packages\"); sys.exit(0)\nif args[:1] == [\"uninstall\"]:\n    root = option(\"--prefix\") or option(\"--cwd\")\n    import shutil\n    shutil.rmtree(os.path.join(root, \"node_modules\", args[1]), ignore_errors=True)\n    print(\"removed 1 package\"); sys.exit(0)\nsys.stderr.write(\"fake npm: unhandled \" + \" \".join(args) + \"\\n\"); sys.exit(2)\n",
+ "registry": "{\"foo\":{\"latest\":\"1.1.0\",\"versions\":[\"1.0.0\",\"1.1.0\",\"2.0.0-beta.1\"]},\"@scope/bar\":{\"latest\":\"3.0.0\",\"versions\":[\"1.2.0\",\"1.4.0\",\"3.0.0\"]},\"ranged\":{\"latest\":\"2.0.0\",\"versions\":[\"1.0.0\",\"1.3.0\",\"2.0.0\"]}}",
+ "gitEnv": {
+  "GIT_AUTHOR_NAME": "Test",
+  "GIT_AUTHOR_EMAIL": "test@example.com",
+  "GIT_COMMITTER_NAME": "Test",
+  "GIT_COMMITTER_EMAIL": "test@example.com",
+  "GIT_AUTHOR_DATE": "2026-01-01T00:00:00Z",
+  "GIT_COMMITTER_DATE": "2026-01-01T00:00:00Z",
+  "GIT_CONFIG_NOSYSTEM": "1",
+  "GIT_TERMINAL_PROMPT": "0"
+ },
+ "runs": [
+  {
+   "name": "install npm",
+   "args": [
+    "install",
+    "npm:foo"
+   ],
+   "stdout": "Installing npm:foo...\nadded 1 packages\nInstalled npm:foo\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] install foo --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.1.0"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"foo\", \"version\": \"1.1.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"npm:foo\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install scoped npm with version, project",
+   "args": [
+    "install",
+    "npm:@scope/bar@1.4.0",
+    "-l",
+    "--approve"
+   ],
+   "stdout": "Installing npm:@scope/bar@1.4.0...\nadded 1 packages\nInstalled npm:@scope/bar@1.4.0\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] install @scope/bar@1.4.0 --prefix <TMP>/work/.pi/npm --legacy-peer-deps\n",
+   "agent": [],
+   "project": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/@scope",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/@scope/bar",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/@scope/bar/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/@scope/bar/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.4.0"
+    },
+    {
+     "path": "npm/node_modules/@scope/bar/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"@scope/bar\", \"version\": \"1.4.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"npm:@scope/bar@1.4.0\"\n  ]\n}"
+    }
+   ],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install npm with bun",
+   "args": [
+    "install",
+    "npm:foo"
+   ],
+   "files": {
+    "agent/settings.json": "{\"npmCommand\":[\"bun\"]}"
+   },
+   "bin": [
+    "bun"
+   ],
+   "stdout": "Installing npm:foo...\nadded 1 packages\nInstalled npm:foo\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "bun [<TMP>/work] install foo --cwd <TMP>/agent/npm --omit=peer\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.1.0"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"foo\", \"version\": \"1.1.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"npmCommand\": [\n    \"bun\"\n  ],\n  \"packages\": [\n    \"npm:foo\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install npm with pnpm wrapper",
+   "args": [
+    "install",
+    "npm:foo"
+   ],
+   "files": {
+    "agent/settings.json": "{\"npmCommand\":[\"env\",\"--\",\"pnpm\"]}"
+   },
+   "bin": [
+    "pnpm"
+   ],
+   "stdout": "Installing npm:foo...\nadded 1 packages\nInstalled npm:foo\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "pnpm [<TMP>/work] install foo --prefix <TMP>/agent/npm --config.auto-install-peers=false --config.strict-peer-dependencies=false --config.strict-dep-builds=false\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.1.0"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"foo\", \"version\": \"1.1.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"npmCommand\": [\n    \"env\",\n    \"--\",\n    \"pnpm\"\n  ],\n  \"packages\": [\n    \"npm:foo\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install npm failure",
+   "args": [
+    "install",
+    "npm:missing-pkg"
+   ],
+   "stdout": "Installing npm:missing-pkg...\n",
+   "stderr": "npm ERR! 404 Not Found - missing-pkg\nError: npm install missing-pkg --prefix <TMP>/agent/npm --legacy-peer-deps failed with code 1\n",
+   "status": 1,
+   "npmLog": "npm [<TMP>/work] install missing-pkg --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install twice keeps one entry",
+   "args": [
+    "install",
+    "npm:foo@1.0.0"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "stdout": "Installing npm:foo@1.0.0...\nadded 1 packages\nInstalled npm:foo@1.0.0\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] install foo@1.0.0 --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.0.0"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"foo\", \"version\": \"1.0.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"npm:foo@1.0.0\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "remove npm",
+   "args": [
+    "remove",
+    "npm:foo"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\",\"npm:other\"]}"
+   },
+   "setup": [
+    "mkdir -p agent/npm/node_modules/foo && echo '{}' > agent/npm/node_modules/foo/package.json"
+   ],
+   "stdout": "Removing npm:foo...\nremoved 1 package\nRemoved npm:foo\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] uninstall foo --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"npm:other\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "remove unknown npm",
+   "args": [
+    "uninstall",
+    "npm:nope"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "stdout": "Removing npm:nope...\n",
+   "stderr": "No matching package found for npm:nope\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update npm newer",
+   "args": [
+    "update",
+    "--extensions"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "setup": [
+    "mkdir -p agent/npm/node_modules/foo && echo '{\"version\":\"1.0.0\"}' > agent/npm/node_modules/foo/package.json"
+   ],
+   "stdout": "Updating npm:foo...\nadded 1 packages\nUpdated packages\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] view foo version --json\nnpm [<TMP>/work] install foo@latest --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/extensions/index.ts",
+     "kind": "file",
+     "text": "// 1.1.0"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"foo\", \"version\": \"1.1.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update npm current",
+   "args": [
+    "update",
+    "npm:foo"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "setup": [
+    "mkdir -p agent/npm/node_modules/foo && echo '{\"version\":\"1.1.0\"}' > agent/npm/node_modules/foo/package.json"
+   ],
+   "stdout": "Updated npm:foo\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] view foo version --json\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/foo/package.json",
+     "kind": "file",
+     "text": "{\"version\":\"1.1.0\"}\n"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update npm range",
+   "args": [
+    "update",
+    "--extension",
+    "npm:ranged"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:ranged@^1.0.0\"]}"
+   },
+   "setup": [
+    "mkdir -p agent/npm/node_modules/ranged && echo '{\"version\":\"1.0.0\"}' > agent/npm/node_modules/ranged/package.json"
+   ],
+   "stdout": "Updating npm:ranged@^1.0.0...\nadded 1 packages\nUpdated npm:ranged\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] view ranged@^1.0.0 version --json\nnpm [<TMP>/work] install ranged@^1.0.0 --prefix <TMP>/agent/npm --legacy-peer-deps\n",
+   "agent": [
+    {
+     "path": "npm",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "npm/node_modules",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/ranged",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/ranged/extensions",
+     "kind": "dir"
+    },
+    {
+     "path": "npm/node_modules/ranged/extensions/index.ts",
+     "kind": "file",
+     "text": "// 2.0.0"
+    },
+    {
+     "path": "npm/node_modules/ranged/package.json",
+     "kind": "file",
+     "text": "{\"name\": \"ranged\", \"version\": \"2.0.0\"}"
+    },
+    {
+     "path": "npm/package.json",
+     "kind": "file",
+     "text": "{\n  \"name\": \"pi-extensions\",\n  \"private\": true\n}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:ranged@^1.0.0\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update npm pinned skipped",
+   "args": [
+    "update",
+    "--extensions"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo@1.0.0\"]}"
+   },
+   "stdout": "Updated packages\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo@1.0.0\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update suggests prefix",
+   "args": [
+    "update",
+    "foo"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "stdout": "",
+   "stderr": "Error: No matching package found for foo. Did you mean npm:foo?\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update offline does nothing",
+   "args": [
+    "update",
+    "--extensions"
+   ],
+   "env": {
+    "PI_OFFLINE": "1"
+   },
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo\"]}"
+   },
+   "stdout": "Updated packages\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install git",
+   "args": [
+    "install",
+    "git:github.com/test/ext"
+   ],
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext"
+   ],
+   "checkouts": [
+    "agent/git/github.com/test/ext"
+   ],
+   "stdout": "Installing git:github.com/test/ext...\ninstalled dependencies\nInstalled git:github.com/test/ext\n",
+   "stderr": "Cloning into '<TMP>/agent/git/github.com/test/ext'...\n",
+   "status": 0,
+   "npmLog": "npm [<TMP>/agent/git/github.com/test/ext] install --omit=dev\n",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "git/github.com",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext/deps-installed",
+     "kind": "file",
+     "text": "install --omit=dev"
+    },
+    {
+     "path": "git/github.com/test/ext/index.ts",
+     "kind": "file",
+     "text": "// v1\n"
+    },
+    {
+     "path": "git/github.com/test/ext/package.json",
+     "kind": "file",
+     "text": "{\"name\":\"ext\",\"version\":\"1.0.0\"}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"git:github.com/test/ext\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": [
+    "276b31d0c9ad747d35c814230f0f83838f788a08"
+   ]
+  },
+  {
+   "name": "install git pinned",
+   "args": [
+    "install",
+    "https://github.com/test/ext@v1"
+   ],
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext",
+    "cd src && echo '// v2' > index.ts && git commit -qam v2 && git tag v2 && git push -q ../remotes/test/ext main v2"
+   ],
+   "checkouts": [
+    "agent/git/github.com/test/ext"
+   ],
+   "stdout": "Installing https://github.com/test/ext@v1...\ninstalled dependencies\nInstalled https://github.com/test/ext@v1\n",
+   "stderr": "Cloning into '<TMP>/agent/git/github.com/test/ext'...\nHEAD is now at 276b31d v1\n",
+   "status": 0,
+   "npmLog": "npm [<TMP>/agent/git/github.com/test/ext] install --omit=dev\n",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    },
+    {
+     "path": "git/github.com",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext/deps-installed",
+     "kind": "file",
+     "text": "install --omit=dev"
+    },
+    {
+     "path": "git/github.com/test/ext/index.ts",
+     "kind": "file",
+     "text": "// v1\n"
+    },
+    {
+     "path": "git/github.com/test/ext/package.json",
+     "kind": "file",
+     "text": "{\"name\":\"ext\",\"version\":\"1.0.0\"}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": [\n    \"https://github.com/test/ext@v1\"\n  ]\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": [
+    "276b31d0c9ad747d35c814230f0f83838f788a08"
+   ]
+  },
+  {
+   "name": "install git missing remote",
+   "args": [
+    "install",
+    "git:github.com/test/none"
+   ],
+   "setup": [
+    "mkdir -p remotes/test"
+   ],
+   "stdout": "Installing git:github.com/test/none...\n",
+   "stderr": "Cloning into '<TMP>/agent/git/github.com/test/none'...\nfatal: '<TMP>/remotes/test/none' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nError: git clone https://github.com/test/none <TMP>/agent/git/github.com/test/none failed with code 128\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/.gitignore",
+     "kind": "file",
+     "text": "*\n!.gitignore\n"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update git",
+   "args": [
+    "update",
+    "--extensions"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"git:github.com/test/ext\"]}"
+   },
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext",
+    "mkdir -p agent/git/github.com/test && git clone -q https://github.com/test/ext agent/git/github.com/test/ext",
+    "cd src && echo '// v2' > index.ts && git commit -qam v2 && git tag v2 && git push -q ../remotes/test/ext main v2"
+   ],
+   "checkouts": [
+    "agent/git/github.com/test/ext"
+   ],
+   "stdout": "Updating git:github.com/test/ext...\nHEAD is now at 99c6be0 v2\ninstalled dependencies\nUpdated packages\n",
+   "stderr": "From file://<TMP>/remotes/test/ext\n   276b31d..99c6be0  main       -> origin/main\n",
+   "status": 0,
+   "npmLog": "npm [<TMP>/agent/git/github.com/test/ext] install --omit=dev\n",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext/deps-installed",
+     "kind": "file",
+     "text": "install --omit=dev"
+    },
+    {
+     "path": "git/github.com/test/ext/index.ts",
+     "kind": "file",
+     "text": "// v2\n"
+    },
+    {
+     "path": "git/github.com/test/ext/package.json",
+     "kind": "file",
+     "text": "{\"name\":\"ext\",\"version\":\"1.0.0\"}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"git:github.com/test/ext\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": [
+    "99c6be03386a44135ea45c44b004d748772d8cdb"
+   ]
+  },
+  {
+   "name": "update git current",
+   "args": [
+    "update",
+    "git:github.com/test/ext"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"git:github.com/test/ext\"]}"
+   },
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext",
+    "mkdir -p agent/git/github.com/test && git clone -q https://github.com/test/ext agent/git/github.com/test/ext"
+   ],
+   "checkouts": [
+    "agent/git/github.com/test/ext"
+   ],
+   "stdout": "Updating git:github.com/test/ext...\nUpdated git:github.com/test/ext\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext/index.ts",
+     "kind": "file",
+     "text": "// v1\n"
+    },
+    {
+     "path": "git/github.com/test/ext/package.json",
+     "kind": "file",
+     "text": "{\"name\":\"ext\",\"version\":\"1.0.0\"}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"git:github.com/test/ext\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": [
+    "276b31d0c9ad747d35c814230f0f83838f788a08"
+   ]
+  },
+  {
+   "name": "update git pinned",
+   "args": [
+    "update",
+    "--extensions"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"git:github.com/test/ext@v2\"]}"
+   },
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext",
+    "mkdir -p agent/git/github.com/test && git clone -q https://github.com/test/ext agent/git/github.com/test/ext",
+    "cd src && echo '// v2' > index.ts && git commit -qam v2 && git tag v2 && git push -q ../remotes/test/ext main v2"
+   ],
+   "checkouts": [
+    "agent/git/github.com/test/ext"
+   ],
+   "stdout": "Updating git:github.com/test/ext@v2...\nHEAD is now at 99c6be0 v2\ninstalled dependencies\nUpdated packages\n",
+   "stderr": "From file://<TMP>/remotes/test/ext\n * tag               v2         -> FETCH_HEAD\n",
+   "status": 0,
+   "npmLog": "npm [<TMP>/agent/git/github.com/test/ext] install --omit=dev\n",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext",
+     "kind": "dir"
+    },
+    {
+     "path": "git/github.com/test/ext/deps-installed",
+     "kind": "file",
+     "text": "install --omit=dev"
+    },
+    {
+     "path": "git/github.com/test/ext/index.ts",
+     "kind": "file",
+     "text": "// v2\n"
+    },
+    {
+     "path": "git/github.com/test/ext/package.json",
+     "kind": "file",
+     "text": "{\"name\":\"ext\",\"version\":\"1.0.0\"}"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"git:github.com/test/ext@v2\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": [
+    "99c6be03386a44135ea45c44b004d748772d8cdb"
+   ]
+  },
+  {
+   "name": "remove git",
+   "args": [
+    "remove",
+    "git:github.com/test/ext"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"git:github.com/test/ext\"]}"
+   },
+   "setup": [
+    "mkdir -p src remotes/test",
+    "cd src && git init -q -b main && printf '{\"name\":\"ext\",\"version\":\"1.0.0\"}' > package.json && echo '// v1' > index.ts && git add . && git commit -qm v1 && git tag v1",
+    "git clone -q --bare src remotes/test/ext",
+    "mkdir -p agent/git/github.com/test && git clone -q https://github.com/test/ext agent/git/github.com/test/ext"
+   ],
+   "stdout": "Removing git:github.com/test/ext...\nRemoved git:github.com/test/ext\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "git",
+     "kind": "dir"
+    },
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\n  \"packages\": []\n}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "list legacy npm root",
+   "args": [
+    "list"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:legacy\",\"npm:foo\",{\"source\":\"git:github.com/test/ext\"}]}",
+    "global/legacy/package.json": "{}"
+   },
+   "env": {
+    "FAKE_NPM_GLOBAL_ROOT": "<TMP>/global"
+   },
+   "stdout": "User packages:\n  npm:legacy\n    <TMP>/global/legacy\n  npm:foo\n  git:github.com/test/ext (filtered)\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "npm [<TMP>/work] root -g\n",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:legacy\",\"npm:foo\",{\"source\":\"git:github.com/test/ext\"}]}"
+    }
+   ],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "install local missing",
+   "args": [
+    "install",
+    "./nope"
+   ],
+   "stdout": "Installing ./nope...\n",
+   "stderr": "Error: Path does not exist: <TMP>/work/nope\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update self offline",
+   "args": [
+    "update",
+    "--self"
+   ],
+   "env": {
+    "PI_OFFLINE": "1"
+   },
+   "stdout": "",
+   "stderr": "Error: Could not determine latest ultron version.\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update default offline",
+   "args": [
+    "update"
+   ],
+   "env": {
+    "PI_OFFLINE": "1"
+   },
+   "stdout": "Extensions are skipped. Run ultron update --extensions to update extensions.\n",
+   "stderr": "Error: Could not determine latest ultron version.\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 0,
+   "heads": []
+  },
+  {
+   "name": "update self current",
+   "args": [
+    "update",
+    "--self"
+   ],
+   "stubs": [
+    {
+     "status": 200,
+     "body": {
+      "version": "0.87.39"
+     }
+    }
+   ],
+   "stdout": "ultron is already up to date (v0.87.39)\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 1,
+   "heads": []
+  },
+  {
+   "name": "update self retries",
+   "args": [
+    "update",
+    "self"
+   ],
+   "stubs": [
+    {
+     "status": 503,
+     "body": "busy"
+    },
+    {
+     "status": 502,
+     "body": "busy"
+    },
+    {
+     "status": 200,
+     "body": {
+      "version": "0.87.39"
+     }
+    }
+   ],
+   "stdout": "ultron is already up to date (v0.87.39)\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 3,
+   "heads": []
+  },
+  {
+   "name": "update self error status",
+   "args": [
+    "update",
+    "--self"
+   ],
+   "stubs": [
+    {
+     "status": 500,
+     "body": "down"
+    }
+   ],
+   "stdout": "",
+   "stderr": "Error: Could not determine latest ultron version.\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 3,
+   "heads": []
+  },
+  {
+   "name": "update self bad version",
+   "args": [
+    "update",
+    "--self"
+   ],
+   "stubs": [
+    {
+     "status": 200,
+     "body": {
+      "version": "not-a-version"
+     }
+    }
+   ],
+   "stdout": "",
+   "stderr": "Error: Could not determine latest ultron version.\n",
+   "status": 1,
+   "npmLog": "",
+   "agent": [],
+   "project": [],
+   "requests": 1,
+   "heads": []
+  },
+  {
+   "name": "update all current",
+   "args": [
+    "update",
+    "--all"
+   ],
+   "files": {
+    "agent/settings.json": "{\"packages\":[\"npm:foo@1.0.0\"]}"
+   },
+   "stubs": [
+    {
+     "status": 200,
+     "body": {
+      "version": "0.87.39"
+     }
+    }
+   ],
+   "stdout": "Updated packages\nultron is already up to date (v0.87.39)\n",
+   "stderr": "",
+   "status": 0,
+   "npmLog": "",
+   "agent": [
+    {
+     "path": "settings.json",
+     "kind": "file",
+     "text": "{\"packages\":[\"npm:foo@1.0.0\"]}"
+    }
+   ],
+   "project": [],
+   "requests": 1,
+   "heads": []
+  }
+ ]
+}

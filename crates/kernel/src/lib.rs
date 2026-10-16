@@ -25,12 +25,14 @@ mod output;
 mod process;
 mod sandboxed;
 pub mod snapshot;
+pub mod tree_memory;
 
 pub use continuity::{ContinuityPolicy, ContinuityReport, LostName};
 pub use snapshot::{
     RestoreReport, SnapshotAuthError, SnapshotReport, load_or_create_snapshot_key, process_snapshot_key, sign_snapshot,
     verify_snapshot,
 };
+pub use tree_memory::TreeMemoryBackend;
 
 pub use config::{
     DEFAULT_KERNEL_LIMITS, KernelResourceLimits, LimitOverrides, kernel_environment, kernel_resource_limits,
@@ -277,6 +279,31 @@ pub struct KernelOptions {
     /// cannot carry the protocol descriptors: with it (or nothing working) `auto` runs unsandboxed and `required`
     /// refuses to start. None: unsandboxed.
     pub sandbox: Option<Arc<sandbox::Launcher>>,
+    /// The whole-tree memory cap (kernel.ts `maxTreeMemoryMb` / `treeMemoryBackend`); None: no tree cap.
+    pub tree_memory: Option<TreeMemoryOptions>,
+}
+
+/// How a kernel caps the memory of its whole process tree ([`tree_memory`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeMemoryOptions {
+    /// The cap in MiB; overrides `ULTRON_RLM_MAX_TREE_MEMORY_MB`, whose default is twice the per-process limit.
+    /// 0 disables it.
+    pub max_mb: Option<u64>,
+    /// `auto` | `cgroup` | `watchdog` | `off`; None: `ULTRON_RLM_TREE_MEMORY_BACKEND`, else `auto` (a capped cgroup
+    /// scope when this system allows one, else the watchdog).
+    pub backend: Option<String>,
+    /// The scope launcher (`systemd-run`), probed once before its first use.
+    pub launcher: PathBuf,
+}
+
+impl Default for TreeMemoryOptions {
+    fn default() -> Self {
+        Self {
+            max_mb: None,
+            backend: None,
+            launcher: "systemd-run".into(),
+        }
+    }
 }
 
 impl KernelOptions {
@@ -293,6 +320,7 @@ impl KernelOptions {
             snapshot_key: None,
             continuity: None,
             sandbox: None,
+            tree_memory: None,
         }
     }
 }
@@ -301,6 +329,7 @@ impl KernelOptions {
 const EXIT_MEMORY: i32 = 86;
 const EXIT_CPU: i32 = 87;
 const SIGKILL: i32 = 9;
+const SIGTERM: i32 = 15;
 const SIGXCPU: i32 = 24;
 const MAX_HOST_REQUESTS: usize = 16;
 /// How long a finished cell waits for its flush markers on fd 1 and fd 2.
@@ -466,6 +495,13 @@ struct CellOutput {
 struct Generation {
     id: u64,
     pid: i32,
+    /// How the tree cap is enforced for this process.
+    tree_backend: TreeMemoryBackend,
+    /// The cgroup v2 directory of the kernel's scope, resolved once the runtime is up, and its OOM kills then.
+    cgroup_dir: Option<PathBuf>,
+    oom_kills_at_start: u64,
+    /// Descendants seen by watchdog scans (pid to start time), killed with the tree even if they left it.
+    known_descendants: Arc<Mutex<HashMap<i32, u64>>>,
     private_protocol: bool,
     writer: mpsc::Sender<String>,
     exit: Arc<Exit>,
@@ -572,6 +608,8 @@ struct Shared {
     options: KernelOptions,
     handler: Arc<dyn HostHandler>,
     limits: KernelResourceLimits,
+    /// The tree cap in MiB (0: none).
+    tree_memory_mb: u64,
     snapshot_key: Vec<u8>,
     state: Mutex<State>,
     changed: Condvar,
@@ -594,11 +632,20 @@ impl Kernel {
             return Err(KernelError::new("RLM kernel continuity requires a snapshot path"));
         }
         let snapshot_key = options.snapshot_key.clone().unwrap_or_else(process_snapshot_key);
+        let tree_memory_mb = match &options.tree_memory {
+            Some(tree) => tree_memory::kernel_tree_memory_limit(
+                std::env::var("ULTRON_RLM_MAX_TREE_MEMORY_MB").ok().as_deref(),
+                limits.max_memory_mb,
+                tree.max_mb,
+            )?,
+            None => 0,
+        };
         Ok(Self {
             shared: Arc::new(Shared {
                 options,
                 handler,
                 limits,
+                tree_memory_mb,
                 snapshot_key,
                 state: Mutex::new(State::default()),
                 changed: Condvar::new(),
@@ -637,6 +684,32 @@ impl Kernel {
             .generation
             .as_ref()
             .and_then(|generation| u32::try_from(generation.pid).ok())
+    }
+
+    /// Proportional memory of the kernel's process tree (Linux, read from /proc) and the tree cap in bytes; None while
+    /// no kernel process runs (kernel.ts `memoryUsage`, for `rlm.pool`).
+    pub fn memory_usage(&self) -> Option<(u64, Option<u64>)> {
+        let pid = {
+            let state = lock(&self.shared.state);
+            if state.closed {
+                return None;
+            }
+            state.generation.as_ref()?.pid
+        };
+        if !cfg!(target_os = "linux") {
+            return None;
+        }
+        let cap = self.shared.tree_memory_mb;
+        Some((
+            tree_memory::tree_memory_usage(pid).0,
+            (cap > 0).then(|| cap * 1024 * 1024),
+        ))
+    }
+
+    /// How the running kernel's tree cap is enforced; None while no kernel process runs.
+    pub fn tree_memory_backend(&self) -> Option<TreeMemoryBackend> {
+        let state = lock(&self.shared.state);
+        state.generation.as_ref().map(|generation| generation.tree_backend)
     }
 
     /// The sandbox the running kernel is in; None when unsandboxed or not running.
@@ -1111,6 +1184,79 @@ impl Shared {
             .is_some_and(|used| used - start > limit + grace)
     }
 
+    /// Whether the tree cap has been hit: for a cgroup scope, an OOM kill in its memory.events since the runtime came
+    /// up; for the watchdog, the summed memory of the kernel's tree is over the cap.
+    fn tree_memory_exceeded(&self, generation: &mut Generation) -> bool {
+        match generation.tree_backend {
+            TreeMemoryBackend::Off => false,
+            TreeMemoryBackend::Watchdog => {
+                watchdog_tree_bytes(generation.pid, &generation.known_descendants) > self.tree_memory_mb * 1024 * 1024
+            }
+            TreeMemoryBackend::Cgroup => {
+                if generation.cgroup_dir.is_none() {
+                    // Before systemd-run execs the runtime the pid may still sit in the caller's cgroup.
+                    let dir = tree_memory::process_cgroup_dir(generation.pid)
+                        .filter(|dir| tree_memory::is_foreign_scope(dir));
+                    let Some(dir) = dir.filter(|_| generation.ready_received) else {
+                        return false;
+                    };
+                    generation.oom_kills_at_start = tree_memory::cgroup_oom_kills(&dir).unwrap_or(0);
+                    generation.cgroup_dir = Some(dir);
+                }
+                generation
+                    .cgroup_dir
+                    .as_deref()
+                    .and_then(tree_memory::cgroup_oom_kills)
+                    .is_some_and(|kills| kills > generation.oom_kills_at_start)
+            }
+        }
+    }
+
+    /// Polls the tree cap and kills the whole tree (through `fail`) when it is exceeded: the scope's memory.events
+    /// every 500 ms (the kernel enforces MemoryMax itself); the watchdog faster as the tree nears the cap. The tree is
+    /// measured outside the state lock; the poll ends with the process or once another generation runs.
+    fn start_tree_memory_watchdog(
+        self: &Arc<Self>,
+        id: u64,
+        pid: i32,
+        backend: TreeMemoryBackend,
+        known: Arc<Mutex<HashMap<i32, u64>>>,
+        exit: Arc<Exit>,
+    ) {
+        let shared = Arc::downgrade(self);
+        std::thread::spawn(move || {
+            let mut delay = Duration::from_millis(500);
+            loop {
+                if exit.wait_reaped(delay) {
+                    return;
+                }
+                let Some(shared) = shared.upgrade() else {
+                    return;
+                };
+                let cap_bytes = shared.tree_memory_mb * 1024 * 1024;
+                let bytes = (backend == TreeMemoryBackend::Watchdog).then(|| watchdog_tree_bytes(pid, &known));
+                let mut state = lock(&shared.state);
+                let Some(current) = state.current(id) else {
+                    return;
+                };
+                let exceeded = match bytes {
+                    Some(bytes) => {
+                        delay = Duration::from_millis(tree_memory::watchdog_poll_ms(bytes, cap_bytes));
+                        bytes > cap_bytes
+                    }
+                    None => shared.tree_memory_exceeded(current),
+                };
+                if exceeded {
+                    let message = tree_memory::tree_memory_limit_message(shared.tree_memory_mb, backend);
+                    shared.fail(&mut state, id, KernelError::new(message));
+                    drop(state);
+                    shared.changed.notify_all();
+                    return;
+                }
+            }
+        });
+    }
+
     /// Waits until `generation` is initialized, its startup times out, or it (or the call `op`) fails.
     fn wait_started<'a>(
         self: &'a Arc<Self>,
@@ -1382,6 +1528,19 @@ impl Shared {
             Some(launcher) => sandboxed::mechanism(launcher)?,
             None => None,
         };
+        let tree_backend = match &options.tree_memory {
+            None => TreeMemoryBackend::Off,
+            Some(tree) => {
+                let requested = tree
+                    .backend
+                    .clone()
+                    .or_else(|| std::env::var("ULTRON_RLM_TREE_MEMORY_BACKEND").ok());
+                // Under a sandbox the scope would have to wrap the sandbox's launcher: the watchdog caps the tree.
+                tree_memory::tree_memory_backend(self.tree_memory_mb, requested.as_deref(), || {
+                    mechanism.is_none() && tree_memory::cgroup_scope_available(tree.launcher.as_os_str())
+                })
+            }
+        };
         let mut argv: Vec<std::ffi::OsString> = vec![python.clone().into(), options.runtime_path.clone().into()];
         if private_protocol {
             argv.push("--protocol-fds".into());
@@ -1410,9 +1569,22 @@ impl Shared {
                 extra_env: &options.env,
             }),
             _ => {
-                let mut command = Command::new(&argv[0]);
+                let mut command = match (&options.tree_memory, tree_backend) {
+                    // systemd-run execs the kernel itself inside the capped scope.
+                    (Some(tree), TreeMemoryBackend::Cgroup) => {
+                        let mut command = Command::new(&tree.launcher);
+                        command
+                            .args(&tree_memory::cgroup_scope_command(self.tree_memory_mb)[1..])
+                            .args(&argv);
+                        command
+                    }
+                    _ => {
+                        let mut command = Command::new(&argv[0]);
+                        command.args(&argv[1..]);
+                        command
+                    }
+                };
                 command
-                    .args(&argv[1..])
                     .current_dir(&options.cwd)
                     .env_clear()
                     .envs(kernel_environment(std::env::vars_os()))
@@ -1476,9 +1648,14 @@ impl Shared {
             restore_path.is_some() || (options.continuity.is_some() && state.continuity.crash.is_some());
         let (writer, lines) = mpsc::channel::<String>();
         let exit = Arc::new(Exit::default());
+        let known_descendants: Arc<Mutex<HashMap<i32, u64>>> = Arc::default();
         state.generation = Some(Generation {
             id,
             pid,
+            tree_backend,
+            cgroup_dir: None,
+            oom_kills_at_start: 0,
+            known_descendants: known_descendants.clone(),
             private_protocol,
             writer,
             exit: exit.clone(),
@@ -1561,6 +1738,9 @@ impl Shared {
                 });
             });
         }
+        if tree_backend != TreeMemoryBackend::Off {
+            self.start_tree_memory_watchdog(id, pid, tree_backend, known_descendants, exit.clone());
+        }
         let shared = self.clone();
         std::thread::spawn(move || {
             if let Some(process) = rustix::process::Pid::from_raw(pid) {
@@ -1575,7 +1755,23 @@ impl Shared {
             exit.changed.notify_all();
             shared.with_state(|state| {
                 if state.current(id).is_some() {
-                    let error = shared.exit_error(state, status.ok());
+                    // A cgroup OOM kill of the kernel itself arrives as SIGKILL; the scope still exists while its
+                    // other processes live, so its memory.events says whether the tree cap did it.
+                    let killed = status
+                        .as_ref()
+                        .ok()
+                        .and_then(|status| status.signal())
+                        .is_some_and(|signal| signal == SIGKILL || signal == SIGTERM);
+                    let tree_kill = match state.current(id) {
+                        Some(current) if killed => shared.tree_memory_exceeded(current).then_some(current.tree_backend),
+                        _ => None,
+                    };
+                    let error = match tree_kill {
+                        Some(backend) => {
+                            KernelError::new(tree_memory::tree_memory_limit_message(shared.tree_memory_mb, backend))
+                        }
+                        None => shared.exit_error(state, status.ok()),
+                    };
                     shared.fail(state, id, error);
                 }
             });
@@ -1672,7 +1868,16 @@ impl Shared {
             waiter.controller.abort(error.message());
         }
         state.reject_ops(&error);
-        process::kill_process_tree(failed.pid, true, !failed.exit.exited());
+        let known = lock(&failed.known_descendants).clone();
+        process::kill_process_tree(
+            failed.pid,
+            true,
+            !failed.exit.exited(),
+            process::KillExtras {
+                known: Some(&known),
+                cgroup_dir: failed.cgroup_dir.as_deref(),
+            },
+        );
         // Dropping the generation closes the writer channel, which closes the kernel's input.
     }
 
@@ -1744,6 +1949,10 @@ impl Shared {
                 }
                 current.ready_received = true;
                 current.initialized = !current.host_completes_startup;
+                // Resolve the scope and its OOM baseline now that systemd-run has exec'd the runtime.
+                if current.tree_backend == TreeMemoryBackend::Cgroup {
+                    self.tree_memory_exceeded(current);
+                }
                 Ok(())
             }
             "host_request" => {
@@ -1771,6 +1980,17 @@ impl Shared {
                 let status = frame.get("status").map(Value::as_str);
                 if event == "done" && status.is_some_and(|status| status != Some("ok") && status != Some("error")) {
                     return Err("done event has invalid status".into());
+                }
+                // A subprocess killed by the scope's OOM killer may let the cell finish; report the cap, not a stray
+                // error.
+                if event == "done"
+                    && current.tree_backend == TreeMemoryBackend::Cgroup
+                    && current.pending.contains_key(&id)
+                    && self.tree_memory_exceeded(current)
+                {
+                    let message = tree_memory::tree_memory_limit_message(self.tree_memory_mb, current.tree_backend);
+                    self.fail(state, generation, KernelError::new(message));
+                    return Ok(());
                 }
                 route_execution_frame(state, generation, &id, event, &frame)
             }
@@ -1854,6 +2074,20 @@ impl Shared {
             self.fail(state, generation, error);
         }
     }
+}
+
+/// The watchdog's measure of `root`'s tree; remembers the descendants it saw (pid to start time) so they are killed
+/// with the tree even after they left it.
+fn watchdog_tree_bytes(root: i32, known: &Mutex<HashMap<i32, u64>>) -> u64 {
+    let (bytes, descendants) = tree_memory::tree_memory_usage(root);
+    let mut known = lock(known);
+    known.retain(|pid, start| process::process_stat(*pid).is_some_and(|stat| stat.start_time == *start));
+    for pid in descendants {
+        if let Some(stat) = process::process_stat(pid) {
+            known.insert(pid, stat.start_time);
+        }
+    }
+    bytes
 }
 
 fn entry_reject(state: &mut State, op: u64, error: KernelError) {

@@ -12,9 +12,11 @@
 use crate::Env;
 use crate::args::Args;
 use crate::print_mode::{Target, server_options};
+use client::radius::{ConnectionState, RadiusClientReconnect, ReconnectClient};
 use client::runtime::{CallError, Connection};
 use daemon::server::{RunningServer, ServerOptions, start_foreground_server};
 use serde_json::{Value, json};
+use server::radius_relay::RelayAuthResolver;
 use session_core::core::{Op, OpResult};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
@@ -32,13 +34,147 @@ const SUPERVISE: Duration = Duration::from_millis(100);
 /// How long a link keeps trying to rejoin before it reports the session lost.
 const REJOIN_TIMEOUT: Duration = client::runtime::REJOIN_TIMEOUT;
 
+/// The `reconnecting` reason when the attached session's worker restarted under the link.
+pub const WORKER_RESTARTED: &str = "The session worker restarted";
+
 /// A `connection` watch event.
 pub fn connection_event(state: &str, message: Option<&str>) -> Value {
     json!({"type": "connection", "state": state, "message": message})
 }
 
+/// A server this client reaches but does not run (`ClientRuntimeRoute`): a Unix socket, or a server hosted through
+/// the Radius gateway.
+#[derive(Clone)]
+pub enum RemoteRoute {
+    Unix(client::runtime::Route),
+    Radius {
+        server_id: String,
+        auth: Arc<dyn RelayAuthResolver>,
+    },
+}
+
+impl RemoteRoute {
+    pub fn server_id(&self) -> &str {
+        match self {
+            RemoteRoute::Unix(route) => &route.server_id,
+            RemoteRoute::Radius { server_id, .. } => server_id,
+        }
+    }
+
+    /// `unix` or `radius`.
+    pub fn transport(&self) -> &'static str {
+        match self {
+            RemoteRoute::Unix(_) => "unix",
+            RemoteRoute::Radius { .. } => "radius",
+        }
+    }
+
+    pub fn socket_path(&self) -> Option<&std::path::Path> {
+        match self {
+            RemoteRoute::Unix(route) => Some(&route.path),
+            RemoteRoute::Radius { .. } => None,
+        }
+    }
+
+    /// A new connection over the route's transport.
+    pub fn connect(&self) -> Result<Arc<Connection>, CallError> {
+        match self {
+            RemoteRoute::Unix(route) => Connection::connect(&route.path, &route.server_id),
+            RemoteRoute::Radius { server_id, auth } => Connection::connect_radius(server_id, auth.as_ref()),
+        }
+    }
+}
+
+/// Where a link's server is: this process's own generation (restarted when it goes away), or a remote route.
+#[derive(Clone)]
+enum Origin {
+    Foreground(Box<ServerOptions>),
+    Remote(RemoteRoute),
+}
+
+/// The session a remote client opens (`prepareClientSession`): the one named, the most recently modified one, a
+/// new one (a fork of `fork` when given); `name` names a new one and renames an existing one.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RemoteSelection {
+    pub session_id: Option<String>,
+    pub continue_: bool,
+    pub name: Option<String>,
+    pub fork: Option<String>,
+}
+
+/// What [`select_remote_session`] decided.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Selected {
+    /// Open this existing session (renaming it first when `rename`).
+    Existing { session_id: String, rename: Option<String> },
+    /// Create a session with these `pi.session-management.create` options.
+    Create(Value),
+}
+
+/// `prepareClientSession`'s choice among the server's sessions (`describe` summaries).
+pub fn select_remote_session(
+    selection: &RemoteSelection,
+    sessions: &[Value],
+    radius: bool,
+) -> Result<Selected, String> {
+    let existing = |id: &str| Selected::Existing {
+        session_id: id.to_string(),
+        rename: selection.name.clone(),
+    };
+    if let Some(id) = &selection.session_id {
+        if sessions.iter().any(|s| s["sessionId"] == json!(id)) {
+            return Ok(existing(id));
+        }
+        if radius {
+            return Err(format!("Remote server does not contain Session {id}"));
+        }
+        let mut options = json!({"id": id});
+        if let Some(name) = &selection.name {
+            options["name"] = json!(name);
+        }
+        return Ok(Selected::Create(options));
+    }
+    if selection.continue_ {
+        let text = |s: &Value, key: &str| s[key].as_str().unwrap_or_default().to_string();
+        let newest = sessions.iter().min_by(|a, b| {
+            let modified = |s: &Value| s["modifiedAt"].as_f64().unwrap_or(0.0);
+            modified(b)
+                .partial_cmp(&modified(a))
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| text(a, "serverId").cmp(&text(b, "serverId")))
+                .then_with(|| text(a, "sessionId").cmp(&text(b, "sessionId")))
+        });
+        if let Some(newest) = newest {
+            return Ok(existing(&text(newest, "sessionId")));
+        }
+    }
+    let mut options = json!({});
+    if let Some(fork) = &selection.fork {
+        options["forkFromSessionId"] = json!(fork);
+    }
+    if let Some(name) = &selection.name {
+        options["name"] = json!(name);
+    }
+    Ok(Selected::Create(options))
+}
+
+/// A Radius recovery's watch events (`ServerConnectionState` and `SessionAttachmentState` of client-tui.ts).
+pub fn radius_connection_event(state: ConnectionState) -> Value {
+    let state = match state {
+        ConnectionState::Connecting => "connecting",
+        ConnectionState::Connected => "connected",
+        ConnectionState::Disconnected => "disconnected",
+    };
+    json!({"type": "radius_connection", "state": state})
+}
+
+pub fn radius_attachment_event(state: &str, session_id: &str) -> Value {
+    json!({"type": "radius_attachment", "state": state, "sessionId": session_id})
+}
+
 struct State {
-    server: Arc<RunningServer>,
+    /// This process's own server generation (none for a remote route).
+    server: Option<Arc<RunningServer>>,
     connection: Arc<Connection>,
     session_id: String,
     /// The attachment the subscriptions belong to.
@@ -52,8 +188,15 @@ struct State {
 struct Shared {
     state: Mutex<State>,
     changed: Condvar,
-    options: ServerOptions,
+    origin: Origin,
     events: WatchSink,
+    /// A Radius route's reconnector (`RadiusClientReconnect`), and whether it is recovering the connection now.
+    radius: Mutex<Option<Arc<RadiusClientReconnect>>>,
+    radius_recovering: AtomicBool,
+    /// A reconnection attempt is under way (`connecting`).
+    radius_connecting: AtomicBool,
+    /// A remote Unix route's loss was reported (it has no reconnect).
+    lost_reported: AtomicBool,
     closing: AtomicBool,
     /// Serializes attaching (the supervisor and the owner's `attach`).
     attaching: Mutex<()>,
@@ -65,7 +208,7 @@ fn session_call(shared: &Shared, service: &str, member: &str, args: Value) -> Op
     loop {
         shared.wait_reconnected();
         let connection = shared.connection();
-        if connection.is_closed() && Instant::now() < deadline {
+        if connection.is_closed() && !shared.lost_reported.load(Ordering::SeqCst) && Instant::now() < deadline {
             // Not sent: wait for the supervisor to reconnect.
             std::thread::sleep(SUPERVISE);
             continue;
@@ -185,7 +328,12 @@ impl Shared {
         connection
             .wait_attachment(|a| a.is_some_and(|a| a.session_id == id))
             .map_err(fail)?;
-        self.subscribe(&connection, id)
+        self.subscribe(&connection, id)?;
+        let reconnector = self.radius.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        if let Some(reconnector) = reconnector {
+            reconnector.attachment_changed(Some(id));
+        }
+        Ok(())
     }
 
     /// Subscribe the attached session's services and follow its transcript.
@@ -245,6 +393,7 @@ impl Shared {
         loop {
             let reconnecting = self.lock().reconnecting;
             if self.closing.load(Ordering::SeqCst)
+                || self.lost_reported.load(Ordering::SeqCst)
                 || Instant::now() >= deadline
                 || (!reconnecting && self.needs_rejoin().is_none())
             {
@@ -271,7 +420,7 @@ impl Shared {
         let current = state.connection.attachment();
         let moved = current.as_ref().map(|a| (&a.session_id, &a.attachment_id))
             != Some((&state.session_id, state.attachment_id.as_ref()?));
-        moved.then_some("The session worker restarted")
+        moved.then_some(WORKER_RESTARTED)
     }
 
     /// Rejoin the session: a new server generation (and connection) if the server is gone, then attach and
@@ -311,19 +460,135 @@ impl Shared {
             (state.connection.is_closed(), state.session_id.clone())
         };
         if closed {
-            let server = start_foreground_server(&self.options).map_err(|e| e.to_string())?;
+            let Origin::Foreground(options) = &self.origin else {
+                return Err("The server connection closed".into());
+            };
+            let server = start_foreground_server(options).map_err(|e| e.to_string())?;
             let connection = Connection::connect(&server.endpoint_path, &server.server_id).map_err(fail)?;
-            let mut state = self.lock();
-            let old = std::mem::replace(&mut state.server, server);
-            state.connection = connection;
-            state.subscriptions.clear();
-            state.transcript = None;
-            state.attachment_id = None;
-            drop(state);
+            let old = self.replace_connection(connection, Some(server));
             // The old generation already closed when it lost its coordinator; this only waits for that.
-            std::thread::spawn(move || old.close());
+            if let Some(old) = old {
+                std::thread::spawn(move || old.close());
+            }
         }
         self.attach(&id)
+    }
+
+    /// Use `connection` from now on (and `server`, when this process started a new generation): the old
+    /// connection's subscriptions are gone with it. Returns the replaced generation.
+    fn replace_connection(
+        &self,
+        connection: Arc<Connection>,
+        server: Option<Arc<RunningServer>>,
+    ) -> Option<Arc<RunningServer>> {
+        let mut state = self.lock();
+        state.connection = connection;
+        state.subscriptions.clear();
+        state.transcript = None;
+        state.attachment_id = None;
+        match server {
+            Some(server) => state.server.replace(server),
+            None => None,
+        }
+    }
+
+    fn radius_route(&self) -> Option<&RemoteRoute> {
+        match &self.origin {
+            Origin::Remote(route @ RemoteRoute::Radius { .. }) => Some(route),
+            _ => None,
+        }
+    }
+
+    /// The Radius connection closed: report it and let the reconnector bring it back (`RadiusClientReconnect`:
+    /// after 1 s, doubling to 30 s per failure), then re-attach the session. Operations wait meanwhile.
+    fn recover_radius(self: &Arc<Self>) {
+        if self.radius_recovering.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        self.set_reconnecting(true);
+        (self.events)(radius_connection_event(ConnectionState::Disconnected));
+        let reconnector = self.radius.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        if let Some(reconnector) = reconnector {
+            reconnector.connection_state_changed(ConnectionState::Disconnected);
+        }
+    }
+
+    /// A Radius route's reconnector over this link.
+    fn start_radius_reconnector(self: &Arc<Self>) {
+        if self.radius_route().is_none() {
+            return;
+        }
+        let client: Arc<dyn ReconnectClient> = Arc::new(RadiusLink(Arc::downgrade(self)));
+        let shared = Arc::downgrade(self);
+        let reattach: client::radius::Reattach = Arc::new(move |session_id: &str| {
+            let shared = shared.upgrade().ok_or("The link is closed")?;
+            (shared.events)(radius_attachment_event("attaching", session_id));
+            shared.attach(session_id)?;
+            shared.radius_recovering.store(false, Ordering::SeqCst);
+            shared.set_reconnecting(false);
+            (shared.events)(radius_attachment_event("attached", session_id));
+            Ok(())
+        });
+        let session = Some(self.lock().session_id.clone()).filter(|id| !id.is_empty());
+        let reconnector = RadiusClientReconnect::new(client, session, reattach, None);
+        *self.radius.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(reconnector));
+    }
+
+    /// Stop a Radius route's reconnector (`dispose()`).
+    fn stop_radius_reconnector(&self) {
+        let reconnector = self.radius.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(reconnector) = reconnector {
+            reconnector.dispose();
+        }
+    }
+}
+
+/// The link as the Radius reconnector's client (`RadiusReconnectClient`): reconnecting opens a new relay connection
+/// for the link; the connection's states are reported to the link's watcher.
+struct RadiusLink(std::sync::Weak<Shared>);
+
+impl ReconnectClient for RadiusLink {
+    fn connected(&self) -> bool {
+        self.0
+            .upgrade()
+            .is_some_and(|shared| !shared.radius_connecting.load(Ordering::SeqCst) && !shared.connection().is_closed())
+    }
+
+    fn connection_state(&self) -> ConnectionState {
+        match self.0.upgrade() {
+            Some(shared) if shared.radius_connecting.load(Ordering::SeqCst) => ConnectionState::Connecting,
+            Some(shared) if !shared.connection().is_closed() => ConnectionState::Connected,
+            _ => ConnectionState::Disconnected,
+        }
+    }
+
+    fn disconnect(&self, _reason: &str) {
+        if let Some(shared) = self.0.upgrade() {
+            shared.connection().disconnect();
+            if !shared.closing.load(Ordering::SeqCst) {
+                (shared.events)(radius_connection_event(ConnectionState::Disconnected));
+            }
+        }
+    }
+
+    fn reconnect(&self) -> Result<(), String> {
+        let shared = self.0.upgrade().ok_or("The link is closed")?;
+        let route = shared.radius_route().cloned().ok_or("Not a Radius route")?;
+        shared.radius_connecting.store(true, Ordering::SeqCst);
+        (shared.events)(radius_connection_event(ConnectionState::Connecting));
+        let connected = route.connect();
+        shared.radius_connecting.store(false, Ordering::SeqCst);
+        match connected {
+            Ok(connection) => {
+                shared.replace_connection(connection, None);
+                (shared.events)(radius_connection_event(ConnectionState::Connected));
+                Ok(())
+            }
+            Err(error) => {
+                (shared.events)(radius_connection_event(ConnectionState::Disconnected));
+                Err(fail(error))
+            }
+        }
     }
 }
 
@@ -339,26 +604,7 @@ impl Link {
                 return Err(fail(error));
             }
         };
-        let shared = Arc::new(Shared {
-            state: Mutex::new(State {
-                server,
-                connection,
-                session_id: String::new(),
-                attachment_id: None,
-                subscriptions: Vec::new(),
-                transcript: None,
-                reconnecting: false,
-            }),
-            changed: Condvar::new(),
-            options,
-            events,
-            closing: AtomicBool::new(false),
-            attaching: Mutex::new(()),
-        });
-        let mut link = Link {
-            shared,
-            created: Vec::new(),
-        };
+        let mut link = Link::new(Some(server), connection, Origin::Foreground(Box::new(options)), events);
         let name = parsed.name.as_deref();
         let selected = match target {
             Target::Open(metadata) => {
@@ -395,7 +641,71 @@ impl Link {
         Ok(link)
     }
 
-    /// Watch the connection and the attachment; rejoin when either goes away.
+    fn new(server: Option<Arc<RunningServer>>, connection: Arc<Connection>, origin: Origin, events: WatchSink) -> Link {
+        let shared = Arc::new(Shared {
+            state: Mutex::new(State {
+                server,
+                connection,
+                session_id: String::new(),
+                attachment_id: None,
+                subscriptions: Vec::new(),
+                transcript: None,
+                reconnecting: false,
+            }),
+            changed: Condvar::new(),
+            origin,
+            events,
+            closing: AtomicBool::new(false),
+            attaching: Mutex::new(()),
+            radius: Mutex::new(None),
+            radius_recovering: AtomicBool::new(false),
+            radius_connecting: AtomicBool::new(false),
+            lost_reported: AtomicBool::new(false),
+        });
+        Link {
+            shared,
+            created: Vec::new(),
+        }
+    }
+
+    /// Connect to a server this client does not run (`--connect`), select `selection`'s session on it
+    /// (`prepareClientSession`) and attach; transcript events (and a Radius route's recovery events) go to `events`.
+    pub fn open_remote(route: RemoteRoute, selection: &RemoteSelection, events: WatchSink) -> Result<Link, String> {
+        let connection = route.connect().map_err(fail)?;
+        let radius = matches!(route, RemoteRoute::Radius { .. });
+        let mut link = Link::new(None, connection, Origin::Remote(route), events);
+        let selected = link
+            .management("describe", json!([{}]))
+            .map(|listed| listed.and_then(|l| l.as_array().cloned()).unwrap_or_default())
+            .and_then(|sessions| select_remote_session(selection, &sessions, radius))
+            .and_then(|selected| match selected {
+                Selected::Existing { session_id, rename } => {
+                    if let Some(name) = rename {
+                        link.management("rename", json!([session_id, name]))?;
+                    }
+                    Ok(session_id)
+                }
+                Selected::Create(options) => link.create(options),
+            });
+        if let Err(error) = selected.and_then(|id| link.attach(&id)) {
+            link.close(false);
+            return Err(error);
+        }
+        link.shared.start_radius_reconnector();
+        link.supervise();
+        Ok(link)
+    }
+
+    /// The route of a remote link (`None` for this process's own server).
+    pub fn remote_route(&self) -> Option<RemoteRoute> {
+        match &self.shared.origin {
+            Origin::Remote(route) => Some(route.clone()),
+            Origin::Foreground(_) => None,
+        }
+    }
+
+    /// Watch the connection and the attachment; rejoin when either goes away. A Radius route's lost connection is
+    /// recovered by its reconnector; a remote Unix route's is reported once (it has no reconnect).
     fn supervise(&self) {
         let shared = Arc::downgrade(&self.shared);
         std::thread::spawn(move || {
@@ -405,8 +715,26 @@ impl Link {
                 if shared.closing.load(Ordering::SeqCst) {
                     return;
                 }
-                if let Some(reason) = shared.needs_rejoin() {
-                    let _ = shared.rejoin(reason);
+                if shared.radius_recovering.load(Ordering::SeqCst) {
+                    continue;
+                }
+                let Some(reason) = shared.needs_rejoin() else {
+                    continue;
+                };
+                let closed = shared.connection().is_closed();
+                match &shared.origin {
+                    Origin::Remote(RemoteRoute::Radius { .. }) if closed => shared.recover_radius(),
+                    Origin::Remote(RemoteRoute::Unix(_)) if closed => {
+                        if !shared.lost_reported.swap(true, Ordering::SeqCst) {
+                            (shared.events)(connection_event(
+                                "lost",
+                                Some(&daemon::lost::lost_server_message(Some(reason))),
+                            ));
+                        }
+                    }
+                    _ => {
+                        let _ = shared.rejoin(reason);
+                    }
                 }
             }
         });
@@ -510,6 +838,10 @@ impl Link {
     pub fn close(mut self, remove_created: bool) {
         self.shared.closing.store(true, Ordering::SeqCst);
         self.shared.changed.notify_all();
+        // A recovery under way is abandoned (the reconnector stops and disconnects).
+        if self.shared.radius_recovering.load(Ordering::SeqCst) {
+            self.shared.stop_radius_reconnector();
+        }
         {
             let mut state = self.shared.lock();
             self.shared.unsubscribe(&mut state);
@@ -523,8 +855,11 @@ impl Link {
                 }
             }
         }
+        self.shared.stop_radius_reconnector();
         connection.disconnect();
         let server = self.shared.lock().server.clone();
-        server.close();
+        if let Some(server) = server {
+            server.close();
+        }
     }
 }

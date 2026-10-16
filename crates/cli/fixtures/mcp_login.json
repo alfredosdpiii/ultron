@@ -1,0 +1,138 @@
+{
+ "steps": [
+  {
+   "args": [
+    "mcp",
+    "list"
+   ],
+   "ignoreBrowser": false,
+   "code": 1,
+   "stdout": "issues: needs sign-in (repl, global)\n  <ORIGIN>/mcp\n  sign in with: ultron mcp login issues\n",
+   "stderr": "",
+   "browserOpened": 0,
+   "signedIn": false
+  },
+  {
+   "args": [
+    "mcp",
+    "login",
+    "issues",
+    "--timeout",
+    "30"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "Sign in to MCP server \"issues\" in your browser:\n<ORIGIN>/authorize?<QUERY>\nSigned in to MCP server \"issues\" (1 tools).\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": true
+  },
+  {
+   "args": [
+    "mcp",
+    "list"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "issues: connected, 1 tool (repl, global)\n  <ORIGIN>/mcp\n  tools: whoami\n  resources: 0, URI templates: 0\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": true
+  },
+  {
+   "args": [
+    "mcp",
+    "list",
+    "--json"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "{\n  \"servers\": [\n    {\n      \"name\": \"issues\",\n      \"scope\": \"global\",\n      \"source\": \"<TMP>/agent/mcp.json\",\n      \"enabled\": true,\n      \"exposure\": \"repl\",\n      \"transport\": \"<ORIGIN>/mcp\",\n      \"state\": \"connected\",\n      \"tools\": [\n        \"whoami\"\n      ],\n      \"resources\": 0,\n      \"resourceTemplates\": 0\n    }\n  ],\n  \"errors\": []\n}\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": true
+  },
+  {
+   "args": [
+    "mcp",
+    "login",
+    "issues"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "Already signed in to MCP server \"issues\" (1 tools).\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": true
+  },
+  {
+   "args": [
+    "mcp",
+    "logout",
+    "issues"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "Signed out of MCP server \"issues\".\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": false
+  },
+  {
+   "args": [
+    "mcp",
+    "logout",
+    "issues"
+   ],
+   "ignoreBrowser": false,
+   "code": 0,
+   "stdout": "No stored credentials for MCP server \"issues\".\n",
+   "stderr": "",
+   "browserOpened": 1,
+   "signedIn": false
+  },
+  {
+   "args": [
+    "mcp",
+    "login",
+    "issues",
+    "--timeout",
+    "0"
+   ],
+   "ignoreBrowser": false,
+   "code": 1,
+   "stdout": "",
+   "stderr": "--timeout must be a positive number of seconds.\n",
+   "browserOpened": 1,
+   "signedIn": false
+  },
+  {
+   "args": [
+    "mcp",
+    "login",
+    "issues",
+    "--timeout",
+    "1"
+   ],
+   "ignoreBrowser": true,
+   "code": 1,
+   "stdout": "Sign in to MCP server \"issues\" in your browser:\n<ORIGIN>/authorize?<QUERY>\n",
+   "stderr": "Sign-in to MCP server \"issues\" was cancelled or not completed within 1 seconds.\n",
+   "browserOpened": 2,
+   "signedIn": false
+  }
+ ],
+ "serverLog": [
+  "401 none",
+  "401 none",
+  "metadata resource",
+  "metadata authorization server",
+  "register {\"client_name\": \"ultron\", \"grant_types\": [\"authorization_code\", \"refresh_token\"], \"redirect_uris\": [\"http://127.0.0.1:<PORT>/callback\"], \"response_types\": [\"code\"], \"token_endpoint_auth_method\": \"none\"}",
+  "authorize {\"client_id\": \"client-1\", \"code_challenge_method\": \"S256\", \"redirect_uri\": \"http://127.0.0.1:<PORT>/callback\", \"resource\": \"<ORIGIN>/mcp\", \"response_type\": \"code\", \"state\": \"<set>\"}",
+  "token code {\"client_id\": \"client-1\", \"code\": \"code-1\", \"grant_type\": \"authorization_code\", \"redirect_uri\": \"http://127.0.0.1:<PORT>/callback\", \"resource\": \"<ORIGIN>/mcp\"}",
+  "401 none",
+  "metadata resource",
+  "metadata authorization server",
+  "register {\"client_name\": \"ultron\", \"grant_types\": [\"authorization_code\", \"refresh_token\"], \"redirect_uris\": [\"http://127.0.0.1:<PORT>/callback\"], \"response_types\": [\"code\"], \"token_endpoint_auth_method\": \"none\"}"
+ ]
+}

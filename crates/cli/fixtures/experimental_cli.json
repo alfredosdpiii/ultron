@@ -1,0 +1,1619 @@
+{
+	"cases": [
+		{
+			"argv": [
+				"server",
+				"--server-id",
+				"00000000-0000-4000-8000-000000000001",
+				"--session-dir",
+				"~/pi-sessions",
+				"--provider",
+				"anthropic",
+				"--model",
+				"claude-sonnet-4-5",
+				"-e",
+				"./first-plugin",
+				"-e=./second-plugin"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "server",
+					"provider": "anthropic",
+					"model": "claude-sonnet-4-5",
+					"pluginPackages": [
+						"./first-plugin",
+						"./second-plugin"
+					],
+					"serverId": "00000000-0000-4000-8000-000000000001",
+					"sessionDir": "~/pi-sessions"
+				}
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--model",
+				"anthropic/claude-sonnet-4-5:high"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "server",
+					"model": "anthropic/claude-sonnet-4-5:high"
+				}
+			}
+		},
+		{
+			"argv": [
+				"server"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "server"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-c"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"continue": true
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--continue"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"continue": true
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-r"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"resume": true
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--resume"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"resume": true
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-r",
+				"Explain this project"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"resume": true,
+					"prompt": "Explain this project"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--",
+				"-starts with dash"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"prompt": "-starts with dash"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--",
+				"a",
+				"b"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"a",
+				"b"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				""
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--session-id",
+				"demo-1",
+				"hello"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"sessionId": "demo-1",
+					"prompt": "hello"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--model",
+				"anthropic/claude-sonnet-4-5:high",
+				"-e",
+				"./first-plugin",
+				"-e",
+				"./second-plugin"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"model": "anthropic/claude-sonnet-4-5:high",
+					"pluginPackages": [
+						"./first-plugin",
+						"./second-plugin"
+					]
+				}
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--auth-token",
+				"secret"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "server",
+					"auth": {
+						"type": "token",
+						"token": "secret"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token",
+				"secret"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"auth": {
+						"type": "token",
+						"token": "secret"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--auth-token-file",
+				"/tmp/token"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "server",
+					"auth": {
+						"type": "file",
+						"path": "/tmp/token"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token-file",
+				"/tmp/token"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"auth": {
+						"type": "file",
+						"path": "/tmp/token"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token=secret",
+				"--auth-token-file=/tmp/token"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--auth-token and --auth-token-file are mutually exclusive"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token",
+				"-secret"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--auth-token requires a value",
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token=-secret"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"auth": {
+						"type": "token",
+						"token": "-secret"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--auth-token",
+				"a",
+				"--auth-token",
+				"b"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--auth-token may only be specified once"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--listen",
+				"unix:///tmp/pi.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--listen",
+				"unix:///tmp/pi.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental server command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--connect",
+				"unix:///tmp/pi.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental server command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--provider",
+				"anthropic"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--provider requires --model"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--provider",
+				"anthropic",
+				"--model",
+				"m"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"provider": "anthropic",
+					"model": "m"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-c",
+				"-r"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--session-id, --continue, and --resume are mutually exclusive"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--session-id",
+				"x",
+				"-c",
+				"-r"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--session-id, --continue, and --resume are mutually exclusive"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--continue=true"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--continue does not take a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--continue=",
+				"-c"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--continue does not take a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--provider",
+				"anthropic"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--provider requires --model"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--server-id",
+				"not-a-uuid"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --server-id \"not-a-uuid\"; expected a lowercase UUIDv4"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--server-id"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--server-id requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--session-dir"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--session-dir requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-e"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"-e requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--session-dir",
+				"/tmp/first",
+				"--session-dir=/tmp/second"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--session-dir may only be specified once"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect="
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--connect requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"--session-id",
+				"x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--connect requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--tui-mode",
+				"wrong",
+				"--model",
+				"claude-sonnet"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--model",
+				"m",
+				"extra"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental server command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"server",
+				"--provider",
+				"p",
+				"--listen",
+				"x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--provider requires --model",
+					"The experimental server command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://bad",
+				"--connect",
+				"radius://bad2",
+				"--provider",
+				"p"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID",
+					"Radius transport address requires a lowercase UUIDv4 server ID",
+					"--provider requires --model"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--session-id=",
+				"--model="
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--session-id requires a value",
+					"--model requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"-c",
+				"prompt",
+				"more"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"The experimental client command does not support existing CLI options yet"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001",
+				"--auth-token",
+				"t",
+				"-c",
+				"hi"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"auth": {
+						"type": "token",
+						"token": "t"
+					},
+					"connect": {
+						"transport": "radius",
+						"serverId": "00000000-0000-4000-8000-000000000001"
+					},
+					"continue": true,
+					"prompt": "hi"
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "radius",
+						"serverId": "00000000-0000-4000-8000-000000000001"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001/"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "radius",
+						"serverId": "00000000-0000-4000-8000-000000000001"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001/x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001/x\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001?a=1"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001?a=1\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001?"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001?\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001#h"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001#h\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001:80"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001:80\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001:"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://user@00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://user@00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://user:pw@00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://user:pw@00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"RADIUS://00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"RADIUS://00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius:00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius:00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius:/00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius:/00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius:///00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius:///00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-00000000000A"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-1000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://not-a-server"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://%41"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Radius transport address requires a lowercase UUIDv4 server ID"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://a b"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://a b\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/pi.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/pi.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/pi.sock/"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/pi.sock/"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a%20b.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/a b.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a b.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/a b.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/%zz.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/%zz.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/%00.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/%00.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/%C3%A9.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/é.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/é.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/é.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/%ff.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/%ff.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/../x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/../x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/./x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/./x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/%2e%2e/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/%2e%2e/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp//x.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp//x.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:////tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:////tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/pi.sock?wrong=value"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/pi.sock?wrong=value\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/pi.sock#frag"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/pi.sock#frag\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a\\b.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/a\\b.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a|b.sock"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/tmp/a|b.sock"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a{b}.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/a{b}.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a`b.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/a`b.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a\"b.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/a\"b.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/a<b>.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/a<b>.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///"
+			],
+			"result": {
+				"ok": true,
+				"command": {
+					"command": "client",
+					"connect": {
+						"transport": "unix",
+						"path": "/"
+					}
+				}
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix://"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix://\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:/tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:/tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix://relative.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unix transport address must not include an authority"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix://host/tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unix transport address must not include an authority"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix://user@/tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix://user@/tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix://:1/tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix://:1/tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"UNIX:///tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"UNIX:///tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"Unix:///tmp/x.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"Unix:///tmp/x.sock\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"ws://localhost:8080"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"ws:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"http://example.com"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"http:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"https://"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"https://\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"http://"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"http://\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"file:///tmp/x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"file:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"tcp://127.0.0.1:1"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"tcp:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"foo"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"foo\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				""
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"--connect requires a value"
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"1abc://x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"1abc://x\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"a+b-c.d://x"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"a+b-c.d:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"mailto:x@y"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Unsupported --connect transport \"mailto:\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				" radius://00000000-0000-4000-8000-000000000001"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \" radius://00000000-0000-4000-8000-000000000001\""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"radius://00000000-0000-4000-8000-000000000001 "
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"radius://00000000-0000-4000-8000-000000000001 \""
+				]
+			}
+		},
+		{
+			"argv": [
+				"client",
+				"--connect",
+				"unix:///tmp/\ttab.sock"
+			],
+			"result": {
+				"ok": false,
+				"errors": [
+					"Invalid --connect address \"unix:///tmp/\ttab.sock\""
+				]
+			}
+		}
+	]
+}

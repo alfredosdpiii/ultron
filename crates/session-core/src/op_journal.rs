@@ -68,6 +68,15 @@ pub struct Run {
     /// An error answer the run ends with commits in the run's terminal transaction (`providerError`): its entry,
     /// usage row and tip, until then.
     error_answer: Vec<Write>,
+    /// The generation's retry policy (`generationContext.retryPolicy`, `normalizedRetryPolicy` of settings.json's
+    /// `retry`).
+    retry_policy: Value,
+    /// The generation's attempt in progress (1-based).
+    attempt: u64,
+    /// The next error answer is retried: it commits with `assistant.retry_wait` until `(notBefore, error)`.
+    retry_next: Option<(i64, String)>,
+    /// The operation waits to retry: the attempt that comes next.
+    retry_waiting: Option<u64>,
 }
 
 /// A compaction inside a run (packages/agent/src/harness/runtime/drive/structural.ts): its task (id, reason and the
@@ -108,6 +117,19 @@ fn mint(session: &Session) -> String {
 impl Run {
     /// Admit a run: the prompt entry, the operation and the lane's current operation, then the first checkpoint.
     pub fn admit(session: &mut Session, config: Value, settings: Value, prompt: Value) -> Result<Run, String> {
+        Run::admit_with(session, config, settings, prompt, &[])
+    }
+
+    /// [`Run::admit`] that also places `captured` (`(entryId, message)` of the lane's `nextRun` inbox items) on the
+    /// branch before the prompt, in the admission transaction, and deletes their pending entries (`selectAcceptedInbox`
+    /// then the acceptance commit of lane.ts).
+    pub fn admit_with(
+        session: &mut Session,
+        config: Value,
+        settings: Value,
+        prompt: Value,
+        captured: &[(String, Value)],
+    ) -> Result<Run, String> {
         let started_at = prompt
             .get("timestamp")
             .and_then(Value::as_i64)
@@ -143,6 +165,10 @@ impl Run {
             preparations: Vec::new(),
             ready_written: false,
             error_answer: Vec::new(),
+            retry_policy: retry_policy(),
+            attempt: 1,
+            retry_next: None,
+            retry_waiting: None,
         };
         let meta = json!({
             "operationId": operation_id, "lane": "main", "sourceTipId": source_tip, "startedAt": started_at,
@@ -151,13 +177,21 @@ impl Run {
         let starting = json!({
             "at": "starting", "control": {"status": "running"}, "settings": run.settings, "latestAssistantEntryId": null,
         });
-        session.commit(&[
-            entry(&prompt_id, source_tip.as_deref(), prompt),
+        let mut writes = Vec::new();
+        let mut parent = source_tip.clone();
+        for (id, message) in captured {
+            writes.push(entry(id, parent.as_deref(), message.clone()));
+            parent = Some(id.clone());
+        }
+        writes.push(entry(&prompt_id, parent.as_deref(), prompt));
+        writes.extend(captured.iter().map(|(id, _)| Write::delete(PENDING_ENTRY, id)));
+        writes.extend([
             Write::set(BRANCH_TIP, "main", prompt_id.clone().into()),
             Write::set(OP_META, &operation_id, meta),
             Write::set(OP_STATE, &operation_id, starting),
             Write::set(LANE_STATE, "main", run.lane_state(true)),
-        ])?;
+        ]);
+        session.commit(&writes)?;
         let checkpoint = run.checkpoint(json!({"kind": "need_assistant", "overflowRecoveryUsed": false}));
         session.commit(&[Write::set(OP_STATE, &run.operation_id, checkpoint)])?;
         Ok(run)
@@ -263,7 +297,44 @@ impl Run {
             preparations,
             ready_written: false,
             error_answer: Vec::new(),
+            retry_policy: match &context["retryPolicy"] {
+                Value::Null => retry_policy(),
+                policy => policy.clone(),
+            },
+            attempt: state["attempt"]
+                .as_u64()
+                .or_else(|| state["nextAttempt"].as_u64())
+                .unwrap_or(1),
+            retry_next: None,
+            retry_waiting: (state["at"] == "assistant.retry_wait")
+                .then(|| state["nextAttempt"].as_u64())
+                .flatten(),
         })
+    }
+
+    /// The generation's retry policy from now on (`{maxAttempts, baseDelayMs, maxAgentDelayMs}`).
+    pub fn set_retry_policy(&mut self, policy: Value) {
+        self.retry_policy = policy;
+    }
+
+    /// The generation's attempt in progress (1-based).
+    pub fn attempt(&self) -> u64 {
+        self.attempt
+    }
+
+    /// The generation step (`generationContext.stepId`).
+    pub fn step_id(&self) -> &str {
+        &self.step_id
+    }
+
+    /// The operation waits to retry its generation: the attempt that comes next.
+    pub fn retry_waiting(&self) -> Option<u64> {
+        self.retry_waiting
+    }
+
+    /// The next error answer is retried (`assistant.retry_wait` until `not_before`, with `error`).
+    pub fn schedule_retry(&mut self, not_before: i64, error: String) {
+        self.retry_next = Some((not_before, error));
     }
 
     /// The compaction the stored state is in (`summary.*`), if the worker died during one.
@@ -306,7 +377,16 @@ impl Run {
         if running {
             json!({"currentOperationId": self.operation_id, "lastOperationId": self.last_operation_id, "inbox": self.inbox})
         } else {
-            json!({"currentOperationId": null, "lastOperationId": self.operation_id, "inbox": []})
+            // Messages queued for the next run wait in the inbox past this run's end.
+            let next_run: Vec<Value> = self
+                .inbox
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|item| item["kind"] == "nextRun")
+                .cloned()
+                .collect();
+            json!({"currentOperationId": null, "lastOperationId": self.operation_id, "inbox": next_run})
         }
     }
 
@@ -334,7 +414,7 @@ impl Run {
             "stepId": self.step_id,
             "triggerEntryId": self.generation_trigger.as_ref().unwrap_or(&self.trigger),
             "configuration": self.config,
-            "streamOptions": stream_options(), "retryPolicy": retry_policy(),
+            "streamOptions": stream_options(), "retryPolicy": self.retry_policy,
             "overflowRecoveryUsed": self.overflow_recovery_used,
         })
     }
@@ -370,12 +450,23 @@ impl Run {
         if !error_answer.is_empty() {
             session.commit(&error_answer)?;
         }
-        if std::mem::take(&mut self.ready_written) {
+        if let Some(next) = self.retry_waiting.take() {
+            // The retry wait ended (`runRetryWait`): the same step again, as the next attempt.
+            let mut ready = self.scope("assistant.ready");
+            ready.insert("generationContext".into(), self.generation_context());
+            ready.insert("nextAttempt".into(), next.into());
+            let mut writes = before;
+            writes.push(Write::set(OP_STATE, &self.operation_id, Value::Object(ready)));
+            session.commit(&writes)?;
+            self.attempt = next;
+        } else if std::mem::take(&mut self.ready_written) {
+            self.attempt = 1;
             // The compaction before this generation committed its `assistant.ready`.
             if !before.is_empty() {
                 session.commit(&before)?;
             }
         } else {
+            self.attempt = 1;
             self.generation_trigger = trigger;
             self.step_id = mint(session);
             self.commit_ready(session, before)?;
@@ -385,7 +476,7 @@ impl Run {
         self.encoder = FrameEncoder::default();
         let mut pending = self.scope("assistant.effect_pending");
         pending.insert("generationContext".into(), self.generation_context());
-        pending.insert("attempt".into(), 1.into());
+        pending.insert("attempt".into(), self.attempt.into());
         pending.insert("responseEntryId".into(), self.response_entry_id.clone().into());
         pending.insert("usageId".into(), self.usage_id.clone().into());
         pending.insert("intendedOutputLimit".into(), max_tokens.into());
@@ -515,12 +606,26 @@ impl Run {
             self.overflow_recovery_used = false;
         }
         let error = message["stopReason"] == "error" && writes.is_empty();
+        let retry = if error { self.retry_next.take() } else { None };
         let mut all = vec![
             entry(&id, tip.as_deref(), message),
             Write::Usage(usage_row),
             Write::set(BRANCH_TIP, "main", id.clone().into()),
             Write::delete_list(PENDING_FRAMES, &self.frames_key()),
         ];
+        if let Some((not_before, error_message)) = retry {
+            // `assistant.retry_wait`: the answer commits now and the step is tried again after the wait.
+            let next = self.attempt + 1;
+            let mut wait = self.scope("assistant.retry_wait");
+            wait.insert("generationContext".into(), self.generation_context());
+            wait.insert("nextAttempt".into(), next.into());
+            wait.insert("notBefore".into(), not_before.into());
+            wait.insert("errorMessage".into(), error_message.into());
+            all.push(Write::set(OP_STATE, &self.operation_id, Value::Object(wait)));
+            session.commit(&all)?;
+            self.retry_waiting = Some(next);
+            return Ok(false);
+        }
         if error {
             // The run ends with it: the answer commits with the terminal transaction.
             self.error_answer = all;

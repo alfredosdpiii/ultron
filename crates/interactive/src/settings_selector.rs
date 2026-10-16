@@ -104,6 +104,8 @@ pub enum SettingsEvent {
         value: String,
     },
     Cancelled,
+    /// `onThemePreview`: show this theme setting (a name or `light/dark`) while the user browses themes.
+    Preview(String),
 }
 
 fn str_bool(b: bool) -> String {
@@ -340,6 +342,8 @@ struct SelectSubmenu {
 enum SelectOutcome {
     Picked(String),
     Back,
+    /// The highlighted item moved to this value.
+    Highlight(String),
 }
 
 fn select_theme(t: &Rc<Theme>) -> SelectListTheme {
@@ -421,7 +425,8 @@ impl SelectSubmenu {
         match self.list.handle_input(data) {
             Some(SelectEvent::Selected(item)) => Some(SelectOutcome::Picked(item.value)),
             Some(SelectEvent::Cancelled) => Some(SelectOutcome::Back),
-            _ => None,
+            Some(SelectEvent::SelectionChanged(item)) => Some(SelectOutcome::Highlight(item.value)),
+            None => None,
         }
     }
 
@@ -1362,6 +1367,10 @@ impl SettingsSelector {
                     self.list.update("models", &summary);
                     None
                 }
+                // Leaving the theme submenu restores the theme the setting names (`cancel`).
+                (Some(ListAction::Cancel), SubKind::Theme) => {
+                    Some(SettingsEvent::Preview(self.input.str("theme", "dark")))
+                }
                 (Some(ListAction::Cancel), _) => None,
                 (Some(ListAction::Open(index)), _) => {
                     let next = list.items[index].sub.clone();
@@ -1385,7 +1394,7 @@ impl SettingsSelector {
                         return Some(self.set_theme(format!("{}/{}", self.light, self.dark)));
                     }
                     self.stack.push(self.theme_single());
-                    None
+                    Some(SettingsEvent::Preview(self.active_automatic_theme()))
                 }
                 (_, _) => {
                     self.stack.push(Sub::List { kind, list, header });
@@ -1397,7 +1406,23 @@ impl SettingsSelector {
                     self.stack.push(Sub::Select { kind, menu });
                     None
                 }
+                Some(SelectOutcome::Highlight(value)) => {
+                    let preview = match kind {
+                        SubKind::Theme if value == AUTOMATIC_THEME => Some(self.automatic_setting()),
+                        SubKind::Theme | SubKind::LightTheme | SubKind::DarkTheme => Some(value),
+                        _ => None,
+                    };
+                    self.stack.push(Sub::Select { kind, menu });
+                    preview.map(SettingsEvent::Preview)
+                }
                 Some(SelectOutcome::Back) => {
+                    match kind {
+                        SubKind::Theme => return Some(SettingsEvent::Preview(self.input.str("theme", "dark"))),
+                        SubKind::LightTheme | SubKind::DarkTheme => {
+                            return Some(SettingsEvent::Preview(self.automatic_setting()));
+                        }
+                        _ => {}
+                    }
                     if matches!(kind, SubKind::ModelThinking) && self.thinking_model.take().is_some() {
                         self.stack.push(self.thinking_step());
                     }
@@ -1416,7 +1441,7 @@ impl SettingsSelector {
             SubKind::Theme => {
                 if value == AUTOMATIC_THEME {
                     self.stack.push(self.theme_automatic());
-                    return None;
+                    return Some(SettingsEvent::Preview(self.automatic_setting()));
                 }
                 Some(self.set_theme(value))
             }
@@ -1436,7 +1461,7 @@ impl SettingsSelector {
                         &value,
                     );
                 }
-                None
+                Some(SettingsEvent::Preview(self.automatic_setting()))
             }
             SubKind::ModelThinking => match self.thinking_model.take() {
                 None => {
@@ -1519,6 +1544,20 @@ impl SettingsSelector {
                 Some(event)
             }
             SubKind::Warnings | SubKind::Models => None,
+        }
+    }
+
+    /// `getAutomaticThemeSetting`.
+    fn automatic_setting(&self) -> String {
+        format!("{}/{}", self.light, self.dark)
+    }
+
+    /// `getActiveAutomaticTheme`: the side of the pair the terminal's appearance selects.
+    fn active_automatic_theme(&self) -> String {
+        if self.input.terminal_theme == "light" {
+            self.light.clone()
+        } else {
+            self.dark.clone()
         }
     }
 

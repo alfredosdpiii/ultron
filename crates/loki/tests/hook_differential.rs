@@ -14,6 +14,49 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+/// The stand-in registry of `scan --online` (as the generator's): 404 for a path naming `missing`, 503 for
+/// `broken`, a redirect for `redirect`, else 200. Started once, on loopback.
+fn registry() -> &'static str {
+    static URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    URL.get_or_init(|| {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for stream in listener.incoming().flatten() {
+                std::thread::spawn(move || answer(stream));
+            }
+        });
+        url
+    })
+}
+
+fn answer(mut stream: std::net::TcpStream) {
+    use std::io::{BufRead, BufReader};
+    let mut reader = BufReader::new(stream.try_clone().unwrap());
+    let mut request = String::new();
+    let _ = reader.read_line(&mut request);
+    loop {
+        let mut line = String::new();
+        if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+            break;
+        }
+    }
+    let path = request.split_whitespace().nth(1).unwrap_or("/").to_string();
+    let reply = if path.contains("redirect") && !path.ends_with("/landed") {
+        format!("HTTP/1.0 302 Found\r\nLocation: {path}/landed\r\nConnection: close\r\n\r\n")
+    } else {
+        let status = if path.to_lowercase().contains("missing") {
+            "404 Not Found"
+        } else if path.contains("broken") {
+            "503 Service Unavailable"
+        } else {
+            "200 OK"
+        };
+        format!("HTTP/1.0 {status}\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}")
+    };
+    let _ = stream.write_all(reply.as_bytes());
+}
+
 fn corpus() -> Value {
     let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures/hook-corpus.json")).unwrap();
     serde_json::from_str(&text).unwrap()
@@ -101,7 +144,14 @@ fn tree(root: &Path) -> BTreeMap<String, String> {
         for entry in std::fs::read_dir(dir).unwrap().flatten() {
             let path = entry.path();
             let meta = std::fs::symlink_metadata(&path).unwrap();
-            if meta.is_dir() {
+            if entry.file_name() == ".git" {
+                continue;
+            }
+            if meta.file_type().is_symlink() {
+                let relative = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
+                let target = std::fs::read_link(&path).unwrap();
+                found.insert(relative, format!("link {}", target.display()));
+            } else if meta.is_dir() {
                 walk(root, &path, found);
             } else {
                 let relative = path.strip_prefix(root).unwrap().to_string_lossy().into_owned();
@@ -123,6 +173,34 @@ struct Outcome {
     stdout: String,
     stderr: String,
     tree: Option<BTreeMap<String, String>>,
+    /// Later runs of the same case (`runs`), as `{status, stdout, stderr}`.
+    runs: Option<Value>,
+    /// The `--record` events under HOME, oldest first, wall-clock fields zeroed.
+    events: Option<Value>,
+}
+
+/// Every `--record` event under `home`, with `time` and `duration_ms` zeroed and paths scrubbed.
+fn events(home: &Path, scrub: &dyn Fn(String) -> String) -> Value {
+    let state = home.join(".local/state/loki");
+    let mut directories: Vec<PathBuf> = match std::fs::read_dir(&state) {
+        Ok(entries) => entries.flatten().map(|e| e.path()).collect(),
+        Err(_) => return Value::Array(vec![]),
+    };
+    directories.sort();
+    let mut found = Vec::new();
+    for directory in directories {
+        let text = std::fs::read_to_string(directory.join("events.jsonl")).unwrap();
+        for line in text.lines().filter(|l| !l.is_empty()) {
+            let mut event: Value = serde_json::from_str(&scrub(line.to_string())).unwrap();
+            for key in ["time", "duration_ms"] {
+                if event.get(key).is_some() {
+                    event[key] = Value::from(0);
+                }
+            }
+            found.push(event);
+        }
+    }
+    Value::Array(found)
 }
 
 fn replay(case: &Value, tokens: &Value) -> Outcome {
@@ -194,65 +272,141 @@ fn replay(case: &Value, tokens: &Value) -> Outcome {
         None => work.clone(),
     };
     let root_text = root.to_str().unwrap().to_string();
-    let fill = |text: &str| text.replace("<ROOT>", &root_text).replace("<PYTHON>", &python());
+    let uid = {
+        use std::os::unix::fs::MetadataExt;
+        std::fs::metadata(&top).unwrap().uid().to_string()
+    };
+    let fill = |text: &str| {
+        text.replace("<ROOT>", &root_text)
+            .replace("<PYTHON>", &python())
+            .replace("<UID>", &uid)
+            .replace("<REGISTRY>", registry())
+    };
     let stdin = match (&case["rawStdin"], &case["stdin"]) {
         (Value::String(raw), _) => raw.clone(),
         (_, Value::Null) => String::new(),
         (_, value) => fill(&expand(&serde_json::to_string(value).unwrap(), tokens)),
     };
-    let mut args: Vec<String> = Vec::new();
-    if case["noRoot"] != true {
-        args.extend(["--root".to_string(), root_text.clone()]);
-    }
-    args.extend(
-        case["args"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|a| fill(a.as_str().unwrap())),
-    );
-    let mut command = Command::new(env!("CARGO_BIN_EXE_loki"));
-    command
-        .args(&args)
-        .current_dir(&root)
-        .env_clear()
-        .env("PATH", &bin)
-        .env("HOME", &top)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    for (key, value) in case["env"].as_object().into_iter().flatten() {
-        command.env(key, fill(value.as_str().unwrap()));
-    }
-    let mut child = command.spawn().unwrap();
-    let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
-    let output = child.wait_with_output().unwrap();
     let (work_text, top_text) = (work.to_str().unwrap().to_string(), top.to_str().unwrap().to_string());
-    let scrub = |bytes: Vec<u8>| {
-        String::from_utf8(bytes)
-            .unwrap()
-            .replace(&work_text, "<ROOT>")
-            .replace(&top_text, "<TOP>")
+    // Elixir reports time their checks: zeroed on both sides.
+    let durations = regex::Regex::new(r#""duration_ms": [0-9.]+"#).unwrap();
+    let daemons = regex::Regex::new(r"\.cache/loki/d/[0-9a-f]{16}").unwrap();
+    let scrub = |text: String| {
+        let text = text.replace(&work_text, "<ROOT>").replace(&top_text, "<TOP>");
+        let text = durations.replace_all(&text, r#""duration_ms": 0"#).into_owned();
+        daemons.replace_all(&text, ".cache/loki/d/<ID>").into_owned()
     };
+    let once = |extra: &Value| -> (i64, String, String) {
+        let mut args: Vec<String> = Vec::new();
+        if case["noRoot"] != true {
+            args.extend(["--root".to_string(), root_text.clone()]);
+        }
+        args.extend(extra.as_array().unwrap().iter().map(|a| fill(a.as_str().unwrap())));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_loki"));
+        command
+            .args(&args)
+            .current_dir(&root)
+            .env_clear()
+            .env("PATH", &bin)
+            .env("HOME", &top)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        for (key, value) in case["env"].as_object().into_iter().flatten() {
+            command.env(key, fill(value.as_str().unwrap()));
+        }
+        let mut child = command.spawn().unwrap();
+        let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
+        let output = child.wait_with_output().unwrap();
+        (
+            output.status.code().unwrap_or(-1) as i64,
+            scrub(String::from_utf8(output.stdout).unwrap()),
+            scrub(String::from_utf8(output.stderr).unwrap()),
+        )
+    };
+    let (status, stdout, stderr) = once(&case["args"]);
+    let runs = case["runs"].as_array().map(|runs| {
+        Value::from(
+            runs.iter()
+                .map(|args| {
+                    let (status, stdout, stderr) = once(args);
+                    serde_json::json!({ "status": status, "stdout": stdout, "stderr": stderr })
+                })
+                .collect::<Vec<_>>(),
+        )
+    });
     Outcome {
-        status: output.status.code().unwrap_or(-1) as i64,
-        stdout: scrub(output.stdout),
-        stderr: scrub(output.stderr),
+        status,
+        stdout,
+        stderr,
         tree: (case["tree"] == true).then(|| tree(&work)),
+        runs,
+        events: (case["events"] == true).then(|| events(&top, &scrub)),
     }
 }
 
+/// Cases checked by their own tests below.
+const OWN_TESTS: [&str; 6] = ["record-", "verify-", "apply-", "elixir-", "online-", "daemon-"];
+
 #[test]
 fn loki_hook_matches_loki_py_corpus() {
+    check_cases(|name| !OWN_TESTS.iter().any(|p| name.starts_with(p)), 180);
+}
+
+/// `apply`: a manifest of writes, deletions and moves checked as one candidate, then written (or refused).
+#[test]
+fn loki_apply_transactions_match_loki_py() {
+    check_cases(|name| name.starts_with("apply-"), 30);
+}
+
+/// `elixir`: the Mix check tiers, `--credo-new`, and the hook's format / Credo / Sobelow comparison of a
+/// changed Elixir file against its committed base (a stand-in Mix and Elixir).
+#[test]
+fn loki_elixir_analysis_matches_loki_py() {
+    check_cases(|name| name.starts_with("elixir-"), 25);
+}
+
+/// `scan --online`: every public dependency looked up in its registry (npm, PyPI, crates.io, the Go proxy, Hex);
+/// a 404 is a missing package, any other failure an unavailable check (a stand-in registry on loopback).
+#[test]
+fn loki_scan_online_matches_loki_py() {
+    check_cases(|name| name.starts_with("online-"), 6);
+}
+
+/// `daemon status|stop` without a daemon, and the daemon command's argument errors and help.
+#[test]
+fn loki_daemon_management_matches_loki_py() {
+    check_cases(|name| name.starts_with("daemon-"), 5);
+}
+
+/// `verify-installation`: regular, non-symlinked files whose ancestors the agent neither owns nor can write.
+#[test]
+fn loki_verify_installation_matches_loki_py() {
+    check_cases(|name| name.starts_with("verify-"), 8);
+}
+
+/// `--record`: each run's event (operation, outcome, targets, the policies read with their hashes, the rules
+/// applied, the engine's hash) in `~/.local/state/loki/<sha256(root)>/events.jsonl`, as loki.py appends it.
+#[test]
+fn loki_record_events_match_loki_py() {
+    check_cases(|name| name.starts_with("record-"), 25);
+}
+
+fn check_cases(select: impl Fn(&str) -> bool, minimum: usize) {
     let corpus = corpus();
     let tokens = corpus["tokens"].clone();
     let cases = corpus["cases"].as_array().unwrap();
-    assert!(cases.len() >= 180, "corpus has {} cases", cases.len());
     let filter = std::env::var("LOKI_CASE").unwrap_or_default();
     let selected: Vec<&Value> = cases
         .iter()
+        .filter(|c| select(c["name"].as_str().unwrap()))
         .filter(|c| c["name"].as_str().unwrap().contains(&filter))
         .collect();
+    assert!(
+        !filter.is_empty() || selected.len() >= minimum,
+        "corpus has {} cases",
+        selected.len()
+    );
     let failures = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {
         for chunk in selected.chunks(selected.len().div_ceil(8).max(1)) {
@@ -266,22 +420,30 @@ fn loki_hook_matches_loki_py_corpus() {
                         (None, None) => true,
                         _ => false,
                     };
+                    let runs_match = actual.runs.as_ref() == expected.get("runs");
+                    let events_match = actual.events.as_ref() == expected.get("events");
                     if actual.status != expected["status"].as_i64().unwrap()
                         || actual.stdout != expected["stdout"].as_str().unwrap()
                         || actual.stderr != expected["stderr"].as_str().unwrap()
                         || !tree_matches
+                        || !runs_match
+                        || !events_match
                     {
                         failures.lock().unwrap().push(format!(
-                            "{}:\n  expected [{}] stdout={:?} stderr={:?} tree={}\n  actual   [{}] stdout={:?} stderr={:?} tree={:?}",
+                            "{}:\n  expected [{}] stdout={:?} stderr={:?} tree={} runs={:?} events={:?}\n  actual   [{}] stdout={:?} stderr={:?} tree={:?} runs={:?} events={:?}",
                             case["name"],
                             expected["status"],
                             expected["stdout"],
                             expected["stderr"],
                             expected.get("tree").map_or("-".into(), |t| t.to_string()),
+                            expected.get("runs"),
+                            expected.get("events"),
                             actual.status,
                             actual.stdout,
                             actual.stderr,
-                            actual.tree
+                            actual.tree,
+                            actual.runs,
+                            actual.events
                         ));
                     }
                 }

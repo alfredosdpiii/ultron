@@ -1,0 +1,1184 @@
+{
+	"cases": [
+		{
+			"name": "new provider with models, a literal key, headers and authHeader",
+			"models": null,
+			"env": {
+				"PROXY_TOKEN": "tok"
+			},
+			"register": [
+				[
+					"my-proxy",
+					{
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"apiKey": "proxy-key",
+						"api": "anthropic-messages",
+						"headers": {
+							"x-proxy": "$PROXY_TOKEN",
+							"x-static": "s"
+						},
+						"authHeader": true,
+						"models": [
+							{
+								"id": "claude-proxy",
+								"name": "Model claude-proxy",
+								"reasoning": true,
+								"input": [
+									"text",
+									"image"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096,
+								"headers": {
+									"x-model": "m"
+								}
+							},
+							{
+								"id": "responses",
+								"name": "Model responses",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096,
+								"api": "openai-responses",
+								"baseUrl": "http://127.0.0.1:9/alt"
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"my-proxy": [
+					{
+						"id": "claude-proxy",
+						"name": "Model claude-proxy",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "anthropic-messages",
+						"provider": "my-proxy",
+						"baseUrl": "http://127.0.0.1:9/v1"
+					},
+					{
+						"id": "responses",
+						"name": "Model responses",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-responses",
+						"baseUrl": "http://127.0.0.1:9/alt",
+						"provider": "my-proxy"
+					}
+				]
+			},
+			"available": [
+				"my-proxy/claude-proxy",
+				"my-proxy/responses"
+			],
+			"auth": [
+				{
+					"model": "my-proxy/claude-proxy",
+					"apiKey": null,
+					"result": {
+						"apiKey": "proxy-key",
+						"headers": {
+							"x-proxy": "tok",
+							"x-static": "s",
+							"Authorization": "Bearer proxy-key",
+							"x-model": "m"
+						}
+					}
+				},
+				{
+					"model": "my-proxy/responses",
+					"apiKey": "flag-key",
+					"result": {
+						"apiKey": "flag-key",
+						"headers": {
+							"x-proxy": "tok",
+							"x-static": "s",
+							"Authorization": "Bearer flag-key"
+						}
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "my-proxy/claude-proxy",
+					"result": {
+						"id": "claude-proxy",
+						"name": "Model claude-proxy",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "anthropic-messages",
+						"provider": "my-proxy",
+						"baseUrl": "http://127.0.0.1:9/v1"
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-proxy",
+					"result": {
+						"id": "claude-proxy",
+						"name": "Model claude-proxy",
+						"reasoning": true,
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "anthropic-messages",
+						"provider": "my-proxy",
+						"baseUrl": "http://127.0.0.1:9/v1"
+					},
+					"error": null
+				}
+			]
+		},
+		{
+			"name": "a base URL for a built-in provider moves every model",
+			"models": null,
+			"env": {
+				"DEEPSEEK_API_KEY": "ds-env"
+			},
+			"register": [
+				[
+					"deepseek",
+					{
+						"baseUrl": "http://127.0.0.1:9/ds"
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"deepseek": [
+					{
+						"id": "deepseek-flash",
+						"name": "DeepSeek V4.1 Flash",
+						"api": "openai-completions",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"provider": "deepseek",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.3,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					{
+						"id": "deepseek-v4-pro",
+						"name": "DeepSeek V4 Pro",
+						"api": "openai-completions",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"provider": "deepseek",
+						"reasoning": true,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1.32,
+							"output": 3.96,
+							"cacheRead": 0.044,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true,
+							"supportsMidConvoSystemMessages": true
+						},
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": null,
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						}
+					}
+				]
+			},
+			"available": [
+				"deepseek/deepseek-flash",
+				"deepseek/deepseek-v4-pro"
+			],
+			"auth": [
+				{
+					"model": "deepseek/deepseek-flash",
+					"apiKey": null,
+					"result": {
+						"apiKey": "ds-env",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "deepseek/deepseek-flash",
+					"result": {
+						"id": "deepseek-flash",
+						"name": "DeepSeek V4.1 Flash",
+						"api": "openai-completions",
+						"baseUrl": "http://127.0.0.1:9/ds",
+						"provider": "deepseek",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"minimal": null,
+							"low": "low",
+							"medium": null,
+							"high": "high",
+							"max": "max"
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0.3,
+							"output": 1.2,
+							"cacheRead": 0.006,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1000000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsStore": false,
+							"supportsDeveloperRole": false,
+							"maxTokensField": "max_tokens",
+							"requiresReasoningContentOnAssistantMessages": true,
+							"thinkingFormat": "deepseek",
+							"supportsStrictMode": true
+						},
+						"inputLimits": {
+							"images": {
+								"resize": {
+									"maxWidth": 2000,
+									"maxHeight": 2000,
+									"maxBytes": 4718592,
+									"jpegQuality": 80
+								}
+							}
+						}
+					},
+					"error": null
+				}
+			]
+		},
+		{
+			"name": "extension models replace a built-in provider's models, defaults from the built-in model of that id",
+			"models": null,
+			"env": {
+				"DEEPSEEK_API_KEY": "ds-env"
+			},
+			"register": [
+				[
+					"deepseek",
+					{
+						"models": [
+							{
+								"id": "deepseek-flash",
+								"name": "Flash via ext",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							},
+							{
+								"id": "ext-only",
+								"name": "Model ext-only",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096,
+								"api": "openai-completions"
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"deepseek": [
+					{
+						"id": "deepseek-flash",
+						"name": "Flash via ext",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "https://api.deepseek.com"
+					},
+					{
+						"id": "ext-only",
+						"name": "Model ext-only",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "https://api.deepseek.com"
+					}
+				]
+			},
+			"available": [
+				"deepseek/deepseek-flash",
+				"deepseek/ext-only"
+			],
+			"auth": [
+				{
+					"model": "deepseek/ext-only",
+					"apiKey": null,
+					"result": {
+						"apiKey": "ds-env",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "deepseek/ext-only",
+					"result": {
+						"id": "ext-only",
+						"name": "Model ext-only",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "deepseek",
+						"baseUrl": "https://api.deepseek.com"
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "deepseek/deepseek-v4-pro",
+					"result": {
+						"id": "deepseek/deepseek-v4-pro",
+						"name": "DeepSeek: DeepSeek V4 Pro 0423",
+						"api": "openai-completions",
+						"baseUrl": "https://openrouter.ai/api/v1",
+						"provider": "openrouter",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"off": "none",
+							"minimal": null,
+							"low": null,
+							"medium": null,
+							"high": "high",
+							"xhigh": "xhigh",
+							"max": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 0.892272,
+							"output": 1.784544,
+							"cacheRead": 0.074356,
+							"cacheWrite": 0
+						},
+						"contextWindow": 1024000,
+						"maxTokens": 384000,
+						"compat": {
+							"supportsDeveloperRole": false,
+							"thinkingFormat": "openrouter",
+							"supportsStrictMode": true,
+							"sendSessionAffinityHeaders": true,
+							"requiresReasoningContentOnAssistantMessages": true
+						}
+					},
+					"error": null
+				}
+			]
+		},
+		{
+			"name": "extension over models.json: its key and headers win, models.json overrides apply last",
+			"models": {
+				"providers": {
+					"gw": {
+						"baseUrl": "http://127.0.0.1:9/json",
+						"api": "openai-completions",
+						"apiKey": "json-key",
+						"headers": {
+							"x-json": "j",
+							"x-both": "json"
+						},
+						"models": [
+							{
+								"id": "json-model"
+							}
+						],
+						"modelOverrides": {
+							"ext-model": {
+								"name": "Overridden",
+								"maxTokens": 777
+							}
+						}
+					}
+				}
+			},
+			"env": {},
+			"register": [
+				[
+					"gw",
+					{
+						"apiKey": "ext-key",
+						"headers": {
+							"x-both": "ext"
+						},
+						"baseUrl": "http://127.0.0.1:9/ext",
+						"models": [
+							{
+								"id": "ext-model",
+								"name": "Model ext-model",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"gw": [
+					{
+						"id": "ext-model",
+						"name": "Overridden",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 777,
+						"api": "openai-completions",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:9/ext"
+					}
+				]
+			},
+			"available": [
+				"gw/ext-model"
+			],
+			"auth": [
+				{
+					"model": "gw/ext-model",
+					"apiKey": null,
+					"result": {
+						"apiKey": "ext-key",
+						"headers": {
+							"x-json": "j",
+							"x-both": "ext"
+						}
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "gw/json-model",
+					"result": {
+						"id": "json-model",
+						"name": "json-model",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 777,
+						"api": "openai-completions",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:9/ext"
+					},
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "gw/ext-model",
+					"result": {
+						"id": "ext-model",
+						"name": "Overridden",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 777,
+						"api": "openai-completions",
+						"provider": "gw",
+						"baseUrl": "http://127.0.0.1:9/ext"
+					},
+					"error": null
+				}
+			]
+		},
+		{
+			"name": "a second registration of a name merges over the first",
+			"models": null,
+			"env": {},
+			"register": [
+				[
+					"merged",
+					{
+						"baseUrl": "http://127.0.0.1:9/one",
+						"api": "openai-completions",
+						"apiKey": "one",
+						"models": [
+							{
+								"id": "m1",
+								"name": "Model m1",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				],
+				[
+					"merged",
+					{
+						"baseUrl": "http://127.0.0.1:9/two",
+						"apiKey": "two"
+					}
+				]
+			],
+			"registered": [
+				null,
+				null
+			],
+			"error": null,
+			"providers": {
+				"merged": [
+					{
+						"id": "m1",
+						"name": "Model m1",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "merged",
+						"baseUrl": "http://127.0.0.1:9/two"
+					}
+				]
+			},
+			"available": [
+				"merged/m1"
+			],
+			"auth": [
+				{
+					"model": "merged/m1",
+					"apiKey": null,
+					"result": {
+						"apiKey": "two",
+						"headers": null
+					}
+				}
+			],
+			"resolve": []
+		},
+		{
+			"name": "an env key that is not set leaves the provider unavailable",
+			"models": null,
+			"env": {},
+			"register": [
+				[
+					"envp",
+					{
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "$EXT_KEY",
+						"models": [
+							{
+								"id": "e",
+								"name": "Model e",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"envp": [
+					{
+						"id": "e",
+						"name": "Model e",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1"
+					}
+				]
+			},
+			"available": [],
+			"auth": [
+				{
+					"model": "envp/e",
+					"apiKey": null,
+					"result": {
+						"error": "API key auth failed for provider envp: Failed to resolve API key for provider \"envp\" from environment variable: EXT_KEY"
+					}
+				}
+			],
+			"resolve": []
+		},
+		{
+			"name": "an env key that is set",
+			"models": null,
+			"env": {
+				"EXT_KEY": "from-env"
+			},
+			"register": [
+				[
+					"envp",
+					{
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"apiKey": "$EXT_KEY",
+						"models": [
+							{
+								"id": "e",
+								"name": "Model e",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"envp": [
+					{
+						"id": "e",
+						"name": "Model e",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "envp",
+						"baseUrl": "http://h/v1"
+					}
+				]
+			},
+			"available": [
+				"envp/e"
+			],
+			"auth": [
+				{
+					"model": "envp/e",
+					"apiKey": null,
+					"result": {
+						"apiKey": "from-env",
+						"headers": null
+					}
+				}
+			],
+			"resolve": []
+		},
+		{
+			"name": "registrations that do not validate are refused and change nothing",
+			"models": null,
+			"env": {},
+			"register": [
+				[
+					"noapi",
+					{
+						"baseUrl": "http://h",
+						"apiKey": "k",
+						"models": [
+							{
+								"id": "x",
+								"name": "Model x",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				],
+				[
+					"nourl",
+					{
+						"api": "openai-completions",
+						"apiKey": "k",
+						"models": [
+							{
+								"id": "x",
+								"name": "Model x",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				],
+				[
+					"ok",
+					{
+						"baseUrl": "http://h",
+						"api": "openai-completions",
+						"apiKey": "k",
+						"models": [
+							{
+								"id": "fine",
+								"name": "Model fine",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				],
+				[
+					"ok",
+					{
+						"models": [
+							{
+								"id": "broken",
+								"name": "Model broken",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				"Provider noapi, model x: no \"api\" specified. Set at provider or model level.",
+				"Provider nourl: \"baseUrl\" is required when defining custom models.",
+				null,
+				"Provider ok, model broken: no \"api\" specified. Set at provider or model level."
+			],
+			"error": null,
+			"providers": {
+				"noapi": [],
+				"nourl": [],
+				"ok": [
+					{
+						"id": "fine",
+						"name": "Model fine",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "ok",
+						"baseUrl": "http://h"
+					}
+				]
+			},
+			"available": [
+				"ok/fine"
+			],
+			"auth": [
+				{
+					"model": "ok/fine",
+					"apiKey": null,
+					"result": {
+						"apiKey": "k",
+						"headers": null
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "ok/fine",
+					"result": {
+						"id": "fine",
+						"name": "Model fine",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "ok",
+						"baseUrl": "http://h"
+					},
+					"error": null
+				}
+			]
+		},
+		{
+			"name": "a new provider without a key lists its models, none available",
+			"models": null,
+			"env": {},
+			"register": [
+				[
+					"nokey",
+					{
+						"baseUrl": "http://h/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "n",
+								"name": "Model n",
+								"reasoning": false,
+								"input": [
+									"text"
+								],
+								"cost": {
+									"input": 1,
+									"output": 2,
+									"cacheRead": 0.1,
+									"cacheWrite": 0.5
+								},
+								"contextWindow": 64000,
+								"maxTokens": 4096
+							}
+						]
+					}
+				]
+			],
+			"registered": [
+				null
+			],
+			"error": null,
+			"providers": {
+				"nokey": [
+					{
+						"id": "n",
+						"name": "Model n",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "nokey",
+						"baseUrl": "http://h/v1"
+					}
+				]
+			},
+			"available": [],
+			"auth": [],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "nokey/n",
+					"result": {
+						"id": "n",
+						"name": "Model n",
+						"reasoning": false,
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.5
+						},
+						"contextWindow": 64000,
+						"maxTokens": 4096,
+						"api": "openai-completions",
+						"provider": "nokey",
+						"baseUrl": "http://h/v1"
+					},
+					"error": null
+				}
+			]
+		}
+	]
+}

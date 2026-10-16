@@ -52,12 +52,14 @@ pub enum ConfigError {
 pub fn load_config(root: &Path) -> Result<Config, ConfigError> {
     let path = root.join(".loki").join("loki.json");
     if !path.is_file() {
+        crate::evidence::policy("candidate", ".loki/loki.json", None, None);
         return Ok(Map::new());
     }
     let raw = std::fs::read(&path).map_err(|e| {
         let error = crate::py::os_error(&e, path.to_str());
         ConfigError::Invalid(format!("{}: invalid loki config: {error}", path.display()))
     })?;
+    crate::evidence::policy("candidate", ".loki/loki.json", Some(&raw), None);
     // A UnicodeDecodeError is a ValueError, reported as invalid input.
     let text = crate::proc::decode(&raw).map_err(ConfigError::Invalid)?;
     let value: Value = serde_json::from_str(&text).map_err(|e| {

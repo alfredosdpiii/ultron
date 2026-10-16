@@ -251,7 +251,8 @@ fn cli_custom_provider_unresolved_key_fails_before_any_request() {
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
         String::from_utf8_lossy(&output.stderr),
-        "Error: API key auth failed for provider stubproxy: Failed to resolve API key for provider \"stubproxy\" from environment variable: STUB_KEY\n"
+        // main.ts prints `noModelHint` after any native-command error: the unresolved key leaves no usable model.
+        "Error: API key auth failed for provider stubproxy: Failed to resolve API key for provider \"stubproxy\" from environment variable: STUB_KEY\nNo model is configured. Run \"ultron setup\", or set a provider key such as ANTHROPIC_API_KEY or OPENAI_API_KEY.\n"
     );
     assert!(seen.lock().unwrap().is_empty());
 }

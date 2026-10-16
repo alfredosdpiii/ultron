@@ -1,0 +1,464 @@
+{
+	"limits": [
+		{
+			"env": {},
+			"perProcess": 4096,
+			"override": null,
+			"result": {
+				"ok": 8192
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "1000"
+			},
+			"perProcess": 4096,
+			"override": null,
+			"result": {
+				"ok": 1000
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "lots"
+			},
+			"perProcess": 512,
+			"override": null,
+			"result": {
+				"ok": 1024
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "1000"
+			},
+			"perProcess": 4096,
+			"override": 64,
+			"result": {
+				"ok": 64
+			}
+		},
+		{
+			"env": {},
+			"perProcess": 0,
+			"override": null,
+			"result": {
+				"ok": 0
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": " 77 "
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"ok": 77
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "-5"
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"ok": 20
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "1e3"
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"ok": 20
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": ""
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"ok": 20
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "0"
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"ok": 0
+			}
+		},
+		{
+			"env": {
+				"ULTRON_RLM_MAX_TREE_MEMORY_MB": "99999999999999999999"
+			},
+			"perProcess": 10,
+			"override": null,
+			"result": {
+				"error": "RLM maxTreeMemoryMb must be a non-negative integer"
+			}
+		},
+		{
+			"env": {},
+			"perProcess": 10,
+			"override": 9007199254740992,
+			"result": {
+				"error": "RLM maxTreeMemoryMb must be a non-negative integer"
+			}
+		},
+		{
+			"env": {},
+			"perProcess": 10,
+			"override": 0,
+			"result": {
+				"ok": 0
+			}
+		}
+	],
+	"backends": [
+		{
+			"cap": 0,
+			"requested": "cgroup",
+			"result": "off"
+		},
+		{
+			"cap": 0,
+			"requested": "auto",
+			"result": "off"
+		},
+		{
+			"cap": 100,
+			"requested": "off",
+			"result": "off"
+		},
+		{
+			"cap": 100,
+			"requested": " OFF ",
+			"result": "off"
+		},
+		{
+			"cap": 100,
+			"requested": "watchdog",
+			"result": "watchdog"
+		},
+		{
+			"cap": 100,
+			"requested": "\tWatchDog\n",
+			"result": "watchdog"
+		}
+	],
+	"scopeCommand": [
+		{
+			"cap": 64,
+			"command": [
+				"systemd-run",
+				"--user",
+				"--scope",
+				"--quiet",
+				"--collect",
+				"-p",
+				"MemoryMax=64M",
+				"-p",
+				"MemorySwapMax=0",
+				"-p",
+				"OOMPolicy=continue",
+				"--"
+			]
+		},
+		{
+			"cap": 320,
+			"command": [
+				"systemd-run",
+				"--user",
+				"--scope",
+				"--quiet",
+				"--collect",
+				"-p",
+				"MemoryMax=320M",
+				"-p",
+				"MemorySwapMax=0",
+				"-p",
+				"OOMPolicy=continue",
+				"--"
+			]
+		}
+	],
+	"polls": [
+		{
+			"bytes": 0,
+			"cap": 100,
+			"result": 500
+		},
+		{
+			"bytes": 1,
+			"cap": 100,
+			"result": 500
+		},
+		{
+			"bytes": 39,
+			"cap": 100,
+			"result": 500
+		},
+		{
+			"bytes": 40,
+			"cap": 100,
+			"result": 250
+		},
+		{
+			"bytes": 41,
+			"cap": 100,
+			"result": 250
+		},
+		{
+			"bytes": 69,
+			"cap": 100,
+			"result": 250
+		},
+		{
+			"bytes": 70,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 71,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 100,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 101,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 300,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 700,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 1000,
+			"cap": 100,
+			"result": 100
+		},
+		{
+			"bytes": 2,
+			"cap": 100,
+			"result": 500
+		},
+		{
+			"bytes": 3,
+			"cap": 100,
+			"result": 500
+		},
+		{
+			"bytes": 0,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 1,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 39,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 40,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 41,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 69,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 70,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 71,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 100,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 101,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 300,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 700,
+			"cap": 1000,
+			"result": 100
+		},
+		{
+			"bytes": 1000,
+			"cap": 1000,
+			"result": 100
+		},
+		{
+			"bytes": 2,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 3,
+			"cap": 1000,
+			"result": 500
+		},
+		{
+			"bytes": 0,
+			"cap": 3,
+			"result": 500
+		},
+		{
+			"bytes": 1,
+			"cap": 3,
+			"result": 500
+		},
+		{
+			"bytes": 39,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 40,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 41,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 69,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 70,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 71,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 100,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 101,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 300,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 700,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 1000,
+			"cap": 3,
+			"result": 100
+		},
+		{
+			"bytes": 2,
+			"cap": 3,
+			"result": 250
+		},
+		{
+			"bytes": 3,
+			"cap": 3,
+			"result": 100
+		}
+	],
+	"cgroups": [
+		{
+			"name": "missing",
+			"events": null,
+			"kills": null
+		},
+		{
+			"name": "empty",
+			"events": "",
+			"kills": 0
+		},
+		{
+			"name": "none",
+			"events": "low 0\nhigh 0\nmax 3\noom 2\n",
+			"kills": 0
+		},
+		{
+			"name": "kills",
+			"events": "low 0\nhigh 0\nmax 3\noom 2\noom_kill 7\noom_group_kill 0\n",
+			"kills": 7
+		},
+		{
+			"name": "malformed",
+			"events": "oom_kill x\n",
+			"kills": 0
+		},
+		{
+			"name": "indented",
+			"events": " oom_kill 4\n",
+			"kills": 0
+		},
+		{
+			"name": "pids",
+			"pids": [
+				12,
+				34,
+				56,
+				78,
+				90
+			],
+			"gone": []
+		}
+	]
+}

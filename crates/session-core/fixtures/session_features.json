@@ -1,0 +1,249 @@
+{
+	"generator": "crates/session-core/fixtures/session_features.mjs",
+	"cases": {
+		"retry-then-answer": {
+			"events": [
+				{
+					"type": "auto_retry_start",
+					"attempt": 2,
+					"maxAttempts": 4,
+					"delayMs": 1,
+					"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				},
+				{
+					"type": "auto_retry_end",
+					"success": true,
+					"attempt": 2
+				}
+			],
+			"states": [
+				"starting",
+				"checkpoint",
+				"assistant.ready",
+				"assistant.effect_pending",
+				"assistant.retry_wait",
+				"assistant.ready",
+				"assistant.effect_pending",
+				"checkpoint"
+			],
+			"retryWaits": [
+				{
+					"control": {
+						"status": "running"
+					},
+					"settings": {
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384,
+							"keepRecentTokens": 20000
+						},
+						"steeringMode": "all",
+						"followUpMode": "all",
+						"toolExecution": "parallel"
+					},
+					"latestAssistantEntryId": "00000000-0000-7000-8000-000000000005",
+					"at": "assistant.retry_wait",
+					"generationContext": {
+						"stepId": "00000000-0000-7000-8000-000000000004",
+						"triggerEntryId": "00000000-0000-7000-8000-000000000002",
+						"configuration": {
+							"model": {
+								"provider": "anthropic",
+								"modelId": "claude-sonnet-4-5"
+							},
+							"thinkingLevel": "medium",
+							"activeToolNames": [
+								"rlm"
+							]
+						},
+						"streamOptions": {
+							"timeoutMs": 300000,
+							"maxRetryDelayMs": 60000
+						},
+						"retryPolicy": {
+							"maxAttempts": 4,
+							"baseDelayMs": 1,
+							"maxAgentDelayMs": 60000
+						},
+						"overflowRecoveryUsed": false
+					},
+					"nextAttempt": 2,
+					"notBefore": 0,
+					"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				}
+			],
+			"answer": "Recovered.",
+			"requests": 2
+		},
+		"retry-exhausted": {
+			"events": [
+				{
+					"type": "auto_retry_start",
+					"attempt": 2,
+					"maxAttempts": 2,
+					"delayMs": 1,
+					"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				},
+				{
+					"type": "auto_retry_end",
+					"success": false,
+					"attempt": 2,
+					"finalError": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				}
+			],
+			"states": [
+				"starting",
+				"checkpoint",
+				"assistant.ready",
+				"assistant.effect_pending",
+				"assistant.retry_wait",
+				"assistant.ready",
+				"assistant.effect_pending"
+			],
+			"retryWaits": [
+				{
+					"control": {
+						"status": "running"
+					},
+					"settings": {
+						"compaction": {
+							"enabled": true,
+							"reserveTokens": 16384,
+							"keepRecentTokens": 20000
+						},
+						"steeringMode": "all",
+						"followUpMode": "all",
+						"toolExecution": "parallel"
+					},
+					"latestAssistantEntryId": "00000000-0000-7000-8000-000000000005",
+					"at": "assistant.retry_wait",
+					"generationContext": {
+						"stepId": "00000000-0000-7000-8000-000000000004",
+						"triggerEntryId": "00000000-0000-7000-8000-000000000002",
+						"configuration": {
+							"model": {
+								"provider": "anthropic",
+								"modelId": "claude-sonnet-4-5"
+							},
+							"thinkingLevel": "medium",
+							"activeToolNames": [
+								"rlm"
+							]
+						},
+						"streamOptions": {
+							"timeoutMs": 300000,
+							"maxRetryDelayMs": 60000
+						},
+						"retryPolicy": {
+							"maxAttempts": 2,
+							"baseDelayMs": 1,
+							"maxAgentDelayMs": 60000
+						},
+						"overflowRecoveryUsed": false
+					},
+					"nextAttempt": 2,
+					"notBefore": 0,
+					"errorMessage": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}"
+				}
+			],
+			"requests": 2
+		},
+		"auto-retry-off": {
+			"events": [],
+			"states": [
+				"starting",
+				"checkpoint",
+				"assistant.ready",
+				"assistant.effect_pending"
+			],
+			"retryWaits": [],
+			"requests": 1
+		},
+		"not-retryable": {
+			"events": [],
+			"states": [
+				"starting",
+				"checkpoint",
+				"assistant.ready",
+				"assistant.effect_pending"
+			],
+			"retryWaits": [],
+			"requests": 1
+		},
+		"find-models": {
+			"toolResults": [
+				"[{\"provider\": \"anthropic\", \"id\": \"claude-fable-5\", \"name\": \"Claude Fable 5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-fable-5-1\", \"name\": \"Claude Fable 5.1\"}, {\"provider\": \"anthropic\", \"id\": \"claude-haiku-4-5\", \"name\": \"Claude Haiku 4.5 (latest)\"}, {\"provider\": \"anthropic\", \"id\": \"claude-haiku-4-5-20251001\", \"name\": \"Claude Haiku 4.5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-haiku-5-5\", \"name\": \"Claude Haiku 5.5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-4-5\", \"name\": \"Claude Opus 4.5 (latest)\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-4-5-20251101\", \"name\": \"Claude Opus 4.5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-4-6\", \"name\": \"Claude Opus 4.6\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-4-7\", \"name\": \"Claude Opus 4.7\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-4-8\", \"name\": \"Claude Opus 4.8\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-5\", \"name\": \"Claude Opus 5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-opus-5-5\", \"name\": \"Claude Opus 5.5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-sonnet-4-5\", \"name\": \"Claude Sonnet 4.5 (latest)\"}, {\"provider\": \"anthropic\", \"id\": \"claude-sonnet-4-5-20250929\", \"name\": \"Claude Sonnet 4.5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-sonnet-4-6\", \"name\": \"Claude Sonnet 4.6\"}, {\"provider\": \"anthropic\", \"id\": \"claude-sonnet-5\", \"name\": \"Claude Sonnet 5\"}, {\"provider\": \"anthropic\", \"id\": \"claude-sonnet-5-5\", \"name\": \"Claude Sonnet 5.5\"}]\n[]"
+			]
+		},
+		"view-image": {
+			"toolResults": [
+				[
+					{
+						"type": "text",
+						"text": "image 1: 6x4 PNG, 74 B"
+					},
+					{
+						"type": "image",
+						"source": {
+							"type": "base64",
+							"media_type": "image/png",
+							"data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAIAAAAiZtkUAAAAEUlEQVR4nGO4IyeHhhjIFQIA98kaQYPHL/UAAAAASUVORK5CYII="
+						}
+					}
+				]
+			],
+			"png": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAIAAAAiZtkUAAAAEUlEQVR4nGO4IyeHhhjIFQIA98kaQYPHL/UAAAAASUVORK5CYII=",
+			"files": {
+				"chart.png": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAIAAAAiZtkUAAAAEUlEQVR4nGO4IyeHhhjIFQIA98kaQYPHL/UAAAAASUVORK5CYII="
+			}
+		},
+		"image-budget": {
+			"toolResults": [
+				"image 1: 2x2 PNG, 75 B\n[image omitted from context to stay within the image budget; call view_image again to see it]",
+				"image 1: 3x3 PNG, 73 B\n[image omitted from context to stay within the image budget; call view_image again to see it]",
+				[
+					{
+						"type": "text",
+						"text": "image 1: 4x4 PNG, 73 B"
+					},
+					{
+						"type": "image",
+						"source": {
+							"type": "base64",
+							"media_type": "image/png",
+							"data": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGO4IycHRwzEcQDTIxGBFNCZswAAAABJRU5ErkJggg=="
+						}
+					}
+				]
+			],
+			"files": {
+				"a.png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGO4Iyd3R06OAUIBACGmBGHH+C56AAAAAElFTkSuQmCC",
+				"b.png": "iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAEElEQVR4nGO4IycHQQxYWACadAnZB0XGkgAAAABJRU5ErkJggg==",
+				"c.png": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGO4IycHRwzEcQDTIxGBFNCZswAAAABJRU5ErkJggg=="
+			}
+		},
+		"tool-round-nudge": {
+			"userTexts": [
+				[
+					"[clock] <CLOCK>",
+					"research something open-ended"
+				],
+				[
+					"[clock] <CLOCK>",
+					"research something open-ended"
+				],
+				[
+					"[clock] <CLOCK>",
+					"research something open-ended"
+				],
+				[
+					"[clock] <CLOCK>",
+					"research something open-ended",
+					"[Ultron] You have used 3 rounds of tool calls in this turn without answering. Unless one more specific call is essential, stop gathering and answer now with what you have, noting what remains unknown."
+				]
+			],
+			"answer": "ANSWERED AFTER NUDGE",
+			"requests": 4
+		}
+	}
+}

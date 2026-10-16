@@ -71,24 +71,21 @@ fn extensions_discovery_reports_javascript_extensions_and_bad_entries() {
     let found = discover(&cwd, &agent, root.path(), &global, &Map::new(), true);
     assert!(found.manifests.is_empty());
     let messages: Vec<String> = found.diagnostics.iter().map(|d| d.message.clone()).collect();
-    assert_eq!(messages.len(), 6, "{messages:?}");
+    // A pattern entry ("!excluded/**") is applied, not reported (tests/host_fixture.rs).
+    assert_eq!(messages.len(), 5, "{messages:?}");
     assert_eq!(
         messages[0],
         format!("Extension path does not exist: {}", agent.join("gone").display())
     );
-    assert_eq!(
-        messages[1],
-        "Extension pattern \"!excluded/**\" is not supported for extension processes; list manifest paths"
-    );
-    assert!(messages[2].starts_with("JavaScript/TypeScript extensions are no longer loaded"));
-    assert!(messages[2].contains("legacy.js"));
+    assert!(messages[1].starts_with("JavaScript/TypeScript extensions are no longer loaded"));
+    assert!(messages[1].contains("legacy.js"));
     // Auto directory, sorted: broken/, old.ts, pkg/.
     assert_eq!(
-        messages[3],
+        messages[2],
         "Invalid extension manifest: \"command\" must be a non-empty string"
     );
-    assert!(messages[4].contains("old.ts"));
-    assert!(messages[5].contains("extensions/pkg"));
+    assert!(messages[3].contains("old.ts"));
+    assert!(messages[4].contains("extensions/pkg"));
 }
 
 #[test]

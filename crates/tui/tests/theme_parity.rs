@@ -77,10 +77,10 @@ fn check_palette(theme: &Theme, p: &Value) {
     let ctx = format!("{} {}", p["name"], p["mode"]);
     assert_eq!(theme.name.as_deref(), p["themeName"].as_str(), "{ctx}");
     for (k, v) in p["fg"].as_object().expect("fg") {
-        assert_eq!(theme.fg_ansi(k), Ok(s(v)), "{ctx} fg {k}");
+        assert_eq!(theme.fg_ansi(k), Ok(s(v).to_string()), "{ctx} fg {k}");
     }
     for (k, v) in p["bg"].as_object().expect("bg") {
-        assert_eq!(theme.bg_ansi(k), Ok(s(v)), "{ctx} bg {k}");
+        assert_eq!(theme.bg_ansi(k), Ok(s(v).to_string()), "{ctx} bg {k}");
     }
     assert_eq!(theme.fg("accent", "hi").as_deref(), Ok(s(&p["sampleFg"])), "{ctx}");
     assert_eq!(theme.bg("selectedBg", "hi").as_deref(), Ok(s(&p["sampleBg"])), "{ctx}");
@@ -246,8 +246,8 @@ fn tui_theme_256_color_conversion_matches_typescript() {
         let hex = s(&c["hex"]);
         let lookup = |_: &str| Some(tui::theme::Resolved::Str(hex.to_string()));
         let theme = Theme::new(&lookup, ColorMode::Ansi256).expect("theme");
-        assert_eq!(theme.fg_ansi("accent"), Ok(s(&c["fg"])), "{hex}");
-        assert_eq!(theme.bg_ansi("selectedBg"), Ok(s(&c["bg"])), "{hex}");
+        assert_eq!(theme.fg_ansi("accent"), Ok(s(&c["fg"]).to_string()), "{hex}");
+        assert_eq!(theme.bg_ansi("selectedBg"), Ok(s(&c["bg"]).to_string()), "{hex}");
     }
 }
 
@@ -353,10 +353,10 @@ fn tui_theme_constructor_fills_optional_tokens_like_typescript() {
     };
     let theme = Theme::new(&lookup, ColorMode::Ansi256).expect("theme");
     for (k, v) in c["fg"].as_object().expect("fg") {
-        assert_eq!(theme.fg_ansi(k), Ok(s(v)), "fg {k}");
+        assert_eq!(theme.fg_ansi(k), Ok(s(v).to_string()), "fg {k}");
     }
     for (k, v) in c["bg"].as_object().expect("bg") {
-        assert_eq!(theme.bg_ansi(k), Ok(s(v)), "bg {k}");
+        assert_eq!(theme.bg_ansi(k), Ok(s(v).to_string()), "bg {k}");
     }
     assert_eq!(
         theme.fg_ansi("nope").err().as_deref(),

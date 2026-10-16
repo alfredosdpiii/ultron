@@ -869,7 +869,14 @@ fn absolute(cwd: &Path, path: &str) -> PathBuf {
 }
 
 /// The engine spec of a local review (`review --repo-dir`).
-fn offline_spec(parsed: &Parsed, config: &AutoreviewConfig, env: &Env, repo_dir: &Path) -> Value {
+fn offline_spec(
+    parsed: &Parsed,
+    config: &AutoreviewConfig,
+    env: &Env,
+    repo_dir: &Path,
+    lent: Option<&str>,
+    prepared: Option<&review::prepare_env::Prepared>,
+) -> Value {
     let mut spec = Map::new();
     spec.insert("repoDir".into(), repo_dir.display().to_string().into());
     spec.insert("base".into(), parsed.base.clone().unwrap_or_default().into());
@@ -888,10 +895,25 @@ fn offline_spec(parsed: &Parsed, config: &AutoreviewConfig, env: &Env, repo_dir:
             );
             spec.insert("testEnvKind".into(), "testEnv".into());
         }
-        None => {
-            spec.insert("testCheckout".into(), repo_dir.display().to_string().into());
-            spec.insert("testEnvKind".into(), "checkout".into());
-        }
+        None => match prepared {
+            Some(prepared) => {
+                spec.insert("testCheckout".into(), prepared.dir.clone().into());
+                let paths: Vec<Value> = prepared
+                    .toolchain
+                    .iter()
+                    .map(|entry| entry.path.clone().into())
+                    .collect();
+                spec.insert("testToolchain".into(), Value::Array(paths));
+                spec.insert("testEnvKind".into(), "prepared".into());
+            }
+            // A checkout of the named repository under --checkout-roots, else the repository given: it is itself
+            // a local checkout, and its own prepared environments serve the tests.
+            None => {
+                let checkout = lent.map_or_else(|| repo_dir.display().to_string(), String::from);
+                spec.insert("testCheckout".into(), checkout.into());
+                spec.insert("testEnvKind".into(), "checkout".into());
+            }
+        },
     }
     if !config.guides.is_empty() {
         let home = env.home.display().to_string();
@@ -1168,6 +1190,7 @@ fn doctor(
     config: &AutoreviewConfig,
     model_lines: &[String],
     env: &Env,
+    cache_dir: &str,
     ov: &Overrides,
     out: &mut dyn Write,
 ) -> Result<i32, Failure> {
@@ -1219,6 +1242,12 @@ fn doctor(
             lines
         }
     };
+    // The prepared environment of that checkout, when there is one: its toolchain and where it came from.
+    let prepared = lent
+        .as_ref()
+        .and_then(|(_, checkout, _)| checkout.as_deref())
+        .and_then(|checkout| review::prepare_env::cached_environment(checkout, cache_dir, None));
+    let prepared_lines = doctor_prepared_lines(lent.is_some(), prepared.as_ref());
     let io = |error: std::io::Error| Failure::Error(error.to_string());
     let ok = report.get("ok").and_then(Value::as_bool).unwrap_or(false);
     if parsed.json {
@@ -1230,12 +1259,16 @@ fn doctor(
                 json!({"repo": repo, "checkout": checkout, "environments": environments}),
             );
         }
+        if let Some(prepared) = &prepared {
+            json.insert("prepared".into(), prepared.json.clone());
+        }
         writeln!(out, "{}", session_file::js::stringify(&Value::Object(json))).map_err(io)?;
     } else if report.get("mechanism").is_none_or(Value::is_null) {
         let message = report.get("message").and_then(Value::as_str).unwrap_or_default();
         let mut lines = model_lines.to_vec();
         lines.push(format!("Sandbox: none. {message}"));
         lines.extend(lent_lines);
+        lines.extend(prepared_lines);
         writeln!(out, "{}", lines.join("\n")).map_err(io)?;
     } else {
         let check = report.get("selfCheck").cloned().unwrap_or(json!({}));
@@ -1276,9 +1309,112 @@ fn doctor(
             format!("Tests in reviews: {tests_line}"),
         ]);
         lines.extend(lent_lines);
+        lines.extend(prepared_lines);
         writeln!(out, "{}", lines.join("\n")).map_err(io)?;
     }
     Ok(if ok { 0 } else { 1 })
+}
+
+/// The environment `prepareEnvironment` reads: PATH, where mise, uv and the toolchains are looked for (the
+/// processes it runs inherit the rest).
+fn prepare_vars(env: &Env) -> HashMap<String, String> {
+    (env.var)("PATH")
+        .map(|path| HashMap::from([("PATH".to_string(), path)]))
+        .unwrap_or_default()
+}
+
+/// `prepareEnvironment` of `repo_dir` as the command line runs it: log lines to stderr.
+#[allow(clippy::too_many_arguments)]
+fn run_prepare(
+    repo_dir: &str,
+    parsed: &Parsed,
+    config: &AutoreviewConfig,
+    env: &Env,
+    cache_dir: &str,
+    ov: &Overrides,
+    err: &mut dyn Write,
+    force: bool,
+) -> Result<review::prepare_env::Prepared, Failure> {
+    let runner = ov.runner();
+    let err = std::cell::RefCell::new(err);
+    let log = |line: &str| {
+        let _ = writeln!(err.borrow_mut(), "{line}");
+    };
+    let options = review::prepare_env::PrepareOptions {
+        runner: &*runner,
+        cache_dir: cache_dir.to_string(),
+        python: parsed.python.clone(),
+        mise: Some(config.mise.clone()),
+        env: prepare_vars(env),
+        home: env.home.display().to_string(),
+        log: &log,
+        timeout_ms: None,
+        force,
+        now: &now_ms,
+    };
+    review::prepare_env::prepare_environment(repo_dir, &options).map_err(Failure::Error)
+}
+
+/// `prepare <repo-dir> [--python 3.x]`: build the test environment now (always rebuilt), and say what was prepared;
+/// exit 1 when anything failed.
+fn prepare_command(
+    parsed: &Parsed,
+    config: &AutoreviewConfig,
+    env: &Env,
+    cache_dir: &str,
+    ov: &Overrides,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> Result<i32, Failure> {
+    let Some(target) = &parsed.target else {
+        return Err(Failure::Usage("prepare needs the repository directory".into()));
+    };
+    let repo_dir = absolute(&env.cwd, target).display().to_string();
+    let prepared = run_prepare(&repo_dir, parsed, config, env, cache_dir, ov, err, true)?;
+    let io = |error: std::io::Error| Failure::Error(error.to_string());
+    if parsed.json {
+        writeln!(out, "{}", session_file::js::stringify(&prepared.json)).map_err(io)?;
+    } else {
+        let mut lines = vec![format!(
+            "Environment {} at {}{}",
+            prepared.hash,
+            prepared.dir,
+            if prepared.cached { " (cached)" } else { "" }
+        )];
+        lines.extend(prepared.prepared.iter().map(|item| format!("  prepared: {item}")));
+        lines.extend(
+            review::prepare::describe_toolchain(&prepared.toolchain)
+                .into_iter()
+                .map(|line| format!("  toolchain: {line}")),
+        );
+        lines.extend(prepared.failures.iter().map(|item| format!("  failed: {item}")));
+        lines.push(format!(
+            "  {} s",
+            review::js::number(review::js::round(prepared.ms as f64 / 1000.0))
+        ));
+        writeln!(out, "{}", lines.join("\n")).map_err(io)?;
+    }
+    Ok(if prepared.failures.is_empty() { 0 } else { 1 })
+}
+
+/// The doctor's lines about the prepared environment of the lent checkout: none without `--repo`.
+pub fn doctor_prepared_lines(repo_given: bool, prepared: Option<&review::prepare_env::Prepared>) -> Vec<String> {
+    if !repo_given {
+        return Vec::new();
+    }
+    let Some(prepared) = prepared else {
+        return vec![format!(
+            "Prepared environment: none (run `{APP_NAME} autoreview prepare <repo-dir>`)"
+        )];
+    };
+    let mut lines = vec![format!("Prepared environment: {}", prepared.dir)];
+    lines.extend(prepared.prepared.iter().map(|item| format!("  {item}")));
+    lines.extend(
+        review::prepare::describe_toolchain(&prepared.toolchain)
+            .into_iter()
+            .map(|line| format!("  toolchain: {line}")),
+    );
+    lines
 }
 
 /// `outcomeJson`: a posted or dry-run review as the offline JSON plus what was posted; otherwise kind and reason.
@@ -1349,6 +1485,7 @@ fn reviewer_deps(
         None => Arc::new(open_engine(config, saved, env, Path::new(&paths.dir), log.clone()).map_err(Failure::Error)?),
     };
     let runner = ov.runner();
+    let runner_for_envs = runner.clone();
     let lessons: Option<Arc<dyn review::reviewer::LessonMemory>> = if config.learn {
         let agent_dir = env.agent_dir();
         let manager = config::settings::SettingsManager::create(&env.cwd, &agent_dir, false);
@@ -1373,7 +1510,15 @@ fn reviewer_deps(
         now: Arc::new(now_ms),
         random: Arc::new(random),
         lessons,
-        environments: None,
+        // Test environments are built before a review (autoreview.prepareEnvs), with the network, into the cache.
+        environments: Some(Arc::new(review::prepare_env::RunnerPreparer {
+            runner: runner_for_envs,
+            cache_dir: paths.cache.clone(),
+            mise: Some(config.mise.clone()),
+            env: prepare_vars(env),
+            home: env.home.display().to_string(),
+            now: Arc::new(now_ms),
+        })),
         home: env.home.display().to_string(),
     })
 }
@@ -1545,8 +1690,18 @@ fn daemon_command(
 }
 
 /// `install | uninstall`: the user service file is written or removed; enabling it is printed, never run.
-fn service(parsed: &Parsed, config: &AutoreviewConfig, env: &Env, out: &mut dyn Write) -> Result<i32, Failure> {
-    let me = claude_root::self_cmd::self_command(&*env.var).map_err(Failure::Error)?;
+/// The platform name upstream uses (`process.platform`): `darwin` for macOS.
+pub fn platform() -> &'static str {
+    match std::env::consts::OS {
+        "macos" => "darwin",
+        other => other,
+    }
+}
+
+/// The user service that runs `ultron autoreview run` on `platform`, or None where neither systemd nor launchd
+/// applies (`ultron autoreview install`, `/autoreview on`).
+pub fn user_service(env: &Env, platform: &str) -> Result<Option<review::service::ServiceFile>, String> {
+    let me = claude_root::self_cmd::self_command(&*env.var)?;
     let me = review::service::SelfCommand {
         command: me.command,
         args: me.args,
@@ -1555,9 +1710,17 @@ fn service(parsed: &Parsed, config: &AutoreviewConfig, env: &Env, out: &mut dyn 
         .into_iter()
         .filter_map(|key| (env.var)(key).map(|value| (key.to_string(), value)))
         .collect();
-    let platform = std::env::consts::OS;
-    let platform = if platform == "macos" { "darwin" } else { platform };
-    let Some(file) = review::service::service_file(&me, platform, &env.home.display().to_string(), &service_env) else {
+    Ok(review::service::service_file(
+        &me,
+        platform,
+        &env.home.display().to_string(),
+        &service_env,
+    ))
+}
+
+fn service(parsed: &Parsed, config: &AutoreviewConfig, env: &Env, out: &mut dyn Write) -> Result<i32, Failure> {
+    let platform = platform();
+    let Some(file) = user_service(env, platform).map_err(Failure::Error)? else {
         return Err(Failure::Error(format!(
             "no user service on {platform}; run \"{APP_NAME} autoreview run\" under your own supervisor"
         )));
@@ -1622,13 +1785,8 @@ fn execute(
         }
         "install" | "uninstall" => return service(parsed, &config, env, out),
         "status" => return status(parsed, &config, &paths.state, ov, out),
-        "doctor" => return doctor(parsed, &config, &model_lines(&config), env, ov, out),
-        "prepare" => {
-            return Err(Failure::Error(format!(
-                "`{APP_NAME} autoreview {}` is not implemented in the Rust build yet",
-                parsed.command
-            )));
-        }
+        "doctor" => return doctor(parsed, &config, &model_lines(&config), env, &paths.cache, ov, out),
+        "prepare" => return prepare_command(parsed, &config, env, &paths.cache, ov, out, err),
         other => {
             return Err(Failure::Usage(format!("unknown command: {other}\n\n{}", usage())));
         }
@@ -1650,11 +1808,48 @@ fn execute(
     if (parsed.program_path.is_some() || parsed.dump_program_path.is_some()) && config.mode != "compiled" {
         return Err(UsageError("--program and --dump-program need --mode compiled".into()).into());
     }
-    if parsed.prepare {
-        return Err(Failure::Error(
-            "--prepare is not implemented in the Rust build yet (build the environment with the TypeScript `ultron autoreview prepare`)".into(),
-        ));
-    }
+    let repo_dir = absolute(&env.cwd, repo_dir);
+    // A checkout of the named repository under --checkout-roots lends its environments to the tests.
+    let lent = match &parsed.repo {
+        Some(repo) if !config.checkout_roots.is_empty() => {
+            review::github::parse_pull_target(&format!("{repo}#1"), "github.com")
+                .and_then(|named| review::local::find_checkout(&*ov.runner(), &config.checkout_roots, &named))
+        }
+        _ => None,
+    };
+    // --prepare: build (or reuse) the environment first, with the network; the review then binds it read-only.
+    let prepared = if parsed.prepare {
+        let prepared = run_prepare(
+            &repo_dir.display().to_string(),
+            parsed,
+            &config,
+            env,
+            &paths.cache,
+            ov,
+            err,
+            false,
+        )?;
+        let mut lines = vec![format!(
+            "prepared environment {}{}: {}",
+            prepared.hash,
+            if prepared.cached { " (cached)" } else { "" },
+            if prepared.prepared.is_empty() {
+                "nothing".to_string()
+            } else {
+                prepared.prepared.join("; ")
+            }
+        )];
+        lines.extend(prepared.failures.iter().map(|item| format!("prepare: {item}")));
+        for line in lines {
+            let _ = writeln!(err, "{line}");
+        }
+        Some(prepared)
+    } else {
+        None
+    };
+    let use_prepared = prepared
+        .as_ref()
+        .filter(|prepared| prepared.failures.is_empty() && !prepared.prepared.is_empty());
     let (engine, start_ms): (Arc<dyn ReviewEngine>, Option<u64>) = match &ov.engine {
         Some(engine) => (engine.clone(), None),
         None => {
@@ -1663,8 +1858,7 @@ fn execute(
             (Arc::new(engine), Some(start_ms))
         }
     };
-    let repo_dir = absolute(&env.cwd, repo_dir);
-    let spec = offline_spec(parsed, &config, env, &repo_dir);
+    let spec = offline_spec(parsed, &config, env, &repo_dir, lent.as_deref(), use_prepared);
     let result = engine.review(&spec, None).map_err(Failure::Error)?;
     let io = |error: std::io::Error| Failure::Error(error.to_string());
     if parsed.json {

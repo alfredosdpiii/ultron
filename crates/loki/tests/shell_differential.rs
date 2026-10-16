@@ -144,9 +144,13 @@ fn loki_shell_matches_loki_py_corpus() {
     );
 }
 
+/// `shell --record` appends its event (an envelope that cannot be read is an unclassified denial) under the
+/// private HOME, never the user's.
 #[test]
-fn loki_shell_record_fails_closed() {
+fn loki_shell_record_appends_its_event() {
     let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    std::fs::create_dir_all(&home).unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_loki"))
         .args([
             "--root",
@@ -156,12 +160,29 @@ fn loki_shell_record_fails_closed() {
             "claude",
             "--record",
         ])
+        .env_clear()
+        .env("PATH", std::env::var("PATH").unwrap_or_default())
+        .env("HOME", &home)
         .stdin(Stdio::null())
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .starts_with("loki: invalid shell input: "),
+        "the envelope error is reported"
+    );
+    let state = home.join(".local/state/loki");
+    let directory = std::fs::read_dir(&state).unwrap().next().unwrap().unwrap().path();
+    let text = std::fs::read_to_string(directory.join("events.jsonl")).unwrap();
+    let event: serde_json::Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
     assert_eq!(
-        String::from_utf8(output.stderr).unwrap(),
-        "loki: guard error: NotPorted: --record is not ported to the Rust engine\n"
+        (&event["operation"], &event["outcome"], &event["findings"]),
+        (
+            &serde_json::json!("shell"),
+            &serde_json::json!("deny"),
+            &serde_json::json!([{ "rule": "unclassified-failure", "path": null }])
+        )
     );
 }

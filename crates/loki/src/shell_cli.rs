@@ -18,6 +18,7 @@ fn usage(command: &str) -> &'static str {
 }
 
 fn arg_error(command: &str, message: &str) -> ExitCode {
+    loki::evidence::finding("invalid-cli", None);
     eprintln!("{}\nloki {command}: error: {message}", usage(command));
     ExitCode::from(2)
 }
@@ -92,6 +93,7 @@ pub fn dispatch(argv: &[String]) -> Option<ExitCode> {
                 }
             }
             (_, other) => {
+                loki::evidence::finding("invalid-cli", None);
                 eprintln!("{TOP_USAGE}\nloki: error: unrecognized arguments: {other}");
                 return Some(ExitCode::from(2));
             }
@@ -113,9 +115,8 @@ pub fn dispatch(argv: &[String]) -> Option<ExitCode> {
             let Some(harness) = harness else {
                 return Some(arg_error(&command, "the following arguments are required: --harness"));
             };
-            if record {
-                return Some(report(Err(CheckError::not_ported("--record"))));
-            }
+            // `--record` is handled around the whole run (main's record wrapper).
+            let _ = record;
             report(read_payload().and_then(|payload| {
                 if !payload["tool_input"].is_object() {
                     return Err(CheckError::Value("invalid shell envelope".into()));

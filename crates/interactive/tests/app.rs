@@ -288,6 +288,30 @@ fn interactive_escape_restores_queued_messages_then_aborts() {
     assert_eq!(calls(&c).len(), 3);
 }
 
+/// client-tui-chat.ts `#syncQueues` with `QUEUE_LABELS`: steering first, then the rest in queue order, a next-run
+/// message labelled "Next run".
+#[test]
+fn interactive_pending_messages_label_next_run_like_typescript() {
+    use interactive::lane::{QueueKind, Queued};
+    let (mut app, _) = app();
+    app.apply(LaneEvent::OperationStarted("op1".into()));
+    let queued = |id: &str, kind, text: &str| Queued {
+        entry_id: id.into(),
+        kind,
+        text: text.into(),
+    };
+    app.apply(LaneEvent::Queues(vec![
+        queued("n1", QueueKind::NextRun, "next time"),
+        queued("f1", QueueKind::FollowUp, "after"),
+        queued("s1", QueueKind::Steer, "now"),
+    ]));
+    let s = screen(&mut app);
+    assert!(
+        s.contains(" Steering: now\n Next run: next time\n Follow-up: after\n ↳ Alt+Up to edit all queued messages"),
+        "{s}"
+    );
+}
+
 #[test]
 fn interactive_ctrl_c_clears_then_exits_and_ctrl_d_exits_when_empty() {
     let (mut app, _) = app();

@@ -34,11 +34,17 @@ use std::thread::JoinHandle;
 
 pub const LANE: &str = "main";
 
+/// `InvalidMessage` (`reason: "empty"`) of a queued message without text or image (lane.ts `enqueue`).
+pub const EMPTY_QUEUED: &str = "Queued input must contain text or an image";
+
 /// A queue a message can join while a run streams.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueueKind {
     Steer,
     FollowUp,
+    /// Held until the next run starts (the agent controller's `nextRun`): the run in progress never takes it, and
+    /// the next run's admission places it before its prompt.
+    NextRun,
 }
 
 impl QueueKind {
@@ -46,6 +52,7 @@ impl QueueKind {
         match self {
             QueueKind::Steer => "steer",
             QueueKind::FollowUp => "followUp",
+            QueueKind::NextRun => "nextRun",
         }
     }
 
@@ -53,6 +60,7 @@ impl QueueKind {
         match name {
             "steer" => Some(QueueKind::Steer),
             "followUp" => Some(QueueKind::FollowUp),
+            "nextRun" => Some(QueueKind::NextRun),
             _ => None,
         }
     }
@@ -168,6 +176,20 @@ pub enum Op {
     KillAgent {
         id: String,
     },
+    /// Steer a subagent with `message` (the agent hub's steer: `agent_message.send` from the root lane with
+    /// `receiver_role: "child"` and `steer: true`); answers the family module's `{id, duplicate, state, steered}`.
+    SteerAgent {
+        id: String,
+        message: String,
+    },
+    /// Start an interrupted subagent again from its brief (the agent hub's revive); answers `{id, revived}`.
+    ReviveAgent {
+        id: String,
+    },
+    /// A subagent's transcript (`agents.transcript`): `{id, busy, messages}`, its child conversation's messages.
+    AgentTranscript {
+        id: String,
+    },
     /// `/goal <args>`: the session goal's command (set, pause, resume, clear, check); answers its text.
     Goal {
         args: String,
@@ -208,6 +230,24 @@ pub enum Op {
         name: String,
         prefix: String,
     },
+    /// The extensions' keyboard shortcuts the TUI binds under its resolved keybindings (action, keys) and the
+    /// conflict warnings (runner.ts `getShortcuts`, `getShortcutDiagnostics`): `{shortcuts: [{key, description,
+    /// extensionPath}], diagnostics: [{type, message, path}]}`.
+    ExtensionShortcuts {
+        keybindings: Vec<(String, Vec<String>)>,
+    },
+    /// Runs the extension shortcut bound to `key` under `keybindings` (`shortcuts/run`), answered when its handler
+    /// returned; the actor goes on meanwhile.
+    ExtensionShortcut {
+        key: String,
+        keybindings: Vec<(String, Vec<String>)>,
+    },
+    /// Pi's `session_before_fork` before a client forks (`position` "before") or clones ("at") the session at
+    /// `entry_id`: `{cancelled}` (control `beforeFork`), off the actor.
+    BeforeFork {
+        entry_id: String,
+        position: String,
+    },
 }
 
 impl Op {
@@ -229,7 +269,7 @@ impl Op {
                 images: images(),
             },
             "enqueue" => Op::Enqueue {
-                kind: kind("kind").ok_or("kind must be steer or followUp")?,
+                kind: kind("kind").ok_or("kind must be steer, followUp or nextRun")?,
                 message: need("message")?,
                 images: images(),
                 entry_id: text("entryId"),
@@ -250,7 +290,9 @@ impl Op {
             "setThinking" => Op::SetThinking { level: need("level")? },
             "cycleThinking" => Op::CycleThinking,
             "setQueueMode" => Op::SetQueueMode {
-                kind: kind("kind").ok_or("kind must be steer or followUp")?,
+                kind: kind("kind")
+                    .filter(|kind| *kind != QueueKind::NextRun)
+                    .ok_or("kind must be steer or followUp")?,
                 mode: need("mode")?,
             },
             "compact" => Op::Compact {
@@ -293,6 +335,12 @@ impl Op {
                 label: text("label"),
             },
             "killAgent" => Op::KillAgent { id: need("id")? },
+            "steerAgent" => Op::SteerAgent {
+                id: need("id")?,
+                message: need("message")?,
+            },
+            "reviveAgent" => Op::ReviveAgent { id: need("id")? },
+            "agentTranscript" => Op::AgentTranscript { id: need("id")? },
             "goal" => Op::Goal {
                 args: text("args").unwrap_or_default(),
             },
@@ -315,6 +363,17 @@ impl Op {
             "extensionCommand" => Op::ExtensionCommand {
                 name: need("name")?,
                 args: value["args"].as_str().unwrap_or_default().to_string(),
+            },
+            "extensionShortcuts" => Op::ExtensionShortcuts {
+                keybindings: keybindings_from_json(&value["keybindings"]),
+            },
+            "extensionShortcut" => Op::ExtensionShortcut {
+                key: need("key")?,
+                keybindings: keybindings_from_json(&value["keybindings"]),
+            },
+            "beforeFork" => Op::BeforeFork {
+                entry_id: need("entryId")?,
+                position: need("position")?,
             },
             "inspect" => Op::Inspect {
                 request: need("request")?,
@@ -382,6 +441,9 @@ impl Op {
                 json!({"op": "navigate", "targetId": target_id, "summarize": summarize, "customInstructions": instructions, "label": label})
             }
             Op::KillAgent { id } => json!({"op": "killAgent", "id": id}),
+            Op::SteerAgent { id, message } => json!({"op": "steerAgent", "id": id, "message": message}),
+            Op::ReviveAgent { id } => json!({"op": "reviveAgent", "id": id}),
+            Op::AgentTranscript { id } => json!({"op": "agentTranscript", "id": id}),
             Op::Goal { args } => json!({"op": "goal", "args": args}),
             Op::StartConversation { message } => json!({"op": "startConversation", "message": message}),
             Op::ConversationInput { id, message } => json!({"op": "conversationInput", "id": id, "message": message}),
@@ -393,8 +455,64 @@ impl Op {
             Op::ExtensionCompletions { name, prefix } => {
                 json!({"op": "extensionCompletions", "name": name, "prefix": prefix})
             }
+            Op::BeforeFork { entry_id, position } => {
+                json!({"op": "beforeFork", "entryId": entry_id, "position": position})
+            }
+            Op::ExtensionShortcuts { keybindings } => {
+                json!({"op": "extensionShortcuts", "keybindings": keybindings_json(keybindings)})
+            }
+            Op::ExtensionShortcut { key, keybindings } => {
+                json!({"op": "extensionShortcut", "key": key, "keybindings": keybindings_json(keybindings)})
+            }
         }
     }
+}
+
+/// Resolved keybindings as JSON: `{action: [keys]}` in order.
+fn keybindings_json(keybindings: &[(String, Vec<String>)]) -> Value {
+    Value::Object(
+        keybindings
+            .iter()
+            .map(|(action, keys)| (action.clone(), json!(keys)))
+            .collect(),
+    )
+}
+
+fn keybindings_from_json(value: &Value) -> Vec<(String, Vec<String>)> {
+    value
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(action, keys)| {
+            let keys = keys
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|k| k.as_str().map(str::to_string))
+                .collect();
+            (action.clone(), keys)
+        })
+        .collect()
+}
+
+/// `getShortcuts` and `getShortcutDiagnostics` of the session's extensions as [`Op::ExtensionShortcuts`] answers.
+pub fn extension_shortcuts(
+    host: Option<&Arc<extensions::ExtensionHost>>,
+    keybindings: &[(String, Vec<String>)],
+) -> Value {
+    let resolved = host.map(|host| host.shortcuts(keybindings)).unwrap_or_default();
+    json!({
+        "shortcuts": resolved
+            .shortcuts
+            .iter()
+            .map(|(_, s)| json!({"key": s.key, "description": s.description, "extensionPath": s.extension_path}))
+            .collect::<Vec<_>>(),
+        "diagnostics": resolved
+            .diagnostics
+            .iter()
+            .map(|(message, path)| json!({"type": "warning", "message": message, "path": path}))
+            .collect::<Vec<_>>(),
+    })
 }
 
 /// What reaches the actor.
@@ -424,6 +542,8 @@ pub enum Input {
     HarnessIdle,
     /// A compaction's work off the actor ended (core::compacting).
     Woken,
+    /// An extension's request that needs the actor (crate::extension_host).
+    Extension(crate::extension_host::Call),
 }
 
 /// Where lane-watch events go.
@@ -466,6 +586,8 @@ struct Running {
     journal: RunJournal,
     /// The run's prompt (its transcript message), announced when the first generation starts.
     prompt: Value,
+    /// The `nextRun` messages its admission placed before the prompt, announced with it.
+    captured: Vec<Value>,
     /// The durable runtime's submission of the prompt.
     submission: Option<durable::SubmissionId>,
     /// The run's own prompt has not reached `message_end` yet (later user messages are steering or follow-ups).
@@ -498,6 +620,14 @@ pub struct OpenOptions {
     pub services: Services,
     /// Name the session from its first prompt (and by the model's title); off for sessions removed at the end.
     pub auto_name: bool,
+}
+
+/// What a response did to its generation's retries.
+enum RetryNote {
+    /// A retry was scheduled: `{step, attempt, maxAttempts, delayMs, notBefore, errorMessage}`.
+    Scheduled(Value),
+    /// A retried generation ended: `{step, attempt, success, finalError?}`.
+    Ended(Value),
 }
 
 /// The session actor.
@@ -554,10 +684,16 @@ pub struct Core {
     /// What waits for the run in progress to end: a manual `compact` aborts the run first (AgentSession `compact`
     /// awaits `abort()`), then runs.
     after_run: Vec<Input>,
+    /// The research-loop brake and the skill hint on `main`'s turns (crate::nudge).
+    nudger: crate::nudge::ToolRoundNudger,
+    skill_nudger: crate::nudge::SkillExtractionNudger,
 }
 
 mod auto_compact;
 mod compacting;
+mod extension_ops;
+pub use extension_ops::before_fork;
+mod agent_ops;
 mod context_children;
 mod context_lane;
 mod durable_turns;
@@ -693,9 +829,11 @@ impl Core {
             },
         };
         let resume = open_operation.filter(|_| durable_records);
-        let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
+        // Extensions load before the model is chosen: the providers they declare can be the session's model
+        // (agent-session-services.ts registers them before `findInitialModel`).
         let sessions_dir = session_root.join(lane::session_directory_name(&metadata.cwd));
         let runtime = Runtime::new(&env, &mode, sessions_dir, services)?;
+        let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
         let api_key = lane::api_key(&flags, &env, &model.provider);
         let announced = session.state().entries().len();
         let announced_usage = session.state().usage_rows().len();
@@ -755,6 +893,41 @@ impl Core {
             child_context,
         )?;
         children.attach(durable.chat.clone());
+        // The agent hub steers a child lane's running conversation through its inbox (crate::agent_hub).
+        let steer_children = children.clone();
+        let _ = lane
+            .stack
+            .lane_steer
+            .set(Arc::new(move |child_lane: &str, message: &str| {
+                let (Some(chat), Some(conversation)) =
+                    (steer_children.chat(), steer_children.conversation_of_lane(child_lane))
+                else {
+                    return false;
+                };
+                if chat.live(conversation).map_or(true, |live| live["run"].is_null()) {
+                    return false;
+                }
+                chat.conversation(conversation).ok().flatten().is_some_and(|handle| {
+                    handle
+                        .submit(harness::chat::SubmissionDraft::Input {
+                            content: json!(message),
+                            when_busy: harness::chat::WhenBusy::Steer,
+                            request_id: None,
+                        })
+                        .is_ok()
+                })
+            }));
+        let _ = lane.stack.budget_note.set(crate::budget_note::budget_note(
+            children.clone(),
+            lane.stack.agents.clone(),
+            lane.stack.usage.clone(),
+        ));
+        let _ = lane
+            .stack
+            .swarm
+            .set(Arc::new(crate::swarm_ops::SwarmOps::new(children.clone())));
+        // rlm.spawn(fork=True): the child's conversation starts as its caller's.
+        lane.stack.delegation.set_fork_point(children.fork_point_hook());
         children.restore(&lane.stack, &unfinished)?;
         let events = event_lanes::install(
             &lane,
@@ -767,6 +940,7 @@ impl Core {
         event_lanes::tick_activity(tx.clone(), durable.stop.clone());
         // `compaction.enabled` (default on); `set_auto_compaction` changes it for the session.
         let auto_compaction = runtime.config.settings["compaction"]["enabled"] != false;
+        let (env_var, async_events) = (env.var.clone(), runtime.config.async_events);
         let mut core = Core {
             thinking: config["thinkingLevel"].as_str().unwrap_or("medium").to_string(),
             models: lane::available_models(&env),
@@ -803,6 +977,13 @@ impl Core {
             hook: None,
             navigating: false,
             after_run: Vec::new(),
+            nudger: crate::nudge::ToolRoundNudger::new(
+                crate::nudge::tool_rounds_nudge_from_env((env_var)("ULTRON_TOOL_ROUNDS_NUDGE").as_deref()),
+                async_events,
+            ),
+            skill_nudger: crate::nudge::SkillExtractionNudger::new(crate::nudge::skill_nudge_from_env(
+                (env_var)("ULTRON_SKILL_NUDGE").as_deref(),
+            )),
         };
         if let Some(operation) = resume {
             core.resumed = Some(core.reopen_run(&operation)?);
@@ -813,6 +994,7 @@ impl Core {
         }
         // Whatever else the runtime holds (subagents, background work) continues now.
         core.durable.chat.resume().map_err(|e| e.to_string())?;
+        core.open_extensions()?;
         Ok(core)
     }
 
@@ -886,6 +1068,7 @@ impl Core {
                 Input::ActivityTick => self.report_activity(),
                 // A compaction's wake-up is read by the compaction itself.
                 Input::Woken => {}
+                Input::Extension(call) => self.extension_call(call),
             }
         }
         self.close();
@@ -901,6 +1084,7 @@ impl Core {
 
     fn emit(&mut self, value: Value) {
         (self.sink)(value);
+        self.refresh_extension_facts();
     }
 
     /// The session's name now (`session_name`, a Rust-only event the worker serves as `ultron.session-ops` state,
@@ -1124,6 +1308,8 @@ impl Core {
                 };
                 let was_queued = delivered.is_some();
                 let answered = value["role"] == "assistant";
+                let round_message = (value["role"] != "user").then(|| value.clone());
+                let mut retry = None;
                 if value["role"] == "user" {
                     let first = self
                         .run
@@ -1149,11 +1335,22 @@ impl Core {
                     if value["role"] == "assistant" {
                         self.charge_turn(&value);
                     }
+                    if let Message::Assistant(answer) = message {
+                        retry = self.retry_decision(answer);
+                    }
                     self.journal(&agent_event);
                 }
                 self.announce();
                 if was_queued {
                     self.queue_update();
+                }
+                let retried = matches!(retry, Some(RetryNote::Scheduled(_)));
+                if let Some(note) = retry {
+                    self.emit_retry(note);
+                }
+                // A response that is retried ends no turn (no `turn_end` at `assistant.retry_wait`).
+                if let Some(message) = round_message.filter(|_| !retried) {
+                    self.count_round(&message);
                 }
                 // Once the model answered after a cell's output that returned finished tasks, it collapses.
                 if answered {
@@ -1253,6 +1450,16 @@ impl Core {
             parent = Some(queued.entry_id.clone());
         }
         let trigger = taken.last().map(|q| q.entry_id.clone());
+        // The retry wait ended (`runRetryWait`): the step's next attempt starts.
+        let retry_start = self
+            .run
+            .as_ref()
+            .and_then(|run| run.journal.run())
+            .and_then(|journal| Some((journal.retry_waiting()?, journal.step_id().to_string())));
+        if let Some((attempt, step)) = retry_start {
+            let run = self.run_id();
+            self.emit(json!({"type": "retry_start", "lane": LANE, "runId": run, "step": step, "attempt": attempt}));
+        }
         if let Some(placed) = parent.filter(|placed| Some(placed) != tip.as_ref()) {
             writes.push(Write::set(BRANCH_TIP, LANE, placed.into()));
         }
@@ -1345,6 +1552,8 @@ impl Core {
         if let Some(operation) = &operation {
             self.events.run_ended(LANE, operation, aborted);
         }
+        self.nudger.run_ended(&run.id);
+        self.skill_nudger.run_ended(&run.id);
         // Failure streaks of the hints' loop detector start over with the next run.
         self.lane.stack.cell_hints().run_ended(LANE);
         if let Some(waiter) = run.waiter {
@@ -1357,6 +1566,7 @@ impl Core {
         for input in std::mem::take(&mut self.after_run).into_iter().rev() {
             self.deferred.push_front(input);
         }
+        self.emit_agent_end();
     }
 
     fn bash_done(&mut self, command: String, exclude: bool, result: Result<Value, String>, reply: Reply) {
@@ -1440,6 +1650,7 @@ impl Core {
         } else {
             self.lane.shutdown();
         }
+        self.emit_session_shutdown();
         if let Some(host) = &self.runtime.extensions {
             host.shutdown();
         }
@@ -1492,6 +1703,20 @@ impl Core {
                 let stack = self.lane.stack.clone();
                 std::thread::spawn(move || reply(stack.complete_extension_command(&name, &prefix).map(Some)));
             }
+            Op::ExtensionShortcut { key, keybindings } => {
+                // A handler may prompt: it runs off the actor, as TypeScript runs it without blocking input.
+                let host = self.runtime.extensions.clone();
+                std::thread::spawn(move || {
+                    let run = host
+                        .ok_or_else(|| format!("No extension shortcut {key}"))
+                        .and_then(|host| host.run_shortcut(&key, &keybindings).map_err(|e| e.to_string()));
+                    reply(run.map(|_| None));
+                });
+            }
+            Op::BeforeFork { entry_id, position } => {
+                let host = self.runtime.extensions.clone();
+                std::thread::spawn(move || reply(Ok(Some(before_fork(host.as_ref(), &entry_id, &position)))));
+            }
             Op::Recover => {
                 let result = self.recover();
                 reply(result);
@@ -1510,9 +1735,15 @@ impl Core {
             | Op::Bash { .. }
             | Op::Recover
             | Op::ExtensionCommand { .. }
-            | Op::ExtensionCompletions { .. } => {
+            | Op::ExtensionCompletions { .. }
+            | Op::ExtensionShortcut { .. }
+            | Op::BeforeFork { .. } => {
                 unreachable!("answered in op")
             }
+            Op::ExtensionShortcuts { keybindings } => Ok(Some(extension_shortcuts(
+                self.runtime.extensions.as_ref(),
+                &keybindings,
+            ))),
             Op::Enqueue {
                 kind,
                 message,
@@ -1532,20 +1763,32 @@ impl Core {
                 Ok(None)
             }
             Op::State => Ok(Some(self.state())),
-            Op::AvailableModels => Ok(Some(Value::Array(
-                self.models
-                    .iter()
-                    .filter_map(|m| serde_json::to_value(m).ok())
-                    .collect(),
-            ))),
+            Op::AvailableModels => {
+                // The registry is read now (credentials and extension providers change while the session runs).
+                self.models = lane::available_models(&self.env);
+                Ok(Some(Value::Array(
+                    self.models
+                        .iter()
+                        .filter_map(|m| serde_json::to_value(m).ok())
+                        .collect(),
+                )))
+            }
             Op::SetModel { provider, model_id } => {
-                let model = self
-                    .models
-                    .iter()
-                    .find(|m| m.provider == provider && m.id == model_id)
-                    .cloned()
-                    .ok_or_else(|| format!("Model not found: {provider}/{model_id}"))?;
+                let find = |models: &[Model]| {
+                    models
+                        .iter()
+                        .find(|m| m.provider == provider && m.id == model_id)
+                        .cloned()
+                };
+                let model = match find(&self.models) {
+                    Some(model) => model,
+                    None => {
+                        self.models = lane::available_models(&self.env);
+                        find(&self.models).ok_or_else(|| format!("Model not found: {provider}/{model_id}"))?
+                    }
+                };
                 self.model = model;
+                self.lane.stack.images.set_model(None, self.model.clone());
                 self.store_lane_config()?;
                 serde_json::to_value(&self.model).map(Some).map_err(|e| e.to_string())
             }
@@ -1558,6 +1801,7 @@ impl Core {
                     .iter()
                     .position(|m| m.provider == self.model.provider && m.id == self.model.id);
                 self.model = self.models[index.map_or(0, |i| (i + 1) % self.models.len())].clone();
+                self.lane.stack.images.set_model(None, self.model.clone());
                 self.store_lane_config()?;
                 Ok(Some(json!({
                     "model": serde_json::to_value(&self.model).map_err(|e| e.to_string())?,
@@ -1583,6 +1827,7 @@ impl Core {
                 match kind {
                     QueueKind::Steer => queues.steering_all = all,
                     QueueKind::FollowUp => queues.follow_up_all = all,
+                    QueueKind::NextRun => return Err("kind must be steer or followUp".into()),
                 }
                 Ok(None)
             }
@@ -1598,8 +1843,18 @@ impl Core {
                     .store(enabled, std::sync::atomic::Ordering::SeqCst);
                 Ok(None)
             }
-            // No retry is ever scheduled in the Rust build, so there is nothing to abort.
-            Op::AbortRetry => Ok(None),
+            // `abort_retry`: a run waiting to retry its generation is aborted (`requestAbort` of the operation).
+            Op::AbortRetry => {
+                if self
+                    .run
+                    .as_ref()
+                    .and_then(|run| run.journal.run())
+                    .is_some_and(|journal| journal.retry_waiting().is_some())
+                {
+                    self.abort();
+                }
+                Ok(None)
+            }
             Op::AbortBash => {
                 if let Some(signal) = &self.bash {
                     signal.abort("abort_bash");
@@ -1654,12 +1909,13 @@ impl Core {
                 let metadata = session_journal::repo::read_metadata(Path::new(&target))
                     .ok_or_else(|| format!("Not a session file: {target}"))?;
                 let mut session = self.repo.open(&metadata)?;
+                // The fork's first worker reads (and removes) the marker: its `session_start` says "fork".
                 session.commit(&[Write::set(
-                    "ultron.session.start",
-                    "fork",
+                    extension_ops::SESSION_START.0,
+                    extension_ops::SESSION_START.1,
                     json!({"previousSessionFile": self.session_file()}),
                 )])?;
-                session.commit(&[Write::delete("ultron.session.start", "fork")])?;
+                self.extensions_forked(&target);
                 Ok(None)
             }
             Op::Describe => Ok(Some(json!({
@@ -1693,6 +1949,9 @@ impl Core {
                 .delegation
                 .cancel(&id, "Killed from the agent hub")
                 .map(Some),
+            Op::SteerAgent { id, message } => self.steer_agent(&id, &message).map(Some),
+            Op::ReviveAgent { id } => self.revive_agent(&id).map(Some),
+            Op::AgentTranscript { id } => self.agent_transcript(&id).map(Some),
             Op::StartConversation { message } => self.start_conversation(&message).map(Some),
             Op::ConversationInput { id, message } => self.conversation_input(id, &message).map(|()| None),
             Op::Conversations { id } => self.conversations(id).map(Some),
@@ -1726,6 +1985,110 @@ impl Core {
                 )))
             }
         }
+    }
+
+    /// What a response means for the generation's retries (the harness's `publishResponse`): a retryable error
+    /// within the policy's attempts is retried after `retryDelayMs` (journaled as `assistant.retry_wait`); a later
+    /// attempt's response ends the retries.
+    fn retry_decision(&mut self, answer: &ai::AssistantMessage) -> Option<RetryNote> {
+        let policy = self.summary_retry();
+        let run = self.run.as_mut()?;
+        if run.signal.aborted() {
+            return None;
+        }
+        let journal = run.journal.run()?;
+        let (attempt, step) = (journal.attempt(), journal.step_id().to_string());
+        let error = answer.stop_reason == ai::StopReason::Error;
+        if error
+            && attempt < policy.max_attempts
+            && harness::chat::models::is_retryable(answer)
+            && !harness::chat::models::is_context_overflow(answer)
+        {
+            let delay = policy.delay_ms(attempt);
+            let not_before = now_ms().saturating_add(i64::try_from(delay).unwrap_or(i64::MAX));
+            let message = answer
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "Assistant request failed".into());
+            run.journal.schedule_retry(not_before, message.clone());
+            return Some(RetryNote::Scheduled(json!({
+                "step": step, "attempt": attempt + 1, "maxAttempts": policy.max_attempts, "delayMs": delay,
+                "notBefore": not_before, "errorMessage": message,
+            })));
+        }
+        if attempt <= 1 {
+            return None;
+        }
+        let success = !matches!(answer.stop_reason, ai::StopReason::Error | ai::StopReason::Aborted);
+        let mut end = json!({"step": step, "attempt": attempt, "success": success});
+        if !success {
+            end["finalError"] = json!(answer.error_message.clone().unwrap_or_else(|| {
+                let reason = serde_json::to_value(answer.stop_reason).unwrap_or(Value::Null);
+                format!("Assistant request ended with {}", reason.as_str().unwrap_or_default())
+            }));
+        }
+        Some(RetryNote::Ended(end))
+    }
+
+    /// `retry_scheduled` / `retry_end` of the run's generation.
+    fn emit_retry(&mut self, note: RetryNote) {
+        let (kind, fields) = match note {
+            RetryNote::Scheduled(fields) => ("retry_scheduled", fields),
+            RetryNote::Ended(fields) => ("retry_end", fields),
+        };
+        let mut event = json!({"type": kind, "lane": LANE, "runId": self.run_id()});
+        for (key, value) in fields.as_object().into_iter().flatten() {
+            event[key] = value.clone();
+        }
+        self.emit(event);
+    }
+
+    /// A model turn of the run that answers without tools ends with its answer (`turn_end`); a tool round's turn
+    /// ends with its last cell ([`crate::turns::Request::RoundEnded`]).
+    fn count_round(&mut self, message: &Value) {
+        if self.run.is_none() || message["role"] != "assistant" {
+            return;
+        }
+        let calls = message["content"]
+            .as_array()
+            .map_or(0, |c| c.iter().filter(|b| b["type"] == "toolCall").count());
+        if calls == 0 {
+            self.turn_ended(0, 0);
+        }
+    }
+
+    /// `turn_end` on `main`: the brake and the skill hint steer the run when due.
+    pub(super) fn turn_ended(&mut self, calls: usize, failed: usize) {
+        let Some(run) = self.run.as_ref().map(|r| r.id.clone()) else {
+            return;
+        };
+        let running = self.root_started_running();
+        let steers: Vec<String> = [
+            self.nudger.turn_ended(&run, calls, running),
+            self.skill_nudger.turn_ended(&run, calls, failed, running),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        for steer in steers {
+            let _ = self.enqueue(QueueKind::Steer, steer, Vec::new(), None);
+        }
+    }
+
+    /// `pendingRootNotifications`: subagents and root-level tasks the root started that have not ended.
+    fn root_started_running(&self) -> u64 {
+        use kernel_apis::TaskHost;
+        let subagents = self.lane.stack.delegation.running(LANE).len();
+        let tasks = self
+            .lane
+            .stack
+            .agents
+            .tasks()
+            .unwrap_or_default()
+            .iter()
+            .filter(|task| task["parentId"].is_null() && task["result"].is_null())
+            .count();
+        (subagents + tasks) as u64
     }
 
     fn thinking_levels(&self) -> Vec<String> {
@@ -1856,16 +2219,29 @@ impl Core {
             .unwrap_or(Value::Null);
         let started_tip = self.tip().map_or(Value::Null, Value::from);
         let settings = self.run_settings();
-        let mut journal = match RunJournal::admit_with_settings(
+        // The run takes every message queued for the next run, placed before its prompt (`selectAcceptedInbox`).
+        let captured: Vec<(String, Value)> = lock(&self.queues)
+            .items
+            .iter()
+            .filter(|q| q.kind == QueueKind::NextRun)
+            .map(|q| (q.entry_id.clone(), q.message.clone()))
+            .collect();
+        let mut journal = match RunJournal::admit_capturing(
             Some(&mut lock_session(&self.session)),
             lane_config,
             prompt.clone(),
             (self.model.max_tokens, self.model.context_window),
             settings,
+            &captured,
         ) {
             Ok(journal) => journal,
             Err(error) => return fail(error, waiter),
         };
+        if !captured.is_empty() {
+            lock(&self.queues).items.retain(|q| q.kind != QueueKind::NextRun);
+            self.queue_update();
+        }
+        let captured: Vec<Value> = captured.into_iter().map(|(_, message)| message).collect();
         // The title call runs beside the turn and is applied whenever it answers (while the name is automatic).
         if let Some((naming_model, key, text)) = naming_request {
             let (tx, provider) = (self.tx.clone(), self.provider.clone());
@@ -1884,6 +2260,8 @@ impl Core {
         }
         // Work the turn admits is charged to a usage root of its own; the ledger counts its responses.
         journal.ledger_counts_turns();
+        journal.set_retry_policy(self.summary_retry().value());
+        self.before_agent_start(&prompt, journal.run().map(|r| r.operation_id()));
         if let Some(run) = journal.run() {
             self.lane.stack.agents.begin_root_turn(run.operation_id());
             self.durable
@@ -1909,6 +2287,7 @@ impl Core {
             signal,
             journal,
             prompt,
+            captured,
             submission: Some(submission),
             prompt_pending: true,
             turns: 0,
@@ -1956,7 +2335,12 @@ impl Core {
             .is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
         // The interrupted run continues first; queued messages stay queued and the loop delivers them as it would
         // have (steering during the run, follow-ups when it would end). Without one, the first queued message runs.
-        let first = lock(&self.queues).items.first().cloned();
+        // A message queued for the next run waits for one; it never starts it.
+        let first = lock(&self.queues)
+            .items
+            .iter()
+            .find(|q| q.kind != QueueKind::NextRun)
+            .cloned();
         let prompt = match first {
             _ if recovered.resume && !resume_off => {
                 let mut prompt = user_message(crate::recovery::CONTINUE_PROMPT.to_string(), Vec::new());
@@ -1995,6 +2379,9 @@ impl Core {
         images: Vec<Value>,
         entry_id: Option<String>,
     ) -> Result<String, String> {
+        if message.is_empty() && images.is_empty() {
+            return Err(EMPTY_QUEUED.into());
+        }
         let message = user_message(message, images);
         // The message waits in the lane's inbox as a pending entry.
         let entry_id =
@@ -2063,7 +2450,10 @@ impl Core {
                     .collect()
             };
             let cleared: Vec<String> = queues.items.iter().map(|q| q.entry_id.clone()).collect();
-            (pick(QueueKind::Steer), pick(QueueKind::FollowUp), cleared)
+            // A next-run message is listed with the follow-ups, as RPC's `queue_update` lists it.
+            let mut follow_up = pick(QueueKind::FollowUp);
+            follow_up.extend(pick(QueueKind::NextRun));
+            (pick(QueueKind::Steer), follow_up, cleared)
         };
         if !cleared.is_empty() {
             let _ = self.remove_queued(&cleared);

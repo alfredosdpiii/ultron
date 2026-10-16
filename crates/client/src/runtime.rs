@@ -119,10 +119,23 @@ struct Shared {
     closed: Option<String>,
 }
 
+/// The write half of a connection's byte transport: a Unix socket, or the Radius relay
+/// ([`crate::radius::RadiusByteWriter`]).
+pub trait ConnectionWriter: Write + Send {
+    /// End the transport (both directions); the reader then sees it closed.
+    fn shutdown(&mut self);
+}
+
+impl ConnectionWriter for UnixStream {
+    fn shutdown(&mut self) {
+        let _ = UnixStream::shutdown(self, std::net::Shutdown::Both);
+    }
+}
+
 /// A handshaken connection to one server; requests are pipelined and answered by a reader thread.
 pub struct Connection {
     pub server_id: String,
-    writer: Mutex<UnixStream>,
+    writer: Mutex<Box<dyn ConnectionWriter>>,
     shared: Arc<(Mutex<Shared>, Condvar)>,
     requests: AtomicU64,
     subscriptions: AtomicU64,
@@ -137,10 +150,37 @@ impl Connection {
             ));
         }
         let stream = UnixStream::connect(path).map_err(disconnected)?;
-        let mut read = stream.try_clone().map_err(disconnected)?;
+        let read = stream.try_clone().map_err(disconnected)?;
+        Connection::connect_over(Box::new(read), Box::new(stream), server_id)
+    }
+
+    /// The server `server_id` through the Radius gateway (`createRadiusClientTransportFactory`): `auth` is resolved
+    /// for this connection (required).
+    pub fn connect_radius(
+        server_id: &str,
+        auth: &dyn server::radius_relay::RelayAuthResolver,
+    ) -> Result<Arc<Connection>, CallError> {
+        if !is_server_id(server_id) {
+            return Err(CallError::Disconnected(
+                "serverId must be a canonical lowercase UUIDv4".into(),
+            ));
+        }
+        let (read, write) = crate::radius::RadiusByteStream::connect(server_id, auth)
+            .map_err(CallError::Disconnected)?
+            .split();
+        Connection::connect_over(Box::new(read), Box::new(write), server_id)
+    }
+
+    /// Handshake with `server_id` over a byte transport's halves.
+    pub fn connect_over(
+        mut read: Box<dyn Read + Send>,
+        writer: Box<dyn ConnectionWriter>,
+        server_id: &str,
+    ) -> Result<Arc<Connection>, CallError> {
+        let disconnected = |e: std::io::Error| CallError::Disconnected(e.to_string());
         let connection = Arc::new(Connection {
             server_id: server_id.to_string(),
-            writer: Mutex::new(stream),
+            writer: Mutex::new(writer),
             shared: Arc::new((Mutex::new(Shared::default()), Condvar::new())),
             requests: AtomicU64::new(0),
             subscriptions: AtomicU64::new(0),
@@ -151,17 +191,23 @@ impl Connection {
         let mut decoder = ServerMessageDecoder::default();
         let mut buffer = vec![0u8; 64 * 1024];
         let mut queued = Vec::new();
-        while queued.is_empty() {
-            let n = read.read(&mut buffer).map_err(disconnected)?;
-            if n == 0 {
-                return Err(CallError::Disconnected("Byte transport closed".into()));
+        let handshake = (|| {
+            while queued.is_empty() {
+                let n = read.read(&mut buffer).map_err(disconnected)?;
+                if n == 0 {
+                    return Err(CallError::Disconnected("Byte transport closed".into()));
+                }
+                queued = decoder.push(&buffer[..n]).map_err(|e| CallError::Disconnected(e.0))?;
             }
-            queued = decoder.push(&buffer[..n]).map_err(|e| CallError::Disconnected(e.0))?;
-        }
-        match queued.remove(0) {
-            ServerMessage::Hello { server_id: id, .. } if id == server_id => {}
-            ServerMessage::HelloError { error } => return Err(CallError::Server(error)),
-            _ => return Err(CallError::Disconnected("Expected server hello as first message".into())),
+            match queued.remove(0) {
+                ServerMessage::Hello { server_id: id, .. } if id == server_id => Ok(()),
+                ServerMessage::HelloError { error } => Err(CallError::Server(error)),
+                _ => Err(CallError::Disconnected("Expected server hello as first message".into())),
+            }
+        })();
+        if let Err(error) = handshake {
+            connection.disconnect();
+            return Err(error);
         }
         let shared = connection.shared.clone();
         for message in queued {
@@ -231,6 +277,15 @@ impl Connection {
             call: to_cbor(&call),
         })?;
         Ok(id)
+    }
+
+    /// Cancel request `id` (sent to `target`): the server aborts it if it is still active, and its response is then
+    /// the `cancelled` error (client.ts sends `{type: "cancel", id, target}` when a call's signal aborts).
+    pub fn cancel(&self, target: RpcTarget, id: &str) -> Result<(), CallError> {
+        self.write(&ClientMessage::Cancel {
+            id: id.to_string(),
+            target,
+        })
     }
 
     /// Send several calls in one write (as a pipelining client does in one tick); returns their request ids.
@@ -383,11 +438,7 @@ impl Connection {
     }
 
     pub fn disconnect(&self) {
-        let _ = self
-            .writer
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .shutdown(std::net::Shutdown::Both);
+        self.writer.lock().unwrap_or_else(|e| e.into_inner()).shutdown();
     }
 }
 
@@ -429,6 +480,8 @@ pub struct ClientCommand {
     pub prompt: Option<String>,
     pub fork_from_session_id: Option<String>,
     pub no_session: bool,
+    /// The prompt's images (`@file` images): `{type: "image", mimeType, data}`.
+    pub images: Option<Vec<Json>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -484,6 +537,9 @@ fn fail(error: CallError) -> String {
     error.to_string()
 }
 
+/// Told every transcript event of a prompted session (`onEvent`).
+pub type EventListener = Arc<dyn Fn(&Json) + Send + Sync>;
+
 /// How a prompted client survives interruptions.
 #[derive(Clone, Default)]
 pub struct RunOptions {
@@ -492,6 +548,8 @@ pub struct RunOptions {
     pub interrupt: Option<Arc<AtomicBool>>,
     /// The server went away: reach it again (restarting it), for rejoining the session.
     pub reconnect: Option<Arc<dyn Fn() -> Result<Route, String> + Send + Sync>>,
+    /// Every transcript event of the prompted session as it arrives (`onEvent`).
+    pub on_event: Option<EventListener>,
 }
 
 /// The session operations service of the Rust worker (crates/daemon `worker::OPS_SERVICE`).
@@ -571,6 +629,17 @@ pub fn run_client(command: &ClientCommand, route: &Route) -> Result<ClientResult
 /// [`run_client`] that aborts on interrupt and rejoins its session when the worker or the server goes away.
 pub fn run_client_with(command: &ClientCommand, route: &Route, options: &RunOptions) -> Result<ClientResult, String> {
     let connection = Connection::connect(&route.path, &route.server_id).map_err(fail)?;
+    run_client_on(command, connection, options)
+}
+
+/// [`run_client_with`] over an established connection (a Unix socket's, or the Radius relay's); the connection is
+/// disconnected when the run ends.
+pub fn run_client_on(
+    command: &ClientCommand,
+    connection: Arc<Connection>,
+    options: &RunOptions,
+) -> Result<ClientResult, String> {
+    let route_server_id = connection.server_id.clone();
     let result = run_operation(command, &connection, options);
     let mut cleanup = Vec::new();
     if let (Ok(Some(created)), true) = (&result.1, command.no_session) {
@@ -587,7 +656,7 @@ pub fn run_client_with(command: &ClientCommand, route: &Route, options: &RunOpti
     let (subscriptions, outcome) = (result.0, result.2);
     let outcome = match outcome {
         Err(Failure::Lost { session_id, error }) => {
-            recover_lost(&connection, &route.server_id, &session_id, error, options)
+            recover_lost(&connection, &route_server_id, &session_id, error, options)
         }
         Err(Failure::Other(error)) => Err(error),
         Ok(result) => Ok(result),
@@ -820,20 +889,25 @@ fn operation(
         return Err(Failure::Other("Transcript has no initialized snapshot".into()));
     }
     let (events, received) = mpsc::channel::<Json>();
+    let on_event = options.on_event.clone();
     connection.listen(
         &transcript,
         Box::new(move |_, value| {
             if !value["event"].is_null() {
+                if let Some(on_event) = &on_event {
+                    on_event(&value["event"]);
+                }
                 let _ = events.send(value["event"].clone());
             }
         }),
     );
+    let images = command.images.clone().map_or(Json::Null, Json::Array);
     let response = connection
         .start(
             session.clone(),
             "pi.agent-controller",
             "prompt",
-            json!([{"message": prompt, "images": null}]),
+            json!([{"message": prompt, "images": images}]),
         )
         .and_then(|request| await_prompt(connection, &session, &request, options));
     let response = match response {

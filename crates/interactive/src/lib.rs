@@ -4,13 +4,17 @@
 //! session through [`lane::LaneClient`]; it never links the engine.
 
 pub mod agent_hub;
+pub mod api_key_login;
 pub mod app;
 pub mod changelog;
 pub mod chat;
 pub mod commands;
 mod components;
 pub mod copy_targets;
+pub mod debug_log;
 pub mod extension_commands;
+pub mod extension_dialogs;
+pub mod extension_shortcuts;
 pub mod header;
 pub mod history;
 pub mod history_search;
@@ -19,6 +23,7 @@ pub mod lane;
 pub mod login_dialog;
 pub mod model_hub;
 pub mod modes;
+pub mod package_updates;
 pub mod qol;
 pub mod retry;
 pub mod rlm;
@@ -28,8 +33,10 @@ pub mod scoped_models;
 pub mod selectors;
 pub mod session_selector;
 pub mod settings_selector;
+pub mod theme_setup;
 pub mod transcript_picker;
 pub mod tree_selector;
+pub mod trust_selector;
 pub mod word_diff;
 
 pub use components::*;

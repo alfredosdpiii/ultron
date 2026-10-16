@@ -15,6 +15,7 @@ loki = { path = "../loki" }
 rustix = { version = "=1.1.5", features = ["process", "std"] }
 sandbox = { path = "../sandbox" }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
+sha2 = "=0.10.9"
 
 [dev-dependencies]
 tempfile = "=3.27.0"

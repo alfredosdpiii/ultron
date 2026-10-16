@@ -15,6 +15,9 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
 const WORKER_STARTUP_TIMEOUT: Duration = Duration::from_millis(15_000);
+/// The error code and message of a call its client cancelled (packages/server server.ts `handleRequest`).
+pub const CANCELLED_CODE: &str = "cancelled";
+pub const CANCELLED_MESSAGE: &str = "RPC request cancelled";
 const WORKER_SHUTDOWN_TIMEOUT: Duration = Duration::from_millis(10_000);
 const WORKER_DISCOVERY_TIMEOUT: Duration = Duration::from_millis(5_000);
 const WORKER_DEMAND_TIMEOUT: Duration = Duration::from_millis(5_000);
@@ -59,6 +62,13 @@ pub struct WorkerModel {
     pub no_naming: bool,
     /// Pi `--no-extensions`: workers load no extensions and no MCP servers.
     pub no_extensions: bool,
+    /// `--models`: the scoped model patterns a new session's model is chosen from (else `enabledModels`).
+    pub models: Option<Vec<String>>,
+    /// `--system-prompt`, `-e`, `--no-skills`, `--no-context-files`.
+    pub session: session_core::session_flags::SessionFlags,
+    /// Environment the workers start with on top of this process's: what the CLI set for its run (`--offline`'s
+    /// `PI_OFFLINE`, the `httpProxy` setting's `HTTP_PROXY`/`HTTPS_PROXY`), as TypeScript sets `process.env`.
+    pub env: Vec<(String, String)>,
 }
 
 type TerminationListener = Box<dyn FnOnce(Option<String>) + Send>;
@@ -511,6 +521,10 @@ impl Manager {
         if model.no_extensions {
             options["noExtensions"] = json!(true);
         }
+        if let Some(models) = &model.models {
+            options["models"] = json!(models);
+        }
+        model.session.write_worker_options(&mut options);
         options
     }
 
@@ -535,6 +549,7 @@ impl Manager {
         if let Some(api_key) = &self.model.api_key {
             env.push((crate::worker::API_KEY_ENV.to_string(), api_key.clone()));
         }
+        env.extend(self.model.env.iter().cloned());
         let child = process::spawn(Role::SessionWorker, &[self.worker_options(meta).to_string()], &env)
             .map_err(|e| ServiceError::internal(e.to_string()))?;
         let pid = child.id();
@@ -688,7 +703,15 @@ impl Manager {
     }
 
     /// Route one service operation on an attachment; `done` runs with its result (on the coordinator reader).
-    pub fn invoke(&self, handle: &Handle, attachment: &str, call: Value, publish: Publish, done: Done) {
+    /// Returns the operation's request id once it was sent ([`Manager::cancel_operation`] cancels it).
+    pub fn invoke(
+        &self,
+        handle: &Handle,
+        attachment: &str,
+        call: Value,
+        publish: Publish,
+        done: Done,
+    ) -> Option<String> {
         let server = self.coordinator().server_connection_id.clone();
         let scope = json!({"serverConnectionId": server, "attachmentId": attachment});
         let mut inner = self.lock();
@@ -700,16 +723,18 @@ impl Manager {
                 .is_some_and(|w| !w.stopping && w.attachments.contains(attachment));
         if !valid {
             drop(inner);
-            return done(Err(ServiceError::internal(
+            done(Err(ServiceError::internal(
                 "Experimental Session worker has no active attachment",
             )));
+            return None;
         }
         let subscription = subscribe_id(&call);
         if let Some(id) = &subscription {
             let key = scoped(&scope, id);
             if inner.subscriptions.contains_key(&key) {
                 drop(inner);
-                return done(Err(ServiceError::internal("Service subscription ID is already active")));
+                done(Err(ServiceError::internal("Service subscription ID is already active")));
+                return None;
             }
             inner.subscriptions.insert(key, (handle.peer.clone(), publish));
         }
@@ -746,7 +771,24 @@ impl Manager {
         );
         if let Err(error) = sent {
             self.reject_operation(&request, error.to_string());
+            return None;
         }
+        Some(request)
+    }
+
+    /// The caller stopped waiting for operation `request` (its client cancelled the call or disconnected): the worker
+    /// is told (`operation_cancel`, its call's context is cancelled) and the operation settles now as cancelled.
+    /// An operation that already settled is left alone.
+    pub fn cancel_operation(&self, request: &str) {
+        let removed = self.lock().operations.remove(request);
+        let Some((peer, scope, done)) = removed else {
+            return;
+        };
+        let _ = self.send(
+            &peer,
+            json!({"type": "operation_cancel", "requestId": request, "scope": scope}),
+        );
+        done(Err(ServiceError::coded(CANCELLED_CODE, CANCELLED_MESSAGE)));
     }
 
     fn reject_operation(&self, request: &str, message: String) {

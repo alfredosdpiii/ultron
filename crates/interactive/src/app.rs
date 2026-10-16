@@ -36,7 +36,9 @@ use crate::copy_targets::TranscriptEntry;
 use crate::header::StartupHeader;
 use crate::history::{PromptHistoryStore, TimedPrompt};
 use crate::history_search::{HistorySearchEvent, PromptHistorySearch};
-use crate::lane::{BashResult, LaneClient, LaneEvent, ModelInfo, PromptImage, QueueKind, Queued, SessionListing};
+use crate::lane::{
+    AutoreviewRequest, BashResult, LaneClient, LaneEvent, ModelInfo, PromptImage, QueueKind, Queued, SessionListing,
+};
 use crate::model_hub::{ModelHub, ModelHubEvent};
 use crate::qol::{GitSource, NotifyFn, QolSettings, code_highlighter, rlm_highlighter};
 use crate::rlm_cell::Highlighter;
@@ -50,9 +52,36 @@ use crate::tree_selector::{FilterMode, TreeAction, TreeSelector};
 const BRANCH_SUMMARY_ABORTED: &str = "Branch summarization cancelled";
 /// The error a navigation answers when an extension cancelled it (session-core `NAVIGATION_CANCELLED`).
 const NAVIGATION_CANCELLED: &str = "Navigation cancelled";
+/// The last choice of `/autoreview on`'s account picker.
+const ALL_ACCOUNTS: &str = "All logged-in accounts";
 
 /// Pi exits on a second Ctrl-C within this window.
 const CTRL_C_EXIT_WINDOW: Duration = Duration::from_millis(500);
+/// Pi's double-Esc window (`DOUBLE_ESCAPE_WINDOW_MS`).
+const DOUBLE_ESCAPE_WINDOW: Duration = Duration::from_millis(500);
+/// The RLM pane opens beside the chat from this terminal width; narrower, the full-screen graph opens.
+pub const RLM_PANE_MIN_COLUMNS: usize = 120;
+/// RLM polls while an RLM view (or the live wave summary) shows, and while nothing does (`RLM_POLL_*_MS`).
+const RLM_POLL_VISIBLE: Duration = Duration::from_millis(1000);
+const RLM_POLL_HIDDEN: Duration = Duration::from_millis(5000);
+/// Frame summaries fetched per poll (`RLM_FRAME_LIMIT`).
+const RLM_FRAME_LIMIT: u64 = 200;
+
+/// Suspends the process until it is continued (`suspendTui`); `Err` is shown in the status line.
+pub type SuspendHook = Box<dyn FnMut() -> Result<(), String>>;
+
+/// `rlmPaneWidth`: about 40% of the terminal, at least 44 columns (border excluded).
+pub fn rlm_pane_width(columns: usize) -> usize {
+    44usize.max((columns as f64 * 0.4).round() as usize)
+}
+
+/// Whether `ULTRON_SPLASH` / `ULTRON_RLM_PANE_AUTO` turn a default-on feature off (`off`, `0`, `false`).
+pub fn env_off(value: Option<&str>) -> bool {
+    matches!(
+        value.unwrap_or("").trim().to_lowercase().as_str(),
+        "off" | "0" | "false"
+    )
+}
 
 /// What the app was started with.
 pub struct AppOptions {
@@ -82,6 +111,8 @@ enum Purpose {
     Thinking,
     /// `/mode`: the always-on skills the status names after a choice.
     Mode(Vec<String>),
+    /// `/autoreview on`: the `gh` accounts, `(login, host)`, to review as.
+    AutoreviewAccount(Vec<(String, String)>),
     /// "Summarize branch?" before navigating to this entry.
     Summarize(String),
     /// "Select authentication method": the options it chooses among (`None`: every provider).
@@ -133,6 +164,8 @@ enum Panel {
     /// The full-screen RLM graph (`RlmGraphFocus`) in the editor's place.
     RlmFocus(Box<crate::rlm::RlmGraphFocus>),
     Logout(Box<crate::selectors::AuthSelector>),
+    /// `/trust`: the project trust selector.
+    Trust(Box<crate::trust_selector::TrustSelector>),
     /// The `/login` provider selector; `Some(auth type)` when a method was chosen first (Esc goes back to it).
     Login(
         Box<crate::selectors::AuthSelector>,
@@ -154,17 +187,37 @@ enum Panel {
         method: String,
         input: Box<tui::input::Input>,
     },
-    /// An extension's `input` or `editor` dialog (`#showTextInput`): the request id and its title.
+    /// An extension's `input` dialog (`#showTextInput`): the request id.
     ExtensionInput {
         id: String,
-        title: String,
-        input: Box<tui::input::Input>,
+        dialog: Box<crate::extension_dialogs::ExtensionInputDialog>,
     },
-    /// A one-line text prompt (`#showTextEditor`): the custom branch summary instructions for `entry`.
-    Instructions {
-        entry: String,
-        input: Box<tui::input::Input>,
+    /// The multi-line editor dialog (`#showTextEditor`): an extension's `editor` request, or the custom branch
+    /// summary instructions.
+    TextEditor {
+        purpose: EditorPurpose,
+        dialog: Box<crate::extension_dialogs::ExtensionEditorDialog>,
     },
+    /// `/share`'s "Creating gist..." loader; Esc cancels the upload.
+    ShareLoader(Box<crate::extension_dialogs::BorderedLoader>),
+}
+
+/// What the editor dialog's text is for.
+enum EditorPurpose {
+    /// An extension's `editor` request id.
+    Extension(String),
+    /// Custom summarization instructions for navigating to this entry.
+    Instructions(String),
+}
+
+/// The RLM inspections polled besides the subagent listing (`#refreshRlm`).
+#[derive(Default)]
+struct RlmPoll {
+    frames: Vec<crate::rlm::visualizer::RlmFrame>,
+    pool: Option<crate::rlm::visualizer::RlmPool>,
+    context: Option<crate::rlm::visualizer::RlmContextState>,
+    retained: std::collections::HashSet<String>,
+    last: Option<Instant>,
 }
 
 /// `nextModel` (client-tui-actions.ts): the next model in the `enabledModels` scope when it selects any
@@ -226,10 +279,14 @@ pub struct App {
     operation: Option<String>,
     /// A compaction is running (its indicator says Esc cancels it).
     compacting: bool,
+    /// The run is waiting to retry its request (`auto_retry_start`): Esc stops the retry.
+    retrying: bool,
     selection: Option<Selection>,
     /// What `/mode` or `/engineering` does once [`LaneEvent::Mode`] reports the settings' mode.
     mode_request: Option<crate::modes::ModeRequest>,
     session_id: Option<String>,
+    /// Package updates found before the first session opened (opening clears the transcript), shown with it.
+    early_package_updates: Vec<String>,
     session_file: Option<String>,
     session_name: Option<String>,
     transcript: Vec<Value>,
@@ -296,6 +353,9 @@ pub struct App {
     edit_request: Option<String>,
     /// Set while something else owns the terminal: the input pump stops reading.
     input_gate: Arc<std::sync::atomic::AtomicBool>,
+    /// The connection to a Radius-hosted server is being recovered (client-tui.ts `#busy` during recovery): input
+    /// waits, except Ctrl+C and Ctrl+D on an empty editor.
+    recovering: bool,
     /// The width of the last frame (transcript search renders the transcript at it).
     cols: usize,
     /// The RLM panel shows (`app.rlm.toggle`).
@@ -304,6 +364,8 @@ pub struct App {
     fd_path: Option<std::path::PathBuf>,
     /// The session's extension commands that are slash commands of their own.
     extension_commands: Vec<String>,
+    /// The extensions' keyboard shortcuts in force (crate::extension_shortcuts).
+    extension_shortcuts: Vec<crate::extension_shortcuts::ExtensionShortcut>,
     /// Their argument completions, as they arrive.
     completions: crate::extension_commands::Completions,
     /// The last subagent listing (`rlm.list_subagents`).
@@ -313,6 +375,51 @@ pub struct App {
     extension_dialogs: std::collections::VecDeque<Value>,
     /// An extension dialog is open.
     extension_dialog_open: bool,
+    /// The editor's keybindings (dialogs with an editor of their own).
+    editor_keys: KeybindingsManager,
+    /// The clock (tests drive double taps, countdowns and polls with their own).
+    clock: Box<dyn Fn() -> Instant>,
+    /// The theme setting, its live application and previews.
+    theme_controller: Option<crate::theme_setup::ThemeController>,
+    /// The terminal's color palette notifications are on (`CSI ? 2031 h` sent, not yet turned off).
+    scheme_notifications: bool,
+    /// `showHardwareCursor`: the painter shows the terminal's cursor at the editor's.
+    pub show_hardware_cursor: bool,
+    /// `terminal.clearOnShrink`: the split-viewport painter repaints a shrunk viewport whole.
+    pub clear_on_shrink: bool,
+    /// `doubleEscapeAction`: `tree`, `fork` or `none`.
+    double_escape_action: String,
+    last_escape: Option<Instant>,
+    /// `ULTRON_SPLASH` allows the splash; `quietStartup` hides it.
+    splash_allowed: bool,
+    /// Ctrl+Z asked to suspend (`app.suspend`): the run loop gives the terminal back and stops the process.
+    suspend_request: bool,
+    suspend_hook: Option<SuspendHook>,
+    /// Success statuses of copies waiting for the clipboard's answer, oldest first.
+    pending_copies: std::collections::VecDeque<String>,
+    /// Where a pasted clipboard image is saved (`tmpdir()`).
+    temp_dir: std::path::PathBuf,
+    /// Extension statuses (`setStatus`) on the footer's status line.
+    extension_statuses: Vec<(String, String)>,
+    /// Extension widgets (`setWidget`): lines, and whether below the editor; by key.
+    widgets: std::collections::BTreeMap<String, (Vec<String>, bool)>,
+    /// The RLM pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys.
+    rlm_pane: crate::rlm::pane::RlmPane,
+    rlm_pane_open: bool,
+    rlm_pane_focused: bool,
+    /// Runs the pane already opened for (or showed while open), and `op:<id>` for turns in which the user closed it.
+    rlm_pane_handled: std::collections::HashSet<String>,
+    /// `rlmPaneAutoOpen` (and not `ULTRON_RLM_PANE_AUTO=off`).
+    rlm_pane_auto: bool,
+    rlm_poll: RlmPoll,
+    /// The wave summary showed at the last poll (it polls at the visible rate while it does).
+    wave_active: bool,
+    /// The running operation's start, ms since the epoch (the pane's auto-open counts runs from it).
+    operation_started_ms: Option<f64>,
+    /// The external editor edits the editor dialog's text, not the main editor's.
+    edit_dialog: bool,
+    /// A multi-field API-key login in progress: its flow and provider.
+    api_login: Option<(crate::api_key_login::ApiKeyLogin, crate::selectors::AuthProvider)>,
 }
 
 fn select_theme(t: &Rc<Theme>, scroll: &'static str, no_match: &'static str) -> SelectListTheme {
@@ -452,6 +559,24 @@ fn slash_commands(
             )
         }));
     }
+    // `/engineering` and `/autoreview`: their fixed arguments, by prefix (client-tui-pi-commands.ts).
+    for (name, values) in [("engineering", ["true", "false"]), ("autoreview", ["on", "off"])] {
+        if let Some(command) = commands.iter_mut().find(|c| c.name == name) {
+            command.argument_completions = Some(Box::new(move |prefix: &str| {
+                Some(
+                    values
+                        .iter()
+                        .filter(|value| value.starts_with(prefix))
+                        .map(|value| AutocompleteItem {
+                            value: value.to_string(),
+                            label: value.to_string(),
+                            description: None,
+                        })
+                        .collect(),
+                )
+            }));
+        }
+    }
     commands
 }
 
@@ -473,6 +598,7 @@ impl App {
 
     pub fn new(options: AppOptions, client: Box<dyn LaneClient>) -> Self {
         let theme = options.theme;
+        let editor_keys = options.editor_keys.clone();
         let mut editor = Editor::new(
             options.editor_keys,
             Default::default(),
@@ -529,9 +655,11 @@ impl App {
             status: "Starting Session…".into(),
             operation: None,
             compacting: false,
+            retrying: false,
             selection: None,
             mode_request: None,
             session_id: None,
+            early_package_updates: Vec::new(),
             session_file: None,
             session_name: None,
             transcript: Vec::new(),
@@ -576,13 +704,40 @@ impl App {
             external_editor: None,
             edit_request: None,
             input_gate: Arc::default(),
+            recovering: false,
             cols: 80,
             rlm_visible: false,
             fd_path: options.fd_path,
             extension_commands: Vec::new(),
+            extension_shortcuts: Vec::new(),
             completions: Default::default(),
             rlm_agents: Value::Null,
             rlm_clock: crate::rlm::RlmClock::new(),
+            clock: Box::new(Instant::now),
+            editor_keys,
+            theme_controller: None,
+            scheme_notifications: false,
+            show_hardware_cursor: false,
+            clear_on_shrink: false,
+            double_escape_action: "tree".into(),
+            last_escape: None,
+            splash_allowed: options.splash,
+            suspend_request: false,
+            suspend_hook: None,
+            pending_copies: std::collections::VecDeque::new(),
+            temp_dir: std::env::temp_dir(),
+            extension_statuses: Vec::new(),
+            widgets: std::collections::BTreeMap::new(),
+            rlm_pane: crate::rlm::pane::RlmPane::new(),
+            rlm_pane_open: false,
+            rlm_pane_focused: false,
+            rlm_pane_handled: std::collections::HashSet::new(),
+            rlm_pane_auto: true,
+            rlm_poll: RlmPoll::default(),
+            wave_active: false,
+            operation_started_ms: None,
+            edit_dialog: false,
+            api_login: None,
         }
         .with_cancel_key()
     }
@@ -615,6 +770,12 @@ impl App {
 
     /// The editor's result: the new editor text, or `None` (the editor failed: the text stays).
     pub fn finish_edit(&mut self, edited: Option<String>) {
+        if std::mem::take(&mut self.edit_dialog) {
+            if let (Some(text), Some(Panel::TextEditor { dialog, .. })) = (edited, self.panel.as_mut()) {
+                dialog.set_text(&text);
+            }
+            return;
+        }
         if let Some(text) = edited {
             self.editor.set_text(&text);
             self.update_editor_border();
@@ -635,6 +796,159 @@ impl App {
     /// Pi's `enabledModels` setting: the models Ctrl+P cycles through.
     pub fn set_enabled_models(&mut self, patterns: Vec<String>) {
         self.enabled_models = patterns;
+    }
+
+    /// The clock the app reads for double taps, countdowns and RLM polls (tests pass their own).
+    pub fn set_clock(&mut self, clock: Box<dyn Fn() -> Instant>) {
+        self.clock = clock;
+    }
+
+    fn now(&self) -> Instant {
+        (self.clock)()
+    }
+
+    fn editor_keys(&self) -> KeybindingsManager {
+        self.editor_keys.clone()
+    }
+
+    /// Where a pasted clipboard image is saved (default: the system temp directory).
+    pub fn set_temp_dir(&mut self, dir: std::path::PathBuf) {
+        self.temp_dir = dir;
+    }
+
+    /// The presentation settings the TUI applies to itself at startup (`runClientTui`): the hardware cursor and
+    /// clear-on-shrink, the double-Esc action, `quietStartup` (no splash), `rlmPaneAutoOpen` (with
+    /// `ULTRON_RLM_PANE_AUTO`); and an explicitly set `editorPaddingX` and `autocompleteMaxVisible`.
+    pub fn apply_startup_settings(&mut self, settings: &Value, var: &dyn Fn(&str) -> Option<String>) {
+        self.show_hardware_cursor = settings["showHardwareCursor"] == true;
+        self.clear_on_shrink = settings["terminal"]["clearOnShrink"] == true;
+        if let Some(action) = settings["doubleEscapeAction"].as_str() {
+            self.double_escape_action = action.to_string();
+        }
+        self.header.splash = self.splash_allowed && settings["quietStartup"] != true;
+        self.rlm_pane_auto = settings["rlmPaneAutoOpen"] != false && !env_off(var("ULTRON_RLM_PANE_AUTO").as_deref());
+        if let Some(padding) = settings["editorPaddingX"].as_f64() {
+            self.apply_local_setting("editorPaddingX", &Value::from(padding));
+        }
+        if let Some(visible) = settings["autocompleteMaxVisible"].as_f64() {
+            self.apply_local_setting("autocompleteMaxVisible", &Value::from(visible));
+        }
+    }
+
+    /// `#applySettingLocally` (and what reads its setting on use): a presentation setting changed in `/settings`.
+    fn apply_local_setting(&mut self, key: &str, value: &Value) {
+        match key {
+            "hideThinkingBlock" => self.chat.set_hide_thinking(*value == true),
+            "theme" => {
+                if let Some(setting) = value.as_str()
+                    && let Some(controller) = self.theme_controller.as_mut()
+                {
+                    let applied = controller.set_setting(setting);
+                    self.adopt_theme(&applied.theme);
+                    self.sync_scheme_notifications(applied.query_scheme);
+                    if let Some(error) = applied.error {
+                        self.show_status(&format!("Error: {error}"));
+                    }
+                }
+            }
+            "showHardwareCursor" => self.show_hardware_cursor = *value == true,
+            "terminal.clearOnShrink" => self.clear_on_shrink = *value == true,
+            // `setPaddingX`: a finite number, floored, at least 0.
+            "editorPaddingX" => {
+                if let Some(padding) = value.as_f64().filter(|p| p.is_finite()) {
+                    self.editor.set_padding_x(padding.max(0.0).floor() as usize);
+                }
+            }
+            // `setAutocompleteMaxVisible`: floored, 3..=20.
+            "autocompleteMaxVisible" => {
+                if let Some(visible) = value.as_f64().filter(|v| v.is_finite()) {
+                    self.editor
+                        .set_autocomplete_max_visible(visible.clamp(3.0, 20.0).floor() as usize);
+                }
+            }
+            "compaction.enabled" => self.auto_compact = *value != false,
+            "doubleEscapeAction" => self.double_escape_action = value.as_str().unwrap_or("tree").to_string(),
+            "quietStartup" => self.header.splash = self.splash_allowed && *value != true,
+            "rlmPaneAutoOpen" => self.rlm_pane_auto = *value != false,
+            _ => {}
+        }
+    }
+
+    /// The theme setting's controller: the theme it selects applies now (`applyFromSettings`); a confidently detected
+    /// appearance is saved as the setting, a theme that fails to load says so.
+    pub fn set_theme_controller(&mut self, mut controller: crate::theme_setup::ThemeController) {
+        let applied = controller.apply_from_settings();
+        self.theme_controller = Some(controller);
+        self.adopt_theme(&applied.theme);
+        self.sync_scheme_notifications(applied.query_scheme);
+        if let Some(save) = applied.save {
+            self.client.save_setting("theme", Value::String(save));
+        }
+        if let Some(error) = applied.error {
+            self.show_status(&format!("Error: {error}"));
+        }
+    }
+
+    /// `setAutoSync` / `queryTerminalColorScheme`: the palette notifications follow the controller's auto sync, and an
+    /// applied pair asks for the current scheme; the answer arrives as input ([`App::handle_input`]).
+    fn sync_scheme_notifications(&mut self, query: bool) {
+        let want = self.theme_controller.as_ref().is_some_and(|c| c.auto_sync());
+        if want != self.scheme_notifications {
+            self.scheme_notifications = want;
+            self.terminal_writes
+                .push(if want { "\x1b[?2031h" } else { "\x1b[?2031l" }.to_string());
+        }
+        if query {
+            self.terminal_writes.push("\x1b[?996n".to_string());
+        }
+    }
+
+    /// The writes that leave the terminal as it was (`TUI.stop`): the palette notifications off.
+    pub fn stop_terminal_notifications(&mut self) {
+        if std::mem::take(&mut self.scheme_notifications) {
+            self.terminal_writes.push("\x1b[?2031l".to_string());
+        }
+    }
+
+    /// Draw with `theme` from now on (`refreshTheme`): every view shares the app's theme; the highlighters and the
+    /// transcript's rendered rows are rebuilt and the terminal repainted.
+    fn adopt_theme(&mut self, theme: &Theme) {
+        self.theme.adopt(theme);
+        let mut style = self.chat.style();
+        if self.qol.highlight {
+            style.highlight = rlm_highlighter(&self.theme);
+            style.code_highlight = Some(code_highlighter(&self.theme));
+        }
+        self.chat.set_style(style);
+        self.update_editor_border();
+        self.reset_display = true;
+        self.committed.clear();
+    }
+
+    /// Whether Ctrl+Z asked to suspend; clears the request.
+    pub fn take_suspend_request(&mut self) -> bool {
+        std::mem::take(&mut self.suspend_request)
+    }
+
+    /// How Ctrl+Z suspends the process (the product stops it with SIGTSTP; returns once it continues). Without one,
+    /// Ctrl+Z does nothing.
+    pub fn set_suspend_hook(&mut self, hook: SuspendHook) {
+        self.suspend_hook = Some(hook);
+    }
+
+    /// Run the suspend hook (the terminal is already given back); a failure shows in the status line.
+    pub fn suspend(&mut self) -> bool {
+        let Some(hook) = self.suspend_hook.as_mut() else {
+            return false;
+        };
+        if let Err(error) = hook() {
+            self.show_status(&error);
+        }
+        true
+    }
+
+    pub fn can_suspend(&self) -> bool {
+        self.suspend_hook.is_some()
     }
 
     /// The context use the footer shows: `(tokens, percent)`, both unknown right after a compaction
@@ -713,14 +1027,36 @@ impl App {
             .unwrap_or_default();
         for reply in replies {
             match reply {
-                ClipboardReply::Image(data) => {
+                ClipboardReply::Copied(result) => {
+                    let done = self.pending_copies.pop_front().unwrap_or_default();
+                    match result {
+                        Ok(osc52) => {
+                            self.terminal_writes.extend(osc52);
+                            self.show_status(&done);
+                        }
+                        Err(error) => self.show_status(&format!("Error: {error}")),
+                    }
+                }
+                ClipboardReply::Image(data) if self.qol.attachments => {
                     let placeholder = self.attachments.add_image(data, "image/png", None);
                     self.editor.insert_text_at_cursor(&format!("{placeholder} "));
                 }
-                ClipboardReply::Text(text) => {
+                ClipboardReply::Image(data) => {
+                    if let Some(path) = self.save_clipboard_image(&data) {
+                        self.editor.insert_text_at_cursor(&path);
+                    }
+                }
+                ClipboardReply::Text(text) if self.qol.attachments => {
                     self.editor.handle_input(&format!("{PASTE_START}{text}{PASTE_END}"));
                 }
-                ClipboardReply::Error(e) => self.show_status(&format!("Error: {e}")),
+                ClipboardReply::Text(text) => {
+                    if !text.is_empty() {
+                        self.editor.insert_text_at_cursor(&text);
+                    }
+                }
+                ClipboardReply::Error(e) if self.qol.attachments => self.show_status(&format!("Error: {e}")),
+                // Clipboard access can be unavailable (no display, no permission): Pi pastes nothing.
+                ClipboardReply::Error(_) => {}
             }
             self.update_editor_border();
             changed = true;
@@ -738,6 +1074,35 @@ impl App {
             changed = true;
         }
         changed
+    }
+
+    /// A clipboard image (base64 PNG) saved as `<tmp>/ultron-clipboard-<id>.png`; its path.
+    fn save_clipboard_image(&self, data: &str) -> Option<String> {
+        let bytes = tui::clipboard::image_bytes(data)?;
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let path = self
+            .temp_dir
+            .join(format!("ultron-clipboard-{}-{nanos:x}.png", std::process::id()));
+        std::fs::write(&path, bytes).ok()?;
+        Some(path.display().to_string())
+    }
+
+    /// Copy `text` to the clipboard (`copyToClipboard`): native writers and clipboard tools before OSC 52, through
+    /// the clipboard service when there is one (`done` shows once it worked); without one, OSC 52.
+    fn copy_to_clipboard(&mut self, text: &str, done: &str) {
+        match &self.clipboard {
+            Some(clipboard) => {
+                self.pending_copies.push_back(done.to_string());
+                clipboard.copy_checked(text);
+            }
+            None => {
+                self.terminal_writes
+                    .push(format!("\x1b]52;c;{}\x07", base64(text.as_bytes())));
+                self.show_status(done);
+            }
+        }
     }
 
     /// A paste whose every segment names a local image or video becomes attachments (`[Image #N, WxH]`).
@@ -911,14 +1276,21 @@ impl App {
         self.session_name.as_deref()
     }
 
-    /// Whether something animates (the working spinner).
+    /// Whether something animates (the working spinner, a loader, a dialog's countdown).
     pub fn animating(&self) -> bool {
-        self.chat.is_working() || self.bash.is_some()
+        self.chat.is_working()
+            || self.bash.is_some()
+            || matches!(self.panel, Some(Panel::ShareLoader(_)))
+            || matches!(&self.panel, Some(Panel::ExtensionInput { dialog, .. }) if dialog.counting())
     }
 
     pub fn tick(&mut self) {
         self.ticks += 1;
         self.chat.tick();
+        if let Some(Panel::ShareLoader(loader)) = self.panel.as_mut() {
+            loader.tick();
+        }
+        self.expire_dialogs();
         if let Some(bash) = self.bash.as_mut() {
             bash.tick();
         }
@@ -969,6 +1341,17 @@ impl App {
         self.terminal_writes.push(format!("\x1b]0;{title}\x07"));
     }
 
+    /// The "Package Updates Available" notice, when there are any.
+    fn show_package_updates(&mut self, packages: Vec<String>) {
+        if !packages.is_empty() {
+            self.chat
+                .append_notice(Box::new(crate::package_updates::PackageUpdateNotice {
+                    theme: Rc::clone(&self.theme),
+                    packages,
+                }));
+        }
+    }
+
     // ---- lane events ----
 
     pub fn apply(&mut self, event: LaneEvent) {
@@ -1005,11 +1388,22 @@ impl App {
                     .set_history(&history.iter().map(String::as_str).collect::<Vec<_>>());
                 if !switched {
                     self.status.clear();
+                    let packages = std::mem::take(&mut self.early_package_updates);
+                    self.show_package_updates(packages);
                 }
                 self.update_title();
+                // `setupExtensionShortcuts`: the session's extensions under the effective keybindings.
+                self.extension_shortcuts.clear();
+                self.client
+                    .extension_shortcuts(crate::extension_shortcuts::effective_keybindings(&self.keys));
             }
             LaneEvent::Entries(entries) => self.load_entries(&entries),
             LaneEvent::OperationStarted(id) => {
+                self.operation_started_ms = Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0.0, |d| d.as_millis() as f64),
+                );
                 self.operation = Some(id);
                 self.aborting = false;
                 self.turn_started = Some(Instant::now());
@@ -1032,6 +1426,9 @@ impl App {
             LaneEvent::ToolEnded { .. } => self.refresh_rlm(),
             LaneEvent::Queues(queues) => self.chat.set_queues(queues),
             LaneEvent::OperationEnded { error } => {
+                if std::mem::take(&mut self.retrying) {
+                    self.chat.clear_retry_indicator();
+                }
                 self.turn_ended(error.is_some());
                 self.operation = None;
                 self.chat.set_working(false);
@@ -1051,6 +1448,12 @@ impl App {
             }
             LaneEvent::Notice(text) => self.notice(&text),
             LaneEvent::ExtensionCommands(commands) => self.set_extension_commands(commands),
+            LaneEvent::ExtensionShortcuts { shortcuts, diagnostics } => {
+                self.extension_shortcuts = shortcuts;
+                if let Some(issues) = crate::extension_shortcuts::issues(&diagnostics) {
+                    self.notice(&fg(&self.theme, "warning", &issues));
+                }
+            }
             LaneEvent::ExtensionCompletions { name, prefix, items } => {
                 self.completions.answer(&name, &prefix, items);
                 self.editor.refresh_autocomplete();
@@ -1084,18 +1487,72 @@ impl App {
                 }
             }
             LaneEvent::SummarizationRetryFinished => self.chat.clear_retry_indicator(),
+            // interactive-mode.ts `auto_retry_start` / `auto_retry_end`: the countdown, Esc stops the retry; the
+            // error only when the last attempt failed too.
+            LaneEvent::AutoRetryStart {
+                attempt,
+                max_attempts,
+                delay_ms,
+            } => {
+                self.retrying = true;
+                self.chat.set_retry_indicator(attempt, max_attempts, delay_ms);
+            }
+            LaneEvent::AutoRetryEnd { attempt, failed } => {
+                self.retrying = false;
+                self.chat.clear_retry_indicator();
+                if let Some(error) = failed {
+                    let text = format!("Error: Retry failed after {attempt} attempts: {error}");
+                    self.notice(&fg(&self.theme, "error", &text));
+                }
+            }
             LaneEvent::Tree { tree, leaf } => self.show_tree(tree, leaf, None),
-            LaneEvent::RlmStatus(listed) => self.rlm_agents = listed,
+            LaneEvent::RlmStatus(listed) => {
+                self.rlm_agents = listed;
+                self.auto_open_rlm_pane();
+                // The wave summary is live: poll at the visible rate while it shows.
+                self.wave_active = !self.wave_summary(200).is_empty();
+            }
+            LaneEvent::RlmInspected { tag, result } => self.rlm_inspected(&tag, result),
+            LaneEvent::ShareLoader(true) => {
+                let loader = crate::extension_dialogs::BorderedLoader::new(
+                    Rc::clone(&self.theme),
+                    self.keys.clone(),
+                    "Creating gist...",
+                );
+                self.editor.focused = false;
+                self.panel = Some(Panel::ShareLoader(Box::new(loader)));
+            }
+            LaneEvent::ShareLoader(false) => {
+                if matches!(self.panel, Some(Panel::ShareLoader(_))) {
+                    self.panel = None;
+                }
+            }
+            LaneEvent::AllSessions(sessions) => {
+                if let Some(Panel::Sessions(selector)) = self.panel.as_mut() {
+                    selector.set_all_sessions(sessions);
+                }
+            }
+            LaneEvent::PiAllSessions(sessions) => {
+                if let Some(Panel::PiSessions(selector)) = self.panel.as_mut() {
+                    selector.set_all_sessions(sessions);
+                }
+            }
             LaneEvent::Mode {
                 engineering,
                 always_skills,
             } => self.mode_read(engineering, always_skills),
+            LaneEvent::AutoreviewAccounts(accounts) => self.autoreview_accounts(accounts),
             LaneEvent::Settings {
                 settings,
                 env_overrides,
                 themes,
                 terminal_theme,
             } => {
+                // The client's own theme registry and terminal appearance, when it has them (`getAvailableThemes`).
+                let (themes, terminal_theme) = match &self.theme_controller {
+                    Some(controller) => (controller.available(), controller.terminal_theme().to_string()),
+                    None => (themes, terminal_theme),
+                };
                 let input = SettingsInput {
                     settings,
                     env_overrides,
@@ -1161,6 +1618,10 @@ impl App {
                 self.models = models;
             }
             LaneEvent::CatalogRefreshed(failed) => self.catalog_refreshed(failed),
+            LaneEvent::PackageUpdates(packages) => match self.session_id {
+                Some(_) => self.show_package_updates(packages),
+                None => self.early_package_updates = packages,
+            },
             LaneEvent::SessionDeleted(result) => {
                 if let Some(Panel::Sessions(selector)) = self.panel.as_mut() {
                     match result {
@@ -1194,6 +1655,23 @@ impl App {
                     Err(error) => self.show_status(&format!("Error: {error}")),
                 }
             }
+            LaneEvent::AgentTranscript { id, messages } => {
+                if let Some(Overlay::AgentHub(hub)) = self.overlay.as_mut() {
+                    let entries = messages
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, message)| {
+                            let at = message["timestamp"].as_i64().map(|t| t.to_string()).unwrap_or_default();
+                            crate::copy_targets::TranscriptEntry::new(&format!("{id}#{i}"), &at, message)
+                        })
+                        .collect();
+                    hub.set_transcript(&id, entries);
+                }
+            }
+            LaneEvent::AgentNotice(notice) => match self.overlay.as_mut() {
+                Some(Overlay::AgentHub(hub)) => hub.set_notice(Some(notice)),
+                _ => self.show_status(&notice),
+            },
             LaneEvent::Agents(agents) => {
                 if let Some(Overlay::AgentHub(hub)) = self.overlay.as_mut() {
                     hub.set_agents(agents, true);
@@ -1278,8 +1756,26 @@ impl App {
             LaneEvent::Sessions(sessions) => self.show_resume(sessions),
             LaneEvent::PiSessions(sessions) => self.show_pi_sessions(sessions),
             LaneEvent::Status(text) => self.show_status(&text),
+            LaneEvent::Recovery { busy, status } => {
+                self.recovering = busy;
+                self.show_status(&status);
+            }
             LaneEvent::Error(text) => self.show_status(&format!("Error: {text}")),
             LaneEvent::ExtensionUi(request) => self.extension_ui(request),
+            LaneEvent::Trust(view) => {
+                let selector =
+                    crate::trust_selector::TrustSelector::new(Rc::clone(&self.theme), self.keys.clone(), view);
+                self.panel = Some(Panel::Trust(Box::new(selector)));
+                self.editor.focused = false;
+            }
+            LaneEvent::DebugLogWritten { path, summary } => {
+                let notice = crate::debug_log::DebugNotice {
+                    theme: Rc::clone(&self.theme),
+                    path,
+                    summary,
+                };
+                self.chat.append_notice(Box::new(notice));
+            }
         }
     }
 
@@ -1292,6 +1788,35 @@ impl App {
                 self.next_extension_dialog();
             }
             "notify" => self.show_status(request["message"].as_str().unwrap_or_default()),
+            // Pi's footer status line (`FooterDataProvider.setExtensionStatus`): no text removes the key's status.
+            "setStatus" => {
+                let key = request["statusKey"].as_str().unwrap_or_default().to_string();
+                self.extension_statuses.retain(|(k, _)| *k != key);
+                if let Some(text) = request["statusText"].as_str() {
+                    self.extension_statuses.push((key, text.to_string()));
+                }
+            }
+            // `#setWidget`: lines above the editor, or below it (`belowEditor`); no lines removes the widget.
+            "setWidget" => {
+                let key = request["widgetKey"].as_str().unwrap_or_default().to_string();
+                match request["widgetLines"].as_array() {
+                    Some(lines) => {
+                        let lines = lines
+                            .iter()
+                            .map(|l| l.as_str().unwrap_or_default().to_string())
+                            .collect();
+                        let below = request["widgetPlacement"] == "belowEditor";
+                        self.widgets.insert(key, (lines, below));
+                    }
+                    None => {
+                        self.widgets.remove(&key);
+                    }
+                }
+            }
+            "setTitle" => {
+                let title = request["title"].as_str().unwrap_or_default();
+                self.terminal_writes.push(format!("\x1b]0;{title}\x07"));
+            }
             "set_editor_text" => {
                 self.editor.set_text(request["text"].as_str().unwrap_or_default());
                 self.update_editor_border();
@@ -1338,18 +1863,47 @@ impl App {
                 let items = vec![item("yes", "Yes"), item("no", "No")];
                 self.open_selection(&title, items, None, Purpose::ExtensionSelect { id, confirm: true });
             }
+            "editor" => {
+                let dialog = crate::extension_dialogs::ExtensionEditorDialog::new(
+                    Rc::clone(&self.theme),
+                    self.keys.clone(),
+                    self.editor_keys(),
+                    title,
+                    request["prefill"].as_str(),
+                );
+                self.editor.focused = false;
+                self.panel = Some(Panel::TextEditor {
+                    purpose: EditorPurpose::Extension(id),
+                    dialog: Box::new(dialog),
+                });
+            }
             _ => {
-                let mut input = tui::input::Input::new(self.keys.clone());
-                if let Some(prefill) = request["prefill"].as_str() {
-                    input.set_value(prefill);
-                }
+                let dialog = crate::extension_dialogs::ExtensionInputDialog::new(
+                    Rc::clone(&self.theme),
+                    self.keys.clone(),
+                    title,
+                    request["timeout"].as_u64(),
+                    None,
+                    self.now(),
+                );
                 self.editor.focused = false;
                 self.panel = Some(Panel::ExtensionInput {
                     id,
-                    title: title.to_string(),
-                    input: Box::new(input),
+                    dialog: Box::new(dialog),
                 });
             }
+        }
+    }
+
+    /// An input dialog whose countdown ran out cancels (`CountdownTimer` `onExpire`).
+    pub fn expire_dialogs(&mut self) {
+        let now = self.now();
+        if let Some(Panel::ExtensionInput { id, dialog }) = &self.panel
+            && dialog.expired(now)
+        {
+            let id = id.clone();
+            self.panel = None;
+            self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true }));
         }
     }
 
@@ -1407,11 +1961,32 @@ impl App {
     // ---- input ----
 
     pub fn handle_input(&mut self, data: &str) {
+        // `consumeTerminalColorSchemeReport`: a scheme report is the terminal's, never a key.
+        if let Some(scheme) = crate::theme_setup::parse_color_scheme_report(data) {
+            if let Some(theme) = self
+                .theme_controller
+                .as_mut()
+                .and_then(|c| c.terminal_scheme_changed(scheme))
+            {
+                self.adopt_theme(&theme);
+            }
+            self.sync_scheme_notifications(false);
+            return;
+        }
         self.handle_key(data);
         self.ask_completions();
     }
 
     fn handle_key(&mut self, data: &str) {
+        // `handleInput` while `#busy`: only Ctrl+C, and Ctrl+D on an empty editor, are read.
+        if self.recovering {
+            if self.keys.matches(data, "app.clear") {
+                self.handle_ctrl_c();
+            } else if self.editor.text().is_empty() && self.keys.matches(data, "app.exit") {
+                self.exit = true;
+            }
+            return;
+        }
         if self.selection.is_some() {
             self.handle_select_input(data);
             return;
@@ -1422,6 +1997,26 @@ impl App {
         }
         if self.panel.is_some() {
             self.handle_panel_input(data);
+            return;
+        }
+        // The focused RLM pane takes the keys; its toggle moves the focus back to the chat.
+        if self.rlm_pane_focused && self.rlm_pane_shown() {
+            if self.keys.matches(data, "app.rlm.pane") {
+                self.rlm_pane();
+                return;
+            }
+            let snapshot = self.rlm_snapshot();
+            let height = self.rows;
+            if self.rlm_pane.handle_input(&self.keys, data, &snapshot, height) == crate::rlm::pane::PaneEvent::Close {
+                self.close_rlm_pane();
+            }
+            return;
+        }
+        // custom-editor.ts: extension shortcuts before any built-in binding; the handler runs in the session.
+        if let Some(shortcut) = crate::extension_shortcuts::matching(&self.extension_shortcuts, data) {
+            let key = shortcut.key.clone();
+            self.client
+                .extension_shortcut(&key, crate::extension_shortcuts::effective_keybindings(&self.keys));
             return;
         }
         if self.qol.overlays && self.handle_overlay_keys(data) {
@@ -1437,12 +2032,17 @@ impl App {
             return;
         }
         let k = |id: &str| self.keys.matches(data, id);
+        // Pi's Ctrl+V (`clipboardPasteText`): a clipboard image is saved to a temp file and its path inserted, else the
+        // clipboard's text (with the attachments, an image becomes an attachment instead).
         if k("app.clipboard.pasteImage") {
-            if self.qol.attachments
-                && let Some(clipboard) = &self.clipboard
-            {
+            if let Some(clipboard) = &self.clipboard {
                 clipboard.request(ClipboardRead::ImageOrText);
             }
+            return;
+        }
+        // Pi's Ctrl+Z (`suspendTui`): the run loop gives the terminal back and suspends the process.
+        if k("app.suspend") {
+            self.suspend_request = true;
             return;
         }
         if k("app.interrupt") {
@@ -1591,6 +2191,12 @@ impl App {
             self.client.abort_bash();
             return;
         }
+        // A run waiting to retry its request: Esc stops the retry (interactive-mode.ts `abortRetry`).
+        if self.retrying {
+            self.retrying = false;
+            self.client.abort_retry();
+            return;
+        }
         // A branch summary in progress: Esc cancels it (interactive-mode.ts `abortBranchSummary`).
         if self.summarizing_branch.is_some() {
             self.client.abort();
@@ -1609,15 +2215,34 @@ impl App {
             self.status = format!("Aborting {operation}…");
             self.client.abort();
         }
-        // Idle on an empty editor, a second Esc opens the rewind selector (omp's Esc-Esc; Pi's tree selector is not
-        // ported).
-        if self.qol.overlays
-            && self.operation.is_none()
-            && self.editor.text().trim().is_empty()
-            && self.escapes.tap(Instant::now())
+        if self.operation.is_some() || !self.editor.text().trim().is_empty() {
+            return;
+        }
+        let now = self.now();
+        // With the overlays, idle on an empty editor a second Esc opens the rewind selector (omp's Esc-Esc).
+        if self.qol.overlays {
+            if self.escapes.tap(now) {
+                self.rewind_pending = true;
+                self.client.fork_messages();
+            }
+            return;
+        }
+        // Pi's `doubleEscapeAction`: the tree or fork selector on a second Esc within the window.
+        if self.double_escape_action == "none" {
+            return;
+        }
+        if self
+            .last_escape
+            .is_some_and(|t| now.saturating_duration_since(t) < DOUBLE_ESCAPE_WINDOW)
         {
-            self.rewind_pending = true;
-            self.client.fork_messages();
+            self.last_escape = None;
+            if self.double_escape_action == "tree" {
+                self.client.tree();
+            } else {
+                self.client.fork_messages();
+            }
+        } else {
+            self.last_escape = Some(now);
         }
     }
 
@@ -1752,7 +2377,8 @@ impl App {
                 let notice = MarkdownNotice {
                     theme: Rc::clone(&self.theme),
                     title: "Keyboard Shortcuts".into(),
-                    markdown: hotkeys_markdown(&self.keys),
+                    markdown: hotkeys_markdown(&self.keys)
+                        + &crate::extension_shortcuts::hotkeys_section(&self.extension_shortcuts),
                 };
                 self.chat.append_notice(Box::new(notice));
             }
@@ -1796,6 +2422,12 @@ impl App {
                 Some(Some(enabled)) => self.request_mode(crate::modes::ModeRequest::Set(enabled)),
                 None => self.show_status("Usage: /engineering true|false"),
             },
+            "autoreview" => match args.trim().to_lowercase().as_str() {
+                "" => self.client.autoreview(AutoreviewRequest::Status),
+                "on" => self.client.autoreview(AutoreviewRequest::Accounts),
+                "off" => self.client.autoreview(AutoreviewRequest::Off),
+                _ => self.show_status("Usage: /autoreview on|off"),
+            },
             "compact" => {
                 self.show_status("Compacting…");
                 self.client.compact((!args.is_empty()).then_some(args));
@@ -1808,6 +2440,23 @@ impl App {
                 _ => self.toggle_rlm(),
             },
             "settings" => self.client.read_settings(),
+            "trust" => self.client.read_trust(),
+            "debug" => {
+                // `host.renderedLines()`: the frame at the terminal's size.
+                let (width, height) = (self.cols.max(1), self.rows.max(1));
+                let lines = self.render(width, height);
+                self.client.write_debug_log(crate::debug_log::DebugCapture {
+                    width,
+                    height,
+                    lines,
+                    messages: self.transcript.clone(),
+                    session_id: self.session_id.clone(),
+                });
+            }
+            "reload" => {
+                self.show_status("Reloading plugins…");
+                self.client.reload_plugins();
+            }
             // Extension commands run in the session's worker; their dialogs and notices come back as extension UI.
             "mcp" => self.client.extension_command("mcp", args.trim()),
             "review" => {
@@ -2049,6 +2698,39 @@ impl App {
         }
     }
 
+    /// `/autoreview on`: one account is reviewed as; with several, the user picks one or all of them.
+    fn autoreview_accounts(&mut self, accounts: Vec<(String, String)>) {
+        match accounts.as_slice() {
+            [] => self.show_status("No gh account is logged in: run gh auth login, then /autoreview on"),
+            [(login, host)] => self.client.autoreview(AutoreviewRequest::On {
+                accounts: None,
+                reviewing_as: format!("{host}/{login}"),
+            }),
+            _ => {
+                let mut items: Vec<SelectItem> = accounts
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (login, host))| SelectItem {
+                        value: index.to_string(),
+                        label: format!("{login} ({host})"),
+                        description: None,
+                    })
+                    .collect();
+                items.push(SelectItem {
+                    value: ALL_ACCOUNTS.into(),
+                    label: ALL_ACCOUNTS.into(),
+                    description: None,
+                });
+                self.open_selection(
+                    "Review pull requests as",
+                    items,
+                    None,
+                    Purpose::AutoreviewAccount(accounts),
+                );
+            }
+        }
+    }
+
     /// Write the `engineering` setting; the session's next request renders its prompt in that mode.
     fn set_engineering(&mut self, enabled: bool, always_skills: &[String]) {
         self.client.save_setting("engineering", Value::Bool(enabled));
@@ -2113,9 +2795,12 @@ impl App {
                 };
                 match focus.handle_input(&self.keys, data, &snapshot, height) {
                     crate::rlm::focus::FocusEvent::Exit => self.panel = None,
-                    crate::rlm::focus::FocusEvent::LoadTrace { key, .. } => {
-                        focus.set_trace(&key, Err("frame traces are not available in the Rust build yet"));
-                    }
+                    // `loadTrace`: the frame's trace (`rlm.frames {id}`), answered as an inspection.
+                    crate::rlm::focus::FocusEvent::LoadTrace { key, trace_id } => self.client.rlm_inspect(
+                        &format!("trace:{key}"),
+                        "rlm.frames",
+                        serde_json::json!({ "id": trace_id }),
+                    ),
                     _ => {}
                 }
             }
@@ -2131,6 +2816,7 @@ impl App {
                 }
                 Some(SessionAction::Cancelled) => self.panel = None,
                 Some(SessionAction::Delete(path)) => self.client.delete_session(&path),
+                Some(SessionAction::LoadAll) => self.client.list_all_sessions(),
                 Some(SessionAction::Rename(path, name)) => {
                     if Some(&path) == self.session_file.as_ref() {
                         self.session_name = Some(name.clone());
@@ -2147,6 +2833,7 @@ impl App {
                     self.client.import_pi(&path);
                 }
                 Some(SessionAction::Cancelled) => self.panel = None,
+                Some(SessionAction::LoadAll) => self.client.list_all_pi_sessions(),
                 Some(SessionAction::Delete(_) | SessionAction::Rename(..)) => {
                     selector.set_status(true, "Pi sessions are read-only here", Duration::from_secs(3));
                 }
@@ -2179,11 +2866,19 @@ impl App {
                 crate::scoped_models::ScopedAction::None => {}
             },
             Some(Panel::OAuthLogin(dialog)) => match dialog.handle_input(data) {
-                crate::login_dialog::DialogAction::Answer(answer) => self.client.login_reply(Some(answer)),
+                crate::login_dialog::DialogAction::Answer(answer) => match self.api_login.as_mut() {
+                    Some((login, _)) => {
+                        let steps = login.answer(answer);
+                        self.api_login_steps(steps);
+                    }
+                    None => self.client.login_reply(Some(answer)),
+                },
                 crate::login_dialog::DialogAction::Cancel => {
                     // Esc stops the login and closes its dialog silently (`Login cancelled`).
                     self.panel = None;
-                    self.client.login_reply(None);
+                    if self.api_login.take().is_none() {
+                        self.client.login_reply(None);
+                    }
                 }
                 crate::login_dialog::DialogAction::None => {}
             },
@@ -2200,6 +2895,14 @@ impl App {
                     input.handle_input(data);
                 }
             }
+            Some(Panel::Trust(selector)) => match selector.handle_input(data) {
+                Some(crate::trust_selector::TrustAction::Selected { trusted, updates }) => {
+                    self.panel = None;
+                    self.client.set_project_trust(trusted, updates);
+                }
+                Some(crate::trust_selector::TrustAction::Cancelled) => self.panel = None,
+                None => {}
+            },
             Some(Panel::Logout(selector)) => match selector.handle_input(data) {
                 Some(Ok((id, kind))) => {
                     self.panel = None;
@@ -2218,6 +2921,12 @@ impl App {
             },
             Some(Panel::Settings(selector)) => match selector.handle_input(data) {
                 Some(SettingsEvent::Cancelled) => self.panel = None,
+                // `onThemePreview`: the theme shows while the user browses; leaving restores the setting's.
+                Some(SettingsEvent::Preview(setting)) => {
+                    if let Some(theme) = self.theme_controller.as_mut().and_then(|c| c.preview(&setting)) {
+                        self.adopt_theme(&theme);
+                    }
+                }
                 Some(SettingsEvent::Change(key, value)) => self.setting_changed(&key, value),
                 Some(SettingsEvent::SessionModel(selector)) => {
                     if let Some(model) = self
@@ -2266,41 +2975,60 @@ impl App {
                 Some(TreeAction::Cancelled) => self.panel = None,
                 Some(TreeAction::Copy(text)) => match text {
                     None => self.show_status("Error: Selected entry has no text to copy"),
-                    Some(text) => {
-                        self.terminal_writes
-                            .push(format!("\x1b]52;c;{}\x07", base64(text.as_bytes())));
-                        self.show_status("Copied selected message to clipboard");
-                    }
+                    Some(text) => self.copy_to_clipboard(&text, "Copied selected message to clipboard"),
                 },
                 Some(TreeAction::Label(entry, label)) => self.client.set_label(&entry, label.as_deref()),
                 None => {}
             },
-            Some(Panel::ExtensionInput { id, input, .. }) => {
-                if self.keys.matches(data, "tui.select.confirm") {
-                    let (id, value) = (id.clone(), input.value().to_string());
-                    self.panel = None;
-                    self.answer_extension_dialog(&id, serde_json::json!({ "value": value }));
-                } else if self.keys.matches(data, "tui.select.cancel") {
-                    let id = id.clone();
-                    self.panel = None;
-                    self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true }));
-                } else {
-                    input.handle_input(data);
+            Some(Panel::ExtensionInput { id, dialog }) => {
+                use crate::extension_dialogs::DialogOutcome;
+                let answer = match dialog.handle_input(data) {
+                    DialogOutcome::Submit(value) => serde_json::json!({ "value": value }),
+                    DialogOutcome::Cancel => serde_json::json!({ "cancelled": true }),
+                    _ => return,
+                };
+                let id = id.clone();
+                self.panel = None;
+                self.answer_extension_dialog(&id, answer);
+            }
+            Some(Panel::TextEditor { dialog, .. }) => {
+                use crate::extension_dialogs::DialogOutcome;
+                let outcome = dialog.handle_input(data);
+                if let DialogOutcome::External(text) = outcome {
+                    if self.external_editor.is_some() {
+                        self.edit_dialog = true;
+                        self.edit_request = Some(text);
+                    } else {
+                        self.show_status("No editor configured. Set $VISUAL or $EDITOR environment variable.");
+                    }
+                    return;
+                }
+                let submitted = match outcome {
+                    DialogOutcome::Submit(text) => Some(text),
+                    DialogOutcome::Cancel => None,
+                    _ => return,
+                };
+                let Some(Panel::TextEditor { purpose, .. }) = self.panel.take() else {
+                    return;
+                };
+                match (purpose, submitted) {
+                    (EditorPurpose::Extension(id), Some(value)) => {
+                        self.answer_extension_dialog(&id, serde_json::json!({ "value": value }));
+                    }
+                    (EditorPurpose::Extension(id), None) => {
+                        self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true }));
+                    }
+                    (EditorPurpose::Instructions(entry), Some(text)) => self.navigate(&entry, true, Some(&text)),
+                    // Back to the summary choice.
+                    (EditorPurpose::Instructions(entry), None) => self.ask_summary(entry),
                 }
             }
-            Some(Panel::Instructions { entry, input }) => {
-                if self.keys.matches(data, "tui.select.confirm") {
-                    let text = input.value().to_string();
-                    let entry = entry.clone();
+            Some(Panel::ShareLoader(loader)) => {
+                // `loader.onAbort`: the upload stops and the loader closes.
+                if loader.handle_input(data) {
                     self.panel = None;
-                    self.navigate(&entry, true, Some(&text));
-                } else if self.keys.matches(data, "tui.select.cancel") {
-                    // Back to the summary choice.
-                    let entry = entry.clone();
-                    self.panel = None;
-                    self.ask_summary(entry);
-                } else {
-                    input.handle_input(data);
+                    self.client.cancel_share();
+                    self.show_status("Share cancelled");
                 }
             }
             Some(Panel::HistorySearch(search)) => match search.handle_input(data) {
@@ -2558,6 +3286,15 @@ impl App {
             ));
             return;
         }
+        // A provider whose key prompt has a choice or several fields (`apiKey.login`): its flow runs in the dialog.
+        if let Some((login, steps)) = crate::api_key_login::ApiKeyLogin::start(&option.id) {
+            let dialog = crate::login_dialog::LoginDialog::new(self.keys.clone(), &option.name, "local");
+            self.panel = Some(Panel::OAuthLogin(Box::new(dialog)));
+            self.editor.focused = false;
+            self.api_login = Some((login, option));
+            self.api_login_steps(steps);
+            return;
+        }
         match option.api_key_method.clone() {
             Some((method, true)) if option.generic_login => {
                 let mut input = tui::input::Input::new(self.keys.clone()).with_options(None, None, None, Some("•"));
@@ -2574,6 +3311,38 @@ impl App {
                 "Error: Failed to save API key for {}: this provider's sign-in is not available in the Rust build yet",
                 option.name
             )),
+        }
+    }
+
+    /// The multi-field API-key login's next steps: notices and the next prompt go to the dialog; the credential is
+    /// saved (`runLoginDialog`'s outcome statuses come from the client), a failure says so.
+    fn api_login_steps(&mut self, steps: Vec<crate::api_key_login::Step>) {
+        use crate::api_key_login::Step;
+        for step in steps {
+            match step {
+                Step::Event(event) => {
+                    if let Some(Panel::OAuthLogin(dialog)) = self.panel.as_mut() {
+                        dialog.show_event(&self.theme, &event);
+                    }
+                }
+                Step::Prompt(prompt) => {
+                    if let Some(Panel::OAuthLogin(dialog)) = self.panel.as_mut() {
+                        dialog.show_prompt(&self.theme, &prompt);
+                    }
+                }
+                Step::Done(credential) => {
+                    self.panel = None;
+                    if let Some((login, _)) = self.api_login.take() {
+                        self.client.save_credential(login.provider(), credential);
+                    }
+                }
+                Step::Failed(error) => {
+                    self.panel = None;
+                    if let Some((_, option)) = self.api_login.take() {
+                        self.show_status(&format!("Error: Failed to save API key for {}: {error}", option.name));
+                    }
+                }
+            }
         }
     }
 
@@ -2609,8 +3378,6 @@ impl App {
             self.set_thinking(&level);
         }
         match key {
-            "hideThinkingBlock" => self.chat.set_hide_thinking(value == true),
-            "compaction.enabled" => self.auto_compact = value != false,
             "treeFilterMode" => self.tree_filter = FilterMode::parse(value.as_str().unwrap_or("default")),
             "enabledModels" => {
                 self.enabled_models = value
@@ -2618,7 +3385,7 @@ impl App {
                     .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
                     .unwrap_or_default();
             }
-            _ => {}
+            _ => self.apply_local_setting(key, &value),
         }
         if key == "tuiMode" {
             self.show_status(&format!(
@@ -2640,23 +3407,157 @@ impl App {
         }
     }
 
-    /// Poll the subagents while an RLM view shows.
-    fn refresh_rlm(&self) {
-        if self.rlm_visible || matches!(self.panel, Some(Panel::RlmFocus(_))) {
-            self.client.rlm_status();
+    /// `#refreshRlm`: poll the read-only inspections the RLM views draw from (the subagents, recent frames, the
+    /// kernel pool, the context state, retained instances); answers arrive as lane events.
+    fn refresh_rlm(&mut self) {
+        self.rlm_poll.last = Some(self.now());
+        self.client.rlm_status();
+        self.client
+            .rlm_inspect("frames", "rlm.frames", serde_json::json!({ "limit": RLM_FRAME_LIMIT }));
+        self.client.rlm_inspect("pool", "rlm.pool", serde_json::json!({}));
+        self.client.rlm_inspect("context", "ctx.state", serde_json::json!({}));
+        self.client
+            .rlm_inspect("instances", "instances.list", serde_json::json!({}));
+    }
+
+    /// `#scheduleRlmPolling`: poll every second while an RLM view or the live wave summary shows, else every five
+    /// seconds. The run loop calls this on every pass; true when it polled.
+    pub fn poll_rlm(&mut self) -> bool {
+        let live = self.rlm_visible
+            || matches!(self.panel, Some(Panel::RlmFocus(_)))
+            || self.rlm_pane_open
+            || self.wave_active;
+        let interval = if live { RLM_POLL_VISIBLE } else { RLM_POLL_HIDDEN };
+        let now = self.now();
+        if self.session_id.is_none()
+            || self
+                .rlm_poll
+                .last
+                .is_some_and(|last| now.saturating_duration_since(last) < interval)
+        {
+            return false;
+        }
+        self.refresh_rlm();
+        true
+    }
+
+    /// An RLM inspection's answer (`#refreshRlm`): a failed one leaves the pool and context unknown.
+    fn rlm_inspected(&mut self, tag: &str, result: Result<Value, String>) {
+        use crate::rlm::visualizer::{parse_context_state, parse_frames, parse_pool, parse_retained};
+        if let Some(key) = tag.strip_prefix("trace:") {
+            if let Some(Panel::RlmFocus(focus)) = self.panel.as_mut() {
+                match &result {
+                    Ok(trace) => focus.set_trace(key, Ok(trace)),
+                    Err(error) => focus.set_trace(key, Err(error)),
+                }
+            }
+            return;
+        }
+        match (tag, result) {
+            ("frames", Ok(value)) => self.rlm_poll.frames = parse_frames(&value),
+            ("pool", result) => self.rlm_poll.pool = result.ok().and_then(|v| parse_pool(&v)),
+            ("context", result) => self.rlm_poll.context = result.ok().and_then(|v| parse_context_state(&v)),
+            ("instances", Ok(value)) => self.rlm_poll.retained = parse_retained(&value),
+            _ => {}
         }
     }
 
     /// `#toggleRlm`: the docked RLM panel under the status.
     fn toggle_rlm(&mut self) {
         self.rlm_visible = !self.rlm_visible;
-        self.client.rlm_status();
+        self.refresh_rlm();
     }
 
-    /// `#toggleRlmPane`: below RLM_PANE_MIN_COLUMNS (120) the full-screen graph opens instead of the pane; the
-    /// side pane itself is not wired yet, so wide terminals get the graph too.
+    /// Whether the RLM pane shows beside the chat (open, and the terminal wide enough). The split-viewport painter
+    /// keeps finished rows in the terminal's scrollback, which a side column cannot share, so it has no pane.
+    fn rlm_pane_shown(&self) -> bool {
+        self.rlm_pane_open && self.cols >= RLM_PANE_MIN_COLUMNS && !self.qol.viewport_split
+    }
+
+    /// `#toggleRlmPane`: open the RLM pane with the focus; again, the focus moves between the pane and the chat (the
+    /// pane stays open). On a narrow terminal the full-screen graph opens instead.
     fn rlm_pane(&mut self) {
-        self.open_rlm_focus();
+        if self.cols < RLM_PANE_MIN_COLUMNS || self.qol.viewport_split {
+            self.rlm_pane_open = false;
+            self.rlm_pane_focused = false;
+            self.open_rlm_focus();
+            return;
+        }
+        if !self.rlm_pane_open {
+            self.rlm_pane_open = true;
+            self.rlm_pane_focused = true;
+        } else {
+            self.rlm_pane_focused = !self.rlm_pane_focused;
+        }
+        self.refresh_rlm();
+    }
+
+    /// `#closeRlmPane`: closed during a turn, that turn does not auto-open it again (a later turn may).
+    fn close_rlm_pane(&mut self) {
+        if let Some(operation) = &self.operation {
+            self.rlm_pane_handled.insert(format!("op:{operation}"));
+        }
+        self.rlm_pane_open = false;
+        self.rlm_pane_focused = false;
+    }
+
+    /// `#autoOpenRlmPane`: work the pane shows (a child, a background task, a workflow node, a map fan-out) that
+    /// starts in a run the pane has not opened for opens it beside the chat without the focus. Only on a terminal
+    /// wide enough to split, on the chat screen with the graph closed; a pane the user closed stays closed for the
+    /// rest of that turn and for the runs it already showed. It never closes the pane.
+    fn auto_open_rlm_pane(&mut self) {
+        use crate::rlm::pane::{RunKind, build_dag_runs, pane_work_runs};
+        let snapshot = self.rlm_snapshot();
+        let runs = build_dag_runs(&snapshot);
+        let ids: Vec<String> = pane_work_runs(&runs, self.operation_started_ms)
+            .into_iter()
+            .map(|run| match run.kind {
+                RunKind::Turn => format!(
+                    "turn:{}",
+                    self.operation
+                        .clone()
+                        .or_else(|| run.started_at.map(|s| s.to_string()))
+                        .unwrap_or_else(|| run.id.clone())
+                ),
+                _ => run.key.clone(),
+            })
+            .collect();
+        if !ids.iter().any(|id| !self.rlm_pane_handled.contains(id)) {
+            return;
+        }
+        if self.rlm_pane_open {
+            self.rlm_pane_handled.extend(ids);
+            return;
+        }
+        if !self.rlm_pane_auto || self.cols < RLM_PANE_MIN_COLUMNS || self.qol.viewport_split {
+            return;
+        }
+        if self.selection.is_some() || self.panel.is_some() || self.overlay.is_some() {
+            return;
+        }
+        self.rlm_pane_handled.extend(ids);
+        if let Some(operation) = &self.operation
+            && self.rlm_pane_handled.contains(&format!("op:{operation}"))
+        {
+            return;
+        }
+        self.rlm_pane_open = true;
+        self.rlm_pane_focused = false;
+    }
+
+    /// `#renderWaveSummary`: the live wave summary above the editor, hidden while the docked panel or the graph
+    /// shows.
+    fn wave_summary(&mut self, width: usize) -> Vec<String> {
+        if self.rlm_visible || matches!(self.panel, Some(Panel::RlmFocus(_))) {
+            return Vec::new();
+        }
+        let snapshot = self.rlm_snapshot();
+        let runs = crate::rlm::pane::build_dag_runs(&snapshot);
+        let style = crate::rlm::RlmStyle::themed(Rc::clone(&self.theme));
+        crate::rlm::pane::render_wave_summary(&runs, width.saturating_sub(2).max(1), &style, snapshot.now, 4)
+            .into_iter()
+            .map(|line| format!(" {line}"))
+            .collect()
     }
 
     /// `#openRlmFocus`: the full-screen RLM graph in the editor's place; Esc returns to the chat.
@@ -2730,6 +3631,10 @@ impl App {
             root_cell,
             cells,
             turn,
+            frames: self.rlm_poll.frames.clone(),
+            pool: self.rlm_poll.pool.clone(),
+            context: self.rlm_poll.context.clone(),
+            retained: self.rlm_poll.retained.clone(),
             ..crate::rlm::RlmSnapshot::default()
         }
     }
@@ -2974,9 +3879,7 @@ impl App {
             Overlay::Picker(picker) => match picker.handle_input(data) {
                 PickerEvent::Copy { content, label, .. } => {
                     self.overlay = None;
-                    self.terminal_writes
-                        .push(format!("\x1b]52;c;{}\x07", base64(content.as_bytes())));
-                    self.show_status(&format!("Copied {label} to clipboard"));
+                    self.copy_to_clipboard(&content, &format!("Copied {label} to clipboard"));
                 }
                 PickerEvent::Open { href, .. } => {
                     self.overlay = None;
@@ -3045,10 +3948,28 @@ impl App {
                     self.client.kill_agent(&id);
                     self.client.agents();
                 }
-                HubEvent::OpenTranscript(id) => hub.set_transcript(&id, Vec::new()),
-                HubEvent::Revive(_) | HubEvent::Steer { .. } => hub.set_notice(Some(
-                    "Steering and reviving subagents are not available in the Rust build yet".into(),
-                )),
+                HubEvent::OpenTranscript(id) => {
+                    hub.set_transcript(&id, Vec::new());
+                    self.client.agent_transcript(&id);
+                }
+                HubEvent::Revive(id) => {
+                    self.client.revive_agent(&id);
+                    self.client.agents();
+                }
+                HubEvent::Steer { id, text } => {
+                    // A parked (interrupted) agent is revived first; its brief runs again as a new subagent.
+                    let parked = hub
+                        .rows()
+                        .iter()
+                        .any(|r| r.id == id && r.status == crate::agent_hub::AgentStatus::Parked);
+                    if parked {
+                        self.client.revive_agent(&id);
+                        self.client.agents();
+                    } else {
+                        self.client.steer_agent(&id, &text);
+                        self.client.agent_transcript(&id);
+                    }
+                }
                 HubEvent::Ignored | HubEvent::Render => {}
             },
         }
@@ -3134,7 +4055,7 @@ impl App {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() as i64);
-        let selector = SessionSelector::new(
+        let mut selector = SessionSelector::new(
             Rc::clone(&self.theme),
             self.keys.clone(),
             sessions,
@@ -3142,6 +4063,7 @@ impl App {
             self.home.as_deref().unwrap_or(""),
             now,
         );
+        selector.set_show_rename_hint(false);
         self.panel = Some(Panel::PiSessions(Box::new(selector)));
         self.editor.focused = false;
     }
@@ -3192,9 +4114,17 @@ impl App {
                     }
                     Purpose::Summarize(entry) => match item.value.as_str() {
                         "Summarize with custom prompt" => {
-                            self.panel = Some(Panel::Instructions {
-                                entry,
-                                input: Box::new(tui::input::Input::new(self.keys.clone())),
+                            let dialog = crate::extension_dialogs::ExtensionEditorDialog::new(
+                                Rc::clone(&self.theme),
+                                self.keys.clone(),
+                                self.editor_keys(),
+                                "Custom summarization instructions",
+                                None,
+                            );
+                            self.editor.focused = false;
+                            self.panel = Some(Panel::TextEditor {
+                                purpose: EditorPurpose::Instructions(entry),
+                                dialog: Box::new(dialog),
                             });
                         }
                         choice => self.navigate(&entry, choice == "Summarize", None),
@@ -3219,6 +4149,19 @@ impl App {
                         if let Some(mode) = crate::modes::find(&item.value) {
                             self.set_engineering(mode.engineering, &always_skills);
                         }
+                    }
+                    Purpose::AutoreviewAccount(accounts) => {
+                        let chosen = item.value.parse::<usize>().ok().and_then(|index| accounts.get(index));
+                        self.client.autoreview(match chosen {
+                            Some((login, host)) => AutoreviewRequest::On {
+                                accounts: Some(vec![format!("{host}/{login}")]),
+                                reviewing_as: format!("{host}/{login}"),
+                            },
+                            None => AutoreviewRequest::On {
+                                accounts: None,
+                                reviewing_as: "every logged-in account".into(),
+                            },
+                        });
                     }
                     Purpose::ExtensionSelect { id, confirm } => {
                         let answer = if confirm {
@@ -3248,6 +4191,10 @@ impl App {
                     purpose: Purpose::ExtensionSelect { id, .. },
                     ..
                 }) => self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true })),
+                Some(Selection {
+                    purpose: Purpose::AutoreviewAccount(_),
+                    ..
+                }) => self.show_status("Autoreview left as it was"),
                 _ => {}
             },
             _ => {}
@@ -3277,12 +4224,7 @@ impl App {
     fn copy_last_message(&mut self) {
         match self.last_assistant_text().filter(|t| !t.is_empty()) {
             None => self.show_status("Error: No agent messages to copy yet."),
-            Some(text) => {
-                // OSC 52: the terminal copies (works over SSH and in tmux with set-clipboard).
-                self.terminal_writes
-                    .push(format!("\x1b]52;c;{}\x07", base64(text.as_bytes())));
-                self.show_status("Copied last agent message to clipboard");
-            }
+            Some(text) => self.copy_to_clipboard(&text, "Copied last agent message to clipboard"),
         }
     }
 
@@ -3335,6 +4277,7 @@ impl App {
             }),
             ..FooterView::default()
         };
+        v.statuses = self.extension_statuses.clone();
         let mut providers: Vec<&str> = self.models.iter().map(|m| m.provider.as_str()).collect();
         providers.sort_unstable();
         providers.dedup();
@@ -3394,7 +4337,16 @@ impl App {
         if let Some(bash) = self.bash.as_mut() {
             pending.extend(bash.render(width));
         }
-        let mut status = Vec::new();
+        // Extension widgets above and below the editor, by key (`#setWidget`).
+        let widget_lines = |below: bool| -> Vec<String> {
+            self.widgets
+                .values()
+                .filter(|(_, b)| *b == below)
+                .flat_map(|(lines, _)| Text::new(&lines.join("\n"), 1, 0, None).render(width))
+                .collect()
+        };
+        let (widgets_above, widgets_below) = (widget_lines(false), widget_lines(true));
+        let mut status = widgets_above;
         if !self.status.is_empty() {
             status.extend(Text::new(&fg(&self.theme, "dim", &self.status), 1, 0, None).render(width));
         }
@@ -3415,6 +4367,7 @@ impl App {
             );
         }
         status.extend(self.chat.render_status(width));
+        status.extend(self.wave_summary(width));
         // `#renderRuntimeLine`: one RLM line under the footer while the panel and the graph are hidden.
         let runtime_line = match &snapshot {
             Some(snapshot) if !self.rlm_visible && !rlm_focus => {
@@ -3422,9 +4375,11 @@ impl App {
             }
             _ => None,
         };
-        let mut footer = render_footer(&self.theme, &self.footer_view(), width);
+        let mut footer = widgets_below;
+        footer.extend(render_footer(&self.theme, &self.footer_view(), width));
         footer.extend(runtime_line);
         let focus_height = self.rows.saturating_sub(footer.len() + 1).max(10);
+        let now = self.now();
         let focus_snapshot = rlm_focus.then(|| self.rlm_snapshot());
         let editor = match (&mut self.selection, &mut self.panel) {
             (None, Some(Panel::RlmFocus(focus))) => focus.render(
@@ -3445,6 +4400,7 @@ impl App {
             (None, Some(Panel::Tree(tree))) => tree.render(width),
             (None, Some(Panel::Settings(selector))) => selector.render(width),
             (None, Some(Panel::Logout(selector))) => selector.render(width),
+            (None, Some(Panel::Trust(selector))) => selector.render(width),
             (None, Some(Panel::Login(selector, ..))) => selector.render(width),
             (None, Some(Panel::OAuthLogin(dialog))) => dialog.render(&self.theme, width),
             (None, Some(Panel::ScopedModels { selector, .. })) => selector.render(width),
@@ -3490,26 +4446,9 @@ impl App {
                 lines
             }
             (None, Some(Panel::Sessions(selector) | Panel::PiSessions(selector))) => selector.render(width),
-            (None, Some(Panel::ExtensionInput { title, input, .. })) => {
-                let mut lines = Text::new(&bold(title), 1, 1, None).render(width);
-                lines.extend(
-                    input
-                        .render(width.saturating_sub(1))
-                        .into_iter()
-                        .map(|l| format!(" {l}")),
-                );
-                lines
-            }
-            (None, Some(Panel::Instructions { input, .. })) => {
-                let mut lines = Text::new(&bold("Custom summarization instructions"), 1, 1, None).render(width);
-                lines.extend(
-                    input
-                        .render(width.saturating_sub(1))
-                        .into_iter()
-                        .map(|l| format!(" {l}")),
-                );
-                lines
-            }
+            (None, Some(Panel::ExtensionInput { dialog, .. })) => dialog.render(width, now),
+            (None, Some(Panel::TextEditor { dialog, .. })) => dialog.render(width, self.rows),
+            (None, Some(Panel::ShareLoader(loader))) => loader.render(width),
             (None, None) => {
                 self.editor.focused = true;
                 self.editor.terminal_rows = self.rows;
@@ -3532,13 +4471,48 @@ impl App {
         parts
     }
 
-    /// One full-screen frame of `height` rows.
+    /// One full-screen frame of `height` rows: the chat, with the RLM pane beside it while it shows (`SplitView`).
     pub fn render(&mut self, width: usize, height: usize) -> Vec<String> {
         self.rows = height;
         self.cols = width;
         if let Some(frame) = self.overlay_frame(width, height) {
             return frame;
         }
+        let (main_width, side_width) =
+            tui::split_view::split_widths(width, self.rlm_pane_shown(), rlm_pane_width(width));
+        let main = self.render_main(main_width, height);
+        if side_width == 0 {
+            return main;
+        }
+        let snapshot = self.rlm_snapshot();
+        let style = crate::rlm::RlmStyle::themed(Rc::clone(&self.theme));
+        let toggle = self.keys.get_keys("app.rlm.pane").first().cloned();
+        let mut side = self.rlm_pane.render(
+            &self.keys,
+            &snapshot,
+            side_width,
+            height,
+            self.rlm_pane_focused,
+            toggle.as_deref(),
+            &style,
+        );
+        side.truncate(height);
+        let border = fg(
+            &self.theme,
+            if self.rlm_pane_focused {
+                "borderAccent"
+            } else {
+                "border"
+            },
+            "│",
+        );
+        let mut main = main;
+        main.resize(height, String::new());
+        tui::split_view::render_split(&main, &side, main_width, side_width, &border)
+    }
+
+    /// The chat column: transcript above the dock, `height` rows.
+    fn render_main(&mut self, width: usize, height: usize) -> Vec<String> {
         let document = self.document(width);
         let dock = self.dock(width);
         // The editor (second to last) keeps at least three rows.

@@ -44,6 +44,7 @@ pub fn durable(args: &[String], env: &Env, out: &mut dyn Write) -> Result<i32, S
                     model: WorkerModel::default(),
                     keep_alive: true,
                     root: None,
+                    relay: None,
                 },
                 true,
             )

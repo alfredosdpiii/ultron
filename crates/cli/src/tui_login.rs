@@ -74,11 +74,22 @@ pub fn browser_reach(env: &Env) -> String {
     }
 }
 
-/// `openBrowser`: hand the address to the desktop's opener, never waiting on it.
-fn open_browser(url: &str) {
-    let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+/// `openBrowser`: hand the address to the desktop's opener, never waiting on it. The opener is found on the run's
+/// own PATH (`env`), not this process's: a run whose environment has no PATH (a test's) opens nothing.
+fn open_browser(env: &Env, url: &str) {
+    let name = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+    let Some(path) = (env.var)("PATH") else {
+        return;
+    };
+    let Some(opener) = std::env::split_paths(&path)
+        .map(|dir| dir.join(name))
+        .find(|candidate| candidate.is_file())
+    else {
+        return;
+    };
     let _ = std::process::Command::new(opener)
         .arg(url)
+        .env("PATH", &path)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -92,6 +103,7 @@ struct DialogInteraction {
     slot: Arc<LoginSlot>,
     signal: AbortSignal,
     reach: String,
+    env: Env,
 }
 
 impl AuthInteraction for DialogInteraction {
@@ -141,7 +153,7 @@ impl AuthInteraction for DialogInteraction {
         let view = match event {
             AuthEvent::AuthUrl { url, instructions } => {
                 if self.reach == "local" {
-                    open_browser(&url);
+                    open_browser(&self.env, &url);
                 }
                 LoginEvent::AuthUrl { url, instructions }
             }
@@ -205,6 +217,7 @@ pub fn start_with(
             slot: slot.clone(),
             signal: signal.clone(),
             reach,
+            env: env.clone(),
         };
         let outcome = (|| -> Result<(), String> {
             let oauth = session_core::stored_auth::oauth_handler_with(&env, &provider, &options)

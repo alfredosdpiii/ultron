@@ -1,0 +1,605 @@
+{
+	"generator": "generate-api-key-login.mjs",
+	"cases": [
+		{
+			"provider": "amazon-bedrock",
+			"answers": [
+				"bearer-token",
+				"tok-123"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Amazon Bedrock authentication method:",
+						"options": [
+							{
+								"id": "bearer-token",
+								"label": "Bearer token"
+							},
+							{
+								"id": "aws-profile",
+								"label": "AWS profile"
+							},
+							{
+								"id": "credential-chain",
+								"label": "Existing AWS credential chain"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Amazon Bedrock bearer token"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"key": "tok-123"
+			}
+		},
+		{
+			"provider": "amazon-bedrock",
+			"answers": [
+				"aws-profile",
+				"work"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Amazon Bedrock authentication method:",
+						"options": [
+							{
+								"id": "bearer-token",
+								"label": "Bearer token"
+							},
+							{
+								"id": "aws-profile",
+								"label": "AWS profile"
+							},
+							{
+								"id": "credential-chain",
+								"label": "Existing AWS credential chain"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Amazon Bedrock supports AWS profiles, IAM credentials, and role-based credentials.",
+						"links": [
+							{
+								"label": "AWS credential provider chain",
+								"url": "https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter AWS profile name"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"env": {
+					"AWS_PROFILE": "work"
+				}
+			}
+		},
+		{
+			"provider": "amazon-bedrock",
+			"answers": [
+				"credential-chain",
+				""
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Amazon Bedrock authentication method:",
+						"options": [
+							{
+								"id": "bearer-token",
+								"label": "Bearer token"
+							},
+							{
+								"id": "aws-profile",
+								"label": "AWS profile"
+							},
+							{
+								"id": "credential-chain",
+								"label": "Existing AWS credential chain"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Amazon Bedrock supports AWS profiles, IAM credentials, and role-based credentials.",
+						"links": [
+							{
+								"label": "AWS credential provider chain",
+								"url": "https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Configure AWS credentials, then press Enter to continue"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key"
+			}
+		},
+		{
+			"provider": "amazon-bedrock",
+			"answers": [
+				"bearer-token",
+				null
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Amazon Bedrock authentication method:",
+						"options": [
+							{
+								"id": "bearer-token",
+								"label": "Bearer token"
+							},
+							{
+								"id": "aws-profile",
+								"label": "AWS profile"
+							},
+							{
+								"id": "credential-chain",
+								"label": "Existing AWS credential chain"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Amazon Bedrock bearer token"
+					}
+				}
+			],
+			"error": "Login cancelled"
+		},
+		{
+			"provider": "amazon-bedrock",
+			"answers": [
+				null
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Amazon Bedrock authentication method:",
+						"options": [
+							{
+								"id": "bearer-token",
+								"label": "Bearer token"
+							},
+							{
+								"id": "aws-profile",
+								"label": "AWS profile"
+							},
+							{
+								"id": "credential-chain",
+								"label": "Existing AWS credential chain"
+							}
+						]
+					}
+				}
+			],
+			"error": "Login cancelled"
+		},
+		{
+			"provider": "google-vertex",
+			"answers": [
+				"api-key",
+				"AIza-1"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Google Vertex AI authentication method:",
+						"options": [
+							{
+								"id": "api-key",
+								"label": "Google Cloud API key"
+							},
+							{
+								"id": "adc",
+								"label": "Application Default Credentials"
+							},
+							{
+								"id": "service-account",
+								"label": "Service account credentials file"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Google Cloud API key"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"key": "AIza-1"
+			}
+		},
+		{
+			"provider": "google-vertex",
+			"answers": [
+				"adc",
+				"proj-1",
+				"us-central1"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Google Vertex AI authentication method:",
+						"options": [
+							{
+								"id": "api-key",
+								"label": "Google Cloud API key"
+							},
+							{
+								"id": "adc",
+								"label": "Application Default Credentials"
+							},
+							{
+								"id": "service-account",
+								"label": "Service account credentials file"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Run `gcloud auth application-default login`, then provide the project and location.",
+						"links": [
+							{
+								"label": "Application Default Credentials",
+								"url": "https://cloud.google.com/docs/authentication/provide-credentials-adc"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud project ID"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud location"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"env": {
+					"GOOGLE_CLOUD_PROJECT": "proj-1",
+					"GOOGLE_CLOUD_LOCATION": "us-central1"
+				}
+			}
+		},
+		{
+			"provider": "google-vertex",
+			"answers": [
+				"service-account",
+				"proj-2",
+				"europe-west4",
+				"/keys/sa.json"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Google Vertex AI authentication method:",
+						"options": [
+							{
+								"id": "api-key",
+								"label": "Google Cloud API key"
+							},
+							{
+								"id": "adc",
+								"label": "Application Default Credentials"
+							},
+							{
+								"id": "service-account",
+								"label": "Service account credentials file"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Provide a service account credentials file, project, and location.",
+						"links": [
+							{
+								"label": "Application Default Credentials",
+								"url": "https://cloud.google.com/docs/authentication/provide-credentials-adc"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud project ID"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud location"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter service account credentials file path"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"env": {
+					"GOOGLE_CLOUD_PROJECT": "proj-2",
+					"GOOGLE_CLOUD_LOCATION": "europe-west4",
+					"GOOGLE_APPLICATION_CREDENTIALS": "/keys/sa.json"
+				}
+			}
+		},
+		{
+			"provider": "google-vertex",
+			"answers": [
+				"service-account",
+				"proj-3",
+				"asia-east1",
+				""
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Google Vertex AI authentication method:",
+						"options": [
+							{
+								"id": "api-key",
+								"label": "Google Cloud API key"
+							},
+							{
+								"id": "adc",
+								"label": "Application Default Credentials"
+							},
+							{
+								"id": "service-account",
+								"label": "Service account credentials file"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Provide a service account credentials file, project, and location.",
+						"links": [
+							{
+								"label": "Application Default Credentials",
+								"url": "https://cloud.google.com/docs/authentication/provide-credentials-adc"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud project ID"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud location"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter service account credentials file path"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"env": {
+					"GOOGLE_CLOUD_PROJECT": "proj-3",
+					"GOOGLE_CLOUD_LOCATION": "asia-east1"
+				}
+			}
+		},
+		{
+			"provider": "google-vertex",
+			"answers": [
+				"adc",
+				"proj-1",
+				null
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "select",
+						"message": "Select Google Vertex AI authentication method:",
+						"options": [
+							{
+								"id": "api-key",
+								"label": "Google Cloud API key"
+							},
+							{
+								"id": "adc",
+								"label": "Application Default Credentials"
+							},
+							{
+								"id": "service-account",
+								"label": "Service account credentials file"
+							}
+						]
+					}
+				},
+				{
+					"event": {
+						"type": "info",
+						"message": "Run `gcloud auth application-default login`, then provide the project and location.",
+						"links": [
+							{
+								"label": "Application Default Credentials",
+								"url": "https://cloud.google.com/docs/authentication/provide-credentials-adc"
+							}
+						]
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud project ID"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Google Cloud location"
+					}
+				}
+			],
+			"error": "Login cancelled"
+		},
+		{
+			"provider": "cloudflare-workers-ai",
+			"answers": [
+				"cf-key",
+				"acct-1"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Cloudflare API key"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Cloudflare account ID"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"key": "cf-key",
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-1"
+				}
+			}
+		},
+		{
+			"provider": "cloudflare-workers-ai",
+			"answers": [
+				"cf-key",
+				null
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Cloudflare API key"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Cloudflare account ID"
+					}
+				}
+			],
+			"error": "Login cancelled"
+		},
+		{
+			"provider": "cloudflare-ai-gateway",
+			"answers": [
+				"cf-key",
+				"acct-2",
+				"gw-9"
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Cloudflare API key"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Cloudflare account ID"
+					}
+				},
+				{
+					"prompt": {
+						"type": "text",
+						"message": "Enter Cloudflare AI Gateway ID"
+					}
+				}
+			],
+			"credential": {
+				"type": "api_key",
+				"key": "cf-key",
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-2",
+					"CLOUDFLARE_GATEWAY_ID": "gw-9"
+				}
+			}
+		},
+		{
+			"provider": "cloudflare-ai-gateway",
+			"answers": [
+				null
+			],
+			"steps": [
+				{
+					"prompt": {
+						"type": "secret",
+						"message": "Enter Cloudflare API key"
+					}
+				}
+			],
+			"error": "Login cancelled"
+		}
+	]
+}

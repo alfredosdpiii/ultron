@@ -235,9 +235,29 @@ impl Lanes {
 
     /// `rlm.pool`: live kernels, their leases, pins and idle time, and how many evictions happened.
     pub fn pool_stats(&self) -> Value {
-        let pool = self.pool();
+        let mut pool = self.pool();
         let mut stats = pool.stats();
         stats["evictions"] = json!(pool.evictions().iter().filter(|r| r["evicted"] == true).count());
+        // Each live kernel's process-tree memory (session-worker.ts `poolStats`), and the tree cap.
+        let (mut total, mut measured, mut cap) = (0u64, false, None);
+        if let Some(lanes) = stats["lanes"].as_array_mut() {
+            for lane in lanes {
+                let name = lane["lane"].as_str().unwrap_or_default().to_string();
+                let usage = pool.live(&name).and_then(|kernel| kernel.0.memory_usage());
+                if let Some((bytes, lane_cap)) = usage {
+                    lane["memoryBytes"] = json!(bytes);
+                    total += bytes;
+                    measured = true;
+                    cap = lane_cap.or(cap);
+                }
+            }
+        }
+        if measured {
+            stats["memoryBytes"] = json!(total);
+        }
+        if let Some(cap) = cap {
+            stats["memoryCapBytes"] = json!(cap);
+        }
         stats
     }
 

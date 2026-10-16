@@ -206,6 +206,7 @@ fn load(root: &Path) -> Result<Config, CheckError> {
 fn redirect_violation(target: &str, root: &Path, cwd: &Path) -> Result<Option<String>, CheckError> {
     let path = abspath(cwd, target);
     if !path.starts_with(root) || resolve(&path) != path {
+        crate::evidence::finding("shell-redirect-outside", None);
         return Ok(Some("loki: shell redirect target escapes the repository root".into()));
     }
     if let Some(message) = protect_path(&path.to_string_lossy(), root, &load(root)?)? {
@@ -218,6 +219,7 @@ fn redirect_violation(target: &str, root: &Path, cwd: &Path) -> Result<Option<St
         relative.clone()
     };
     if !TEXT_REDIRECT_SUFFIXES.contains(&suffix(&path).as_str()) || hidden(&relative) || path.is_dir() {
+        crate::evidence::finding("shell-redirect-write", Some(&shown));
         return Ok(Some(format!(
             "loki: shell redirect into {shown} bypasses write checks; use file edit tools for source and configuration files"
         )));
@@ -263,6 +265,7 @@ pub fn shell_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Optio
                 other => return other,
             }
         }
+        crate::evidence::finding("shell-redirect-write", None);
         return Ok(Some(
             "loki: shell redirect from a command other than echo/printf requires review; use file edit tools for writes"
                 .into(),
@@ -270,7 +273,10 @@ pub fn shell_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Optio
     }
     let words = match config::simple_shell_words(command) {
         Ok(words) => words,
-        Err(message) => return Ok(Some(message)),
+        Err(message) => {
+            crate::evidence::finding("shell-syntax-review", None);
+            return Ok(Some(message));
+        }
     };
     let first = words[0].as_str();
     if first == "git"
@@ -282,6 +288,7 @@ pub fn shell_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Optio
                 .iter()
                 .any(|p| w.starts_with(p))
         }) {
+            crate::evidence::finding("shell-option-review", None);
             return Ok(Some("loki: shell Git option requires review".into()));
         }
         return Ok(None);
@@ -291,6 +298,7 @@ pub fn shell_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Optio
     }
     if first == "git" && destructive_git(&words) {
         let shown = words.iter().take(4).cloned().collect::<Vec<_>>().join(" ");
+        crate::evidence::finding("shell-destructive-git", None);
         return Ok(Some(format!(
             "loki: blocked destructive Git command `{shown}`: it can discard uncommitted work or rewrite history; ask the user to run it"
         )));
@@ -301,6 +309,7 @@ pub fn shell_violation(command: &Value, root: &Path, cwd: &Path) -> Result<Optio
     if first != "git" {
         return reviewed_shell_violation(command.as_str().unwrap_or(""), root, cwd);
     }
+    crate::evidence::finding("shell-command-review", None);
     Ok(Some(
         "loki: shell command requires review; use verified file tools for writes".into(),
     ))
@@ -408,6 +417,7 @@ fn reviewed_shell_violation(command: &str, root: &Path, cwd: &Path) -> Result<Op
         g["command"].as_str() == Some(command) && g["cwd"].as_str().is_some_and(|d| lexical_path(root, d) == cwd)
     });
     let Some(grant) = grant else {
+        crate::evidence::finding("shell-command-review", None);
         return Ok(Some(
             "loki: no committed permission for this exact shell command and cwd".into(),
         ));
@@ -442,6 +452,7 @@ fn reviewed_shell_violation(command: &str, root: &Path, cwd: &Path) -> Result<Op
             .as_ref()
             .is_none_or(|(content, m)| *content != blob || m != mode)
         {
+            crate::evidence::finding("shell-permission-input-changed", Some(name));
             return Ok(Some(format!("loki: shell permission input differs from base: {name}")));
         }
     }
@@ -697,6 +708,7 @@ pub fn shell_writes_violation(
         if git_ignored(&root, &shown) {
             continue;
         }
+        crate::evidence::finding("shell-write", Some(&shown));
         return Ok(Some(format!(
             "loki: `{how}` into {shown} would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())"
         )));

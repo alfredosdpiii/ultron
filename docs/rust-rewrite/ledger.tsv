@@ -2352,6 +2352,299 @@ MODELS4-01	model-auth	Kimi OAuth requests carry the stored token as Authorizatio
 MODELS4-03	print-mode	ultron -p with Kimi OAuth passes preflight and prompt without an API key and sends the bearer	cli_kimi_oauth_print_mode_sends_the_bearer_header
 MODELS4-04	tui-scoped-models	refresh timeout shows "Model refresh timed out; showing cached models." (warning)	cli_scoped_models_refresh_timeout_says_so_like_ts
 MODELS4-06	delegation-usage	a cancelled task settles its open model reservation before its result is published	acceptance_a09_a_cancelled_task_settles_its_model_reservation_before_its_result_is_published
+P-CLI-01	cli	prompt without -p streams; no-prompt runs list/attach; stdin and @file prompts; system-prompt/no-skills/no-context-files reach the request; setup hints	cli_native_run_matches_typescript
+P-CLI-02	cli	-e manifests load before discovered ones and with --no-extensions	cli_native_extension_flag_loads_a_manifest_also_with_no_extensions
+P-CLI-03	cli	--models scopes a new session's model	cli_native_models_flag_scopes_a_new_sessions_model
+P-CLI-04	cli	tool flags warn; tool list stays [rlm]	cli_native_tool_flags_warn_and_keep_the_rlm_tool
+P-CLI-05	cli	httpProxy setting routes provider requests	cli_native_http_proxy_setting_routes_provider_requests
+P-CLI-06	cli	!command key in auth.json authenticates a run	cli_native_command_key_in_auth_json_authenticates
+P-CLI-07	cli	mcp login/logout/list with OAuth match TS	cli_mcp_login_logout_and_list_match_typescript
+P-CLI-08	cli	prompted -r on a TTY asks which session	cli_native_prompted_resume_on_a_terminal_asks_which_session
+P-CLI-09	cli	--offline/PI_OFFLINE env for run and workers	cli_startup_offline_flag_or_env_sets_offline_for_the_run_and_its_workers
+P-CLI-10	cli	httpProxy fills only unset proxy vars	cli_startup_http_proxy_setting_fills_only_unset_proxy_variables
+P-CLI-11	cli	tool flag mapping onto [rlm]	cli_startup_tool_flags_map_onto_the_rlm_only_tool_list
+P-CLI-12	cli	piped stdin trimmed, blank is none	cli_startup_piped_prompt_is_trimmed_and_blank_is_none
+P-CLI-13	cli	@file path resolution	cli_file_args_resolve_like_resolve_to_cwd
+P-CLI-14	cli	macOS AM/PM screenshot variant	cli_file_args_am_pm_variant_uses_a_narrow_space
+P-CLI-15	cli	mcp login --timeout parsing	cli_mcp_login_timeout_is_a_positive_number_of_seconds
+P-CLI-16	cli	browser launcher only from given PATH	cli_mcp_login_finds_the_browser_only_on_the_given_path
+P-CLI-17	cli	!command values run in a shell, trimmed	config_command_values_run_in_a_shell_and_are_trimmed
+P-CLI-18	cli	failing !command values resolve to nothing	config_command_values_that_fail_resolve_to_nothing
+P-CLI-19	cli	!command values cached until cleared	config_command_values_are_cached_until_cleared
+P-CLI-20	cli	stored !command keys resolve like TS store	config_stored_command_keys_resolve_like_the_typescript_store
+P-CLI-21	cli	OpenRouter OAuth credential gives its key	ai_auth_openrouter_oauth_credential_gives_its_key
+P-CLI-22	cli	--models forwarded to session flags	cli_models_flag_is_parsed_and_forwarded_to_the_session
+P-CLI-23	cli	bare prompt with no model shows setup hint	cli_bare_prompt_without_a_model_reports_the_setup_hint
+DAEMON-WS-01	daemon	readWorkerSettings values/savedTrust/envOverrides match TS	daemon_worker_settings_read_matches_typescript
+DAEMON-WS-02	daemon	applyWorkerSetting validation, persistence, applied, live changes match TS	daemon_worker_settings_apply_matches_typescript
+DAEMON-WS-03	daemon	modelEnvOverrides matches TS	daemon_worker_settings_model_env_overrides_match_typescript
+DAEMON-WS-04	daemon	debugEnvironment filters/redacts like TS	daemon_worker_settings_debug_environment_redacts_like_typescript
+DAEMON-WS-05	daemon	debugEnvironment sorts like localeCompare	daemon_worker_settings_debug_environment_sorts_like_locale_compare
+DAEMON-SC-01	daemon	getSettings shape from session state and retry flag	daemon_session_control_get_settings_reads_the_session
+DAEMON-SC-02	daemon	queue modes/compaction/labels become session ops; beforeFork never cancels	daemon_session_control_setters_become_session_operations
+DAEMON-SC-03	daemon	setSetting persists and applies live via ops	daemon_session_control_set_setting_persists_and_applies_live
+DAEMON-SC-04	daemon	setProjectTrust round-trips through readSettings	daemon_session_control_trust_round_trips_through_read_settings
+DAEMON-SC-05	daemon	reloadAuth counts available models	daemon_session_control_reload_auth_counts_available_models
+DAEMON-SC-06	daemon	debugInfo has SessionDebugInfo fields, pool error	daemon_session_control_debug_info_has_the_typescript_fields
+DAEMON-SC-07	daemon	resume maps recovery to AgentOperationResponse	daemon_session_control_resume_maps_recovery_to_agent_responses
+DAEMON-SC-08	daemon	Models.refresh publishes refreshing/catalog/done/warning	daemon_session_control_models_refresh_publishes_like_models_provider
+DAEMON-PP-01	daemon	presentation-plugins per-client prepared selection	cli_daemon_presentation_plugins_need_a_prepared_selection_per_client
+DAEMON-SC-09	daemon	session-control/models/resume through real worker	cli_daemon_session_control_settings_trust_debug_and_models_through_the_worker
+DAEMON-CANCEL-01	daemon	cancel answers cancelled and aborts the call's bash	cli_daemon_cancel_stops_waiting_and_aborts_the_bash_it_ran
+DAEMON-CANCEL-02	daemon	active request id reuse refused; cancel needs matching target	cli_daemon_an_active_request_id_cannot_be_reused
+TUI-TRUST-01	interactive	trust selector renders/selects like TS (themes, widths)	interactive_trust_selector_renders_and_selects_like_ts
+TUI-DEBUG-01	interactive	/debug log text and notice match writeDebugLog	interactive_debug_log_text_and_notice_match_ts
+TUI-TRUST-02	interactive	/trust through LaneClient	interactive_trust_command_reads_shows_and_saves_through_the_client
+TUI-DEBUG-02	interactive	/debug and /reload through LaneClient	interactive_debug_and_reload_commands_go_through_the_client
+CLI-TRUST-DEBUG-01	cli	/trust,/debug,/reload in tmux via worker	cli_interactive_trust_debug_and_reload_work_through_the_worker
+P-KERNEL-01	inference	rlm.map shared_prefix renders the system prefix, counts toward tranche, refuses bad prefixes	inference_map_shared_prefix_matches_typescript_host
+P-KERNEL-02	kernel	tree-memory limit/backend/scope command/poll/OOM parsing match tree-memory.ts	kernel_tree_memory_configuration_matches_typescript
+P-KERNEL-03	kernel	cgroup memory.events and cgroup.procs readers	kernel_tree_memory_cgroup_files_match_typescript
+P-KERNEL-04	kernel	tree-cap error message	kernel_tree_memory_limit_message_names_the_cap_and_how_it_is_enforced
+P-KERNEL-05	kernel	watchdog stops a tree over cap; fresh kernel next	kernel_tree_memory_watchdog_stops_a_tree_over_the_cap_and_the_next_cell_works
+P-KERNEL-06	kernel	modest cells unaffected	kernel_tree_memory_watchdog_leaves_modest_cells_alone
+P-KERNEL-07	kernel	double-forked hog counted and killed	kernel_tree_memory_watchdog_counts_and_kills_a_double_forked_hog
+P-KERNEL-08	kernel	double-forked daemon adopted and stopped on shutdown	kernel_tree_memory_double_forked_daemon_is_adopted_and_stopped_with_the_kernel
+P-KERNEL-09	kernel	copy-on-write pages count once	kernel_tree_memory_copy_on_write_pages_count_once
+P-KERNEL-10	kernel	cgroup scope wraps the kernel (fake launcher, probed once)	kernel_tree_memory_cgroup_scope_wraps_the_kernel
+P-KERNEL-11	kernel	no usable scope falls back to watchdog	kernel_tree_memory_without_a_usable_scope_falls_back_to_the_watchdog
+P-KERNEL-12	kernel	no options / zero cap is off	kernel_tree_memory_is_off_without_options_or_with_a_zero_cap
+P-KERNEL-13	delegation	rlm.pool reports tree memory and cap	delegation_pool_reports_kernel_tree_memory_and_cap
+P-KERNEL-14	delegation	workflow worktree nodes run in worktrees and merge	delegation_workflow_worktree_nodes_run_in_worktrees_and_merge_by_their_results
+P-KERNEL-15	delegation	worktree "auto" outside Git uses shared tree; True fails admission	delegation_workflow_worktree_auto_outside_git_runs_in_the_shared_tree
+P-KERNEL-16	delegation	workflow worktree validation messages	delegation_workflow_worktree_validation_matches_typescript
+P-KERNEL-17	delegation	failed verdict fails the worktree node	delegation_workflow_worktree_node_with_a_failed_verdict_fails
+P-KERNEL-18	delegation	worktree node is a child of the calling lane	delegation_workflow_worktree_node_is_a_child_of_the_lane_that_ran_the_workflow
+P-KERNEL-19	delegation	forkPoint stops before a pending tool call	delegation_fork_point_stops_before_a_call_still_waiting_for_its_result
+P-KERNEL-20	delegation	forked child gets anchor and fork brief note	delegation_forked_child_starts_at_its_callers_fork_point_with_the_fork_note
+P-KERNEL-21	delegation	fork refusals (empty lane, non-bool, external)	delegation_fork_is_refused_on_an_empty_lane_and_must_be_a_boolean
+P-KERNEL-22	acceptance	forked child starts on the parent's finished conversation (binary)	acceptance_spawn_fork_child_starts_on_the_parents_finished_conversation
+P-KERNEL-23	acceptance	unforked child sees only its brief	acceptance_spawn_without_fork_the_child_sees_only_its_brief
+P-KERNEL-24	host	after-cell changes reach guards; findings with next cell	host_after_cell_changes_reach_the_guards_and_findings_come_with_the_next_cell
+P-KERNEL-25	host	after-cell guard failure/timeout notes	host_after_cell_guards_that_fail_or_time_out_say_so
+P-KERNEL-26	host	after-cell needs watching guard and baseline	host_after_cell_needs_a_watching_guard_and_a_baseline
+P-KERNEL-27	host	pending findings capped at 6000 chars	host_after_cell_findings_are_capped_at_6000_characters
+P-KERNEL-28	host	Loki report parsing tiers	host_loki_reports_keep_their_tiers
+P-KERNEL-29	host	Loki after-cell new findings / FYI	host_loki_after_cell_new_findings_say_fix_these_and_advisories_are_fyi
+P-KERNEL-30	host	Loki after-cell said-once memory	host_loki_after_cell_what_was_said_is_not_said_again
+P-KERNEL-31	host	Loki advisories never say fix; notes once	host_loki_after_cell_advisories_never_say_fix_and_notes_are_said_once
+P-KERNEL-32	host	Loki text reports, engine errors, paused .loki	host_loki_after_cell_text_reports_and_engine_errors
+P-KERNEL-33	host	Loki after-cell 40-file cap	host_loki_after_cell_checks_at_most_40_files_inside_the_repository
+P-KERNEL-34	host	Rust engine catches a shell-written secret after the cell	host_loki_after_cell_rust_engine_catches_a_secret_a_shell_write_introduced
+P-KERNEL-35	host	outside a repo only before-write checks	host_loki_outside_a_repository_runs_only_before_write_checks
+P-KERNEL-36	session-core	extension after_cell_changes event and message	session_core_extension_after_cell_changes_event_and_message
+P-KERNEL-37	acceptance	Loki after-cell finding arrives with a later cell (binary)	acceptance_after_cell_loki_finding_arrives_with_the_next_cell
+P-KERNEL-38	loki	--record events match loki.py	loki_record_events_match_loki_py
+P-KERNEL-39	loki	shell --record appends its event	loki_shell_record_appends_its_event
+P-KERNEL-40	loki	verify-installation matches loki.py	loki_verify_installation_matches_loki_py
+P-KERNEL-41	loki	apply transactions match loki.py	loki_apply_transactions_match_loki_py
+P-KERNEL-42	loki	elixir analysis, credo-new, hook Credo/Sobelow match loki.py	loki_elixir_analysis_matches_loki_py
+P-KERNEL-43	loki	scan --online matches loki.py (stand-in registry)	loki_scan_online_matches_loki_py
+P-KERNEL-44	loki	registry URLs match loki.py	loki_registry_urls_match_loki_py
+P-KERNEL-45	loki	registry failure texts	loki_registry_lookup_failures_read_as_loki_py_reports_them
+P-KERNEL-46	loki	daemon management/args match loki.py	loki_daemon_management_matches_loki_py
+P-KERNEL-47	loki	daemon forwards hooks with identical results; stop	loki_daemon_runs_forwarded_hooks_exactly_as_the_local_engine
+P-KERNEL-48	loki	daemon stale engine reply and exit	loki_daemon_answers_another_engine_stale_and_exits
+P-KERNEL-49	loki	client protocol and local fallback	loki_daemon_client_speaks_the_protocol_and_falls_back_locally
+P-KERNEL-50	loki	hooks never autostart a daemon	loki_daemon_is_never_started_by_a_hook_unasked
+PKG-1	packages	parseGitUrl incl. hosted-git-info shortcuts	cli_packages_parse_git_url_matches_typescript
+PKG-2	packages	npm source parsing	cli_packages_parse_npm_source_matches_typescript
+PKG-3	packages	node-semver subset	cli_packages_semver_matches_node_semver
+PKG-4	packages	minimatch for resource filters	cli_packages_minimatch_matches_typescript
+PKG-5	packages	ignore-file rules	cli_packages_ignore_rules_match_the_ignore_package
+PKG-6	packages	resolve() of configured resources	cli_packages_resolve_matches_typescript
+PKG-7	packages	install/remove npm (npm, bun, pnpm, project, failure)	cli_packages_install_and_remove_npm_match_typescript
+PKG-8	packages	update npm (newer, current, range, pinned, suggestion, offline)	cli_packages_update_npm_matches_typescript
+PKG-9	packages	git install/pinned/missing, update/pinned ref, remove	cli_packages_git_install_update_remove_match_typescript
+PKG-10	packages	list with legacy npm root; missing local path	cli_packages_list_reads_the_legacy_global_npm_root_like_typescript
+PKG-11	packages	update --self/--all registry check	cli_packages_self_update_check_matches_typescript
+PKG-12	packages	self-contained binary points to release download	cli_packages_self_update_points_the_binary_at_the_release_download
+CFG-1	config	global mode toggles and filter	cli_config_selector_global_mode_like_ts
+CFG-2	config	project override cycle and Tab	cli_config_selector_project_mode_like_ts
+CFG-3	config	untrusted -l refused	cli_config_selector_untrusted_local_is_refused_like_ts
+CFG-4	config	project package override cycling (ported TS test)	cli_config_selector_cycles_project_package_overrides
+SETUP-1	setup	custom endpoint merged into models.json	cli_setup_core_custom_endpoint_merges_into_models_json_like_typescript
+SETUP-2	setup	provider id/base URL/model id validation	cli_setup_core_validates_names_urls_and_model_lists
+SETUP-3	setup	endpoint /models listing	cli_setup_core_lists_endpoint_models_without_the_key_in_the_url
+SETUP-4	setup	Hindsight docker args, key by name only	cli_setup_core_hindsight_docker_args_pass_the_key_by_name_only
+SETUP-5	setup	Hindsight /health probe	cli_setup_core_probes_hindsight_health_over_http
+SETUP-6	setup	Hindsight URL precedence	cli_setup_core_hindsight_url_comes_from_env_then_setting_then_default
+SETUP-7	setup	environment checks	cli_setup_core_environment_flags_missing_python_and_docker_is_optional
+SETUP-8	setup	first-run offer rules	cli_setup_core_first_run_offer_only_on_a_terminal_start_without_a_model
+SETUP-9	setup	private 0600 files	cli_setup_core_writes_private_files
+SETUP-10	setup	wizard custom endpoint and default model	cli_setup_wizard_configures_a_custom_endpoint_and_the_default_model
+SETUP-11	setup	keep setup / replace provider	cli_setup_wizard_keeps_a_working_setup_and_asks_before_replacing_a_provider
+SETUP-12	setup	failed live test	cli_setup_wizard_reports_a_failed_live_test_and_offers_another_model
+SETUP-13	setup	docker Hindsight install (fake docker)	cli_setup_wizard_installs_hindsight_with_docker_passing_the_key_through_the_environment
+SETUP-14	setup	running Hindsight and custom URL	cli_setup_wizard_detects_a_running_hindsight_and_saves_a_custom_url
+SETUP-15	setup	Loki step toggles	cli_setup_wizard_shows_loki_analyzers_and_saves_its_toggles
+SETUP-16	setup	memory off and on	cli_setup_wizard_turns_memory_off_and_back_on
+SETUP-17	setup	start-model state: none	cli_setup_start_model_nothing_configured_offers_setup_with_the_hint
+SETUP-18	setup	start-model state: stored credentials	cli_setup_start_model_stored_credentials_make_their_models_usable
+SETUP-19	setup	start-model state: default without credentials	cli_setup_start_model_a_default_without_credentials_is_named_in_the_hint
+SETUP-20	setup	start-model state: unknown default	cli_setup_start_model_an_unknown_default_gets_no_misleading_hint
+SETUP-21	setup	TUI: skip every step	cli_setup_tui_skipping_every_step_like_ts
+SETUP-22	setup	TUI: custom endpoint with live test	cli_setup_tui_custom_endpoint_with_live_test_like_ts
+SETUP-23	setup	TUI: Ctrl+C stops the wizard	cli_setup_tui_ctrl_c_stops_the_wizard_like_ts
+SETUP-24	setup	TUI: first-run offer runs setup	cli_setup_tui_first_run_offer_runs_setup_like_ts
+SETUP-25	setup	TUI: first-run "Don't ask again" saved	cli_setup_tui_first_run_offer_dont_ask_again_is_saved_like_ts
+P-REVIEW-01	review	prepareEnvironment/resolveToolchain/cachedEnvironment: mise pick+install, uv venv/sync/editable/requirements, npm/pnpm/yarn, cache record, failures (TS fixture replay)	review_prepare_env_scenarios_match_typescript
+P-REVIEW-02	review	EnvironmentPreparer (RunnerPreparer) summary: dir, prepared, toolchain paths; second run is a cache hit	review_prepare_env_summary_is_what_the_reviewer_binds
+P-REVIEW-03	review	daemon builds the checkout's environment before review (prepareEnvs on/off): testCheckout/testToolchain/testEnvKind prepared	review_prepare_env_daemon_review_uses_the_prepared_environment
+P-REVIEW-06	cli	autoreview prepare text/json/usage/failure exit; review --repo-dir --prepare (cached, failed, --test-env wins); --repo/--checkout-roots lent checkout (TS fixture replay)	cli_autoreview_prepare_cases_match_typescript
+P-REVIEW-07	cli	doctor prepared-environment lines and cachedEnvironment ok-only	cli_autoreview_doctor_prepared_lines
+PSESS-01	session-core/provider	openai-codex-responses streams through the session provider as TS	session_core_provider_streams_openai_codex_responses
+PSESS-02	session-core/provider	azure-openai-responses streams through the session provider as TS	session_core_provider_streams_azure_openai_responses
+PSESS-03	session-core/provider	google-vertex streams through the session provider as TS	session_core_provider_streams_google_vertex
+PSESS-04	session-core/provider	mistral-conversations streams through the session provider as TS	session_core_provider_streams_mistral_conversations
+PSESS-05	session-core/provider	bedrock-converse-stream streams through the session provider as TS	session_core_provider_streams_bedrock_converse_stream
+PSESS-06	session-core/provider	claude-code-cli runs through the session provider as TS	session_core_provider_streams_claude_code_cli
+PSESS-07	session-core/retry	transient error retried then answered: events, op states, retry_wait as TS	session_core_retry_answers_after_a_transient_error_like_typescript
+PSESS-08	session-core/retry	retries stop after retry.maxRetries as TS	session_core_retry_gives_up_after_max_retries_like_typescript
+PSESS-09	session-core/retry	set_auto_retry false disables retry as TS	session_core_retry_is_off_after_set_auto_retry_false_like_typescript
+PSESS-10	session-core/retry	non-transient error is not retried as TS	session_core_retry_needs_a_transient_error_like_typescript
+PSESS-11	session-core/retry	abort_retry aborts a run waiting to retry	session_core_abort_retry_aborts_a_run_waiting_to_retry
+PSESS-12	session-core/find_models	rlm.find_models answers the available models as TS	session_core_find_models_answers_the_available_models_like_typescript
+PSESS-13	session-core/view_image	view_image image reaches the next request as TS	session_core_view_image_attaches_the_image_to_the_tool_result_like_typescript
+PSESS-14	session-core/image_budget	ULTRON_CONTEXT_IMAGES replaces oldest images as TS	session_core_image_budget_replaces_the_oldest_images_like_typescript
+PSESS-15	session-core/nudge	ULTRON_TOOL_ROUNDS_NUDGE steers the root after round 3 as TS	session_core_tool_round_nudge_steers_the_root_to_answer_like_typescript
+PSESS-16	session-core/nudge	brake at threshold and twice it, reset on answer, env parsing	session_core_nudge_steers_once_at_the_threshold_again_at_twice_it_and_resets_when_the_model_answers
+PSESS-17	session-core/nudge	wait steer while root-started work runs	session_core_nudge_with_subagents_running_busy_rounds_are_steered_to_wait
+PSESS-18	session-core/nudge	skill hint suppressed while subagents run	session_core_nudge_the_skill_hint_is_suppressed_while_subagents_run
+PSESS-19	session-core/image_budget	drops in batches of half the budget	session_core_image_budget_drops_in_batches_of_half_the_budget
+PSESS-20	session-core/image_budget	oldest images become the offload note	session_core_image_budget_the_oldest_images_become_a_note
+PSESS-21	session-core/image_budget	ULTRON_CONTEXT_IMAGES parsing	session_core_image_budget_reads_ultron_context_images
+PSESS-22	session-core/view_image	path attaches an image block after the text	session_core_view_image_a_path_attaches_an_image_block_after_the_text
+PSESS-23	session-core/view_image	bytes attach; type from magic bytes	session_core_view_image_raw_bytes_attach_and_the_type_comes_from_magic_bytes
+PSESS-24	session-core/view_image	savefig objects render to PNG	session_core_view_image_an_object_with_savefig_is_rendered_to_png
+PSESS-25	session-core/view_image	at most 8 images per cell	session_core_view_image_a_cell_attaches_at_most_8_images
+PSESS-26	session-core/view_image	oversized downscaled, detail=low <=512	session_core_view_image_an_oversized_image_is_downscaled_and_detail_low_is_a_small_preview
+PSESS-27	session-core/view_image	non-vision model gets the note	session_core_view_image_a_model_without_image_input_gets_a_plain_note
+PSESS-28	session-core/view_image	read on an image points at view_image	session_core_view_image_read_on_an_image_file_points_at_view_image
+PSESS-29	session-core/goal	schedules/goal reach every lane; goal gate admits root and job only	session_core_schedules_and_goal_reach_every_lane_and_the_goal_admits_only_the_root_and_its_job
+PSESS-30	session-core/goal	goal job checks and completes the goal from its own REPL	session_core_the_goal_job_checks_and_completes_the_goal_from_its_own_repl
+PSESS-31	session-core/swarm	swarm/board/notes and keep=True children with rlm.ask from the root REPL	session_core_swarm_board_notes_and_persistent_children_work_from_the_root_repl
+TUI-P01	tui	copyToClipboard: native, then tools, then WSL/PowerShell, then OSC 52; error texts	tui_copy_local_linux_failure_is_reported_not_osc52
+TUI-P02	tui	OSC 52 for remote and display-less sessions, unless oversized	tui_copy_remote_failure_uses_osc52_unless_oversized
+TUI-P03	tui	WSL clipboard via wslpath and PowerShell, temp file removed	tui_copy_wsl_without_display_uses_powershell_through_a_temp_file
+TUI-P04	tui	clipboard tools only from injected PATH	tui_copy_clipboard_command_needs_the_injected_path
+TUI-P05	tui	SplitView widths and merge match TS	tui_split_view_matches_typescript
+TUI-P06	tui	split keeps editor cursor marker	tui_split_view_keeps_the_editor_cursor_marker
+TUI-P07	tui	live theme swap recolors every holder	tui_theme_adopt_recolors_every_holder
+TUI-P08	tui	editor setPaddingX	tui_editor_padding_x_moves_the_text
+TUI-P09	tui	viewport clearOnShrink full repaint	tui_viewport_clear_on_shrink_repaints_the_shrunk_viewport
+INT-P01	interactive	multi-field API-key login flows match TS	interactive_p_tui_api_key_login_flows_match_typescript
+INT-P02	interactive	/login bedrock flow in dialog saves credential	interactive_p_tui_login_runs_the_bedrock_flow_in_the_dialog_and_saves_the_credential
+INT-P03	interactive	extension setStatus/setWidget/setTitle	interactive_p_tui_extension_status_widgets_and_title
+INT-P04	interactive	extension editor dialog multi-line	interactive_p_tui_extension_editor_dialog_is_multi_line
+INT-P05	interactive	extension input countdown and expiry	interactive_p_tui_extension_input_counts_down_and_cancels
+INT-P06	interactive	doubleEscapeAction tree/fork/none	interactive_p_tui_double_escape_action_tree_fork_none
+INT-P07	interactive	quietStartup hides splash	interactive_p_tui_quiet_startup_hides_the_splash_live
+INT-P08	interactive	Ctrl+Z suspend via injected hook	interactive_p_tui_ctrl_z_suspends_through_the_injected_hook
+INT-P09	interactive	/copy native clipboard before OSC 52	interactive_p_tui_copy_uses_the_clipboard_before_osc52
+INT-P10	interactive	/share loader, Esc cancels	interactive_p_tui_share_loader_cancels_with_escape
+INT-P11	interactive	/resume and /import Tab All scope	interactive_p_tui_resume_tab_lists_every_project
+INT-P12	interactive	RLM pane beside chat, focus toggle, close	interactive_p_tui_rlm_pane_opens_beside_the_chat_and_moves_the_focus
+INT-P13	interactive	RLM pane falls back to graph when narrow	interactive_p_tui_rlm_pane_falls_back_to_the_graph_when_narrow
+INT-P14	interactive	RLM pane auto-open per turn, setting and env	interactive_p_tui_rlm_pane_auto_opens_once_per_turn_without_focus
+INT-P15	interactive	wave summary above editor	interactive_p_tui_wave_summary_shows_above_the_editor_while_children_run
+INT-P16	interactive	RLM polling cadence and inspections	interactive_p_tui_rlm_polls_inspections_on_the_clock
+INT-P17	interactive	RLM focus loads frame traces	interactive_p_tui_rlm_focus_loads_frame_traces
+INT-P18	interactive	theme from settings: custom, automatic, fallback, detection	interactive_p_tui_theme_from_settings_custom_and_automatic
+INT-P19	interactive	theme preview while browsing, live apply	interactive_p_tui_theme_previews_while_browsing_and_applies_live
+INT-P20	interactive	local settings at startup and hardware cursor	interactive_p_tui_local_settings_apply_at_startup
+INT-P21	interactive	local settings live from /settings	interactive_p_tui_local_settings_apply_live_from_settings
+CR-P01	claude-root	ultron watch frames match TS renderWatchFrame	claude_root_watch_frames_match_typescript
+CR-P02	claude-root	watch --once --plain over control socket	claude_root_watch_once_plain_draws_the_session_over_its_socket
+CR-P03	claude-root	watch plain output strips CSI/OSC	claude_root_watch_strips_csi_and_osc
+W2EXT-PROV-01	ai	extension providers compose over built-in and models.json like TS registerProvider	ai_extension_providers_compose_like_typescript
+W2EXT-PROV-02	ai	a registration that does not compose is refused and changes nothing	ai_extension_providers_refuse_registrations_that_do_not_compose
+W2EXT-PROV-03	ai	extension provider availability matches TS	ai_extension_providers_availability_matches_typescript
+W2EXT-PROV-04	ai	extension provider request key and headers (apiKey, headers, authHeader) match TS getAuth	ai_extension_providers_request_auth_matches_typescript
+W2EXT-PROV-05	ai	model references to extension providers resolve like TS resolveCliModel	ai_extension_providers_references_match_typescript
+W2EXT-PROV-06	ai	extension providers listed after models.json ones; missing model fields defaulted	ai_extension_providers_are_listed_after_models_json_providers
+W2EXT-PROV-07	cli	session starts on an extension model; its requests go to its baseUrl with its key and headers	cli_extension_provider_model_starts_a_session_and_receives_its_requests
+W2EXT-PROV-08	cli	setModel to an extension model from a built-in one routes the next request	cli_extension_provider_model_is_selectable_from_a_builtin_model
+W2EXT-PROV-09	cli	provider that does not compose is a load diagnostic Extension "<path>" error	cli_extension_provider_that_does_not_compose_is_a_load_diagnostic
+W2EXT-PROV-10	cli	extension providers are scoped to the profile and leave with the session	cli_extension_providers_leave_the_registry_when_the_session_ends
+W2EXT-PROV-11	cli	installed provider source removed with its guard	cli_extension_provider_source_is_removed_with_its_guard
+W2EXT-PROV-12	cli	--list-models shows extension providers; --no-extensions hides them	cli_list_models_shows_extension_providers
+W2EXT-PROV-13	cli	session model list and setModel follow credentials saved later	cli_session_available_models_follow_credentials_saved_later
+W2EXT-PROV-14	cli	/model offers an extension provider in tmux and the prompt reaches it	cli_interactive_model_selector_offers_an_extension_provider
+W2EXT-PROV-15	cli	scoped Ctrl+P cycle reaches an extension provider in tmux	cli_interactive_scoped_model_cycle_reaches_an_extension_provider
+W2EXT-SC-01	cli	TUI keybindings resolve extension shortcut conflicts like TS getShortcuts	cli_extension_shortcuts_resolve_under_the_tui_keybindings_like_typescript
+W2EXT-SC-02	cli	session lists shortcuts and diagnostics, runs shortcuts/run, reports refusal and handler failure	cli_extension_shortcuts_are_listed_and_run_through_the_session
+W2EXT-SC-03	cli	example extension Alt+H runs its handler and /hotkeys lists it (tmux)	cli_interactive_example_extension_shortcut_runs_its_handler
+W2EXT-SC-04	cli	failing shortcut handler shows Shortcut handler error (tmux)	cli_interactive_extension_shortcut_failure_is_shown
+W2EXT-SC-05	interactive	opened session is asked for its shortcuts under effective keybindings	interactive_extension_shortcuts_are_asked_for_when_a_session_opens
+W2EXT-SC-06	interactive	shortcuts run before built-in keys; other keys reach the editor; reset per session	interactive_extension_shortcuts_run_before_builtin_keys_and_leave_other_keys_to_the_editor
+W2EXT-SC-07	interactive	shortcut keys match case-insensitively (legacy and Kitty sequences)	interactive_extension_shortcuts_match_keys_case_insensitively
+W2EXT-SC-08	interactive	/hotkeys Extensions section as TS	interactive_extension_shortcuts_are_listed_by_hotkeys
+W2EXT-SC-09	interactive	conflict warnings shown as [Extension issues]	interactive_extension_shortcut_conflicts_show_as_extension_issues
+W2EXT-TH-01	cli	package and settings themes register like TS resource loader (order, dedupe, failures)	cli_package_themes_register_like_typescript
+W2EXT-TH-02	cli	/settings offers registered themes (getAvailableThemesWithPaths) and the controller applies one	cli_package_themes_are_offered_and_applied_by_the_settings
+W2EXT-TH-03	cli	theme setting naming a package theme draws with it at TUI startup (tmux)	cli_interactive_theme_setting_names_a_package_theme
+W2M-01	ai/vertex	external_account WIF (file/url/AWS/executable), external_account_authorized_user, universe domains, GOOGLE_VERTEX_BASE_URL replay TypeScript	ai_google_vertex_adc_replays_recorded_typescript_scenarios
+W2M-02	ai/vertex	self-signed JWT for a service account outside the default universe is byte-identical	ai_google_auth_self_signed_jwt_matches_typescript_signature
+W2M-03	ai/vertex	AWS SigV4 GetCallerIdentity subject token is byte-identical	ai_google_auth_aws_subject_token_matches_typescript_signature
+W2M-04	cli/mcp	mcp list shows resource counts of 0 for a signed-in OAuth server with resources	cli_mcp_login_logout_and_list_match_typescript
+W2M-05	cli/packages	checkForAvailableUpdates and temporary -e sources match TypeScript	cli_packages_update_check_and_temporary_sources_match_typescript
+W2M-06	cli/packages	-e npm: installs once into the temp folder and is replaced by its directory	cli_temporary_extension_source_installs_once_and_replaces_the_source_with_its_directory
+W2M-07	cli/packages	-e source skipped offline; failed install fails the start	cli_temporary_extension_source_is_left_out_offline_and_a_failed_install_fails_the_start
+W2M-08	interactive	package update notice renders as TypeScript	interactive_package_update_notice_matches_ts
+W2M-09	cli/interactive	TUI shows package updates at startup	cli_interactive_startup_shows_package_updates
+W2M-10	cli/interactive	offline startup checks no packages	cli_interactive_startup_offline_checks_no_packages
+W2M-11	interactive	notice shown only when packages came back	interactive_package_updates_show_only_when_there_are_any
+W2M-12	cli/trust	project_trust extension decides package command trust	cli_package_trust_uses_project_trust_extensions_for_package_commands
+W2M-13	cli/trust	untrusted project packages skipped without an extension	cli_package_trust_skips_untrusted_project_packages_without_an_extension
+W2M-14	cli/trust	remember saves the decision	cli_package_trust_remembers_a_decision_when_asked
+W2M-15	cli/trust	undecided falls through to the default	cli_package_trust_undecided_falls_through_to_the_default
+W2M-16	cli/trust	handler errors and load failures are warnings	cli_package_trust_handler_errors_and_load_failures_are_warnings
+W2M-17	cli/trust	update and overrides never ask extensions	cli_package_trust_update_and_overrides_never_ask_extensions
+W2M-18	cli/trust	local package and config changes use hook trust	cli_package_trust_applies_to_local_package_and_config_changes
+W2M-19	cli/trust	no hook when nothing needs trust	cli_package_trust_asks_no_extension_when_nothing_needs_trust
+W2M-20	cli/trust	config reports hook warnings	cli_package_trust_config_reports_hook_warnings
+W2M-21	interactive/theme	color scheme reports parse as TypeScript	interactive_theme_color_scheme_reports_parse_like_ts
+W2M-22	interactive/theme	pair follows terminal appearance changes	interactive_theme_pair_follows_terminal_appearance_changes
+W2M-23	interactive/theme	only a pair syncs	interactive_theme_only_a_pair_syncs
+W2M-24	interactive/theme	reports switch the running app (2031h, 996n, 2031l)	interactive_theme_reports_switch_the_running_app
+W2M-25	interactive/theme	named setting sends nothing	interactive_theme_named_setting_sends_nothing
+W2M-26	interactive/theme	exit turns notifications off	interactive_theme_exit_turns_the_notifications_off
+W2R-01	cli	server/client command lines (options, auth, --connect addresses, errors) parse like TS cli.parse	cli_experimental_command_lines_parse_like_typescript
+W2R-02	cli	only server/client are experimental subcommands	cli_experimental_dispatches_only_server_and_client
+W2R-03	cli	ultron server prints Server/Socket/Radius: connected; relay upgrade path, host subprotocol, bearer; client list/prompt/attach over Radius; token file trimmed; unix --connect and discovery; SIGTERM closes 1000 Pi server stopped, exit 0	cli_radius_server_relays_a_client_through_the_gateway
+W2R-04	cli	PI_OFFLINE and missing credentials: Radius: not connected; local only, client errors, no gateway contact; openClientRuntime validation errors	cli_radius_offline_and_missing_credentials_stay_local
+W2R-05	cli	detached __internal server (ultron durable) runs the relay with the stored credential	cli_radius_detached_server_runs_the_relay_with_the_stored_credential
+W2R-06	cli	client TUI recovers dropped Radius connections twice with client-tui statuses; input waits	cli_radius_client_tui_recovers_a_dropped_connection
+W2R-07	cli	prepareClientSession choice (existing/rename, Remote server does not contain Session, continue ordering, create/fork)	cli_remote_session_selection_matches_prepare_client_session
+W2R-08	cli	recovery events map to client-tui statuses, lane reopen, lost unix server error	cli_radius_recovery_events_show_client_tui_statuses
+W2R-09	cli	server reports only the latest startup relay status	cli_radius_server_reports_only_the_latest_startup_status
+W2R-10	interactive	busy recovery gates input; Ctrl+C clears, Ctrl+D exits on empty editor	interactive_radius_recovery_waits_for_the_connection
+W2R-11	interactive	end of recovery clears status and takes input; double Ctrl+C exits	interactive_radius_recovery_ends_with_input_back
+W2R-12	client	Connection over the Radius relay: handshake, disconnect closes 1000 Pi client closed while held	client_radius_connection_disconnects_its_relay_while_held
+W2R-13	client	gateway close ends the relay connection	client_radius_connection_ends_when_the_gateway_closes
+W2R-14	client	connect_radius rejects a non-canonical server id	client_radius_connection_rejects_a_bad_server_id_before_connecting
+W2-01	session-core/queues	nextRun messages placed before the next run's prompt, pending entries deleted, inbox emptied (ported accept.test.ts)	session_core_next_run_messages_are_placed_before_the_prompt_like_typescript
+W2-02	session-core/queues	nextRun held past the running run, kept in lane inbox at run end, survives successor, recover does not run it	session_core_next_run_waits_past_the_run_in_progress_and_survives_the_worker
+W2-03	session-core/queues	empty queued message refused; setQueueMode has no nextRun; enqueue nextRun wire form	session_core_next_run_refuses_an_empty_message_like_typescript
+W2-04	daemon/agent-controller	nextRun/steer/followUp answer AgentQueueResponse; nextRun runs with the next prompt	cli_daemon_next_run_waits_for_the_next_prompt_and_queue_members_answer_like_typescript
+W2-05	interactive/queues	pending list labels next-run messages "Next run" after steering	interactive_pending_messages_label_next_run_like_typescript
+W2-07	session-core/agent-hub	steer via agent_message.send child steer: delivered envelope from root, result is answer after steering, finished child refused, transcript read	session_core_agent_hub_steers_a_running_subagent_and_reads_its_transcript
+W2-08	session-core/agent-hub	interrupted subagent revived from its brief as a new subagent	session_core_agent_hub_revives_an_interrupted_subagent_from_its_brief
+W2-09	session-core/agent-hub	steerAgent/reviveAgent/agentTranscript wire forms	session_core_agent_hub_ops_round_trip_as_json
+W2-10	interactive/agent-hub	hub transcript/steer/revive actions reach the session; parked steer revives	interactive_agent_hub_reads_steers_and_revives_through_the_session
+W2-12	cli/agent-hub	tmux: Alt+A hub steers a running subagent, transcript shows envelope and steered answer	cli_interactive_agent_hub_steers_a_running_subagent
+W2-13	session-core/budget	budget line with a turn cap	session_core_budget_line_shows_turns_left_under_a_turn_cap_like_typescript
+W2-14	session-core/budget	budget line with turn and token caps	session_core_budget_line_shows_turns_and_tokens_under_both_caps_like_typescript
+W2-15	session-core/budget	budget line with an explicit token cap	session_core_budget_line_shows_tokens_under_an_explicit_token_cap_like_typescript
+W2-16	session-core/budget	rootBudget settings turn cap	session_core_budget_line_reads_the_root_budget_settings_like_typescript
+W2-17	session-core/budget	no line without caps	session_core_budget_line_is_absent_without_caps_like_typescript
+W2-18	session-core/retry	reopen mid assistant.retry_wait continues as attempt 2, TS states/events, one error entry	session_core_retry_continues_from_assistant_retry_wait_after_a_restart
+W2-19	session-core/images	ULTRON_CONTEXT_IMAGES parsed like JS Number() (hex/octal/binary/trim)	session_core_context_image_budget_reads_numbers_like_typescript
+P-REVIEW-04	review	mise version ordering numeric (localeCompare numeric equivalent on versions)	review_prepare_env_versions_order_numerically
+P-REVIEW-05	review	node path.dirname semantics	review_prepare_env_dirname_like_node
+W2-06	cli/interactive	queue_update nextRun maps to QueueKind::NextRun	cli_interactive_watch_events_become_tui_events
+W2-11	cli/agent-hub	hub notices for steer/revive/errors; interrupted subagents are parked	cli_interactive_agent_hub_notices_and_parked_subagents
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

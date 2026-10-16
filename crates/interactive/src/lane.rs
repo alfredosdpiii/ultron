@@ -69,7 +69,7 @@ pub struct ForkMessage {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Queued {
     pub entry_id: String,
-    /// `steer` or `followUp`.
+    /// `steer`, `followUp` or `nextRun`.
     pub kind: QueueKind,
     pub text: String,
 }
@@ -78,6 +78,8 @@ pub struct Queued {
 pub enum QueueKind {
     Steer,
     FollowUp,
+    /// Held for the session's next run.
+    NextRun,
 }
 
 /// A stored session the resume picker offers.
@@ -201,6 +203,9 @@ pub enum LaneEvent {
     PiSessions(Vec<SessionListing>),
     /// A line for the status area (`showStatus`).
     Status(String),
+    /// The recovery of a Radius-hosted server's connection (client-tui.ts `#handleConnectionState` /
+    /// `#handleAttachmentState`): while `busy`, input waits; `status` replaces the status line (empty clears it).
+    Recovery { busy: bool, status: String },
     /// A failure outside a turn.
     Error(String),
     /// Command output for the transcript (`host.notice(new Text(text, 1, 0))`).
@@ -231,6 +236,14 @@ pub enum LaneEvent {
     SummarizationRetryStarted { branch_summary: bool, reason: String },
     /// The summary's retries ended (`summarization_retry_finished`).
     SummarizationRetryFinished,
+    /// The run's request failed and is retried after `delay_ms` (`auto_retry_start`).
+    AutoRetryStart {
+        attempt: u64,
+        max_attempts: u64,
+        delay_ms: u64,
+    },
+    /// The run's retries ended (`auto_retry_end`): `Some(error)` when the last attempt failed too.
+    AutoRetryEnd { attempt: u64, failed: Option<String> },
     /// The session's thinking level changed.
     Thinking(String),
     /// The user messages `/fork` offers (every branch), oldest first.
@@ -255,6 +268,8 @@ pub enum LaneEvent {
         engineering: bool,
         always_skills: Vec<String>,
     },
+    /// The accounts `gh` is logged in to, as `(login, host)`, for `/autoreview on`.
+    AutoreviewAccounts(Vec<(String, String)>),
     /// The stored credentials (`auth.json`): provider id and type (`api_key` or `oauth`), for `/logout`.
     Credentials(Vec<(String, String)>),
     /// What `/login` offers: every sign-in option with what is configured, for the query `/login` was given.
@@ -265,6 +280,11 @@ pub enum LaneEvent {
     /// The session's extension commands (`LegacyExtensionCommands.list`): invocation name and description, in
     /// load order; each becomes a slash command of its own.
     ExtensionCommands(Vec<(String, Option<String>)>),
+    /// The extensions' keyboard shortcuts in force and the conflict warnings ([`LaneClient::extension_shortcuts`]).
+    ExtensionShortcuts {
+        shortcuts: Vec<crate::extension_shortcuts::ExtensionShortcut>,
+        diagnostics: Vec<crate::extension_shortcuts::ShortcutDiagnostic>,
+    },
     /// An extension command's argument completions for `prefix`: `(value, label, description)` items, or `None`
     /// when it offers none.
     ExtensionCompletions {
@@ -280,10 +300,17 @@ pub enum LaneEvent {
     Catalog(Vec<ModelInfo>),
     /// The model catalogs refreshed ([`LaneClient::refresh_catalog`]), or why not.
     CatalogRefreshed(CatalogRefresh),
+    /// Configured packages behind their source, found by the startup update check (display names); the transcript
+    /// shows [`crate::package_updates::PackageUpdateNotice`] when there are any.
+    PackageUpdates(Vec<String>),
     /// The session's subagents for the RLM views (`rlm.list_subagents`: `{subagents: [...]}`).
     RlmStatus(Value),
     /// The session's subagents, for the agent hub.
     Agents(Vec<crate::agent_hub::AgentView>),
+    /// A subagent's transcript (`agents.transcript`): its messages, for the agent hub's transcript view.
+    AgentTranscript { id: String, messages: Vec<Value> },
+    /// What the agent hub's steer or revive did (shown as the hub's notice).
+    AgentNotice(String),
     /// The TUI moved to a fork or clone of the session (after [`LaneEvent::Opened`]): the editor text it starts with
     /// and the status to show.
     Forked { editor_text: String, status: String },
@@ -295,6 +322,18 @@ pub enum LaneEvent {
         session_file: Option<String>,
         current: bool,
     },
+    /// `/trust`: the session's trust choices, saved decision and current trust.
+    Trust(crate::trust_selector::TrustView),
+    /// `/debug` wrote its log to `path`; the notice shows it with `summary`.
+    DebugLogWritten { path: String, summary: Vec<String> },
+    /// `/share`'s gist upload started (`true`: the "Creating gist..." loader shows) or ended (`false`).
+    ShareLoader(bool),
+    /// An RLM inspection's answer ([`LaneClient::rlm_inspect`]).
+    RlmInspected { tag: String, result: Result<Value, String> },
+    /// Every project's sessions, newest first (the resume selector's All scope).
+    AllSessions(Vec<SessionListing>),
+    /// Pi's sessions of every project, newest first (`/import`'s All scope).
+    PiAllSessions(Vec<SessionListing>),
     /// A dialog or notification of the session's extensions (`/mcp`), in Pi's RPC wire format
     /// (`extension_ui_request`: `select`, `confirm`, `input`, `editor`, `notify`, `set_editor_text`, ...).
     ExtensionUi(Value),
@@ -337,6 +376,10 @@ pub trait LaneClient {
     fn cancel_queued(&self, entry_id: &str);
     /// Abort the running turn.
     fn abort(&self);
+    /// Stop the run's retry wait (`abortRetry`); the run then ends with its error.
+    fn abort_retry(&self) {
+        self.abort();
+    }
     /// Start a new session.
     fn new_session(&self);
     /// `/import <path>`: import the Pi session file at `path` through the server ([`LaneEvent::PiImported`] or a
@@ -414,6 +457,11 @@ pub trait LaneClient {
     fn read_settings(&self) {}
     /// Read the settings' mode for `/mode` and `/engineering` ([`LaneEvent::Mode`]).
     fn read_mode(&self) {}
+    /// `/autoreview`: answered by [`LaneEvent::AutoreviewAccounts`] for [`AutoreviewRequest::Accounts`], else by a
+    /// [`LaneEvent::Status`].
+    fn autoreview(&self, request: AutoreviewRequest) {
+        let _ = request;
+    }
     /// The sign-in options for `/login` ([`LaneEvent::LoginProviders`]).
     fn login_providers(&self, query: &str) {
         let _ = query;
@@ -443,13 +491,40 @@ pub trait LaneClient {
     fn extension_command(&self, name: &str, args: &str) {
         let _ = (name, args);
     }
+    /// Ask for the extensions' shortcuts under the TUI's effective keybindings (action, keys);
+    /// [`LaneEvent::ExtensionShortcuts`] answers.
+    fn extension_shortcuts(&self, keybindings: Vec<(String, Vec<String>)>) {
+        let _ = keybindings;
+    }
+    /// Run the extension shortcut bound to `key` (`shortcuts/run`) without waiting for it; a failure answers as
+    /// [`LaneEvent::Error`] `Shortcut handler error: <message>`.
+    fn extension_shortcut(&self, key: &str, keybindings: Vec<(String, Vec<String>)>) {
+        let _ = (key, keybindings);
+    }
     /// Ask for an extension command's argument completions for `prefix` (`commands/complete`);
     /// [`LaneEvent::ExtensionCompletions`] answers.
     fn extension_completions(&self, name: &str, prefix: &str) {
         let _ = (name, prefix);
     }
-    /// `/share`: export the session and upload it as a secret gist with `gh`; statuses answer.
+    /// `/share`: export the session and upload it as a secret gist with `gh`; statuses answer, and
+    /// [`LaneEvent::ShareLoader`] while the gist is created.
     fn share(&self) {}
+    /// Esc on the share loader: stop the gist upload; nothing more is reported about it.
+    fn cancel_share(&self) {}
+    /// Save a credential `ModelRuntime.login` produced (`{type: "api_key", key?, env?}`) for `provider`; statuses and
+    /// a fresh [`LaneEvent::Catalog`] answer as for [`LaneClient::save_api_key`].
+    fn save_credential(&self, provider: &str, credential: Value) {
+        let _ = (provider, credential);
+    }
+    /// A read-only inspection for the RLM views (`rlm.frames`, `rlm.pool`, `ctx.state`, `instances.list`), answered
+    /// by [`LaneEvent::RlmInspected`] with `tag`.
+    fn rlm_inspect(&self, tag: &str, request: &str, payload: Value) {
+        let _ = (tag, request, payload);
+    }
+    /// Every project's sessions for the resume selector's All scope ([`LaneEvent::AllSessions`]).
+    fn list_all_sessions(&self) {}
+    /// Pi's sessions of every project for `/import`'s All scope ([`LaneEvent::PiAllSessions`]).
+    fn list_all_pi_sessions(&self) {}
     /// List the stored credentials ([`LaneEvent::Credentials`]).
     fn credentials(&self) {}
     /// Remove a stored credential; a [`LaneEvent::Status`] and a fresh [`LaneEvent::Catalog`] answer.
@@ -469,10 +544,36 @@ pub trait LaneClient {
     fn kill_agent(&self, id: &str) {
         let _ = id;
     }
+    /// Steer a subagent with `text` (`agent_message.send` with `steer: true`); the outcome arrives as a
+    /// [`LaneEvent::AgentNotice`].
+    fn steer_agent(&self, id: &str, text: &str) {
+        let _ = (id, text);
+    }
+    /// Start an interrupted subagent again from its brief; the outcome arrives as a [`LaneEvent::AgentNotice`].
+    fn revive_agent(&self, id: &str) {
+        let _ = id;
+    }
+    /// Read a subagent's transcript ([`LaneEvent::AgentTranscript`]).
+    fn agent_transcript(&self, id: &str) {
+        let _ = id;
+    }
     /// Save a global setting (Pi's `SettingsManager` writes).
     fn save_setting(&self, key: &str, value: Value) {
         let _ = (key, value);
     }
+    /// `/trust`: read the worker's trust state ([`LaneEvent::Trust`], or a [`LaneEvent::Status`] error).
+    fn read_trust(&self) {}
+    /// Save a `/trust` choice through the worker (`setProjectTrust`); a [`LaneEvent::Status`] answers.
+    fn set_project_trust(&self, trusted: bool, updates: Vec<(String, Option<bool>)>) {
+        let _ = (trusted, updates);
+    }
+    /// `/debug`: add the worker's and server's state to what the TUI shows and write the log
+    /// ([`LaneEvent::DebugLogWritten`], or a [`LaneEvent::Status`] error).
+    fn write_debug_log(&self, capture: crate::debug_log::DebugCapture) {
+        let _ = capture;
+    }
+    /// `/reload`: reload the server-selected presentation plugins and the session's plugins; statuses answer.
+    fn reload_plugins(&self) {}
 }
 
 /// The diagnostic the Claude subscription router puts on the message where it switched routes
@@ -491,4 +592,21 @@ pub fn route_notice(message: &Value) -> Option<String> {
         .find(|d| d["type"] == ROUTE_DIAGNOSTIC || d["kind"] == ROUTE_DIAGNOSTIC)
         .and_then(|d| d["details"]["notice"].as_str())
         .map(str::to_string)
+}
+
+/// What `/autoreview` asks of the client (client-tui-pi-commands.ts `setAutoreview`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AutoreviewRequest {
+    /// The setting, the accounts it reviews as and whether the user service is installed.
+    Status,
+    /// The `gh` accounts to choose from.
+    Accounts,
+    /// Save `autoreview.enabled: true` and `autoreview.accounts` (`None`: every logged-in account), then write and
+    /// start the user service. `reviewing_as` is what the status names.
+    On {
+        accounts: Option<Vec<String>>,
+        reviewing_as: String,
+    },
+    /// Save `autoreview.enabled: false`, stop the service and remove its file.
+    Off,
 }

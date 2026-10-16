@@ -1,0 +1,640 @@
+{
+ "cases": [
+  {
+   "name": "prepare-needs-a-directory",
+   "args": [
+    "prepare"
+   ],
+   "rules": [],
+   "runs": [
+    {
+     "code": 2,
+     "stdout": "",
+     "stderr": "Error: prepare needs the repository directory\n"
+    }
+   ],
+   "calls": [],
+   "specs": []
+  },
+  {
+   "name": "prepare-text",
+   "args": [
+    "prepare",
+    "repo",
+    "--python",
+    "3.12"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "Environment <hash> at <root>/cache/envs/<hash>\n  prepared: python: uv pip install -r requirements.txt\n  toolchain: python 3.12 from system: /usr\n  0 s\n",
+     "stderr": ""
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": []
+  },
+  {
+   "name": "prepare-json",
+   "args": [
+    "prepare",
+    "repo",
+    "--json"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "{\"dir\":\"<root>/cache/envs/<hash>\",\"hash\":\"<hash>\",\"prepared\":[\"python: uv pip install -r requirements.txt\"],\"cached\":false,\"toolchain\":[{\"tool\":\"python\",\"version\":\"\",\"path\":\"/usr\",\"source\":\"system\"}],\"failures\":[],\"ms\":0,\"ok\":true,\"at\":\"<at>\",\"repo\":\"<root>/repo\"}\n",
+     "stderr": ""
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": []
+  },
+  {
+   "name": "prepare-failure",
+   "args": [
+    "prepare",
+    "./repo/"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv pip",
+     "results": [
+      {
+       "code": 1,
+       "stdout": "",
+       "stderr": "no index\n"
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 1,
+     "stdout": "Environment <hash> at <root>/cache/envs/<hash>\n  toolchain: python (version not pinned) from system: /usr\n  failed: uv pip install -r requirements.txt failed: no index\n  0 s\n",
+     "stderr": ""
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": []
+  },
+  {
+   "name": "review-prepare-twice",
+   "args": [
+    "review",
+    "--repo-dir",
+    "repo",
+    "--base",
+    "b",
+    "--head",
+    "h",
+    "--prepare",
+    "--json"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "{\"verdict\":\"approve\",\"complete\":true,\"findings\":[],\"dropped\":{\"rejected\":0,\"duplicates\":0,\"generic\":0,\"refutedByTest\":0,\"duplicateOf\":[]},\"timing\":{\"totalMs\":42000,\"scopeMs\":100,\"findMs\":30000,\"verifyMs\":11000,\"frames\":[],\"investigators\":[]},\"usage\":{\"inputTokens\":900,\"outputTokens\":40,\"costUsd\":0.01,\"frames\":2},\"model\":\"stub/frames\",\"verifyModel\":\"stub/frames\",\"mode\":\"fast\",\"assurance\":\"\",\"tests\":{\"enabled\":false,\"mechanism\":null,\"note\":null,\"runs\":[]},\"deepModel\":null,\"deepThinking\":null,\"thinking\":null,\"verifyThinking\":null,\"planModel\":null,\"planThinking\":null,\"askModel\":null,\"askThinking\":null,\"planStyle\":null,\"verification\":null,\"program\":null,\"notChecked\":[]}\n",
+     "stderr": "prepared environment <hash>: python: uv pip install -r requirements.txt\n"
+    },
+    {
+     "code": 0,
+     "stdout": "{\"verdict\":\"approve\",\"complete\":true,\"findings\":[],\"dropped\":{\"rejected\":0,\"duplicates\":0,\"generic\":0,\"refutedByTest\":0,\"duplicateOf\":[]},\"timing\":{\"totalMs\":42000,\"scopeMs\":100,\"findMs\":30000,\"verifyMs\":11000,\"frames\":[],\"investigators\":[]},\"usage\":{\"inputTokens\":900,\"outputTokens\":40,\"costUsd\":0.01,\"frames\":2},\"model\":\"stub/frames\",\"verifyModel\":\"stub/frames\",\"mode\":\"fast\",\"assurance\":\"\",\"tests\":{\"enabled\":false,\"mechanism\":null,\"note\":null,\"runs\":[]},\"deepModel\":null,\"deepThinking\":null,\"thinking\":null,\"verifyThinking\":null,\"planModel\":null,\"planThinking\":null,\"askModel\":null,\"askThinking\":null,\"planStyle\":null,\"verification\":null,\"program\":null,\"notChecked\":[]}\n",
+     "stderr": "prepared environment <hash> (cached): python: uv pip install -r requirements.txt\n"
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": [
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testCheckout": "<root>/cache/envs/<hash>",
+     "testToolchain": [
+      "/usr"
+     ],
+     "testEnvKind": "prepared"
+    },
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testCheckout": "<root>/cache/envs/<hash>",
+     "testToolchain": [
+      "/usr"
+     ],
+     "testEnvKind": "prepared"
+    }
+   ]
+  },
+  {
+   "name": "review-prepare-failed",
+   "args": [
+    "review",
+    "--repo-dir",
+    "repo",
+    "--base",
+    "b",
+    "--head",
+    "h",
+    "--prepare",
+    "--python",
+    "3.11"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv venv",
+     "results": [
+      {
+       "code": 2,
+       "stdout": "",
+       "stderr": "no interpreter"
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "Read the diff of `h` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Approve.** No confirmed finding at medium or above.\n\nReviewed in 42 s: 2 model calls, 940 tokens, $0.01.\n\nAutomated review by Ultron\n",
+     "stderr": "prepared environment <hash>: nothing\nprepare: uv venv failed: no interpreter\n"
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ]
+   ],
+   "specs": [
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testCheckout": "<root>/repo",
+     "testEnvKind": "checkout"
+    }
+   ]
+  },
+  {
+   "name": "review-prepare-test-env-wins",
+   "args": [
+    "review",
+    "--repo-dir",
+    "repo",
+    "--base",
+    "b",
+    "--head",
+    "h",
+    "--prepare",
+    "--test-env",
+    "venv",
+    "--json"
+   ],
+   "rules": [
+    {
+     "match": "<root>/bin/uv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "{\"verdict\":\"approve\",\"complete\":true,\"findings\":[],\"dropped\":{\"rejected\":0,\"duplicates\":0,\"generic\":0,\"refutedByTest\":0,\"duplicateOf\":[]},\"timing\":{\"totalMs\":42000,\"scopeMs\":100,\"findMs\":30000,\"verifyMs\":11000,\"frames\":[],\"investigators\":[]},\"usage\":{\"inputTokens\":900,\"outputTokens\":40,\"costUsd\":0.01,\"frames\":2},\"model\":\"stub/frames\",\"verifyModel\":\"stub/frames\",\"mode\":\"fast\",\"assurance\":\"\",\"tests\":{\"enabled\":false,\"mechanism\":null,\"note\":null,\"runs\":[]},\"deepModel\":null,\"deepThinking\":null,\"thinking\":null,\"verifyThinking\":null,\"planModel\":null,\"planThinking\":null,\"askModel\":null,\"askThinking\":null,\"planStyle\":null,\"verification\":null,\"program\":null,\"notChecked\":[]}\n",
+     "stderr": "prepared environment <hash>: python: uv pip install -r requirements.txt\n"
+    }
+   ],
+   "calls": [
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": [
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testEnv": "<root>/venv",
+     "testEnvKind": "testEnv"
+    }
+   ]
+  },
+  {
+   "name": "review-lent-checkout",
+   "args": [
+    "review",
+    "--repo-dir",
+    "repo",
+    "--base",
+    "b",
+    "--head",
+    "h",
+    "--repo",
+    "o/r",
+    "--checkout-roots",
+    "<root>/checkouts",
+    "--json"
+   ],
+   "rules": [
+    {
+     "match": "git -C <root>/checkouts/r config",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "remote.origin.url https://github.com/o/r.git\n",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "{\"verdict\":\"approve\",\"complete\":true,\"findings\":[],\"dropped\":{\"rejected\":0,\"duplicates\":0,\"generic\":0,\"refutedByTest\":0,\"duplicateOf\":[]},\"timing\":{\"totalMs\":42000,\"scopeMs\":100,\"findMs\":30000,\"verifyMs\":11000,\"frames\":[],\"investigators\":[]},\"usage\":{\"inputTokens\":900,\"outputTokens\":40,\"costUsd\":0.01,\"frames\":2},\"model\":\"stub/frames\",\"verifyModel\":\"stub/frames\",\"mode\":\"fast\",\"assurance\":\"\",\"tests\":{\"enabled\":false,\"mechanism\":null,\"note\":null,\"runs\":[]},\"deepModel\":null,\"deepThinking\":null,\"thinking\":null,\"verifyThinking\":null,\"planModel\":null,\"planThinking\":null,\"askModel\":null,\"askThinking\":null,\"planStyle\":null,\"verification\":null,\"program\":null,\"notChecked\":[]}\n",
+     "stderr": ""
+    }
+   ],
+   "calls": [
+    [
+     "git",
+     "-C",
+     "<root>/checkouts/r",
+     "config",
+     "--get-regexp",
+     "^remote\\..*\\.url$"
+    ]
+   ],
+   "specs": [
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testCheckout": "<root>/checkouts/r",
+     "testEnvKind": "checkout",
+     "repo": "o/r"
+    }
+   ]
+  },
+  {
+   "name": "review-lent-checkout-prepared",
+   "args": [
+    "review",
+    "--repo-dir",
+    "repo",
+    "--base",
+    "b",
+    "--head",
+    "h",
+    "--repo",
+    "o/r",
+    "--checkout-roots",
+    "<root>/checkouts",
+    "--prepare",
+    "--json"
+   ],
+   "rules": [
+    {
+     "match": "git -C <root>/checkouts/r config",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "remote.origin.url https://github.com/o/r.git\n",
+       "stderr": ""
+      }
+     ]
+    },
+    {
+     "match": "<root>/bin/uv",
+     "results": [
+      {
+       "code": 0,
+       "stdout": "",
+       "stderr": ""
+      }
+     ]
+    }
+   ],
+   "runs": [
+    {
+     "code": 0,
+     "stdout": "{\"verdict\":\"approve\",\"complete\":true,\"findings\":[],\"dropped\":{\"rejected\":0,\"duplicates\":0,\"generic\":0,\"refutedByTest\":0,\"duplicateOf\":[]},\"timing\":{\"totalMs\":42000,\"scopeMs\":100,\"findMs\":30000,\"verifyMs\":11000,\"frames\":[],\"investigators\":[]},\"usage\":{\"inputTokens\":900,\"outputTokens\":40,\"costUsd\":0.01,\"frames\":2},\"model\":\"stub/frames\",\"verifyModel\":\"stub/frames\",\"mode\":\"fast\",\"assurance\":\"\",\"tests\":{\"enabled\":false,\"mechanism\":null,\"note\":null,\"runs\":[]},\"deepModel\":null,\"deepThinking\":null,\"thinking\":null,\"verifyThinking\":null,\"planModel\":null,\"planThinking\":null,\"askModel\":null,\"askThinking\":null,\"planStyle\":null,\"verification\":null,\"program\":null,\"notChecked\":[]}\n",
+     "stderr": "prepared environment <hash>: python: uv pip install -r requirements.txt\n"
+    }
+   ],
+   "calls": [
+    [
+     "git",
+     "-C",
+     "<root>/checkouts/r",
+     "config",
+     "--get-regexp",
+     "^remote\\..*\\.url$"
+    ],
+    [
+     "<root>/bin/uv",
+     "venv",
+     "<root>/cache/envs/<hash>/.venv",
+     "--python",
+     "/usr/bin/python3"
+    ],
+    [
+     "<root>/bin/uv",
+     "pip",
+     "install",
+     "--python",
+     "<root>/cache/envs/<hash>/.venv/bin/python",
+     "-r",
+     "<root>/repo/requirements.txt"
+    ]
+   ],
+   "specs": [
+    {
+     "repoDir": "<root>/repo",
+     "base": "b",
+     "head": "h",
+     "concurrency": 8,
+     "thinking": "low",
+     "verifyThinking": "low",
+     "mode": "both",
+     "deepThinking": "high",
+     "deepRounds": 4,
+     "referenceView": "investigators",
+     "planThinking": "high",
+     "askThinking": "low",
+     "planStyle": "cell",
+     "planCells": 4,
+     "verifyCandidates": 12,
+     "verifyBatch": 4,
+     "modelConcurrency": {
+      "cliproxyapi/gpt-6-luna": 16
+     },
+     "systemPrefix": false,
+     "overlap": false,
+     "testRuns": 6,
+     "testTimeoutSeconds": 300,
+     "deadlineSeconds": 0,
+     "frameTimeoutSeconds": 0,
+     "runTests": true,
+     "testCheckout": "<root>/cache/envs/<hash>",
+     "testToolchain": [
+      "/usr"
+     ],
+     "testEnvKind": "prepared",
+     "repo": "o/r"
+    }
+   ]
+  }
+ ]
+}

@@ -10,6 +10,7 @@ publish.workspace = true
 config = { path = "../config" }
 mcp = { path = "../mcp" }
 session-file = { path = "../session-file" }
+rustix = { version = "=1.1.5", features = ["process", "std"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 
 [dev-dependencies]

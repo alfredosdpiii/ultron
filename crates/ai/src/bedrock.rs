@@ -3,13 +3,14 @@
 //! resolution, the SDK's standard retry for throttling and transient failures, event-stream decoding, and the SDK's
 //! error names and messages, formatted as upstream formats them.
 //!
-//! Credentials come from the provider env, the process env, and static keys in the shared `credentials`/`config`
-//! files. SSO, `credential_process`, web identity and instance metadata providers are not ported.
+//! Credentials: explicit env keys, else the SDK default chain (`aws_credentials.rs`: env, shared files, assume role,
+//! web identity, `credential_process`, SSO, container and instance metadata).
 
 use crate::aws::{
     AwsCredentials, EventMessage, EventStreamDecoder, SignableRequest, backoff_delay_ms, escape_uri,
-    is_throttling_error, is_transient_error, profile_credentials, profile_settings, sign_request,
+    is_throttling_error, is_transient_error, sign_request,
 };
+use crate::aws_credentials::{ChainInput, CredentialError, default_credentials, profile_config_value};
 use crate::constrained::{json_schema_tool_parameters, resolve_json_schema_strict_sampling};
 use crate::env::provider_env_value;
 use crate::http::{AbortSignal, HttpRequest, HttpResponse, Read, Transport, cancelled, is_aborted, read_chunk};
@@ -786,6 +787,8 @@ fn arn_region(model_id: &str) -> Option<String> {
 enum Auth {
     Bearer(String),
     SigV4(AwsCredentials),
+    /// Resolved through the SDK default chain (for this profile) when the request is sent.
+    Chain(Option<String>),
 }
 
 struct Target {
@@ -819,11 +822,7 @@ fn resolve_target(model: &Model, options: &BedrockOptions) -> Result<Target, Bed
         .or(configured)
         .or_else(|| endpoint_region.clone().filter(|_| explicit_endpoint))
         .or_else(|| (!ambient_profile).then(|| "us-east-1".to_string()))
-        .or_else(|| {
-            profile_settings(profile.as_deref().unwrap_or("default"), env)
-                .get("region")
-                .cloned()
-        })
+        .or_else(|| profile_config_value(profile.as_deref().unwrap_or("default"), "region", env))
         .ok_or_else(|| BedrockError::plain("Region is missing"))?;
     let endpoint = if explicit_endpoint {
         model.base_url.trim_end_matches('/').to_string()
@@ -839,11 +838,10 @@ fn resolve_target(model: &Model, options: &BedrockOptions) -> Result<Target, Bed
             secret_access_key: "dummy-secret-key".into(),
             session_token: None,
         }),
-        None => Auth::SigV4(resolve_credentials(
-            env,
-            options_profile.as_deref(),
-            profile.as_deref(),
-        )?),
+        None => match env_credentials(env).filter(|_| options_profile.is_none()) {
+            Some(credentials) => Auth::SigV4(credentials),
+            None => Auth::Chain(profile),
+        },
     };
     Ok(Target { endpoint, region, auth })
 }
@@ -856,28 +854,28 @@ fn env_credentials(env: Option<&crate::env::ProviderEnv>) -> Option<AwsCredentia
     })
 }
 
-/// Explicit env keys (unless a profile was configured through the options), else the SDK default chain: process env
-/// keys when no profile is set, then the profile's static keys.
-fn resolve_credentials(
-    env: Option<&crate::env::ProviderEnv>,
-    options_profile: Option<&str>,
+/// The SDK default chain for the client's profile and region.
+async fn chain_credentials(
+    target: &Target,
     profile: Option<&str>,
+    options: &BedrockOptions,
+    transport: &dyn Transport,
 ) -> Result<AwsCredentials, BedrockError> {
-    if options_profile.is_none()
-        && let Some(credentials) = env_credentials(env)
-    {
-        return Ok(credentials);
-    }
-    if profile.is_none()
-        && let Some(credentials) = env_credentials(None)
-    {
-        return Ok(credentials);
-    }
-    profile_credentials(profile.unwrap_or("default"), env).ok_or_else(|| BedrockError {
-        name: "CredentialsProviderError".into(),
-        message: "Could not load credentials from any providers".into(),
-        ..Default::default()
-    })
+    let input = ChainInput {
+        env: options.base.env.as_ref(),
+        transport,
+        profile,
+        region: &target.region,
+        now_ms: now_ms(),
+    };
+    default_credentials(&input)
+        .await
+        .map_err(|error: CredentialError| BedrockError {
+            name: error.name,
+            message: error.message,
+            status: error.status,
+            ..Default::default()
+        })
 }
 
 fn is_reserved_header(name: &str) -> bool {
@@ -911,6 +909,8 @@ fn build_request(target: &Target, model: &Model, body: &str, options: &BedrockOp
     }
     match &target.auth {
         Auth::Bearer(token) => headers.push(("authorization".into(), format!("Bearer {token}"))),
+        // Resolved by `drive` before the request is built.
+        Auth::Chain(_) => {}
         Auth::SigV4(credentials) => {
             let mut signable = SignableRequest {
                 method: "POST".into(),
@@ -1446,6 +1446,11 @@ async fn drive(
         id: model_id,
         ..model.clone()
     };
+    let mut target = target;
+    if let Auth::Chain(profile) = &target.auth {
+        let credentials = chain_credentials(&target, profile.as_deref(), options, transport).await?;
+        target.auth = Auth::SigV4(credentials);
+    }
     let request = build_request(
         &target,
         &request_model,

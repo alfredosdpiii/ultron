@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use interactive::app::{App, AppOptions, next_model, path_argument};
 use interactive::history::PromptHistoryStore;
-use interactive::lane::{BashResult, ForkMessage, LaneClient, LaneEvent, ModelInfo, SessionOpened};
+use interactive::lane::{AutoreviewRequest, BashResult, ForkMessage, LaneClient, LaneEvent, ModelInfo, SessionOpened};
 use serde_json::{Value, json};
 use tui::keybindings::{KeybindingsManager, Platform};
 use tui::qol_keys::native_app_keybindings;
@@ -44,6 +44,9 @@ impl LaneClient for Recorder {
     }
     fn abort(&self) {
         self.push("abort".into());
+    }
+    fn abort_retry(&self) {
+        self.push("abort_retry".into());
     }
     fn new_session(&self) {
         self.push("new".into());
@@ -122,6 +125,16 @@ impl LaneClient for Recorder {
     }
     fn read_mode(&self) {
         self.push("read_mode".into());
+    }
+    fn autoreview(&self, request: AutoreviewRequest) {
+        self.push(match request {
+            AutoreviewRequest::Status => "autoreview status".into(),
+            AutoreviewRequest::Accounts => "autoreview accounts".into(),
+            AutoreviewRequest::Off => "autoreview off".into(),
+            AutoreviewRequest::On { accounts, reviewing_as } => {
+                format!("autoreview on {accounts:?} as {reviewing_as}")
+            }
+        });
     }
     fn login_providers(&self, query: &str) {
         self.push(format!("login_providers {query}"));
@@ -360,6 +373,52 @@ fn interactive_commands_escape_cancels_a_manual_compaction() {
     let before = calls(&c).len();
     app.handle_input("\x1b");
     assert!(!calls(&c)[before..].contains(&"abort".to_string()), "{:?}", calls(&c));
+}
+
+/// A run's retry (interactive-mode.ts `auto_retry_start` / `auto_retry_end`): the countdown without an error line,
+/// Esc stops the retry (`abortRetry`, not the run's abort); a final failure says `Retry failed after N attempts`.
+#[test]
+fn interactive_commands_auto_retry_shows_the_countdown_and_esc_stops_it() {
+    let (mut app, c) = app();
+    submit(&mut app, "hello");
+    app.apply(LaneEvent::OperationStarted("run".into()));
+    app.apply(LaneEvent::AutoRetryStart {
+        attempt: 1,
+        max_attempts: 3,
+        delay_ms: 2000,
+    });
+    let s = screen(&mut app);
+    assert!(s.contains("Retrying (1/3) in 2s... (escape to cancel)"), "{s}");
+    assert!(!s.contains("Error:"), "{s}");
+    app.handle_input("\x1b");
+    assert_eq!(calls(&c).last().unwrap(), "abort_retry");
+    // A retry that succeeded clears the countdown and shows nothing else.
+    app.apply(LaneEvent::AutoRetryStart {
+        attempt: 2,
+        max_attempts: 3,
+        delay_ms: 4000,
+    });
+    app.apply(LaneEvent::AutoRetryEnd {
+        attempt: 2,
+        failed: None,
+    });
+    let s = screen(&mut app);
+    assert!(!s.contains("Retrying") && !s.contains("Retry failed"), "{s}");
+    // Esc is the run's abort again once the retry is over.
+    app.handle_input("\x1b");
+    assert_eq!(calls(&c).last().unwrap(), "abort");
+    app.apply(LaneEvent::AutoRetryStart {
+        attempt: 3,
+        max_attempts: 3,
+        delay_ms: 8000,
+    });
+    app.apply(LaneEvent::AutoRetryEnd {
+        attempt: 3,
+        failed: Some("Overloaded".into()),
+    });
+    let s = screen(&mut app);
+    assert!(s.contains("Error: Retry failed after 3 attempts: Overloaded"), "{s}");
+    assert!(!s.contains("Retrying"), "{s}");
 }
 
 /// A summary's retry (interactive-mode.ts `summarization_retry_*`): `Error: <provider error>` in the transcript and
@@ -1119,7 +1178,7 @@ fn listing(path: &str, name: Option<&str>, first: &str, modified: i64) -> intera
     }
 }
 
-/// `/resume`: Pi's session selector (this directory only), rename and delete with confirmation.
+/// `/resume`: Pi's session selector, rename and delete with confirmation.
 #[test]
 fn interactive_commands_session_selector_renames_and_deletes() {
     let (mut app, c) = app();
@@ -1137,10 +1196,11 @@ fn interactive_commands_session_selector_renames_and_deletes() {
     ]));
     let s = screen(&mut app);
     assert!(
-        s.contains("Resume Session (Current Folder)") && s.contains("Name: All  Sort: Threaded"),
+        s.contains("Resume Session (Current Fold ◉ Current Folder | ○ All  Name: All  Sort: Threaded"),
         "{s}"
     );
-    assert!(!s.contains("Current Folder |"), "{s}");
+    // Tab's scope (session-selector.ts `SessionSelectorHeader`).
+    assert!(s.contains("◉ Current Folder | ○ All"), "{s}");
     assert!(s.contains("› current ask") && s.contains("  Named one"), "{s}");
     // The current session cannot be deleted.
     app.handle_input("\x04");
@@ -1586,4 +1646,75 @@ fn interactive_commands_engineering_reports_and_sets_the_mode() {
     submit(&mut app, "/engineering sometimes");
     assert!(screen(&mut app).contains("Usage: /engineering true|false"));
     assert_eq!(calls(&c).last().unwrap(), "setting engineering=false");
+}
+
+/// Submits an argument the command completes: the first Enter takes the completion, the second submits (editor.ts).
+fn completed(app: &mut App, text: &str) {
+    typed(app, text);
+    app.handle_input("\r");
+    app.handle_input("\r");
+}
+
+fn gh_accounts(accounts: &[(&str, &str)]) -> LaneEvent {
+    LaneEvent::AutoreviewAccounts(
+        accounts
+            .iter()
+            .map(|(login, host)| (login.to_string(), host.to_string()))
+            .collect(),
+    )
+}
+
+/// `/autoreview [on|off]` as client-tui-pi-commands.ts `setAutoreview`: the status, off, usage, and `on` reviewing as
+/// the only account or as the one (or all) the picker chose.
+#[test]
+fn interactive_commands_autoreview_picks_the_account_to_review_as() {
+    let (mut app, c) = app();
+    submit(&mut app, "/autoreview");
+    completed(&mut app, "/autoreview off");
+    submit(&mut app, "/autoreview sometimes");
+    assert!(screen(&mut app).contains("Usage: /autoreview on|off"));
+    assert_eq!(calls(&c), ["autoreview status", "autoreview off"]);
+    // One account: no picker.
+    completed(&mut app, "/autoreview on");
+    assert_eq!(calls(&c).last().unwrap(), "autoreview accounts");
+    app.apply(gh_accounts(&[("octo", "github.com")]));
+    assert_eq!(calls(&c).last().unwrap(), "autoreview on None as github.com/octo");
+    // None logged in.
+    completed(&mut app, "/autoreview on");
+    app.apply(gh_accounts(&[]));
+    assert!(screen(&mut app).contains("No gh account is logged in: run gh auth login, then /autoreview on"));
+    // Several: the picker, then one of them.
+    completed(&mut app, "/autoreview on");
+    app.apply(gh_accounts(&[("octo", "github.com"), ("work", "ghe.example.com")]));
+    let s = screen(&mut app);
+    assert!(
+        s.contains("Review pull requests as")
+            && s.contains("octo (github.com)")
+            && s.contains("work (ghe.example.com)")
+            && s.contains("All logged-in accounts"),
+        "{s}"
+    );
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    assert_eq!(
+        calls(&c).last().unwrap(),
+        "autoreview on Some([\"ghe.example.com/work\"]) as ghe.example.com/work"
+    );
+    // All of them.
+    completed(&mut app, "/autoreview on");
+    app.apply(gh_accounts(&[("octo", "github.com"), ("work", "ghe.example.com")]));
+    app.handle_input("\x1b[B");
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    assert_eq!(
+        calls(&c).last().unwrap(),
+        "autoreview on None as every logged-in account"
+    );
+    // Esc leaves it as it was.
+    completed(&mut app, "/autoreview on");
+    app.apply(gh_accounts(&[("octo", "github.com"), ("work", "ghe.example.com")]));
+    let before = calls(&c).len();
+    app.handle_input("\x1b");
+    assert!(screen(&mut app).contains("Autoreview left as it was"));
+    assert_eq!(calls(&c).len(), before);
 }

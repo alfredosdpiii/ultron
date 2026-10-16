@@ -41,6 +41,18 @@ impl Guard for SandboxGuard {
         }
         self.inner.before_write(path, content)
     }
+
+    fn cell_started(&self, lane: &str) {
+        self.inner.cell_started(lane);
+    }
+
+    fn cell_ended(&self, lane: &str) {
+        self.inner.cell_ended(lane);
+    }
+
+    fn take_pending(&self, lane: &str) -> Option<String> {
+        self.inner.take_pending(lane)
+    }
 }
 
 fn outside_message(policy: &Policy) -> String {

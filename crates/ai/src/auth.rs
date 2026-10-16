@@ -758,10 +758,12 @@ pub fn builtin_provider_auth_with_clock(
             api_key: Some(Arc::new(AnthropicApiKeyAuth)),
             oauth: oauth(OAuthProvider::Anthropic),
         },
-        // ponytail: OpenRouter's OAuth login is not ported; its api-key auth is.
+        // OpenRouter's OAuth login (crate::oauth_openrouter) exchanges the code for a permanent API key.
         "openrouter" => ProviderAuth {
             api_key: env("OpenRouter API key", &["OPENROUTER_API_KEY"]),
-            oauth: None,
+            oauth: Some(Arc::new(crate::oauth_openrouter::OpenRouterOAuth {
+                transport: Arc::clone(&transport),
+            })),
         },
         "openai" => ProviderAuth {
             api_key: env("OpenAI API key", &["OPENAI_API_KEY"]),

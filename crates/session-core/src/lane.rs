@@ -203,6 +203,10 @@ pub fn system_prompt_with_guide(
 pub struct PromptMode {
     pub engineering: bool,
     pub always_skills: Vec<String>,
+    /// `--no-skills`: no skills listed (bundled ones included), none always on.
+    pub no_skills: bool,
+    /// `--no-context-files`: no AGENTS.md / CLAUDE.md.
+    pub no_context_files: bool,
 }
 
 impl PromptMode {
@@ -216,6 +220,7 @@ impl PromptMode {
                 .and_then(Value::as_array)
                 .map(|names| names.iter().filter_map(Value::as_str).map(str::to_string).collect())
                 .unwrap_or_default(),
+            ..PromptMode::default()
         }
     }
 }
@@ -235,19 +240,23 @@ pub fn system_prompt_in_mode(
     let bundled = config::paths::normalize(&env.docs.join("../skills"))
         .display()
         .to_string();
-    let mut skills = resources::skills::load_skills(&resources::skills::LoadSkillsOptions {
-        cwd,
-        agent_dir: &agent_dir,
-        skill_paths: &[],
-        include_defaults: true,
-    })
-    .skills;
-    skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
-    // Skills the user set always on carry their text into the prompt (resource-loader.ts `applyAlwaysSkills`).
-    let warnings = resources::skills::apply_always_skills(&mut skills, &mode.always_skills)
-        .into_iter()
-        .map(|d| d.message)
-        .collect();
+    let mut skills = Vec::new();
+    let mut warnings = Vec::new();
+    if !mode.no_skills {
+        skills = resources::skills::load_skills(&resources::skills::LoadSkillsOptions {
+            cwd,
+            agent_dir: &agent_dir,
+            skill_paths: &[],
+            include_defaults: true,
+        })
+        .skills;
+        skills.extend(resources::skills::load_skills_from_dir(&bundled, "bundled").skills);
+        // Skills the user set always on carry their text into the prompt (resource-loader.ts `applyAlwaysSkills`).
+        warnings = resources::skills::apply_always_skills(&mut skills, &mode.always_skills)
+            .into_iter()
+            .map(|d| d.message)
+            .collect();
+    }
     let runtime = resources::runtime_guide::rlm_runtime_prompt(&["rlm"], guide).unwrap_or_default();
     // loki.ts `readContext`: a policy the engine cannot read gives no note (the guard still runs and reports it).
     let loki_note = loki_root
@@ -258,7 +267,11 @@ pub fn system_prompt_in_mode(
         tool_snippets: vec![("rlm".into(), RLM_SNIPPET.into())],
         tool_guidelines: vec![("rlm".into(), resources::runtime_guide::rlm_tool_guidelines(&["rlm"]))],
         include_harness_docs: false,
-        context_files: resources::context_files::load_project_context_files(cwd, &agent_dir),
+        context_files: if mode.no_context_files {
+            Vec::new()
+        } else {
+            resources::context_files::load_project_context_files(cwd, &agent_dir)
+        },
         skills,
         bundled_skills_dir: Some(bundled),
         sections: [("runtime".to_string(), runtime)]
@@ -286,6 +299,11 @@ pub fn registry(env: &Env) -> ModelRegistry {
         let store = config::models_store::ModelsStore::new(models.with_file_name("models-store.json"));
         registry.import_legacy_radius(&credentials, &store, now_ms());
     }
+    // The providers the session's extensions declare (crate::extension_providers).
+    crate::extension_providers::apply(
+        &mut registry,
+        &crate::extension_providers::registrations(&paths.agent_dir),
+    );
     registry
 }
 
@@ -582,12 +600,9 @@ fn env_api_key_with(env: &Env, registry: &ModelRegistry, provider: &str) -> Opti
     ai::env::env_api_key_in(provider, &source)
 }
 
-/// Whether the Rust providers stream this API.
+/// Whether the Rust providers stream this API: every API of `ai::dispatch` (the TypeScript API registry).
 pub fn api_supported(api: &str) -> bool {
-    matches!(
-        api,
-        "anthropic-messages" | "openai-completions" | "openai-responses" | "google-generative-ai" | "pi-messages"
-    )
+    ai::dispatch::APIS.contains(&api)
 }
 
 /// The model call for every API the Rust providers cover. A request whose signal is already aborted is not sent:
@@ -673,18 +688,10 @@ impl StreamFn for Provider {
             let options = prepared.as_ref().unwrap_or(options);
             let transport = &*self.transport;
             let result = match model.api.as_str() {
-                "anthropic-messages" => ai::anthropic::stream_simple(model, context, options, transport, sink).await,
-                "openai-completions" => {
-                    ai::openai_completions::stream_simple(model, context, options, transport, sink).await
-                }
-                "openai-responses" => {
-                    ai::openai_responses::stream_simple(model, context, options, transport, sink).await
-                }
-                "google-generative-ai" => ai::google::stream_simple(model, context, options, transport, sink).await,
-                // Radius gateways (the built-in provider and models.json `"oauth": "radius"` providers).
-                "pi-messages" => Ok(ai::pi_messages::stream_simple(model, context, options, transport, sink).await),
+                // The process's (or the embedder's) router: subscription first, API credits when out of usage.
                 "claude-subscription" => Ok(self.router.stream(model, context, options, transport, sink).await),
-                api => Err(format!("API \"{api}\" is not ported to the Rust build yet")),
+                // Every other API the TypeScript session streams (`streamSimple` over the API registry).
+                _ => ai::dispatch::stream_simple(model, context, options, transport, sink).await,
             };
             result.unwrap_or_else(|e| error_message(model, e))
         })
@@ -735,9 +742,27 @@ pub struct Rlm {
     spill_dir: PathBuf,
     /// Situational hints (`ULTRON_HINTS=on`): one `[hint:<tag>]` line at the end of a cell's result.
     hints: Option<Arc<kernel_apis::cell_hints::CellHints>>,
+    /// The images a cell attaches with `view_image` (crate::view_images).
+    images: Arc<crate::view_images::ViewImages>,
+    /// The lane's host, whose after-cell file hooks see each cell start and end; what they found arrives with
+    /// the lane's next cell result.
+    host: Option<Arc<Host>>,
+    /// The budget line a cell's result ends with (crate::budget_note), once wired.
+    budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
 }
 
 impl Rlm {
+    /// This tool with the stack's budget line on its results.
+    pub(crate) fn with_budget_note(mut self, budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>) -> Rlm {
+        self.budget = budget;
+        self
+    }
+
+    /// The budget line this cell's result ends with, if any (`budgetNote(lane, operationId)`).
+    fn budget_line(&self) -> Option<String> {
+        self.budget.get().and_then(|note| note(&self.lane))
+    }
+
     /// The hint the cell earned with this result text (or error message), if any.
     fn hint(&self, text: &str, ename: Option<&str>) -> Option<String> {
         let outcome = kernel_apis::cell_hints::CellOutcome { text, ename };
@@ -752,6 +777,13 @@ impl Rlm {
             Some(hint) => format!("{text}\n{hint}"),
             None => text,
         }
+    }
+
+    /// Tells the file hooks this lane's cell ended; what they found since earlier cells, to go with its result.
+    fn end_cell(&self) -> Option<String> {
+        let host = self.host.as_ref()?;
+        host.cell_ended(&self.lane);
+        host.take_pending(&self.lane)
     }
 
     /// The cell `lane` is running now.
@@ -776,10 +808,23 @@ impl AgentTool for Rlm {
         signal: &'a AbortSignal,
         _update: &'a ToolUpdate<'a>,
     ) -> BoxFuture<'a, Result<AgentToolResult, String>> {
-        Box::pin(async move {
+        Box::pin(self.run_cell(args, signal))
+    }
+}
+
+impl Rlm {
+    /// One cell, as its result text (or error message).
+    async fn run_cell(&self, args: Value, signal: &AbortSignal) -> Result<AgentToolResult, String> {
+        {
             let code = args["code"].as_str().ok_or("rlm needs a `code` string")?.to_string();
             if let Some(hints) = &self.hints {
                 hints.begin_cell(&self.lane, &code);
+            }
+            self.images.begin(&self.lane);
+            // Files a cell changes by other means than checked writes are handed to the hooks after it, in the
+            // background; what they find arrives with this lane's next cell result.
+            if let Some(host) = &self.host {
+                host.cell_started(&self.lane);
             }
             let (lanes, lane) = (self.lanes.clone(), self.lane.clone());
             let mut cell = tokio::task::spawn_blocking(move || lanes.run(&lane, &code, CELL_BUDGET));
@@ -790,23 +835,37 @@ impl AgentTool for Rlm {
                         let _ = self.lanes.cancel(&running, ABORT_REQUESTED);
                     }
                     let _ = cell.await;
-                    return Err(ABORT_REQUESTED.into());
+                    let findings = self.end_cell();
+                    self.images.take(&self.lane);
+                    return Err(match findings {
+                        Some(findings) => format!("{ABORT_REQUESTED}\n{findings}"),
+                        None => ABORT_REQUESTED.into(),
+                    });
                 }
             };
-            let outcome = outcome.map_err(|e| e.to_string())??;
+            let findings = self.end_cell();
+            // Findings follow the result text (and an error's hint), as session-worker.ts `withFindings`.
+            let with_findings = |text: String| match &findings {
+                Some(findings) => format!("{text}\n{findings}"),
+                None => text,
+            };
+            // What the cell attached ends with its tool call (a cell that keeps running loses later ones).
+            let outcome = outcome.map_err(|e| with_findings(e.to_string()));
+            let images = self.images.take(&self.lane);
+            let outcome = outcome?.map_err(|e| with_findings(e.to_string()))?;
             if signal.aborted() {
-                return Err(ABORT_REQUESTED.into());
+                return Err(with_findings(ABORT_REQUESTED.into()));
             }
             let result = match outcome {
-                CellOutcome::Done(result) => result.map_err(|e| self.with_hint(e, Some("Error")))?,
+                CellOutcome::Done(result) => result.map_err(|e| with_findings(self.with_hint(e, Some("Error"))))?,
                 CellOutcome::Running { cell, parked } => {
                     if !parked {
                         self.lanes.detach(&cell)?;
                     }
                     return Ok(AgentToolResult {
-                        content: vec![text_block(format!(
+                        content: vec![text_block(with_findings(format!(
                             "Cell {cell} is still running in the background (it waits on the host); its end arrives as a <runtime_event kind=\"cell_done\" id=\"{cell}\">. Do other work or end your turn."
-                        ))],
+                        )))],
                         details: json!({}),
                         usage: None,
                         terminate: None,
@@ -820,21 +879,29 @@ impl AgentTool for Rlm {
                 spill_dir: Some(&self.spill_dir),
             };
             let output = cell_output(&result, &format)
-                .map_err(|failure| self.with_hint(failure.message, Some(&failure.ename)))?;
+                .map_err(|failure| with_findings(self.with_hint(failure.message, Some(&failure.ename))))?;
             // Only a hint is appended: output that itself starts with a newline stays as it is.
-            let text = match (output.text.is_empty(), self.hint(&output.text, None)) {
-                (true, None) => "(no result)".to_string(),
-                (true, Some(hint)) => format!("(no result)\n{hint}"),
-                (false, Some(hint)) => format!("{}\n{hint}", output.text),
-                (false, None) => output.text,
+            let hint = self.hint(&output.text, None);
+            let text = with_findings(match output.text.is_empty() {
+                true => "(no result)".to_string(),
+                false => output.text,
+            });
+            let text = match hint {
+                Some(hint) => format!("{text}\n{hint}"),
+                None => text,
+            };
+            // The budget line comes last, after the hint, as `[text, hint, line].join("\n")`.
+            let text = match self.budget_line() {
+                Some(line) => format!("{text}\n{line}"),
+                None => text,
             };
             Ok(AgentToolResult {
-                content: vec![text_block(text)],
+                content: crate::view_images::cell_content(images.as_ref(), text),
                 details: json!({}),
                 usage: None,
                 terminate: None,
             })
-        })
+        }
     }
 }
 
@@ -914,6 +981,8 @@ pub(crate) fn rlm_over(
     lane: &str,
     spill_dir: PathBuf,
     hints: Option<Arc<kernel_apis::cell_hints::CellHints>>,
+    images: Arc<crate::view_images::ViewImages>,
+    host: Option<Arc<Host>>,
 ) -> Rlm {
     let mut tool = rlm_tool();
     // `codeSkillsToolSection`: the tool description lists the profile's active code skills.
@@ -934,5 +1003,8 @@ pub(crate) fn rlm_over(
         max_bytes: kernel::rlm_output_budget(config.output_bytes.as_deref()) as usize,
         spill_dir,
         hints,
+        images,
+        host,
+        budget: Arc::new(std::sync::OnceLock::new()),
     }
 }

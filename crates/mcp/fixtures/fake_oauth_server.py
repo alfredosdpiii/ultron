@@ -7,7 +7,8 @@
 #   /register /authorize /token
 #   GET /__log          every event so far (JSON list), for comparing clients
 #   POST /__expire      access tokens stop being valid
-# Usage: fake_oauth_server.py [--iss <issuer to send>]
+# Usage: fake_oauth_server.py [--iss <issuer to send>] [--resources]
+#   --resources: /mcp also declares the resources capability, listing only an MCP App resource and no templates
 import base64
 import hashlib
 import json
@@ -17,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 ISS = sys.argv[sys.argv.index("--iss") + 1] if "--iss" in sys.argv else None
+RESOURCES = "--resources" in sys.argv
 LOCK = threading.Lock()
 LOG = []
 VALID = set()
@@ -79,8 +81,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(202)
         method = message.get("method")
         if method == "initialize":
-            result = {"protocolVersion": message["params"]["protocolVersion"], "capabilities": {"tools": {}},
+            capabilities = {"tools": {}, "resources": {}} if RESOURCES else {"tools": {}}
+            result = {"protocolVersion": message["params"]["protocolVersion"], "capabilities": capabilities,
                       "serverInfo": {"name": "issues", "version": "1.0.0"}}
+        elif method == "resources/list":
+            result = {"resources": [{"uri": "ui://issues/board", "name": "board", "mimeType": "text/html;profile=mcp-app"}]}
+        elif method == "resources/templates/list":
+            result = {"resourceTemplates": []}
         elif method == "tools/list":
             result = {"tools": [{"name": "whoami", "inputSchema": {"type": "object", "properties": {}}}]}
         elif method == "tools/call":

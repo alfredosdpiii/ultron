@@ -38,8 +38,21 @@ impl RunJournal {
         model: (u64, u64),
         settings: Value,
     ) -> Result<Self, String> {
+        Self::admit_capturing(session, config, prompt, model, settings, &[])
+    }
+
+    /// [`RunJournal::admit_with_settings`] placing the lane's `nextRun` messages (`(entryId, message)`) before the
+    /// prompt (see [`Run::admit_with`]).
+    pub fn admit_capturing(
+        session: Option<&mut Session>,
+        config: Value,
+        prompt: Value,
+        model: (u64, u64),
+        settings: Value,
+        captured: &[(String, Value)],
+    ) -> Result<Self, String> {
         let run = match session {
-            Some(session) => Some(Run::admit(session, config, settings, prompt)?),
+            Some(session) => Some(Run::admit_with(session, config, settings, prompt, captured)?),
             None => None,
         };
         Ok(RunJournal {
@@ -135,6 +148,20 @@ impl RunJournal {
         self.apply(session, |run, s| {
             run.begin_assistant_with(s, max_tokens, context_window, before, trigger)
         });
+    }
+
+    /// The generation's retry policy (see [`Run::set_retry_policy`]).
+    pub fn set_retry_policy(&mut self, policy: Value) {
+        if let Some(run) = self.run.as_mut() {
+            run.set_retry_policy(policy);
+        }
+    }
+
+    /// The next error answer is retried (see [`Run::schedule_retry`]).
+    pub fn schedule_retry(&mut self, not_before: i64, error: String) {
+        if let Some(run) = self.run.as_mut() {
+            run.schedule_retry(not_before, error);
+        }
     }
 
     /// The lane's queued messages as the run's lane state lists them.

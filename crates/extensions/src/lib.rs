@@ -7,21 +7,25 @@
 //! - [`router`]: event fan-out with the ordering and veto rules of `core/extensions/runner.ts`.
 //! - [`kernel_api`]: extension functions as `ext.<extension>.<function>` in the REPL, never model tools.
 //! - [`ui`]: the declarative UI extensions contribute and the TUI renders.
+//! - [`shortcuts`]: which extension shortcuts the TUI binds (`getShortcuts` conflict rules).
 //!
 //! RLM-first: extension functions are kernel-API functions (`ext.<extension>.<function>(...)` in the REPL), never
 //! model tools.
 
+pub mod exec;
+pub mod glob;
 pub mod kernel_api;
 pub mod manifest;
 pub mod process;
 pub mod router;
 pub mod rpc;
+pub mod shortcuts;
 pub mod ui;
 
 pub use manifest::{Diagnostic, Discovery, Manifest, discover, discover_with_settings, parse_manifest};
 pub use process::{
-    EVENTS, ExtensionHost, ExtensionProcess, FunctionSpec, HostApi, NoHost, PROTOCOL_VERSION, Registrations,
-    SessionInfo,
+    EVENTS, ExtensionHost, ExtensionProcess, FlagSpec, FunctionSpec, HostApi, NoHost, PROTOCOL_VERSION, ProviderSpec,
+    Registrations, SessionInfo,
 };
 pub use router::{Cancelled, Endpoint, ExtensionError, ResolvedCommand, Router};
 pub use rpc::{CancelToken, Peer, RpcError};

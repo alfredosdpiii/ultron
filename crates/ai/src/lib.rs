@@ -9,6 +9,7 @@
 pub mod anthropic;
 pub mod auth;
 pub mod aws;
+pub mod aws_credentials;
 pub mod azure_openai_responses;
 pub mod bedrock;
 pub mod claude_code_cli;
@@ -19,6 +20,7 @@ pub mod dispatch;
 pub mod env;
 pub use model_scope::glob;
 pub mod google;
+pub mod google_auth;
 pub mod google_shared;
 pub mod google_vertex;
 pub mod http;

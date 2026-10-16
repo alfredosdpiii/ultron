@@ -92,7 +92,7 @@ pub struct HighlightColors {
 impl HighlightColors {
     /// The theme's `syntax*` colors, with diff additions/removals from `toolDiffAdded`/`toolDiffRemoved`.
     pub fn from_theme(theme: &Theme) -> Self {
-        let fg = |name: &str| theme.fg_ansi(name).map(str::to_string).unwrap_or_default();
+        let fg = |name: &str| theme.fg_ansi(name).unwrap_or_default();
         Self {
             comment: fg("syntaxComment"),
             keyword: fg("syntaxKeyword"),
@@ -103,8 +103,8 @@ impl HighlightColors {
             r#type: fg("syntaxType"),
             operator: fg("syntaxOperator"),
             punctuation: fg("syntaxPunctuation"),
-            inserted: theme.fg_ansi("toolDiffAdded").ok().map(str::to_string),
-            deleted: theme.fg_ansi("toolDiffRemoved").ok().map(str::to_string),
+            inserted: theme.fg_ansi("toolDiffAdded").ok(),
+            deleted: theme.fg_ansi("toolDiffRemoved").ok(),
         }
     }
 

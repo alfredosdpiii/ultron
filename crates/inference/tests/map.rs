@@ -122,10 +122,37 @@ fn run_cell(cell: &Value, recorded_model: &Value) -> (Value, Vec<Value>) {
     (ok, calls)
 }
 
+/// The shared-prefix cells, and their contrast cell sending the same context per frame (`"Size"`).
+fn is_prefix_cell(cell: &Value) -> bool {
+    let code = cell["code"].as_str().unwrap();
+    code.contains("prefix") || code.contains("\"Size\"")
+}
+
 #[test]
 fn inference_map_cells_match_typescript_host() {
+    check_cells(|cell| !is_prefix_cell(cell));
+}
+
+/// `rlm.map(shared_prefix=True)`: the shared views go once into every frame's system prompt (labelled, byte-identical,
+/// handles materialized), count toward each request's estimate (the tranche), and malformed prefixes are refused.
+#[test]
+fn inference_map_shared_prefix_matches_typescript_host() {
     let fixture = fixture();
-    for cell in fixture["cells"].as_array().unwrap() {
+    assert!(
+        fixture["cells"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|c| is_prefix_cell(c))
+            .count()
+            >= 6
+    );
+    check_cells(is_prefix_cell);
+}
+
+fn check_cells(select: impl Fn(&Value) -> bool) {
+    let fixture = fixture();
+    for cell in fixture["cells"].as_array().unwrap().iter().filter(|cell| select(cell)) {
         let (ok, calls) = run_cell(cell, &fixture["model"]);
         assert_eq!(ok, cell["ok"], "cell result: {}", cell["code"]);
         let mut calls = calls;

@@ -336,6 +336,7 @@ pub fn typescript_violations(
         Err(CheckError::Value(_)) => return Ok(setup("typescript: committed tsconfig.json required".into())),
         Err(other) => return Err(other),
     };
+    crate::evidence::policy("base", "tsconfig.json", Some(&raw), Some(&base));
     let marker = typescript_state(root, &base, &raw, &changes, overrides);
     if overrides.is_none() && marker.is_file() {
         return Ok(vec![]);
@@ -419,6 +420,11 @@ pub fn typescript_violations(
             Some((_, number)) => format!("TS{number}"),
             None => key.1.clone(),
         };
+        let code = match key.1.split_once(':') {
+            Some((_, code)) => code,
+            None => key.1.as_str(),
+        };
+        crate::evidence::finding(&format!("typescript:{code}"), Some(&key.0));
         for _ in 0..count {
             findings.push(format!("{}:{}: {label}: {}", key.0, after.lines[&key], key.2));
         }

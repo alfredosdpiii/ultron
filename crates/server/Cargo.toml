@@ -1,13 +1,17 @@
 [package]
 name = "server"
 version = "0.1.0"
-description = "Ultron session server: per-connection protocol state machine, server-scoped service routing, Unix socket transport"
+description = "Ultron session server: per-connection protocol state machine, server-scoped service routing, Unix socket transport, the Radius relay host"
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [dependencies]
+getrandom = "=0.4.3"
 protocol = { path = "../protocol" }
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
+tokio = { version = "=1.53.2", features = ["sync", "time", "macros", "rt", "net", "io-util"] }
 
 [dev-dependencies]
 serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }

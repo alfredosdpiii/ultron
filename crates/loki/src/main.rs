@@ -42,10 +42,45 @@ fn usage(command: &str) -> &'static str {
         "init" => {
             "usage: loki init [-h] [--force] [--dir DIR] [--managed-dir MANAGED_DIR]\n                 [--shell-guard] [--minimal]"
         }
+        "verify-installation" => {
+            "usage: loki verify-installation [-h] --engine ENGINE\n                                --registration REGISTRATION\n                                --agent-uid AGENT_UID"
+        }
+        "elixir" => {
+            "usage: loki elixir [-h] [--project PROJECT] [--tier {fast,project,deep}]\n                   [--file FILE] [--json] [--credo-new]"
+        }
+        "apply" => "usage: loki apply [-h] --manifest MANIFEST [--check-only]",
+        "daemon" => "usage: loki daemon [-h] {serve,start,stop,status}",
         _ => {
             "usage: loki context [-h] [--root ROOT]\n                    [--event {SessionStart,UserPromptSubmit}]\n                    [--host {ultron}]"
         }
     }
+}
+
+/// `loki <command> --help`: the usage, then argparse's option list.
+fn help(command: &str) -> String {
+    let options = match command {
+        "protect" | "hook" => {
+            let mut text = "  -h, --help            show this help message and exit\n  --root ROOT\n  --file FILE\n  --harness {claude,codex,factory}\n  --record\n  --format {text,json}\n  --python PYTHON       the project's Python interpreter\n".to_string();
+            if command == "protect" {
+                text.push_str("  --preview {pi,omp,ultron}\n");
+            }
+            text
+        }
+        "scan" => "  -h, --help       show this help message and exit\n  --online\n  --strict\n  --base BASE\n  --ruff-new\n  --python PYTHON  the project's Python interpreter\n".to_string(),
+        "slop" => "  -h, --help   show this help message and exit\n  --base BASE  compare against this revision\n  --json\n  --top TOP\n".to_string(),
+        "init" => "  -h, --help            show this help message and exit\n  --force\n  --dir DIR\n  --managed-dir MANAGED_DIR\n  --shell-guard\n  --minimal\n".to_string(),
+        "verify-installation" => "  -h, --help            show this help message and exit\n  --engine ENGINE\n  --registration REGISTRATION\n  --agent-uid AGENT_UID\n".to_string(),
+        "elixir" => "  -h, --help            show this help message and exit\n  --project PROJECT\n  --tier {fast,project,deep}\n  --file FILE\n  --json\n  --credo-new\n".to_string(),
+        "apply" => "  -h, --help           show this help message and exit\n  --manifest MANIFEST\n  --check-only\n".to_string(),
+        "daemon" => {
+            return format!(
+                "{}\n\npositional arguments:\n  {{serve,start,stop,status}}\n\noptions:\n  -h, --help            show this help message and exit\n",
+                usage(command)
+            );
+        }
+        _ => "  -h, --help            show this help message and exit\n  --root ROOT\n  --event {SessionStart,UserPromptSubmit}\n  --host {ultron}\n".to_string(),
+    };
+    format!("{}\n\noptions:\n{options}", usage(command))
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -89,6 +124,20 @@ fn options(command: &str) -> Vec<(&'static str, Kind)> {
             ("--shell-guard", Kind::Flag),
             ("--minimal", Kind::Flag),
         ],
+        "verify-installation" => vec![
+            ("--engine", Kind::Value),
+            ("--registration", Kind::Value),
+            ("--agent-uid", Kind::Int),
+        ],
+        "elixir" => vec![
+            ("--project", Kind::Value),
+            ("--tier", Kind::Choice(&["fast", "project", "deep"])),
+            ("--file", Kind::Value),
+            ("--json", Kind::Flag),
+            ("--credo-new", Kind::Flag),
+        ],
+        "apply" => vec![("--manifest", Kind::Value), ("--check-only", Kind::Flag)],
+        "daemon" => vec![],
         _ => vec![
             ("--root", Kind::Value),
             ("--event", Kind::Choice(&["SessionStart", "UserPromptSubmit"])),
@@ -166,6 +215,7 @@ fn python_int(text: &str) -> Option<i64> {
 
 fn parse(argv: &[String]) -> Result<Args, ParseError> {
     let mut args = Args::default();
+    let mut top_extras: Vec<String> = Vec::new();
     let mut items = argv.iter().peekable();
     let top = |m: String| ParseError::Top(m);
     while let Some(token) = items.next() {
@@ -201,7 +251,11 @@ fn parse(argv: &[String]) -> Result<Args, ParseError> {
                     args.root = Some(value);
                     continue;
                 }
-                None => return Err(top(format!("unrecognized arguments: {}", argv.join(" ")))),
+                // argparse keeps going: an unknown option is reported once the command parsed.
+                None => {
+                    top_extras.push(token.clone());
+                    continue;
+                }
             }
         }
         if !COMMANDS.contains(&token.as_str()) {
@@ -217,7 +271,22 @@ fn parse(argv: &[String]) -> Result<Args, ParseError> {
         return Err(top("the following arguments are required: command".into()));
     }
     let command = args.command.clone();
-    if !["protect", "hook", "scan", "slop", "init", "context"].contains(&command.as_str()) {
+    const PARSED: [&str; 10] = [
+        "protect",
+        "hook",
+        "scan",
+        "slop",
+        "init",
+        "context",
+        "verify-installation",
+        "elixir",
+        "apply",
+        "daemon",
+    ];
+    if !PARSED.contains(&command.as_str()) {
+        if !top_extras.is_empty() {
+            return Err(top(format!("unrecognized arguments: {}", top_extras.join(" "))));
+        }
         return Ok(args);
     }
     let sub = |m: String| ParseError::Sub(command.clone(), m);
@@ -232,6 +301,13 @@ fn parse(argv: &[String]) -> Result<Args, ParseError> {
         if token == "--" {
             extras.extend(rest[index..].iter().cloned());
             break;
+        }
+        let help_prefix = token.len() > 2
+            && "--help".starts_with(token.as_str())
+            && !specs.iter().any(|(n, _)| n.starts_with(token.as_str()));
+        if token == "-h" || help_prefix {
+            print!("{}", help(&command));
+            return Err(ParseError::Exit(0));
         }
         if !optional_like(token) || !token.starts_with("--") {
             extras.push(token.clone());
@@ -300,11 +376,37 @@ fn parse(argv: &[String]) -> Result<Args, ParseError> {
             args.values.push((name, value));
         }
     }
+    // `daemon`'s positional action: the first remaining word.
+    if command == "daemon" && !extras.is_empty() {
+        let action = extras.remove(0);
+        const ACTIONS: [&str; 4] = ["serve", "start", "stop", "status"];
+        if !ACTIONS.contains(&action.as_str()) {
+            let listed = ACTIONS.iter().map(|c| format!("'{c}'")).collect::<Vec<_>>().join(", ");
+            return Err(sub(format!(
+                "argument action: invalid choice: '{action}' (choose from {listed})"
+            )));
+        }
+        args.values.push(("action", action));
+    }
+    let required: &[&str] = match command.as_str() {
+        "verify-installation" => &["--engine", "--registration", "--agent-uid"],
+        "apply" => &["--manifest"],
+        "daemon" => &["action"],
+        _ => &[],
+    };
+    let missing: Vec<&str> = required.iter().filter(|name| !args.has(name)).copied().collect();
+    if !missing.is_empty() {
+        return Err(sub(format!(
+            "the following arguments are required: {}",
+            missing.join(", ")
+        )));
+    }
     if matches!(command.as_str(), "protect" | "hook") && exclusive.is_none() {
         return Err(sub("one of the arguments --file --harness is required".into()));
     }
-    if !extras.is_empty() {
-        return Err(top(format!("unrecognized arguments: {}", extras.join(" "))));
+    top_extras.extend(extras);
+    if !top_extras.is_empty() {
+        return Err(top(format!("unrecognized arguments: {}", top_extras.join(" "))));
     }
     Ok(args)
 }
@@ -374,6 +476,7 @@ fn check(args: &Args, root: &Path, config: &config::Config) -> Result<(Vec<Strin
         }
         None => (run::file_paths(&args.all("--file"))?, None),
     };
+    loki::evidence::targets(&paths);
     if args.command == "protect" {
         let messages = run::protect_violations(
             root,
@@ -386,63 +489,7 @@ fn check(args: &Args, root: &Path, config: &config::Config) -> Result<(Vec<Strin
         )?;
         return Ok((messages, warnings));
     }
-    let mut messages = run::protected(root, config, &paths)?;
-    if messages.is_empty() {
-        let targets: Vec<PathBuf> = paths.iter().map(|p| loki::abspath(root, p)).collect();
-        messages.extend(hook::write_guardrail_violations(&targets, root, config, deadline)?);
-        let typescript = targets.iter().any(|t| {
-            let name = t
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            name.rfind('.')
-                .filter(|&i| i > 0)
-                .is_some_and(|i| loki::typescript::TYPESCRIPT_SUFFIXES.contains(&&name[i..]))
-        });
-        if messages.is_empty() && typescript {
-            messages.extend(loki::typescript::typescript_findings(
-                root,
-                config,
-                deadline,
-                &mut warnings,
-            )?);
-        }
-        if messages.is_empty() {
-            let notes = match loki::slop::written_slop(root, &targets, deadline) {
-                Ok(notes) => notes,
-                Err(error) if matches!(error, CheckError::Value(_)) || error.is_os() => {
-                    vec![format!("NOT CHECKED slop: {}", error.message())]
-                }
-                Err(other) => return Err(other),
-            };
-            if config::slop_block(config).map_err(CheckError::Value)? {
-                for note in notes {
-                    if note.contains("NOT CHECKED") {
-                        warnings.push(note)
-                    } else {
-                        messages.push(note)
-                    }
-                }
-            } else {
-                warnings.extend(notes);
-            }
-            let strict = std::env::var("LOKI_STRICT").as_deref() == Ok("1");
-            let mut batch = hook::Batch::default();
-            for target in &targets {
-                messages.extend(hook::check_file(
-                    target,
-                    root,
-                    config,
-                    strict,
-                    deadline,
-                    &mut warnings,
-                    &targets,
-                    &mut batch,
-                    args.get("--python"),
-                )?);
-            }
-        }
-    }
+    let messages = run::hook_violations(root, config, &paths, args.get("--python"), deadline, &mut warnings)?;
     Ok((messages, warnings))
 }
 
@@ -450,8 +497,10 @@ fn guard(args: &Args) -> ExitCode {
     let json = args.get("--format") == Some("json");
     let root = root_of(args);
     let outcome = match run::load(&root) {
-        Err(error) => run::fail(&args.command, &error, json),
-        Ok(_) if args.has("--record") => run::fail(&args.command, &CheckError::not_ported("--record"), json),
+        Err(error) => {
+            run::failure_evidence(&error, "invalid-policy");
+            run::fail(&args.command, &error, json)
+        }
         Ok(config) if args.command == "protect" && args.get("--harness").is_none() => {
             let files = args.all("--file");
             run::protect_with(&root, &config, &files, args.get("--preview"), json, || {
@@ -466,12 +515,58 @@ fn guard(args: &Args) -> ExitCode {
                 json,
                 args.get("--harness").is_some(),
             ),
-            Err(error) => run::fail(&args.command, &error, json),
+            Err(error) => {
+                run::failure_evidence(&error, "invalid-input");
+                run::fail(&args.command, &error, json)
+            }
         },
     };
     eprint!("{}", outcome.stderr);
     print!("{}", outcome.stdout);
     ExitCode::from(outcome.status)
+}
+
+/// `loki elixir`: the analysis tiers of a Mix project, or with `--credo-new` the Credo issues the work tree adds.
+fn elixir(args: &Args) -> ExitCode {
+    let project = resolve(Path::new(args.get("--project").unwrap_or(".")));
+    let json = args.has("--json");
+    let result = if args.has("--credo-new") {
+        loki::elixir::credo_new_violations(&project, Deadline::none()).map(|findings| {
+            if json {
+                println!("{}", py::dumps(&json!({"tool": "credo", "findings": findings})));
+            } else {
+                println!("{}", findings.join("\n"));
+            }
+            u8::from(!findings.is_empty())
+        })
+    } else {
+        let files: Vec<String> = args.all("--file").iter().map(|f| loki::apply::as_posix(f)).collect();
+        loki::elixir::elixir_analysis(&project, args.get("--tier").unwrap_or("project"), &files).map(|report| {
+            if json {
+                let items: Vec<Value> = report.iter().map(|check| check.to_json()).collect();
+                println!("{}", py::dumps(&Value::from(items)));
+            } else {
+                for check in &report {
+                    println!("[{}] {}", check.tool, check.status);
+                    if !check.output.is_empty() {
+                        println!("{}", check.output);
+                    }
+                }
+            }
+            u8::from(report.iter().any(|check| check.status != "PASS"))
+        })
+    };
+    match result {
+        Ok(code) => ExitCode::from(code),
+        Err(error) if matches!(error, CheckError::Value(_)) || error.is_os() => {
+            eprintln!("loki: Elixir analysis unavailable: {}", error.message());
+            ExitCode::from(1)
+        }
+        Err(other) => {
+            eprintln!("loki: {}", other.describe());
+            ExitCode::from(1)
+        }
+    }
 }
 
 fn exit(code: i32) -> ExitCode {
@@ -567,19 +662,140 @@ fn init(args: &Args) -> ExitCode {
     }
 }
 
+/// Set for the run a `--record` wrapper starts: the file its evidence goes to.
+const RECORD_CHILD: &str = "LOKI_RECORD_EVIDENCE";
+
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().skip(1).collect();
-    if let Some(code) = shell_cli::dispatch(&argv) {
+    if let Some(path) = std::env::var_os(RECORD_CHILD) {
+        loki::evidence::start();
+        let code = dispatch(&argv);
+        let evidence = loki::evidence::take().unwrap_or_default();
+        let document =
+            json!({"findings": evidence.findings, "policies": evidence.policies, "targets": evidence.targets});
+        let _ = std::fs::write(path, document.to_string());
         return code;
     }
-    let args = match parse(&argv) {
+    // A repository's warm daemon runs the command when one is up (`LOKI_DAEMON=0`: never).
+    match loki::daemon::client(&argv, &mut std::io::stdin()) {
+        loki::daemon::Forwarded::Ran(reply) => {
+            print!("{}", reply.stdout);
+            eprint!("{}", reply.stderr);
+            return exit(reply.exit);
+        }
+        // Forwarding read stdin before the daemon failed: run here on what it read.
+        loki::daemon::Forwarded::LocalWith(raw) => return local_with(&argv, &raw),
+        loki::daemon::Forwarded::Local => {}
+    }
+    if argv.iter().any(|arg| arg == "--record") {
+        return record(&argv);
+    }
+    dispatch(&argv)
+}
+
+/// This engine run on `argv` with `stdin` as its input, never forwarded.
+fn local_with(argv: &[String], stdin: &str) -> ExitCode {
+    let run = || -> std::io::Result<i32> {
+        let mut child = std::process::Command::new(std::env::current_exe()?)
+            .args(argv)
+            .env("LOKI_DAEMON", "0")
+            .stdin(std::process::Stdio::piped())
+            .spawn()?;
+        if let Some(mut input) = child.stdin.take() {
+            use std::io::Write;
+            let _ = input.write_all(stdin.as_bytes());
+        }
+        Ok(child.wait()?.code().unwrap_or(2))
+    };
+    match run() {
+        Ok(code) => exit(code),
+        Err(error) => {
+            eprintln!("loki: {}", py::os_error(&error, None));
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// `main` with `--record`: the run's diagnostics are passed through, then its event (the operation, outcome,
+/// targets, the policies it read and the rules it applied) is appended for `loki explain`. The run itself goes
+/// to a child of this engine, which reports its evidence in a private file.
+fn record(argv: &[String]) -> ExitCode {
+    let started = std::time::Instant::now();
+    let run = || -> std::io::Result<(i32, String, loki::evidence::Evidence)> {
+        let directory = tempfile::Builder::new().prefix("loki-record-").tempdir()?;
+        let file = directory.path().join("evidence.json");
+        let child = std::process::Command::new(std::env::current_exe()?)
+            .args(argv)
+            .env(RECORD_CHILD, &file)
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
+        let output = child.wait_with_output()?;
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        let status = output.status.code().unwrap_or(2);
+        let collected: Value = std::fs::read_to_string(&file)
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default();
+        let list = |key: &str| collected[key].as_array().cloned().unwrap_or_default();
+        let evidence = loki::evidence::Evidence {
+            findings: list("findings"),
+            policies: list("policies"),
+            targets: list("targets")
+                .iter()
+                .filter_map(|t| t.as_str().map(String::from))
+                .collect(),
+        };
+        Ok((status, stderr, evidence))
+    };
+    let (status, diagnostic, mut evidence) = match run() {
+        Ok(ran) => ran,
+        Err(error) => (2, format!("loki: {error}\n"), loki::evidence::Evidence::default()),
+    };
+    eprint!("{diagnostic}");
+    let operation = argv
+        .iter()
+        .find(|arg| matches!(arg.as_str(), "protect" | "hook" | "shell"))
+        .map_or("invalid", String::as_str);
+    let root = match argv.iter().position(|arg| arg == "--root") {
+        Some(index) if index + 1 < argv.len() => resolve(Path::new(&argv[index + 1])),
+        _ => resolve(Path::new(".")),
+    };
+    if status != 0 && evidence.findings.is_empty() {
+        evidence
+            .findings
+            .push(json!({"rule": "unclassified-failure", "path": null}));
+    }
+    let outcome = if status != 0 {
+        "deny"
+    } else if !diagnostic.is_empty() {
+        "warning"
+    } else {
+        "allow"
+    };
+    if let Err(error) = loki::evidence::record_event(&root, operation, outcome, started, &evidence) {
+        eprintln!("loki: evidence unavailable: {}", py::os_error(&error, None));
+        return ExitCode::from(2);
+    }
+    exit(status)
+}
+
+fn dispatch(argv: &[String]) -> ExitCode {
+    if let Some(code) = shell_cli::dispatch(argv) {
+        return code;
+    }
+    let args = match parse(argv) {
         Ok(args) => args,
-        Err(ParseError::Exit(code)) => return exit(code),
+        Err(ParseError::Exit(code)) => {
+            loki::evidence::finding("invalid-cli", None);
+            return exit(code);
+        }
         Err(ParseError::Top(message)) => {
+            loki::evidence::finding("invalid-cli", None);
             eprintln!("{TOP_USAGE}\nloki: error: {message}");
             return ExitCode::from(2);
         }
         Err(ParseError::Sub(command, message)) => {
+            loki::evidence::finding("invalid-cli", None);
             eprintln!("{}\nloki {command}: error: {message}", usage(&command));
             return ExitCode::from(2);
         }
@@ -589,6 +805,42 @@ fn main() -> ExitCode {
         "protect" | "hook" => guard(&args),
         "scan" | "slop" => audit(&args),
         "init" => init(&args),
+        "elixir" => elixir(&args),
+        "daemon" => {
+            let (status, stdout, stderr) =
+                loki::daemon::command(args.get("action").unwrap_or_default(), &root_of(&args));
+            print!("{stdout}");
+            eprint!("{stderr}");
+            exit(status)
+        }
+        "apply" => {
+            let manifest = PathBuf::from(args.get("--manifest").unwrap_or_default());
+            match loki::apply::apply_transaction(&root_of(&args), &manifest, args.has("--check-only")) {
+                Ok(text) => {
+                    print!("{text}");
+                    ExitCode::SUCCESS
+                }
+                Err(error) => {
+                    eprintln!("loki: {}", error.message());
+                    ExitCode::from(2)
+                }
+            }
+        }
+        "verify-installation" => {
+            let mut paths = vec![PathBuf::from(args.get("--engine").unwrap_or_default())];
+            paths.extend(args.all("--registration").into_iter().map(PathBuf::from));
+            let uid = args.get("--agent-uid").and_then(python_int).unwrap_or_default();
+            let findings = loki::installation::installation_violations(&paths, uid);
+            for finding in &findings {
+                println!("{finding}");
+            }
+            if findings.is_empty() {
+                println!(
+                    "Ownership/mode checks passed; ACLs, privileged access and host activation require operator verification"
+                );
+            }
+            ExitCode::from(u8::from(!findings.is_empty()))
+        }
         other => {
             eprintln!(
                 "loki: {}",

@@ -190,8 +190,16 @@ fn run(scenario: &Value) -> Outcome {
         events.push(value);
     };
     let fixtures_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/fixtures");
-    let options: Value =
+    let mut options: Value =
         serde_json::from_str(&scenario["options"].to_string().replace("<fixtures>", fixtures_dir)).unwrap();
+    // The generator's process env disables instance metadata for the SDK chain; scope the same to these runs.
+    // Every Bedrock run gets it, so no replay can reach a real instance metadata endpoint.
+    if model.api == "bedrock-converse-stream" {
+        if !options["env"].is_object() {
+            options["env"] = json!({});
+        }
+        options["env"]["AWS_EC2_METADATA_DISABLED"] = json!("true");
+    }
     let simple = scenario["fn"] == "streamSimple";
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_time()

@@ -2,6 +2,7 @@
 //! correlation, attachment routing updates) and discovery of local servers by probing
 //! `<serverId>.sock` entries in a server directory.
 
+pub mod radius;
 pub mod runtime;
 
 use std::collections::VecDeque;

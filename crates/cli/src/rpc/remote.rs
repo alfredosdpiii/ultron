@@ -168,6 +168,18 @@ impl<'a> Remote<'a> {
 
     /// Fork the current session (`forkPath`), record the fork in the new session, and attach to it.
     fn fork_to(&mut self, fork_path: Value) -> Result<(), String> {
+        // Pi's session_before_fork, before the fork (the leaf for a clone).
+        let entry_id = match fork_path["entryId"].as_str() {
+            Some(id) => id.to_string(),
+            None => self.op(Op::Entries { since: None })?.unwrap_or_default()["leafId"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+        };
+        let position = fork_path["position"].as_str().unwrap_or("before").to_string();
+        if self.op(Op::BeforeFork { entry_id, position })?.unwrap_or_default()["cancelled"] == true {
+            return Err(super::FORK_CANCELLED.into());
+        }
         let source = self.link()?.session_id();
         let created = self
             .link

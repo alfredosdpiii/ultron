@@ -1,16 +1,16 @@
-//! `ultron install|remove|uninstall|update|list` and `ultron config` (`package-manager-cli.ts`, parts of
-//! `core/package-manager.ts`): argument handling, help, `list`, and installing or removing local-path packages
-//! (which only edits settings).
+//! `ultron install|remove|uninstall|update|list` and `ultron config` (`package-manager-cli.ts`): argument handling,
+//! help, the package operations of [`crate::packages::manager`], `update --models`, the self-update check, and the
+//! resource selector ([`crate::config_selector`]).
 //!
-//! Not ported: npm and git package installs, removals and updates (they run npm and git against the network), the
-//! self-update, `update --models`, and the `config` resource selector (a TUI). Those report that they are not
-//! implemented after their arguments are checked. A package recorded in settings by npm is listed with its managed
-//! install path only (the legacy global npm root, found by running `npm root -g`, is not consulted).
+//! The self-update: the Rust build is one self-contained binary, as TypeScript's Bun binary is, so it asks the npm
+//! registry for the latest release (as TypeScript does) and, when one is newer, says where to download it instead of
+//! replacing itself (TypeScript's `bun-binary` install method).
 
 use crate::Env;
+use crate::packages::manager::{PackageManager, Scope};
 use config::settings::SettingsManager;
 use serde_json::Value;
-use std::path::{Path, PathBuf};
+use std::io::Write;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Command {
@@ -136,6 +136,7 @@ struct Options {
     update_target: Option<UpdateTarget>,
     show_extensions_skipped_note: bool,
     local: bool,
+    force: bool,
     trust_override: Option<bool>,
     help: bool,
     invalid_option: Option<String>,
@@ -180,7 +181,7 @@ fn parse(args: &[String]) -> Option<Options> {
             "--extensions" if update => extensions_flag = true,
             "--models" if update => models_flag = true,
             "--all" if update => all_flag = true,
-            "--force" if update => {}
+            "--force" if update => o.force = true,
             "--self" | "--extensions" | "--models" | "--all" | "--force" => invalid(&mut o, arg),
             "--approve" | "-a" => o.trust_override = Some(true),
             "--no-approve" | "-na" => o.trust_override = Some(false),
@@ -269,169 +270,27 @@ fn parse(args: &[String]) -> Option<Options> {
     Some(o)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-enum Source {
-    Npm { name: String },
-    Git { host: String, path: String },
-    Local { path: String },
-}
-
-fn is_local_path(value: &str) -> bool {
-    let t = crate::js::trim(value);
-    !["npm:", "git:", "github:", "http:", "https:", "ssh:"]
-        .iter()
-        .any(|p| t.starts_with(p))
-}
-
-/// `parseNpmSpec`'s name: the spec up to its version separator (a scoped name keeps its leading `@`).
-fn npm_name(spec: &str) -> String {
-    let start = usize::from(spec.starts_with('@'));
-    match spec[start..].find('@') {
-        Some(at) => spec[..start + at].to_string(),
-        None => spec.to_string(),
-    }
-}
-
-/// A subset of `parseGitUrl`: `git:` prefixes, `git@host:path`, `scheme://host/path` and `host/path`, with an
-/// `@ref` suffix dropped. Hosted-git-info shorthands are not recognized.
-fn parse_git(source: &str) -> Option<Source> {
-    let trimmed = source.trim();
-    let has_prefix = trimmed.starts_with("git:");
-    let url = if has_prefix { trimmed[4..].trim() } else { trimmed };
-    let lower = url.to_ascii_lowercase();
-    let schemes = ["https://", "http://", "ssh://", "git://"];
-    if !has_prefix && !schemes.iter().any(|s| lower.starts_with(s)) {
-        return None;
-    }
-    let (host, path) = if let Some(rest) = url.strip_prefix("git@") {
-        let (host, path) = rest.split_once(':')?;
-        (host.to_string(), path.to_string())
-    } else if let Some(scheme) = schemes.iter().find(|s| lower.starts_with(*s)) {
-        let rest = &url[scheme.len()..];
-        let (authority, path) = rest.split_once('/')?;
-        let host = authority.rsplit('@').next().unwrap_or(authority);
-        let host = host.split(':').next().unwrap_or(host);
-        (host.to_ascii_lowercase(), path.to_string())
-    } else {
-        let (host, path) = url.split_once('/')?;
-        if !host.contains('.') && host != "localhost" {
-            return None;
-        }
-        (host.to_string(), path.to_string())
-    };
-    let path = path.split('@').next().unwrap_or(&path);
-    let path = path.trim_start_matches('/');
-    let path = path.strip_suffix(".git").unwrap_or(path).to_string();
-    (!host.is_empty() && path.split('/').count() >= 2).then_some(Source::Git { host, path })
-}
-
-fn parse_source(source: &str) -> Source {
-    if let Some(spec) = source.strip_prefix("npm:") {
-        return Source::Npm {
-            name: npm_name(spec.trim()),
-        };
-    }
-    if is_local_path(source) {
-        return Source::Local {
-            path: source.to_string(),
-        };
-    }
-    parse_git(source).unwrap_or_else(|| Source::Local {
-        path: source.to_string(),
-    })
-}
-
-struct Manager<'a> {
-    env: &'a Env,
-    cwd: PathBuf,
-    agent_dir: PathBuf,
-    settings: SettingsManager,
-}
-
-impl Manager<'_> {
-    fn resolve_from(&self, input: &str, base: &Path) -> PathBuf {
-        config::paths::resolve(crate::js::trim(input), base, &self.env.home)
-    }
-
-    fn base_dir(&self, project: bool) -> PathBuf {
-        if project {
-            self.cwd.join(".pi")
-        } else {
-            self.agent_dir.clone()
-        }
-    }
-
-    fn packages(&self, project: bool) -> Vec<Value> {
-        let settings = if project {
-            self.settings.project_settings()
-        } else {
-            self.settings.global_settings()
-        };
-        settings
-            .get("packages")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default()
-    }
-
-    fn installed_path(&self, source: &str, project: bool) -> Option<PathBuf> {
-        let path = match parse_source(source) {
-            Source::Npm { name } => self.base_dir(project).join("npm").join("node_modules").join(name),
-            Source::Git { host, path } => self.base_dir(project).join("git").join(host).join(path),
-            Source::Local { path } => self.resolve_from(&path, &self.base_dir(project)),
-        };
-        path.exists().then_some(path)
-    }
-
-    fn match_key_for_settings(&self, source: &str, project: bool) -> String {
-        match parse_source(source) {
-            Source::Npm { name } => format!("npm:{name}"),
-            Source::Git { host, path } => format!("git:{host}/{path}"),
-            Source::Local { path } => format!("local:{}", self.resolve_from(&path, &self.base_dir(project)).display()),
-        }
-    }
-
-    fn match_key_for_input(&self, source: &str) -> String {
-        match parse_source(source) {
-            Source::Local { path } => format!("local:{}", self.resolve_from(&path, &self.cwd).display()),
-            _ => self.match_key_for_settings(source, false),
-        }
-    }
-
-    fn set_packages(&mut self, project: bool, packages: Vec<Value>) -> Result<(), String> {
-        if project {
-            self.settings.set_project("packages", Some(Value::Array(packages)))
-        } else {
-            self.settings.set_global("packages", Some(Value::Array(packages)));
-            Ok(())
-        }
-    }
-}
-
-fn source_string(pkg: &Value) -> String {
-    match pkg {
-        Value::String(s) => s.clone(),
-        other => other
-            .get("source")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-    }
-}
-
-/// `path.relative(from, to)` for absolute, normalized paths.
-fn relative(from: &Path, to: &Path) -> String {
-    let a: Vec<_> = from.components().collect();
-    let b: Vec<_> = to.components().collect();
-    let common = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
-    let mut parts: Vec<String> = std::iter::repeat_n("..".to_string(), a.len() - common).collect();
-    parts.extend(b[common..].iter().map(|c| c.as_os_str().to_string_lossy().into_owned()));
-    parts.join("/")
-}
-
 struct Io<'a> {
     out: &'a mut dyn std::io::Write,
     err: &'a mut dyn std::io::Write,
+}
+
+/// Where the self-update asks for the latest release (`LATEST_VERSION_URL`).
+pub const LATEST_VERSION_URL: &str = "https://registry.npmjs.org/ultron-agent/latest";
+/// `RELEASES_URL`.
+pub const RELEASES_URL: &str = "https://github.com/alfredosdpiii/ultron/releases";
+
+/// What a package command reaches outside the machine (tests point it at a local server).
+pub struct Endpoints {
+    pub latest_version_url: String,
+}
+
+impl Default for Endpoints {
+    fn default() -> Self {
+        Self {
+            latest_version_url: LATEST_VERSION_URL.into(),
+        }
+    }
 }
 
 /// Handle a package command; None when `argv` is not one.
@@ -441,9 +300,20 @@ pub fn run_package(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> Option<i32> {
+    run_package_with(argv, env, out, err, &Endpoints::default())
+}
+
+/// [`run_package`] with explicit endpoints.
+pub fn run_package_with(
+    argv: &[String],
+    env: &Env,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+    endpoints: &Endpoints,
+) -> Option<i32> {
     let options = parse(argv)?;
     let mut io = Io { out, err };
-    Some(package_command(&options, env, &mut io))
+    Some(package_command(&options, env, &mut io, endpoints))
 }
 
 fn usage_error(io: &mut Io, message: &str, usage: &str) -> i32 {
@@ -452,14 +322,16 @@ fn usage_error(io: &mut Io, message: &str, usage: &str) -> i32 {
     1
 }
 
-fn settings_manager(env: &Env, trust_override: Option<bool>, saved_only: bool) -> SettingsManager {
+/// Settings with the project trust resolved without asking anyone: the override, the saved decision (only, with
+/// `saved_only`), else nothing to trust, the saved decision or `defaultProjectTrust`; undecided is untrusted. For
+/// background work (the startup update check, `-e` installs) that must not start extensions or prompt.
+pub(crate) fn settings_manager(env: &Env, trust_override: Option<bool>, saved_only: bool) -> SettingsManager {
     let agent_dir = env.agent_dir();
     let mut settings = SettingsManager::create(&env.cwd, &agent_dir, false);
     let store = config::trust::ProjectTrustStore::new(&agent_dir);
     let trusted = if saved_only {
         trust_override.unwrap_or(store.get(&env.cwd).ok().flatten() == Some(true))
     } else {
-        // ponytail: project_trust extension hooks are not run; without a UI an undecided project is untrusted.
         match config::trust::resolve_project_trusted(
             &env.cwd,
             &env.home,
@@ -475,7 +347,89 @@ fn settings_manager(env: &Env, trust_override: Option<bool>, saved_only: bool) -
     settings
 }
 
-fn package_command(o: &Options, env: &Env, io: &mut Io) -> i32 {
+/// `createCommandSettingsManager` (package-manager-cli.ts) for the package and config commands: with neither an
+/// override nor `saved_only`, a project with trust-requiring resources first asks the `project_trust` handlers of the
+/// extensions that load without the project (`loadProjectTrustExtensions`: user and global ones); the first yes/no
+/// wins and `remember` saves it. Load failures and handler errors come back as warnings
+/// (`reportProjectTrustWarnings` prints each as `Warning: <text>`). An undecided project without a saved decision or
+/// default is untrusted (the TypeScript command prompts in a terminal; this one does not).
+pub(crate) fn command_settings(
+    env: &Env,
+    trust_override: Option<bool>,
+    saved_only: bool,
+) -> (SettingsManager, Vec<String>) {
+    use std::io::IsTerminal;
+    if saved_only
+        || trust_override.is_some()
+        || !config::trust::has_trust_requiring_project_resources(&env.cwd, &env.home)
+    {
+        return (settings_manager(env, trust_override, saved_only), Vec::new());
+    }
+    let agent_dir = env.agent_dir();
+    let mut warnings = Vec::new();
+    let untrusted = SettingsManager::create(&env.cwd, &agent_dir, false);
+    let discovery = extensions::discover_with_settings(&env.cwd, &agent_dir, &env.home, &untrusted);
+    for diagnostic in &discovery.diagnostics {
+        warnings.push(format!(
+            "Failed to load extension \"{}\": {}",
+            diagnostic.path.display(),
+            diagnostic.message
+        ));
+    }
+    let interactive = std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+    let manifests = discovery.manifests;
+    let decision = if manifests.is_empty() {
+        None
+    } else {
+        let host = extensions::process::ExtensionHost::load(
+            manifests,
+            extensions::process::SessionInfo {
+                cwd: env.cwd.display().to_string(),
+                mode: if interactive { "tui" } else { "print" }.into(),
+                has_ui: interactive,
+                flags: Default::default(),
+            },
+            std::sync::Arc::new(extensions::process::NoHost),
+        );
+        for diagnostic in &host.diagnostics {
+            warnings.push(format!(
+                "Failed to load extension \"{}\": {}",
+                diagnostic.path.display(),
+                diagnostic.message
+            ));
+        }
+        let (result, errors) = host
+            .router()
+            .emit_project_trust(&serde_json::json!({ "type": "project_trust", "cwd": env.cwd.display().to_string() }));
+        for error in errors {
+            warnings.push(format!(
+                "Extension \"{}\" project_trust error: {}",
+                error.extension_path, error.error
+            ));
+        }
+        host.shutdown();
+        result
+    };
+    let Some(result) = decision else {
+        return (settings_manager(env, None, false), warnings);
+    };
+    let trusted = result.get("trusted") == Some(&serde_json::Value::from("yes"));
+    if result.get("remember") == Some(&serde_json::Value::Bool(true)) {
+        let _ = config::trust::ProjectTrustStore::new(&agent_dir).set(&env.cwd, Some(trusted));
+    }
+    let mut settings = SettingsManager::create(&env.cwd, &agent_dir, false);
+    settings.set_project_trusted(trusted);
+    (settings, warnings)
+}
+
+/// `reportProjectTrustWarnings`.
+fn report_trust_warnings(err: &mut dyn Write, warnings: &[String]) {
+    for warning in warnings {
+        let _ = writeln!(err, "Warning: {warning}");
+    }
+}
+
+fn package_command(o: &Options, env: &Env, io: &mut Io, endpoints: &Endpoints) -> i32 {
     let command = o.command.unwrap_or(Command::List);
     if o.help {
         let _ = writeln!(io.out, "{}", command.help());
@@ -516,7 +470,8 @@ fn package_command(o: &Options, env: &Env, io: &mut Io) -> i32 {
         };
     }
     let writes_project = matches!(command, Command::Install | Command::Remove) && o.local;
-    let settings = settings_manager(env, o.trust_override, command == Command::Update);
+    let (settings, warnings) = command_settings(env, o.trust_override, command == Command::Update);
+    report_trust_warnings(io.err, &warnings);
     if !settings.is_project_trusted() && writes_project {
         let _ = writeln!(
             io.err,
@@ -524,17 +479,30 @@ fn package_command(o: &Options, env: &Env, io: &mut Io) -> i32 {
         );
         return 1;
     }
-    let mut manager = Manager {
-        env,
-        cwd: config::paths::normalize(&env.cwd),
-        agent_dir: config::paths::resolve(&env.agent_dir().to_string_lossy(), &env.cwd, &env.home),
-        settings,
-    };
+    let mut manager = PackageManager::new(env, settings);
+    let scope = if o.local { Scope::Project } else { Scope::User };
     let result = match command {
-        Command::List => list(&manager, io),
-        Command::Install => install(&mut manager, o, io),
-        Command::Remove => remove(&mut manager, o, io),
-        Command::Update => update(&manager, o, io),
+        Command::List => list(&mut manager, io),
+        Command::Install => {
+            let source = o.source.clone().unwrap_or_default();
+            with_progress(&mut manager, io, |m| m.install_and_persist(&source, scope)).map(|()| {
+                let _ = writeln!(io.out, "Installed {source}");
+                0
+            })
+        }
+        Command::Remove => {
+            let source = o.source.clone().unwrap_or_default();
+            with_progress(&mut manager, io, |m| m.remove_and_persist(&source, scope)).map(|removed| {
+                if removed {
+                    let _ = writeln!(io.out, "Removed {source}");
+                    0
+                } else {
+                    let _ = writeln!(io.err, "No matching package found for {source}");
+                    1
+                }
+            })
+        }
+        Command::Update => update(&mut manager, env, o, io, endpoints),
     };
     match result {
         Ok(code) => code,
@@ -545,128 +513,67 @@ fn package_command(o: &Options, env: &Env, io: &mut Io) -> i32 {
     }
 }
 
-fn list(manager: &Manager, io: &mut Io) -> Result<i32, String> {
-    let collect = |project: bool| -> Vec<(String, bool, Option<PathBuf>)> {
-        manager
-            .packages(project)
-            .iter()
-            .map(|pkg| {
-                let source = source_string(pkg);
-                let installed = manager.installed_path(&source, project);
-                (source, pkg.is_object(), installed)
-            })
-            .collect()
-    };
-    let (user, project) = (collect(false), collect(true));
-    if user.is_empty() && project.is_empty() {
+/// Run `operation` with the progress callback writing each start message to stdout (`setProgressCallback`).
+fn with_progress<T>(
+    manager: &mut PackageManager,
+    io: &mut Io,
+    operation: impl FnOnce(&mut PackageManager) -> Result<T, String>,
+) -> Result<T, String> {
+    // The messages go out as they come, on the process's stdout, before any child process inherits it.
+    let _ = io.out.flush();
+    manager.progress = Some(Box::new(move |message: &str| {
+        let mut stdout = std::io::stdout();
+        let _ = writeln!(stdout, "{message}");
+        let _ = stdout.flush();
+    }));
+    let result = operation(manager);
+    manager.progress = None;
+    let _ = io.out.flush();
+    result
+}
+
+fn list(manager: &mut PackageManager, io: &mut Io) -> Result<i32, String> {
+    let configured = manager.list_configured();
+    if configured.is_empty() {
         let _ = writeln!(io.out, "No packages installed.");
         return Ok(0);
     }
-    let show = |pkgs: &[(String, bool, Option<PathBuf>)], io: &mut Io| {
-        for (source, filtered, installed) in pkgs {
-            let _ = writeln!(
-                io.out,
-                "  {}",
-                if *filtered {
-                    format!("{source} (filtered)")
-                } else {
-                    source.clone()
-                }
-            );
-            if let Some(path) = installed {
-                let _ = writeln!(io.out, "    {}", path.display());
+    let show = |scope: Scope, io: &mut Io| {
+        for pkg in configured.iter().filter(|p| p.scope == scope) {
+            let display = if pkg.filtered {
+                format!("{} (filtered)", pkg.source)
+            } else {
+                pkg.source.clone()
+            };
+            let _ = writeln!(io.out, "  {display}");
+            if let Some(path) = &pkg.installed_path {
+                let _ = writeln!(io.out, "    {path}");
             }
         }
     };
-    if !user.is_empty() {
+    let user = configured.iter().any(|p| p.scope == Scope::User);
+    let project = configured.iter().any(|p| p.scope == Scope::Project);
+    if user {
         let _ = writeln!(io.out, "User packages:");
-        show(&user, io);
+        show(Scope::User, io);
     }
-    if !project.is_empty() {
-        if !user.is_empty() {
+    if project {
+        if user {
             let _ = writeln!(io.out);
         }
         let _ = writeln!(io.out, "Project packages:");
-        show(&project, io);
+        show(Scope::Project, io);
     }
     Ok(0)
 }
 
-fn not_ported(source: &str, verb: &str) -> String {
-    format!("{verb} npm and git packages ({source}) is not implemented in the Rust build yet")
-}
-
-fn install(manager: &mut Manager, o: &Options, io: &mut Io) -> Result<i32, String> {
-    let source = o.source.clone().unwrap_or_default();
-    let Source::Local { path } = parse_source(&source) else {
-        return Err(not_ported(&source, "Installing"));
-    };
-    let _ = writeln!(io.out, "Installing {source}...");
-    let resolved = manager.resolve_from(&path, &manager.cwd.clone());
-    if !resolved.exists() {
-        return Err(format!("Path does not exist: {}", resolved.display()));
-    }
-    let project = o.local;
-    let packages = manager.packages(project);
-    let normalized = {
-        let rel = relative(&manager.base_dir(project), &resolved);
-        if rel.is_empty() { ".".to_string() } else { rel }
-    };
-    let input_key = manager.match_key_for_input(&source);
-    let position = packages
-        .iter()
-        .position(|existing| manager.match_key_for_settings(&source_string(existing), project) == input_key);
-    let next = match position {
-        Some(i) if source_string(&packages[i]) == normalized => None,
-        Some(i) => {
-            let mut next = packages.clone();
-            next[i] = match &packages[i] {
-                Value::Object(map) => {
-                    let mut map = map.clone();
-                    map.insert("source".into(), Value::String(normalized.clone()));
-                    Value::Object(map)
-                }
-                _ => Value::String(normalized.clone()),
-            };
-            Some(next)
-        }
-        None => {
-            let mut next = packages.clone();
-            next.push(Value::String(normalized));
-            Some(next)
-        }
-    };
-    if let Some(next) = next {
-        manager.set_packages(project, next)?;
-    }
-    let _ = writeln!(io.out, "Installed {source}");
-    Ok(0)
-}
-
-fn remove(manager: &mut Manager, o: &Options, io: &mut Io) -> Result<i32, String> {
-    let source = o.source.clone().unwrap_or_default();
-    if !matches!(parse_source(&source), Source::Local { .. }) {
-        return Err(not_ported(&source, "Removing"));
-    }
-    let _ = writeln!(io.out, "Removing {source}...");
-    let project = o.local;
-    let packages = manager.packages(project);
-    let input_key = manager.match_key_for_input(&source);
-    let next: Vec<Value> = packages
-        .iter()
-        .filter(|existing| manager.match_key_for_settings(&source_string(existing), project) != input_key)
-        .cloned()
-        .collect();
-    if next.len() == packages.len() {
-        let _ = writeln!(io.err, "No matching package found for {source}");
-        return Ok(1);
-    }
-    manager.set_packages(project, next)?;
-    let _ = writeln!(io.out, "Removed {source}");
-    Ok(0)
-}
-
-fn update(manager: &Manager, o: &Options, io: &mut Io) -> Result<i32, String> {
+fn update(
+    manager: &mut PackageManager,
+    env: &Env,
+    o: &Options,
+    io: &mut Io,
+    endpoints: &Endpoints,
+) -> Result<i32, String> {
     let target = o.update_target.clone().unwrap_or(UpdateTarget::SelfOnly);
     if o.show_extensions_skipped_note {
         let _ = writeln!(
@@ -680,46 +587,122 @@ fn update(manager: &Manager, o: &Options, io: &mut Io) -> Result<i32, String> {
         } else {
             None
         };
-        let mut configured: Vec<(String, bool)> = Vec::new();
-        for project in [false, true] {
-            for pkg in manager.packages(project) {
-                configured.push((source_string(&pkg), project));
-            }
-        }
-        let matching: Vec<&(String, bool)> = match &source {
-            None => configured.iter().collect(),
-            Some(s) => {
-                let key = manager.match_key_for_input(s);
-                configured
-                    .iter()
-                    .filter(|(c, p)| manager.match_key_for_settings(c, *p) == key)
-                    .collect()
-            }
-        };
-        if let Some(s) = &source
-            && matching.is_empty()
-        {
-            return Err(format!("No matching package found for {s}"));
-        }
-        if let Some((c, _)) = matching
-            .iter()
-            .find(|(c, _)| !matches!(parse_source(c), Source::Local { .. }))
-        {
-            return Err(not_ported(c, "Updating"));
-        }
+        let _ = io.out.flush();
+        with_progress(manager, io, |m| m.update(source.as_deref()))?;
         let _ = match &source {
             Some(s) => writeln!(io.out, "Updated {s}"),
             None => writeln!(io.out, "Updated packages"),
         };
     }
     if matches!(target, UpdateTarget::All | UpdateTarget::SelfOnly) {
-        // ponytail: the self-update asks the npm registry for the latest release; not ported.
-        return Err("`ultron update --self` is not implemented in the Rust build yet".into());
+        return self_update(env, o.force, io, endpoints);
     }
     Ok(0)
 }
 
-/// `ultron config`: help and argument checks; the resource selector itself is a TUI and not ported.
+/// `formatVersionCheckError` for a request that got no response: `fetch failed`, with the socket error's code.
+fn fetch_error(error: &reqwest::Error) -> String {
+    if error.is_timeout() {
+        return "The operation was aborted due to timeout".into();
+    }
+    let mut source: Option<&dyn std::error::Error> = Some(error);
+    while let Some(e) = source {
+        if let Some(io) = e.downcast_ref::<std::io::Error>() {
+            let code = match io.kind() {
+                std::io::ErrorKind::ConnectionRefused => Some("ECONNREFUSED"),
+                std::io::ErrorKind::ConnectionReset => Some("ECONNRESET"),
+                std::io::ErrorKind::TimedOut => Some("ETIMEDOUT"),
+                _ => None,
+            };
+            if let Some(code) = code {
+                return format!("fetch failed ({code})");
+            }
+        }
+        source = e.source();
+    }
+    "fetch failed".into()
+}
+
+/// `getLatestRelease(VERSION, { retry: true })`: up to two retries after a failure or a transient status, within
+/// ten seconds. `Ok(None)`: offline, an error status, or no valid version in the document.
+fn latest_release(env: &Env, url: &str) -> Result<Option<String>, String> {
+    if (env.var)("PI_OFFLINE").is_some_and(|v| !v.is_empty()) {
+        return Ok(None);
+    }
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    let user_agent = ai::model_refresh::management_user_agent(&crate::version());
+    runtime.block_on(async {
+        let client = reqwest::Client::new();
+        let work = async {
+            const RETRYABLE: [u16; 7] = [408, 425, 429, 500, 502, 503, 504];
+            let mut attempt = 0;
+            loop {
+                let sent = client
+                    .get(url)
+                    .header("user-agent", &user_agent)
+                    .header("accept", "application/json")
+                    .send()
+                    .await;
+                match sent {
+                    Ok(response) if RETRYABLE.contains(&response.status().as_u16()) && attempt < 2 => {}
+                    Ok(response) => {
+                        if !response.status().is_success() {
+                            return Ok(None);
+                        }
+                        let text = response.text().await.unwrap_or_default();
+                        let data: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+                        let version = data.get("version").and_then(Value::as_str).map(str::trim);
+                        return Ok(version
+                            .filter(|v| crate::packages::semver::valid(v).is_some())
+                            .map(str::to_string));
+                    }
+                    Err(error) if attempt >= 2 => return Err(fetch_error(&error)),
+                    Err(_) => {}
+                }
+                attempt += 1;
+            }
+        };
+        match tokio::time::timeout(std::time::Duration::from_secs(10), work).await {
+            Ok(result) => result,
+            Err(_) => Err("The operation was aborted due to timeout".into()),
+        }
+    })
+}
+
+/// `isNewerPackageVersion`.
+fn is_newer(candidate: &str, current: &str) -> bool {
+    match crate::packages::semver::compare(candidate.trim(), current.trim()) {
+        Some(order) => order == std::cmp::Ordering::Greater,
+        None => candidate.trim() != current.trim(),
+    }
+}
+
+/// `ultron update --self` for the self-contained binary.
+fn self_update(env: &Env, force: bool, io: &mut Io, endpoints: &Endpoints) -> Result<i32, String> {
+    let env_version = crate::version();
+    let latest = match latest_release(env, &endpoints.latest_version_url) {
+        Ok(Some(version)) => version,
+        Ok(None) => return Err("Could not determine latest ultron version.".into()),
+        Err(error) => return Err(format!("Could not determine latest ultron version: {error}")),
+    };
+    if !force && !is_newer(&latest, &env_version) {
+        let _ = writeln!(io.out, "ultron is already up to date (v{env_version})");
+        return Ok(0);
+    }
+    // `printSelfUpdateUnavailable` for a self-contained binary (TypeScript's `bun-binary` method).
+    let _ = writeln!(io.err, "error: ultron cannot self-update this installation.");
+    let _ = writeln!(io.err, "Download from: {RELEASES_URL}/latest");
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = writeln!(io.err);
+        let _ = writeln!(io.err, "Location of ultron executable: {}", exe.display());
+    }
+    Ok(1)
+}
+
+/// `ultron config`: argument checks, then the resource selector.
 pub fn run_config(
     argv: &[String],
     env: &Env,
@@ -768,7 +751,8 @@ Options:
             }
         }
     }
-    let settings = settings_manager(env, trust_override, false);
+    let (settings, warnings) = command_settings(env, trust_override, false);
+    report_trust_warnings(err, &warnings);
     if local && !settings.is_project_trusted() {
         let _ = writeln!(
             err,
@@ -776,7 +760,11 @@ Options:
         );
         return Some(1);
     }
-    // ponytail: the resource selector (cli/config-selector.ts) is an interactive TUI; not ported.
-    let _ = writeln!(err, "Error: `ultron config` is not implemented in the Rust build yet");
-    Some(1)
+    match crate::config_selector::run(env, settings, local) {
+        Ok(()) => Some(0),
+        Err(message) => {
+            let _ = writeln!(err, "Error: {message}");
+            Some(1)
+        }
+    }
 }

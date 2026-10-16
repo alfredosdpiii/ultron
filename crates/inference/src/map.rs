@@ -143,12 +143,9 @@ impl Frames {
         let concurrency = optional_integer(payload.get("concurrency"), "concurrency", 1, MAX_CONCURRENCY)?.unwrap_or(8);
         self.defaults(payload);
         let inference = &self.inference;
-        let (options, admission) = inference.options(payload, Some(self.default_map_tokens()))?;
-        if !inference.views(payload.get("prefix"), 1)?.is_empty() {
-            return Err(
-                "rlm.map's shared_prefix is not supported by this host yet; pass the shared context per frame".into(),
-            );
-        }
+        let (mut options, admission) = inference.options(payload, Some(self.default_map_tokens()))?;
+        // The shared prefix is always materialized (it goes into the system prompt, where a handle cannot be opened).
+        options.prefix = inference.views(payload.get("prefix"), 1)?;
         // Validate every item before any frame runs or any budget is touched.
         let mut requests = Vec::new();
         for item in &items {

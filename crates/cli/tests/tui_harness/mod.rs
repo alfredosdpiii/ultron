@@ -309,9 +309,17 @@ impl Tui {
         std::fs::create_dir_all(root.join("cwd")).unwrap();
         std::fs::create_dir_all(root.join("server")).unwrap();
         std::fs::write(agent.join("models.json"), models).unwrap();
+        // A login's browser opener resolves here first and does nothing: a replay never opens the developer's browser.
+        let no_browser = root.join("no-browser");
+        std::fs::create_dir_all(&no_browser).unwrap();
+        for name in ["xdg-open", "open"] {
+            let opener = no_browser.join(name);
+            std::fs::write(&opener, "#!/bin/sh\nexit 0\n").unwrap();
+            std::fs::set_permissions(&opener, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        }
         let quote = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
         let mut vars: Vec<(String, String)> = vec![
-            ("PATH".into(), "/usr/bin:/bin".into()),
+            ("PATH".into(), format!("{}:/usr/bin:/bin", no_browser.display())),
             ("HOME".into(), root.display().to_string()),
             ("ULTRON_CODING_AGENT_DIR".into(), agent.display().to_string()),
             ("ULTRON_SERVER_DIR".into(), root.join("server").display().to_string()),

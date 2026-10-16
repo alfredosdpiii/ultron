@@ -56,6 +56,9 @@ pub struct ChildRun {
     /// A worktree child's (or its descendant's) working directory and extra environment; `None` / empty: the host's.
     pub cwd: Option<String>,
     pub env: Vec<(String, String)>,
+    /// `rlm.spawn(fork=True)`: the anchor (from the [`crate::fork::ForkPointHook`]) of the parent's conversation the
+    /// child's conversation starts from; its brief then leads with [`crate::fork::FORK_BRIEF_NOTE`].
+    pub fork_at: Option<String>,
     /// Aborted when the child is cancelled (delete, timeout, ancestor cancelled, host closed).
     pub signal: Signal,
     pub host: Delegation,
@@ -186,6 +189,8 @@ struct Inner {
     merging: Mutex<()>,
     /// Refuses a spawn's `model=` the session cannot run (see [`Delegation::set_model_check`]).
     model_check: Mutex<Option<ModelCheck>>,
+    /// Where a forked child starts (see [`Delegation::set_fork_point`]); none: `fork=True` is refused.
+    fork_point: Mutex<Option<crate::fork::ForkPointHook>>,
 }
 
 /// Checks a well-formed `provider/model` a spawn names; an error refuses the spawn with that message.
@@ -409,6 +414,7 @@ impl Delegation {
                 keep_worktrees: options.keep_worktrees,
                 merging: Mutex::new(()),
                 model_check: Mutex::new(None),
+                fork_point: Mutex::new(None),
             }),
         };
         (host, receiver)
@@ -417,6 +423,12 @@ impl Delegation {
     /// Refuse spawns whose `model=` fails `check` (by default only the `provider/model` form is checked).
     pub fn set_model_check(&self, check: ModelCheck) {
         *self.inner.model_check.lock().unwrap_or_else(PoisonError::into_inner) = Some(check);
+    }
+
+    /// Lets `rlm.spawn(fork=True)` start a child on its caller's conversation: `hook` names where (the conversation
+    /// so far, before the call still running), which the runner receives as [`ChildRun::fork_at`].
+    pub fn set_fork_point(&self, hook: crate::fork::ForkPointHook) {
+        *self.inner.fork_point.lock().unwrap_or_else(PoisonError::into_inner) = Some(hook);
     }
 
     /// The kernel host handler for `lane` ("main" for the root; a child's `lane_name`).
@@ -465,7 +477,7 @@ impl Delegation {
         };
         let parent = parent.as_deref();
         match kind {
-            "rlm.spawn" => self.spawn(&payload, parent),
+            "rlm.spawn" => self.spawn(&payload, parent, lane),
             "rlm.finish" => self.finish_request(payload, parent),
             "rlm.list_subagents" => {
                 fields(&payload, &[])?;
@@ -866,7 +878,7 @@ impl Delegation {
         }
     }
 
-    fn spawn(&self, payload: &Map<String, Value>, parent: Option<&str>) -> Result<Value, String> {
+    fn spawn(&self, payload: &Map<String, Value>, parent: Option<&str>, lane: &str) -> Result<Value, String> {
         fields(payload, &["prompt", "kwargs"])?;
         let limit = self.inner.spawn_depth;
         let (depth, allowance) = {
@@ -906,13 +918,19 @@ impl Delegation {
                 "fork",
             ],
         )?;
-        match kwargs.get("fork") {
-            None => {}
-            Some(Value::Bool(true)) => {
-                return Err("rlm.spawn fork=True is not available when subagents run as external processes".into());
-            }
-            Some(Value::Bool(false)) => {}
+        let fork = match kwargs.get("fork") {
+            None | Some(Value::Bool(false)) => false,
+            Some(Value::Bool(true)) => true,
             Some(_) => return Err("fork must be True or False".into()),
+        };
+        let fork_hook = self
+            .inner
+            .fork_point
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if fork && fork_hook.is_none() {
+            return Err("rlm.spawn fork=True is not available when subagents run as external processes".into());
         }
         let name = nonempty_string(kwargs.get("name"), "name")?;
         let mode = match kwargs.get("worktree") {
@@ -972,6 +990,12 @@ impl Delegation {
         let timeout_ms = safe_integer(&timeout)
             .filter(|n| (1..=3_600_000).contains(n))
             .ok_or("timeout_ms must be an integer between 1 and 3600000")? as u64;
+        let fork_at = match fork_hook.filter(|_| fork) {
+            Some(hook) => {
+                Some(hook(lane)?.ok_or("rlm.spawn fork=True: your lane has no finished conversation to fork yet")?)
+            }
+            None => None,
+        };
         // The worktree branches from the spawner's tree as it is now, before the child is admitted.
         let worktree = self.new_worktree(mode, &name, setup.as_ref(), parent)?;
         let thinking = match kwargs.get("thinking") {
@@ -1049,6 +1073,10 @@ impl Delegation {
             let state = lock(&self.inner.state);
             let inherited = state.worktree_of(Some(&task_id));
             let note = worktree.as_ref().map(wt::worktree_brief_note);
+            let prompt = match &fork_at {
+                Some(_) => format!("{}\n\n{prompt}", crate::fork::FORK_BRIEF_NOTE),
+                None => prompt,
+            };
             (
                 inherited.map(|w| w.cwd.clone()),
                 inherited.map(wt::worktree_env).unwrap_or_default(),
@@ -1069,6 +1097,7 @@ impl Delegation {
             timeout_ms,
             cwd,
             env,
+            fork_at: fork_at.clone(),
             signal: signal.clone(),
             host: self.clone(),
         };
@@ -1094,7 +1123,7 @@ impl Delegation {
             "session_dir": "",
             "model": model.unwrap_or_default(),
             "timeout_ms": timeout_ms,
-            "parent_branch_anchor": "",
+            "parent_branch_anchor": fork_at.unwrap_or_default(),
             "worktree": worktree.map_or(Value::Null, |w| json!({ "branch": w.branch, "path": w.path, "cwd": w.cwd })),
         }))
     }
