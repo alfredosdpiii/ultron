@@ -197,8 +197,9 @@ fn call(handler: &Frames, kind: &str, payload: Value) -> Value {
 }
 
 /// Ported from ultron-claude-code-frames.test.ts "ULTRON_RLM_FRAME_MODEL is the model of code-free frames that name
-/// none": the trimmed env model is the frame's model ("haiku" is not provider/model and is ignored). This host has one
-/// model, so another frame model is refused at admission instead of routed.
+/// none": the trimmed env model is the frame's model ("haiku" is not provider/model and is ignored). Without a model
+/// resolver (`Inference::with_models`) this host has one model, so another frame model is refused at admission;
+/// tests/frame_models.rs routes it.
 #[test]
 fn inference_map_frame_model_env_names_the_frame_model() {
     let frame = json!({"frames": [{"task": "cat in French", "context": []}]});

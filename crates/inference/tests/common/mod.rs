@@ -23,10 +23,19 @@ impl Body for Chunks {
 pub struct Scripted {
     pub replies: Mutex<Vec<Value>>,
     pub bodies: Mutex<Vec<Value>>,
+    /// Each request's `authorization` header.
+    pub authorizations: Mutex<Vec<Option<String>>>,
 }
 
 impl Transport for Scripted {
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {
+        self.authorizations.lock().unwrap().push(
+            request
+                .headers
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case("authorization"))
+                .map(|(_, v)| v.clone()),
+        );
         self.bodies
             .lock()
             .unwrap()

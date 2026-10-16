@@ -653,7 +653,7 @@ impl Host {
         }
         match kind {
             "bash" if payload.contains_key("yield_after") => self.shell_bash(lane, &payload, signal),
-            "bash" => self.blocking_bash(&payload, signal),
+            "bash" => self.blocking_bash(&payload, signal, &mut |_| {}),
             "shell.bash" => self.shell_bash(lane, &payload, signal),
             "shell.run" => {
                 fields(&payload, &["command", "timeout", "yield_after"])?;
@@ -709,8 +709,25 @@ impl Host {
         }
     }
 
+    /// A user's own command (RPC `bash`, the TUI's `!`; AgentSession `executeBash`): the shell guard, then the
+    /// blocking bash, each cleaned output chunk passed to `on_chunk` as it arrives (bash-executor.ts `onChunk`, which
+    /// AgentSession streams as `bash_execution_update`).
+    pub fn user_bash(&self, command: &str, signal: &Signal, on_chunk: &mut dyn FnMut(&str)) -> Result<Value, String> {
+        if let Some(reason) = self.guard.before_shell(command) {
+            return Err(format!("bash command was not run: {reason}"));
+        }
+        let mut payload = Map::new();
+        payload.insert("command".into(), command.into());
+        self.blocking_bash(&payload, signal, on_chunk)
+    }
+
     /// host-bash.ts runHostBash over bash-executor.ts: wait for the command, keep the tail, spill the whole output.
-    fn blocking_bash(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+    fn blocking_bash(
+        &self,
+        payload: &Map<String, Value>,
+        signal: &Signal,
+        on_chunk: &mut dyn FnMut(&str),
+    ) -> Result<Value, String> {
         let command = command_of(payload)?;
         let timeout = timeout_of(payload.get("timeout"))?;
         let deadline = timeout.map(|seconds| Instant::now() + Duration::from_secs_f64(seconds));
@@ -737,6 +754,10 @@ impl Host {
             &self.cwd,
             self.launcher.as_deref(),
             |text, raw| {
+                // The decoder's flush at the end (no bytes read) is not a chunk of the command's output.
+                if raw > 0 || !text.is_empty() {
+                    on_chunk(text);
+                }
                 total_bytes += raw;
                 if total_bytes > DEFAULT_MAX_BYTES
                     && let Err(error) = open_spill(&mut spill, &chunks)

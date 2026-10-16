@@ -28,7 +28,7 @@ use std::sync::Arc;
 pub(crate) const SESSION_START: (&str, &str) = ("ultron.session.start", "fork");
 
 impl Core {
-    fn extension_host(&self) -> Option<Arc<ExtensionHost>> {
+    pub(super) fn extension_host(&self) -> Option<Arc<ExtensionHost>> {
         self.runtime.extensions.clone()
     }
 
@@ -47,6 +47,11 @@ impl Core {
         self.runtime
             .extension_api
             .bind_actor(self.tx.clone(), self.session.clone(), &self.lane.stack);
+        // A handler's failure reaches the clients as `extension_error` (rpc-mode.ts `onError`).
+        let errors = self.tx.clone();
+        host.router().on_error(move |error| {
+            let _ = errors.send(Input::ExtensionError(error.to_value()));
+        });
         self.refresh_extension_facts();
         let mut event = json!({"type": "session_start", "reason": "startup"});
         if let Some(forked) = forked {

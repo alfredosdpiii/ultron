@@ -30,11 +30,19 @@ const fn c(name: &'static str, hint: &'static str, description: &'static str) ->
 /// Every command the TypeScript client TUI offers, in its order.
 /// The Rust-only commands, offered with the overlays ([`crate::qol::QolSettings::overlays`]); a parity build has
 /// exactly the client TUI's [`COMMANDS`].
-pub const QOL_COMMANDS: [CommandSpec; 1] = [c(
-    "mode",
-    "[name]",
-    "Switch mode (Default, Engineering); without a name, pick one",
-)];
+pub const QOL_COMMANDS: [CommandSpec; 2] = [
+    c(
+        "mode",
+        "[name]",
+        "Switch mode (Default, Engineering); without a name, pick one",
+    ),
+    // Pi's own (core/slash-commands.ts), which the client TUI does not offer.
+    c("bug", "<description>", "Report a bug to the Pi developers"),
+];
+
+/// Pi's interactive commands the client TUI does not list but this TUI runs (interactive-mode.ts): `/bug` and the
+/// easter eggs.
+pub const PI_COMMANDS: [&str; 3] = ["bug", "arminsayshi", "dementedelves"];
 
 pub const COMMANDS: [CommandSpec; 38] = [
     c("name", "<name>", "Set session display name"),

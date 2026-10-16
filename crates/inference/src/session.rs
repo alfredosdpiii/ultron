@@ -77,12 +77,17 @@ pub(crate) struct Live {
     frame: Mutex<Frame>,
     budget: Arc<Budget>,
     options: Arc<Options>,
-    engine: Engine,
+    /// The model the frame calls: the session's until admission resolves the model the frame names.
+    engine: Mutex<Engine>,
     outcome: Mutex<Option<Outcome>>,
     finalized: AtomicBool,
 }
 
 impl Live {
+    fn engine(&self) -> Engine {
+        lock(&self.engine).clone()
+    }
+
     fn outcome(&self) -> Option<Outcome> {
         lock(&self.outcome).clone()
     }
@@ -230,7 +235,7 @@ impl FrameSession {
             frame: Mutex::new(frame),
             budget: budget.clone(),
             options: options.clone(),
-            engine: engine.clone(),
+            engine: Mutex::new(engine.clone()),
             outcome: Mutex::new(outcome),
             finalized: AtomicBool::new(false),
         });
@@ -267,11 +272,11 @@ impl FrameSession {
         if cell.is_aborted() {
             return Some(Outcome::Error("cancelled: the calling cell was aborted".into()));
         }
-        let own = live.engine.own_model();
-        if let Some(model) = live.options.model.as_deref().filter(|model| *model != own) {
-            return Some(Outcome::Error(format!(
-                "Admission refused: model {model} is not available to this host"
-            )));
+        // A frame naming another model calls it through the same provider dispatch (the session's model
+        // resolution); one this host cannot resolve is refused.
+        match live.engine().for_model(live.options.model.as_deref()) {
+            Ok(engine) => *lock(&live.engine) = engine,
+            Err(refused) => return Some(Outcome::Error(refused)),
         }
         let Some(tasks) = self.tasks.get() else {
             return Some(self.converse(live, cell, None));
@@ -360,7 +365,7 @@ impl FrameSession {
     /// A request the provider does not answer before the deadline (or before the frame is cancelled) is refunded.
     fn converse(&self, live: &Live, signal: &Signal, run: Option<&FrameExecution>) -> Outcome {
         let options = &live.options;
-        let engine = &live.engine;
+        let engine = &live.engine();
         let deadline = Instant::now() + options.timeout;
         let system = frame_system(options);
         let mut conversation_chars = js_len(&system) as u64;
@@ -390,15 +395,7 @@ impl FrameSession {
                     return Outcome::Error(error);
                 }
             };
-            let max_tokens = cap(engine, tranche);
-            let response = engine.request(
-                &system,
-                &history,
-                max_tokens,
-                options.thinking.as_deref(),
-                deadline,
-                signal,
-            );
+            let response = engine.request(&system, &history, tranche, options, deadline, signal);
             let charged = match &response {
                 Ok(Some(reply)) => charged_tokens(&reply.usage),
                 _ => 0,
@@ -448,7 +445,7 @@ impl FrameSession {
             return Outcome::Error("frames that run code need a task host".into());
         };
         let options = &live.options;
-        let engine = &live.engine;
+        let engine = &live.engine();
         let tool = match tasks.code_tool(&run.lane) {
             Ok(tool) => tool,
             Err(error) => return Outcome::Error(error),
@@ -583,7 +580,8 @@ impl FrameSession {
         let mut frame = lock(&live.frame);
         let held = frame.call_held;
         frame.call_held = false;
-        ledger.claim(live.node, estimate, live.engine.model.max_tokens, held)
+        let model_max = live.engine().model.max_tokens;
+        ledger.claim(live.node, estimate, model_max, held)
     }
 
     /// Release a hold no request used.
@@ -768,15 +766,6 @@ fn exhausted_detail(attempt: u64) -> String {
     }
 }
 
-/// The request's output cap: the tranche, within the model's own maximum.
-fn cap(engine: &Engine, tranche: u64) -> u64 {
-    if engine.model.max_tokens > 0 {
-        engine.model.max_tokens.min(tranche)
-    } else {
-        tranche
-    }
-}
-
 fn user_message(text: &str) -> Message {
     Message::User(ai::UserMessage {
         content: ai::UserMessageContent::Text(text.to_string()),
@@ -894,7 +883,7 @@ impl StreamFn for BudgetedStream {
         Box::pin(async move {
             let session = &self.session;
             let live = &self.live;
-            let engine = &live.engine;
+            let engine = &live.engine();
             let hold = lock(&self.pending).take().or_else(|| {
                 let estimate = serde_json::to_string(context)
                     .map_or(0, |text| text.len() as u64)
@@ -911,8 +900,7 @@ impl StreamFn for BudgetedStream {
                 );
             };
             let mut options = options.clone();
-            options.base.api_key = engine.api_key.clone();
-            options.base.max_tokens = Some(cap(engine, tranche));
+            engine.prepare(&mut options, tranche, live.options.contract.as_ref());
             let response = engine
                 .stream(context, &options, sink, self.deadline, &self.signal)
                 .await;

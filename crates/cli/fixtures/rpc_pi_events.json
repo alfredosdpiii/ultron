@@ -1,0 +1,233 @@
+{
+ "steps": [
+  {
+   "command": {
+    "id": "b1",
+    "type": "bash",
+    "command": "printf 'one\\n'; printf 'two\\n' >&2; exit 3"
+   }
+  },
+  {
+   "command": {
+    "id": "b2",
+    "type": "bash",
+    "command": "hello world"
+   }
+  },
+  {
+   "command": {
+    "id": "b3",
+    "type": "bash",
+    "command": "hello quietly",
+    "excludeFromContext": true
+   }
+  },
+  {
+   "command": {
+    "id": "b4",
+    "type": "bash",
+    "command": "rm -rf /nowhere"
+   },
+   "wait": [
+    "response",
+    "extension_error"
+   ]
+  },
+  {
+   "command": {
+    "id": "b5",
+    "type": "bash",
+    "command": "bad-result"
+   },
+   "wait": [
+    "response",
+    "extension_error"
+   ]
+  },
+  {
+   "command": {
+    "type": "bash",
+    "command": "printf 'no id\\n'"
+   }
+  },
+  {
+   "command": {
+    "id": "n1",
+    "type": "set_session_name",
+    "name": " Renamed "
+   }
+  },
+  {
+   "command": {
+    "id": "n2",
+    "type": "set_session_name",
+    "name": "boom"
+   },
+   "wait": [
+    "response",
+    "extension_error"
+   ]
+  },
+  {
+   "command": {
+    "id": "m1",
+    "type": "get_messages"
+   }
+  }
+ ],
+ "code": 0,
+ "responses": [
+  {
+   "id": "b1",
+   "type": "response",
+   "command": "bash",
+   "success": true,
+   "data": {
+    "output": "one\ntwo\n",
+    "exitCode": 3,
+    "cancelled": false,
+    "truncated": false
+   }
+  },
+  {
+   "id": "b2",
+   "type": "response",
+   "command": "bash",
+   "success": true,
+   "data": {
+    "output": "hello ran \"hello world\" (included) in <CWD>\n",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false
+   }
+  },
+  {
+   "id": "b3",
+   "type": "response",
+   "command": "bash",
+   "success": true,
+   "data": {
+    "output": "hello ran \"hello quietly\" (excluded) in <CWD>\n",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false
+   }
+  },
+  {
+   "id": "b4",
+   "type": "response",
+   "command": "bash",
+   "success": false,
+   "error": "hello refuses rm -rf"
+  },
+  {
+   "id": "b5",
+   "type": "response",
+   "command": "bash",
+   "success": false,
+   "error": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object"
+  },
+  {
+   "type": "response",
+   "command": "bash",
+   "success": true,
+   "data": {
+    "output": "no id\n",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false
+   }
+  },
+  {
+   "id": "n1",
+   "type": "response",
+   "command": "set_session_name",
+   "success": true
+  },
+  {
+   "id": "n2",
+   "type": "response",
+   "command": "set_session_name",
+   "success": true
+  },
+  {
+   "id": "m1",
+   "type": "response",
+   "command": "get_messages",
+   "success": true,
+   "data": {
+    "messages": [
+     {
+      "role": "bashExecution",
+      "command": "printf 'one\\n'; printf 'two\\n' >&2; exit 3",
+      "output": "one\ntwo\n",
+      "exitCode": 3,
+      "cancelled": false,
+      "truncated": false,
+      "timestamp": 0
+     },
+     {
+      "role": "bashExecution",
+      "command": "hello world",
+      "output": "hello ran \"hello world\" (included) in <CWD>\n",
+      "exitCode": 0,
+      "cancelled": false,
+      "truncated": false,
+      "timestamp": 0
+     },
+     {
+      "role": "bashExecution",
+      "command": "hello quietly",
+      "output": "hello ran \"hello quietly\" (excluded) in <CWD>\n",
+      "exitCode": 0,
+      "cancelled": false,
+      "truncated": false,
+      "timestamp": 0,
+      "excludeFromContext": true
+     },
+     {
+      "role": "bashExecution",
+      "command": "printf 'no id\\n'",
+      "output": "no id\n",
+      "exitCode": 0,
+      "cancelled": false,
+      "truncated": false,
+      "timestamp": 0
+     }
+    ]
+   }
+  }
+ ],
+ "events": [
+  {
+   "type": "extension_error",
+   "extensionPath": "<ext>",
+   "event": "user_bash",
+   "error": "hello refuses rm -rf"
+  },
+  {
+   "type": "extension_error",
+   "extensionPath": "<ext>",
+   "event": "user_bash",
+   "error": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object"
+  },
+  {
+   "type": "session_info_changed",
+   "name": "Renamed"
+  },
+  {
+   "type": "session_info_changed",
+   "name": "boom"
+  },
+  {
+   "type": "extension_error",
+   "extensionPath": "<ext>",
+   "event": "session_info_changed",
+   "error": "hello cannot be named boom"
+  }
+ ],
+ "output": {
+  "b1": "one\ntwo\n",
+  "<none>": "no id\n"
+ }
+}

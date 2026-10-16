@@ -255,11 +255,19 @@ struct Canonical {
     updates: Vec<Value>,
 }
 
-/// The generator's `canonical`.
+/// The events Rust streams as Pi's RPC mode does (`modes/rpc/rpc-mode.ts`) and `experimental/rpc-native.ts` does not.
+const PI_ONLY_EVENTS: [&str; 3] = ["bash_execution_update", "session_info_changed", "extension_error"];
+
+/// The generator's `canonical`, without [`PI_ONLY_EVENTS`].
 fn canonical(lines: &[Value], tmp: &str) -> Canonical {
     let (mut responses, mut events, mut updates) = (Vec::new(), Vec::new(), Vec::new());
     for line in lines.iter().map(|l| scrub(l, tmp, "")) {
         let kind = line["type"].as_str().unwrap_or_default().to_string();
+        // Pi's RPC events the native command (the recorded TypeScript) does not emit: rpc_pi_events.rs compares them
+        // with Pi's RPC mode.
+        if PI_ONLY_EVENTS.contains(&kind.as_str()) {
+            continue;
+        }
         if kind == "response" {
             responses.push(line);
         } else if kind == "message_update" {

@@ -43,6 +43,7 @@ kernel = { path = "../kernel" }
 mcp = { path = "../mcp" }
 protocol = { path = "../protocol" }
 session-file = { path = "../session-file" }
+telemetry = { path = "../telemetry" }
 sha2 = "=0.10.9"
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 tui = { path = "../tui" }

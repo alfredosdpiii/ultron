@@ -393,18 +393,26 @@ impl RpcSession for Remote<'_> {
     fn bash(&mut self, command: String, exclude_from_context: bool, reply: Reply) -> Result<(), String> {
         let connection = self.link()?.connection();
         let session = connection.session_target().map_err(|e| e.to_string())?;
+        // The command's id tags its streamed output (`bash_execution_update`), as rpc-mode.ts passes it.
+        let id = reply.id.clone().filter(Value::is_string).unwrap_or(Value::Null);
         let request = connection
             .start(
                 session,
                 "ultron.session-control",
                 "bash",
-                json!([command, exclude_from_context]),
+                json!([command, exclude_from_context, id]),
             )
             .map_err(|e| e.to_string())?;
         let (pending, tx) = (self.bash.clone(), self.tx.clone());
         pending.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
-            let result = connection.wait(&request).map_err(|e| e.to_string());
+            // An extension's `user_bash` that failed the command closed answers with its error.
+            let result = connection.wait(&request).map_err(|e| e.to_string()).and_then(|data| {
+                match data.as_ref().and_then(|d| d.get(session_core::core::USER_BASH_FAILED)) {
+                    Some(error) => Err(error.as_str().unwrap_or_default().to_string()),
+                    None => Ok(data),
+                }
+            });
             // The command loop answers it: that thread holds the process's stdout.
             let _ = tx.send(Input::Event(Event::BashDone { reply, result, pending }));
         });

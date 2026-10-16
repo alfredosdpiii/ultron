@@ -48,6 +48,30 @@ impl ModelInfo {
     }
 }
 
+/// `/bug`'s choices (bug-report.ts `BugReportOptions`, with the summary written).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BugReportRequest {
+    pub hint: Option<String>,
+    pub include_session: bool,
+    /// The model's summary, when the user chose one instead of the transcript.
+    pub summary: Option<String>,
+    /// Upload it (else export a zip).
+    pub upload: bool,
+}
+
+/// How a `/bug` report's delivery ended.
+#[derive(Clone, Debug, PartialEq)]
+pub enum BugReportOutcome {
+    /// Uploaded: the report id.
+    Uploaded(String),
+    /// Exported: the archive and the report id.
+    Exported { path: String, id: String },
+    /// The upload failed (the fallback is offered).
+    UploadFailed(String),
+    /// Building or writing the report failed (`showError`).
+    Failed(String),
+}
+
 /// What a `!` command left (`BashResult`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BashResult {
@@ -215,6 +239,15 @@ pub enum LaneEvent {
     /// A `!` command finished (its message follows as [`LaneEvent::Message`] with role `bashExecution`), or failed
     /// to run.
     BashDone(Result<BashResult, String>),
+    /// An extension's `user_bash` failed a `!` command closed (it did not run; the extension's error is shown as
+    /// [`LaneEvent::ExtensionError`]).
+    BashFailedClosed,
+    /// A handler of the session's extensions failed (`extension_error`).
+    ExtensionError { path: String, error: String },
+    /// `/bug`'s summary: the text, or why there is none.
+    BugSummary(Result<String, String>),
+    /// `/bug`'s report was delivered, or not.
+    BugReport(BugReportOutcome),
     /// A compaction started (`compaction_start`): `reason` is `manual`, or `threshold` / `overflow` for one the
     /// session runs on its own during a run.
     CompactionStarted { reason: String },
@@ -511,6 +544,22 @@ pub trait LaneClient {
     fn share(&self) {}
     /// Esc on the share loader: stop the gist upload; nothing more is reported about it.
     fn cancel_share(&self) {}
+    /// `/bug`: the host an upload goes to (`new URL(getRadiusGatewayUrl()).host`) and whether the session is offline
+    /// (`PI_OFFLINE`).
+    fn bug_report_target(&self) -> (String, bool) {
+        ("radius.pi.dev".into(), false)
+    }
+    /// `/bug`'s summary written by the session's model (`summarizeForBugReport`); [`LaneEvent::BugSummary`] answers.
+    fn bug_report_summary(&self, _hint: Option<&str>) {}
+    /// Stop the summary in progress; its answer is then ignored.
+    fn abort_bug_report_summary(&self) {}
+    /// Build the report and upload or export it; [`LaneEvent::BugReport`] answers (an upload stopped with
+    /// [`LaneClient::cancel_bug_report`] answers nothing).
+    fn bug_report(&self, _request: BugReportRequest) {}
+    /// Export the report the failed upload built as a zip; [`LaneEvent::BugReport`] answers.
+    fn bug_report_export(&self) {}
+    /// Esc on the upload loader: stop the upload.
+    fn cancel_bug_report(&self) {}
     /// Save a credential `ModelRuntime.login` produced (`{type: "api_key", key?, env?}`) for `provider`; statuses and
     /// a fresh [`LaneEvent::Catalog`] answer as for [`LaneClient::save_api_key`].
     fn save_credential(&self, provider: &str, credential: Value) {

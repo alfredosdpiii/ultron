@@ -1,0 +1,394 @@
+[
+ {
+  "name": "uploaded",
+  "token": "radius-token",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   },
+   "sessionJsonl": "{\"type\":\"session\"}\n",
+   "summary": "## What went wrong\nAll of it"
+  },
+  "reply": {
+   "status": 200,
+   "contentType": "application/json",
+   "body": "{\"ok\":true,\"bug_report\":{\"id\":\"br_123\"}}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": "Bearer radius-token",
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     },
+     {
+      "name": "session.jsonl",
+      "filename": "session.jsonl",
+      "contentType": "application/x-ndjson",
+      "data": "{\"type\":\"session\"}\n"
+     },
+     {
+      "name": "summary.md",
+      "filename": "summary.md",
+      "contentType": "text/markdown",
+      "data": "## What went wrong\nAll of it\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "id": "br_123"
+  }
+ },
+ {
+  "name": "anonymous",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 201,
+   "contentType": "application/json",
+   "body": "{\"ok\":true,\"bug_report\":{\"id\":\"br_anon\"}}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "id": "br_anon"
+  }
+ },
+ {
+  "name": "described-failure",
+  "token": "t",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 413,
+   "contentType": "application/json",
+   "body": "{\"ok\":false,\"error\":\"too_large\",\"description\":\"Report too large\"}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": "Bearer t",
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: Report too large"
+  }
+ },
+ {
+  "name": "error-only",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 403,
+   "contentType": "application/json",
+   "body": "{\"ok\":false,\"error\":\"forbidden\"}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: forbidden"
+  }
+ },
+ {
+  "name": "not-json",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 500,
+   "contentType": "text/plain",
+   "body": "boom"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: Internal Server Error"
+  }
+ },
+ {
+  "name": "ok-status-not-ok",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 200,
+   "contentType": "application/json",
+   "body": "{\"ok\":false}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: OK"
+  }
+ },
+ {
+  "name": "ok-without-id",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 200,
+   "contentType": "application/json",
+   "body": "{\"ok\":true,\"bug_report\":{\"id\":7}}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: OK"
+  }
+ },
+ {
+  "name": "error-status-ok-body",
+  "bundle": {
+   "metadata": {
+    "schemaVersion": 1,
+    "id": "019a0000-0000-7000-8000-000000000001",
+    "hint": "it broke"
+   },
+   "diagnostics": {
+    "schemaVersion": 1,
+    "sessionId": "s1",
+    "entryCount": 0,
+    "assistantMessageCount": 0,
+    "assistant": [],
+    "crashes": []
+   }
+  },
+  "reply": {
+   "status": 502,
+   "contentType": "application/json",
+   "body": "{\"ok\":true}"
+  },
+  "requests": [
+   {
+    "method": "POST",
+    "url": "/v1/bug-reports",
+    "authorization": null,
+    "parts": [
+     {
+      "name": "report.json",
+      "filename": "report.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"id\": \"019a0000-0000-7000-8000-000000000001\",\n  \"hint\": \"it broke\"\n}\n"
+     },
+     {
+      "name": "diagnostics.json",
+      "filename": "diagnostics.json",
+      "contentType": "application/json",
+      "data": "{\n  \"schemaVersion\": 1,\n  \"sessionId\": \"s1\",\n  \"entryCount\": 0,\n  \"assistantMessageCount\": 0,\n  \"assistant\": [],\n  \"crashes\": []\n}\n"
+     }
+    ]
+   }
+  ],
+  "outcome": {
+   "error": "Bug report upload failed: Bad Gateway"
+  }
+ }
+]

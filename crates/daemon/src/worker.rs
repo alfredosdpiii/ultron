@@ -467,7 +467,9 @@ fn services(
         .method("bash", move |args| {
             let command = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
             let exclude = args.get(1) == Some(&Value::Bool(true));
-            call_core(&bash_core, Op::Bash { command, exclude })
+            // A client's tag for the command's streamed output (RPC: the command's id).
+            let id = args.get(2).and_then(Value::as_str).map(str::to_string);
+            call_core(&bash_core, Op::Bash { command, exclude, id })
         })
         .method("forked", move |args| match args.first().and_then(Value::as_str) {
             Some(target) => call_core(

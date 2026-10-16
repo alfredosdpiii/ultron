@@ -58,7 +58,19 @@ fn wait_closed(connection: &Connection) {
 fn client_radius_connection_disconnects_its_relay_while_held() {
     let gateway = Gateway::start();
     let (connection, socket) = connect(&gateway);
-    let snapshot = socket.snapshot();
+    // The handshake can end before the gateway's reader has recorded the client's hello: wait for it.
+    let deadline = std::time::Instant::now() + HANG_GUARD;
+    let snapshot = loop {
+        let snapshot = socket.snapshot();
+        if !snapshot["sent"].as_array().unwrap().is_empty() {
+            break snapshot;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the client's hello never reached the gateway"
+        );
+        std::thread::yield_now();
+    };
     assert_eq!(snapshot["protocol"], "pi-session-relay.client.v1");
     assert_eq!(snapshot["authorization"], "Bearer secret");
     assert_eq!(snapshot["path"], format!("/v1/session-relays/{SERVER_ID}/connect"));

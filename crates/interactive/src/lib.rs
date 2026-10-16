@@ -6,12 +6,14 @@
 pub mod agent_hub;
 pub mod api_key_login;
 pub mod app;
+pub mod bug_report;
 pub mod changelog;
 pub mod chat;
 pub mod commands;
 mod components;
 pub mod copy_targets;
 pub mod debug_log;
+pub mod easter_eggs;
 pub mod extension_commands;
 pub mod extension_dialogs;
 pub mod extension_shortcuts;

@@ -364,6 +364,7 @@ dependencies = [
  "session-file",
  "session-journal",
  "sha2",
+ "telemetry",
  "tempfile",
  "tokio",
  "tui",

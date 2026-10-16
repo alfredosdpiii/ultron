@@ -1,0 +1,2440 @@
+{
+ "now": 1760000000000,
+ "cases": [
+  {
+   "name": "hint-and-thinking",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "hint": "  the cell crashed  ",
+   "thinkingLevel": "high",
+   "sessionId": "sess-1",
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\n<user-report>\nthe cell crashed\n</user-report>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "sess-1",
+      "reasoning": "high",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "no-hint",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "thinkingLevel": "off",
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "blank-hint-no-reasoning",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "hint": "   ",
+   "thinkingLevel": "low",
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": false,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 0
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "small-max-tokens",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 1000
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1000,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "trimmed-to-window",
+   "messages": [
+    {
+     "role": "user",
+     "content": "early0 early1 early2 early3 early4 early5 early6 early7 early8 early9 early10 early11 early12 early13 early14 early15 early16 early17 early18 early19 early20 early21 early22 early23 early24 early25 early26 early27 early28 early29 early30 early31 early32 early33 early34 early35 early36 early37 early38 early39 early40 early41 early42 early43 early44 early45 early46 early47 early48 early49 early50 early51 early52 early53 early54 early55 early56 early57 early58 early59 early60 early61 early62 early63 early64 early65 early66 early67 early68 early69 early70 early71 early72 early73 early74 early75 early76 early77 early78 early79 early80 early81 early82 early83 early84 early85 early86 early87 early88 early89 early90 early91 early92 early93 early94 early95 early96 early97 early98 early99 early100 early101 early102 early103 early104 early105 early106 early107 early108 early109 early110 early111 early112 early113 early114 early115 early116 early117 early118 early119 early120 early121 early122 early123 early124 early125 early126 early127 early128 early129 early130 early131 early132 early133 early134 early135 early136 early137 early138 early139 early140 early141 early142 early143 early144 early145 early146 early147 early148 early149 early150 early151 early152 early153 early154 early155 early156 early157 early158 early159 early160 early161 early162 early163 early164 early165 early166 early167 early168 early169 early170 early171 early172 early173 early174 early175 early176 early177 early178 early179 early180 early181 early182 early183 early184 early185 early186 early187 early188 early189 early190 early191 early192 early193 early194 early195 early196 early197 early198 early199 early200 early201 early202 early203 early204 early205 early206 early207 early208 early209 early210 early211 early212 early213 early214 early215 early216 early217 early218 early219 early220 early221 early222 early223 early224 early225 early226 early227 early228 early229 early230 early231 early232 early233 early234 early235 early236 early237 early238 early239 early240 early241 early242 early243 early244 early245 early246 early247 early248 early249 early250 early251 early252 early253 early254 early255 early256 early257 early258 early259 early260 early261 early262 early263 early264 early265 early266 early267 early268 early269 early270 early271 early272 early273 early274 early275 early276 early277 early278 early279 early280 early281 early282 early283 early284 early285 early286 early287 early288 early289 early290 early291 early292 early293 early294 early295 early296 early297 early298 early299 early300 early301 early302 early303 early304 early305 early306 early307 early308 early309 early310 early311 early312 early313 early314 early315 early316 early317 early318 early319 early320 early321 early322 early323 early324 early325 early326 early327 early328 early329 early330 early331 early332 early333 early334 early335 early336 early337 early338 early339 early340 early341 early342 early343 early344 early345 early346 early347 early348 early349 early350 early351 early352 early353 early354 early355 early356 early357 early358 early359 early360 early361 early362 early363 early364 early365 early366 early367 early368 early369 early370 early371 early372 early373 early374 early375 early376 early377 early378 early379 early380 early381 early382 early383 early384 early385 early386 early387 early388 early389 early390 early391 early392 early393 early394 early395 early396 early397 early398 early399",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "user",
+     "content": "now it hangs",
+     "timestamp": 1
+    }
+   ],
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 1000,
+    "maxTokens": 8000
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "Note: only the last 1 of 3 messages are shown.\n\n<conversation>\n[User]: now it hangs\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "budget-edge",
+   "messages": [
+    {
+     "role": "user",
+     "content": "early0 early1 early2 early3 early4 early5 early6 early7 early8 early9 early10 early11 early12 early13 early14 early15 early16 early17 early18 early19 early20 early21 early22 early23 early24 early25 early26 early27 early28 early29 early30 early31 early32 early33 early34 early35 early36 early37 early38 early39 early40 early41 early42 early43 early44 early45 early46 early47 early48 early49 early50 early51 early52 early53 early54 early55 early56 early57 early58 early59 early60 early61 early62 early63 early64 early65 early66 early67 early68 early69 early70 early71 early72 early73 early74 early75 early76 early77 early78 early79 early80 early81 early82 early83 early84 early85 early86 early87 early88 early89 early90 early91 early92 early93 early94 early95 early96 early97 early98 early99 early100 early101 early102 early103 early104 early105 early106 early107 early108 early109 early110 early111 early112 early113 early114 early115 early116 early117 early118 early119 early120 early121 early122 early123 early124 early125 early126 early127 early128 early129 early130 early131 early132 early133 early134 early135 early136 early137 early138 early139 early140 early141 early142 early143 early144 early145 early146 early147 early148 early149 early150 early151 early152 early153 early154 early155 early156 early157 early158 early159 early160 early161 early162 early163 early164 early165 early166 early167 early168 early169 early170 early171 early172 early173 early174 early175 early176 early177 early178 early179 early180 early181 early182 early183 early184 early185 early186 early187 early188 early189 early190 early191 early192 early193 early194 early195 early196 early197 early198 early199 early200 early201 early202 early203 early204 early205 early206 early207 early208 early209 early210 early211 early212 early213 early214 early215 early216 early217 early218 early219 early220 early221 early222 early223 early224 early225 early226 early227 early228 early229 early230 early231 early232 early233 early234 early235 early236 early237 early238 early239 early240 early241 early242 early243 early244 early245 early246 early247 early248 early249 early250 early251 early252 early253 early254 early255 early256 early257 early258 early259 early260 early261 early262 early263 early264 early265 early266 early267 early268 early269 early270 early271 early272 early273 early274 early275 early276 early277 early278 early279 early280 early281 early282 early283 early284 early285 early286 early287 early288 early289 early290 early291 early292 early293 early294 early295 early296 early297 early298 early299 early300 early301 early302 early303 early304 early305 early306 early307 early308 early309 early310 early311 early312 early313 early314 early315 early316 early317 early318 early319 early320 early321 early322 early323 early324 early325 early326 early327 early328 early329 early330 early331 early332 early333 early334 early335 early336 early337 early338 early339 early340 early341 early342 early343 early344 early345 early346 early347 early348 early349 early350 early351 early352 early353 early354 early355 early356 early357 early358 early359 early360 early361 early362 early363 early364 early365 early366 early367 early368 early369 early370 early371 early372 early373 early374 early375 early376 early377 early378 early379 early380 early381 early382 early383 early384 early385 early386 early387 early388 early389 early390 early391 early392 early393 early394 early395 early396 early397 early398 early399",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "user",
+     "content": "now it hangs",
+     "timestamp": 1
+    }
+   ],
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 1700,
+    "maxTokens": 8000
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "Note: only the last 2 of 3 messages are shown.\n\n<conversation>\n[Assistant]: middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399\n\n[User]: now it hangs\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "newest-only",
+   "messages": [
+    {
+     "role": "user",
+     "content": "early0 early1 early2 early3 early4 early5 early6 early7 early8 early9 early10 early11 early12 early13 early14 early15 early16 early17 early18 early19 early20 early21 early22 early23 early24 early25 early26 early27 early28 early29 early30 early31 early32 early33 early34 early35 early36 early37 early38 early39 early40 early41 early42 early43 early44 early45 early46 early47 early48 early49 early50 early51 early52 early53 early54 early55 early56 early57 early58 early59 early60 early61 early62 early63 early64 early65 early66 early67 early68 early69 early70 early71 early72 early73 early74 early75 early76 early77 early78 early79 early80 early81 early82 early83 early84 early85 early86 early87 early88 early89 early90 early91 early92 early93 early94 early95 early96 early97 early98 early99 early100 early101 early102 early103 early104 early105 early106 early107 early108 early109 early110 early111 early112 early113 early114 early115 early116 early117 early118 early119 early120 early121 early122 early123 early124 early125 early126 early127 early128 early129 early130 early131 early132 early133 early134 early135 early136 early137 early138 early139 early140 early141 early142 early143 early144 early145 early146 early147 early148 early149 early150 early151 early152 early153 early154 early155 early156 early157 early158 early159 early160 early161 early162 early163 early164 early165 early166 early167 early168 early169 early170 early171 early172 early173 early174 early175 early176 early177 early178 early179 early180 early181 early182 early183 early184 early185 early186 early187 early188 early189 early190 early191 early192 early193 early194 early195 early196 early197 early198 early199 early200 early201 early202 early203 early204 early205 early206 early207 early208 early209 early210 early211 early212 early213 early214 early215 early216 early217 early218 early219 early220 early221 early222 early223 early224 early225 early226 early227 early228 early229 early230 early231 early232 early233 early234 early235 early236 early237 early238 early239 early240 early241 early242 early243 early244 early245 early246 early247 early248 early249 early250 early251 early252 early253 early254 early255 early256 early257 early258 early259 early260 early261 early262 early263 early264 early265 early266 early267 early268 early269 early270 early271 early272 early273 early274 early275 early276 early277 early278 early279 early280 early281 early282 early283 early284 early285 early286 early287 early288 early289 early290 early291 early292 early293 early294 early295 early296 early297 early298 early299 early300 early301 early302 early303 early304 early305 early306 early307 early308 early309 early310 early311 early312 early313 early314 early315 early316 early317 early318 early319 early320 early321 early322 early323 early324 early325 early326 early327 early328 early329 early330 early331 early332 early333 early334 early335 early336 early337 early338 early339 early340 early341 early342 early343 early344 early345 early346 early347 early348 early349 early350 early351 early352 early353 early354 early355 early356 early357 early358 early359 early360 early361 early362 early363 early364 early365 early366 early367 early368 early369 early370 early371 early372 early373 early374 early375 early376 early377 early378 early379 early380 early381 early382 early383 early384 early385 early386 early387 early388 early389 early390 early391 early392 early393 early394 early395 early396 early397 early398 early399",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "user",
+     "content": "now it hangs",
+     "timestamp": 1
+    }
+   ],
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 10,
+    "maxTokens": 8000
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "Note: only the last 1 of 3 messages are shown.\n\n<conversation>\n[User]: now it hangs\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "zero-window",
+   "messages": [
+    {
+     "role": "user",
+     "content": "early0 early1 early2 early3 early4 early5 early6 early7 early8 early9 early10 early11 early12 early13 early14 early15 early16 early17 early18 early19 early20 early21 early22 early23 early24 early25 early26 early27 early28 early29 early30 early31 early32 early33 early34 early35 early36 early37 early38 early39 early40 early41 early42 early43 early44 early45 early46 early47 early48 early49 early50 early51 early52 early53 early54 early55 early56 early57 early58 early59 early60 early61 early62 early63 early64 early65 early66 early67 early68 early69 early70 early71 early72 early73 early74 early75 early76 early77 early78 early79 early80 early81 early82 early83 early84 early85 early86 early87 early88 early89 early90 early91 early92 early93 early94 early95 early96 early97 early98 early99 early100 early101 early102 early103 early104 early105 early106 early107 early108 early109 early110 early111 early112 early113 early114 early115 early116 early117 early118 early119 early120 early121 early122 early123 early124 early125 early126 early127 early128 early129 early130 early131 early132 early133 early134 early135 early136 early137 early138 early139 early140 early141 early142 early143 early144 early145 early146 early147 early148 early149 early150 early151 early152 early153 early154 early155 early156 early157 early158 early159 early160 early161 early162 early163 early164 early165 early166 early167 early168 early169 early170 early171 early172 early173 early174 early175 early176 early177 early178 early179 early180 early181 early182 early183 early184 early185 early186 early187 early188 early189 early190 early191 early192 early193 early194 early195 early196 early197 early198 early199 early200 early201 early202 early203 early204 early205 early206 early207 early208 early209 early210 early211 early212 early213 early214 early215 early216 early217 early218 early219 early220 early221 early222 early223 early224 early225 early226 early227 early228 early229 early230 early231 early232 early233 early234 early235 early236 early237 early238 early239 early240 early241 early242 early243 early244 early245 early246 early247 early248 early249 early250 early251 early252 early253 early254 early255 early256 early257 early258 early259 early260 early261 early262 early263 early264 early265 early266 early267 early268 early269 early270 early271 early272 early273 early274 early275 early276 early277 early278 early279 early280 early281 early282 early283 early284 early285 early286 early287 early288 early289 early290 early291 early292 early293 early294 early295 early296 early297 early298 early299 early300 early301 early302 early303 early304 early305 early306 early307 early308 early309 early310 early311 early312 early313 early314 early315 early316 early317 early318 early319 early320 early321 early322 early323 early324 early325 early326 early327 early328 early329 early330 early331 early332 early333 early334 early335 early336 early337 early338 early339 early340 early341 early342 early343 early344 early345 early346 early347 early348 early349 early350 early351 early352 early353 early354 early355 early356 early357 early358 early359 early360 early361 early362 early363 early364 early365 early366 early367 early368 early369 early370 early371 early372 early373 early374 early375 early376 early377 early378 early379 early380 early381 early382 early383 early384 early385 early386 early387 early388 early389 early390 early391 early392 early393 early394 early395 early396 early397 early398 early399",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "user",
+     "content": "now it hangs",
+     "timestamp": 1
+    }
+   ],
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 0,
+    "maxTokens": 8000
+   },
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "  ## What the user was doing\nTesting.  "
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: early0 early1 early2 early3 early4 early5 early6 early7 early8 early9 early10 early11 early12 early13 early14 early15 early16 early17 early18 early19 early20 early21 early22 early23 early24 early25 early26 early27 early28 early29 early30 early31 early32 early33 early34 early35 early36 early37 early38 early39 early40 early41 early42 early43 early44 early45 early46 early47 early48 early49 early50 early51 early52 early53 early54 early55 early56 early57 early58 early59 early60 early61 early62 early63 early64 early65 early66 early67 early68 early69 early70 early71 early72 early73 early74 early75 early76 early77 early78 early79 early80 early81 early82 early83 early84 early85 early86 early87 early88 early89 early90 early91 early92 early93 early94 early95 early96 early97 early98 early99 early100 early101 early102 early103 early104 early105 early106 early107 early108 early109 early110 early111 early112 early113 early114 early115 early116 early117 early118 early119 early120 early121 early122 early123 early124 early125 early126 early127 early128 early129 early130 early131 early132 early133 early134 early135 early136 early137 early138 early139 early140 early141 early142 early143 early144 early145 early146 early147 early148 early149 early150 early151 early152 early153 early154 early155 early156 early157 early158 early159 early160 early161 early162 early163 early164 early165 early166 early167 early168 early169 early170 early171 early172 early173 early174 early175 early176 early177 early178 early179 early180 early181 early182 early183 early184 early185 early186 early187 early188 early189 early190 early191 early192 early193 early194 early195 early196 early197 early198 early199 early200 early201 early202 early203 early204 early205 early206 early207 early208 early209 early210 early211 early212 early213 early214 early215 early216 early217 early218 early219 early220 early221 early222 early223 early224 early225 early226 early227 early228 early229 early230 early231 early232 early233 early234 early235 early236 early237 early238 early239 early240 early241 early242 early243 early244 early245 early246 early247 early248 early249 early250 early251 early252 early253 early254 early255 early256 early257 early258 early259 early260 early261 early262 early263 early264 early265 early266 early267 early268 early269 early270 early271 early272 early273 early274 early275 early276 early277 early278 early279 early280 early281 early282 early283 early284 early285 early286 early287 early288 early289 early290 early291 early292 early293 early294 early295 early296 early297 early298 early299 early300 early301 early302 early303 early304 early305 early306 early307 early308 early309 early310 early311 early312 early313 early314 early315 early316 early317 early318 early319 early320 early321 early322 early323 early324 early325 early326 early327 early328 early329 early330 early331 early332 early333 early334 early335 early336 early337 early338 early339 early340 early341 early342 early343 early344 early345 early346 early347 early348 early349 early350 early351 early352 early353 early354 early355 early356 early357 early358 early359 early360 early361 early362 early363 early364 early365 early366 early367 early368 early369 early370 early371 early372 early373 early374 early375 early376 early377 early378 early379 early380 early381 early382 early383 early384 early385 early386 early387 early388 early389 early390 early391 early392 early393 early394 early395 early396 early397 early398 early399\n\n[Assistant]: middle0 middle1 middle2 middle3 middle4 middle5 middle6 middle7 middle8 middle9 middle10 middle11 middle12 middle13 middle14 middle15 middle16 middle17 middle18 middle19 middle20 middle21 middle22 middle23 middle24 middle25 middle26 middle27 middle28 middle29 middle30 middle31 middle32 middle33 middle34 middle35 middle36 middle37 middle38 middle39 middle40 middle41 middle42 middle43 middle44 middle45 middle46 middle47 middle48 middle49 middle50 middle51 middle52 middle53 middle54 middle55 middle56 middle57 middle58 middle59 middle60 middle61 middle62 middle63 middle64 middle65 middle66 middle67 middle68 middle69 middle70 middle71 middle72 middle73 middle74 middle75 middle76 middle77 middle78 middle79 middle80 middle81 middle82 middle83 middle84 middle85 middle86 middle87 middle88 middle89 middle90 middle91 middle92 middle93 middle94 middle95 middle96 middle97 middle98 middle99 middle100 middle101 middle102 middle103 middle104 middle105 middle106 middle107 middle108 middle109 middle110 middle111 middle112 middle113 middle114 middle115 middle116 middle117 middle118 middle119 middle120 middle121 middle122 middle123 middle124 middle125 middle126 middle127 middle128 middle129 middle130 middle131 middle132 middle133 middle134 middle135 middle136 middle137 middle138 middle139 middle140 middle141 middle142 middle143 middle144 middle145 middle146 middle147 middle148 middle149 middle150 middle151 middle152 middle153 middle154 middle155 middle156 middle157 middle158 middle159 middle160 middle161 middle162 middle163 middle164 middle165 middle166 middle167 middle168 middle169 middle170 middle171 middle172 middle173 middle174 middle175 middle176 middle177 middle178 middle179 middle180 middle181 middle182 middle183 middle184 middle185 middle186 middle187 middle188 middle189 middle190 middle191 middle192 middle193 middle194 middle195 middle196 middle197 middle198 middle199 middle200 middle201 middle202 middle203 middle204 middle205 middle206 middle207 middle208 middle209 middle210 middle211 middle212 middle213 middle214 middle215 middle216 middle217 middle218 middle219 middle220 middle221 middle222 middle223 middle224 middle225 middle226 middle227 middle228 middle229 middle230 middle231 middle232 middle233 middle234 middle235 middle236 middle237 middle238 middle239 middle240 middle241 middle242 middle243 middle244 middle245 middle246 middle247 middle248 middle249 middle250 middle251 middle252 middle253 middle254 middle255 middle256 middle257 middle258 middle259 middle260 middle261 middle262 middle263 middle264 middle265 middle266 middle267 middle268 middle269 middle270 middle271 middle272 middle273 middle274 middle275 middle276 middle277 middle278 middle279 middle280 middle281 middle282 middle283 middle284 middle285 middle286 middle287 middle288 middle289 middle290 middle291 middle292 middle293 middle294 middle295 middle296 middle297 middle298 middle299 middle300 middle301 middle302 middle303 middle304 middle305 middle306 middle307 middle308 middle309 middle310 middle311 middle312 middle313 middle314 middle315 middle316 middle317 middle318 middle319 middle320 middle321 middle322 middle323 middle324 middle325 middle326 middle327 middle328 middle329 middle330 middle331 middle332 middle333 middle334 middle335 middle336 middle337 middle338 middle339 middle340 middle341 middle342 middle343 middle344 middle345 middle346 middle347 middle348 middle349 middle350 middle351 middle352 middle353 middle354 middle355 middle356 middle357 middle358 middle359 middle360 middle361 middle362 middle363 middle364 middle365 middle366 middle367 middle368 middle369 middle370 middle371 middle372 middle373 middle374 middle375 middle376 middle377 middle378 middle379 middle380 middle381 middle382 middle383 middle384 middle385 middle386 middle387 middle388 middle389 middle390 middle391 middle392 middle393 middle394 middle395 middle396 middle397 middle398 middle399\n\n[User]: now it hangs\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "## What the user was doing\nTesting."
+   }
+  },
+  {
+   "name": "aborted",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "aborted",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary was cancelled"
+   }
+  },
+  {
+   "name": "error",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "timestamp": 2,
+    "errorMessage": "overloaded"
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary failed: overloaded"
+   }
+  },
+  {
+   "name": "error-empty",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "error",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary failed: Unknown error"
+   }
+  },
+  {
+   "name": "length",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "partial"
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "length",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary failed: generation hit the token cap and the summary is incomplete"
+   }
+  },
+  {
+   "name": "tool-call",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "x"
+     },
+     {
+      "type": "toolCall",
+      "id": "c",
+      "name": "read",
+      "arguments": {}
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary attempted to call a tool"
+   }
+  },
+  {
+   "name": "empty",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "   "
+     },
+     {
+      "type": "thinking",
+      "thinking": "hm"
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "error": "Bug report summary was empty"
+   }
+  },
+  {
+   "name": "two-texts",
+   "messages": [
+    {
+     "role": "user",
+     "content": "run the tests",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Running them."
+      },
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "rlm",
+       "arguments": {
+        "code": "print(1/0)"
+       }
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "rlm",
+     "content": [
+      {
+       "type": "text",
+       "text": "ZeroDivisionError: division by zero"
+      }
+     ],
+     "isError": true,
+     "timestamp": 3
+    },
+    {
+     "role": "bashExecution",
+     "command": "npm test",
+     "output": "1 failing",
+     "exitCode": 1,
+     "cancelled": false,
+     "truncated": false,
+     "timestamp": 4
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "The cell crashed."
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "m1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": [
+     {
+      "type": "text",
+      "text": "first"
+     },
+     {
+      "type": "text",
+      "text": "second"
+     }
+    ],
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "model": "m1",
+    "usage": {
+     "input": 0,
+     "output": 0,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 2
+   },
+   "model": {
+    "id": "sum-1",
+    "name": "Summarizer",
+    "api": "anthropic-messages",
+    "provider": "anthropic",
+    "baseUrl": "https://example.invalid",
+    "reasoning": true,
+    "input": [
+     "text"
+    ],
+    "cost": {
+     "input": 1,
+     "output": 2,
+     "cacheRead": 0,
+     "cacheWrite": 0
+    },
+    "contextWindow": 100000,
+    "maxTokens": 8000
+   },
+   "requests": [
+    {
+     "model": "sum-1",
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+        "timestamp": 0
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: run the tests\n\n[Assistant]: Running them.\n\n[Assistant tool calls]: rlm(code=\"print(1/0)\")\n\n[Tool result]: ZeroDivisionError: division by zero\n\n[User]: Ran `npm test`\n```\n1 failing\n```\n\nCommand exited with code 1\n\n[Assistant]: The cell crashed.\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise."
+         }
+        ],
+        "timestamp": 1760000000000
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "apiKey": "key",
+      "sessionId": "<fresh>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "outcome": {
+    "ok": "first\nsecond"
+   }
+  }
+ ]
+}

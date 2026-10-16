@@ -423,7 +423,9 @@ fn cli_extension_host_events_requests_and_ui_in_a_session() {
         [json!({"type": "session_shutdown", "reason": "fork", "targetSessionFile": target.path.display().to_string()})]
     );
     let forked = world.open(target);
-    world.wait_for("the fork's session_start", |e| e["event"]["reason"] == "fork");
+    world.wait_for("the fork's session_start", |e| {
+        e["event"]["type"] == "session_start" && e["event"]["reason"] == "fork"
+    });
     assert_eq!(
         world.events("session_start")[1],
         json!({"type": "session_start", "reason": "fork", "previousSessionFile": source_file})

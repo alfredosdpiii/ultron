@@ -200,6 +200,8 @@ enum Panel {
     },
     /// `/share`'s "Creating gist..." loader; Esc cancels the upload.
     ShareLoader(Box<crate::extension_dialogs::BorderedLoader>),
+    /// `/bug`'s dialogs and loaders.
+    BugReport(Box<crate::bug_report::BugFlow>),
 }
 
 /// What the editor dialog's text is for.
@@ -331,6 +333,8 @@ pub struct App {
     turn_started: Option<Instant>,
     active_ms: u64,
     ticks: u64,
+    /// `/arminsayshi` portraits still animating: the portrait, when it started, and the frames it played.
+    armin: Vec<(u64, Rc<std::cell::RefCell<crate::easter_eggs::Armin>>, Instant, u64)>,
     /// The running `!` command (Pi's pending `BashExecutionComponent`).
     bash: Option<BashExecution>,
     /// Transcript messages before this index are compacted away (the context starts after them).
@@ -698,6 +702,7 @@ impl App {
             turn_started: None,
             active_ms: 0,
             ticks: 0,
+            armin: Vec::new(),
             bash: None,
             context_from: 0,
             compacted: false,
@@ -788,8 +793,14 @@ impl App {
     /// The editor's result: the new editor text, or `None` (the editor failed: the text stays).
     pub fn finish_edit(&mut self, edited: Option<String>) {
         if std::mem::take(&mut self.edit_dialog) {
-            if let (Some(text), Some(Panel::TextEditor { dialog, .. })) = (edited, self.panel.as_mut()) {
-                dialog.set_text(&text);
+            match (edited, self.panel.as_mut()) {
+                (Some(text), Some(Panel::TextEditor { dialog, .. })) => dialog.set_text(&text),
+                (Some(text), Some(Panel::BugReport(flow))) => {
+                    if let Some(dialog) = flow.editor() {
+                        dialog.set_text(&text);
+                    }
+                }
+                _ => {}
             }
             return;
         }
@@ -1298,6 +1309,8 @@ impl App {
         self.chat.is_working()
             || self.bash.is_some()
             || matches!(self.panel, Some(Panel::ShareLoader(_)))
+            || matches!(&self.panel, Some(Panel::BugReport(flow)) if flow.animating())
+            || !self.armin.is_empty()
             || matches!(&self.panel, Some(Panel::ExtensionInput { dialog, .. }) if dialog.counting())
     }
 
@@ -1307,6 +1320,25 @@ impl App {
         if let Some(Panel::ShareLoader(loader)) = self.panel.as_mut() {
             loader.tick();
         }
+        if let Some(Panel::BugReport(flow)) = self.panel.as_mut() {
+            flow.tick();
+        }
+        // The portraits play their frames at their own rate (`setInterval(…, 1000 / fps)`), whatever the tick rate.
+        let now = self.now();
+        let chat = &mut self.chat;
+        self.armin.retain_mut(|(id, armin, started, played)| {
+            let mut armin = armin.borrow_mut();
+            let due = now.saturating_duration_since(*started).as_millis() as u64 * armin.fps() / 1000;
+            let before = *played;
+            while *played < due && !armin.done() {
+                armin.tick();
+                *played += 1;
+            }
+            if *played != before || armin.done() {
+                chat.refresh_live(*id, armin.done());
+            }
+            !armin.done()
+        });
         self.expire_dialogs();
         if let Some(bash) = self.bash.as_mut() {
             bash.tick();
@@ -1478,6 +1510,15 @@ impl App {
             }
             LaneEvent::GoalReply(text) => self.notice(&fg(&self.theme, "dim", &text)),
             LaneEvent::BashDone(result) => self.bash_done(result),
+            LaneEvent::BugSummary(result) => self.bug_summary_done(result),
+            LaneEvent::BugReport(outcome) => self.bug_report_done(outcome),
+            // interactive-mode.ts `handleBashCommand`: the runner already reported the error; nothing ran.
+            LaneEvent::BashFailedClosed => self.bash = None,
+            // `showExtensionError`, without the stack (it does not cross the extension process boundary).
+            LaneEvent::ExtensionError { path, error } => {
+                let text = fg(&self.theme, "error", &format!("Extension \"{path}\" error: {error}"));
+                self.chat.append_text(&text);
+            }
             LaneEvent::CompactionStarted { reason } => {
                 self.compacting = true;
                 self.chat.set_compacting_for(&reason);
@@ -2360,6 +2401,7 @@ impl App {
         let qol_command = self.qol.overlays && crate::commands::QOL_COMMANDS.iter().any(|c| c.name == name);
         if !COMMANDS.iter().any(|c| c.name == name)
             && !qol_command
+            && !crate::commands::PI_COMMANDS.contains(&name)
             && !self.extension_commands.iter().any(|c| c == name)
         {
             self.status = format!("Unknown slash command: /{name}");
@@ -2488,6 +2530,23 @@ impl App {
                     self.client.prompt(&message);
                 }
             }
+            "bug" => self.open_bug_report(args),
+            // `handleArminSaysHi` and `handleDementedDelves` (only the bare commands are easter eggs).
+            "arminsayshi" if args.is_empty() => {
+                let armin = Rc::new(std::cell::RefCell::new(crate::easter_eggs::Armin::new(
+                    Rc::clone(&self.theme),
+                    Box::new(crate::easter_eggs::seeded_random(self.now())),
+                )));
+                let id = self.ticks ^ (self.armin.len() as u64) << 48;
+                self.chat
+                    .append_live_notice(id, Box::new(crate::easter_eggs::Shared(Rc::clone(&armin))));
+                let now = self.now();
+                self.armin.push((id, armin, now, 0));
+            }
+            "dementedelves" if args.is_empty() => {
+                let announcement = crate::easter_eggs::EarendilAnnouncement::new(Rc::clone(&self.theme));
+                self.chat.append_notice(Box::new(announcement));
+            }
             "logout" => self.client.credentials(),
             "login" => self.client.login_providers(args),
             "changelog" => self.client.changelog(),
@@ -2525,6 +2584,137 @@ impl App {
             }
             name if self.extension_commands.iter().any(|c| c == name) => self.client.extension_command(name, args),
             other => self.show_status(&format!("Error: /{other} is not available in the Rust build yet")),
+        }
+    }
+
+    /// `showError`: `Error: <message>` in the transcript.
+    fn show_error(&mut self, message: &str) {
+        let text = fg(&self.theme, "error", &format!("Error: {message}"));
+        self.notice(&text);
+    }
+
+    /// `/bug [description]` (`handleBugCommand`): the report's dialogs in the editor's place.
+    fn open_bug_report(&mut self, args: &str) {
+        let hint = args.trim();
+        let model = (!self.model.name.is_empty()).then(|| (self.model.name.clone(), self.model.provider.clone()));
+        let flow = crate::bug_report::BugFlow::new(
+            Rc::clone(&self.theme),
+            self.keys.clone(),
+            self.editor_keys(),
+            (!hint.is_empty()).then_some(hint),
+            model,
+            self.client.bug_report_target(),
+        );
+        self.editor.focused = false;
+        self.panel = Some(Panel::BugReport(Box::new(flow)));
+    }
+
+    fn bug_cancelled(&mut self) {
+        self.panel = None;
+        self.show_status("Bug report cancelled");
+    }
+
+    /// What a key in the `/bug` flow asks for.
+    fn bug_action(&mut self, action: crate::bug_report::Action) {
+        use crate::bug_report::Action;
+        let Some(Panel::BugReport(flow)) = self.panel.as_mut() else {
+            return;
+        };
+        match action {
+            Action::None => {}
+            Action::Cancelled => self.bug_cancelled(),
+            Action::Offline => {
+                self.panel = None;
+                self.show_error("Uploading bug reports requires online mode. Use Export as Zip instead.");
+            }
+            Action::Summarize => {
+                let hint = flow.choices.hint.clone();
+                self.client.bug_report_summary(hint.as_deref());
+            }
+            Action::CancelSummary => {
+                self.client.abort_bug_report_summary();
+                self.bug_cancelled();
+            }
+            Action::Deliver => {
+                let choices = flow.choices.clone();
+                let request = crate::lane::BugReportRequest {
+                    hint: choices.hint,
+                    include_session: choices.include_session,
+                    summary: flow.summary.clone(),
+                    upload: choices.upload,
+                };
+                // An export writes at once (no loader); an upload shows its loader until it answers.
+                if !request.upload {
+                    self.panel = None;
+                }
+                self.client.bug_report(request);
+            }
+            Action::CancelUpload => {
+                self.client.cancel_bug_report();
+                self.bug_cancelled();
+            }
+            Action::ExportAfterFailure => {
+                self.panel = None;
+                self.client.bug_report_export();
+            }
+            Action::External(text) => {
+                if self.external_editor.is_some() {
+                    self.edit_dialog = true;
+                    self.edit_request = Some(text);
+                } else {
+                    self.show_status("No editor configured. Set $VISUAL or $EDITOR environment variable.");
+                }
+            }
+        }
+    }
+
+    /// The summary arrived; a flow that was cancelled meanwhile ignores it.
+    fn bug_summary_done(&mut self, result: Result<String, String>) {
+        let Some(Panel::BugReport(flow)) = self.panel.as_mut() else {
+            return;
+        };
+        if !matches!(flow.step, crate::bug_report::Step::Summarizing(_)) {
+            return;
+        }
+        match result {
+            Ok(summary) => {
+                let action = flow.summarized(summary);
+                self.bug_action(action);
+            }
+            Err(error) => {
+                self.panel = None;
+                self.show_error(&format!("Failed to write bug report summary: {error}"));
+            }
+        }
+    }
+
+    fn bug_report_done(&mut self, outcome: crate::lane::BugReportOutcome) {
+        use crate::lane::BugReportOutcome;
+        let uploading = matches!(
+            &self.panel,
+            Some(Panel::BugReport(flow)) if matches!(flow.step, crate::bug_report::Step::Uploading(_))
+        );
+        match outcome {
+            BugReportOutcome::UploadFailed(failure) => {
+                if let (true, Some(Panel::BugReport(flow))) = (uploading, self.panel.as_mut()) {
+                    flow.upload_failed(&failure);
+                }
+            }
+            outcome => {
+                if uploading {
+                    self.panel = None;
+                }
+                match outcome {
+                    BugReportOutcome::Uploaded(id) => {
+                        self.show_status(&format!("Bug report uploaded. Report ID: {id}"));
+                    }
+                    BugReportOutcome::Exported { path, id } => {
+                        self.show_status(&format!("Bug report exported to: {path}\nReport ID: {id}"));
+                    }
+                    BugReportOutcome::Failed(error) => self.show_error(&error),
+                    BugReportOutcome::UploadFailed(_) => {}
+                }
+            }
         }
     }
 
@@ -3042,6 +3232,10 @@ impl App {
                     // Back to the summary choice.
                     (EditorPurpose::Instructions(entry), None) => self.ask_summary(entry),
                 }
+            }
+            Some(Panel::BugReport(flow)) => {
+                let action = flow.handle_input(data);
+                self.bug_action(action);
             }
             Some(Panel::ShareLoader(loader)) => {
                 // `loader.onAbort`: the upload stops and the loader closes.
@@ -4573,6 +4767,7 @@ impl App {
             (None, Some(Panel::ExtensionInput { dialog, .. })) => dialog.render(width, now),
             (None, Some(Panel::TextEditor { dialog, .. })) => dialog.render(width, self.rows),
             (None, Some(Panel::ShareLoader(loader))) => loader.render(width),
+            (None, Some(Panel::BugReport(flow))) => flow.render(width, self.rows),
             (None, None) => {
                 // `#chatInput.focused = !#busy && !(rlm pane focused and shown)`: no cursor while recovering.
                 self.editor.focused = !self.recovering && !(self.rlm_pane_focused && self.rlm_pane_shown());

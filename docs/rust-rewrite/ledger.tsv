@@ -2710,6 +2710,47 @@ W3M-26	interactive	[Extension issues] colors load errors as errors	interactive_e
 W3M-27	interactive	load errors shown at startup	interactive_extension_load_errors_show_at_startup
 W3M-28	cli	issues answer maps type error to the error flag	cli_extension_issues_answer_keeps_load_errors_apart_from_warnings
 W3M-29	cli/setup	setup help names the Rust checks (python3, no Node.js)	cli_setup_help_names_the_checks_the_rust_setup_runs
+W4F-01	inference	frames reach anthropic-messages through ai dispatch with TS request body and result	inference_frames_call_anthropic_messages_like_typescript
+W4F-02	inference	frame thinking budget capped under the tranche like capOutputTokens	inference_frames_cap_anthropic_thinking_budgets_like_typescript
+W4F-03	inference	frames reach openai-completions (views, cap) like TS	inference_frames_call_openai_completions_like_typescript
+W4F-04	inference	frames reach openai-responses like TS	inference_frames_call_openai_responses_like_typescript
+W4F-05	inference	frames reach azure-openai-responses like TS	inference_frames_call_azure_openai_responses_like_typescript
+W4F-06	inference	frames reach openai-codex-responses (WS refused, SSE fallback) like TS	inference_frames_call_openai_codex_responses_like_typescript
+W4F-07	inference	frames reach google-generative-ai like TS	inference_frames_call_google_generative_ai_like_typescript
+W4F-08	inference	frames reach google-vertex like TS	inference_frames_call_google_vertex_like_typescript
+W4F-09	inference	frames reach mistral-conversations like TS	inference_frames_call_mistral_conversations_like_typescript
+W4F-10	inference	frames reach bedrock-converse-stream like TS	inference_frames_call_bedrock_converse_stream_like_typescript
+W4F-11	inference	frames reach pi-messages like TS	inference_frames_call_pi_messages_like_typescript
+W4F-12	inference	frame contract and cap reach the Claude Code CLI (fake claude) like TS	inference_frames_hand_the_contract_to_the_claude_code_cli_like_typescript
+W4F-13	inference	every recorded provider scenario has a replay	inference_frames_every_recorded_provider_scenario_is_replayed
+W4F-14	inference	capOutputTokens/withContractSchema table matches TS	inference_frame_payload_caps_match_typescript
+W4F-15	inference	frame naming another model calls it with its key, limit and trace model	inference_frame_naming_another_model_calls_it_with_its_own_key
+W4F-16	inference	frame naming the session model skips resolution	inference_frame_naming_the_sessions_model_needs_no_resolution
+W4F-17	inference	unknown frame model refused unsent, nothing charged	inference_frame_naming_an_unknown_model_is_refused_unsent
+W4F-18	inference	ULTRON_RLM_FRAME_MODEL routes code-free frames (ported claude-code-frames test)	inference_frame_model_env_routes_code_free_frames_to_that_model
+W4F-19	session-core	frame resolver: catalog + models.json + provider key	session_core_frame_models_resolve_the_catalog_and_models_json_with_the_providers_key
+W4F-20	session-core	frame on models.json model sends its headers and key	session_core_frame_naming_a_models_json_model_sends_its_headers_and_key
+W4F-21	cli	ultron -p: frame calls another catalog model; rlm.spawn unknown model refused (A04)	cli_frame_naming_another_catalog_model_calls_it_and_spawn_refuses_an_unknown_model
+W4R-01	rpc	RPC bash: user_bash answers/refuses/invalid, bash_execution_update by id, session_info_changed, extension_error = Pi rpc-mode stream	cli_rpc_pi_events_user_bash_bash_updates_session_info_and_extension_errors
+W4R-02	tui	!/!! through user_bash with the hello extension: answered, failed closed (error shown, nothing run), local run	cli_interactive_user_bash_extension_answers_refuses_or_lets_commands_run
+W4R-03	session-core	recordBashResult message keeps the members it was given	session_core_user_bash_message_keeps_the_result_members_it_was_given
+W4R-04	compaction	generateBugReportSummary requests and outcomes match TS	compaction_bug_summary_requests_and_outcomes_match_typescript
+W4R-05	compaction	selectMessages keeps the newest message and notes the rest	compaction_bug_summary_keeps_the_newest_message_and_notes_the_rest
+W4R-06	cli	uploadBugReport request/answers match TS	cli_bug_report_upload_requests_and_answers_match_typescript
+W4R-07	cli	cancelled upload reports nothing	cli_bug_report_cancelled_upload_reports_nothing
+W4R-08	cli	uuidv7 shape	cli_bug_report_uuid_v7_has_the_time_version_and_variant
+W4R-09	cli	gateway host keeps a non-default port	cli_bug_report_gateway_host_keeps_a_non_default_port
+W4R-10	cli	serializeSessionBranch chaining plus pi.share entry	cli_bug_report_session_jsonl_chains_the_branch
+W4R-11	interactive	/bug transcript and zip dialog texts	interactive_bug_report_transcript_and_zip_questions_match_typescript
+W4R-12	interactive	/bug summary, upload loader, upload-failed fallback	interactive_bug_report_summary_then_upload_then_fallback
+W4R-13	interactive	/bug cancel at each step, offline refusal	interactive_bug_report_cancel_and_offline
+W4R-14	tui	/bug zip export with transcript, entry recorded	cli_interactive_bug_report_exports_a_zip_with_the_transcript
+W4R-15	tui	/bug model summary uploaded to fake gateway	cli_interactive_bug_report_uploads_a_model_summary_instead_of_the_transcript
+W4R-16	tui	/bug failed upload, then zip; Esc; PI_OFFLINE	cli_interactive_bug_report_failed_upload_offers_the_zip_and_cancel_and_offline_stop_it
+W4R-17	interactive	ArminComponent 7 effects frames match TS	interactive_easter_eggs_armin_effects_paint_the_typescript_frames
+W4R-18	interactive	EarendilAnnouncementComponent matches TS	interactive_easter_eggs_earendil_announcement_renders_like_typescript
+W4R-19	interactive	base64 of the announcement image	interactive_easter_eggs_base64_matches_the_standard_alphabet
+W4R-20	tui	/dementedelves and /arminsayshi draw	cli_interactive_easter_eggs_draw_pi_components
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

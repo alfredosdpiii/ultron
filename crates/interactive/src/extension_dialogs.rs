@@ -122,6 +122,8 @@ pub struct ExtensionEditorDialog {
     theme: Rc<Theme>,
     keys: KeybindingsManager,
     title: String,
+    /// `options.description`, under the title.
+    description: Option<String>,
     editor: Editor,
 }
 
@@ -149,8 +151,15 @@ impl ExtensionEditorDialog {
             theme,
             keys,
             title: title.to_string(),
+            description: None,
             editor,
         }
+    }
+
+    /// The dialog with `options.description` under its title (`/bug`'s consent text).
+    pub fn with_description(mut self, description: &str) -> Self {
+        self.description = (!description.is_empty()).then(|| description.to_string());
+        self
     }
 
     pub fn text(&self) -> String {
@@ -179,6 +188,10 @@ impl ExtensionEditorDialog {
         let t = Rc::clone(&self.theme);
         let mut lines = vec![border(&t, width), String::new()];
         lines.extend(Text::new(&fg(&t, "accent", &self.title), 1, 0, None).render(width));
+        if let Some(description) = &self.description {
+            lines.push(String::new());
+            lines.extend(Text::new(&fg(&t, "text", description), 1, 0, None).render(width));
+        }
         lines.push(String::new());
         self.editor.terminal_rows = rows;
         lines.extend(self.editor.render(width));

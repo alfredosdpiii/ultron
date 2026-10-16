@@ -77,6 +77,7 @@ fn session_core_review_command_expands_a_plain_prompt_op_and_leaves_other_ops() 
     let bash = Op::Bash {
         command: "/review".into(),
         exclude: false,
+        id: None,
     };
     assert_eq!(expand_client_op(bash.clone()), bash);
 }

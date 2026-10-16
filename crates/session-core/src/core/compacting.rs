@@ -80,6 +80,43 @@ impl Summarizer {
             .await
     }
 
+    /// `/bug`'s report summary of `messages` (`summarizeForBugReport`, `generateBugReportSummary`), cancelled by
+    /// `signal`; a retryable provider error is retried under `retry` (`completeSummarization`'s retry policy).
+    pub(super) fn bug_report(
+        &self,
+        messages: &[Value],
+        hint: Option<&str>,
+        retry: SummaryRetry,
+        signal: &AbortSignal,
+    ) -> Result<String, String> {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|error| error.to_string())?;
+        let mut attempt = 1;
+        loop {
+            let request = compaction::bug_summary_request(
+                messages,
+                hint,
+                &self.model,
+                Some(&self.thinking),
+                Some(&self.session_id),
+                now_ms(),
+            );
+            let response = runtime.block_on(self.stream(request, signal));
+            if !signal.aborted() && attempt < retry.max_attempts && harness::chat::models::is_retryable(&response) {
+                let delay = i64::try_from(retry.delay_ms(attempt)).unwrap_or(i64::MAX);
+                wait_until(now_ms().saturating_add(delay), signal);
+                attempt += 1;
+                continue;
+            }
+            if signal.aborted() {
+                return Err("Bug report summary was cancelled".into());
+            }
+            return compaction::bug_summary_text(&response);
+        }
+    }
+
     /// The branch summary of `entries` (`generateBranchSummary`), cancelled by `signal`.
     pub(super) fn branch(
         &self,

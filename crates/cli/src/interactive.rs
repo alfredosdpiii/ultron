@@ -85,6 +85,13 @@ enum Command {
     RunShortcut(String, Vec<(String, Vec<String>)>),
     /// `/share`; the flag is set when the user cancels the gist upload.
     Share(Arc<std::sync::atomic::AtomicBool>),
+    /// `/bug`: the summary written by the session's model.
+    BugSummary(Option<String>),
+    AbortBugSummary,
+    /// `/bug`: build the report and upload or export it.
+    BugReport(interactive::lane::BugReportRequest),
+    /// `/bug`: export the report the failed upload built.
+    BugReportExport,
     LoginProviders(String),
     SaveApiKey(String, String),
     /// A credential a multi-field API-key login produced (provider, `{type, key?, env?}`).
@@ -172,6 +179,8 @@ struct DaemonLane {
     login: Arc<crate::tui_login::LoginSlot>,
     /// Set when the user cancels `/share`'s gist upload.
     share_cancel: Arc<std::sync::atomic::AtomicBool>,
+    /// Set when the user cancels `/bug`'s upload.
+    bug_cancel: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl DaemonLane {
@@ -353,6 +362,28 @@ impl LaneClient for DaemonLane {
     }
     fn cancel_share(&self) {
         self.share_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+    fn bug_report_target(&self) -> (String, bool) {
+        let offline = (self.env.var)("PI_OFFLINE").is_some_and(|v| !v.is_empty());
+        (
+            crate::bug_report::gateway_host(&crate::bug_report::gateway_url(&self.env)),
+            offline,
+        )
+    }
+    fn bug_report_summary(&self, hint: Option<&str>) {
+        self.send(Command::BugSummary(hint.map(str::to_string)));
+    }
+    fn abort_bug_report_summary(&self) {
+        self.send(Command::AbortBugSummary);
+    }
+    fn bug_report(&self, request: interactive::lane::BugReportRequest) {
+        self.send(Command::BugReport(request));
+    }
+    fn bug_report_export(&self) {
+        self.send(Command::BugReportExport);
+    }
+    fn cancel_bug_report(&self) {
+        self.bug_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
     }
     fn save_credential(&self, provider: &str, credential: Value) {
         self.send(Command::SaveCredential(provider.to_string(), credential));
@@ -606,6 +637,11 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
             .map(|l| LaneEvent::Thinking(l.to_string()))
             .into_iter()
             .collect(),
+        // interactive-mode.ts `showExtensionError` (a handler of the session's extensions failed).
+        Some("extension_error") => vec![LaneEvent::ExtensionError {
+            path: event["extensionPath"].as_str().unwrap_or_default().to_string(),
+            error: event["error"].as_str().unwrap_or_default().to_string(),
+        }],
         Some("run_end") => vec![LaneEvent::OperationEnded {
             // An aborted run is not a failure the TUI reports.
             error: (event["status"] == "failed")
@@ -687,6 +723,7 @@ pub fn pi_sessions(env: &Env) -> Result<Vec<SessionListing>, String> {
 }
 
 /// The link thread: owns the link, runs the TUI's commands one at a time.
+#[allow(clippy::too_many_arguments)]
 fn link_thread(
     mut link: Link,
     commands: mpsc::Receiver<Command>,
@@ -695,6 +732,7 @@ fn link_thread(
     settings_path: (std::path::PathBuf, std::path::PathBuf),
     signalled: Arc<std::sync::atomic::AtomicI32>,
     catalog_env: Env,
+    reporter: crate::bug_report::Reporter,
 ) {
     let send = |event: LaneEvent| {
         let _ = ui.send(UiEvent::Lane(event));
@@ -849,10 +887,16 @@ fn link_thread(
                 let started = start_call(&link, "ultron.session-control", "bash", json!([command, exclude]));
                 let ui = ui.clone();
                 std::thread::spawn(move || {
-                    let result = started
-                        .and_then(|(connection, request)| connection.wait(&request).map_err(|e| e.to_string()))
-                        .map(|value| bash_result(&value.unwrap_or_default()));
-                    let _ = ui.send(UiEvent::Lane(LaneEvent::BashDone(result)));
+                    let result =
+                        started.and_then(|(connection, request)| connection.wait(&request).map_err(|e| e.to_string()));
+                    // An extension's `user_bash` failed it closed: its error is already shown, nothing else is.
+                    let event = match result {
+                        Ok(Some(value)) if value.get(session_core::core::USER_BASH_FAILED).is_some() => {
+                            LaneEvent::BashFailedClosed
+                        }
+                        result => LaneEvent::BashDone(result.map(|value| bash_result(&value.unwrap_or_default()))),
+                    };
+                    let _ = ui.send(UiEvent::Lane(event));
                 });
             }
             Command::Compact(instructions) => {
@@ -1169,6 +1213,35 @@ fn link_thread(
                 });
             }
             Command::Share(cancel) => share_session(&link, &send, &cancel),
+            Command::BugSummary(hint) => {
+                let op = Op::BugSummary { hint };
+                let started = start_call(&link, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]));
+                let ui = ui.clone();
+                std::thread::spawn(move || {
+                    let result = started
+                        .and_then(|(connection, request)| connection.wait(&request).map_err(crate::link::fail))
+                        .map(|text| text.and_then(|t| t.as_str().map(str::to_string)).unwrap_or_default())
+                        .map_err(|e| {
+                            e.strip_prefix("session_operation_failed: ")
+                                .map_or(e.clone(), str::to_string)
+                        });
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::BugSummary(result)));
+                });
+            }
+            Command::AbortBugSummary => {
+                let _ = link.op(&Op::AbortBugSummary);
+            }
+            Command::BugReport(request) => {
+                let answer_ui = ui.clone();
+                let answer: Arc<dyn Fn(interactive::lane::BugReportOutcome) + Send + Sync> = Arc::new(move |outcome| {
+                    let _ = answer_ui.send(UiEvent::Lane(LaneEvent::BugReport(outcome)));
+                });
+                reporter.deliver(&link, &catalog_env, request, session_op_runner(&link), answer);
+            }
+            Command::BugReportExport => {
+                let outcome = reporter.export_last(&catalog_env, &|op| link.op(&op));
+                send(LaneEvent::BugReport(outcome));
+            }
             Command::SaveCredential(provider, credential) => {
                 let auth = config::paths::AgentPaths::new(settings_path.1.clone()).auth();
                 let name = interactive::selectors::provider_name(&provider);
@@ -1801,6 +1874,18 @@ fn session_catalog(link: &Link, env: &Env) -> Vec<ModelInfo> {
 
 /// Start a long call of the attached session (one the worker runs on its own thread, so later calls such as
 /// `abortBash` are not queued behind it) without waiting for it.
+/// An operation of the attached session that any thread can run (the link stays with its thread).
+fn session_op_runner(link: &Link) -> Arc<dyn Fn(Op) -> Result<Option<Value>, String> + Send + Sync> {
+    let connection = link.connection();
+    Arc::new(move |op: Op| {
+        let session = connection.session_target().map_err(|e| e.to_string())?;
+        let request = connection
+            .start(session, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]))
+            .map_err(|e| e.to_string())?;
+        connection.wait(&request).map_err(crate::link::fail)
+    })
+}
+
 fn start_call(
     link: &Link,
     service: &str,
@@ -2101,12 +2186,25 @@ fn run_tui(
     let server_id = link.connection().server_id.clone();
     let no_session = parsed.no_session;
     let signalled = Arc::new(std::sync::atomic::AtomicI32::new(0));
+    let bug_cancel: Arc<std::sync::atomic::AtomicBool> = Arc::default();
     let link_worker = {
         let ui = ui_tx.clone();
         let settings_path = (env.cwd.clone(), env.agent_dir());
         let signalled = signalled.clone();
         let catalog_env = env.clone();
-        std::thread::spawn(move || link_thread(link, command_rx, ui, no_session, settings_path, signalled, catalog_env))
+        let reporter = crate::bug_report::Reporter::new(bug_cancel.clone());
+        std::thread::spawn(move || {
+            link_thread(
+                link,
+                command_rx,
+                ui,
+                no_session,
+                settings_path,
+                signalled,
+                catalog_env,
+                reporter,
+            )
+        })
     };
     let client = DaemonLane {
         commands: command_tx.clone(),
@@ -2114,6 +2212,7 @@ fn run_tui(
         ui: ui_tx.clone(),
         login: Arc::default(),
         share_cancel: Arc::default(),
+        bug_cancel: bug_cancel.clone(),
     };
     let model = model.map_or_else(
         || ModelInfo {

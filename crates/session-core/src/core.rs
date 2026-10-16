@@ -20,7 +20,6 @@ use crate::view::{self, message_text};
 use crate::{ModelFlags, RunEnv, naming, pi_view};
 use agent::{AgentEvent, StreamFn};
 use ai::{AbortSignal, AssistantMessage, Message, Model, SimpleStreamOptions, StreamOptions};
-use kernel::HostHandler;
 use serde_json::{Map, Value, json};
 use session_file::SessionManager;
 use session_journal::repo::Metadata;
@@ -122,11 +121,28 @@ pub enum Op {
     SetAutoCompaction(bool),
     SetAutoRetry(bool),
     AbortRetry,
+    /// A user's own command (RPC `bash`, the TUI's `!`/`!!`): the extensions' `user_bash` first, then the shell.
+    /// `id` tags its streamed output (`bash_execution_update`), as AgentSession's `executeBash` `options.id`.
     Bash {
         command: String,
         exclude: bool,
+        id: Option<String>,
     },
     AbortBash,
+    /// `/bug`'s summary written by the session's model (AgentSession `summarizeForBugReport`): the report text.
+    BugSummary {
+        hint: Option<String>,
+    },
+    /// Cancel the bug report summary in progress (its loader's Esc).
+    AbortBugSummary,
+    /// What a shared or reported session carries besides its entries (session-share.ts
+    /// `createShareTrailingEntries`): `{ systemPrompt, tools: [{ name, description, parameters }] }`.
+    ShareContext,
+    /// `sessionManager.appendCustomEntry(customType, data)` (`/bug` records its report): after the run in progress.
+    AppendCustom {
+        custom_type: String,
+        data: Value,
+    },
     Stats,
     ForkMessages,
     Entries {
@@ -304,8 +320,18 @@ impl Op {
             "bash" => Op::Bash {
                 command: need("command")?,
                 exclude: value["exclude"] == true,
+                id: value["id"].as_str().map(str::to_string),
             },
             "abortBash" => Op::AbortBash,
+            "bugSummary" => Op::BugSummary {
+                hint: value["hint"].as_str().map(str::to_string),
+            },
+            "abortBugSummary" => Op::AbortBugSummary,
+            "shareContext" => Op::ShareContext,
+            "appendCustom" => Op::AppendCustom {
+                custom_type: need("customType")?,
+                data: value["data"].clone(),
+            },
             "stats" => Op::Stats,
             "forkMessages" => Op::ForkMessages,
             "entries" => Op::Entries { since: text("since") },
@@ -415,8 +441,20 @@ impl Op {
             Op::SetAutoCompaction(enabled) => json!({"op": "setAutoCompaction", "enabled": enabled}),
             Op::SetAutoRetry(enabled) => json!({"op": "setAutoRetry", "enabled": enabled}),
             Op::AbortRetry => json!({"op": "abortRetry"}),
-            Op::Bash { command, exclude } => json!({"op": "bash", "command": command, "exclude": exclude}),
+            Op::Bash { command, exclude, id } => {
+                let mut op = json!({"op": "bash", "command": command, "exclude": exclude});
+                if let Some(id) = id {
+                    op["id"] = json!(id);
+                }
+                op
+            }
             Op::AbortBash => json!({"op": "abortBash"}),
+            Op::BugSummary { hint } => json!({"op": "bugSummary", "hint": hint}),
+            Op::AbortBugSummary => json!({"op": "abortBugSummary"}),
+            Op::ShareContext => json!({"op": "shareContext"}),
+            Op::AppendCustom { custom_type, data } => {
+                json!({"op": "appendCustom", "customType": custom_type, "data": data})
+            }
             Op::Stats => json!({"op": "stats"}),
             Op::ForkMessages => json!({"op": "forkMessages"}),
             Op::Entries { since } => json!({"op": "entries", "since": since}),
@@ -538,12 +576,20 @@ pub enum Input {
     /// The model's title for the session arrived.
     Title(Box<AssistantMessage>),
     RunEnd,
+    /// A user's command ended: its `BashResult` (camelCase, as recorded), or the error that failed it.
     BashDone {
         command: String,
         exclude: bool,
-        result: Result<Value, String>,
+        result: Result<BashOutcome, String>,
         reply: Reply,
     },
+    /// A chunk of a running user command's output (`bash_execution_update`).
+    BashOutput {
+        id: Option<String>,
+        delta: String,
+    },
+    /// An extension handler failed (the router's error listeners: `extension_error`).
+    ExtensionError(Value),
     /// Stop the lane; the sender is told when done.
     Close(std::sync::mpsc::Sender<()>),
     /// Stop the lane for a successor worker (its shell jobs keep running for it); the sender is told when done.
@@ -560,6 +606,15 @@ pub enum Input {
     Woken,
     /// An extension's request that needs the actor (crate::extension_host).
     Extension(crate::extension_host::Call),
+}
+
+/// How a user's command ended (crate::user_bash).
+pub enum BashOutcome {
+    /// It ran, or an extension's `user_bash` answered it: the `BashResult` to record and answer with.
+    Ran(Value),
+    /// An extension's `user_bash` failed it (TypeScript fails closed): nothing is recorded; the message is the error
+    /// the extension runner reported.
+    FailedClosed(String),
 }
 
 /// Where lane-watch events go.
@@ -688,6 +743,8 @@ pub struct Core {
     auto_compaction: bool,
     auto_retry: bool,
     bash: Option<kernel::Signal>,
+    /// The bug report summary in progress.
+    bug_summary: Option<AbortSignal>,
     /// How many of the session's entries were announced (`entry_added`).
     announced: usize,
     /// How many of the session's usage rows were announced (`usage`).
@@ -729,7 +786,9 @@ pub struct Core {
 mod auto_compact;
 mod compacting;
 mod extension_ops;
+mod user_bash;
 pub use extension_ops::before_fork;
+pub use user_bash::USER_BASH_FAILED;
 mod agent_ops;
 mod context_children;
 mod context_lane;
@@ -997,6 +1056,7 @@ impl Core {
             auto_compaction,
             auto_retry: true,
             bash: None,
+            bug_summary: None,
             announced_usage,
             announced,
             taken: Vec::new(),
@@ -1091,6 +1151,8 @@ impl Core {
                     result,
                     reply,
                 } => self.bash_done(command, exclude, result, reply),
+                Input::BashOutput { id, delta } => self.emit_bash_output(id, delta),
+                Input::ExtensionError(error) => self.emit_extension_error(error),
                 Input::Close(done) => {
                     self.close();
                     let _ = done.send(());
@@ -1129,6 +1191,29 @@ impl Core {
     fn name_changed(&mut self) {
         let name = lock_session(&self.session).name();
         self.emit(json!({"type": "session_name", "lane": LANE, "name": name}));
+    }
+
+    /// AgentSession `setSessionName`: `session_info_changed` to clients (Pi's RPC event) and, without waiting, to
+    /// the extensions.
+    fn session_info_changed(&mut self) {
+        let name = lock_session(&self.session).name();
+        let mut fields = vec![("type", json!("session_info_changed")), ("lane", json!(LANE))];
+        if let Some(name) = &name {
+            fields.push(("name", json!(name)));
+        }
+        self.emit(event(fields));
+        if let Some(host) = self
+            .extension_host()
+            .filter(|h| h.router().has_handlers("session_info_changed"))
+        {
+            let mut event = json!({"type": "session_info_changed"});
+            if let Some(name) = name {
+                event["name"] = json!(name);
+            }
+            std::thread::spawn(move || {
+                host.router().emit(&event);
+            });
+        }
     }
 
     fn api_key(&self) -> Option<String> {
@@ -1606,29 +1691,15 @@ impl Core {
         self.emit_agent_end();
     }
 
-    fn bash_done(&mut self, command: String, exclude: bool, result: Result<Value, String>, reply: Reply) {
+    fn bash_done(&mut self, command: String, exclude: bool, result: Result<BashOutcome, String>, reply: Reply) {
         self.bash = None;
         let result = match result {
-            Ok(result) => result,
+            Ok(BashOutcome::Ran(result)) => result,
+            // An answer, not a failure of the call: the client tells it from a command that could not run.
+            Ok(BashOutcome::FailedClosed(error)) => return reply(Ok(Some(json!({ USER_BASH_FAILED: error })))),
             Err(e) => return reply(Err(e)),
         };
-        let mut message = Map::new();
-        message.insert("role".into(), "bashExecution".into());
-        message.insert("command".into(), command.into());
-        message.insert("output".into(), result["output"].clone());
-        if !result["exit_code"].is_null() {
-            message.insert("exitCode".into(), result["exit_code"].clone());
-        }
-        message.insert("cancelled".into(), result["cancelled"].clone());
-        message.insert("truncated".into(), result["truncated"].clone());
-        if let Some(path) = result["full_output_path"].as_str() {
-            message.insert("fullOutputPath".into(), path.into());
-        }
-        message.insert("timestamp".into(), now_ms().into());
-        if exclude {
-            message.insert("excludeFromContext".into(), true.into());
-        }
-        let message = Value::Object(message);
+        let message = user_bash::bash_message(&command, &result, exclude, now_ms());
         self.emit(event(vec![
             ("type", json!("message_start")),
             ("lane", json!(LANE)),
@@ -1642,19 +1713,28 @@ impl Core {
         if let Err(error) = self.append(message) {
             return reply(Err(error));
         }
-        let mut data = Map::new();
-        for (from, to) in [
-            ("output", "output"),
-            ("exit_code", "exitCode"),
-            ("cancelled", "cancelled"),
-            ("truncated", "truncated"),
-            ("full_output_path", "fullOutputPath"),
-        ] {
-            if !result[from].is_null() {
-                data.insert(to.into(), result[from].clone());
-            }
+        reply(Ok(Some(result)));
+    }
+
+    /// AgentSession's `bash_execution_update`: a chunk of the running command's output, under its id.
+    fn emit_bash_output(&mut self, id: Option<String>, delta: String) {
+        let mut fields = vec![("type", json!("bash_execution_update")), ("lane", json!(LANE))];
+        if let Some(id) = id {
+            fields.push(("id", json!(id)));
         }
-        reply(Ok(Some(Value::Object(data))));
+        fields.push(("delta", json!(delta)));
+        self.emit(event(fields));
+    }
+
+    /// An extension handler failed (rpc-mode.ts `onError`, interactive-mode.ts `showExtensionError`).
+    fn emit_extension_error(&mut self, error: Value) {
+        self.emit(event(vec![
+            ("type", json!("extension_error")),
+            ("lane", json!(LANE)),
+            ("extensionPath", error["extensionPath"].clone()),
+            ("event", error["event"].clone()),
+            ("error", error["error"].clone()),
+        ]));
     }
 
     /// Stop the lane (kernels, subagents, extensions).
@@ -1726,6 +1806,24 @@ impl Core {
                 }
             }
             bash @ Op::Bash { .. } => self.bash(bash, reply),
+            Op::AppendCustom { custom_type, data } => {
+                self.extension_call(crate::extension_host::Call::AppendCustom { custom_type, data });
+                reply(Ok(None));
+            }
+            Op::BugSummary { hint } => {
+                let summarizer = self.summarizer();
+                let messages = view::messages(&self.pi());
+                let retry = self.summary_retry();
+                let signal = AbortSignal::new();
+                self.bug_summary = Some(signal.clone());
+                std::thread::spawn(move || {
+                    reply(
+                        summarizer
+                            .bug_report(&messages, hint.as_deref(), retry, &signal)
+                            .map(|text| Some(json!(text))),
+                    )
+                });
+            }
             // AgentSession `compact`: `await this.abort()` first, then compact once the session is idle.
             compact @ Op::Compact { .. } if self.run.is_some() => {
                 self.abort();
@@ -1770,6 +1868,8 @@ impl Core {
             Op::Prompt { .. }
             | Op::PromptAndWait { .. }
             | Op::Bash { .. }
+            | Op::BugSummary { .. }
+            | Op::AppendCustom { .. }
             | Op::Recover
             | Op::ExtensionCommand { .. }
             | Op::ExtensionCompletions { .. }
@@ -1899,6 +1999,19 @@ impl Core {
                 }
                 Ok(None)
             }
+            Op::AbortBugSummary => {
+                if let Some(signal) = self.bug_summary.take() {
+                    signal.abort();
+                }
+                Ok(None)
+            }
+            Op::ShareContext => {
+                let tool = agent::AgentTool::tool(&*self.lane.tool);
+                Ok(Some(json!({
+                    "systemPrompt": self.runtime.system.current(),
+                    "tools": [{"name": tool.name, "description": tool.description, "parameters": tool.parameters}],
+                })))
+            }
             Op::Stats => Ok(Some(view::stats(
                 &self.pi(),
                 Some(&self.session_file()),
@@ -1925,6 +2038,7 @@ impl Core {
             Op::SetName { name } => {
                 names::set_user_name(&mut lock_session(&self.session), Some(&name))?;
                 self.name_changed();
+                self.session_info_changed();
                 Ok(None)
             }
             Op::Messages => Ok(Some(Value::Array(view::messages(&self.pi())))),
@@ -2512,15 +2626,29 @@ impl Core {
     }
 
     fn bash(&mut self, op: Op, reply: Reply) {
-        let Op::Bash { command, exclude } = op else { return };
+        let Op::Bash { command, exclude, id } = op else { return };
         let signal = kernel::Signal::new();
         self.bash = Some(signal.clone());
         let host = self.lane.host.clone();
+        let extensions = self.extension_host();
+        let cwd = self.env.cwd.display().to_string();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let mut payload = Map::new();
-            payload.insert("command".into(), command.clone().into());
-            let result = host.handle("bash", payload, &signal);
+            // Off the actor: a handler may ask the session for anything while it decides.
+            let result = user_bash::run(
+                extensions.as_deref(),
+                &host,
+                &command,
+                exclude,
+                &cwd,
+                &signal,
+                &mut |delta| {
+                    let _ = tx.send(Input::BashOutput {
+                        id: id.clone(),
+                        delta: delta.to_string(),
+                    });
+                },
+            );
             let _ = tx.send(Input::BashDone {
                 command,
                 exclude,

@@ -69,6 +69,19 @@ pub enum LaneEvent {
         attempt: Value,
         final_error: Option<Value>,
     },
+    /// A chunk of a user command's output (AgentSession `bash_execution_update`), under the command's id.
+    BashOutput {
+        id: Option<String>,
+        delta: Value,
+    },
+    /// The session was renamed (AgentSession `session_info_changed`).
+    SessionInfoChanged(Option<String>),
+    /// An extension handler failed (rpc-mode.ts `extension_error`).
+    ExtensionError {
+        extension_path: Value,
+        event: Value,
+        error: Value,
+    },
 }
 
 impl LaneEvent {
@@ -142,6 +155,16 @@ impl LaneEvent {
                 max_attempts: event["maxAttempts"].clone(),
                 delay_ms: event["delayMs"].clone(),
                 error: event["errorMessage"].clone(),
+            },
+            "bash_execution_update" => LaneEvent::BashOutput {
+                id: event["id"].as_str().map(str::to_string),
+                delta: event["delta"].clone(),
+            },
+            "session_info_changed" => LaneEvent::SessionInfoChanged(event["name"].as_str().map(str::to_string)),
+            "extension_error" => LaneEvent::ExtensionError {
+                extension_path: event["extensionPath"].clone(),
+                event: event["event"].clone(),
+                error: event["error"].clone(),
             },
             "retry_end" => LaneEvent::AutoRetryEnd {
                 success: event["success"] == true,
@@ -281,6 +304,28 @@ impl RpcEventTranslator {
                 }
                 vec![event]
             }
+            LaneEvent::BashOutput { id, delta } => {
+                let mut event = json!({"type": "bash_execution_update"});
+                if let Some(id) = id {
+                    event["id"] = json!(id);
+                }
+                event["delta"] = delta;
+                vec![event]
+            }
+            LaneEvent::SessionInfoChanged(name) => {
+                let mut event = json!({"type": "session_info_changed"});
+                if let Some(name) = name {
+                    event["name"] = json!(name);
+                }
+                vec![event]
+            }
+            LaneEvent::ExtensionError {
+                extension_path,
+                event,
+                error,
+            } => vec![
+                json!({"type": "extension_error", "extensionPath": extension_path, "event": event, "error": error}),
+            ],
         }
     }
 

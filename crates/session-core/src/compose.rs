@@ -1029,6 +1029,8 @@ impl Stack {
             Arc::new(crate::lane::process_transport()),
             self.sessions_dir.join("rlm-context").join(&self.session_id),
         )
+        // A frame naming another model calls it as a lane of that model would (crate::frame_models).
+        .with_models(crate::frame_models::resolver(self.config.clone()))
         .with_session(self.frames.clone(), lane);
         // `rlm.map` and the frame-model defaults wrap the frames.
         let text = |v: &Value| v.as_str().map(str::to_string);

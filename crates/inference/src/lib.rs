@@ -11,6 +11,7 @@
 //! `budget.depth > 1` runs its conversation on a lane of its own with the `rlm` cell as its only tool.
 
 mod map;
+pub mod payload;
 pub mod schema;
 mod session;
 mod trace;
@@ -404,12 +405,20 @@ pub(crate) struct Options {
     prefix: Vec<View>,
 }
 
+/// Resolves a `provider/model` a frame names (`model=`, `rlm.frameModel`) to the model and the key its requests
+/// carry, as the session resolves a lane's model; an error refuses the frame.
+pub type ModelResolver = Arc<dyn Fn(&str) -> Result<(Model, Option<String>), String> + Send + Sync>;
+
 /// The model frames call and how: the session's model and key over this handler's transport.
 #[derive(Clone)]
 pub(crate) struct Engine {
     model: Model,
     api_key: Option<String>,
     transport: Arc<dyn Transport>,
+    /// The provider environment requests carry (`options.env`); none reads the process environment.
+    env: Option<ai::env::ProviderEnv>,
+    /// Other models a frame may name; none: only the session's own.
+    models: Option<ModelResolver>,
 }
 
 impl Engine {
@@ -417,15 +426,44 @@ impl Engine {
         format!("{}/{}", self.model.provider, self.model.id)
     }
 
-    fn options(&self, max_tokens: u64, thinking: Option<&str>) -> SimpleStreamOptions {
+    /// The engine of a frame that names `model`: this one for the session's own model (or none), else the
+    /// resolver's model over the same transport and environment.
+    fn for_model(&self, model: Option<&str>) -> Result<Engine, String> {
+        let Some(model) = model.filter(|model| *model != self.own_model()) else {
+            return Ok(self.clone());
+        };
+        let refused = || format!("Admission refused: model {model} is not available to this host");
+        let resolver = self.models.as_ref().ok_or_else(refused)?;
+        let (resolved, api_key) = resolver(model).map_err(|_| refused())?;
+        Ok(Engine {
+            model: resolved,
+            api_key,
+            ..self.clone()
+        })
+    }
+
+    /// A request's options: the key, the provider environment and reasoning; no output limit of its own, so the
+    /// provider's default goes out capped at `tranche` (with the contract for a schema-enforcing provider) by the
+    /// payload hook, as inference.ts `beforePayload` does.
+    fn options(&self, tranche: u64, thinking: Option<&str>, contract: Option<&Value>) -> SimpleStreamOptions {
         let mut options = SimpleStreamOptions::default();
-        options.base.api_key = self.api_key.clone();
-        options.base.max_tokens = Some(max_tokens);
+        self.prepare(&mut options, tranche, contract);
         options.reasoning = thinking.filter(|_| self.model.reasoning).map(str::to_string);
         options
     }
 
-    /// One provider stream through crates/ai; `None` when `signal` aborts or the deadline passes first.
+    /// Fill a request's key, provider environment and payload hook.
+    fn prepare(&self, options: &mut SimpleStreamOptions, tranche: u64, contract: Option<&Value>) {
+        options.base.api_key = self.api_key.clone();
+        options.base.max_tokens = None;
+        if self.env.is_some() {
+            options.base.env = self.env.clone();
+        }
+        options.base.on_payload = Some(payload::hook(contract.cloned(), tranche));
+    }
+
+    /// One provider stream through crates/ai's API dispatch (every API the session streams); `None` when `signal`
+    /// aborts or the deadline passes first.
     async fn stream(
         &self,
         context: &ai::TranscriptContext,
@@ -435,26 +473,12 @@ impl Engine {
         signal: &Signal,
     ) -> Result<Option<AssistantMessage>, String> {
         let transport = &*self.transport;
-        let model = &self.model;
-        // models.json headers (and `authHeader`'s bearer) go out under the frame's own.
-        let prepared = ai::model_registry::request_options(model, options)?;
+        // A stored OAuth credential may name the request's base URL and headers; models.json headers (and
+        // `authHeader`'s bearer) go out under the frame's own, as the session's provider sends them.
+        let (routed, prepared) = ai::model_registry::prepare_request(&self.model, options)?;
+        let model = routed.as_ref().unwrap_or(&self.model);
         let options = prepared.as_ref().unwrap_or(options);
-        let stream = async {
-            match model.api.as_str() {
-                "openai-completions" => {
-                    ai::openai_completions::stream_simple(model, context, options, transport, sink).await
-                }
-                "openai-responses" => {
-                    ai::openai_responses::stream_simple(model, context, options, transport, sink).await
-                }
-                "anthropic-messages" => ai::anthropic::stream_simple(model, context, options, transport, sink).await,
-                "claude-subscription" => Ok(ai::claude_subscription::fallback::stream_simple(
-                    model, context, options, transport, sink,
-                )
-                .await),
-                other => Err(format!("frames cannot call {other} models in this host yet")),
-            }
-        };
+        let stream = ai::dispatch::stream_simple(model, context, options, transport, sink);
         // The request ends at the deadline or as soon as the frame is cancelled (the root turn's abort cancels
         // every in-flight frame); either way nothing is charged.
         let mut stream = std::pin::pin!(stream);
@@ -476,8 +500,8 @@ impl Engine {
         &self,
         system: &str,
         history: &[Message],
-        max_tokens: u64,
-        thinking: Option<&str>,
+        tranche: u64,
+        frame: &Options,
         deadline: Instant,
         signal: &Signal,
     ) -> Result<Option<AssistantMessage>, String> {
@@ -487,7 +511,7 @@ impl Engine {
         )];
         messages.extend(history.iter().cloned());
         let context = ai::TranscriptContext { messages };
-        let options = self.options(max_tokens, thinking);
+        let options = self.options(tranche, frame.thinking.as_deref(), frame.contract.as_ref());
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -523,6 +547,8 @@ impl Inference {
                 model,
                 api_key,
                 transport,
+                env: None,
+                models: None,
             },
             context_dir: context_dir.into(),
             session: FrameSession::new(Arc::new(MemoryTraceStore::default())),
@@ -534,6 +560,19 @@ impl Inference {
     pub fn with_session(mut self, session: Arc<FrameSession>, lane: &str) -> Self {
         self.session = session;
         self.lane = lane.to_string();
+        self
+    }
+
+    /// Frames may name other models (`model=`, `rlm.frameModel`): `models` resolves each to its model and key.
+    pub fn with_models(mut self, models: ModelResolver) -> Self {
+        self.engine.models = Some(models);
+        self
+    }
+
+    /// The provider environment frame requests carry (`options.env`: credentials, regions, endpoints) instead of
+    /// the process environment.
+    pub fn with_provider_env(mut self, env: ai::env::ProviderEnv) -> Self {
+        self.engine.env = Some(env);
         self
     }
 

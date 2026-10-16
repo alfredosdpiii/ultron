@@ -10,6 +10,7 @@ pub mod assets;
 pub mod auth;
 pub mod autoreview_cli;
 pub mod autoreview_toggle;
+pub mod bug_report;
 pub mod config_selector;
 pub mod experimental;
 pub mod export_html;

@@ -6,7 +6,9 @@ Registers:
   command    /hello            asks ui/select, then sets a status line and a panel
   shortcut   alt+h             notifies "Hello from a shortcut"
   events     session_before_switch (vetoes "resume"), tool_call (blocks "rm -rf"), input ("hi" -> "hello"),
-             session_start (status line), turn_start (exits when HELLO_CRASH_ON_TURN matches), ui_prompt_start / ui_prompt_end (recorded)
+             session_start (status line), turn_start (exits when HELLO_CRASH_ON_TURN matches), ui_prompt_start / ui_prompt_end (recorded),
+             user_bash (`!hello ...` is answered here, never run; a command with "rm -rf" fails closed; "bad-result"
+             answers an invalid result; anything else runs as usual), session_info_changed (the name "boom" fails)
   bus        "greetings"       messages are recorded and returned by info()
 """
 
@@ -107,6 +109,21 @@ def on_event(event):
         if str(event.get("turnIndex")) == os.environ.get("HELLO_CRASH_ON_TURN"):
             os._exit(4)
         return None
+    if kind == "user_bash":
+        command = event["command"]
+        if "rm -rf" in command:
+            raise HandlerError("hello refuses rm -rf")
+        if command == "bad-result":
+            return {}
+        if not command.startswith("hello"):
+            return None
+        how = "excluded" if event.get("excludeFromContext") else "included"
+        output = "hello ran %s (%s) in %s\n" % (json.dumps(command, ensure_ascii=False), how, event.get("cwd"))
+        return {"result": {"output": output, "exitCode": 0, "cancelled": False, "truncated": False}}
+    if kind == "session_info_changed":
+        if event.get("name") == "boom":
+            raise HandlerError("hello cannot be named boom")
+        return None
     if kind in ("ui_prompt_start", "ui_prompt_end"):
         _seen["prompts"].append([kind, event.get("kind"), event.get("title")])
         return None
@@ -145,6 +162,8 @@ def handle_request(message):
                         "turn_start",
                         "ui_prompt_start",
                         "ui_prompt_end",
+                        "user_bash",
+                        "session_info_changed",
                     ],
                     "functions": [
                         {

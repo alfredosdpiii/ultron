@@ -24,6 +24,7 @@ pub mod extension_file_hooks;
 pub mod extension_host;
 pub mod extension_providers;
 pub mod extension_tools;
+pub mod frame_models;
 pub mod frames;
 pub mod guard_log;
 pub mod inspect;

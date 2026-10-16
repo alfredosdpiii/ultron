@@ -102,6 +102,8 @@ enum Kind {
 struct Item {
     kind: Kind,
     cache: Option<(usize, Vec<String>)>,
+    /// An animated component's id while it still changes ([`ChatView::append_live_notice`]): never settled.
+    live: Option<u64>,
 }
 
 /// The rendering context components need.
@@ -214,7 +216,11 @@ impl ChatView {
     }
 
     fn push(&mut self, kind: Kind) -> usize {
-        self.items.push(Item { kind, cache: None });
+        self.items.push(Item {
+            kind,
+            cache: None,
+            live: None,
+        });
         self.items.len() - 1
     }
 
@@ -343,9 +349,32 @@ impl ChatView {
     }
 
     /// A client-side notice (command output) after the transcript so far.
+    /// `chatContainer.addChild(new Text(text, 1, 0))`, without a spacer.
+    pub fn append_text(&mut self, text: &str) {
+        self.push(Kind::Text(text.to_string()));
+    }
+
     pub fn append_notice_text(&mut self, text: &str) {
         self.push(Kind::Spacer);
         self.push(Kind::Text(text.to_string()));
+    }
+
+    /// [`ChatView::append_notice`] for a component that animates: it renders again on every
+    /// [`ChatView::refresh_live`] with `id`, and is never written to the settled head until it ends.
+    pub fn append_live_notice(&mut self, id: u64, component: Box<dyn Component>) {
+        self.push(Kind::Spacer);
+        let index = self.push(Kind::Component(component));
+        self.items[index].live = Some(id);
+    }
+
+    /// The animated component `id` changed (`done`: for the last time).
+    pub fn refresh_live(&mut self, id: u64, done: bool) {
+        for item in self.items.iter_mut().filter(|item| item.live == Some(id)) {
+            item.cache = None;
+            if done {
+                item.live = None;
+            }
+        }
     }
 
     pub fn append_notice(&mut self, component: Box<dyn Component>) {
@@ -466,8 +495,9 @@ impl ChatView {
     pub fn settled_lines(&self) -> usize {
         let mut lines = 0;
         for (i, item) in self.items.iter().enumerate() {
-            let live =
-                self.streaming == Some(i) || matches!(&item.kind, Kind::Tool(t) if t.result.is_none() || t.partial);
+            let live = self.streaming == Some(i)
+                || item.live.is_some()
+                || matches!(&item.kind, Kind::Tool(t) if t.result.is_none() || t.partial);
             let Some((_, cached)) = item.cache.as_ref().filter(|_| !live) else {
                 break;
             };

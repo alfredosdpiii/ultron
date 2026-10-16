@@ -7,6 +7,7 @@
 //! `ai` types and returns the provider's [`AssistantMessage`]; this crate does no I/O.
 
 mod branch;
+mod bug_summary;
 
 use std::collections::HashSet;
 
@@ -23,6 +24,7 @@ pub use branch::{
     BRANCH_SUMMARY_PREAMBLE, BranchPreparation, BranchSummary, BranchSummaryError, BranchSummaryOptions,
     collect_entries_for_branch_summary, generate_branch_summary, prepare_branch_entries,
 };
+pub use bug_summary::{BUG_SUMMARY_INSTRUCTIONS, BUG_SUMMARY_SYSTEM_PROMPT, bug_summary_request, bug_summary_text};
 
 // ============================================================================
 // Shared utilities (utils.ts)
