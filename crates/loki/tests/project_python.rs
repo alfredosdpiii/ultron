@@ -3,15 +3,17 @@
 //! `python3`) of the session's PATH counts only when it belongs to an environment; else `.venv`/`venv` in the
 //! session directory. Fake interpreters are scripts on an injected PATH.
 
+#[path = "../../cli/tests/executable_support/mod.rs"]
+mod executable_support;
+
 use loki::project::find_project_python;
 use std::collections::HashMap;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 fn executable(path: &Path, text: &str) -> String {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // Executed right away: written without a write descriptor in this process (ETXTBSY under parallel tests).
+    executable_support::install(path, text);
     path.display().to_string()
 }
 

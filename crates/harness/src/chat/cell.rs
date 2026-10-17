@@ -271,11 +271,6 @@ impl CellProgress {
         }
     }
 
-    /// The output retained so far.
-    pub fn retained_output(&self) -> String {
-        lock(&self.retained).0.text.clone()
-    }
-
     /// Stop publishing (later output is kept but not committed) and return what was retained.
     fn stop(self) -> (Retained, Option<Value>) {
         let throttle = lock(&self.throttle).take();

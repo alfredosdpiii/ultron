@@ -21,6 +21,11 @@ unicode-segmentation = "=1.13.3"
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 syntect = { version = "=5.3.0", default-features = false, features = ["default-syntaxes", "regex-fancy", "yaml-load"] }
 
+# `enableWindowsVTInput`: the console input mode, through crossterm_winapi's safe wrapper (this workspace forbids
+# unsafe).
+[target.'cfg(windows)'.dependencies]
+crossterm_winapi = "=0.9.1"
+
 [dev-dependencies]
 serde_json = "=1.0.151"
 

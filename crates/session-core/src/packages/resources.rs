@@ -5,7 +5,7 @@
 //! Directory entries are visited in name order (TypeScript takes the operating system's `readdir` order).
 
 use super::glob::minimatch;
-use super::ignore::Ignore;
+use resources::ignore::{Ignore, add_ignore_rules};
 use resources::paths::{basename, dirname, join, relative, resolve};
 use serde_json::Value;
 use std::path::Path;
@@ -77,49 +77,6 @@ fn entries(dir: &str) -> Vec<Entry> {
 
 fn exists(path: &str) -> bool {
     Path::new(path).exists()
-}
-
-/// `prefixIgnorePattern`.
-fn prefix_ignore_pattern(line: &str, prefix: &str) -> Option<String> {
-    let trimmed = line.trim();
-    if trimmed.is_empty() || (trimmed.starts_with('#') && !trimmed.starts_with("\\#")) {
-        return None;
-    }
-    let (negated, mut pattern) = if let Some(rest) = line.strip_prefix('!') {
-        (true, rest)
-    } else if line.starts_with("\\!") {
-        (false, &line[1..])
-    } else {
-        (false, line)
-    };
-    if let Some(rest) = pattern.strip_prefix('/') {
-        pattern = rest;
-    }
-    let prefixed = format!("{prefix}{pattern}");
-    Some(if negated { format!("!{prefixed}") } else { prefixed })
-}
-
-/// `addIgnoreRules`: `.gitignore`, `.ignore` and `.fdignore` of `dir`, prefixed with its path under `root`.
-fn add_ignore_rules(ig: &mut Ignore, dir: &str, root: &str) {
-    let rel = relative(root, dir);
-    let prefix = if rel.is_empty() {
-        String::new()
-    } else {
-        format!("{rel}/")
-    };
-    for name in [".gitignore", ".ignore", ".fdignore"] {
-        let Ok(content) = std::fs::read_to_string(join(dir, name)) else {
-            continue;
-        };
-        let patterns: Vec<String> = content
-            .split('\n')
-            .map(|l| l.strip_suffix('\r').unwrap_or(l))
-            .filter_map(|line| prefix_ignore_pattern(line, &prefix))
-            .collect();
-        if !patterns.is_empty() {
-            ig.add(&patterns);
-        }
-    }
 }
 
 /// `collectFiles`.

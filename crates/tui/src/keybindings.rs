@@ -475,10 +475,6 @@ impl KeybindingsManager {
             .unwrap_or_default()
     }
 
-    pub fn get_definition(&self, keybinding: &str) -> Option<&KeybindingDefinition> {
-        self.definitions.iter().find(|d| d.id == keybinding)
-    }
-
     pub fn get_conflicts(&self) -> Vec<KeybindingConflict> {
         self.conflicts.clone()
     }

@@ -686,11 +686,6 @@ fn clean_output(text: &str) -> String {
         .collect()
 }
 
-/// `getTextOutput` (render-utils.ts) on a terminal without image support.
-pub fn tool_text_output(result: Option<&ToolResultView>) -> String {
-    tool_text_output_with(result, false)
-}
-
 /// `getTextOutput(result, showImages)`: the text blocks, then a line naming each image unless images are drawn
 /// inline (`getCapabilities().images && showImages`).
 pub fn tool_text_output_with(result: Option<&ToolResultView>, inline_images: bool) -> String {

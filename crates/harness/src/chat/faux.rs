@@ -283,10 +283,6 @@ impl Faux {
         lock(&self.state).responses = responses.into();
     }
 
-    pub fn append_responses(&self, responses: Vec<FauxStep>) {
-        lock(&self.state).responses.extend(responses);
-    }
-
     pub fn call_count(&self) -> usize {
         lock(&self.state).call_count
     }

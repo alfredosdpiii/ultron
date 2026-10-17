@@ -24,6 +24,31 @@ pub struct HttpRequest {
     pub body: String,
 }
 
+/// The bytes `request` puts on the wire: its body, encoded as its `content-encoding` header names (`zstd`: one
+/// zstd frame, as `zlib.zstdCompressSync` makes; ruzstd's fastest level, which any zstd decoder reads). Fake
+/// transports see the JSON body and the header; a real one sends this.
+pub fn wire_body(request: &HttpRequest) -> Vec<u8> {
+    let zstd = request.headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("content-encoding") && value.trim().eq_ignore_ascii_case("zstd")
+    });
+    if !zstd {
+        return request.body.clone().into_bytes();
+    }
+    ruzstd::encoding::compress_to_vec(request.body.as_bytes(), ruzstd::encoding::CompressionLevel::Fastest)
+}
+
+/// The body of a request received with `content_encoding` (a server's view of [`wire_body`]): `zstd` decoded, else
+/// as is.
+pub fn decode_wire_body(content_encoding: Option<&str>, bytes: &[u8]) -> Result<Vec<u8>, String> {
+    if !content_encoding.is_some_and(|e| e.trim().eq_ignore_ascii_case("zstd")) {
+        return Ok(bytes.to_vec());
+    }
+    let mut decoder = ruzstd::decoding::StreamingDecoder::new(bytes).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    std::io::Read::read_to_end(&mut decoder, &mut out).map_err(|e| e.to_string())?;
+    Ok(out)
+}
+
 /// A response body read chunk by chunk; `Ok(None)` is the end.
 pub trait Body: Send {
     fn next_chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, String>>;
@@ -737,7 +762,7 @@ impl Transport for ReqwestTransport {
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {
         Box::pin(async move {
             let method = reqwest::Method::from_bytes(request.method.as_bytes()).map_err(|e| e.to_string())?;
-            let mut builder = self.client.request(method, &request.url).body(request.body);
+            let mut builder = self.client.request(method, &request.url).body(wire_body(&request));
             for (name, value) in &request.headers {
                 builder = builder.header(name, value);
             }

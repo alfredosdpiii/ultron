@@ -394,6 +394,19 @@ pub const PARENT_TOKEN_ENV: &str = "ULTRON_PARENT_TOKEN";
 /// Runs `command` with bash in its own process group, stdout and stderr on one pipe. `on_text` gets each decoded,
 /// cleaned chunk and the raw byte count; `stop` is polled and kills the process group when it turns true.
 /// Returns the exit code (None when killed by a signal).
+/// `argv` as it runs inside a sandbox: every sandbox clears the environment to its allowlist (bwrap `--clearenv`,
+/// `env -i` under unshare and in a Docker container), so the command's own variables (a worktree subagent's
+/// `ULTRON_WORKTREE`, `ULTRON_PARENT_REPO`, `ULTRON_WORKTREE_BRANCH`, `PWD`) are set inside, by `env`.
+pub fn sandboxed_argv(argv: Vec<String>, env: &[(String, String)]) -> Vec<String> {
+    if env.is_empty() {
+        return argv;
+    }
+    std::iter::once("env".to_string())
+        .chain(env.iter().map(|(key, value)| format!("{key}={value}")))
+        .chain(argv)
+        .collect()
+}
+
 fn run_shell(
     shell: &shell::ShellConfig,
     command: &str,
@@ -404,7 +417,7 @@ fn run_shell(
 ) -> Result<Option<i32>, String> {
     let argv = shell.argv(command);
     let mut process = match launcher {
-        Some(launcher) => launcher.command(&argv, cwd)?,
+        Some(launcher) => launcher.command(&sandboxed_argv(argv, env), cwd)?,
         None => {
             let mut process = Command::new(&argv[0]);
             process.args(&argv[1..]).current_dir(cwd);
@@ -996,7 +1009,7 @@ fn spawn_keeper(
     argv.extend(shell.args.iter().cloned());
     let mut process = match launcher {
         // A job outlives the worker that started it (a successor adopts it): its sandbox is not tied to us.
-        Some(launcher) => launcher.command_persistent(&argv, cwd)?,
+        Some(launcher) => launcher.command_persistent(&sandboxed_argv(argv, env), cwd)?,
         None => {
             let mut process = Command::new(&argv[0]);
             process.args(&argv[1..]).current_dir(cwd);

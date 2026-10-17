@@ -785,12 +785,17 @@ fn link_thread(
             *name = session.name.clone();
             // `plugins.prepareSession` for the attached session (client-tui.ts): `/reload` rebuilds this selection.
             let connection = link.connection();
-            let _ = connection.call(
+            let prepared = connection.call(
                 connection.server_target(),
                 "pi.presentation-plugins",
                 "prepareSession",
                 json!([{"sessionId": session.session_id, "packagePaths": null}]),
             );
+            if let Ok(data) = prepared
+                && let Err(error) = apply_presentation_plugins(&data.unwrap_or(Value::Null))
+            {
+                send(LaneEvent::Status(format!("Error: {error}")));
+            }
             // The session's extensions may declare providers: their models join the catalog before the session
             // shows (a key pressed then already cycles over them).
             let mut models = catalog(&catalog_env);
@@ -1620,20 +1625,41 @@ fn write_debug_log(
     }
 }
 
-/// `/reload` (slash-commands-provider.ts): the server rebuilds this client's prepared presentation plugins, then the
-/// attached worker reloads its session plugins.
+/// `createPresentationFacetLoaders` (plugins/bundled.ts): the presentation-plugin data a server sent is an object
+/// whose `presentationFacetBundles`, when present, is a list of facet bundle artifacts. Bundles are JavaScript facets
+/// the TypeScript TUI loads; this client cannot run them, so data that selects any is refused (the Rust server never
+/// selects any: plugin packages are not built by it).
+pub fn apply_presentation_plugins(data: &Value) -> Result<(), String> {
+    let Some(object) = data.as_object() else {
+        return Err("Invalid presentation plugin data".into());
+    };
+    match object.get("presentationFacetBundles") {
+        None => Ok(()),
+        Some(Value::Array(bundles)) if bundles.is_empty() => Ok(()),
+        Some(Value::Array(bundles)) => Err(format!(
+            "{} presentation plugin bundle(s) cannot be loaded by this client",
+            bundles.len()
+        )),
+        Some(_) => Err("Invalid presentation plugin bundle list".into()),
+    }
+}
+
+/// `/reload` (slash-commands-provider.ts): the server rebuilds this client's prepared presentation plugins, the
+/// attached worker reloads its session plugins, then the client applies the rebuilt presentation data
+/// (`reloadPresentationPlugins(data)`, client-tui.ts:579-600).
 fn reload_plugins(link: &Link) -> Result<(), String> {
     let connection = link.connection();
-    connection
+    let data = connection
         .call(
             connection.server_target(),
             "pi.presentation-plugins",
             "reload",
             json!([]),
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .unwrap_or(Value::Null);
     session_call(link, "pi.session-plugins", "reload", json!([]))?;
-    Ok(())
+    apply_presentation_plugins(&data)
 }
 
 /// Save one setting the way the worker's `setSetting` does: dotted keys into their object, per-model thinking
@@ -2238,6 +2264,34 @@ pub fn user_keybindings(agent_dir: &std::path::Path, platform: tui::keybindings:
 }
 
 /// Run the TUI over the link `open_link` opens (its watch events go to the TUI) until the user exits.
+/// The TUI's debug outputs and Termux flag from `env` ([`interactive::run::terminal_debug`]): the redraw log goes to
+/// the agent directory (`logDirectory: agentDir`), dumps to `dump_dir`; the write-log file is named by local time.
+pub fn terminal_debug(
+    env: &Env,
+    dump_dir: &std::path::Path,
+) -> (Option<std::sync::Arc<tui::render_debug::RenderDebug>>, bool) {
+    let now = session_core::lane::now_ms();
+    let zone = crate::localtime::Zone::from_env((env.var)("TZ").as_deref());
+    let fields = zone.fields(now as f64);
+    let second = (now.div_euclid(1000) + zone.offset(now as f64)).rem_euclid(60) as u32;
+    let local = tui::render_debug::LocalStamp {
+        year: fields.year,
+        month: fields.month,
+        day: fields.day,
+        hour: fields.hour,
+        minute: fields.minute,
+        second,
+    };
+    interactive::run::terminal_debug(
+        &|name| (env.var)(name),
+        &env.agent_dir(),
+        dump_dir,
+        local,
+        std::process::id(),
+        Box::new(session_core::lane::now_ms),
+    )
+}
+
 fn run_tui(
     parsed: &Args,
     env: &Env,
@@ -2437,6 +2491,8 @@ fn run_tui(
         });
     }
     spawn_gated_input(ui_tx, app.input_gate());
+    let (debug, termux) = terminal_debug(env, std::path::Path::new(tui::render_debug::RENDER_DUMP_DIR));
+    app.set_terminal_debug(debug, termux);
     let result = run_stdout(&mut app, &ui_rx, &tui::terminal::size);
     // Its prompt history is written before the process can exit.
     drop(app);

@@ -265,25 +265,6 @@ impl Input {
             self.last_action = None;
         }
     }
-
-    /// Left click at column `x` of row `y` moves the cursor; true when handled.
-    pub fn handle_click(&mut self, x: usize, y: usize) -> bool {
-        if y != 0 {
-            return false;
-        }
-        let target = self.rendered_start_column + x.saturating_sub(2);
-        let mut col = 0;
-        self.cursor = self.value.len();
-        for (i, g) in self.value.grapheme_indices(true) {
-            col += visible_width(g);
-            if target < col {
-                self.cursor = i;
-                break;
-            }
-        }
-        self.last_action = None;
-        true
-    }
 }
 
 fn graphemes(text: &str) -> usize {

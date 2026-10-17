@@ -8,6 +8,7 @@
 //! loki.py does. Checks that are not ported refuse with a guard error.
 
 pub mod apply;
+pub mod auto_setup;
 pub mod config;
 pub mod daemon;
 pub mod elixir;

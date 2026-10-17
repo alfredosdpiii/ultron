@@ -12,6 +12,7 @@
 import { assertOffline } from "../../cli/fixtures/offline-guard.mjs";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
+import { zstdDecompressSync } from "node:zlib";
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -406,7 +407,8 @@ function stubFetch(queue, requests) {
 		new Headers(init.headers).forEach((value, key) => {
 			headers[key] = value.replaceAll(UA, "<pi-user-agent>");
 		});
-		const body = typeof init.body === "string" ? JSON.parse(init.body) : JSON.parse(new TextDecoder().decode(init.body));
+		// The SSE body goes out zstd-compressed (`Content-Encoding: zstd`); recorded decoded.
+		const body = typeof init.body === "string" ? JSON.parse(init.body) : JSON.parse(new TextDecoder().decode(zstdDecompressSync(init.body)));
 		requests.push({ url: String(url), method: init.method ?? "GET", headers: Object.fromEntries(Object.entries(headers).sort(([a], [b]) => (a < b ? -1 : 1))), body });
 		const canned = queue.shift();
 		if (!canned) throw new Error("unexpected request");
@@ -415,9 +417,6 @@ function stubFetch(queue, requests) {
 	};
 }
 
-const savedBuiltin = process.getBuiltinModule;
-// No zstd for the SSE body, as the Rust port sends it uncompressed.
-process.getBuiltinModule = (id) => (id === "node:zlib" ? undefined : savedBuiltin.call(process, id));
 api.resetOpenAICodexWebSocketDebugStats();
 const scenarios = [];
 for (const scenario of SCENARIOS) {
@@ -445,7 +444,6 @@ for (const scenario of SCENARIOS) {
 	api.resetOpenAICodexWebSocketDebugStats();
 	scenarios.push({ name: scenario.name, scripts: scenario.scripts, sse: scenario.sse ?? [], calls, stats, connections: normalize(current.connections) });
 }
-process.getBuiltinModule = savedBuiltin;
 server.close();
 assertOffline();
 // Diagnostics carry the JS stack; the Rust port has none.

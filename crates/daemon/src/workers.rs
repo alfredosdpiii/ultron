@@ -553,6 +553,10 @@ impl Manager {
             env.push((crate::worker::API_KEY_ENV.to_string(), api_key.clone()));
         }
         env.extend(self.model.env.iter().cloned());
+        session_core::startup_trace::trace_startup(
+            std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
+            "server.spawn-worker",
+        );
         let child = process::spawn(Role::SessionWorker, &[self.worker_options(meta).to_string()], &env)
             .map_err(|e| ServiceError::internal(e.to_string()))?;
         let pid = child.id();

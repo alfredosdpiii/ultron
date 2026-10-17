@@ -648,19 +648,8 @@ fn init(args: &Args) -> ExitCode {
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
-        Err(CheckError::Value(m)) => {
-            eprintln!("loki: {m}");
-            ExitCode::from(1)
-        }
-        Err(other) => {
-            eprintln!(
-                "loki: {}",
-                if other.is_os() {
-                    other.message().to_string()
-                } else {
-                    other.describe()
-                }
-            );
+        Err(error) => {
+            eprintln!("{}", loki::scan::init_error_line(&error));
             ExitCode::from(1)
         }
     }

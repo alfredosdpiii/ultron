@@ -12,11 +12,6 @@ use std::sync::Arc;
 
 pub const LANE: &str = "main";
 
-fn zero_usage() -> Value {
-    json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0,
-        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0}})
-}
-
 fn add(total: &mut Value, usage: &Value) {
     let (Some(total), Some(usage)) = (total.as_object_mut(), usage.as_object()) else {
         return;
@@ -46,31 +41,6 @@ fn transcript_entry(entry: &Value, seq: usize) -> Value {
         map.insert("seq".into(), json!(seq));
     }
     entry
-}
-
-/// The lane snapshot of a session whose branch holds `entries`.
-pub fn initial_snapshot(provider: &str, model_id: &str, thinking: &str, entries: &[Value]) -> Value {
-    let mut usage = zero_usage();
-    for entry in entries {
-        if entry["message"]["role"] == "assistant" {
-            add(&mut usage, &entry["message"]["usage"]);
-        }
-    }
-    let transcript: Vec<Value> = entries
-        .iter()
-        .enumerate()
-        .map(|(i, e)| transcript_entry(e, i))
-        .collect();
-    json!({
-        "lane": LANE,
-        "transcript": transcript,
-        "tipId": entries.last().map_or(Value::Null, |e| e["id"].clone()),
-        "configuration": {"model": {"provider": provider, "modelId": model_id}, "thinkingLevel": thinking, "activeToolNames": ["rlm"]},
-        "stats": {"messageCount": entries.len(), "usage": usage},
-        "operation": null,
-        "queues": [],
-        "faulted": false,
-    })
 }
 
 fn event(fields: &[(&str, Value)]) -> Value {

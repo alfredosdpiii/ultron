@@ -122,12 +122,6 @@ pub fn anthropic_extra_usage_warning(settings: &Settings) -> bool {
     settings.get("warnings").and_then(|w| w.get("anthropicExtraUsage")) != Some(&Value::Bool(false))
 }
 
-/// `defaultTools`.
-pub fn default_tools(settings: &Settings) -> Option<Vec<String>> {
-    let tools = settings.get("defaultTools")?.as_array()?;
-    Some(tools.iter().filter_map(Value::as_str).map(str::to_string).collect())
-}
-
 impl SettingsManager {
     pub fn shell_path(&self, home: &Path) -> Option<String> {
         shell_path(self.settings(), home)
@@ -149,9 +143,6 @@ impl SettingsManager {
     }
     pub fn anthropic_extra_usage_warning(&self) -> bool {
         anthropic_extra_usage_warning(self.settings())
-    }
-    pub fn default_tools(&self) -> Option<Vec<String>> {
-        default_tools(self.settings())
     }
     /// `getLastChangelogVersion` (merged: a project value is seen too).
     pub fn last_changelog_version(&self) -> Option<String> {

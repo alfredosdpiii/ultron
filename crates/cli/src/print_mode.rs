@@ -17,6 +17,11 @@ pub use session_core::lane::{
 };
 use session_journal::repo::Metadata;
 
+/// `traceStartup(label)` with the run's `ULTRON_STARTUP_TRACE` (crate::startup_trace's format).
+pub fn trace_startup(env: &Env, label: &str) {
+    session_core::startup_trace::trace_startup((env.var)("ULTRON_STARTUP_TRACE").as_deref(), label);
+}
+
 /// Which session a prompted run uses.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Target {
@@ -249,6 +254,7 @@ pub fn run_prompt(
     let json_mode = parsed.mode.as_deref() == Some("json");
     let options = server_options(parsed, env, if json_mode { "json" } else { "print" })?;
     let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
+    trace_startup(env, "cli.server-started");
     let route = Route {
         server_id: server.server_id.clone(),
         path: server.endpoint_path.clone(),
@@ -345,6 +351,7 @@ pub fn run_unprompted(parsed: &Args, env: &Env, target: Target) -> Result<String
     };
     let options = server_options(parsed, env, mode)?;
     let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
+    trace_startup(env, "cli.server-started");
     let route = Route {
         server_id: server.server_id.clone(),
         path: server.endpoint_path.clone(),

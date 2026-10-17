@@ -158,11 +158,14 @@ impl<'a> Remote<'a> {
         self.op(op).ok().flatten().unwrap_or(Value::Null)
     }
 
-    /// Re-attach to session `id`.
+    /// Re-attach to session `id` (rpc-native.ts `switchTo`): the session left keeps any run it has going, detached;
+    /// the one attached may itself be running (`snapshot().operation?.kind === "run"`).
     fn switch_to(&mut self, id: &str) -> Result<(), String> {
         let link = self.link.as_mut().ok_or("The session is closed")?;
         link.attach(id)?;
-        self.running = false;
+        self.running = self.read(Op::State)["isStreaming"] == true;
+        self.run_id = None;
+        self.lost_run = None;
         Ok(())
     }
 
@@ -302,10 +305,8 @@ impl RpcSession for Remote<'_> {
         self.read(Op::ClearQueue)
     }
 
+    /// rpc-native.ts:256-261: create a session and switch to it, also during a run (that turn keeps running, detached).
     fn new_session(&mut self) -> Result<(), String> {
-        if self.running {
-            return Err("Agent is already processing".into());
-        }
         let created = self.link.as_mut().ok_or("The session is closed")?.create(json!({}))?;
         self.switch_to(&created)
     }
@@ -427,10 +428,8 @@ impl RpcSession for Remote<'_> {
         self.read(Op::Stats)
     }
 
+    /// rpc-native.ts `switch_session`: also during a run, which keeps running detached.
     fn switch_session(&mut self, selector: &str) -> Result<(), String> {
-        if self.running {
-            return Err("Agent is already processing".into());
-        }
         let id = selector_id(self.env, selector)?;
         if id == self.link()?.session_id() {
             return Ok(());
@@ -548,8 +547,13 @@ pub fn run(
     input: Box<dyn std::io::Read + Send>,
     output: Box<dyn std::io::Write + Send>,
 ) -> Result<i32, String> {
+    let trace = (env.var)(client::startup_trace::TRACE_ENV);
+    client::startup_trace::trace_startup(trace.as_deref(), "rpc.open");
     let (tx, rx) = std::sync::mpsc::channel();
     let mut session = Remote::open(parsed, env, target, tx.clone())?;
+    // The link opens the server's services, selects the session and attaches in one step: rpc-native.ts's
+    // `rpc.services-ready` and `rpc.session-selected` milestones fall inside it.
+    client::startup_trace::trace_startup(trace.as_deref(), "rpc.attached");
     // A signal ends RPC mode as the end of its input does (the session detaches, the server closes), then exits
     // with the signal's code.
     let signalled = Arc::new(std::sync::atomic::AtomicI32::new(0));

@@ -345,6 +345,8 @@ fn open_runtime(
     for diagnostic in &runtime.diagnostics {
         eprintln!("Warning: {diagnostic}");
     }
+    // Loki's setup (the minimal install where allowed, its commit in the background) before any cell runs.
+    let loki_notice = session_core::loki_notice::LokiNotice::start(&runtime.config);
     let lane = Arc::new(Lane::open_with(&runtime, &model, api_key, &metadata.id, subagents)?);
     let delegation = &lane.stack.delegation;
     // The root is itself a subagent (`rootSpawn`, `rootFinish`): nesting counts from its level and allowance, and its
@@ -389,7 +391,7 @@ fn open_runtime(
     let host = Arc::new(crate::external_lane::LaneRootHost::new(lane.stack.clone()));
     let inbox: Arc<Mutex<Vec<String>>> = Arc::default();
     crate::external_lane::wire(&lane, session, &host, inbox.clone());
-    let root = ExternalRoot::over_lane(lane.clone(), loki_context, inbox, host, &*env.var);
+    let root = ExternalRoot::over_lane(lane.clone(), loki_context, inbox, host, &*env.var).with_loki_setup(loki_notice);
     Ok(Opened {
         lane,
         root,

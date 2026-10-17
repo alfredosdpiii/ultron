@@ -474,3 +474,61 @@ fn claude_root_mcp_work_of_a_turn_is_charged_to_that_turns_root() {
     assert_eq!(usage["rootId"], format!("turn:{turn}"), "{usage}");
     server.close();
 }
+
+/// Loki's one-time setup note (session-worker.ts `setupLoki` -> external-root.ts `lokiNotice`): an `ultron mcp`
+/// root in a Git repository without `.loki/` installs and commits it, and Claude Code is told once, with the session
+/// context its SessionStart hook adds.
+#[test]
+fn claude_root_mcp_loki_setup_note_comes_with_the_session_context_once() {
+    let root = Root::new();
+    let identity = [
+        ("GIT_AUTHOR_NAME", "Test User"),
+        ("GIT_AUTHOR_EMAIL", "test@example.com"),
+        ("GIT_COMMITTER_NAME", "Test User"),
+        ("GIT_COMMITTER_EMAIL", "test@example.com"),
+        ("GIT_CONFIG_NOSYSTEM", "1"),
+    ];
+    let git = |args: &[&str]| -> String {
+        let output = std::process::Command::new("git")
+            .args(args)
+            .current_dir(root.path("w"))
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", root.path("h"))
+            .envs(identity)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["config", "commit.gpgsign", "false"]);
+    std::fs::write(root.path("w/a.txt"), "a\n").unwrap();
+    git(&["add", "a.txt"]);
+    git(&["commit", "-qm", "init"]);
+    let mut vars: Vec<(&str, &str)> = identity.to_vec();
+    vars.push(("ULTRON_LOKI", "on"));
+    let mut server = Server::start(&[], root.env(&vars));
+    // The runtime opens with the first cell; the commit follows in the background.
+    assert_eq!(server.cell("print(1)"), "1");
+    wait_until("the .loki commit", || {
+        git(&["log", "-1", "--format=%s"]) == "Add Loki guardrails"
+    });
+    let sha = git(&["rev-parse", "--short", "HEAD"]);
+    let context = server.control("hook", json!({"event": "session-start"})).unwrap();
+    let text = context["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        text.ends_with(&format!(
+            "Loki set up and committed ({sha}): .loki/ holds the guardrail engine and policy."
+        )),
+        "{context}"
+    );
+    // Once: the next user turn does not repeat it.
+    let turn = server.control("hook", json!({"event": "user-prompt"})).unwrap();
+    assert!(!turn.to_string().contains("Loki set up"), "{turn}");
+    server.close();
+}

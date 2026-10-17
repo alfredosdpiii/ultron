@@ -70,11 +70,6 @@ impl AgentControl {
     pub fn has_queued_messages(&self) -> bool {
         !lock(&self.steering).messages.is_empty() || !lock(&self.follow_up).messages.is_empty()
     }
-
-    pub fn clear_all_queues(&self) {
-        lock(&self.steering).messages.clear();
-        lock(&self.follow_up).messages.clear();
-    }
 }
 
 pub struct AgentOptions {

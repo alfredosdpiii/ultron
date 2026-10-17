@@ -1,7 +1,7 @@
 [package]
 name = "telemetry"
 version = "0.1.0"
-description = "Span telemetry with fire-and-forget batched export, the install-telemetry gate and attribution headers, bug-report payloads and the crash log"
+description = "Bug-report payloads and archive, and the crash log the bug report reads"
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -10,7 +10,6 @@ publish.workspace = true
 crc32fast = "=1.5.2"
 flate2 = "=1.1.10"
 form_urlencoded = "=1.2.2"
-indexmap = { version = "=2.14.2", features = ["serde"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
 url = "=2.5.8"

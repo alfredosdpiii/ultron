@@ -256,6 +256,42 @@ impl LoginDialog {
         DialogAction::None
     }
 
+    /// `LoginDialogComponent.handleMouse` (a `Container`: border, title, the content, border): the input's row goes
+    /// to the `Input` (a press moves its cursor); the selector shown in the dialog's place takes no mouse
+    /// (`ExtensionSelectorComponent` renders text rows only).
+    pub fn handle_mouse(
+        &mut self,
+        theme: &Rc<Theme>,
+        event: &tui::mouse::MouseEvent,
+    ) -> Option<tui::mouse::MouseResult> {
+        if self.select.is_some() {
+            return None;
+        }
+        let width = event.width;
+        let text = |s: &str| Text::new(s, 1, 0, None).render(width).len() as i64;
+        let mut top = 1 + text(&fg(theme, "accent", &bold(&self.title)));
+        for item in &self.items {
+            let rows = match item {
+                Item::Spacer => 1,
+                Item::Line(line) => text(line),
+                Item::Submitted(value) => Text::new(&format!("> {value}"), 0, 0, None).render(width).len() as i64,
+                Item::Input => {
+                    let rows = self.input.render(width).len() as i64;
+                    if event.y >= top && event.y < top + rows {
+                        let local = tui::mouse::MouseEvent {
+                            y: event.y - top,
+                            ..*event
+                        };
+                        return self.input.handle_mouse(&local);
+                    }
+                    rows
+                }
+            };
+            top += rows;
+        }
+        None
+    }
+
     pub fn render(&mut self, theme: &Rc<Theme>, width: usize) -> Vec<String> {
         let border = fg(theme, "border", &"─".repeat(width.max(1)));
         let text = |s: &str| Text::new(s, 1, 0, None).render(width);

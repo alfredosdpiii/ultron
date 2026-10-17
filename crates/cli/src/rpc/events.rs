@@ -2,7 +2,6 @@
 //! forwarded, so turns are reconstructed from message boundaries, and stream events are reshaped into Pi's
 //! partial-free `assistantMessageEvent` form.
 
-use ai::AssistantMessageEvent;
 use serde_json::{Map, Value, json};
 
 /// A lane watch event (`LaneWatchEvent`), the input of [`RpcEventTranslator`].
@@ -409,11 +408,6 @@ pub fn frame_to_assistant_message_event(event: &Value) -> Option<Value> {
         _ => return None,
     }
     Some(Value::Object(out))
-}
-
-/// The provider event as the JSON a lane watch carries.
-pub fn event_value(event: &AssistantMessageEvent) -> Value {
-    serde_json::to_value(event).unwrap_or(Value::Null)
 }
 
 /// `messageText`: a string content, or the text blocks joined.

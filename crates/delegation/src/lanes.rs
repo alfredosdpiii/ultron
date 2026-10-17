@@ -605,11 +605,6 @@ impl Lanes {
             .ok_or_else(|| format!("cell {id} did not end after its kernel was killed"))
     }
 
-    /// Waits up to `timeout` for a cell that is not detached to end and takes its outcome.
-    pub fn wait_cell(&self, id: &str, timeout: Duration) -> Option<Result<ExecutionResult, String>> {
-        self.await_end(id, timeout)
-    }
-
     fn await_end(&self, id: &str, timeout: Duration) -> Option<Result<ExecutionResult, String>> {
         let deadline = Instant::now() + timeout;
         let mut state = lock(&self.inner.state);

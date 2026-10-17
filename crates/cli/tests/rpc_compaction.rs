@@ -1966,3 +1966,48 @@ fn cli_rpc_compaction_summary_retry_events_on_rpc() {
     let (_, code) = f.client.finish(HANG);
     assert_eq!(code, Some(0));
 }
+
+/// rpc-native.ts:256-261: `new_session` during a run creates a session and switches to it; the old turn keeps
+/// running, detached (nothing aborts it). Before, Rust refused with "Agent is already processing". Switching back
+/// (`switch_session`, also allowed during a run) finds it still streaming, and an abort there ends it.
+#[test]
+fn cli_rpc_new_session_during_a_run_switches_and_the_old_turn_runs_on() {
+    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "Fresh.")], false, None);
+    f.client
+        .write_line(&json!({"type": "prompt", "message": "first", "id": "p1"}).to_string())
+        .unwrap();
+    assert_eq!(f.held(), Held::Seen);
+    let before = f.client.get_state().unwrap();
+    assert_eq!(before["isStreaming"], true, "{before}");
+    let created = f.client.send(json!({"type": "new_session", "id": "n1"})).unwrap();
+    assert_eq!(created["success"], true, "{created}");
+    assert_eq!(created["data"], json!({"cancelled": false}));
+    let state = f.client.get_state().unwrap();
+    assert_ne!(state["sessionId"], before["sessionId"]);
+    assert_eq!(
+        (&state["isStreaming"], &state["messageCount"]),
+        (&json!(false), &json!(0)),
+        "{state}"
+    );
+    // The new session runs its own turn while the old one is held.
+    f.client.prompt_and_wait("fresh", HANG).unwrap();
+    assert_eq!(f.client.get_last_assistant_text().unwrap().as_deref(), Some("Fresh."));
+    let switched = f
+        .client
+        .send(json!({"type": "switch_session", "sessionPath": before["sessionId"]}))
+        .unwrap();
+    assert_eq!(switched["success"], true, "{switched}");
+    let back = f.client.get_state().unwrap();
+    assert_eq!(back["sessionId"], before["sessionId"]);
+    assert_eq!(back["isStreaming"], true, "the old turn still runs: {back}");
+    // Attached to a running session again, a prompt without streamingBehavior is refused as in TS.
+    let refused = f.client.send(json!({"type": "prompt", "message": "again"})).unwrap();
+    assert_eq!(
+        refused["error"],
+        "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."
+    );
+    assert_eq!(f.client.send(json!({"type": "abort"})).unwrap()["success"], true);
+    assert_eq!(f.held(), Held::Dropped, "only the abort ended the held response");
+    let (_, code) = f.client.finish(HANG);
+    assert_eq!(code, Some(0));
+}

@@ -78,6 +78,7 @@ dependencies = [
  "reqwest",
  "ring",
  "rustix",
+ "ruzstd",
  "serde",
  "serde_json",
  "sha2",
@@ -512,6 +513,15 @@ dependencies = [
  "document-features",
  "parking_lot",
  "rustix",
+]
+
+[[package]]
+name = "crossterm_winapi"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acdd7c62a3665c7f6830a51635d9ac9b23ed385797f70a83bb8bafe9c572ab2b"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]
@@ -1929,7 +1939,6 @@ dependencies = [
 name = "protocol"
 version = "0.1.0"
 dependencies = [
- "serde",
  "serde_json",
 ]
 
@@ -2146,6 +2155,7 @@ dependencies = [
 name = "resources"
 version = "0.1.0"
 dependencies = [
+ "regex",
  "serde_json",
  "tempfile",
  "yaml-rust2",
@@ -2323,6 +2333,12 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
 
 [[package]]
 name = "same-file"
@@ -2715,7 +2731,6 @@ dependencies = [
  "crc32fast",
  "flate2",
  "form_urlencoded",
- "indexmap",
  "serde",
  "serde_json",
  "tempfile",
@@ -2994,6 +3009,7 @@ dependencies = [
  "arboard",
  "base64 0.23.1",
  "crossterm",
+ "crossterm_winapi",
  "fancy-regex 0.19.2",
  "icu_collections",
  "icu_normalizer",
@@ -3253,6 +3269,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
+name = "winapi"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c839a674fcd7a98952e593242ea400abe93992746761e38641405d28b00f419"
+dependencies = [
+ "winapi-i686-pc-windows-gnu",
+ "winapi-x86_64-pc-windows-gnu",
+]
+
+[[package]]
+name = "winapi-i686-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
+
+[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3260,6 +3292,12 @@ checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "winapi-x86_64-pc-windows-gnu"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-link"

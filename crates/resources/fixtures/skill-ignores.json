@@ -1,0 +1,159 @@
+{
+	"tree": [
+		[
+			"agent/skills/.gitignore",
+			"beta/\n"
+		],
+		[
+			"agent/skills/alpha/SKILL.md",
+			"---\nname: alpha\ndescription: Kept default skill.\n---\n\n# Body of alpha\nUse it well.\n"
+		],
+		[
+			"agent/skills/beta/SKILL.md",
+			"---\nname: beta\ndescription: Ignored default skill.\n---\n\n# Body of beta\nUse it well.\n"
+		],
+		[
+			"extra/skills/.gitignore",
+			"# drafts are private\ndrafts/\n\nsecret.md\n"
+		],
+		[
+			"extra/skills/.ignore",
+			"*.wip.md\n!keep.wip.md\n"
+		],
+		[
+			"extra/skills/drafts/one/SKILL.md",
+			"---\nname: draft-one\ndescription: Ignored by .gitignore.\n---\n\n# Body of draft-one\nUse it well.\n"
+		],
+		[
+			"extra/skills/kept/SKILL.md",
+			"---\nname: kept\ndescription: Loaded.\n---\n\n# Body of kept\nUse it well.\n"
+		],
+		[
+			"extra/skills/root.md",
+			"---\nname: root\ndescription: Root file loaded.\n---\n\n# Body of root\nUse it well.\n"
+		],
+		[
+			"extra/skills/root.wip.md",
+			"---\nname: root-wip\ndescription: Ignored by .ignore.\n---\n\n# Body of root-wip\nUse it well.\n"
+		],
+		[
+			"extra/skills/keep.wip.md",
+			"---\nname: keep-wip\ndescription: Negated back in.\n---\n\n# Body of keep-wip\nUse it well.\n"
+		],
+		[
+			"extra/skills/secret.md",
+			"---\nname: secret\ndescription: Ignored root file.\n---\n\n# Body of secret\nUse it well.\n"
+		],
+		[
+			"extra/skills/nested/.fdignore",
+			"/inner/\n"
+		],
+		[
+			"extra/skills/nested/inner/SKILL.md",
+			"---\nname: inner\ndescription: Ignored by a nested .fdignore.\n---\n\n# Body of inner\nUse it well.\n"
+		],
+		[
+			"extra/skills/nested/other/SKILL.md",
+			"---\nname: other\ndescription: Loaded beside it.\n---\n\n# Body of other\nUse it well.\n"
+		],
+		[
+			"extra/skills/nested/other/inner/SKILL.md",
+			"---\nname: deep-inner\ndescription: Not reached: other is a skill root.\n---\n\n# Body of deep-inner\nUse it well.\n"
+		],
+		[
+			"extra/skills/selfignored/.gitignore",
+			"SKILL.md\n"
+		],
+		[
+			"extra/skills/selfignored/SKILL.md",
+			"---\nname: selfignored\ndescription: Ignored by its own directory.\n---\n\n# Body of selfignored\nUse it well.\n"
+		],
+		[
+			"extra/skills/selfignored/sub/SKILL.md",
+			"---\nname: selfignored-sub\ndescription: Found below the ignored SKILL.md.\n---\n\n# Body of selfignored-sub\nUse it well.\n"
+		],
+		[
+			"extra/skills/upper/.gitignore",
+			"LOUD/\n"
+		],
+		[
+			"extra/skills/upper/loud/SKILL.md",
+			"---\nname: loud\ndescription: Ignored case-insensitively.\n---\n\n# Body of loud\nUse it well.\n"
+		],
+		[
+			"proj/.keep",
+			""
+		]
+	],
+	"cases": [
+		{
+			"includeDefaults": true,
+			"skillPaths": [
+				"../extra/skills"
+			],
+			"skills": [
+				{
+					"name": "alpha",
+					"filePath": "$ROOT/agent/skills/alpha/SKILL.md",
+					"baseDir": "$ROOT/agent/skills/alpha"
+				},
+				{
+					"name": "keep-wip",
+					"filePath": "$ROOT/extra/skills/keep.wip.md",
+					"baseDir": "$ROOT/extra/skills"
+				},
+				{
+					"name": "kept",
+					"filePath": "$ROOT/extra/skills/kept/SKILL.md",
+					"baseDir": "$ROOT/extra/skills/kept"
+				},
+				{
+					"name": "other",
+					"filePath": "$ROOT/extra/skills/nested/other/SKILL.md",
+					"baseDir": "$ROOT/extra/skills/nested/other"
+				},
+				{
+					"name": "root",
+					"filePath": "$ROOT/extra/skills/root.md",
+					"baseDir": "$ROOT/extra/skills"
+				},
+				{
+					"name": "selfignored-sub",
+					"filePath": "$ROOT/extra/skills/selfignored/sub/SKILL.md",
+					"baseDir": "$ROOT/extra/skills/selfignored/sub"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"includeDefaults": false,
+			"skillPaths": [
+				"$ROOT/extra/skills/nested",
+				"$ROOT/extra/skills/selfignored"
+			],
+			"skills": [
+				{
+					"name": "other",
+					"filePath": "$ROOT/extra/skills/nested/other/SKILL.md",
+					"baseDir": "$ROOT/extra/skills/nested/other"
+				}
+			],
+			"diagnostics": []
+		},
+		{
+			"includeDefaults": false,
+			"skillPaths": [
+				"$ROOT/extra/skills/upper",
+				"$ROOT/extra/skills/drafts"
+			],
+			"skills": [
+				{
+					"name": "draft-one",
+					"filePath": "$ROOT/extra/skills/drafts/one/SKILL.md",
+					"baseDir": "$ROOT/extra/skills/drafts/one"
+				}
+			],
+			"diagnostics": []
+		}
+	]
+}

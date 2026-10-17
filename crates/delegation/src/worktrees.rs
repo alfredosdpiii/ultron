@@ -553,16 +553,6 @@ pub fn owner_alive(owner: &Owner) -> bool {
     }
 }
 
-/// True when `path` lies in one of Ultron's subagent worktrees (`ULTRON_WORKTREE` names one).
-pub fn is_ultron_worktree_path(path: &Path, worktree_env: Option<&str>) -> bool {
-    if worktree_env.is_some_and(|v| !v.trim().is_empty()) {
-        return true;
-    }
-    normalize(path)
-        .components()
-        .any(|part| part.as_os_str() == WORKTREES_DIR)
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // Create
 

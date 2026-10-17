@@ -290,7 +290,15 @@ fn start_generation(
     let nonce: String = paths::uuid_v4().replace('-', "")[..12].to_string();
     let endpoint_path = sockets_dir.join(format!("server-{server_id}-{nonce}.sock"));
     remove_dead_endpoints(&sockets_dir, server_id);
+    session_core::startup_trace::trace_startup(
+        std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
+        "server.coordinator",
+    );
     let mut lease = coord_client::ensure_coordinator(&socket_path, &control_path).map_err(Err)?;
+    session_core::startup_trace::trace_startup(
+        std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
+        "server.coordinator-ready",
+    );
     let lifetime = Lifetime::new(options.keep_alive);
     let workers_lifetime = lifetime.clone();
     let manager = Manager::new(
@@ -351,6 +359,10 @@ fn start_generation(
     };
     manager.set_coordinator(coordinator.clone());
     drop(lease);
+    session_core::startup_trace::trace_startup(
+        std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
+        "server.connected",
+    );
     manager.discover();
     hub.refresh();
     let record = options

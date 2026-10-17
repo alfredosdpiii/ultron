@@ -9,9 +9,8 @@ use tui::keybindings::KeybindingsManager;
 use tui::utils::{truncate_to_width, visible_width};
 
 use super::graph::{
-    CollapseState, GraphNode, GraphRow, RowRenderOptions, budget_gauges, build_rlm_graph, default_collapsed,
-    frame_trace_details, graph_active, graph_totals, layout_graph, render_details, render_gauges, render_graph_row,
-    render_kernel_strip, spinner_glyph,
+    CollapseState, GraphRow, RowRenderOptions, budget_gauges, build_rlm_graph, frame_trace_details, graph_active,
+    graph_totals, layout_graph, render_details, render_gauges, render_graph_row, render_kernel_strip, spinner_glyph,
 };
 use super::visualizer::{Color, RlmSnapshot, RlmStyle};
 
@@ -100,15 +99,6 @@ pub fn apply_focus_action(state: &FocusState, rows: &[GraphRow], action: FocusAc
             next
         }
     }
-}
-
-/// Whether a node is shown collapsed under `collapse`.
-pub fn is_collapsed(node: &GraphNode, collapse: &CollapseState) -> bool {
-    !node.children.is_empty()
-        && collapse
-            .get(&node.key)
-            .copied()
-            .unwrap_or_else(|| default_collapsed(node))
 }
 
 /// How the focus view draws.

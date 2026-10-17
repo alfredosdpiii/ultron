@@ -365,14 +365,6 @@ impl Run {
         })
     }
 
-    /// The operation's state is at `assistant.effect_pending`: a response was requested and has not committed.
-    pub fn awaiting_response(&self, session: &Session) -> bool {
-        session
-            .value(OP_STATE, &self.operation_id)
-            .and_then(|s| s["at"].as_str())
-            == Some("assistant.effect_pending")
-    }
-
     /// Calls of the current batch whose result has not been reported.
     pub fn unreported_calls(&self) -> Vec<String> {
         self.calls

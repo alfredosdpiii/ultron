@@ -61,6 +61,20 @@ fn fake_tools(tmp: &TempDir, i: usize, files: &Value) -> (std::path::PathBuf, st
         std::fs::write(&path, fake(tool, &scenario.display().to_string())).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
+    // A script just written can fail to start with ETXTBSY while another test thread's child, forked during the
+    // write, still holds the write descriptor (it closes at that child's exec): under load the product's first tool
+    // call then failed. Start each fake once until it runs; the log is reset below.
+    for tool in ["wl-paste", "xclip"] {
+        let path = bin.join(tool);
+        let guard = std::time::Instant::now() + std::time::Duration::from_secs(120);
+        loop {
+            match std::process::Command::new(&path).arg("probe").output() {
+                Err(e) if e.raw_os_error() == Some(26) && std::time::Instant::now() < guard => std::thread::yield_now(),
+                Err(e) => panic!("{tool}: {e}"),
+                Ok(_) => break,
+            }
+        }
+    }
     for (name, text) in files.as_object().unwrap() {
         std::fs::write(scenario.join(format!("{name}.out")), latin1(text.as_str().unwrap())).unwrap();
     }

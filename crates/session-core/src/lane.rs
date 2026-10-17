@@ -455,16 +455,6 @@ pub fn resolve_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Result
 /// `defaultModelPerProvider` of model-resolver.ts.
 pub use ai::model_resolver::DEFAULT_MODEL_PER_PROVIDER;
 
-/// The model a session starts on without `--model` (`findInitialModel` of model-resolver.ts with Pi's
-/// `buildSessionOptions` scope rule): a new session with scoped models (`--models`, else settings `enabledModels`,
-/// resolved against the available models) starts on the saved default when it is in scope, else the first scoped
-/// model, with that pattern's thinking level; otherwise the settings' `defaultProvider`/`defaultModel` when its
-/// provider has credentials, else an available model preferring a known provider's default. Claude Code CLI models
-/// never drive a root lane, so they are skipped.
-pub fn initial_model(env: &Env) -> Option<Model> {
-    initial_choice(&ModelFlags::default(), env, false).map(|choice| choice.model)
-}
-
 fn initial_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Option<ModelChoice> {
     let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
     let all = settings.settings();

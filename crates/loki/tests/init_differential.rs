@@ -2,6 +2,9 @@
 //! `fixtures/generate-init.mjs` (stdout, stderr, exit status of each run, then every file under the repository and
 //! the managed-engine directory). Runs use a private HOME and a PATH holding only fake `python3` (and `loki`).
 
+#[path = "../../cli/tests/executable_support/mod.rs"]
+mod executable_support;
+
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -49,8 +52,8 @@ fn files(dir: &Path) -> BTreeMap<String, (Vec<u8>, u32)> {
 }
 
 fn executable(path: &Path) {
-    std::fs::write(path, "#!/bin/sh\nexit 0\n").unwrap();
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // Written without a write descriptor in this process (ETXTBSY under parallel tests).
+    executable_support::install(path, "#!/bin/sh\nexit 0\n");
 }
 
 struct World {

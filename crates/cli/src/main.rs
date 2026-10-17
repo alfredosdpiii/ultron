@@ -51,12 +51,18 @@ fn main() {
         }
         Ok(Some((role, args))) => {
             let result = match role {
-                daemon::process::Role::Coordinator => daemon::coordinator::run(args).map_err(|e| e.to_string()),
+                daemon::process::Role::Coordinator => {
+                    daemon::process::trace_startup("coordinator.entry");
+                    daemon::coordinator::run(args).map_err(|e| e.to_string())
+                }
                 // A detached server runs its relay too (opt-out: PI_OFFLINE), with the stored Radius credential.
                 daemon::process::Role::Server => {
                     daemon::server::run_server_process(args, Some(cli::radius_relay::relay_config(&env)))
                 }
-                daemon::process::Role::SessionWorker => daemon::worker::run(args, ready_docs()),
+                daemon::process::Role::SessionWorker => {
+                    daemon::process::trace_startup("worker.entry");
+                    daemon::worker::run(args, ready_docs())
+                }
             };
             if let Err(message) = result {
                 eprintln!("{message}");

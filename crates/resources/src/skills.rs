@@ -1,8 +1,9 @@
-//! Skills: discovery, frontmatter validation, always-on skills and their system prompt listing (core/skills.ts).
-//! Not ported: `.gitignore`/`.ignore`/`.fdignore` rules inside skill directories.
+//! Skills: discovery (with the `.gitignore`/`.ignore`/`.fdignore` rules of the directories walked), frontmatter
+//! validation, always-on skills and their system prompt listing (core/skills.ts).
 
 use crate::Diagnostic;
 use crate::frontmatter;
+use crate::ignore::{Ignore, add_ignore_rules};
 use crate::paths::{basename, canonicalize, dirname, join, relative, resolve, resolve_path};
 use std::collections::HashSet;
 use std::fs;
@@ -153,11 +154,21 @@ pub fn load_skills_from_dir(dir: &str, source: &str) -> LoadSkillsResult {
 }
 
 fn load_dir(dir: &str, source: &str, include_root_files: bool) -> LoadSkillsResult {
+    load_dir_with(dir, source, include_root_files, &mut Ignore::new(), dir)
+}
+
+/// `loadSkillsFromDirInternal`: the `.gitignore`, `.ignore` and `.fdignore` rules of each directory apply to it and
+/// below, relative to the walk's `root`.
+fn load_dir_with(dir: &str, source: &str, include_root_files: bool, ig: &mut Ignore, root: &str) -> LoadSkillsResult {
     let mut result = LoadSkillsResult::default();
+    if !std::path::Path::new(dir).exists() {
+        return result;
+    }
+    add_ignore_rules(ig, dir, root);
     let entries = sorted_entries(dir);
     if let Some((name, file_type)) = entries.iter().find(|(name, _)| name == "SKILL.md") {
         let full = join(dir, name);
-        if kind(&full, file_type).is_some_and(|(_, is_file)| is_file) {
+        if kind(&full, file_type).is_some_and(|(_, is_file)| is_file) && !ig.ignores(&relative(root, &full)) {
             let (skill, diagnostics) = load_skill_from_file(&full, source);
             result.skills.extend(skill);
             result.diagnostics.extend(diagnostics);
@@ -172,8 +183,12 @@ fn load_dir(dir: &str, source: &str, include_root_files: bool) -> LoadSkillsResu
         let Some((is_dir, is_file)) = kind(&full, file_type) else {
             continue;
         };
+        let rel = relative(root, &full);
+        if ig.ignores(&if is_dir { format!("{rel}/") } else { rel }) {
+            continue;
+        }
         if is_dir {
-            let sub = load_dir(&full, source, false);
+            let sub = load_dir_with(&full, source, false, ig, root);
             result.skills.extend(sub.skills);
             result.diagnostics.extend(sub.diagnostics);
             continue;

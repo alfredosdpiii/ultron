@@ -2,17 +2,19 @@
 //!
 //! Extensions are visited in load order; each subscribed extension receives the event once (an extension process runs
 //! its own handlers). A handler that fails, times out or whose process died is reported through the error listeners
-//! and the dispatch moves on, except where `runner.ts` lets the error escape (`tool_call`, `before_file_write`,
-//! `user_bash`), which return `Err`.
+//! and the dispatch moves on, except where `runner.ts` lets the error escape (`before_file_write`, `user_bash`), which
+//! return `Err`.
 //!
-//! Over the wire there is no object identity and no in-place mutation, so the few TypeScript handlers that mutate the
-//! event are given result members instead: `tool_call` answers `{ input }`, `before_provider_headers` answers
-//! `{ headers }`, and `before_provider_request` answers `{ payload }`. A member that is present (even `null`) counts
-//! as TypeScript's `!== undefined`; an omitted member is `undefined`.
+//! Only the emitters a product path calls are here; `runner.ts`'s `tool_call`, `tool_result`, `message_end`,
+//! `input`, `before_provider_*`, `cache_warming_decision`, `resources_discover` and boundary emitters are not, since
+//! the native worker never emits them (the model's one tool is `rlm`).
+//!
+//! A result member that is present (even `null`) counts as TypeScript's `!== undefined`; an omitted member is
+//! `undefined`.
 
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use session_file::current_system_message;
-use session_file::js::{nullish, truthy};
+use session_file::js::truthy;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::rpc::CancelToken;
@@ -67,34 +69,11 @@ const SESSION_BEFORE_EVENTS: [&str; 4] = [
 const USER_BASH_INVALID: &str = "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object";
 const CONTEXT_SYSTEM_DROPPED: &str = "Handler removed the leading system message; the request has no prompt or initial tool declarations. Keep it at index 0 or replace a dropped prefix with getCurrentSystemMessage().";
 
-/// `{ ...result, toolCallId? }` from `tool_call`, and the arguments after every handler's `input` patch.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ToolCallOutcome {
-    pub result: Option<Value>,
-    pub input: Value,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentStartOutcome {
     pub messages: Vec<Value>,
     /// The forced system prompt (`systemPromptOptions.forceSystemPrompt`), when a handler replaced it.
     pub system_prompt: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ResourcePaths {
-    /// (path, extension path) in discovery order.
-    pub skill_paths: Vec<(String, String)>,
-    pub prompt_paths: Vec<(String, String)>,
-    pub theme_paths: Vec<(String, String)>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BoundaryOutcome {
-    pub entries: Vec<Value>,
-    pub continue_: bool,
-    pub context: Value,
-    pub valid: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,14 +96,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn event_type(event: &Value) -> &str {
     event.get("type").and_then(Value::as_str).unwrap_or_default()
-}
-
-fn with(event: &Value, fields: &[(&str, Value)]) -> Value {
-    let mut map = event.as_object().cloned().unwrap_or_default();
-    for (key, value) in fields {
-        map.insert((*key).to_string(), value.clone());
-    }
-    Value::Object(map)
 }
 
 fn is_user_bash_result(value: &Value) -> bool {
@@ -225,37 +196,6 @@ impl Router {
         (None, errors)
     }
 
-    /// `emitToolCall`: `input` patches chain into later handlers; the first truthy `block` wins; otherwise the last
-    /// decision is returned. A handler error is not caught: it fails the tool call.
-    pub fn emit_tool_call(&self, event: &Value) -> Result<ToolCallOutcome, ExtensionError> {
-        let mut current = event.clone();
-        let mut result: Option<Value> = None;
-        for endpoint in self.subscribers("tool_call") {
-            let value = endpoint.dispatch(&current).map_err(|error| ExtensionError {
-                extension_path: endpoint.path().to_string(),
-                event: "tool_call".into(),
-                error,
-            })?;
-            let Some(Value::Object(mut decision)) = value else {
-                continue;
-            };
-            // `{ input }` alone is a patch, not a decision (TypeScript handlers mutate `event.input` and return nothing).
-            if let Some(input) = decision.remove("input") {
-                current["input"] = input;
-                if decision.is_empty() {
-                    continue;
-                }
-            }
-            let block = truthy(decision.get("block"));
-            result = Some(Value::Object(decision));
-            if block {
-                break;
-            }
-        }
-        let input = current.get("input").cloned().unwrap_or(Value::Null);
-        Ok(ToolCallOutcome { result, input })
-    }
-
     /// `emitBeforeFileWrite`: the first block wins (default reason "blocked by an extension"); other messages are
     /// joined. A handler error is not caught.
     pub fn emit_before_file_write(&self, event: &Value) -> Result<Option<Value>, ExtensionError> {
@@ -327,164 +267,6 @@ impl Router {
         Ok(None)
     }
 
-    /// `emitToolResult`: `content`, `details`, `isError` and `usage` patches chain; `None` when nothing changed.
-    pub fn emit_tool_result(&self, event: &Value) -> Option<Value> {
-        let mut current = event.clone();
-        let mut modified = false;
-        for endpoint in self.subscribers("tool_result") {
-            match endpoint.dispatch(&current) {
-                Ok(Some(Value::Object(patch))) => {
-                    for key in ["content", "details", "isError", "usage"] {
-                        if let Some(value) = patch.get(key) {
-                            current[key] = value.clone();
-                            modified = true;
-                        }
-                    }
-                }
-                Ok(_) => {}
-                Err(error) => self.report(&*endpoint, "tool_result", error),
-            }
-        }
-        if !modified {
-            return None;
-        }
-        let mut out = Map::new();
-        for key in ["content", "details", "isError", "usage"] {
-            if let Some(value) = current.get(key) {
-                out.insert(key.into(), value.clone());
-            }
-        }
-        Some(Value::Object(out))
-    }
-
-    /// `emitMessageEnd`: a replacement must keep the message's role; replacements chain.
-    pub fn emit_message_end(&self, event: &Value) -> Option<Value> {
-        let mut message = event.get("message").cloned().unwrap_or(Value::Null);
-        let mut modified = false;
-        for endpoint in self.subscribers("message_end") {
-            let current = with(event, &[("message", message.clone())]);
-            match endpoint.dispatch(&current) {
-                Ok(value) => {
-                    let Some(replacement) = value
-                        .as_ref()
-                        .and_then(|v| v.get("message"))
-                        .filter(|m| truthy(Some(m)))
-                    else {
-                        continue;
-                    };
-                    if replacement.get("role") != message.get("role") {
-                        self.report(
-                            &*endpoint,
-                            "message_end",
-                            "message_end handlers must return a message with the same role".into(),
-                        );
-                        continue;
-                    }
-                    message = replacement.clone();
-                    modified = true;
-                }
-                Err(error) => self.report(&*endpoint, "message_end", error),
-            }
-        }
-        modified.then_some(message)
-    }
-
-    /// `emitCacheWarmingDecision`: the event's own action unless a handler overrides it; the last override wins.
-    pub fn emit_cache_warming_decision(&self, event: &Value) -> Value {
-        let mut action = event.get("action").cloned().unwrap_or(Value::Null);
-        for endpoint in self.subscribers("cache_warming_decision") {
-            match endpoint.dispatch(event) {
-                Ok(value) => {
-                    if let Some(next) = value.as_ref().and_then(|v| v.get("action")) {
-                        action = next.clone();
-                    }
-                }
-                Err(error) => self.report(&*endpoint, "cache_warming_decision", error),
-            }
-        }
-        action
-    }
-
-    /// `emitInput`: transforms chain, `handled` short-circuits.
-    pub fn emit_input(&self, text: &str, images: Option<&Value>, source: &str, streaming: Option<&str>) -> Value {
-        let mut current_text = text.to_string();
-        let mut current_images = images.cloned();
-        let mut images_replaced = false;
-        for endpoint in self.subscribers("input") {
-            let mut event = json!({ "type": "input", "text": current_text });
-            if let Some(images) = &current_images {
-                event["images"] = images.clone();
-            }
-            event["source"] = json!(source);
-            if let Some(streaming) = streaming {
-                event["streamingBehavior"] = json!(streaming);
-            }
-            match endpoint.dispatch(&event) {
-                Ok(value) => {
-                    let value = value.unwrap_or_default();
-                    match value.get("action").and_then(Value::as_str) {
-                        Some("handled") => return value,
-                        Some("transform") => {
-                            current_text = js_string(value.get("text").unwrap_or(&Value::Null));
-                            if !nullish(value.get("images")) {
-                                current_images = value.get("images").cloned();
-                                images_replaced = true;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Err(error) => self.report(&*endpoint, "input", error),
-            }
-        }
-        if current_text != text || images_replaced {
-            let mut out = json!({ "action": "transform", "text": current_text });
-            if let Some(images) = current_images {
-                out["images"] = images;
-            }
-            out
-        } else {
-            json!({ "action": "continue" })
-        }
-    }
-
-    /// `emitBeforeProviderRequest`: each `{ payload }` result replaces the payload for later handlers.
-    pub fn emit_before_provider_request(&self, payload: Value) -> Value {
-        let mut current = payload;
-        for endpoint in self.subscribers("before_provider_request") {
-            let event = json!({ "type": "before_provider_request", "payload": current });
-            match endpoint.dispatch(&event) {
-                Ok(value) => {
-                    if let Some(next) = value.as_ref().and_then(|v| v.get("payload")) {
-                        current = next.clone();
-                    }
-                }
-                Err(error) => self.report(&*endpoint, "before_provider_request", error),
-            }
-        }
-        current
-    }
-
-    /// `emitBeforeProviderHeaders`: each `{ headers }` result is assigned onto the headers in order (`null` values
-    /// stay, meaning "delete this header" to the provider).
-    pub fn emit_before_provider_headers(&self, headers: Map<String, Value>) -> Map<String, Value> {
-        let mut current = headers;
-        for endpoint in self.subscribers("before_provider_headers") {
-            let event = json!({ "type": "before_provider_headers", "headers": current });
-            match endpoint.dispatch(&event) {
-                Ok(value) => {
-                    if let Some(Value::Object(patch)) = value.as_ref().and_then(|v| v.get("headers")) {
-                        for (key, value) in patch {
-                            current.insert(key.clone(), value.clone());
-                        }
-                    }
-                }
-                Err(error) => self.report(&*endpoint, "before_provider_headers", error),
-            }
-        }
-        current
-    }
-
     /// `emitBeforeAgentStart`: messages collect; a `systemPrompt` result forces the prompt for later handlers and
     /// the turn. `render` turns the options (with `forceSystemPrompt`) into the prompt handlers see.
     pub fn emit_before_agent_start(
@@ -527,31 +309,6 @@ impl Router {
         }
     }
 
-    /// `emitResourcesDiscover`: extra skill, prompt and theme paths, tagged with the extension that gave them.
-    pub fn emit_resources_discover(&self, cwd: &str, reason: &str) -> ResourcePaths {
-        let mut out = ResourcePaths::default();
-        let event = json!({ "type": "resources_discover", "cwd": cwd, "reason": reason });
-        for endpoint in self.subscribers("resources_discover") {
-            match endpoint.dispatch(&event) {
-                Ok(value) => {
-                    let value = value.unwrap_or_default();
-                    let path = endpoint.path().to_string();
-                    for (key, target) in [
-                        ("skillPaths", &mut out.skill_paths),
-                        ("promptPaths", &mut out.prompt_paths),
-                        ("themePaths", &mut out.theme_paths),
-                    ] {
-                        if let Some(paths) = value.get(key).and_then(Value::as_array) {
-                            target.extend(paths.iter().map(|p| (js_string(p), path.clone())));
-                        }
-                    }
-                }
-                Err(error) => self.report(&*endpoint, "resources_discover", error),
-            }
-        }
-        out
-    }
-
     /// `emitContext`: `context` handlers see the conversation without system messages and a changed conversation
     /// gets the replayed system message back in front; `context_with_system` handlers then see everything and their
     /// output is used as returned.
@@ -592,68 +349,6 @@ impl Router {
             }
         }
         current
-    }
-
-    /// `emitBoundary` (`turn_end`, `agent_before_settle`): `entries` and `continue` chain; the context preview is
-    /// rebuilt after every handler, and entries it rejects void the whole result.
-    pub fn emit_boundary(
-        &self,
-        base: &Value,
-        build_context: &dyn Fn(&[Value]) -> Result<Value, String>,
-    ) -> Result<BoundaryOutcome, String> {
-        let kind = event_type(base).to_string();
-        let mut entries: Vec<Value> = Vec::new();
-        let mut should_continue = Value::Bool(false);
-        let mut context = build_context(&entries)?;
-        let mut valid = true;
-        for endpoint in self.subscribers(&kind) {
-            let event = with(
-                base,
-                &[
-                    ("entries", Value::Array(entries.clone())),
-                    ("continue", should_continue.clone()),
-                    ("context", context.clone()),
-                ],
-            );
-            match endpoint.dispatch(&event) {
-                Ok(value) => {
-                    let value = value.unwrap_or_default();
-                    if let Some(next) = value.get("entries") {
-                        entries = next.as_array().cloned().unwrap_or_default();
-                    }
-                    if let Some(next) = value.get("continue") {
-                        should_continue = next.clone();
-                    }
-                }
-                Err(error) => self.report(&*endpoint, &kind, error),
-            }
-            match build_context(&entries) {
-                Ok(next) => {
-                    context = next;
-                    valid = true;
-                }
-                Err(error) => {
-                    valid = false;
-                    self.report(&*endpoint, &kind, format!("Invalid boundary entries: {error}"));
-                }
-            }
-        }
-        let continue_ = truthy(Some(&should_continue));
-        Ok(if valid {
-            BoundaryOutcome {
-                entries,
-                continue_,
-                context,
-                valid,
-            }
-        } else {
-            BoundaryOutcome {
-                entries: Vec::new(),
-                continue_: false,
-                context,
-                valid,
-            }
-        })
     }
 
     /// `getRegisteredCommands`: every extension's commands in load order; a name registered more than once is

@@ -87,14 +87,6 @@ impl HarnessError {
         self.to_string()
     }
 
-    /// The first error of a failed Session (`SessionFailed.cause`).
-    pub fn session_cause(&self) -> Option<&SessionError> {
-        match self {
-            HarnessError::Session(error) => error.cause(),
-            _ => None,
-        }
-    }
-
     pub fn cause(&self) -> Option<&str> {
         match self {
             HarnessError::Caused { cause, .. } => Some(cause),

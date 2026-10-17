@@ -78,11 +78,6 @@ fn config_settings_keys_getters_match_ts() {
             warnings["anthropicExtraUsage"] != json!(false),
             "{label}"
         );
-        assert_eq!(
-            ok(keys::default_tools(settings).map_or(Value::Null, |t| json!(t))),
-            case["defaultTools"],
-            "{label}"
-        );
     }
 }
 

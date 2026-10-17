@@ -84,6 +84,9 @@ pub struct SessionResources {
     pub package_manifests: Vec<PathBuf>,
     /// What went wrong resolving the packages (an install that failed).
     pub diagnostics: Vec<String>,
+    /// The diagnostics of settings packages that are pi-mcp-adapter (crate::mcp_coexistence): left out with a
+    /// notice next to the built-in MCP gateway, reported like the others without it.
+    pub mcp_adapters: Vec<String>,
 }
 
 /// `mergePaths`: each path (resolved against the cwd) once by its canonical path, first place kept.
@@ -103,13 +106,19 @@ fn merge(cwd: &str, paths: impl IntoIterator<Item = String>) -> Vec<String> {
 
 /// The extension manifests a package directory holds, as a `-e` path's are found, then its settings filter's
 /// `extensions` patterns (relative to the package): `[]` turns them all off, `autoload: false` without patterns too.
-pub fn package_manifests(root: &PackageRoot, cwd: &Path, home: &Path) -> (Vec<PathBuf>, Vec<String>) {
+/// The diagnostics come back as (others, pi-mcp-adapter's).
+pub fn package_manifests(root: &PackageRoot, cwd: &Path, home: &Path) -> (Vec<PathBuf>, (Vec<String>, Vec<String>)) {
     let discovery = extensions::manifest::discover_cli_paths(std::slice::from_ref(&root.root), cwd, home);
-    let diagnostics = discovery
+    let (adapters, others): (Vec<_>, Vec<_>) = discovery
         .diagnostics
         .iter()
-        .map(|d| format!("{}: {}", d.path.display(), d.message))
-        .collect();
+        .partition(|d| crate::mcp_coexistence::is_mcp_adapter(&d.path));
+    let text = |list: Vec<&extensions::manifest::Diagnostic>| -> Vec<String> {
+        list.iter()
+            .map(|d| format!("{}: {}", d.path.display(), d.message))
+            .collect()
+    };
+    let diagnostics = (text(others), text(adapters));
     let found: Vec<PathBuf> = discovery.manifests.into_iter().map(|m| m.path).collect();
     let Some(filter) = &root.filter else {
         return (found, diagnostics);
@@ -216,7 +225,8 @@ pub fn resolve(env: &Env, settings: config::settings::SettingsManager, flags: &S
                 out.package_manifests.push(manifest);
             }
         }
-        out.diagnostics.extend(diagnostics);
+        out.diagnostics.extend(diagnostics.0);
+        out.mcp_adapters.extend(diagnostics.1);
     }
     out
 }

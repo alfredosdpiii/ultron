@@ -94,6 +94,8 @@ impl Server {
                 body.extend_from_slice(&chunk[..size]);
             }
         }
+        // Codex sends its SSE body zstd-compressed (`Content-Encoding: zstd`), as the TS server decodes it.
+        let body = ai::http::decode_wire_body(headers.get("content-encoding").map(String::as_str), &body).unwrap();
         let text = String::from_utf8_lossy(&body).into_owned();
         let body = if text.is_empty() {
             Value::Null

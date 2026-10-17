@@ -1,0 +1,81 @@
+{
+	"generator": "crates/ai/fixtures/generate-mistral-timeout.mjs",
+	"model": {
+		"id": "mistral-test",
+		"name": "Test Model",
+		"api": "mistral-conversations",
+		"provider": "mistral",
+		"baseUrl": "https://mistral.invalid",
+		"reasoning": false,
+		"input": [
+			"text"
+		],
+		"cost": {
+			"input": 3,
+			"output": 15,
+			"cacheRead": 0.3,
+			"cacheWrite": 3.75
+		},
+		"contextWindow": 200000,
+		"maxTokens": 32000
+	},
+	"context": {
+		"messages": [
+			{
+				"role": "user",
+				"content": "hi",
+				"timestamp": 2
+			}
+		]
+	},
+	"cases": [
+		{
+			"name": "never-answers",
+			"timeoutMs": 40,
+			"script": "hang",
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "The operation was aborted due to timeout",
+				"content": []
+			}
+		},
+		{
+			"name": "stalls-mid-stream",
+			"timeoutMs": 40,
+			"script": "stall",
+			"chunks": [
+				"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"model\":\"mistral-test\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"par\"},\"finish_reason\":null}]}\n\n"
+			],
+			"result": {
+				"stopReason": "error",
+				"errorMessage": "The operation was aborted due to timeout",
+				"content": [
+					{
+						"type": "text",
+						"text": "par"
+					}
+				]
+			}
+		},
+		{
+			"name": "answers-in-time",
+			"timeoutMs": 5000,
+			"script": "ok",
+			"chunks": [
+				"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"model\":\"mistral-test\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"done\"},\"finish_reason\":null}]}\n\n",
+				"data: {\"id\":\"c1\",\"object\":\"chat.completion.chunk\",\"model\":\"mistral-test\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+				"data: [DONE]\n\n"
+			],
+			"result": {
+				"stopReason": "stop",
+				"errorMessage": null,
+				"content": [
+					{
+						"type": "text",
+						"text": "done"
+					}
+				]
+			}
+		}
+	]
+}

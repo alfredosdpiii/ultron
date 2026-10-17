@@ -46,7 +46,6 @@ impl ServerEntry {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LoadedConfig {
     pub servers: Vec<ServerEntry>,
-    pub auto_enable_codemode: Option<bool>,
     pub errors: Vec<String>,
 }
 
@@ -394,12 +393,15 @@ fn read_config_file(path: &Path, scope: Scope, loaded: &mut LoadedConfig) {
             .push(format!("{shown}: expected an object with an \"mcpServers\" object"));
         return;
     }
-    match parsed.get("autoEnableCodemode") {
-        Some(Value::Bool(b)) => loaded.auto_enable_codemode = Some(*b),
-        Some(_) => loaded
+    // config.ts validates `autoEnableCodemode`; its value only turns on a codemode tool, and the model's one tool
+    // is `rlm`, so nothing reads it.
+    if parsed
+        .get("autoEnableCodemode")
+        .is_some_and(|value| !value.is_boolean())
+    {
+        loaded
             .errors
-            .push(format!("{shown}: autoEnableCodemode must be a boolean")),
-        None => {}
+            .push(format!("{shown}: autoEnableCodemode must be a boolean"));
     }
     // pi-mcp-adapter's top-level `settings` carry defaults for its per-server fields.
     let defaults = parsed

@@ -175,27 +175,6 @@ impl TaskRuntime {
         self.scheduler.wait_for_task(id, &Ctx::with_signal(bound.signal()))
     }
 
-    /// Abort a task this invocation's task owns, and wait until it is terminal. A restart-marked child keeps its
-    /// mark, as for an owner's own cleanup.
-    pub fn abort_owned(&self, id: TaskId, ctx: &Ctx) -> Result<()> {
-        self.invocation.check()?;
-        let bound = self.bind(ctx);
-        let bound = Ctx::with_signal(bound.signal());
-        let record = commit_on(&self.scheduler.session, TxScope::default(), |tx| Ok(tx.task(id)?))?;
-        let Some(record) = record.filter(|record| record.owner == Some(self.invocation.task_id)) else {
-            return Err(HarnessError::Error(format!(
-                "Task {} is not owned by task {}",
-                id.0, self.invocation.task_id.0
-            )));
-        };
-        if record.state.status() == TaskStatus::Terminal {
-            return Ok(());
-        }
-        self.scheduler.abort(id, &bound, true)?;
-        self.scheduler.wait_for_task(id, &bound)?;
-        Ok(())
-    }
-
     /// The outcomes of terminal tasks, in order.
     pub fn outcomes(&self, ids: &[TaskId]) -> Result<Vec<TaskOutcome>> {
         self.invocation.check()?;

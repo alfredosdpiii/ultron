@@ -434,19 +434,6 @@ impl Client {
         Ok(items.into_iter().map(|item| with_name(item, "uriTemplate")).collect())
     }
 
-    /// One page of resource templates: `{ resourceTemplates, nextCursor? }`.
-    pub fn list_resource_templates_page(&self, cursor: Option<&str>, options: RequestOptions) -> Result<Value, Error> {
-        let (items, next) = self.list_page(
-            "resources/templates/list",
-            "resourceTemplates",
-            is_resource_template,
-            cursor,
-            options,
-        )?;
-        let items = items.into_iter().map(|item| with_name(item, "uriTemplate")).collect();
-        Ok(page_value("resourceTemplates", items, next))
-    }
-
     pub fn read_resource(&self, uri: &str, options: RequestOptions) -> Result<Value, Error> {
         validate_read_resource_result(self.request("resources/read", Some(json!({ "uri": uri })), options)?)
     }

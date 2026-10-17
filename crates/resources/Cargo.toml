@@ -7,6 +7,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+regex = "=1.13.1"
 yaml-rust2 = "=0.13.0"
 
 [dev-dependencies]

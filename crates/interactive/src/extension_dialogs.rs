@@ -93,6 +93,29 @@ impl ExtensionInputDialog {
         DialogOutcome::None
     }
 
+    /// `ExtensionInputComponent.handleMouse` (a `Container`): a press on the input's row moves its cursor.
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent, now: Instant) -> Option<tui::mouse::MouseResult> {
+        let title = match self.remaining(now) {
+            Some(seconds) => format!("{} ({seconds}s)", self.title),
+            None => self.title.clone(),
+        };
+        let t = Rc::clone(&self.theme);
+        let top = 2
+            + Text::new(&fg(&t, "accent", &title), 1, 0, None)
+                .render(event.width)
+                .len() as i64
+            + 1;
+        let rows = self.input.render(event.width).len() as i64;
+        if event.y < top || event.y >= top + rows {
+            return None;
+        }
+        let local = tui::mouse::MouseEvent {
+            y: event.y - top,
+            ..*event
+        };
+        self.input.handle_mouse(&local)
+    }
+
     pub fn render(&mut self, width: usize, now: Instant) -> Vec<String> {
         let t = Rc::clone(&self.theme);
         let title = match self.remaining(now) {
@@ -182,6 +205,31 @@ impl ExtensionEditorDialog {
             Some(text) => DialogOutcome::Submit(text),
             None => DialogOutcome::None,
         }
+    }
+
+    /// `ExtensionEditorComponent.handleMouse` (a `Container`): the editor's rows go to the `Editor` (a click moves
+    /// its cursor, its autocomplete rows pick).
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent, rows: usize) -> Option<tui::mouse::MouseResult> {
+        let t = Rc::clone(&self.theme);
+        let width = event.width;
+        let mut top = 2 + Text::new(&fg(&t, "accent", &self.title), 1, 0, None)
+            .render(width)
+            .len() as i64;
+        if let Some(description) = &self.description {
+            top += 1 + Text::new(&fg(&t, "text", description), 1, 0, None).render(width).len() as i64;
+        }
+        top += 1;
+        self.editor.terminal_rows = rows;
+        let height = self.editor.render(width).len();
+        if event.y < top || event.y >= top + height as i64 {
+            return None;
+        }
+        let local = tui::mouse::MouseEvent {
+            y: event.y - top,
+            height,
+            ..*event
+        };
+        self.editor.handle_mouse(&local)
     }
 
     pub fn render(&mut self, width: usize, rows: usize) -> Vec<String> {

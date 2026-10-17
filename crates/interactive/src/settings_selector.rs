@@ -113,7 +113,7 @@ fn str_bool(b: bool) -> String {
     if b { "true" } else { "false" }.to_string()
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 enum SubKind {
     Warnings,
     Theme,
@@ -491,6 +491,50 @@ impl SelectSubmenu {
             Some(SelectEvent::SelectionChanged(item)) => Some(SelectOutcome::Highlight(item.value)),
             None => None,
         }
+    }
+
+    /// `SelectSubmenu` as a `Container` (title, description, search input, list, hint): the search row goes to the
+    /// input, the list rows to the `SelectList`; what the list answered, as [`Self::handle_input`] would.
+    fn handle_mouse(&mut self, event: &MouseEvent) -> Option<(MouseResult, Vec<SelectOutcome>)> {
+        let width = event.width;
+        let t = Rc::clone(&self.theme);
+        let mut top = wrap_text_with_ansi(&bold(&fg(&t, "accent", &self.title)), width).len() as i64;
+        if !self.description.is_empty() {
+            top += 1 + wrap_text_with_ansi(&fg(&t, "muted", &self.description), width).len() as i64;
+        }
+        if let Some(search) = self.search.as_mut() {
+            top += 1;
+            let rows = search.render(width).len() as i64;
+            if event.y >= top && event.y < top + rows {
+                let local = MouseEvent {
+                    y: event.y - top,
+                    ..*event
+                };
+                return search.handle_mouse(&local).map(|r| (r, Vec::new()));
+            }
+            top += rows;
+        }
+        top += 1;
+        let rows = self.list.render(width).len() as i64;
+        if event.y < top || event.y >= top + rows {
+            return None;
+        }
+        let local = MouseEvent {
+            y: event.y - top,
+            height: rows as usize,
+            ..*event
+        };
+        let mut events = Vec::new();
+        let result = self.list.handle_mouse(&local, &mut events)?;
+        let outcomes = events
+            .into_iter()
+            .map(|event| match event {
+                SelectEvent::Selected(item) => SelectOutcome::Picked(item.value),
+                SelectEvent::Cancelled => SelectOutcome::Back,
+                SelectEvent::SelectionChanged(item) => SelectOutcome::Highlight(item.value),
+            })
+            .collect();
+        Some((result, outcomes))
     }
 
     fn render(&mut self, width: usize) -> Vec<String> {
@@ -1410,117 +1454,205 @@ impl SettingsSelector {
         }
     }
 
-    /// `handleMouse` on the selector (`event` in its rows: the border, then the list) while no submenu is open:
-    /// what the click answered, as [`Self::handle_input`] would.
-    pub fn handle_mouse(&mut self, event: &MouseEvent) -> Option<(MouseResult, Option<SettingsEvent>)> {
-        if !self.stack.is_empty() || event.y < 1 {
+    /// `handleMouse` on the selector (`event` in its rows: the border, then the list, or the open submenu in its
+    /// place: `SettingsList.handleMouse` hands the event to `submenuComponent`, a `Container` whose headers are text
+    /// and whose list or select list takes it): what the gesture answered, as [`Self::handle_input`] would.
+    pub fn handle_mouse(&mut self, event: &MouseEvent) -> Option<(MouseResult, Vec<SettingsEvent>)> {
+        if event.y < 1 {
             return None;
         }
-        let local = MouseEvent {
-            y: event.y - 1,
-            ..*event
+        let width = event.width;
+        let header_rows = |header: &[String]| -> i64 {
+            header
+                .iter()
+                .map(|h| {
+                    if h.is_empty() {
+                        1
+                    } else {
+                        wrap_text_with_ansi(h, width).len() as i64
+                    }
+                })
+                .sum()
         };
-        let (result, action) = self.list.handle_mouse(&local)?;
-        let event = match action {
-            None => None,
-            Some(ListAction::Cancel) => Some(SettingsEvent::Cancelled),
-            Some(ListAction::Open(index)) => {
+        let mut y = event.y - 1;
+        let depth = self.stack.len();
+        for sub in self.stack.iter().take(depth.saturating_sub(1)) {
+            if let Sub::List { header, .. } = sub {
+                y -= header_rows(header);
+            }
+        }
+        // A submenu's answer focuses the list that holds it (`{ ...result, focus: true }`).
+        let focused = |result: MouseResult| MouseResult {
+            focus: Some(true),
+            ..result
+        };
+        let Some(sub) = self.stack.pop() else {
+            let local = MouseEvent { y, ..*event };
+            let (result, action) = self.list.handle_mouse(&local)?;
+            return Some((result, action.and_then(|a| self.main_action(a)).into_iter().collect()));
+        };
+        match sub {
+            Sub::List { kind, mut list, header } => {
+                let local = MouseEvent {
+                    y: y - header_rows(&header),
+                    ..*event
+                };
+                match list.handle_mouse(&local) {
+                    None => {
+                        self.stack.push(Sub::List { kind, list, header });
+                        None
+                    }
+                    Some((result, action)) => {
+                        let event = self.list_sub(kind, list, header, action);
+                        Some((focused(result), event.into_iter().collect()))
+                    }
+                }
+            }
+            Sub::Select { kind, mut menu } => {
+                let local = MouseEvent { y, ..*event };
+                let Some((result, outcomes)) = menu.handle_mouse(&local) else {
+                    self.stack.push(Sub::Select { kind, menu });
+                    return None;
+                };
+                // Each answer in order (a click on a row the press did not select: its highlight, then the pick);
+                // the submenu is back on the stack after an answer that keeps it.
+                let mut events = Vec::new();
+                let mut open = Some((kind, menu));
+                for outcome in outcomes {
+                    let Some((kind, menu)) = open.take() else { break };
+                    events.extend(self.select_sub(kind.clone(), menu, Some(outcome)));
+                    if let Some(Sub::Select { kind: top, .. }) = self.stack.last()
+                        && *top == kind
+                        && let Some(Sub::Select { kind, menu }) = self.stack.pop()
+                    {
+                        open = Some((kind, menu));
+                    }
+                }
+                if let Some((kind, menu)) = open {
+                    self.stack.push(Sub::Select { kind, menu });
+                }
+                Some((focused(result), events))
+            }
+        }
+    }
+
+    pub fn handle_input(&mut self, data: &str) -> Option<SettingsEvent> {
+        let Some(sub) = self.stack.pop() else {
+            let action = self.list.handle_input(data)?;
+            return self.main_action(action);
+        };
+        match sub {
+            Sub::List { kind, mut list, header } => {
+                let action = list.handle_input(data);
+                self.list_sub(kind, list, header, action)
+            }
+            Sub::Select { kind, mut menu } => {
+                let outcome = menu.handle_input(data);
+                self.select_sub(kind, menu, outcome)
+            }
+        }
+    }
+
+    /// What the main list's `action` does.
+    fn main_action(&mut self, action: ListAction) -> Option<SettingsEvent> {
+        match action {
+            ListAction::Cancel => Some(SettingsEvent::Cancelled),
+            ListAction::Open(index) => {
                 if let Some(kind) = self.list.items[index].sub.clone() {
                     self.open(kind);
                 }
                 None
             }
-            Some(ListAction::Changed(id, value)) => Some(self.main_change(&id, &value)),
-        };
-        Some((result, event))
+            ListAction::Changed(id, value) => Some(self.main_change(&id, &value)),
+        }
     }
 
-    pub fn handle_input(&mut self, data: &str) -> Option<SettingsEvent> {
-        let Some(sub) = self.stack.pop() else {
-            return match self.list.handle_input(data)? {
-                ListAction::Cancel => Some(SettingsEvent::Cancelled),
-                ListAction::Open(index) => {
-                    if let Some(kind) = self.list.items[index].sub.clone() {
-                        self.open(kind);
+    /// What `action` of the open list submenu (popped off the stack) does; the submenu goes back when it stays.
+    fn list_sub(
+        &mut self,
+        kind: SubKind,
+        list: List,
+        header: Vec<String>,
+        action: Option<ListAction>,
+    ) -> Option<SettingsEvent> {
+        match (action, &kind) {
+            (Some(ListAction::Cancel), SubKind::Models) => {
+                let summary = self.models_summary();
+                self.list.update("models", &summary);
+                None
+            }
+            // Leaving the theme submenu restores the theme the setting names (`cancel`).
+            (Some(ListAction::Cancel), SubKind::Theme) => Some(SettingsEvent::Preview(self.input.str("theme", "dark"))),
+            (Some(ListAction::Cancel), _) => None,
+            (Some(ListAction::Open(index)), _) => {
+                let next = list.items[index].sub.clone();
+                self.stack.push(Sub::List { kind, list, header });
+                if let Some(next) = next {
+                    self.open(next);
+                }
+                None
+            }
+            (Some(ListAction::Changed(id, value)), SubKind::Warnings) => {
+                self.warnings_extra = value == "true";
+                let _ = id;
+                self.stack.push(Sub::List { kind, list, header });
+                Some(SettingsEvent::Change(
+                    "warnings".into(),
+                    json!({"anthropicExtraUsage": self.warnings_extra}),
+                ))
+            }
+            (Some(ListAction::Changed(id, _)), SubKind::Theme) => {
+                if id == "apply" {
+                    return Some(self.set_theme(format!("{}/{}", self.light, self.dark)));
+                }
+                self.stack.push(self.theme_single());
+                Some(SettingsEvent::Preview(self.active_automatic_theme()))
+            }
+            (_, _) => {
+                self.stack.push(Sub::List { kind, list, header });
+                None
+            }
+        }
+    }
+
+    /// What `outcome` of the open select submenu (popped off the stack) does; the submenu goes back when it stays.
+    fn select_sub(
+        &mut self,
+        kind: SubKind,
+        menu: SelectSubmenu,
+        outcome: Option<SelectOutcome>,
+    ) -> Option<SettingsEvent> {
+        match outcome {
+            None => {
+                self.stack.push(Sub::Select { kind, menu });
+                None
+            }
+            Some(SelectOutcome::Highlight(value)) => {
+                let preview = match kind {
+                    SubKind::Theme if value == AUTOMATIC_THEME => Some(self.automatic_setting()),
+                    SubKind::Theme | SubKind::LightTheme | SubKind::DarkTheme => Some(value),
+                    _ => None,
+                };
+                self.stack.push(Sub::Select { kind, menu });
+                preview.map(SettingsEvent::Preview)
+            }
+            Some(SelectOutcome::Back) => {
+                match kind {
+                    SubKind::Theme => return Some(SettingsEvent::Preview(self.input.str("theme", "dark"))),
+                    SubKind::LightTheme | SubKind::DarkTheme => {
+                        return Some(SettingsEvent::Preview(self.automatic_setting()));
                     }
-                    None
+                    _ => {}
                 }
-                ListAction::Changed(id, value) => Some(self.main_change(&id, &value)),
-            };
-        };
-        match sub {
-            Sub::List { kind, mut list, header } => match (list.handle_input(data), &kind) {
-                (Some(ListAction::Cancel), SubKind::Models) => {
-                    let summary = self.models_summary();
-                    self.list.update("models", &summary);
-                    None
+                if matches!(kind, SubKind::ModelThinking) && self.thinking_model.take().is_some() {
+                    self.stack.push(self.thinking_step());
                 }
-                // Leaving the theme submenu restores the theme the setting names (`cancel`).
-                (Some(ListAction::Cancel), SubKind::Theme) => {
-                    Some(SettingsEvent::Preview(self.input.str("theme", "dark")))
+                if matches!(kind, SubKind::ModelThinking) {
+                    self.list.update("model-thinking", &self.thinking_summary());
                 }
-                (Some(ListAction::Cancel), _) => None,
-                (Some(ListAction::Open(index)), _) => {
-                    let next = list.items[index].sub.clone();
-                    self.stack.push(Sub::List { kind, list, header });
-                    if let Some(next) = next {
-                        self.open(next);
-                    }
-                    None
-                }
-                (Some(ListAction::Changed(id, value)), SubKind::Warnings) => {
-                    self.warnings_extra = value == "true";
-                    let _ = id;
-                    self.stack.push(Sub::List { kind, list, header });
-                    Some(SettingsEvent::Change(
-                        "warnings".into(),
-                        json!({"anthropicExtraUsage": self.warnings_extra}),
-                    ))
-                }
-                (Some(ListAction::Changed(id, _)), SubKind::Theme) => {
-                    if id == "apply" {
-                        return Some(self.set_theme(format!("{}/{}", self.light, self.dark)));
-                    }
-                    self.stack.push(self.theme_single());
-                    Some(SettingsEvent::Preview(self.active_automatic_theme()))
-                }
-                (_, _) => {
-                    self.stack.push(Sub::List { kind, list, header });
-                    None
-                }
-            },
-            Sub::Select { kind, mut menu } => match menu.handle_input(data) {
-                None => {
-                    self.stack.push(Sub::Select { kind, menu });
-                    None
-                }
-                Some(SelectOutcome::Highlight(value)) => {
-                    let preview = match kind {
-                        SubKind::Theme if value == AUTOMATIC_THEME => Some(self.automatic_setting()),
-                        SubKind::Theme | SubKind::LightTheme | SubKind::DarkTheme => Some(value),
-                        _ => None,
-                    };
-                    self.stack.push(Sub::Select { kind, menu });
-                    preview.map(SettingsEvent::Preview)
-                }
-                Some(SelectOutcome::Back) => {
-                    match kind {
-                        SubKind::Theme => return Some(SettingsEvent::Preview(self.input.str("theme", "dark"))),
-                        SubKind::LightTheme | SubKind::DarkTheme => {
-                            return Some(SettingsEvent::Preview(self.automatic_setting()));
-                        }
-                        _ => {}
-                    }
-                    if matches!(kind, SubKind::ModelThinking) && self.thinking_model.take().is_some() {
-                        self.stack.push(self.thinking_step());
-                    }
-                    if matches!(kind, SubKind::ModelThinking) {
-                        self.list.update("model-thinking", &self.thinking_summary());
-                    }
-                    None
-                }
-                Some(SelectOutcome::Picked(value)) => self.picked(kind, value),
-            },
+                None
+            }
+            Some(SelectOutcome::Picked(value)) => self.picked(kind, value),
         }
     }
 

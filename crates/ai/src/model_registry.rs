@@ -101,10 +101,29 @@ impl RequestConfig {
     /// The request headers for `key` (`withConfiguredAuth`, then the model's headers), resolved now: provider
     /// headers, the bearer header, then model headers (names compare case-insensitively).
     pub fn headers(&self, provider: &str, key: Option<&str>) -> Result<Option<ProviderHeaders>, String> {
-        match &self.lookup {
-            Some(lookup) => self.headers_with(provider, key, &**lookup),
-            None => self.headers_with(provider, key, &|_: &str| None),
-        }
+        self.headers_in(provider, key, None, None)
+    }
+
+    /// [`RequestConfig::headers`] whose templates read `provider_env` (the stored credential's env) first for the
+    /// provider headers, and `model_env` (it under the request's own env) first for the model headers, then the
+    /// environment (`configContextEnv`, `resolveConfiguredModelHeaders`: an empty value reads as unset).
+    pub fn headers_in(
+        &self,
+        provider: &str,
+        key: Option<&str>,
+        provider_env: Option<&crate::env::ProviderEnv>,
+        model_env: Option<&crate::env::ProviderEnv>,
+    ) -> Result<Option<ProviderHeaders>, String> {
+        let base = |name: &str| self.lookup.as_ref().and_then(|lookup| lookup(name));
+        let over = |env: Option<&crate::env::ProviderEnv>, name: &str| {
+            env.and_then(|env| env.get(name))
+                .filter(|v| !v.is_empty())
+                .cloned()
+                .or_else(|| base(name))
+        };
+        let provider_lookup = |name: &str| over(provider_env, name);
+        let model_lookup = |name: &str| over(model_env, name);
+        self.headers_with_env(provider, key, &provider_lookup, &model_lookup)
     }
 
     fn headers_with(
@@ -112,6 +131,16 @@ impl RequestConfig {
         provider: &str,
         key: Option<&str>,
         lookup: Lookup<'_>,
+    ) -> Result<Option<ProviderHeaders>, String> {
+        self.headers_with_env(provider, key, lookup, lookup)
+    }
+
+    fn headers_with_env(
+        &self,
+        provider: &str,
+        key: Option<&str>,
+        lookup: Lookup<'_>,
+        model_lookup: Lookup<'_>,
     ) -> Result<Option<ProviderHeaders>, String> {
         let mut headers = resolve_headers_or_err(
             &self.provider_headers,
@@ -130,7 +159,7 @@ impl RequestConfig {
         let model = resolve_headers_or_err(
             &self.model_headers,
             &format!("model \"{}/{}\"", self.provider, self.model),
-            lookup,
+            model_lookup,
         )?;
         Ok(merge_headers(headers.as_ref(), model.as_ref()))
     }
@@ -162,9 +191,23 @@ fn options_with(
     let Some(request) = &model.request else {
         return Ok(None);
     };
-    let configured = request.headers(&model.provider, options.base.api_key.as_deref())?;
-    let auth = merge_headers(stored.and_then(|s| s.headers.as_ref()), configured.as_ref());
     let env = stored.and_then(|s| s.env.as_ref());
+    // Model header templates see the stored env under the request's own (`{ ...resolution.env, ...overrides.env }`).
+    let model_env = match (env, options.base.env.as_ref()) {
+        (Some(stored), Some(own)) => {
+            let mut merged = stored.clone();
+            merged.extend(own.iter().map(|(k, v)| (k.clone(), v.clone())));
+            Some(merged)
+        }
+        (stored, own) => stored.or(own).cloned(),
+    };
+    let configured = request.headers_in(
+        &model.provider,
+        options.base.api_key.as_deref(),
+        env,
+        model_env.as_ref(),
+    )?;
+    let auth = merge_headers(stored.and_then(|s| s.headers.as_ref()), configured.as_ref());
     if auth.is_none() && env.is_none() {
         return Ok(None);
     }
@@ -322,11 +365,6 @@ impl ModelRegistry {
                 self.stored.insert(provider, entry);
             }
         }
-    }
-
-    /// Record a refreshed catalog for `provider` (what `publish({ update })` does in the TypeScript runtime).
-    pub fn set_stored(&mut self, provider: &str, entry: Value) {
-        self.stored.insert(provider.to_string(), entry);
     }
 
     pub fn config(&self) -> &ModelConfig {

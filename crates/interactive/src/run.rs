@@ -130,17 +130,24 @@ fn suspend_process() -> Result<(), String> {
     rustix::process::kill_process(rustix::process::getpid(), rustix::process::Signal::TSTP).map_err(|e| e.to_string())
 }
 
-/// Forward stdin input sequences into `tx`.
-pub fn spawn_input(tx: Sender<UiEvent>) {
-    let input = tui::terminal::spawn_stdin_pump();
-    std::thread::spawn(move || {
-        for data in input {
-            if tx.send(UiEvent::Input(data)).is_err() {
-                return;
-            }
-        }
-        let _ = tx.send(UiEvent::InputClosed);
+/// The terminal environment's debug outputs (`PI_TUI_WRITE_LOG`, `PI_TUI_DEBUG_REDRAW=1` under `log_dir`, the
+/// agent directory, `PI_TUI_DEBUG=1` under `dump_dir`) and whether this is Termux (`TERMUX_VERSION` non-empty).
+/// `local` is the local time a write-log directory names its file by; `clock` stamps redraw lines and dumps.
+pub fn terminal_debug(
+    var: &dyn Fn(&str) -> Option<String>,
+    log_dir: &std::path::Path,
+    dump_dir: &std::path::Path,
+    local: tui::render_debug::LocalStamp,
+    pid: u32,
+    clock: Box<dyn Fn() -> i64 + Send + Sync>,
+) -> (Option<Arc<tui::render_debug::RenderDebug>>, bool) {
+    let write_log = var("PI_TUI_WRITE_LOG").and_then(|value| {
+        let is_dir = std::fs::metadata(&value).is_ok_and(|m| m.is_dir());
+        tui::render_debug::write_log_path(&value, is_dir, local, pid)
     });
+    let debug = tui::render_debug::RenderDebug::from_env(var, write_log, log_dir, dump_dir, clock);
+    let termux = var("TERMUX_VERSION").is_some_and(|v| !v.is_empty());
+    (debug.map(Arc::new), termux)
 }
 
 /// Run until the app exits. `size` reports the terminal (columns, rows).
@@ -240,6 +247,15 @@ pub fn paint_loop_with(
     pending: Option<&dyn Fn() -> usize>,
     keyboard: &mut KeyboardProtocol,
 ) -> std::io::Result<()> {
+    // `PI_TUI_WRITE_LOG`: every byte written to the terminal is appended to the log too.
+    let debug = app.render_debug();
+    let mut logged = |data: &str| {
+        if let Some(debug) = &debug {
+            debug.wrote(data);
+        }
+        out(data)
+    };
+    let out: &mut dyn FnMut(&str) -> std::io::Result<()> = &mut logged;
     let split = app.qol().viewport_split;
     let gated = app.qol().render_gate;
     let mut screen = AltScreen::new();
@@ -365,9 +381,20 @@ pub fn paint_loop_with(
                 screen.wezterm = app.wezterm;
                 viewport.show_hardware_cursor = app.show_hardware_cursor;
                 viewport.clear_on_shrink = app.clear_on_shrink;
+                viewport.termux = app.termux();
+                viewport.trace = debug.as_ref().is_some_and(|d| d.traces_renders());
                 if split {
                     let plan = app.frame_plan(cols as usize, rows as usize);
                     out(&viewport.render(&plan, cols as usize, rows as usize).bytes)?;
+                    if let Some(debug) = &debug {
+                        let (redraws, dumps) = viewport.take_traces();
+                        for entry in redraws {
+                            debug.redraw(&entry);
+                        }
+                        for dump in dumps {
+                            debug.dump(&dump.text());
+                        }
+                    }
                 } else {
                     let frame = app.render(cols as usize, rows as usize);
                     out(&screen.paint(&frame, cols as usize, rows as usize))?;

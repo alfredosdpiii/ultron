@@ -297,6 +297,36 @@ impl AuthSelector {
     }
 }
 
+impl AuthSelector {
+    /// `OAuthSelectorComponent.handleMouse` (a `Container`): a press on the search `Input` moves its cursor; the
+    /// provider rows are text.
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent) -> Option<tui::mouse::MouseResult> {
+        let t = Rc::clone(&self.theme);
+        let title = if self.login {
+            "Select provider to configure:"
+        } else {
+            "Select provider to logout:"
+        };
+        let title_rows = tui::components::TruncatedText {
+            text: fg(&t, "accent", &bold(title)),
+            padding_x: 1,
+            padding_y: 0,
+        }
+        .render(event.width)
+        .len() as i64;
+        let top = 2 + title_rows + 1;
+        let rows = self.search.render(event.width).len() as i64;
+        if event.y < top || event.y >= top + rows {
+            return None;
+        }
+        let local = tui::mouse::MouseEvent {
+            y: event.y - top,
+            ..*event
+        };
+        self.search.handle_mouse(&local)
+    }
+}
+
 impl Component for AuthSelector {
     fn render(&mut self, width: usize) -> Vec<String> {
         let t = Rc::clone(&self.theme);

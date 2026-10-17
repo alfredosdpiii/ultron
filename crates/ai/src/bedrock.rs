@@ -1507,10 +1507,16 @@ async fn drive(
         &serde_json::to_string(&body).unwrap_or_default(),
         options,
     );
-    // `AWS_BEDROCK_FORCE_HTTP1=1`: "Some custom endpoints require HTTP/1.1 instead of HTTP/2".
-    let http1 = (provider_env_value("AWS_BEDROCK_FORCE_HTTP1", options.base.env.as_ref()).as_deref() == Some("1"))
-        .then(|| transport.http1_only())
-        .flatten();
+    // Through a proxy the SDK's HTTP/1.1 handler is used (its HTTP/2 handler takes no proxy agent); without one,
+    // `AWS_BEDROCK_FORCE_HTTP1=1`: "Some custom endpoints require HTTP/1.1 instead of HTTP/2". The proxy itself is
+    // the transport's.
+    let proxied = crate::net::node_proxy_for_target(&model.base_url, options.base.env.as_ref())
+        .map_err(BedrockError::plain)?
+        .is_some();
+    let http1 = (proxied
+        || provider_env_value("AWS_BEDROCK_FORCE_HTTP1", options.base.env.as_ref()).as_deref() == Some("1"))
+    .then(|| transport.http1_only())
+    .flatten();
     let mut stream = send_with_retry(http1.as_deref().unwrap_or(transport), &request, options).await?;
     *response_id = diagnostic_value(stream.request_id.as_deref());
     while let Some(message) = stream.next(signal).await? {

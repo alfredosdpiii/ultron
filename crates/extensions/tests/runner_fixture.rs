@@ -90,16 +90,6 @@ fn run(router: &Router, call: &Value, errors: &Arc<Mutex<Vec<Value>>>) -> Value 
             errors.lock().unwrap().extend(errs.iter().map(error_value));
             ok(opt(result))
         }
-        "toolCall" => match router.emit_tool_call(&call["event"]) {
-            Ok(outcome) => {
-                let mut out = json!({ "input": outcome.input });
-                if let Some(result) = outcome.result {
-                    out["result"] = result;
-                }
-                ok(out)
-            }
-            Err(e) => throws(e),
-        },
         "beforeFileWrite" => router
             .emit_before_file_write(&call["event"])
             .map_or_else(throws, |v| ok(opt(v))),
@@ -107,19 +97,6 @@ fn run(router: &Router, call: &Value, errors: &Arc<Mutex<Vec<Value>>>) -> Value 
             .emit_user_bash(&call["event"])
             .map_or_else(throws, |v| ok(opt(v))),
         "afterCellChanges" => ok(opt(router.emit_after_cell_changes(&call["event"]))),
-        "toolResult" => ok(opt(router.emit_tool_result(&call["event"]))),
-        "messageEnd" => ok(opt(router.emit_message_end(&call["event"]))),
-        "cacheWarming" => ok(router.emit_cache_warming_decision(&call["event"])),
-        "input" => ok(router.emit_input(
-            call["text"].as_str().unwrap(),
-            call.get("images"),
-            call["source"].as_str().unwrap(),
-            call.get("streamingBehavior").and_then(Value::as_str),
-        )),
-        "providerRequest" => ok(router.emit_before_provider_request(call["payload"].clone())),
-        "providerHeaders" => ok(Value::Object(
-            router.emit_before_provider_headers(call["headers"].as_object().unwrap().clone()),
-        )),
         "agentStart" => {
             let render = |options: &Value| {
                 options
@@ -140,39 +117,7 @@ fn run(router: &Router, call: &Value, errors: &Arc<Mutex<Vec<Value>>>) -> Value 
             }
             ok(out)
         }
-        "resources" => {
-            let paths = router.emit_resources_discover(call["cwd"].as_str().unwrap(), call["reason"].as_str().unwrap());
-            let list = |items: &[(String, String)]| {
-                Value::Array(
-                    items
-                        .iter()
-                        .map(|(p, e)| json!({ "path": p, "extensionPath": e }))
-                        .collect(),
-                )
-            };
-            ok(json!({
-                "skillPaths": list(&paths.skill_paths),
-                "promptPaths": list(&paths.prompt_paths),
-                "themePaths": list(&paths.theme_paths),
-            }))
-        }
         "context" => ok(Value::Array(router.emit_context(call["messages"].as_array().unwrap()))),
-        "boundary" => {
-            let build = |entries: &[Value]| {
-                if entries.iter().any(|e| e["customType"] == "bad") {
-                    Err("bad entry".to_string())
-                } else {
-                    Ok(json!({ "size": entries.len() }))
-                }
-            };
-            let outcome = router.emit_boundary(&call["event"], &build).unwrap();
-            ok(json!({
-                "entries": outcome.entries,
-                "continue": outcome.continue_,
-                "context": outcome.context,
-                "valid": outcome.valid,
-            }))
-        }
         "commands" => ok(Value::Array(
             router
                 .registered_commands()
@@ -187,8 +132,26 @@ fn run(router: &Router, call: &Value, errors: &Arc<Mutex<Vec<Value>>>) -> Value 
 #[test]
 fn extensions_router_matches_typescript_runner() {
     let fixture: Value = serde_json::from_str(include_str!("../fixtures/runner.json")).unwrap();
-    let scenarios = fixture["scenarios"].as_array().unwrap();
-    assert!(scenarios.len() >= 30);
+    // The recorded runner also covers emitters no product path calls (the native worker never emits them), which
+    // the router does not have.
+    let unported = [
+        "toolCall",
+        "toolResult",
+        "messageEnd",
+        "cacheWarming",
+        "input",
+        "providerRequest",
+        "providerHeaders",
+        "resources",
+        "boundary",
+    ];
+    let scenarios: Vec<&Value> = fixture["scenarios"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|scenario| !unported.contains(&scenario["call"]["kind"].as_str().unwrap()))
+        .collect();
+    assert_eq!(scenarios.len(), 21);
     let mut failures = Vec::new();
     for scenario in scenarios {
         let log = Arc::new(Mutex::new(Vec::new()));

@@ -633,6 +633,24 @@ impl SessionSelector {
     }
 }
 
+impl SessionSelector {
+    /// `SessionSelectorComponent.handleMouse` (a `Container`): only the rename panel's `Input` takes the mouse (a
+    /// press moves its cursor); the session list and its search line (`SessionList`) read none.
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent) -> Option<tui::mouse::MouseResult> {
+        let (_, input) = self.rename.as_mut()?;
+        let top = 3 + Text::new(&bold("Rename Session"), 1, 0, None).render(event.width).len() as i64 + 1;
+        let rows = input.render(event.width).len() as i64;
+        if event.y < top || event.y >= top + rows {
+            return None;
+        }
+        let local = tui::mouse::MouseEvent {
+            y: event.y - top,
+            ..*event
+        };
+        input.handle_mouse(&local)
+    }
+}
+
 impl Component for SessionSelector {
     fn render(&mut self, width: usize) -> Vec<String> {
         let t = Rc::clone(&self.theme);

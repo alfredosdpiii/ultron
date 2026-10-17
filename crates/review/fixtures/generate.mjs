@@ -1,6 +1,5 @@
-// Generates crates/review/fixtures/review.json from the Python /review implementation in this checkout
-// (packages/coding-agent/src/ultron/rlm/review_prompts.py and review_api.py), by running fixtures/record.py.
-// It also records the autoreview fates ledger (lessons.ts) to ledger.json.
+// Generates crates/review/fixtures/{ledger,settings,prepare,plan}.json from the autoreview TypeScript in this checkout
+// (lessons.ts, config.ts, prepare.ts, plan.ts).
 // The Rust tests compare every recorded output exactly.
 // Usage: node crates/review/fixtures/generate.mjs
 import { execFileSync } from "node:child_process";
@@ -10,19 +9,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../..");
-const python = process.env.ULTRON_PYTHON || "/usr/bin/python3";
-const rlm = join(root, "packages/coding-agent/src/ultron/rlm");
-const out = execFileSync(python, ["-I", join(here, "record.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
-writeFileSync(join(here, "review.json"), out);
-// Chunking, find plans, scope over local git repositories (gh scripted), related code, the report, save and post.
-const scope = execFileSync(python, ["-I", join(here, "record_scope.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
-writeFileSync(join(here, "scope.json"), scope);
-// Autoreview's context, guides (trees built in a temp dir), line mapping, slices, merging and public findings.
-const autoreview = execFileSync(python, ["-I", join(here, "record_autoreview.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
-writeFileSync(join(here, "autoreview.json"), autoreview);
-// The autoreview frame scheduler on a virtual clock with scripted rlm.map replies.
-const frames = execFileSync(python, ["-I", join(here, "record_frames.py"), rlm], { encoding: "utf8", maxBuffer: 64 << 20 });
-writeFileSync(join(here, "frames.json"), frames);
 
 // The fates ledger (packages/coding-agent/src/ultron/autoreview/lessons.ts): pure functions over recorded inputs.
 process.env.TZ = "UTC";
@@ -283,8 +269,7 @@ const levels = [{}, { severity: "blocker" }, { severity: "major" }, { severity: 
 writeFileSync(join(here, "plan.json"), `${JSON.stringify({ plans: planOut, places, emptyPlace: plan.placeLine([], 3) ?? null,
 	levels, severities: types.LEVELS.map(types.severityOf), marker: plan.commentMarker("k-1") }, null, 1)}\n`);
 
-// The other areas' recorders, each deterministic and writing its own fixture: the deep pass, the structural
-// reference, the sandboxed tests, the compiled mode, their glue, the GitHub flow, the daemon and the service files.
-for (const generator of ["generate_deep.mjs", "generate_reference.mjs", "generate_tests.mjs", "generate_compiled.mjs",
-	"generate_glue.mjs", "generate_github.mjs", "generate_daemon.mjs", "generate_service.mjs"])
+// The other areas' recorders, each deterministic and writing its own fixture: the GitHub flow, the daemon and the
+// service files.
+for (const generator of ["generate_github.mjs", "generate_daemon.mjs", "generate_service.mjs"])
 	execFileSync(process.execPath, [join(here, generator)], { stdio: "inherit" });

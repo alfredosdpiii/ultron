@@ -597,6 +597,7 @@ impl Link {
     pub fn open(parsed: &Args, env: &Env, target: &Target, mode: &str, events: WatchSink) -> Result<Link, String> {
         let options = server_options(parsed, env, mode)?;
         let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
+        crate::print_mode::trace_startup(env, "cli.server-started");
         let connection = match Connection::connect(&server.endpoint_path, &server.server_id) {
             Ok(connection) => connection,
             Err(error) => {

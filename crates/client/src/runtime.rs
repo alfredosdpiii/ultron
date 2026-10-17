@@ -62,50 +62,232 @@ impl std::fmt::Display for CallError {
 /// Receives `(member, value)` after each applied state update of one subscription.
 pub type UpdateListener = Box<dyn Fn(&str, &Json) + Send>;
 
+/// One state member of a singleton replica (`MemberSlot` over `ReplicatedStateReplica`): `None` until hydrated and
+/// after it was cleared (`unavailable`, a sequence gap, an update that does not apply).
+struct Slot {
+    value: Option<Json>,
+    sequence: u64,
+}
+
+/// A failure while applying a service update: `Fatal` breaks the operation stream (the wire decoder, `client.ts`
+/// fails the connection), `Reported` is the consumer's `reportError` (state.ts/consumer.ts): only that replica's
+/// member is cleared and the connection stays up.
+enum UpdateError {
+    Fatal(String),
+    Reported(String),
+}
+
+/// The client's replica of one singleton subscription: the wire decoders (`createServiceStateDecoder`) and the
+/// consumer facade (`ServiceFacade` of `RemoteServiceBinding`, consumer.ts:579-608).
 struct Replica {
-    states: HashMap<String, (Decoder, Json)>,
+    service: String,
+    decoders: HashMap<String, Decoder>,
+    slots: HashMap<String, Slot>,
     listener: Option<UpdateListener>,
+    /// Errors the consumer reported (`onError`), oldest first.
+    errors: Vec<String>,
+}
+
+fn is_base(ops: &[Op]) -> bool {
+    matches!(ops.first(), Some(Op::Replace(_)))
+}
+
+fn wire_ops(member: &Json) -> &[Json] {
+    member["ops"].as_array().map(Vec::as_slice).unwrap_or_default()
 }
 
 impl Replica {
-    fn hydrate(snapshot: &Json) -> Result<Replica, String> {
-        let mut states = HashMap::new();
-        for instance in snapshot["instances"].as_array().into_iter().flatten() {
-            for member in instance["members"].as_array().into_iter().flatten() {
-                if member["kind"] != "state" {
-                    continue;
-                }
-                let mut decoder = Decoder::default();
-                let ops = decoder
-                    .decode(member["ops"].as_array().map(Vec::as_slice).unwrap_or_default())
-                    .map_err(|e| e.to_string())?;
-                let value = chord_delta::apply(Json::Null, ops).map_err(|e| e.to_string())?;
-                states.insert(
-                    member["name"].as_str().unwrap_or_default().to_string(),
-                    (decoder, value),
-                );
+    /// Decode one instance snapshot's state members with fresh decoders (`decodeInstance`).
+    fn decode_instance(&mut self, instance: &Json) -> Result<Vec<(String, u64, Vec<Op>)>, String> {
+        let mut states = Vec::new();
+        for member in instance["members"].as_array().into_iter().flatten() {
+            if member["kind"] != "state" {
+                continue;
             }
+            let name = member["name"].as_str().unwrap_or_default().to_string();
+            if self.decoders.contains_key(&name) {
+                return Err(format!("Duplicate service state {name}"));
+            }
+            let decoder = self.decoders.entry(name.clone()).or_default();
+            let ops = decoder.decode(wire_ops(member)).map_err(|e| e.to_string())?;
+            states.push((name, member["sequence"].as_u64().unwrap_or_default(), ops));
         }
-        Ok(Replica { states, listener: None })
+        Ok(states)
     }
 
-    fn update(&mut self, update: &Json) -> Result<(), String> {
-        if update["type"] != "state" {
-            return Ok(());
-        }
-        let member = update["member"].as_str().unwrap_or_default();
-        let (decoder, value) = self
-            .states
-            .get_mut(member)
-            .ok_or_else(|| format!("Unknown service state {member}"))?;
-        let ops: Vec<Op> = decoder
-            .decode(update["ops"].as_array().map(Vec::as_slice).unwrap_or_default())
-            .map_err(|e| e.to_string())?;
-        *value = chord_delta::apply(std::mem::take(value), ops).map_err(|e| e.to_string())?;
-        if let Some(listener) = &self.listener {
-            listener(member, value);
+    /// `validateMembers`: names are non-empty and unique.
+    fn validate_members(instance: &Json) -> Result<(), String> {
+        let mut names = std::collections::HashSet::new();
+        for member in instance["members"].as_array().into_iter().flatten() {
+            let name = member["name"].as_str().unwrap_or_default();
+            if name.is_empty() || !names.insert(name) {
+                return Err("Remote service has invalid member descriptions".into());
+            }
         }
         Ok(())
+    }
+
+    /// `ServiceFacade.install`: hydrate every state member from a base batch; a failing member is cleared.
+    fn install(&mut self, instance: &Json, states: Vec<(String, u64, Vec<Op>)>) -> Result<(), String> {
+        Replica::validate_members(instance)?;
+        let names: Vec<&str> = instance["members"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|m| m["name"].as_str())
+            .collect();
+        let mut existing: Vec<&String> = self.slots.keys().collect();
+        existing.sort();
+        if let Some(missing) = existing.into_iter().find(|name| !names.contains(&name.as_str())) {
+            return Err(format!("Unknown remote service member {}.{missing}", self.service));
+        }
+        let mut states: HashMap<String, (u64, Vec<Op>)> = states
+            .into_iter()
+            .map(|(name, sequence, ops)| (name, (sequence, ops)))
+            .collect();
+        for member in instance["members"].as_array().into_iter().flatten() {
+            let name = member["name"].as_str().unwrap_or_default().to_string();
+            let Some((sequence, ops)) = states.remove(&name) else {
+                if self.slots.contains_key(&name) {
+                    return Err(format!("Remote service member {}.{name} changed kind", self.service));
+                }
+                continue;
+            };
+            let slot = self.slots.entry(name.clone()).or_insert(Slot {
+                value: None,
+                sequence: 0,
+            });
+            if !is_base(&ops) {
+                slot.value = None;
+                return Err("Replicated state snapshot is not a base operation batch".into());
+            }
+            match chord_delta::apply(Json::Null, ops) {
+                Ok(value) => {
+                    slot.sequence = sequence;
+                    slot.value = Some(value);
+                }
+                Err(error) => {
+                    slot.value = None;
+                    return Err(error.to_string());
+                }
+            }
+            if let (Some(listener), Some(value)) = (&self.listener, &slot.value) {
+                listener(&name, value);
+            }
+        }
+        Ok(())
+    }
+
+    /// The subscribe response: one singleton instance (`#startSingleton`).
+    fn hydrate(service: &str, snapshot: &Json) -> Result<Replica, String> {
+        let mut replica = Replica {
+            service: service.to_string(),
+            decoders: HashMap::new(),
+            slots: HashMap::new(),
+            listener: None,
+            errors: Vec::new(),
+        };
+        let instances = snapshot["instances"].as_array().map(Vec::as_slice).unwrap_or_default();
+        let mut decoded = Vec::new();
+        for instance in instances {
+            decoded.push(replica.decode_instance(instance)?);
+        }
+        if snapshot["mode"] != "singleton" || snapshot["serviceId"] != service || instances.len() != 1 {
+            return Err(format!(
+                "Remote service {service} returned an invalid singleton snapshot"
+            ));
+        }
+        let states = decoded.pop().unwrap_or_default();
+        replica.install(&instances[0], states)?;
+        Ok(replica)
+    }
+
+    fn update(&mut self, update: &Json) -> Result<(), UpdateError> {
+        match update["type"].as_str() {
+            Some("state") => {
+                let member = update["member"].as_str().unwrap_or_default();
+                let instance = &update["instance"];
+                let decoder = match instance.is_null() {
+                    true => self.decoders.get_mut(member),
+                    false => None,
+                };
+                let Some(decoder) = decoder else {
+                    let name = match instance.is_null() {
+                        true => member.to_string(),
+                        false => format!("{}@{}.{member}", js(&instance["key"]), js(&instance["generation"])),
+                    };
+                    return Err(UpdateError::Fatal(format!("Unknown service state {name}")));
+                };
+                let ops = decoder
+                    .decode(wire_ops(update))
+                    .map_err(|e| UpdateError::Fatal(e.to_string()))?;
+                let sequence = update["sequence"].as_u64().unwrap_or_default();
+                let Some(slot) = self.slots.get_mut(member) else {
+                    return Err(UpdateError::Reported(format!(
+                        "Remote service update targets non-state member {}.{member}",
+                        self.service
+                    )));
+                };
+                let Some(value) = slot.value.take() else {
+                    return Err(UpdateError::Reported(
+                        "Replicated state received an update before hydration".into(),
+                    ));
+                };
+                if sequence != slot.sequence + 1 {
+                    return Err(UpdateError::Reported(
+                        "Replicated state update sequence has a gap".into(),
+                    ));
+                }
+                let next = chord_delta::apply(value, ops).map_err(|e| UpdateError::Reported(e.to_string()))?;
+                slot.sequence = sequence;
+                if let Some(listener) = &self.listener {
+                    listener(member, &next);
+                }
+                slot.value = Some(next);
+                Ok(())
+            }
+            Some("replaced") => {
+                self.decoders.clear();
+                let snapshot = &update["snapshot"];
+                let states = self.decode_instance(snapshot).map_err(UpdateError::Fatal)?;
+                if !snapshot["instance"].is_null() {
+                    return Err(UpdateError::Reported(
+                        "Singleton replacement has an instance address".into(),
+                    ));
+                }
+                self.install(snapshot, states).map_err(UpdateError::Reported)
+            }
+            Some("unavailable") => {
+                self.decoders.clear();
+                for slot in self.slots.values_mut() {
+                    slot.value = None;
+                }
+                Ok(())
+            }
+            // Keyed-instance updates: a singleton consumer ignores them.
+            Some("spawned" | "closed") => Ok(()),
+            _ => Err(UpdateError::Fatal("Invalid service provider update".into())),
+        }
+    }
+
+    /// Apply one update; a reported error stays with this replica, a fatal one is returned.
+    fn receive(&mut self, update: &Json) -> Result<(), String> {
+        match self.update(update) {
+            Ok(()) => Ok(()),
+            Err(UpdateError::Reported(error)) => {
+                self.errors.push(error);
+                Ok(())
+            }
+            Err(UpdateError::Fatal(error)) => Err(error),
+        }
+    }
+}
+
+/// JavaScript template interpolation of a JSON scalar.
+fn js(value: &Json) -> String {
+    match value {
+        Json::String(s) => s.clone(),
+        other => other.to_string(),
     }
 }
 
@@ -115,6 +297,8 @@ struct Shared {
     replicas: HashMap<String, Replica>,
     /// Updates of a subscription whose snapshot has not been read yet.
     early: HashMap<String, Vec<Json>>,
+    /// The service each pending subscription subscribes to.
+    services: HashMap<String, String>,
     attachment: Option<SessionTarget>,
     closed: Option<String>,
 }
@@ -231,7 +415,10 @@ impl Connection {
                 }
             };
             let (lock, changed) = &*shared;
-            lock.lock().unwrap_or_else(|e| e.into_inner()).closed = Some(reason);
+            lock.lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .closed
+                .get_or_insert(reason);
             changed.notify_all();
         });
         Ok(connection)
@@ -363,7 +550,10 @@ impl Connection {
     /// Start a subscription; returns `(subscription id, request id)`.
     pub fn start_subscribe(&self, target: RpcTarget, service: &str) -> Result<(String, String), CallError> {
         let subscription = format!("service-{}", self.subscriptions.fetch_add(1, Ordering::SeqCst) + 1);
-        self.lock().early.insert(subscription.clone(), Vec::new());
+        let mut shared = self.lock();
+        shared.early.insert(subscription.clone(), Vec::new());
+        shared.services.insert(subscription.clone(), service.to_string());
+        drop(shared);
         let request = self.start(
             target,
             "$chord.service",
@@ -376,10 +566,11 @@ impl Connection {
     /// Finish a subscription: hydrate its replica from the snapshot and apply updates that came before it.
     pub fn finish_subscribe(&self, subscription: &str, request: &str) -> Result<(), CallError> {
         let snapshot = self.wait(request)?.unwrap_or(Json::Null);
-        let mut replica = Replica::hydrate(&snapshot).map_err(CallError::Disconnected)?;
+        let service = self.lock().services.remove(subscription).unwrap_or_default();
+        let mut replica = Replica::hydrate(&service, &snapshot).map_err(CallError::Disconnected)?;
         let mut shared = self.lock();
         for update in shared.early.remove(subscription).unwrap_or_default() {
-            replica.update(&update).map_err(CallError::Disconnected)?;
+            replica.receive(&update).map_err(CallError::Disconnected)?;
         }
         shared.replicas.insert(subscription.to_string(), replica);
         Ok(())
@@ -399,6 +590,7 @@ impl Connection {
         let mut shared = self.lock();
         shared.replicas.remove(subscription);
         shared.early.remove(subscription);
+        shared.services.remove(subscription);
     }
 
     /// The current value of a subscription's state member.
@@ -406,8 +598,18 @@ impl Connection {
         self.lock()
             .replicas
             .get(subscription)
-            .and_then(|r| r.states.get(member))
-            .map(|(_, v)| v.clone())
+            .and_then(|r| r.slots.get(member))
+            .and_then(|slot| slot.value.clone())
+    }
+
+    /// Take the errors the subscription's consumer reported (`onError`): a sequence gap, an update before hydration,
+    /// a non-base snapshot, an update that does not apply. Each cleared only its own member.
+    pub fn take_replica_errors(&self, subscription: &str) -> Vec<String> {
+        self.lock()
+            .replicas
+            .get_mut(subscription)
+            .map(|r| std::mem::take(&mut r.errors))
+            .unwrap_or_default()
     }
 
     pub fn listen(&self, subscription: &str, listener: UpdateListener) {
@@ -445,6 +647,10 @@ impl Connection {
 fn dispatch(shared: &Arc<(Mutex<Shared>, Condvar)>, message: ServerMessage) {
     let (lock, changed) = &**shared;
     let mut state = lock.lock().unwrap_or_else(|e| e.into_inner());
+    // A broken operation stream failed the connection (`connection.fail`): nothing after it is delivered.
+    if state.closed.is_some() {
+        return;
+    }
     match message {
         ServerMessage::Response { id, result } => {
             state.responses.insert(id, result.map(|r| r.as_ref().map(to_json)));
@@ -458,7 +664,7 @@ fn dispatch(shared: &Arc<(Mutex<Shared>, Condvar)>, message: ServerMessage) {
             if let Some(early) = state.early.get_mut(&subscription_id) {
                 early.push(update);
             } else if let Some(replica) = state.replicas.get_mut(&subscription_id)
-                && let Err(error) = replica.update(&update)
+                && let Err(error) = replica.receive(&update)
             {
                 state.closed = Some(error);
             }

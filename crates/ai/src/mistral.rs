@@ -20,6 +20,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::time::Duration;
 
 const MISTRAL_TOOL_CALL_ID_LENGTH: usize = 9;
 const MAX_MISTRAL_ERROR_BODY_CHARS: usize = 4000;
@@ -409,6 +410,10 @@ impl MistralError {
 }
 
 const ABORTED: &str = "This operation was aborted";
+/// `AbortSignal.timeout`'s reason (a `TimeoutError` DOMException) when the request outlives its limit.
+const TIMED_OUT: &str = "The operation was aborted due to timeout";
+/// The request's limit without `timeoutMs`.
+const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
 /// Stream one Mistral response; failures end with an `error` event.
 pub async fn stream(
@@ -498,26 +503,33 @@ async fn drive(
         headers: headers.build(),
         body: serde_json::to_string(&to_wire_payload(&payload)).unwrap_or_default(),
     };
-    // ponytail: upstream also bounds the request with `timeoutMs` (default 60 s); here the transport's timeout applies.
-    let sent = tokio::select! {
-        sent = transport.send(request) => sent,
-        () = cancelled(signal) => return Err(MistralError::plain(ABORTED)),
-    };
-    let mut response = sent.map_err(|_| MistralError::plain("fetch failed"))?;
-    if !(200..300).contains(&response.status) {
-        let mut bytes = Vec::new();
-        while let Ok(Some(chunk)) = response.body.next_chunk().await {
-            bytes.extend_from_slice(&chunk);
+    // `AbortSignal.timeout(timeoutMs ?? 60000)`: the whole request, its stream included, is bounded.
+    let limit = Duration::from_millis(base.timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS));
+    let exchange = async {
+        let sent = tokio::select! {
+            sent = transport.send(request) => sent,
+            () = cancelled(signal) => return Err(MistralError::plain(ABORTED)),
+        };
+        let mut response = sent.map_err(|_| MistralError::plain("fetch failed"))?;
+        if !(200..300).contains(&response.status) {
+            let mut bytes = Vec::new();
+            while let Ok(Some(chunk)) = response.body.next_chunk().await {
+                bytes.extend_from_slice(&chunk);
+            }
+            return Err(MistralError {
+                // ponytail: the Transport carries no reason phrase, so upstream's `statusText` fallback always applies.
+                message: format!("Request failed with status {}", response.status),
+                status: Some(response.status),
+                body: Some(String::from_utf8_lossy(&bytes).into_owned()),
+            });
         }
-        return Err(MistralError {
-            // ponytail: the Transport carries no reason phrase, so upstream's `statusText` fallback always applies.
-            message: format!("Request failed with status {}", response.status),
-            status: Some(response.status),
-            body: Some(String::from_utf8_lossy(&bytes).into_owned()),
-        });
+        run.emit(|partial| AssistantMessageEvent::Start { partial });
+        read_mistral_events(&mut response, signal.cloned(), |event| run.handle(event, model)).await
+    };
+    match tokio::time::timeout(limit, exchange).await {
+        Ok(result) => result?,
+        Err(_) => return Err(MistralError::plain(TIMED_OUT)),
     }
-    run.emit(|partial| AssistantMessageEvent::Start { partial });
-    read_mistral_events(&mut response, signal.cloned(), |event| run.handle(event, model)).await?;
     run.finish();
     if is_aborted(signal) {
         return Err(MistralError::plain("Request was aborted"));

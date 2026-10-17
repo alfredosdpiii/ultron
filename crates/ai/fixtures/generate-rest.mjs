@@ -5,6 +5,7 @@
 // final message. tests/providers_rest.rs replays them through the Rust ports.
 // Usage: node crates/ai/fixtures/generate-rest.mjs [section...]
 import { writeFileSync } from "node:fs";
+import { zstdDecompressSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -47,16 +48,18 @@ function requestHeaders(init) {
 const abortError = () => new DOMException("This operation was aborted", "AbortError");
 const STATUS_TEXT = { 200: "OK", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 429: "Too Many Requests", 500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable" };
 
-function bodyText(body) {
+function bodyText(body, headers) {
 	if (body === undefined || body === null) return null;
 	if (typeof body === "string") return body;
 	if (body instanceof URLSearchParams) return body.toString();
+	// Codex's SSE body goes out zstd-compressed (`Content-Encoding: zstd`): recorded decoded.
+	if (new Headers(headers).get("content-encoding") === "zstd") return new TextDecoder().decode(zstdDecompressSync(body));
 	return new TextDecoder().decode(body);
 }
 
 function stubFetch(queue, requests) {
 	return async (url, init = {}) => {
-		const text = bodyText(init.body);
+		const text = bodyText(init.body, init.headers);
 		let body = null;
 		if (text !== null) {
 			try {
@@ -385,15 +388,12 @@ sections.codex = async () => {
 		{ name: "codex/simple-missing-key", fn: "streamSimple", model: cModel(), context: simple(), options: {}, responses: [] },
 	];
 	const savedWebSocket = globalThis.WebSocket;
-	const savedBuiltin = process.getBuiltinModule;
 	delete globalThis.WebSocket;
-	process.getBuiltinModule = (id) => (id === "node:zlib" ? undefined : savedBuiltin.call(process, id));
 	api.resetOpenAICodexWebSocketDebugStats();
 	const results = [];
 	for (const scenario of scenarios) results.push(await run(api, scenario, false));
 	const stats = Object.fromEntries(["sess-fb", "ignored", "unused"].map((id) => [id, clone(api.getOpenAICodexWebSocketDebugStats(id))]));
 	globalThis.WebSocket = savedWebSocket;
-	process.getBuiltinModule = savedBuiltin;
 	stripStacks(results);
 	return { file: "codex.json", stats, scenarios: results };
 };

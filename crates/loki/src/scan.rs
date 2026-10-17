@@ -439,6 +439,25 @@ pub(crate) const TEMPLATE: &[u8] =
 
 /// `init --minimal`: the engine and default policy in `.loki/`, nothing else.
 pub fn install_minimal(target: &str, force: bool) -> Result<(), CheckError> {
+    install_minimal_files(target, force)?;
+    println!("Installed loki engine and policy in .loki/ (minimal).");
+    println!(
+        "Commit .loki/: policy is read from the committed version; scan reports it as awaiting review until then."
+    );
+    Ok(())
+}
+
+/// The line `loki init` prints to stderr for `error` (after which it exits with status 1).
+pub fn init_error_line(error: &CheckError) -> String {
+    match error {
+        CheckError::Value(m) => format!("loki: {m}"),
+        other if other.is_os() => format!("loki: {}", other.message()),
+        other => format!("loki: {}", other.describe()),
+    }
+}
+
+/// [`install_minimal`] without its report: the files only.
+pub fn install_minimal_files(target: &str, force: bool) -> Result<(), CheckError> {
     let os = |e: std::io::Error, name: &Path| CheckError::os(&e, name.to_str());
     let expanded = match (target.strip_prefix('~'), std::env::var("HOME")) {
         (Some(rest), Ok(home)) if rest.is_empty() || rest.starts_with('/') => format!("{home}{rest}"),
@@ -456,10 +475,6 @@ pub fn install_minimal(target: &str, force: bool) -> Result<(), CheckError> {
     if !config.exists() {
         std::fs::write(&config, TEMPLATE).map_err(|e| os(e, &config))?;
     }
-    println!("Installed loki engine and policy in .loki/ (minimal).");
-    println!(
-        "Commit .loki/: policy is read from the committed version; scan reports it as awaiting review until then."
-    );
     Ok(())
 }
 

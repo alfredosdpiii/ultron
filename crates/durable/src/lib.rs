@@ -26,7 +26,10 @@ pub use memory::{MemoryStorage, PreparedCommit};
 pub use observation::{Observed, Watch, WatchEnd};
 pub use records::*;
 pub use session::{CommitChange, CommitPublication, Session, SessionEnd, SessionError, Subscription};
-pub use sqlite::{SqliteOptions, SqliteStorage};
+pub use sqlite::{
+    CURRENT_SQLITE_SCHEMA_VERSION, SQLITE_MIGRATIONS, SqliteMigration, SqliteOptions, SqliteStorage,
+    apply_sqlite_migrations,
+};
 pub use transaction::{
     ConversationOwnership, EntryDraft, EntryHead, SubmissionCreate, SubmissionSettlement, TaskDefinition, TaskOptions,
     TaskOwnership, Tx, TxScope,

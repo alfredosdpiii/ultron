@@ -555,10 +555,6 @@ impl ImagesProvider {
         self.models.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
-    pub fn is_dynamic(&self) -> bool {
-        self.refresh_models.is_some()
-    }
-
     /// `refreshModels`: concurrent callers share one in-flight fetch and its outcome. No-op for static providers.
     pub async fn refresh_models(&self) -> Result<(), String> {
         let Some(fetch) = &self.refresh_models else {

@@ -354,18 +354,6 @@ impl SettingsList {
         }
     }
 
-    pub fn update_value(&mut self, id: &str, value: &str) {
-        if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
-            item.current_value = value.to_string();
-        }
-    }
-
-    pub fn select_item(&mut self, id: &str) {
-        if let Some(i) = self.items.iter().position(|i| i.id == id) {
-            self.selected = i;
-        }
-    }
-
     pub fn handle_input(&mut self, data: &str) -> Option<SettingsEvent> {
         let len = self.items.len();
         let action = if data == " " {

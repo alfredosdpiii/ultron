@@ -194,6 +194,137 @@ fn proxy_url(uri: &str) -> String {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// utils/node-http-proxy.ts: the proxy a Node SDK client (Bedrock's) is given for its target
+
+/// `UNSUPPORTED_PROXY_PROTOCOL_MESSAGE`.
+pub const UNSUPPORTED_PROXY_PROTOCOL_MESSAGE: &str =
+    "Unsupported proxy protocol. SOCKS and PAC proxy URLs are not supported; use an HTTP or HTTPS proxy URL.";
+
+/// `getProxyEnv`: the lowercase then uppercase variable, from `env` first, then the process environment.
+fn node_proxy_env(key: &str, env: Option<&crate::env::ProviderEnv>) -> String {
+    let (lower, upper) = (key.to_lowercase(), key.to_uppercase());
+    let from = |name: &str| env.and_then(|e| e.get(name)).filter(|v| !v.is_empty()).cloned();
+    from(&lower)
+        .or_else(|| from(&upper))
+        .or_else(|| crate::env::provider_env_value(&lower, None))
+        .or_else(|| crate::env::provider_env_value(&upper, None))
+        .unwrap_or_default()
+}
+
+fn strip_brackets(host: &str) -> &str {
+    host.strip_prefix('[').and_then(|h| h.strip_suffix(']')).unwrap_or(host)
+}
+
+/// `Number.parseInt(text, 10)`: the leading digits, if any.
+fn parse_int(text: &str) -> Option<u32> {
+    let digits: String = text.chars().take_while(char::is_ascii_digit).collect();
+    digits.parse().ok()
+}
+
+/// `parseNoProxyEntry`.
+fn node_no_proxy_entry(entry: &str) -> Option<(String, u32)> {
+    let trimmed = entry.trim().to_lowercase();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.starts_with('[')
+        && let Some(close) = trimmed.find(']')
+    {
+        let host = trimmed[1..close].to_string();
+        let rest = &trimmed[close + 1..];
+        return Some(match rest.strip_prefix(':') {
+            Some(port) => (host, parse_int(port).unwrap_or(0)),
+            None => (host, 0),
+        });
+    }
+    if trimmed.split(':').count() > 2 {
+        return Some((trimmed, 0));
+    }
+    if let Some(colon) = trimmed.rfind(':')
+        && Some(colon) == trimmed.find(':')
+        && let Some(port) = parse_int(&trimmed[colon + 1..])
+    {
+        return Some((trimmed[..colon].to_string(), port));
+    }
+    Some((trimmed, 0))
+}
+
+/// `shouldProxyHostname`.
+fn node_should_proxy(hostname: &str, port: u32, env: Option<&crate::env::ProviderEnv>) -> bool {
+    let no_proxy = node_proxy_env("no_proxy", env).to_lowercase();
+    if no_proxy.is_empty() {
+        return true;
+    }
+    if no_proxy == "*" {
+        return false;
+    }
+    let target = hostname.to_lowercase();
+    let target = strip_brackets(&target);
+    no_proxy
+        .split([',', ' ', '\t', '\n', '\r', '\u{b}', '\u{c}'])
+        .all(|entry| {
+            let Some((host, entry_port)) = node_no_proxy_entry(entry) else {
+                return true;
+            };
+            if entry_port != 0 && entry_port != port {
+                return true;
+            }
+            let mut domain = strip_brackets(&host);
+            if let Some(rest) = domain.strip_prefix("*.") {
+                domain = rest;
+            } else if let Some(rest) = domain.strip_prefix('.').or_else(|| domain.strip_prefix('*')) {
+                domain = rest;
+            }
+            domain.is_empty() || (target != domain && !target.ends_with(&format!(".{domain}")))
+        })
+}
+
+/// `resolveHttpProxyUrlForTarget`: the HTTP(S) proxy URL `target` goes through under `env` (then the process
+/// environment), `{protocol}_proxy` before `all_proxy`; `None` for a direct connection; an error for a proxy URL
+/// that does not parse or is not HTTP(S).
+pub fn node_proxy_for_target(target: &str, env: Option<&crate::env::ProviderEnv>) -> Result<Option<String>, String> {
+    let Ok(url) = Url::parse(target) else {
+        return Ok(None);
+    };
+    let Some(host) = url.host_str().filter(|h| !h.is_empty()) else {
+        return Ok(None);
+    };
+    let protocol = url.scheme().to_string();
+    let default = match protocol.as_str() {
+        "ftp" => 21,
+        "gopher" => 70,
+        "http" | "ws" => 80,
+        "https" | "wss" => 443,
+        _ => 0,
+    };
+    let port = url.port().map_or(default, u32::from);
+    if !node_should_proxy(strip_brackets(host), port, env) {
+        return Ok(None);
+    }
+    let mut proxy = node_proxy_env(&format!("{protocol}_proxy"), env);
+    if proxy.is_empty() {
+        proxy = node_proxy_env("all_proxy", env);
+    }
+    if proxy.is_empty() {
+        return Ok(None);
+    }
+    if !proxy.contains("://") {
+        proxy = format!("{protocol}://{proxy}");
+    }
+    // `new URL()`'s TypeError message.
+    let parsed = Url::parse(&proxy).map_err(|_| {
+        format!(
+            "Invalid proxy URL {}: Invalid URL",
+            serde_json::to_string(&proxy).unwrap_or_default()
+        )
+    })?;
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+        return Err(format!("{UNSUPPORTED_PROXY_PROTOCOL_MESSAGE} Got {}:", parsed.scheme()));
+    }
+    Ok(Some(proxy))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

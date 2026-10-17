@@ -737,6 +737,8 @@ pub struct Core {
     tx: Sender<Input>,
     sink: EventSink,
     run: Option<Running>,
+    /// Loki's one-time setup note, for the first root turn that follows it (crate::loki_notice).
+    loki_notice: crate::loki_notice::LokiNotice,
     /// The run's provider message being hidden: the empty response an aborted run ends with.
     hiding: bool,
     queues: Arc<Mutex<Queues>>,
@@ -905,6 +907,9 @@ impl Core {
         } = options;
         let repo = SessionRepo::new(&session_root, SystemClock::shared());
         let mut session = repo.open(&metadata)?;
+        // A session written by a newer Ultron fails here, naming the value and its format version, before any of it
+        // is loaded, settled or rewritten (session-worker.ts `assertSessionFormatsReadable`).
+        crate::format_version::assert_session_formats_readable(&session)?;
         // A worker that died left its run open. A run of the durable runtime resumes there; one journaled without
         // it (an older build, the TypeScript product) is settled before anything reads the lane.
         let open_operation = session
@@ -929,7 +934,13 @@ impl Core {
         // Extensions load before the model is chosen: the providers they declare can be the session's model
         // (agent-session-services.ts registers them before `findInitialModel`).
         let sessions_dir = session_root.join(lane::session_directory_name(&metadata.cwd));
+        let trace =
+            |label: &str| crate::startup_trace::trace_startup((env.var)("ULTRON_STARTUP_TRACE").as_deref(), label);
+        trace("worker.harness");
         let mut runtime = Runtime::new(&env, &mode, sessions_dir, services)?;
+        trace("worker.resources-loaded");
+        // Loki's setup (the minimal install where allowed, its commit in the background) before any cell runs.
+        let loki_notice = crate::loki_notice::LokiNotice::start(&runtime.config);
         let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
         let api_key = lane::api_key(&flags, &env, &model.provider);
         let announced = session.state().entries().len();
@@ -941,6 +952,7 @@ impl Core {
         // Subagents run as child conversations of the durable runtime; their task journal is in the session.
         let children = crate::subagents::DurableChildren::new();
         let unfinished = crate::subagents::unfinished(&session);
+        trace("worker.harness-create");
         let lane = Lane::open_with(
             &runtime,
             &model,
@@ -948,6 +960,7 @@ impl Core {
             &session_id,
             Some(children.host(session.clone())),
         )?;
+        trace("worker.host");
         // The runtime counters are the session value `ultron.module/stats` (counting continues from a resumed one).
         lane.stack
             .stats
@@ -1068,6 +1081,7 @@ impl Core {
         let auto_compaction = runtime.config.settings["compaction"]["enabled"] != false;
         let (env_var, async_events) = (env.var.clone(), runtime.config.async_events);
         let mut core = Core {
+            loki_notice,
             thinking: config["thinkingLevel"].as_str().unwrap_or("medium").to_string(),
             models: lane::available_models(&env),
             provider,
@@ -2408,6 +2422,20 @@ impl Core {
             Ok(None) => {}
             Err(error) => return fail(error, waiter),
         }
+        // Loki's setup note opens the first root turn that follows it (`installLokiNotice`).
+        if let Some(text) = self.loki_notice.take(crate::loki_notice::NOTICE_WAIT) {
+            let message = crate::loki_notice::notice_message(&text, now_ms() as u64);
+            for kind in ["message_start", "message_end"] {
+                self.emit(event(vec![
+                    ("type", json!(kind)),
+                    ("lane", json!(LANE)),
+                    ("message", message.clone()),
+                ]));
+            }
+            if let Err(error) = self.append(message) {
+                return fail(error, waiter);
+            }
+        }
         if let Err(error) = self.store_lane_config() {
             return fail(error, waiter);
         }
@@ -2729,8 +2757,10 @@ pub fn spawn(options: OpenOptions, sink: EventSink) -> Result<(Sender<Input>, Jo
     let (tx, rx) = std::sync::mpsc::channel();
     let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     let input = tx.clone();
+    let trace_path = (options.env.var)("ULTRON_STARTUP_TRACE");
     let handle = std::thread::spawn(move || match Core::open(options, input, sink) {
         Ok(core) => {
+            crate::startup_trace::trace_startup(trace_path.as_deref(), "worker.ready");
             let _ = ready_tx.send(Ok((
                 core.snapshot(),
                 core.model().clone(),

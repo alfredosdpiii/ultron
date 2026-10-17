@@ -4,6 +4,7 @@
 
 pub mod radius;
 pub mod runtime;
+pub mod startup_trace;
 
 use std::collections::VecDeque;
 use std::fmt;

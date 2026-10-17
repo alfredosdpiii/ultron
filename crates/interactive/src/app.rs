@@ -308,6 +308,9 @@ const SLOT_TARGET: usize = 0;
 /// what the app does about a selection or a settings change is collected and done after the gesture.
 struct AppMouse<'a> {
     layout: &'a MouseLayout,
+    theme: &'a Rc<Theme>,
+    now: Instant,
+    rows: usize,
     /// The transcript's first shown row.
     top: usize,
     editor: &'a mut Editor,
@@ -340,6 +343,37 @@ impl AppMouse<'_> {
                 Some(result)
             }
             (None, None) => self.editor.handle_mouse(event),
+            // The dialogs and selectors whose components read the mouse (input.ts, editor.ts in a `Container`).
+            (None, Some(Panel::OAuthLogin(dialog))) => dialog.handle_mouse(self.theme, event),
+            (
+                None,
+                Some(Panel::LoginPrompt {
+                    provider,
+                    method,
+                    input,
+                }),
+            ) => {
+                // The rows `LoginDialogComponent` shows its prompt on: border, title, spacer, the message.
+                let text = |s: &str| Text::new(s, 1, 0, None).render(event.width).len() as i64;
+                let title = text(&fg(self.theme, "accent", &bold(&format!("Login to {}", provider.name))));
+                let top = 1 + title + 1 + text(&fg(self.theme, "text", &format!("Enter {method}")));
+                let rows = input.render(event.width).len() as i64;
+                if event.y < top || event.y >= top + rows {
+                    return None;
+                }
+                let local = tui::mouse::MouseEvent {
+                    y: event.y - top,
+                    ..*event
+                };
+                input.handle_mouse(&local)
+            }
+            (None, Some(Panel::ExtensionInput { dialog, .. })) => dialog.handle_mouse(event, self.now),
+            (None, Some(Panel::TextEditor { dialog, .. })) => dialog.handle_mouse(event, self.rows),
+            (None, Some(Panel::Sessions(selector) | Panel::PiSessions(selector))) => selector.handle_mouse(event),
+            (None, Some(Panel::Login(selector, ..) | Panel::Logout(selector))) => selector.handle_mouse(event),
+            (None, Some(Panel::ScopedModels { selector, .. })) => selector.handle_mouse(event),
+            (None, Some(Panel::BugReport(flow))) => flow.handle_mouse(event, self.rows),
+            // The rest render text rows only in TypeScript (`TreeList`, `UserMessageList`, the RLM views, ...).
             (None, Some(_)) => None,
         }
     }
@@ -558,6 +592,10 @@ pub struct App {
     viewport: tui::fullscreen::FullscreenViewport,
     /// The mouse tracking the alternate screen turns on (`None`: none, as in tests that paint frames).
     mouse_tracking: Option<&'static str>,
+    /// The TUI debug outputs the environment turned on (`PI_TUI_WRITE_LOG`, `PI_TUI_DEBUG_REDRAW`, `PI_TUI_DEBUG`).
+    render_debug: Option<std::sync::Arc<tui::render_debug::RenderDebug>>,
+    /// Running in Termux (`TERMUX_VERSION`): the split viewport diffs a height change.
+    termux: bool,
     /// Where a pasted clipboard image is saved (`tmpdir()`).
     temp_dir: std::path::PathBuf,
     /// Extension statuses (`setStatus`) on the footer's status line.
@@ -905,6 +943,8 @@ impl App {
                 viewport
             },
             mouse_tracking: None,
+            render_debug: None,
+            termux: false,
             temp_dir: std::env::temp_dir(),
             extension_statuses: Vec::new(),
             widgets: std::collections::BTreeMap::new(),
@@ -1403,6 +1443,20 @@ impl App {
         self.mouse_tracking
     }
 
+    /// The terminal environment's debug outputs and Termux flag ([`crate::run::terminal_debug`]).
+    pub fn set_terminal_debug(&mut self, debug: Option<std::sync::Arc<tui::render_debug::RenderDebug>>, termux: bool) {
+        self.render_debug = debug;
+        self.termux = termux;
+    }
+
+    pub fn render_debug(&self) -> Option<std::sync::Arc<tui::render_debug::RenderDebug>> {
+        self.render_debug.clone()
+    }
+
+    pub fn termux(&self) -> bool {
+        self.termux
+    }
+
     /// Right-click paste in fullscreen ([`tui::right_click_paste::right_click_paste_enabled`] of the terminal's
     /// platform and environment; off unless the product turns it on).
     pub fn set_right_click_paste(&mut self, enabled: bool) {
@@ -1441,8 +1495,12 @@ impl App {
         if self.overlay.is_some() && !tui::fullscreen::is_focus_report(data) {
             return false;
         }
+        let now = self.now();
         let mut mouse = AppMouse {
             layout: &self.mouse_layout,
+            theme: &self.theme,
+            now,
+            rows: self.rows,
             top: self.viewport.viewport_top(),
             editor: &mut self.editor,
             chat: &mut self.chat,

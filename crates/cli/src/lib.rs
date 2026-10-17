@@ -230,6 +230,8 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     }
     // Everything below runs a session (or reads its files): the package files must exist from here on.
     package_files(env)?;
+    // The native worker command starts here (main.ts `shouldRunUltronWorker`).
+    print_mode::trace_startup(env, "cli.native");
     // `--claude`: the root lane runs on Claude, through the claude-subscription provider (worker-root.ts
     // `prepareClaudeRoot`'s selection; crates/claude-root `subscription_root`).
     let claude_setting = claude_root::settings::ClaudeCodeSettings::load(&env.cwd, &env.agent_dir()).root;
@@ -455,6 +457,7 @@ fn native_command(parsed: &Args, env: &Env, prompted: bool, terminal: bool) -> R
         return Err("--name requires a non-empty value".into());
     }
     let session_dir = session::session_directory(parsed.session_dir.as_deref(), env);
+    print_mode::trace_startup(env, "cli.list-sessions");
     let repo = SessionRepo::new(&session_dir, SystemClock::shared());
     let needs_sessions = parsed.continue_ || parsed.resume || parsed.session.is_some() || parsed.fork.is_some();
     let sessions = if needs_sessions {

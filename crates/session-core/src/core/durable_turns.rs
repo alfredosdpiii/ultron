@@ -82,6 +82,7 @@ pub(super) fn open_durable(
         .cloned()
         .unwrap_or(Value::Null);
     let settings_queues = queues;
+    let stream_provider = provider.clone();
     let settings: harness::chat::SettingsSource = Arc::new(move || {
         let (steering, follow_up) = {
             let queues = lock(&settings_queues);
@@ -89,6 +90,12 @@ pub(super) fn open_durable(
         };
         let mode = |all: bool| if all { QueueMode::All } else { QueueMode::OneAtATime };
         Settings {
+            // A generation's checkpoint pins the stream options requests carry now, as the operation journal's
+            // `streamOptions` (`providerRequestOptions`).
+            stream: stream_provider
+                .stream_options()
+                .and_then(|options| options.as_object().cloned())
+                .unwrap_or_default(),
             retry: retry_policy(&retry_settings, retry.load(Ordering::SeqCst)),
             compaction: CompactionPolicy {
                 enabled: false,

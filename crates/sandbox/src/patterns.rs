@@ -135,16 +135,6 @@ static CRITICAL: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         .collect()
 });
 
-/// Indexes of the critical patterns `command` matches.
-pub fn critical_matches(command: &str) -> Vec<usize> {
-    CRITICAL
-        .iter()
-        .enumerate()
-        .filter(|(_, regex)| regex.is_match(command))
-        .map(|(index, _)| index)
-        .collect()
-}
-
 pub fn is_critical(command: &str) -> bool {
     CRITICAL.iter().any(|regex| regex.is_match(command))
 }

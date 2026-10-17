@@ -3,9 +3,11 @@
 //! is reported unresolved exactly when that interpreter says it is missing. The interpreter is a fake script that
 //! answers the engine's import probe and records that it ran.
 
+#[path = "../../cli/tests/executable_support/mod.rs"]
+mod executable_support;
+
 use host::file_hooks::{CellChanges, FileWriteGuard};
 use host::loki_guard::{LokiGuard, LokiMode};
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 
@@ -34,8 +36,8 @@ fn git(root: &Path, args: &[&str]) {
 fn fake_python(dir: &Path, missing: &str) -> String {
     let path = dir.join(format!("python-{}", missing.len()));
     let script = format!("#!/bin/sh\n: > '{}.ran'\necho '{missing}'\n", path.display());
-    std::fs::write(&path, script).unwrap();
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    // Executed by the engine: written without a write descriptor in this process (ETXTBSY under parallel tests).
+    executable_support::install(&path, &script);
     path.display().to_string()
 }
 

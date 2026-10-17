@@ -253,3 +253,42 @@ fn host_sandboxed_backends_stopped_commands_stop_inside_the_sandbox() {
         wait_until_still(&format!("{name} cancelled job"), &tick);
     }
 }
+
+/// A worktree subagent's variables (`withShellEnv(operations, laneWorkspace(lane).env)`: `ULTRON_WORKTREE`,
+/// `ULTRON_PARENT_REPO`, `ULTRON_WORKTREE_BRANCH`) reach its commands inside the sandbox, which clears the
+/// environment to its allowlist: blocking bash and shell jobs. Docker is not run here (no real docker in tests); its
+/// container receives the same `env NAME=VALUE ...` command line (`host_sandboxed_argv_sets_the_commands_variables`).
+#[test]
+fn host_sandboxed_backends_worktree_variables_reach_the_command() {
+    for mechanism in backends().into_iter().filter(|m| *m != Mechanism::Docker) {
+        let name = mechanism.name();
+        let tree = tree();
+        let worktree = vec![
+            ("ULTRON_WORKTREE".to_string(), tree.project.display().to_string()),
+            ("ULTRON_PARENT_REPO".to_string(), "/parent/repo".to_string()),
+            ("ULTRON_WORKTREE_BRANCH".to_string(), "ultron/s1/child".to_string()),
+        ];
+        let host = host(&tree, mechanism, false).with_env(worktree.clone());
+        let print = r#"printf '%s|%s|%s' "$ULTRON_WORKTREE" "$ULTRON_PARENT_REPO" "$ULTRON_WORKTREE_BRANCH""#;
+        let expected = format!("{}|/parent/repo|ultron/s1/child", tree.project.display());
+        let result = call(&host, "bash", json!({ "command": print }));
+        assert_eq!(result["output"], json!(expected), "{name}: {result}");
+        let job = call(&host, "shell.run", json!({ "command": print, "yield_after": 0 }));
+        let done = call(&host, "shell.result", json!({ "id": job["id"] }));
+        assert_eq!(done["text"], json!(expected), "{name}: {done}");
+    }
+}
+
+#[test]
+fn host_sandboxed_argv_sets_the_commands_variables() {
+    let argv = vec!["bash".to_string(), "-c".into(), "echo hi".into()];
+    assert_eq!(host::sandboxed_argv(argv.clone(), &[]), argv);
+    let env = [
+        ("ULTRON_WORKTREE".to_string(), "/w t".to_string()),
+        ("PWD".to_string(), "/w t".to_string()),
+    ];
+    assert_eq!(
+        host::sandboxed_argv(argv, &env),
+        ["env", "ULTRON_WORKTREE=/w t", "PWD=/w t", "bash", "-c", "echo hi"]
+    );
+}

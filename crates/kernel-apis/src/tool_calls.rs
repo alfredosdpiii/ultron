@@ -23,7 +23,6 @@ use crate::{ApiModule, Request};
 use kernel::Signal;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -191,7 +190,7 @@ struct State {
 struct Inner {
     runner: Option<Arc<dyn ToolRunner>>,
     store: Arc<dyn DocumentStore>,
-    output_bytes: AtomicUsize,
+    output_bytes: usize,
     max_retained: usize,
     now: Clock,
     on_end: Mutex<Option<ToolCallObserver>>,
@@ -221,9 +220,7 @@ impl ToolCalls {
             inner: Arc::new(Inner {
                 runner,
                 store,
-                output_bytes: AtomicUsize::new(tool_result_budget(
-                    std::env::var("ULTRON_TOOL_RESULT_BYTES").ok().as_deref(),
-                )),
+                output_bytes: tool_result_budget(std::env::var("ULTRON_TOOL_RESULT_BYTES").ok().as_deref()),
                 max_retained: TOOL_CALL_MAX_RETAINED,
                 now: system_clock(),
                 on_end: Mutex::new(None),
@@ -232,11 +229,6 @@ impl ToolCalls {
                 changed: Condvar::new(),
             }),
         }
-    }
-
-    /// The byte budget of a result held in Python (`outputBytes`).
-    pub fn set_output_bytes(&self, bytes: usize) {
-        self.inner.output_bytes.store(bytes, Ordering::Relaxed);
     }
 
     /// Reports each REPL call's end (`onEnd`).
@@ -519,7 +511,7 @@ impl ToolCalls {
     /// The result text bounded to the output budget (and the kernel frame), and the details bounded to 64 KiB.
     fn outcome(&self, result: &Value) -> Outcome {
         let raw = result_text(result);
-        let mut budget = self.inner.output_bytes.load(Ordering::Relaxed);
+        let mut budget = self.inner.output_bytes;
         let mut text = host::cell::truncate_tool_output(&raw, budget, None);
         // JSON escaping can grow text (control characters six-fold): keep the reply within the kernel's frame.
         while stringify(&Value::from(text.as_str())).len() > REPLY_TEXT_MAX_BYTES && budget > 1024 {

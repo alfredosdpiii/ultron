@@ -2,7 +2,7 @@
 //! account id from the ChatGPT JWT, the WebSocket transport ([`websocket`]: `auto`/`websocket`/`websocket-cached`,
 //! with its session socket cache, continuation deltas, retries and the fall back to SSE), the SSE transport with its
 //! own retry policy and friendly usage-limit errors, the Codex event mapping (`response.done` and friends), and
-//! Codex service-tier pricing. The SSE body is sent uncompressed, as upstream does where `node:zlib` has no zstd.
+//! Codex service-tier pricing. The SSE body is sent zstd-compressed, as upstream does with `node:zlib`'s zstd.
 
 mod websocket;
 
@@ -795,6 +795,11 @@ async fn drive(
             break;
         }
     }
+    // The SSE body goes out zstd-compressed (`compressRequestBodyZstd`; the backend decodes `Content-Encoding:
+    // zstd`); the WebSocket frame above stays uncompressed, as the official Codex client sends it. The request
+    // carries the JSON and names the encoding; the transport encodes the bytes it sends (crate::http::wire_body).
+    let mut headers = headers;
+    headers.insert("content-encoding".into(), "zstd".into());
     let request = HttpRequest {
         method: "POST".into(),
         url: resolve_codex_url(&model.base_url),

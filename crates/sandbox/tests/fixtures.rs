@@ -1,37 +1,22 @@
 //! Differential tests against recorded reference output:
-//! - fixtures/autoreview-argv.json: autoreview_tests.py's `Sandbox.wrap`, `sandbox_env`, `describe` and
-//!   `detect_sandbox` (fixtures/autoreview_argv.py, a fake host layout);
+//! - fixtures/autoreview-argv.json: autoreview_tests.py's `detect_sandbox` (fixtures/autoreview_argv.py; its `wrap`,
+//!   `sandbox_env` and `describe` cases have no Rust port: reviews run that Python);
 //! - fixtures/omp-approval.json: oh-my-pi's critical patterns, bash approval, tokenizers and `resolveApproval`
 //!   (fixtures/omp-approval.mjs).
 
-use sandbox::approval::{Decision, Mode, resolve, strictest};
-use sandbox::launcher::{Entry, Layout, Mechanism, Review, detect, review_env};
+use sandbox::approval::{Decision, Mode, resolve};
+use sandbox::launcher::{Mechanism, detect};
 use sandbox::patterns::{
-    CRITICAL_PATTERN_SOURCES, bash_decision, critical_matches, has_shell_control, literal_and_chain, pattern_rules,
+    CRITICAL_PATTERN_SOURCES, bash_decision, has_shell_control, is_critical, literal_and_chain, pattern_rules,
     tokenize_shell_segments,
 };
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::path::Path;
 
 fn load(name: &str) -> Value {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures").join(name);
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
-}
-
-/// The recorder's fake layout, and whether `setpriv` is on its PATH.
-struct FakeLayout(Map<String, Value>, bool);
-impl Layout for FakeLayout {
-    fn entry(&self, path: &Path) -> Entry {
-        match self.0.get(path.to_str().unwrap()).and_then(Value::as_str) {
-            Some("dir") => Entry::Dir,
-            Some(link) if link.starts_with("link:") => Entry::Symlink(link["link:".len()..].to_owned()),
-            _ => Entry::Missing,
-        }
-    }
-    fn which(&self, name: &str) -> bool {
-        name == "setpriv" && self.1
-    }
 }
 
 fn strings(value: &Value) -> Vec<String> {
@@ -41,75 +26,6 @@ fn strings(value: &Value) -> Vec<String> {
         .iter()
         .map(|v| v.as_str().unwrap().to_owned())
         .collect()
-}
-
-fn env_pairs(value: &Value) -> Vec<(String, String)> {
-    let pair = |item: &Value| {
-        (
-            item[0].as_str().unwrap().to_owned(),
-            item[1].as_str().unwrap().to_owned(),
-        )
-    };
-    value.as_array().unwrap().iter().map(pair).collect()
-}
-
-#[test]
-fn sandbox_review_wrap_matches_autoreview_argv() {
-    let fixture = load("autoreview-argv.json");
-    let wraps = fixture["wraps"].as_array().unwrap();
-    assert_eq!(wraps.len(), 16);
-    for case in wraps {
-        let layout = FakeLayout(
-            fixture["layout"].as_object().unwrap().clone(),
-            case["setpriv"].as_bool().unwrap(),
-        );
-        let review = Review {
-            mechanism: Mechanism::parse(case["mechanism"].as_str().unwrap()).unwrap(),
-            image: case["image"].as_str().map(str::to_owned),
-            home: fixture["home"].as_str().unwrap().to_owned(),
-            uid: fixture["uid"].as_u64().unwrap() as u32,
-            gid: fixture["gid"].as_u64().unwrap() as u32,
-        };
-        let binds: Vec<(String, String)> = case["ro_binds"]
-            .as_array()
-            .map(|binds| {
-                binds
-                    .iter()
-                    .map(|bind| match bind {
-                        Value::String(path) => (path.clone(), path.clone()),
-                        pair => (
-                            pair[0].as_str().unwrap().to_owned(),
-                            pair[1].as_str().unwrap().to_owned(),
-                        ),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        let env = env_pairs(&fixture["envs"][case["env"].as_str().unwrap()]);
-        let argv = review.wrap(
-            &layout,
-            &strings(&case["command"]),
-            case["workdir"].as_str().unwrap(),
-            &env,
-            &binds,
-            case["cwd"].as_str().unwrap(),
-        );
-        assert_eq!(argv, strings(&case["argv"]), "{case}");
-        assert_eq!(
-            review.describe(),
-            fixture["describe"][review.mechanism.name()].as_str().unwrap()
-        );
-    }
-}
-
-#[test]
-fn sandbox_review_env_matches_autoreview_sandbox_env() {
-    let fixture = load("autoreview-argv.json");
-    assert_eq!(review_env(None), env_pairs(&fixture["envs"]["sandbox"]));
-    assert_eq!(
-        review_env(Some("/work/.venv/bin")),
-        env_pairs(&fixture["envs"]["sandbox_extra"])
-    );
 }
 
 #[test]
@@ -151,13 +67,9 @@ fn sandbox_critical_patterns_match_omps_table() {
     assert!(cases.len() > 80);
     for case in cases {
         let command = case["command"].as_str().unwrap();
-        let expected: Vec<usize> = case["matches"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|m| m.as_u64().unwrap() as usize)
-            .collect();
-        assert_eq!(critical_matches(command), expected, "{command:?}");
+        // Which patterns matched is not product behaviour; whether any did is (`bash_decision`'s critical gate).
+        let expected = !case["matches"].as_array().unwrap().is_empty();
+        assert_eq!(is_critical(command), expected, "{command:?}");
     }
 }
 
@@ -220,19 +132,5 @@ fn sandbox_resolve_matches_omps_resolve_approval() {
         let mode = Mode::parse(&case["mode"]).unwrap();
         let resolved = resolve("bash", Some("old"), &decision, mode, case["user"].as_object().unwrap());
         assert_eq!(resolved.to_json(), case["resolved"], "{case}");
-    }
-}
-
-#[test]
-fn sandbox_strictest_matches_omps_strictest_approval() {
-    let fixture = load("omp-approval.json");
-    for case in fixture["strictest"].as_array().unwrap() {
-        let decisions: Vec<Decision> = case["decisions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|d| Decision::from_json(Some(d)))
-            .collect();
-        assert_eq!(strictest(&decisions).to_json(), case["result"], "{case}");
     }
 }

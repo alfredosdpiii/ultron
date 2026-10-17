@@ -515,11 +515,6 @@ P09	protocol	oversize then failed (ported)	protocol_frame_decoder_rejects_oversi
 P10	protocol	version negotiation (ported)	protocol_negotiates_version_8_only
 P11	protocol	RFC vectors round-trip (ported)	protocol_cbor_rfc_vectors_round_trip
 P12	protocol	split hello+request decode (ported)	protocol_client_decoder_reassembles_split_messages
-R01	rpc	40 RpcCommand lines round-trip byte-identically	protocol_rpc_commands_round_trip_typescript_lines
-R02	rpc	unknown command type rejected	protocol_rpc_rejects_unknown_command_types
-R03	rpc	RpcResponse lines and success/error constructors match rpc-mode.ts	protocol_rpc_responses_round_trip_typescript_lines
-R04	rpc	extension_ui_response shapes round-trip	protocol_rpc_extension_ui_responses_round_trip_typescript_lines
-R05	rpc	LF-only JSONL reader (CR strip, U+2028, split UTF-8, unterminated tail)	protocol_rpc_jsonl_reader_splits_like_typescript
 S01	server	23 scripted connection exchanges (handshake, version, hello order, wrong_server, invalid call, coded/internal errors, frame limits, timeout, truncated close)	server_connection_scripts_match_typescript
 C01	client	14 scripted client exchanges (hello_error, server mismatch, attachments, unmatched response, close/truncation, request ids)	client_scripts_match_typescript
 C02	client	socket path derivation	client_unix_socket_path_is_derived_from_the_server_id
@@ -641,13 +636,6 @@ INT-10	interactive	JS toFixed, formatTokens, toLocaleString grouping, cwd format
 INT-11	interactive	chalk nesting and line-feed style reopening	interactive_chalk_styles_match_chalk
 INT-12	interactive	rlm cell renderer (gutter, preview, output tail, states, images) matches TS	interactive_rlm_cell_matches_ts
 INT-13	interactive	rlm outputTail visual-line tail and skipped count	interactive_rlm_output_tail_counts_wrapped_rows
-TEL-01	telemetry	in-memory spans: attributes, events, end order, status rules (TS-recorded)	telemetry_in_memory_spans_match_typescript
-TEL-02	telemetry	noop context records nothing; its children do nothing	telemetry_noop_context_records_nothing_and_children_are_inert
-TEL-03	telemetry	PI_TELEMETRY env overrides the enableInstallTelemetry setting (TS-recorded)	telemetry_install_enabled_matches_typescript
-TEL-04	telemetry	a sink that never returns never delays the caller; overflow is dropped and counted	telemetry_hung_sink_never_delays_the_caller
-TEL-05	telemetry	full batches go out immediately; remainder on shutdown; later spans dropped	telemetry_exports_full_batches_then_the_remainder_on_shutdown
-TEL-06	telemetry	a partial batch goes out after max_delay	telemetry_partial_batch_is_delivered_after_max_delay
-TEL-07	telemetry	dropping the last span handle ends the span as failed	telemetry_dropped_span_handle_ends_as_failed
 TEL-08	telemetry	redactUrl matches TS	telemetry_redact_url_matches_typescript
 TEL-09	telemetry	redactUrl ported bug-report.test.ts literals	telemetry_redact_url_ported_literals
 TEL-10	telemetry	redactJsonValue matches TS	telemetry_redact_json_value_matches_typescript
@@ -656,12 +644,6 @@ TEL-12	telemetry	collectBugReportDiagnostics matches TS	telemetry_bug_report_dia
 TEL-13	telemetry	bugReportFiles and archive file name match TS	telemetry_bug_report_files_match_typescript
 TEL-14	telemetry	bug-report zip entries equal the TS archive	telemetry_bug_report_archive_matches_typescript_entries
 TEL-15	telemetry	crash log record/take/read/clear, caps and notified marking match TS	telemetry_crash_log_steps_match_typescript
-TEL-16	telemetry	crash log is best effort when unwritable	telemetry_record_crash_is_best_effort
-TEL-17	telemetry	findExtensionStackMatches matches TS	telemetry_extension_stack_matches_match_typescript
-TEL-18	telemetry	attribution headers gated by install telemetry match TS	telemetry_attribution_headers_match_typescript
-TEL-19	telemetry	ISO timestamp round trip	telemetry_crash_timestamps_round_trip
-TEL-20	telemetry	toISOString and Date.parse subset match node	telemetry_js_iso_round_trip_and_parse_subset
-TEL-21	telemetry	decodeURI matches node	telemetry_js_decode_uri_matches_node
 H01	harness	task journal records, transitions, idempotent admission, bounded persistence, poison on failed write, restart interrupted (TS fixture)	harness_task_store_replays_typescript_scenarios
 H02	harness	task fingerprint = SHA-256 of canonical JSON	harness_task_store_fingerprints_match_typescript
 H03	harness	supervisor spawn parsing, idempotency, first-terminal-wins, subtree cancel cascade, close, child-lane visibility, restart recovery (TS NativeRlmHost fixture)	harness_supervisor_replays_typescript_host
@@ -679,21 +661,9 @@ H14	harness	close after a signalled abort keeps the abort reason	harness_gate_cl
 REV-AR-01	review	resolveConfig defaults, clamps, model fallback chain, per-model thinking; engineSettings; testsEligible; paths	review_settings_resolve_like_config_ts
 REV-AR-02	review	detectEcosystems nested walk, toolchainRequests, environmentHash, findMise, describeToolchain	review_prepare_discovers_dependencies_like_prepare_ts
 REV-AR-03	review	decideVerdict, rankFindings, planReview body and comments, commentText, costLine, placeLine	review_plan_posts_like_plan_ts
-REV-AR-04	review	to_level, holds, capped_level, finding_kind, generic_reason match Python	review_autoreview_levels_and_rubric_match_python
-REV-AR-05	review	final_level with verifier level/holds; apply_lessons match Python	review_autoreview_final_level_and_lessons_match_python
-REV-AR-06	review	is_transient, is_auth_failure, is_throttled, retry_after match Python	review_autoreview_retry_classification_matches_python
 REV-AR-07	review	toFixed ties round up like JS	review_js_to_fixed_rounds_ties_up_like_javascript
 REV-AR-08	review	path.join normalization like Node	review_js_path_join_normalizes_like_node
 REV-AR-09	review	JS whitespace set, Math.round, UTF-16 slicing	review_js_whitespace_is_javascripts_not_unicodes
-REV-AR-10	review	apply_verdicts matches review_api.py	review_apply_verdicts_matches_python
-REV-AR-11	review	finding categories and similar-claim detection match Python	review_categories_and_similar_claims_match_python
-REV-AR-12	review	review target classification matches Python	review_classify_targets_matches_python
-REV-AR-13	review	finding dedupe matches Python	review_dedupe_matches_python
-REV-AR-14	review	evidence extraction and JSON reply parsing match Python	review_evidence_and_json_replies_match_python
-REV-AR-15	review	finding normalization matches Python	review_normalize_findings_matches_python
-REV-AR-16	review	review argument parsing matches Python	review_parse_args_matches_python
-REV-AR-17	review	unified diff parsing matches Python	review_parse_diff_matches_python
-REV-AR-18	review	review prompt text matches review_prompts.py	review_prompts_match_python
 REV-AR-19	review	fates ledger lookups match TS	review_ledger_fates_of_matches_typescript
 REV-AR-20	review	ledger lessons and merges match TS	review_ledger_lessons_and_merge_match_typescript
 REV-AR-21	review	ledger ISO times parse like Date.parse	review_ledger_parses_iso_times_like_date_parse
@@ -789,7 +759,6 @@ EXT-06	extensions	extensions process command prompts and contributes declarative
 EXT-07	extensions	extensions process crash during event dispatch reports and continues	extensions_process_crash_during_event_dispatch_reports_and_continues
 EXT-08	extensions	extensions process crash is isolated restarted then disabled	extensions_process_crash_is_isolated_restarted_then_disabled
 EXT-09	extensions	extensions process event timeout is a handler error	extensions_process_event_timeout_is_a_handler_error
-EXT-10	extensions	extensions process events veto block and transform	extensions_process_events_veto_block_and_transform
 EXT-11	extensions	extensions process failed handshakes become diagnostics	extensions_process_failed_handshakes_become_diagnostics
 EXT-12	extensions	extensions process handshake registers functions commands and events	extensions_process_handshake_registers_functions_commands_and_events
 EXT-13	extensions	extensions process kernel function call round trip	extensions_process_kernel_function_call_round_trip
@@ -890,10 +859,7 @@ SANDBOX-W8-11	sandbox	sandbox critical pattern sources are omps	sandbox_critical
 SANDBOX-W8-12	sandbox	sandbox critical patterns match omps table	sandbox_critical_patterns_match_omps_table
 SANDBOX-W8-13	sandbox	sandbox detect matches autoreview detect sandbox	sandbox_detect_matches_autoreview_detect_sandbox
 SANDBOX-W8-14	sandbox	sandbox resolve matches omps resolve approval	sandbox_resolve_matches_omps_resolve_approval
-SANDBOX-W8-15	sandbox	sandbox review env matches autoreview sandbox env	sandbox_review_env_matches_autoreview_sandbox_env
-SANDBOX-W8-16	sandbox	sandbox review wrap matches autoreview argv	sandbox_review_wrap_matches_autoreview_argv
 SANDBOX-W8-17	sandbox	sandbox shell tokenizers match omps	sandbox_shell_tokenizers_match_omps
-SANDBOX-W8-18	sandbox	sandbox strictest matches omps strictest approval	sandbox_strictest_matches_omps_strictest_approval
 SANDBOX-W8-19	sandbox	sandbox approval settings parse mode ops and patterns	sandbox_approval_settings_parse_mode_ops_and_patterns
 SANDBOX-W8-20	sandbox	sandbox interactive bwrap argv	sandbox_interactive_bwrap_argv
 SANDBOX-W8-21	sandbox	sandbox interactive unshare and docker argv	sandbox_interactive_unshare_and_docker_argv
@@ -1529,24 +1495,6 @@ CLAUDE-CLI-08	cli	claude root mcp loki session context matches typescript	claude
 CLAUDE-CLI-09	cli	claude root mcp protocol frames match typescript	claude_root_mcp_protocol_frames_match_typescript
 CLAUDE-CLI-10	cli	claude root skip permissions setting leaves the flag out	claude_root_skip_permissions_setting_leaves_the_flag_out
 CLAUDE-CLI-11	cli	claude root watch arguments and list match typescript	claude_root_watch_arguments_and_list_match_typescript
-REVIEW-W13-01	review	review autoreview context block matches python	review_autoreview_context_block_matches_python
-REVIEW-W13-02	review	review autoreview dedupe fast and root causes match python	review_autoreview_dedupe_fast_and_root_causes_match_python
-REVIEW-W13-03	review	review autoreview describe failure matches python	review_autoreview_describe_failure_matches_python
-REVIEW-W13-04	review	review autoreview finding records match python	review_autoreview_finding_records_match_python
-REVIEW-W13-05	review	review autoreview line mapping matches python	review_autoreview_line_mapping_matches_python
-REVIEW-W13-06	review	review autoreview load guides matches python	review_autoreview_load_guides_matches_python
-REVIEW-W13-07	review	review autoreview merged reviewers match python	review_autoreview_merged_reviewers_match_python
-REVIEW-W13-08	review	review autoreview raised by others matches python	review_autoreview_raised_by_others_matches_python
-REVIEW-W13-09	review	review autoreview reviewer keys match python	review_autoreview_reviewer_keys_match_python
-REVIEW-W13-10	review	review autoreview slices and members match python	review_autoreview_slices_and_members_match_python
-REVIEW-W13-11	review	review frames scheduler bounds concurrency per model under threads	review_frames_scheduler_bounds_concurrency_per_model_under_threads
-REVIEW-W13-12	review	review frames scheduler matches python	review_frames_scheduler_matches_python
-REVIEW-W13-13	review	review build chunks matches python	review_build_chunks_matches_python
-REVIEW-W13-14	review	review plan find and plan report match python	review_plan_find_and_plan_report_match_python
-REVIEW-W13-15	review	review process runner reports missing programs and timeouts	review_process_runner_reports_missing_programs_and_timeouts
-REVIEW-W13-16	review	review render report matches python	review_render_report_matches_python
-REVIEW-W13-17	review	review scope over local repositories matches python	review_scope_over_local_repositories_matches_python
-REVIEW-W13-18	review	review verifier views match python	review_verifier_views_match_python
 TUICMD-01	cli	cli interactive compaction and thinking events become tui events	cli_interactive_compaction_and_thinking_events_become_tui_events
 TUICMD-02	cli	cli interactive subagents become agent hub rows	cli_interactive_subagents_become_agent_hub_rows
 TUICMD-03	cli	cli interactive bare bang is a prompt like ts	cli_interactive_bare_bang_is_a_prompt_like_ts
@@ -1847,21 +1795,6 @@ CLI11	cli/autoreview	enabled:false: once/run poll nothing	cli_autoreview_disable
 CLI12	cli/autoreview	ack logo text equals TS logoText	cli_autoreview_logo_text_matches_typescript
 CLI13	cli/autoreview	once --json reviews what is due; lock released; no accounts errors	cli_autoreview_once_reviews_what_is_due
 CLI14	cli/autoreview	status renders recent reviews and queue	cli_autoreview_status_renders_recent_reviews
-AR-CMP01	review/compiled	predicate parsing (count/status/answer/contains, quotes, Python `$` before a final newline)	review_compiled_predicates_match_python
-AR-CMP02	review/compiled	validate: normalization, ids, ops, args, for_each, asks, asserts, findings, references, cycles, bounds, coverage, error cut at 40	review_compiled_validate_matches_python
-AR-CMP03	review/compiled	validation errors from the TS test	review_compiled_validation_errors_from_ts
-AR-CMP04	review/compiled	grounding: a capped grep or a read alone is refused	review_compiled_grounding_from_ts
-AR-CMP05	review/compiled	coverage items S/K/C and the triggered catalogue shapes T; uncovered items	review_compiled_coverage_items_match_python
-AR-CMP06	review/compiled	coverage errors, unknown declared ids, limits_for	review_compiled_coverage_from_ts
-AR-CMP07	review/compiled	count_of, items_of, render, count_predicate over exact and capped counts	review_compiled_result_reading_matches_python
-AR-CMP08	review/compiled	assert evaluation, truth, conditions, roots_in_ask, contradicted, test_decided/could_not_run, finding gates (also with defer_unrunnable), step records	review_compiled_checks_over_results_match_python
-AR-CMP09	review/compiled	unknown on skipped/failed/unclear inputs; gate undecided/false (TS literals)	review_compiled_three_valued_checks_from_ts
-AR-CMP10	review/compiled	placeholder filling, summaries, quote checks, public_value	review_compiled_fill_summary_quotes_match_python
-AR-CMP11	review/compiled	for_each expansion: renaming, scope, max_items and step-limit truncation	review_compiled_for_each_expansion_matches_python
-AR-CMP12	review/compiled	for_each expansion from the TS test (2 of 4 hits, the rest noted)	review_compiled_expansion_from_ts
-AR-CMP13	review/compiled	candidate shapes, finding fields, ask material, template programs (runnable/unavailable variants, forced shapes), quote_in, quote_in_reads	review_compiled_candidate_templates_match_python
-AR-CMP14	review/compiled	template shapes and programs from the TS test; each template validates	review_compiled_templates_from_ts
-CMP15	review/compiled	runner_availability, planner_views	review_compiled_runners_views_match_python
 D01	review-daemon	blockedPulls: own login@host prefix, request_changes, not closed, not dry run, key regex	review_daemon_blocked_pulls_match_typescript
 D02	review-daemon	discover: since = lastPollAt-2min or now-24h, If-Modified-Since, 304 keeps cursor, pollInterval, reasons merged, latest notifiedAt, search queries and 2-day window, blocked pulls, errors	review_daemon_discover_matches_typescript
 D03	review-daemon	pruneOld: regular files older than days (boundary kept), dirs/symlinks/missing dirs skipped	review_daemon_prune_old_matches_typescript
@@ -1887,26 +1820,6 @@ D22	review-daemon	run polls again after pollSeconds, sleeping in chunks of at mo
 D23	review-daemon	enqueue keeps the earliest notBefore when found again	review_daemon_found_again_waits_no_longer_than_the_new_find
 D24	review-daemon	a finished decision starts its review (pump in finally)	review_daemon_a_finished_decision_starts_its_review
 D25	review-daemon	paused account: due candidates not decided	review_daemon_paused_account_decides_nothing
-DEEP-01	deep	Repo: ls-tree/show/grep/log reads at the head commit, path validation, binary/2MB refusal, git argv and call counts as Python, refuses other git subcommands	review_deep_repo_reads_the_head_commit_like_python
-DEEP-02	deep	serve_request: every kind (read, grep, list, definition, references, symbol/callers/callees/tests_of with and without reference, history, blame_range, pickaxe, run_tests, mutation_check) and every rejection, with git calls per request	review_deep_serve_request_matches_python
-DEEP-03	deep	serve_blocks/serve: 8-request cap, round size cut, rejected titles as json.dumps	review_deep_serve_rounds_match_python
-DEEP-04	deep	numbered, hits, definition pattern, is_code, behaviour lines, json.dumps, tests summarize	review_deep_helpers_match_python
-DEEP-05	deep	extract: defined/changed/calls/constants/env/flags/tables/claims/inputs/config/fields with limits and 78-line definition window	review_deep_extract_matches_python
-DEEP-06	deep	build_brief: sections, claims, required names, lenses, size cut, reference resolved/failed stats	review_deep_build_brief_matches_python
-DEEP-07	deep	check_citations: slack, flat quotes, int() error messages, beyond-diff	review_deep_check_citations_matches_python
-DEEP-08	deep	normalize_deep: levels/cap/to_level/enrich, confidence, category, test_run evidence	review_deep_normalize_deep_matches_python
-DEEP-09	deep	cited_windows	review_deep_cited_windows_match_python
-DEEP-10	deep	merge with records, nearly_identical	review_deep_merge_matches_python
-DEEP-11	deep	shapes_by_lens and mentions	review_deep_shapes_and_mentions_match_python
-DEEP-12	deep	test_line and regression_findings	review_deep_regression_findings_match_python
-DEEP-13	deep	shared_views	review_deep_shared_views_match_python
-DEEP-14	deep	start_tests after the session opens, tests_block, no_tests	review_deep_start_tests_and_block_match_python
-DEEP-15	deep	prove_unpinned: proven/refuted/already failing/no executions left	review_deep_prove_unpinned_matches_python
-DEEP-16	deep	assurance sentences	review_deep_assurance_matches_python
-DEEP-17	deep	investigate over the frame scheduler: rounds, ledger and recall, nudges, leads, test notes, failures, record and tokens	review_deep_investigate_matches_python
-DEEP-18	deep	TS: the map's names, uses, helpers and claims	review_deep_ts_map_names_uses_helpers_and_claims
-DEEP-19	deep	TS: requests are a closed, validated, bounded set	review_deep_ts_requests_are_a_closed_validated_bounded_set
-DEEP-20	deep	TS: history lookups through git log only	review_deep_ts_history_lookups_use_git_log_only
 ENG01	review/engine	review cell runs run_file with JSON-quoted paths	review_engine_cell_runs_run_file_with_json_quoted_paths
 ENG02	review/engine	pipeline error names exception and last 6 traceback lines	review_engine_pipeline_error_names_the_exception_and_the_traceback_end
 ENG03	review/engine	result error; model/verifyModel defaults	review_engine_result_error_and_model_defaults
@@ -1961,61 +1874,8 @@ G45	github	incremental re-review; resolve own fixed threads	review_github_new_co
 G46	github	fates learned/retained; at close once	review_github_the_fate_of_earlier_findings_is_learned_and_retained
 G47	github	lessons reach engine; learn off	review_github_a_repository_rule_reaches_the_engine_and_learning_can_be_off
 G48	github	force-push → whole diff	review_github_a_force_push_reviews_the_whole_diff_again
-GLUE-01	review/deep	build_brief with the real reference matches Python (text, lenses, reference view and stats, lookups, facts)	review_glue_build_brief_with_the_real_reference_matches_python
-GLUE-02	review/deep	the reference reads through the deep repo's shared cache; base commit read separately; python_unindexed without an interpreter	review_glue_reference_reads_through_the_deep_repo
-GLUE-03	review/compiled	Source reads the deep repo	review_glue_source_reads_the_deep_repo
-GLUE-04	review/deep	start_tests: no tests, no sandbox, detection, regression, run limits, unavailable, no runner; runner availability	review_glue_start_tests_matches_python
-GLUE-05	review/deep	the session serves run_tests and mutation_check, enforces its limit, removes exports when dropped	review_glue_session_serves_test_requests
-GLUE-06	review/compiled	Interpreter.run over lookups, tests, asserts, conditions, for_each, asks, gates matches Python	review_glue_interpreter_runs_match_python
-GLUE-07	review/compiled	rounds hand asks and undecided findings back to the caller	review_glue_rounds_hand_asks_and_undecided_findings_back
-GLUE-08	review/compiled	a step the caller leaves without a result is skipped instead of handed back forever	review_glue_unanswered_steps_are_skipped_at_the_end
-GLUE-09	review/context	stated_intent matches Python	review_glue_stated_intent_matches_python
-REF-01	reference	TS block end by brace count	review_reference_ts_block_end_matches_python
-REF-02	reference	TS/JS index: definitions, imports, exports, call sites, families	review_reference_index_ts_matches_python
-REF-03	reference	Python index through the kernel's interpreter equals index_python	review_reference_python_indexer_matches_python
-REF-04	reference	YAML scalars, flow split, comments, parse_yaml, yaml_get	review_reference_yaml_matches_python
-REF-05	reference	Terraform blocks, attrs, nested, refs, heredocs	review_reference_terraform_matches_python
-REF-06	reference	module map	review_reference_module_map_matches_python
-REF-07	reference	build over git repos: index, bounds, resolution, lookups, views, block, facts, findings, serve	review_reference_repositories_match_python
-REF-08	reference	no interpreter: Python files left out and reported, other facts stand	review_reference_without_python_skips_python_files_and_says_so
-REF-09	reference	TS test: definitions, callers, tests, signatures through imports	review_reference_resolves_definitions_callers_tests_and_signatures
-REF-10	reference	TS test: workflow and Terraform facts as cited findings	review_reference_states_workflow_and_terraform_facts
-REF-11	reference	TS test: id-token handed to an external reusable workflow	review_reference_external_reusable_workflow_is_a_fact_with_the_mutable_ref
-REF-12	reference	TS test: YAML reader and Terraform scanner literals	review_reference_yaml_and_terraform_readers_read_what_workflows_and_manifests_use
-REF-13	reference	TS test: symbol/callers/callees/tests_of served	review_reference_serves_symbol_callers_callees_and_tests_of
 SVC01	review/service	systemd/launchd files equal TS serviceFile	review_service_files_match_recorded
 SVC02	review/service	install/uninstall (TS literals)	review_service_install_and_uninstall
-T01	review_tests	sandbox_env and launcher env built from scratch (PATH, DOCKER_HOST only)	review_tests_sandbox_env_matches_python
-T02	review_tests	Sandbox.wrap argv for bwrap/unshare/docker (layouts, binds, cwd, env), describe	review_tests_wrap_matches_python
-T03	review_tests	detect_sandbox order, docker needs image, only, probe dirs removed	review_tests_detect_sandbox_matches_python
-T04	review_tests	self_check argv, launcher token, ok verdict, error text, canary removed	review_tests_self_check_matches_python
-T05	review_tests	doctor report, json.dumps text, CLI usage/environments/doctor output	review_tests_doctor_and_command_line_match_python
-T06	review_tests	interpreter_home, discover_environment, list_environments over recorded trees	review_tests_environments_match_python
-T07	review_tests	interpreter dir that is a top-level dir's child is never bound	review_tests_top_level_install_directory_is_never_bound
-T08	review_tests	detect_runner, TestRunner.command, runner_for, _nearest	review_tests_runner_detection_matches_python
-T09	review_tests	parse_outcome statuses and per-test results	review_tests_parse_outcome_matches_python
-T10	review_tests	summarize	review_tests_summaries_match_python
-T11	review_tests	TestSession paths/plan/run/mutation/compare/serve, limits, records, exports, checkout envs, toolchain, node	review_tests_sessions_match_python
-T12	review_tests	run_process exit codes, combined output, cap, lossy decode, not-found	review_tests_run_process_matches_python
-T13	review_tests	run_process timeout kills the process group	review_tests_run_process_timeout_kills_the_group
-T14	review_tests	export_commit via git archive (export-ignore, exec bit, bad rev)	review_tests_export_commit_matches_python
-T15	review_tests	TS: runners recognized from tracked files	review_tests_ts_runners_recognized_from_tracked_files
-T16	review_tests	TS: outcome passed/failed/timeout/unavailable	review_tests_ts_outcome_passed_failed_timeout_unavailable
-T17	review_tests	TS: monorepo packages run their own tests	review_tests_ts_monorepo_packages_run_their_own_tests
-T18	review_tests	TS: sandbox env has no credentials	review_tests_ts_sandbox_env_has_no_credentials
-T19	review_tests	TS: bwrap argv	review_tests_ts_bwrap_argv
-T20	review_tests	TS: unshare and docker argv	review_tests_ts_unshare_and_docker_argv
-T21	review_tests	TS: strongest working mechanism	review_tests_ts_strongest_working_mechanism_is_chosen
-T22	review_tests	TS: real self-check on this machine	review_tests_ts_real_self_check_on_this_machine
-T23	review_tests	TS: only prepared environments are found	review_tests_ts_only_prepared_environments_are_found
-T24	review_tests	TS: interpreter resolved to its install dir	review_tests_ts_interpreter_resolved_to_its_install_directory
-T25	review_tests	TS: requests validated	review_tests_ts_requests_are_validated
-T26	review_tests	TS: sandboxed, exported, time-limited, counted	review_tests_ts_every_execution_is_sandboxed_exported_limited
-T27	review_tests	TS: base versus head regressions	review_tests_ts_base_versus_head
-T28	review_tests	TS: mutation applied and reverted	review_tests_ts_mutation_applied_and_reverted
-T29	review_tests	TS: checkout environments in a run, testEnv override, unshare	review_tests_ts_checkout_environments_in_a_run
-T30	review_tests	TS: real sandboxed make run	review_tests_ts_real_sandboxed_make_run
-T31	review_tests	serve replies as the deep pass does	review_tests_serve_replies_like_the_deep_pass
 CLAUDE-29	claude/worker-root	--claude model selection mapped to claude-subscription/<id>; refused ids	claude_root_claude_flag_selects_the_claude_subscription_model
 CLAUDE-30	claude/worker-root	ultron --claude -p runs the root on claude-subscription with tools exactly [rlm]	claude_root_claude_flag_runs_the_root_on_the_claude_subscription
 CLAUDE-31	claude/worker-root	ultron --claude refuses another provider's model	claude_root_claude_flag_refuses_another_providers_model
@@ -2148,7 +2008,6 @@ ACMP-22	cli/durable	kill during threshold compaction reopens and compacts again	
 ACMP-23	cli/durable	kill during overflow compaction resumes, then retries	cli_durable_kill_during_overflow_compaction_compacts_and_retries_after_the_restart
 ACMP-24	interactive/tui	auto-compaction status line by reason, then Working again	interactive_commands_auto_compaction_status_line_then_working_again
 ACMP-25	cli/interactive	compaction_start reason and compaction_end mapped to TUI events	cli_interactive_compaction_and_thinking_events_become_tui_events
-FIN1-01	review/fixtures	tests.json records the sandbox home as <root>/fakehome (no home_path findings)	review_tests_detect_sandbox_matches_python
 FIN1-02	ai/claude-subscription	discovery probes run the fake CLI via the interpreter, never a freshly written executable	ai_claude_subscription_discovery_probes_follow_the_telemetry_setting
 FIN1-03	session-core/compaction	abort cancels a running manual compaction; isCompacting reported; op ends aborted; session prompts on	cli_rpc_compaction_abort_cancels_a_manual_compaction
 FIN1-04	session-core/compaction	abort cancels a run's threshold compaction with the run; nothing left open	cli_rpc_compaction_abort_cancels_an_automatic_compaction_with_its_run
@@ -2204,7 +2063,6 @@ HARD-08	host	network follows the setting under every backend	host_sandboxed_back
 HARD-09	host	jobs keep the policy and their status under every backend	host_sandboxed_backends_jobs_keep_the_policy_and_their_status
 HARD-10	host	timed-out bash and cancelled jobs stop inside the sandbox (docker included)	host_sandboxed_backends_stopped_commands_stop_inside_the_sandbox
 HARD-11	host	sandboxed job survives its worker and is adopted, under every backend	host_sandboxed_job_survives_a_killed_worker_and_the_next_host_adopts_it
-HARD-12	review	autoreview self-check under docker; only image-defined names flagged	review_tests_real_self_check_under_docker
 HARD-13	cli	first frame waits for neither provider network nor kernel	cli_first_frame_waits_for_neither_the_network_nor_the_kernel
 MCPGW-01	mcp/gateway	gateway modes, error codes/messages, status, search scoring, resources, read, describe, connect, lazy start, reuse, crash then reconnect, timeout, cancel, shutdown, mcp.log, secret registration, HTTP server match TS against fake servers	mcp_gateway_matches_typescript_over_stdio_and_http
 MCPGW-02	mcp/gateway	project .pi/mcp.json read only when trusted	mcp_gateway_reads_the_project_config_only_when_trusted
@@ -2239,11 +2097,6 @@ PKG2-01	release	--version, --help, auth/usage/config/migrate --help, mcp list, i
 PKG2-02	release	prune spares installs and staging dirs held by running processes; removes unused, crashed and moved-aside dirs; prunes held ones after their processes exit	cli_package_prune_spares_installs_and_staging_in_use_by_running_processes
 PKG2-03	release	8 concurrent runs install once and prune unused older installs while sparing one held by a real process	cli_package_concurrent_runs_prune_while_installing
 PKG2-04	release	a run waiting on a lock while its install is pruned and replaced ends up holding the install now at the path	cli_package_ready_reinstalls_when_pruned_while_waiting_for_its_lock
-HARD2-01	sandbox	review Docker argv matches autoreview_tests.py (env -i, tied, setpriv/polling)	sandbox_review_wrap_matches_autoreview_argv
-HARD2-02	review	review sandbox command lines match the Python with and without setpriv	review_tests_wrap_matches_python
-HARD2-03	review	review Docker self-check fully ok (image ENV cleared)	review_tests_real_self_check_under_docker
-HARD2-04	review	timed-out review commands stop inside every sandbox incl. docker	review_tests_timed_out_commands_stop_inside_every_sandbox
-HARD2-05	review	TS docker argv expectations (env -i, --init -i)	review_tests_ts_unshare_and_docker_argv
 HARD2-06	tui	lexing work grows linearly (deterministic counter)	tui_marked_lex_work_grows_linearly
 HARD2-07	tui	O(log n) closing search equals the run walk	tui_marked_closing_search_matches_the_walk
 HARD2-08	sandbox	docker without setpriv: status kept, holder ends, killed client stops container	sandbox_escape_docker_without_setpriv_ties_the_container_to_its_client
@@ -3171,6 +3024,79 @@ W11K-08	tui/word_segment	CjkBreakEngine best path: cjdict costs, katakana run co
 W11K-09	tui/word_segment	Thai/Lao/Burmese engines: lookahead, Thai joining Latin in a rule segment, PAIYANNOI/MAIYAMOK suffixes	tui_word_segment_south_east_asian_engines_like_icu
 W11K-10	tui/word_segment	isWordLike from rule statuses (々 vs 〆, Hangul+mark, ZWJ emoji after a letter, lone ExtendNumLet)	tui_word_segment_rule_statuses_like_icu
 W10M-01	host	bash commands and shell jobs never see ULTRON_PARENT_TOKEN (a child server verdict token)	host_commands_and_jobs_never_see_the_parent_verdict_token
+W12C-01	interactive	settings select submenu row: press highlights, click picks (theme saved)	interactive_mouse_settings_select_submenu_row_picks_it
+W12C-02	interactive	submenu wheel moves selection; submenu title row inert	interactive_mouse_settings_submenu_wheel_moves_and_title_is_inert
+W12C-03	interactive	list submenu (automatic theme) rows activate; nested select under kept headers	interactive_mouse_settings_list_submenu_row_activates
+W12C-04	interactive	login key input (LoginPrompt) press moves masked cursor	interactive_mouse_press_in_the_login_key_input_moves_its_cursor
+W12C-05	interactive	extension input dialog press moves cursor	interactive_mouse_press_in_an_extension_input_moves_its_cursor
+W12C-06	interactive	extension editor dialog click moves cursor	interactive_mouse_click_in_an_extension_editor_moves_its_cursor
+W12C-07	interactive	session selector: rename input takes press, list takes none	interactive_mouse_session_selector_rename_input_takes_a_press_and_the_list_none
+W12C-08	interactive	/login provider and /scoped-models search lines take a press	interactive_mouse_press_in_selector_search_lines_moves_their_cursor
+W12C-09	interactive	/bug hint editor takes a click; border inert	interactive_mouse_click_in_the_bug_report_editor_moves_its_cursor
+W12C-10	client	duplicate/gap sequence clears the state, reports, connection stays; then before-hydration	client_replica_duplicate_or_gap_sequence_clears_the_state_and_reports_it
+W12C-11	client	consecutive updates apply and reach the listener	client_replica_applies_consecutive_updates_and_tells_the_listener
+W12C-12	client	update that does not apply clears only that replica	client_replica_update_that_does_not_apply_clears_only_that_replica
+W12C-13	client	unavailable clears; replaced rehydrates with fresh decoder and sequence	client_replica_unavailable_clears_and_replaced_rehydrates
+W12C-14	client	state update after unavailable is a fatal stream error; nothing delivered after	client_replica_state_update_after_unavailable_breaks_the_stream
+W12C-15	client	replacement errors (instance address, non-base, dropped member, changed kind) reported	client_replica_replacement_errors_are_reported_on_the_replica
+W12C-16	client	subscribe rejects non-base / non-singleton / wrong service / duplicate members	client_replica_subscribe_rejects_bad_snapshots
+W12C-17	client	updates queued before the snapshot are checked in order	client_replica_updates_before_the_snapshot_are_checked_in_order
+W12C-18	tui	PI_TUI_WRITE_LOG directory file name	tui_render_debug_write_log_path_names_a_file_in_a_directory
+W12C-19	tui	toISOString and render dump file name	tui_render_debug_iso_time_matches_date_to_iso_string
+W12C-20	tui	full redraw reasons in main-screen wording	tui_render_debug_redraw_reasons_follow_the_main_screen_wording
+W12C-21	tui	Termux height change diffed, not repainted	tui_render_debug_termux_height_change_is_diffed_not_repainted
+W12C-22	tui	PI_TUI_DEBUG dump text	tui_render_debug_dump_lists_a_differential_render
+W12C-23	tui	debug files written by background writer	tui_render_debug_files_are_written_by_the_background_writer
+W12C-24	tui	Windows VT input mode flag	tui_terminal_windows_vt_input_mode_adds_the_flag
+W12C-25	interactive	debug env through the run loop: write log, redraw log, dumps	interactive_terminal_debug_env_logs_writes_redraws_and_renders
+W12C-26	interactive	debug env off by default; TERMUX_VERSION; Termux in loop	interactive_terminal_debug_is_off_without_the_variables_and_reads_termux
+W12C-27	cli	RPC new_session during a run switches; old turn runs on; switch back streaming	cli_rpc_new_session_during_a_run_switches_and_the_old_turn_runs_on
+W12C-28	cli	ULTRON_STARTUP_TRACE milestones appended in RPC mode	cli_rpc_startup_trace_appends_milestones_as_json_lines
+W12C-29	cli	startup trace line matches JSON.stringify	cli_rpc_startup_trace_line_matches_json_stringify
+W12C-30	cli	presentation-plugin data checked like createPresentationFacetLoaders	cli_presentation_plugins_data_is_checked_like_create_presentation_facet_loaders
+W12C-31	interactive	extension dialogs drawn in the session theme	interactive_extension_dialogs_are_drawn_in_the_session_theme
+W12E-01	session-core	A session value in an unknown format version refuses resume with the TS text, nothing rewritten	session_core_format_version_newer_values_stop_the_resume_like_typescript
+W12E-02	session-core	Current and unversioned values resume	session_core_format_version_resumes_current_and_unversioned_values
+W12E-03	session-core	UnsupportedFormatVersionError exact text	session_core_format_version_error_text_matches_typescript
+W12E-04	loki	Loki switches (autoInit/autoCommit env over settings)	loki_auto_setup_switches_environment_overrides_settings_defaults_on
+W12E-05	loki	Auto-install eligibility from any directory in a repo	loki_auto_setup_a_writable_repository_qualifies_from_any_directory_inside_it
+W12E-06	loki	Every auto-install skip reason	loki_auto_setup_every_skip_condition_names_its_reason
+W12E-07	loki	Every auto-commit skip reason	loki_auto_setup_commit_skip_reasons_switches_ci_operations_detached_ignored
+W12E-08	loki	commitLoki commits .loki only, other changes kept	loki_auto_setup_commits_loki_only_and_keeps_other_changes_exactly
+W12E-09	loki	Rejecting hook: .loki uncommitted and unstaged, note says why	loki_auto_setup_a_rejecting_hook_leaves_loki_uncommitted_and_unstaged
+W12E-10	loki	Failing/hanging signer: no prompt, timeout text, SIGTERM leaves no index.lock	loki_auto_setup_a_failing_or_hanging_signer_never_prompts
+W12E-11	loki	Setup installs only .loki, commits it, second session quiet	loki_auto_setup_creates_only_loki_commits_it_and_a_second_session_changes_nothing
+W12E-12	loki	Not-committed note; quiet when auto-install off or outside Git	loki_auto_setup_notes_without_a_commit_and_stays_quiet_where_it_installs_nothing
+W12E-13	loki	Failed install becomes the note	loki_auto_setup_an_install_that_fails_is_the_note
+W12E-14	session-core	Loki setup note opens the first root turn once (transcript + request), later session quiet	session_core_loki_notice_opens_the_first_root_turn_once_like_typescript
+W12E-15	session-core	Not-committed note; nothing when Loki is off	session_core_loki_notice_says_why_it_did_not_commit_and_nothing_when_loki_is_off
+W12E-16	session-core	Notice waits briefly, opens a later turn, once	session_core_loki_notice_waits_briefly_then_opens_a_later_turn_once
+W12E-17	claude-root	Claude root gets the Loki setup note with the session context once	claude_root_mcp_loki_setup_note_comes_with_the_session_context_once
+W12E-18	session-core	pi-mcp-adapter left out with one ADAPTER_NOTICE (info)	session_core_mcp_coexistence_leaves_the_adapter_out_with_one_notice_like_typescript
+W12E-19	session-core	Without the built-in gateway the adapter is untouched	session_core_mcp_coexistence_without_the_builtin_gateway_touches_nothing
+W12E-20	resources	Skill dirs honour .gitignore/.ignore/.fdignore (defaults and explicit paths)	resources_skill_directories_honour_ignore_files_like_typescript
+W12E-21	ai	Mistral whole-request timeout (no answer, stalled stream, in time)	ai_mistral_whole_request_timeout_matches_typescript
+W12E-22	ai	Mistral request limit defaults to 60 s	ai_mistral_request_limit_defaults_to_sixty_seconds
+W12E-23	durable	Migrations create the schema and apply repeatedly	durable_sqlite_migrations_create_the_current_schema_and_apply_repeatedly
+W12E-24	durable	A newer database is refused	durable_sqlite_migrations_reject_a_database_newer_than_the_core
+W12E-25	durable	Migrations must be contiguous from 1	durable_sqlite_migrations_must_be_contiguous_from_one
+W12E-26	durable	Bootstrap and pending migrations roll back together	durable_sqlite_migrations_roll_bootstrap_and_every_pending_migration_back_together
+W12E-27	durable	Failed migration rolls back, data kept for a retry	durable_sqlite_migrations_roll_a_failed_migration_back_and_keep_data_for_a_retry
+W12E-28	session-core	Header templates read the stored credential env first	session_core_header_templates_see_the_stored_credential_env_like_typescript
+W12E-29	ai	Bedrock through a proxy negotiates HTTP/1.1; NO_PROXY/HTTP_PROXY keep h2; bad proxy fails	ai_bedrock_proxy_uses_http1_like_typescript
+W12E-30	session-core	Durable request checkpoint pins providerRequestOptions	session_core_trusted_project_settings_reach_the_session_and_untrusted_ones_do_not
+W12E-31	session-core	Session Loki post-write checks ask the project's interpreter	session_core_loki_post_write_checks_ask_the_projects_interpreter
+W12E-32	host	Worktree variables reach sandboxed bash and jobs (bwrap, unshare)	host_sandboxed_backends_worktree_variables_reach_the_command
+W12E-33	host	Sandboxed argv sets the command's variables (Docker gets the same line)	host_sandboxed_argv_sets_the_commands_variables
+W12E-34	ai	Codex SSE requests carry content-encoding: zstd as TS records them	ai_codex_websocket_replays_recorded_typescript_scenarios
+W12E-35	ai	Codex SSE body on the wire is a zstd frame that ruzstd and libzstd decode to the provider's JSON	ai_codex_sse_body_goes_out_zstd_compressed_like_typescript
+W12E-36	ai	Only a request naming zstd (any case) is encoded	ai_wire_body_encodes_only_a_zstd_request
+W12E-37	cli	ULTRON_STARTUP_TRACE: a -p run records cli.* and worker.* milestones in TS order and line format	cli_startup_trace_records_the_cli_and_worker_milestones_like_typescript
+W12E-38	cli	No trace file without ULTRON_STARTUP_TRACE	cli_startup_trace_is_off_without_the_variable
+W12D-01	cli	autoreview doctor runs autoreview_tests.py doctor [image] with the kernel interpreter (180 s), reports sandbox/self-check like cli.ts, mechanism null only means none, errors with stderr else stdout	cli_autoreview_doctor_runs_the_review_test_script
+W12D-02	cli	autoreview doctor --repo lists bound environments from autoreview_tests.py environments <checkout> (60 s)	cli_autoreview_doctor_repo_lists_bound_environments_from_the_script
+W12D-03	extensions	session_before_* veto through a real extension process	extensions_process_events_veto
+W12D-04	telemetry	clear_crash_log on a directory is a no-op; a missing crash log reads empty	telemetry_clear_crash_log_is_best_effort
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

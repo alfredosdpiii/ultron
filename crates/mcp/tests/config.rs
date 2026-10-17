@@ -74,13 +74,14 @@ fn mcp_config_loading_merges_global_and_project_files_like_typescript() {
             .iter()
             .map(|s| json!({ "name": s.name, "config": s.config, "source": s.source, "scope": s.scope.as_str() }))
             .collect();
-        let mut actual = json!({ "servers": servers });
-        if let Some(auto) = loaded.auto_enable_codemode {
-            actual["autoEnableCodemode"] = json!(auto);
+        let actual = json!({ "servers": servers, "errors": loaded.errors });
+        // The recorded `autoEnableCodemode` value is not kept (nothing reads it); its validation error is.
+        let mut expected = case["result"].clone();
+        if let Some(result) = expected.as_object_mut() {
+            result.shift_remove("autoEnableCodemode");
         }
-        actual["errors"] = json!(loaded.errors);
         let actual = text(&actual).replace(&root, "$ROOT");
-        assert_eq!(actual, text(&case["result"]));
+        assert_eq!(actual, text(&expected));
     }
 }
 

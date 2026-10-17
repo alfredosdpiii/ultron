@@ -6,7 +6,6 @@
 //! name is automatic exactly while the two agree, so a name set later by any writer (`-n`, `/name`, the TypeScript
 //! product) is the user's and is never replaced.
 
-use crate::codec::{self, ParsedHeader};
 use crate::repo::{Metadata, SessionRepo, absolute, read_metadata};
 use crate::session::{SESSION_NAME, Session};
 use crate::state::Write;
@@ -388,20 +387,6 @@ pub fn resolve_resume<'a>(sessions: &'a [SessionListing], selector: &str) -> Res
         _ => Err(format!(
             "Session selector '{selector}' is ambiguous; matches: {}",
             matches.iter().map(|s| describe(s)).collect::<Vec<_>>().join(", ")
-        )),
-    }
-}
-
-/// The header id of a session file given by path (`--session <path>`).
-pub fn header_id(path: &Path) -> Result<String, String> {
-    let line = crate::io::read_first_line(path)
-        .map_err(|e| format!("{}: {e}", path.display()))?
-        .unwrap_or_default();
-    match codec::parse_header(&line) {
-        Ok(ParsedHeader::V4(h)) | Ok(ParsedHeader::V3(h)) => Ok(codec::header_str(&h, "id").unwrap_or("").into()),
-        Err(_) => Err(format!(
-            "Session file is not a valid ultron session: {}",
-            path.display()
         )),
     }
 }

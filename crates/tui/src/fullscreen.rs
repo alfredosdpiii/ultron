@@ -555,7 +555,16 @@ impl FullscreenViewport {
             return ViewportInput::Consumed;
         }
         if let Some((direction, x, y, button)) = parse_wheel(data) {
-            self.view.scroll_by(direction * self.wheel_scroll_lines(button));
+            // The component under the pointer gets the wheel first (a list moves its selection); unhandled, it
+            // scrolls (tui-alt-screen.ts `handleViewportInput`, then `routeWheel`).
+            let lines = direction * self.wheel_scroll_lines(button);
+            let mut event = self.mouse_event(MouseEventType::Wheel, button, x, y, None);
+            event.wheel_delta = Some(lines);
+            if let Some(d) = targets.dispatch_at(&event) {
+                self.apply_dispatch(d);
+                return ViewportInput::Consumed;
+            }
+            self.view.scroll_by(lines);
             self.update_hover(x, y);
             return ViewportInput::Consumed;
         }

@@ -313,11 +313,6 @@ pub fn summary_plan(view: &ContextView, cut: usize) -> SummaryPlan {
     }
 }
 
-/// Model messages of the entries before `cut`, ordered like model context.
-pub fn summarized_messages(view: &ContextView, cut: usize) -> Vec<Message> {
-    order_tool_results(&view.contributions[..cut].concat())
-}
-
 /// The built-in compaction task over `services`.
 pub(crate) fn compaction_task(services: Arc<Services>) -> Task {
     let (select, summarize, retry) = (services.clone(), services.clone(), services);

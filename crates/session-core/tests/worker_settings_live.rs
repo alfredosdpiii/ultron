@@ -29,7 +29,10 @@ fn first_user_text(body: &Value) -> String {
             _ => content[0]["text"].as_str().unwrap_or_default().to_string(),
         }
     });
-    texts.into_iter().find(|text| !text.starts_with("[clock] ")).unwrap_or_default()
+    texts
+        .into_iter()
+        .find(|text| !text.starts_with("[clock] "))
+        .unwrap_or_default()
 }
 
 /// Waits (hang guard only) until `found` returns something for the requests so far.
@@ -56,6 +59,30 @@ fn stream_options(a: &p_session_support::Actor) -> Vec<Value> {
         .iter()
         .filter_map(|w| w["value"]["generationContext"].get("streamOptions").cloned())
         .collect()
+}
+
+/// The `streamOptions` of every durable generation request checkpoint (`phase: "request"`) the journal holds.
+fn checkpoint_stream_options(a: &p_session_support::Actor) -> Vec<Value> {
+    fn walk(value: &Value, out: &mut Vec<Value>) {
+        match value {
+            Value::Object(map) => {
+                if map.get("phase") == Some(&json!("request"))
+                    && map.contains_key("cutoff")
+                    && let Some(options) = map.get("streamOptions")
+                {
+                    out.push(options.clone());
+                }
+                map.values().for_each(|v| walk(v, out));
+            }
+            Value::Array(items) => items.iter().for_each(|v| walk(v, out)),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    for write in a.writes() {
+        walk(&write, &mut out);
+    }
+    out
 }
 
 fn git(cwd: &Path, home: &Path, args: &[&str]) {
@@ -145,6 +172,10 @@ fn session_core_trusted_project_settings_reach_the_session_and_untrusted_ones_do
             recorded.iter().all(|o| *o == options),
             "{name}: {recorded:?} != {options}"
         );
+        // The durable generation's request checkpoint pins the same options.
+        let pinned = checkpoint_stream_options(&a);
+        assert!(!pinned.is_empty(), "{name}");
+        assert!(pinned.iter().all(|o| *o == options), "{name}: {pinned:?} != {options}");
     }
 }
 

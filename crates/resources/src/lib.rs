@@ -3,6 +3,7 @@
 
 pub mod context_files;
 pub mod frontmatter;
+pub mod ignore;
 pub mod paths;
 pub mod prompt_files;
 pub mod prompt_templates;

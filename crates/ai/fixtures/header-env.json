@@ -1,0 +1,150 @@
+{
+	"models": {
+		"providers": {
+			"custom": {
+				"baseUrl": "http://127.0.0.1:9/v1",
+				"api": "openai-completions",
+				"headers": {
+					"x-team": "$TEAM_ID",
+					"x-both": "${PART_A}-${PART_B}"
+				},
+				"models": [
+					{
+						"id": "m",
+						"headers": {
+							"x-model": "$MODEL_VAR"
+						}
+					}
+				]
+			}
+		}
+	},
+	"cases": [
+		{
+			"name": "the stored env fills provider and model headers before the environment",
+			"auth": {
+				"custom": {
+					"type": "api_key",
+					"key": "ck",
+					"env": {
+						"TEAM_ID": "team-stored",
+						"MODEL_VAR": "model-stored",
+						"PART_A": "a-stored"
+					}
+				}
+			},
+			"env": {
+				"TEAM_ID": "team-env",
+				"MODEL_VAR": "model-env",
+				"PART_A": "a-env",
+				"PART_B": "b-env"
+			},
+			"getAuth": {
+				"headers": {
+					"x-team": "team-stored",
+					"x-both": "a-stored-b-env",
+					"x-model": "model-stored"
+				}
+			},
+			"request": {
+				"x-team": "team-stored",
+				"x-both": "a-stored-b-env",
+				"x-model": "model-stored",
+				"authorization": "Bearer ck"
+			},
+			"errorMessage": null
+		},
+		{
+			"name": "without a stored env the environment fills them",
+			"auth": {
+				"custom": {
+					"type": "api_key",
+					"key": "ck"
+				}
+			},
+			"env": {
+				"TEAM_ID": "team-env",
+				"MODEL_VAR": "model-env",
+				"PART_A": "a-env",
+				"PART_B": "b-env"
+			},
+			"getAuth": {
+				"headers": {
+					"x-team": "team-env",
+					"x-both": "a-env-b-env",
+					"x-model": "model-env"
+				}
+			},
+			"request": {
+				"x-team": "team-env",
+				"x-both": "a-env-b-env",
+				"x-model": "model-env",
+				"authorization": "Bearer ck"
+			},
+			"errorMessage": null
+		},
+		{
+			"name": "an empty stored value reads as unset",
+			"auth": {
+				"custom": {
+					"type": "api_key",
+					"key": "ck",
+					"env": {
+						"TEAM_ID": "",
+						"MODEL_VAR": "",
+						"PART_A": "a-stored",
+						"PART_B": "b-stored"
+					}
+				}
+			},
+			"env": {
+				"TEAM_ID": "team-env",
+				"MODEL_VAR": "model-env"
+			},
+			"getAuth": {
+				"headers": {
+					"x-team": "team-env",
+					"x-both": "a-stored-b-stored",
+					"x-model": "model-env"
+				}
+			},
+			"request": {
+				"x-team": "team-env",
+				"x-both": "a-stored-b-stored",
+				"x-model": "model-env",
+				"authorization": "Bearer ck"
+			},
+			"errorMessage": null
+		},
+		{
+			"name": "a variable only the stored env has",
+			"auth": {
+				"custom": {
+					"type": "api_key",
+					"key": "ck",
+					"env": {
+						"TEAM_ID": "t",
+						"MODEL_VAR": "m",
+						"PART_A": "a",
+						"PART_B": "b"
+					}
+				}
+			},
+			"env": {},
+			"getAuth": {
+				"headers": {
+					"x-team": "t",
+					"x-both": "a-b",
+					"x-model": "m"
+				}
+			},
+			"request": {
+				"x-team": "t",
+				"x-both": "a-b",
+				"x-model": "m",
+				"authorization": "Bearer ck"
+			},
+			"errorMessage": null
+		}
+	]
+}

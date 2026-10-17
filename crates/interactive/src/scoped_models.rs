@@ -364,6 +364,25 @@ impl ScopedModelsSelector {
         ScopedAction::None
     }
 
+    /// `ScopedModelsSelectorComponent.handleMouse` (a `Container`): a press on the search `Input` moves its cursor;
+    /// the model rows are text.
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent) -> Option<tui::mouse::MouseResult> {
+        let t = Rc::clone(&self.theme);
+        let width = event.width;
+        let text = |s: &str| Text::new(s, 0, 0, None).render(width).len() as i64;
+        let subtitle = format!("Session-only. {} to save to settings.", self.key("app.models.save"));
+        let top = 2 + text(&fg(&t, "accent", &bold("Model Configuration"))) + text(&fg(&t, "muted", &subtitle)) + 1;
+        let rows = self.search.render(width).len() as i64;
+        if event.y < top || event.y >= top + rows {
+            return None;
+        }
+        let local = tui::mouse::MouseEvent {
+            y: event.y - top,
+            ..*event
+        };
+        self.search.handle_mouse(&local)
+    }
+
     pub fn render(&mut self, width: usize) -> Vec<String> {
         let t = Rc::clone(&self.theme);
         let text = |s: &str| Text::new(s, 0, 0, None).render(width);

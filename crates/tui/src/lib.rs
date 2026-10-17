@@ -29,6 +29,7 @@ pub mod notify;
 pub mod outline;
 pub mod overlay;
 pub mod qol_keys;
+pub mod render_debug;
 pub mod renderer;
 pub mod right_click_paste;
 pub mod screen;

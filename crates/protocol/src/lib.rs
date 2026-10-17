@@ -4,7 +4,6 @@
 pub mod cbor;
 pub mod framing;
 pub mod message;
-pub mod rpc;
 pub mod service;
 pub mod websocket;
 

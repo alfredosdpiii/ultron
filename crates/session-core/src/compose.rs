@@ -483,6 +483,9 @@ pub struct Runtime {
     pub hindsight: Option<hindsight::Endpoint>,
     /// Keeps the extensions' providers in the model registry of this profile (crate::extension_providers).
     pub extension_providers: Option<crate::extension_providers::Installed>,
+    /// pi-mcp-adapter was left out next to the built-in MCP gateway (crate::mcp_coexistence): the session's start
+    /// says so.
+    pub mcp_adapter_skipped: bool,
 }
 
 impl Runtime {
@@ -502,7 +505,7 @@ impl Runtime {
             &services.session,
         );
         services.resources = Arc::new(resolved);
-        let discovery = crate::session_flags::extension_discovery_with(
+        let mut discovery = crate::session_flags::extension_discovery_with(
             env,
             &config.agent_dir,
             &manager,
@@ -511,6 +514,15 @@ impl Runtime {
             &services.resources,
         );
         let mut diagnostics: Vec<String> = services.resources.diagnostics.clone();
+        // `preferNativeMcp`: next to the built-in MCP gateway, pi-mcp-adapter is left out with a notice.
+        let is_adapter = |d: &extensions::manifest::Diagnostic| crate::mcp_coexistence::is_mcp_adapter(&d.path);
+        let mcp_adapter_skipped = config.mcp_enabled
+            && (!services.resources.mcp_adapters.is_empty() || discovery.diagnostics.iter().any(is_adapter));
+        if mcp_adapter_skipped {
+            discovery.diagnostics.retain(|d| !is_adapter(d));
+        } else {
+            diagnostics.extend(services.resources.mcp_adapters.iter().cloned());
+        }
         diagnostics.extend(
             discovery
                 .diagnostics
@@ -589,6 +601,7 @@ impl Runtime {
             mode: mode.to_string(),
             hindsight,
             extension_providers,
+            mcp_adapter_skipped,
         })
     }
 
@@ -701,7 +714,11 @@ impl Runtime {
         // `session_start` of the MCP extension: eager servers connect in the background; configuration errors were
         // reported with the runtime's diagnostics.
         let gateway = config.mcp_gateway();
-        let notices = gateway.start(self.services.mcp_notices.clone());
+        let mut notices = Vec::new();
+        if self.mcp_adapter_skipped {
+            notices.push((crate::mcp_coexistence::ADAPTER_NOTICE.to_string(), "info".to_string()));
+        }
+        notices.extend(gateway.start(self.services.mcp_notices.clone()));
         if let Some(notify) = &self.services.mcp_notices {
             for (message, level) in notices {
                 notify(&message, &level);
@@ -1750,6 +1767,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             mode: String::new(),
             hindsight: None,
             extension_providers: None,
+            mcp_adapter_skipped: false,
         }
         .host_in(
             Path::new(cwd),

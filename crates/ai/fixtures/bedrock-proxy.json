@@ -1,0 +1,88 @@
+{
+	"cases": [
+		{
+			"name": "HTTPS_PROXY: HTTP/1.1 through the proxy",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "http://127.0.0.1:9"
+			},
+			"handler": "NodeHttpHandler",
+			"unhandled": null
+		},
+		{
+			"name": "a lowercase https_proxy without a scheme",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"https_proxy": "127.0.0.1:9"
+			},
+			"handler": "NodeHttpHandler",
+			"unhandled": null
+		},
+		{
+			"name": "ALL_PROXY alone",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"ALL_PROXY": "http://127.0.0.1:9"
+			},
+			"handler": "NodeHttpHandler",
+			"unhandled": null
+		},
+		{
+			"name": "HTTP_PROXY does not serve an https target",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTP_PROXY": "http://127.0.0.1:9"
+			},
+			"handler": "NodeHttp2Handler",
+			"unhandled": null
+		},
+		{
+			"name": "NO_PROXY naming the host keeps HTTP/2",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "http://127.0.0.1:9",
+				"NO_PROXY": "localhost, 127.0.0.1"
+			},
+			"handler": "NodeHttp2Handler",
+			"unhandled": null
+		},
+		{
+			"name": "NO_PROXY for another port",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "http://127.0.0.1:9",
+				"NO_PROXY": "127.0.0.1:1"
+			},
+			"handler": "NodeHttpHandler",
+			"unhandled": null
+		},
+		{
+			"name": "NO_PROXY=*",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "http://127.0.0.1:9",
+				"no_proxy": "*"
+			},
+			"handler": "NodeHttp2Handler",
+			"unhandled": null
+		},
+		{
+			"name": "a SOCKS proxy fails the request",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "socks5://127.0.0.1:9"
+			},
+			"handler": null,
+			"unhandled": "Unsupported proxy protocol. SOCKS and PAC proxy URLs are not supported; use an HTTP or HTTPS proxy URL. Got socks5:"
+		},
+		{
+			"name": "a proxy URL that does not parse fails the request",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"HTTPS_PROXY": "http://[bad"
+			},
+			"handler": null,
+			"unhandled": "Invalid proxy URL \"http://[bad\": Invalid URL"
+		}
+	]
+}

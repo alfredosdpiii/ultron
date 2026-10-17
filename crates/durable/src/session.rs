@@ -443,10 +443,6 @@ impl Session {
         self.watch_at(doc, owner, None)
     }
 
-    pub fn watch_member(&self, doc: &Doc, owner: Owner, key: &str) -> Result<Option<Watch>> {
-        self.watch_at(doc, owner, Some(key))
-    }
-
     fn watch_at(&self, doc: &Doc, owner: Owner, key: Option<&str>) -> Result<Option<Watch>> {
         self.attach(doc, owner, key, |record, value| {
             let shared = WatchShared::new(record, value);

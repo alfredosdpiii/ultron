@@ -356,6 +356,14 @@ impl BugFlow {
         }
     }
 
+    /// The `/bug` hint step is an `ExtensionEditorComponent`: its editor takes the mouse; the other steps are text.
+    pub fn handle_mouse(&mut self, event: &tui::mouse::MouseEvent, rows: usize) -> Option<tui::mouse::MouseResult> {
+        match &mut self.step {
+            Step::Hint(dialog) => dialog.handle_mouse(event, rows),
+            _ => None,
+        }
+    }
+
     /// The editor dialog, for Ctrl+G's external editor.
     pub fn editor(&mut self) -> Option<&mut ExtensionEditorDialog> {
         match &mut self.step {

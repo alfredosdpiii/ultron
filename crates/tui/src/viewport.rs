@@ -82,6 +82,13 @@ pub struct ViewportRenderer {
     pub history_rows_written: usize,
     /// Kitty image ids written to scrollback (deleted when a replay clears it).
     history_images: BTreeSet<u32>,
+    /// Termux (`TERMUX_VERSION`): a height change alone (the software keyboard showing or hiding) is diffed, not
+    /// painted whole, so the history is not replayed on every toggle (tui-main-screen.ts:345-347).
+    pub termux: bool,
+    /// Collect [`ViewportRenderer::take_traces`] (`PI_TUI_DEBUG_REDRAW` / `PI_TUI_DEBUG`).
+    pub trace: bool,
+    redraws: Vec<String>,
+    dumps: Vec<crate::render_debug::RenderDump>,
 }
 
 /// `parseKittyImageHeader`: the image ids (`i=`) and cell rows (`r=`, default 1) of a line's first Kitty command.
@@ -206,6 +213,12 @@ impl ViewportRenderer {
         ids.into_iter().map(delete_kitty_image).collect()
     }
 
+    /// The full-redraw log entries (`fullRender: ...`) and differential render dumps since the last call (with
+    /// [`ViewportRenderer::trace`]).
+    pub fn take_traces(&mut self) -> (Vec<String>, Vec<crate::render_debug::RenderDump>) {
+        (std::mem::take(&mut self.redraws), std::mem::take(&mut self.dumps))
+    }
+
     /// Rows of the last painted viewport (prepared: normalized, clamped, reset-terminated).
     pub fn viewport(&self) -> &[String] {
         &self.prev
@@ -257,11 +270,38 @@ impl ViewportRenderer {
             .as_ref()
             .filter(|h| h.id <= self.accepted_history)
             .map(|h| h.id);
-        let geometry_changed = self.painted && (width != self.width || height != self.height);
+        let width_changed = self.painted && width != self.width;
+        let height_changed = self.painted && height != self.height && !self.termux;
+        let geometry_changed = width_changed || height_changed;
         let replay = history.is_some_and(|h| h.kind == HistoryKind::Replay);
 
         let shrunk = self.painted && self.clear_on_shrink && rows.len() < self.max_rows;
+        if self.trace {
+            // `logRedraw`: why the viewport is painted whole, as tui-main-screen.ts words it (a forced repaint is its
+            // `resetRenderState`, previousWidth -1). A history batch alone is appended, not a full redraw.
+            let reason = if !self.painted {
+                Some("first render".to_string())
+            } else if self.force_repaint {
+                Some(format!("terminal width changed (-1 -> {width})"))
+            } else if width_changed {
+                Some(format!("terminal width changed ({} -> {width})", self.width))
+            } else if height_changed {
+                Some(format!("terminal height changed ({} -> {height})", self.height))
+            } else if shrunk {
+                Some(format!("clearOnShrink (maxLinesRendered={})", self.max_rows))
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
+                self.redraws.push(format!(
+                    "fullRender: {reason} (prev={}, new={}, height={height})",
+                    self.prev.len(),
+                    rows.len()
+                ));
+            }
+        }
         let mut out = String::from(SYNC_BEGIN);
+        let mut dump = None;
         if !self.painted || history.is_some() || geometry_changed || self.force_repaint || shrunk {
             // The images being repainted go first (`deleteKittyImages(previousKittyImageIds)`); a replay clears
             // scrollback, so the images written there go too.
@@ -308,6 +348,26 @@ impl ViewportRenderer {
             for id in deleted {
                 out.push_str(&delete_kitty_image(id));
             }
+            let before = self.cursor_row;
+            if self.trace
+                && let Some(first) = changed.iter().position(|c| *c)
+            {
+                let last = changed.iter().rposition(|c| *c).unwrap_or(first);
+                dump = Some(crate::render_debug::RenderDump {
+                    first_changed: first,
+                    viewport_top: skip,
+                    cursor_row: before,
+                    height,
+                    line_diff: first as i64 - before as i64,
+                    hardware_cursor_row: before,
+                    render_end: last,
+                    final_cursor_row: 0,
+                    cursor_pos: cursor,
+                    new_lines: rows.clone(),
+                    previous_lines: self.prev.clone(),
+                    written: 0,
+                });
+            }
             let mut i = 0;
             while i < rows.len() {
                 if !changed[i] {
@@ -343,6 +403,9 @@ impl ViewportRenderer {
                 self.goto(&mut out, rows.len());
                 out.push_str("\r\x1b[J");
             }
+            if let Some(dump) = &mut dump {
+                dump.final_cursor_row = self.cursor_row;
+            }
         }
         match cursor.filter(|_| !rows.is_empty()) {
             Some((row, col)) => {
@@ -357,6 +420,10 @@ impl ViewportRenderer {
             None => out.push_str("\x1b[?25l"),
         }
         out.push_str(SYNC_END);
+        if let Some(mut dump) = dump {
+            dump.written = out.encode_utf16().count();
+            self.dumps.push(dump);
+        }
 
         self.prev = rows;
         self.width = width;

@@ -48,6 +48,19 @@ const INITIAL_SCHEMA: &[&str] = &[
     "CREATE INDEX document_revisions_by_kind ON document_revisions (document_id, kind, seq DESC)",
 ];
 
+/// One schema migration: its version and the statements that bring the previous version to it.
+#[derive(Clone, Copy, Debug)]
+pub struct SqliteMigration<'a> {
+    pub version: i64,
+    pub statements: &'a [&'a str],
+}
+
+/// Immutable, ordered schema history (`SQLITE_MIGRATIONS`). Append new migrations; never edit released ones.
+pub const SQLITE_MIGRATIONS: &[SqliteMigration<'static>] = &[SqliteMigration {
+    version: 1,
+    statements: INITIAL_SCHEMA,
+}];
+
 /// Schema version this backend writes; a file with a newer version is refused.
 pub const CURRENT_SQLITE_SCHEMA_VERSION: i64 = 1;
 
@@ -500,7 +513,16 @@ fn metadata(conn: &Connection) -> Result<(u64, u64)> {
     }
 }
 
-fn apply_migrations(conn: &mut Connection) -> Result<()> {
+/// `applySqliteMigrations`: every pending migration of `migrations` (contiguous versions from 1) in one immediate
+/// transaction with the schema bootstrap, so a failure leaves the database as it was.
+pub fn apply_sqlite_migrations(conn: &mut Connection, migrations: &[SqliteMigration<'_>]) -> Result<()> {
+    if migrations
+        .iter()
+        .enumerate()
+        .any(|(index, m)| m.version != index as i64 + 1)
+    {
+        return failed("Durable SQLite migrations must have contiguous versions starting at 1");
+    }
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS durable_schema (
@@ -520,16 +542,20 @@ fn apply_migrations(conn: &mut Connection) -> Result<()> {
     let Some(version) = version else {
         return failed("Durable SQLite schema metadata is missing");
     };
-    if version > CURRENT_SQLITE_SCHEMA_VERSION {
+    let current = migrations.last().map_or(0, |m| m.version);
+    if version > current {
         return failed(format!(
-            "Durable SQLite schema version {version} is newer than supported version {CURRENT_SQLITE_SCHEMA_VERSION}"
+            "Durable SQLite schema version {version} is newer than supported version {current}"
         ));
     }
-    if version < 1 {
-        for statement in INITIAL_SCHEMA {
+    for migration in migrations.iter().filter(|m| m.version > version) {
+        for statement in migration.statements {
             tx.execute_batch(statement)?;
         }
-        tx.execute("UPDATE durable_schema SET version = ? WHERE singleton = 1", [1])?;
+        tx.execute(
+            "UPDATE durable_schema SET version = ? WHERE singleton = 1",
+            [migration.version],
+        )?;
     }
     tx.commit()?;
     Ok(())
@@ -556,7 +582,7 @@ impl SqliteStorage {
             "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA wal_autocheckpoint = {};",
             options.wal_autocheckpoint_pages
         ))?;
-        apply_migrations(&mut conn)?;
+        apply_sqlite_migrations(&mut conn, SQLITE_MIGRATIONS)?;
         let (next_id, _) = metadata(&conn)?;
         Ok(SqliteStorage {
             conn: Some(conn),

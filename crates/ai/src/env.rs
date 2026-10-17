@@ -138,10 +138,6 @@ fn with_process_env<T>(env: Option<&ProviderEnv>, f: impl FnOnce(&EnvSource<'_>)
     })
 }
 
-pub fn find_env_keys(provider: &str, env: Option<&ProviderEnv>) -> Option<Vec<&'static str>> {
-    with_process_env(env, |source| find_env_keys_in(provider, source))
-}
-
 pub fn env_api_key(provider: &str, env: Option<&ProviderEnv>) -> Option<String> {
     with_process_env(env, |source| env_api_key_in(provider, source))
 }

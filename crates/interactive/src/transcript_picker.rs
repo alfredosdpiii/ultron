@@ -196,11 +196,6 @@ impl TranscriptPicker {
         }
     }
 
-    /// Selectable turns; the app does not open the picker when this is zero.
-    pub fn target_count(&self) -> usize {
-        self.targets.len()
-    }
-
     pub fn targets(&self) -> &[OutlineTarget] {
         &self.targets
     }

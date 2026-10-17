@@ -871,11 +871,6 @@ impl SessionManager {
         &self.session_dir
     }
 
-    /// `usesDefaultSessionDir`.
-    pub fn uses_default_session_dir(&self) -> bool {
-        self.session_dir == file::default_session_dir_path(&self.cwd, &self.env.agent_dir())
-    }
-
     pub fn session_id(&self) -> &str {
         &self.session_id
     }

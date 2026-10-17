@@ -168,7 +168,7 @@ fn extensions_process_kernel_function_call_round_trip() {
 }
 
 #[test]
-fn extensions_process_events_veto_block_and_transform() {
+fn extensions_process_events_veto() {
     let dir = tempfile::tempdir().unwrap();
     let (host, _) = load(vec![manifest(dir.path(), "hello", json!({}))], false);
     let router = host.router();
@@ -179,25 +179,6 @@ fn extensions_process_events_veto_block_and_transform() {
     assert_eq!(
         router.emit(&json!({ "type": "session_before_switch", "reason": "new" })),
         None
-    );
-    let blocked = router
-        .emit_tool_call(&json!({ "type": "tool_call", "toolCallId": "t", "toolName": "rlm", "input": { "code": "bash('rm -rf /')" } }))
-        .unwrap();
-    assert_eq!(
-        blocked.result,
-        Some(json!({ "block": true, "reason": "hello refuses rm -rf" }))
-    );
-    let allowed = router
-        .emit_tool_call(&json!({ "type": "tool_call", "toolCallId": "t", "toolName": "rlm", "input": { "code": "1" } }))
-        .unwrap();
-    assert_eq!(allowed.result, None);
-    assert_eq!(
-        router.emit_input("hi", None, "interactive", None),
-        json!({ "action": "transform", "text": "hello" })
-    );
-    assert_eq!(
-        router.emit_input("yo", None, "interactive", None),
-        json!({ "action": "continue" })
     );
     host.shutdown();
 }

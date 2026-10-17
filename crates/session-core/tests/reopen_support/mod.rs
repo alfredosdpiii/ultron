@@ -45,7 +45,7 @@ impl Home {
         home
     }
 
-    fn sessions(&self) -> PathBuf {
+    pub fn sessions(&self) -> PathBuf {
         self.root.join("agent").join("experimental").join("sessions")
     }
 
@@ -84,7 +84,17 @@ impl Home {
 
     /// Open the session in an actor answered by `script` (a fresh loopback server that models.json points at);
     /// `watch` sees every event as the actor emits it.
-    pub fn open(&self, script: Script, vars: &[(&str, &str)], mut watch: Option<Watcher>) -> Worker {
+    pub fn open(&self, script: Script, vars: &[(&str, &str)], watch: Option<Watcher>) -> Worker {
+        self.try_open(script, vars, watch).unwrap()
+    }
+
+    /// [`Home::open`], returning the actor's open error (a session it refuses to resume).
+    pub fn try_open(
+        &self,
+        script: Script,
+        vars: &[(&str, &str)],
+        mut watch: Option<Watcher>,
+    ) -> Result<Worker, String> {
         let (port, requests) = server(script);
         let agent_dir = self.root.join("agent");
         std::fs::write(
@@ -142,15 +152,14 @@ impl Home {
                 }
                 sink.lock().unwrap().push(event);
             }),
-        )
-        .unwrap();
+        )?;
         let _ = input.set(tx.clone());
-        Worker {
+        Ok(Worker {
             tx,
             events,
             requests,
             actor: Some(actor),
-        }
+        })
     }
 }
 

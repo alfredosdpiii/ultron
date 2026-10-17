@@ -70,7 +70,7 @@ struct State {
     turn: Option<String>,
     cells: u64,
     /// Loki's one-time setup note, until it is shown.
-    loki_notice: Option<String>,
+    loki_notice: session_core::loki_notice::LokiNotice,
 }
 
 pub struct ExternalRoot {
@@ -130,7 +130,15 @@ impl ExternalRoot {
 
     /// Loki's one-time setup note (`lokiNotice`): shown with the session context or the next user turn, once.
     pub fn with_loki_notice(self, notice: Option<String>) -> ExternalRoot {
-        self.lock().loki_notice = notice.filter(|n| !n.is_empty());
+        self.with_loki_setup(session_core::loki_notice::LokiNotice::known(
+            notice.filter(|n| !n.is_empty()),
+        ))
+    }
+
+    /// [`ExternalRoot::with_loki_notice`] for a note still being made (`.loki/` committing in the background): a
+    /// commit still running is waited for briefly; otherwise the note comes with a later turn.
+    pub fn with_loki_setup(self, notice: session_core::loki_notice::LokiNotice) -> ExternalRoot {
+        self.lock().loki_notice = notice;
         self
     }
 
@@ -252,7 +260,7 @@ impl ExternalRoot {
 
     /// Loki's one-time setup note, the first time it is asked for.
     fn loki_notice(&self, state: &mut State) -> Option<String> {
-        state.loki_notice.take()
+        state.loki_notice.take(session_core::loki_notice::NOTICE_WAIT)
     }
 
     /// Loki's policy note and, once, its setup note: the context a session starts with.

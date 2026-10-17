@@ -1190,8 +1190,9 @@ fn status(
     Ok(0)
 }
 
-/// `doctor [--repo owner/name]`: the sandbox test runs would use and its self-check (the host's own: no Python
-/// script), and with `--repo`, the local checkout whose prepared environments would be bound read-only.
+/// `doctor [--repo owner/name]`: the sandbox test runs would use and its self-check, as the review's own test
+/// launcher reports them (`autoreview_tests.py doctor`, the script reviews run), and with `--repo`, the local checkout
+/// whose prepared environments would be bound read-only (`autoreview_tests.py environments`).
 fn doctor(
     parsed: &Parsed,
     config: &AutoreviewConfig,
@@ -1201,10 +1202,37 @@ fn doctor(
     ov: &Overrides,
     out: &mut dyn Write,
 ) -> Result<i32, Failure> {
-    let report = review::review_tests::doctor(config.test_image.as_deref()).map_err(|error| {
+    let runner = ov.runner();
+    // cli.ts: `env.ULTRON_PYTHON ?? (linux && /usr/bin/python3 exists ? "/usr/bin/python3" : "python3")`.
+    let python = (env.var)("ULTRON_PYTHON").unwrap_or_else(|| {
+        if cfg!(target_os = "linux") && Path::new("/usr/bin/python3").exists() {
+            "/usr/bin/python3".into()
+        } else {
+            "python3".into()
+        }
+    });
+    let script = config::paths::normalize(&env.docs.join("../src/ultron/rlm/autoreview_tests.py"))
+        .display()
+        .to_string();
+    let last_line = |stdout: &str| stdout.trim().split('\n').next_back().unwrap_or_default().to_string();
+    let mut argv = vec![python.clone(), script.clone(), "doctor".to_string()];
+    argv.extend(config.test_image.clone());
+    let result = runner.run(
+        &argv,
+        &review::runner::RunOptions {
+            timeout_ms: Some(180_000),
+            ..Default::default()
+        },
+    );
+    let report: Value = serde_json::from_str(&last_line(&result.stdout)).map_err(|_| {
+        let shown = if result.stderr.is_empty() {
+            &result.stdout
+        } else {
+            &result.stderr
+        };
         Failure::Error(format!(
             "the sandbox check did not run: {}",
-            error.chars().take(300).collect::<String>()
+            shown.trim().chars().take(300).collect::<String>()
         ))
     })?;
     let home = env.home.display().to_string();
@@ -1217,10 +1245,22 @@ fn doctor(
             .iter()
             .map(|root| review::local::expand_path(root, &home))
             .collect();
-        let checkout = review::local::find_checkout(&*ov.runner(), &roots, &target);
+        let checkout = review::local::find_checkout(&*runner, &roots, &target);
         let environments = checkout
             .as_deref()
-            .map(|dir| review::review_tests::list_environments(dir, 3, Some(&home)))
+            .map(|dir| {
+                let listed = runner.run(
+                    &[python.clone(), script.clone(), "environments".into(), dir.into()],
+                    &review::runner::RunOptions {
+                        timeout_ms: Some(60_000),
+                        ..Default::default()
+                    },
+                );
+                match serde_json::from_str::<Value>(&last_line(&listed.stdout)) {
+                    Ok(Value::Array(items)) => items,
+                    _ => Vec::new(),
+                }
+            })
             .unwrap_or_default();
         lent = Some((repo.clone(), checkout, environments));
     }
@@ -1270,7 +1310,7 @@ fn doctor(
             json.insert("prepared".into(), prepared.json.clone());
         }
         writeln!(out, "{}", session_file::js::stringify(&Value::Object(json))).map_err(io)?;
-    } else if report.get("mechanism").is_none_or(Value::is_null) {
+    } else if report.get("mechanism").is_some_and(Value::is_null) {
         let message = report.get("message").and_then(Value::as_str).unwrap_or_default();
         let mut lines = model_lines.to_vec();
         lines.push(format!("Sandbox: none. {message}"));
@@ -1300,7 +1340,7 @@ fn doctor(
         lines.extend([
             format!(
                 "Sandbox: {}",
-                report.get("isolation").and_then(Value::as_str).unwrap_or_default()
+                report.get("isolation").and_then(Value::as_str).unwrap_or("undefined")
             ),
             format!("Self-check: {}", if ok { "passed" } else { "FAILED" }),
             format!("  network: {}", shown("network")),

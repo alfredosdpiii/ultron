@@ -108,23 +108,6 @@ impl ScrollView {
         }
     }
 
-    pub fn is_scrollbar_active(&self) -> bool {
-        self.active
-    }
-
-    /// `setScrollbar`.
-    pub fn set_scrollbar(&mut self, scrollbar: Scrollbar) {
-        if scrollbar == self.scrollbar {
-            return;
-        }
-        self.scrollbar = scrollbar;
-        if scrollbar != Scrollbar::Auto {
-            self.hide_transient();
-        } else if self.active {
-            self.mark_activity();
-        }
-    }
-
     /// `getContentWidth`: an always-visible scrollbar keeps the last column.
     pub fn content_width(&self, width: usize) -> usize {
         if self.scrollbar == Scrollbar::Always && width > 1 {

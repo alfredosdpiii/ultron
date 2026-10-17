@@ -1,22 +1,18 @@
-//! Replays fixtures/reports.json, recorded from the TypeScript bug-report, crash-log and provider-attribution modules
-//! by fixtures/generate-reports.mjs.
+//! Replays fixtures/reports.json, recorded from the TypeScript bug-report and crash-log modules by
+//! fixtures/generate-reports.mjs. (Its provider-attribution cases and the crash log's writers have no Rust port: the
+//! native worker path never calls them.)
 
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::sync::LazyLock;
-use telemetry::attribution::{ProviderHeaders, merge_provider_attribution_headers};
 use telemetry::bug_report::{
     BugReportBundle, ExtensionError, Host, MetadataInput, ProviderInfo, bug_report_archive_file_name, bug_report_files,
     collect_bug_report_diagnostics, collect_bug_report_metadata, redact_json_value, redact_url,
     write_bug_report_archive,
 };
-use telemetry::crash_log::{
-    Crash, CrashError, CrashKind, CrashRecord, Extension, clear_crash_log, find_extension_stack_matches,
-    read_crash_log, record_crash, take_unnotified_crash,
-};
+use telemetry::crash_log::{CrashRecord, Extension, clear_crash_log, read_crash_log};
 use telemetry::zip::LocalDateTime;
-use telemetry::{is_install_telemetry_enabled, iso_timestamp, parse_iso_millis};
 
 static FIXTURE: LazyLock<Value> =
     LazyLock::new(|| serde_json::from_str(include_str!("../fixtures/reports.json")).expect("fixture"));
@@ -263,42 +259,28 @@ fn telemetry_bug_report_archive_matches_typescript_entries() {
     assert_eq!(our_end, their_end);
 }
 
-fn crash_error(spec: &Value) -> CrashError {
-    match spec.get("value") {
-        Some(value) => CrashError::Value(str_of(value).into()),
-        None => CrashError::Error {
-            name: str_of(&spec["name"]).into(),
-            message: str_of(&spec["message"]).into(),
-            stack: spec["stack"].as_str().map(Into::into),
-        },
-    }
-}
-
 #[test]
 fn telemetry_crash_log_steps_match_typescript() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("nested/dir/crashes.json");
-    let version = str_of(&FIXTURE["host"]["version"]);
     let steps = FIXTURE["crashSteps"].as_array().expect("steps");
     assert_eq!(steps.len(), 28);
     for (index, step) in steps.iter().enumerate() {
         let op = &step["op"];
         let result = match str_of(&op[0]) {
-            "take" => json!(take_unnotified_crash(&path, step["takeAt"].as_i64().expect("now")).map(|r| r.0)),
-            "record" => {
-                let spec = &op[1];
-                let kind = match str_of(&spec["kind"]) {
-                    "fatal_error" => CrashKind::FatalError,
-                    _ => CrashKind::UncaughtException,
-                };
-                let error = crash_error(&spec["error"]);
-                let crash = Crash {
-                    kind,
-                    error: &error,
-                    session_file: spec["sessionFile"].as_str(),
-                    cwd: str_of(&spec["cwd"]),
-                };
-                json!(record_crash(&crash, version, step["now"].as_i64().expect("now"), &path).map(|r| r.0))
+            // The writers (`recordCrash`, `takeUnnotifiedCrash`) run in the TypeScript interactive mode only: the
+            // file they left is written as recorded, and the readers below must agree with it.
+            "take" | "record" => {
+                match step["file"].as_str() {
+                    Some(text) => {
+                        std::fs::create_dir_all(path.parent().expect("parent")).expect("dir");
+                        std::fs::write(&path, text).expect("write");
+                    }
+                    None => {
+                        let _ = std::fs::remove_file(&path);
+                    }
+                }
+                step["result"].clone()
             }
             "read" => records_json(&read_crash_log(&path)),
             "clear" => {
@@ -318,79 +300,10 @@ fn telemetry_crash_log_steps_match_typescript() {
 }
 
 #[test]
-fn telemetry_record_crash_is_best_effort() {
+fn telemetry_clear_crash_log_is_best_effort() {
     let dir = tempfile::tempdir().expect("tempdir");
-    // The parent "directory" is a file: nothing can be written, and nothing panics.
-    let blocker = dir.path().join("file");
-    std::fs::write(&blocker, "x").expect("write");
-    let error = CrashError::Value("v".into());
-    let crash = Crash {
-        kind: CrashKind::FatalError,
-        error: &error,
-        session_file: None,
-        cwd: "/",
-    };
-    assert_eq!(record_crash(&crash, "1", 0, &blocker.join("crashes.json")), None);
-    assert_eq!(take_unnotified_crash(&blocker.join("crashes.json"), 0), None);
+    // A directory where the log should be: nothing is removed, nothing panics; a missing log reads empty.
     clear_crash_log(dir.path());
     assert!(dir.path().exists());
-}
-
-#[test]
-fn telemetry_extension_stack_matches_match_typescript() {
-    let cases = FIXTURE["stackCases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 14);
-    for case in cases {
-        let exts = extensions(&case["extensions"]);
-        assert_eq!(
-            json!(find_extension_stack_matches(case["stack"].as_str(), &exts)),
-            case["matches"],
-            "{}",
-            case["stack"]
-        );
-    }
-    assert!(find_extension_stack_matches(None, &extensions(&cases[0]["extensions"])).is_empty());
-}
-
-#[test]
-fn telemetry_attribution_headers_match_typescript() {
-    let cases = FIXTURE["attributionCases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 168);
-    for case in cases {
-        let sources: Vec<Option<ProviderHeaders>> = case["headerSources"]
-            .as_array()
-            .expect("sources")
-            .iter()
-            .map(|s| serde_json::from_value(s.clone()).expect("headers"))
-            .collect();
-        let refs: Vec<Option<&ProviderHeaders>> = sources.iter().map(Option::as_ref).collect();
-        let model = &case["model"];
-        let enabled = is_install_telemetry_enabled(None, case["enabled"].as_bool());
-        let output = merge_provider_attribution_headers(
-            str_of(&model["provider"]),
-            str_of(&model["baseUrl"]),
-            enabled,
-            case["sessionId"].as_str(),
-            &refs,
-        );
-        assert_eq!(json!(output), case["output"], "{case}");
-    }
-    // PI_TELEMETRY=0 overrides an enabled setting.
-    let enabled = is_install_telemetry_enabled(Some("0"), Some(true));
-    assert_eq!(
-        json!(merge_provider_attribution_headers(
-            "openrouter",
-            "x",
-            enabled,
-            None,
-            &[]
-        )),
-        FIXTURE["envOverride"]
-    );
-}
-
-#[test]
-fn telemetry_crash_timestamps_round_trip() {
-    let now = 1_775_398_029_321;
-    assert_eq!(parse_iso_millis(&iso_timestamp(now)), Some(now));
+    assert!(read_crash_log(&dir.path().join("missing/crashes.json")).is_empty());
 }

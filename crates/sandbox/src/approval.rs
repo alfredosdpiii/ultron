@@ -169,18 +169,6 @@ impl Decision {
     }
 }
 
-/// `strictestApproval`: the first deny wins, else the highest tier (from `read`).
-pub fn strictest(decisions: &[Decision]) -> Decision {
-    let mut tier = Tier::Read;
-    for decision in decisions {
-        if decision.policy == Some(Policy::Deny) && !decision.bare {
-            return decision.clone();
-        }
-        tier = tier.max(decision.tier);
-    }
-    Decision::tier(tier)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Source {
     Tool,

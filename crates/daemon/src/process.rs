@@ -106,3 +106,8 @@ pub fn kill(pid: u32, signal: rustix::process::Signal) -> bool {
 pub fn alive(pid: u32) -> bool {
     rustix::process::Pid::from_raw(pid as i32).is_some_and(|pid| rustix::process::test_kill_process(pid).is_ok())
 }
+
+/// `traceStartup(label)` from this process (`ULTRON_STARTUP_TRACE`; nothing when unset).
+pub fn trace_startup(label: &str) {
+    session_core::startup_trace::trace_startup(std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(), label);
+}
