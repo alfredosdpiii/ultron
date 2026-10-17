@@ -35,6 +35,14 @@ pub async fn stream_simple(
     transport: &dyn Transport,
     sink: &mut EventSink<'_>,
 ) -> Result<AssistantMessage, String> {
+    let with_session;
+    let options = match opencode_session_options(model, options) {
+        Some(options) => {
+            with_session = options;
+            &with_session
+        }
+        None => options,
+    };
     let resolved;
     let model = if model.provider.starts_with("cloudflare-") {
         resolved = resolve_cloudflare_model(model, options.base.env.as_ref());
@@ -70,4 +78,32 @@ pub async fn stream_simple(
         }
         other => Err(format!("No API implementation for \"{other}\"")),
     }
+}
+
+/// OpenCode's per-conversation routing header (`providers/opencode-headers.ts`).
+const OPENCODE_SESSION_HEADER: &str = "x-opencode-session";
+
+/// `withOpenCodeSessionHeader`: OpenCode Zen and OpenCode Go requests carry `x-opencode-session: <sessionId>` unless
+/// the caller set that header (any case, any value); `None` when nothing changes.
+fn opencode_session_options(model: &Model, options: &SimpleStreamOptions) -> Option<SimpleStreamOptions> {
+    if !matches!(model.provider.as_str(), "opencode" | "opencode-go") {
+        return None;
+    }
+    let session = options.base.session_id.as_ref().filter(|s| !s.is_empty())?;
+    if options
+        .base
+        .headers
+        .iter()
+        .flatten()
+        .any(|(name, _)| name.eq_ignore_ascii_case(OPENCODE_SESSION_HEADER))
+    {
+        return None;
+    }
+    let mut options = options.clone();
+    options
+        .base
+        .headers
+        .get_or_insert_default()
+        .insert(OPENCODE_SESSION_HEADER.into(), Some(session.clone()));
+    Some(options)
 }

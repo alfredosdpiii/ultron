@@ -19,7 +19,7 @@ use std::sync::OnceLock;
 
 pub const SNAPSHOT_KEY_FILE: &str = "rlm-snapshot.key";
 const SIGNATURE_FORMAT: &str = "ultron-rlm-snapshot-signature";
-const KEY_BYTES: usize = 32;
+pub(crate) const KEY_BYTES: usize = 32;
 /// The error name kernel.ts gives refused snapshots (`SnapshotAuthenticationError.name`).
 pub const SNAPSHOT_ERROR_NAME: &str = "SnapshotIntegrityError";
 
@@ -35,7 +35,7 @@ impl std::fmt::Display for SnapshotAuthError {
 
 impl std::error::Error for SnapshotAuthError {}
 
-fn hex(bytes: &[u8]) -> String {
+pub(crate) fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
@@ -126,7 +126,7 @@ pub fn verify_snapshot(key: &[u8], raw: &[u8]) -> Result<String, SnapshotAuthErr
     Ok(sha256_hex(content))
 }
 
-fn parse_key(text: &str, path: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn parse_key(text: &str, path: &str) -> Result<Vec<u8>, String> {
     hex64(text.trim_matches(is_js_space)).ok_or_else(|| {
         format!(
             "RLM snapshot key {path} is malformed; delete it to create a new key (existing snapshots become unrestorable)"

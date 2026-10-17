@@ -6,6 +6,7 @@ use crate::components::Component;
 use crate::editing::{KillRing, find_word_backward, find_word_forward, next_grapheme_len, prev_grapheme_len};
 use crate::keybindings::KeybindingsManager;
 use crate::keys::decode_printable_key;
+use crate::mouse::{MouseButton, MouseEvent, MouseEventType, MouseResult};
 use crate::renderer::CURSOR_MARKER;
 use crate::utils::{slice_with_width, truncate_to_width, visible_width};
 
@@ -287,6 +288,32 @@ impl Input {
 
 fn graphemes(text: &str) -> usize {
     text.graphemes(true).count()
+}
+
+impl Input {
+    /// `handleMouse`: a left press on the row puts the cursor at the cell under it (past the two-cell prompt).
+    pub fn handle_mouse(&mut self, event: &MouseEvent) -> Option<MouseResult> {
+        if event.kind != MouseEventType::Press || event.button != MouseButton::Left || event.y != 0 {
+            return None;
+        }
+        let target = self.rendered_start_column + (event.x - 2).max(0) as usize;
+        let mut column = 0;
+        self.cursor = self.value.len();
+        for (index, grapheme) in self.value.grapheme_indices(true) {
+            let next = column + visible_width(grapheme);
+            if target < next {
+                self.cursor = index;
+                break;
+            }
+            column = next;
+        }
+        self.last_action = None;
+        Some(MouseResult {
+            handled: Some(true),
+            focus: Some(true),
+            ..MouseResult::default()
+        })
+    }
 }
 
 impl Component for Input {

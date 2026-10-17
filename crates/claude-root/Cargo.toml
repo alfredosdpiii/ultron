@@ -9,9 +9,11 @@ publish.workspace = true
 agent = { path = "../agent" }
 ai = { path = "../ai" }
 config = { path = "../config" }
+daemon = { path = "../daemon" }
 delegation = { path = "../delegation" }
 interactive = { path = "../interactive" }
 getrandom = "=0.4.3"
+host = { path = "../host" }
 kernel = { path = "../kernel" }
 kernel-apis = { path = "../kernel-apis" }
 loki = { path = "../loki" }

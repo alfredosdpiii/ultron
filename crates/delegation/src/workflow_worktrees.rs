@@ -44,4 +44,8 @@ impl WorktreeChildren for Delegation {
             Err(error) => json!({ "status": "cancelled", "error": error, "verification": "unverified" }),
         }
     }
+
+    fn agents_request(&self, kind: &str, id: &str, lane: &str, cell: Option<&Signal>) -> Option<Result<Value, String>> {
+        Delegation::agents_request(self, kind, id, lane, cell)
+    }
 }

@@ -309,6 +309,17 @@ impl Tui {
         std::fs::create_dir_all(root.join("cwd")).unwrap();
         std::fs::create_dir_all(root.join("server")).unwrap();
         std::fs::write(agent.join("models.json"), models).unwrap();
+        // `ensureTool("fd")` finds `<agentDir>/bin/fd` first: a run never downloads fd from GitHub.
+        let bin = agent.join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        if bin.join("fd").symlink_metadata().is_ok() {
+            // A restart over the same agent directory.
+        } else if std::path::Path::new("/usr/bin/fd").exists() {
+            std::os::unix::fs::symlink("/usr/bin/fd", bin.join("fd")).unwrap();
+        } else {
+            std::fs::write(bin.join("fd"), "#!/bin/sh\nexit 1\n").unwrap();
+            std::fs::set_permissions(bin.join("fd"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        }
         // A login's browser opener resolves here first and does nothing: a replay never opens the developer's browser.
         let no_browser = root.join("no-browser");
         std::fs::create_dir_all(&no_browser).unwrap();

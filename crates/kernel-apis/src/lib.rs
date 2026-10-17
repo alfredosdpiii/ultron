@@ -26,6 +26,7 @@ pub mod goal;
 pub mod grants;
 pub mod hints;
 pub mod instances;
+pub mod localtime;
 pub mod memory;
 pub mod progress;
 pub mod schedule_tick;

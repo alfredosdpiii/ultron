@@ -97,6 +97,11 @@ pub struct Host {
     launcher: Option<Arc<sandbox::Launcher>>,
     /// The `shellPath` setting (`~` expanded); None or empty runs the default shell ([`shell::shell_config`]).
     shell_path: Option<String>,
+    /// Extra environment of every command (a worktree subagent's `ULTRON_WORKTREE`, `ULTRON_PARENT_REPO`,
+    /// `ULTRON_WORKTREE_BRANCH`, `PWD`), over the inherited one.
+    env: Vec<(String, String)>,
+    /// Whether this host owns its jobs table: a host sharing another's ([`Host::sharing_jobs`]) never stops them.
+    owns_jobs: bool,
     shared: Arc<Shared>,
 }
 
@@ -138,7 +143,6 @@ enum StopReason {
 struct Shared {
     jobs: Mutex<Vec<Arc<Job>>>,
     journal: Mutex<Option<Arc<dyn JobJournal>>>,
-    cwd: String,
     released: AtomicBool,
     ends: Mutex<Option<JobEnds>>,
     roots: Mutex<Option<RootOf>>,
@@ -154,7 +158,7 @@ impl Shared {
         if self.released.load(Ordering::SeqCst) {
             return;
         }
-        let records: Vec<JobRecord> = jobs.iter().map(|job| job_record(job, &self.cwd)).collect();
+        let records: Vec<JobRecord> = jobs.iter().map(|job| job_record(job)).collect();
         let _ = journal.write(&journal::persisted(&records));
     }
 }
@@ -215,6 +219,8 @@ struct Job {
     lane: String,
     root_id: Option<String>,
     command: String,
+    /// Where the command runs (`laneWorkspace(lane).cwd`, else the session's).
+    cwd: String,
     timeout: Option<f64>,
     /// The cleaned, bounded output the kernel reads.
     output_path: PathBuf,
@@ -239,7 +245,7 @@ impl Job {
     fn new(
         id: String,
         (lane, root_id): (String, Option<String>),
-        command: String,
+        (command, cwd): (String, String),
         timeout: Option<f64>,
         jobs_dir: &Path,
         record: Record,
@@ -252,6 +258,7 @@ impl Job {
             lane,
             root_id,
             command,
+            cwd,
             timeout,
             record: Mutex::new(record),
             process: Mutex::new(None),
@@ -269,7 +276,7 @@ impl Job {
     }
 }
 
-fn job_record(job: &Job, cwd: &str) -> JobRecord {
+fn job_record(job: &Job) -> JobRecord {
     let record = lock(&job.record);
     let process = *lock(&job.process);
     JobRecord {
@@ -277,7 +284,7 @@ fn job_record(job: &Job, cwd: &str) -> JobRecord {
         lane: job.lane.clone(),
         root_id: job.root_id.clone(),
         command: job.command.clone(),
-        cwd: cwd.into(),
+        cwd: job.cwd.clone(),
         timeout: job.timeout,
         status: record.status.name().into(),
         exit_code: record.exit_code.map(i64::from),
@@ -380,13 +387,17 @@ fn safe_integer(value: Option<&Value>, default: u64) -> Option<u64> {
     }
 }
 
+/// The verdict token of an `ultron mcp --child` server (`ULTRON_PARENT_TOKEN`), removed from every command's
+/// environment.
+pub const PARENT_TOKEN_ENV: &str = "ULTRON_PARENT_TOKEN";
+
 /// Runs `command` with bash in its own process group, stdout and stderr on one pipe. `on_text` gets each decoded,
 /// cleaned chunk and the raw byte count; `stop` is polled and kills the process group when it turns true.
 /// Returns the exit code (None when killed by a signal).
 fn run_shell(
     shell: &shell::ShellConfig,
     command: &str,
-    cwd: &Path,
+    (cwd, env): (&Path, &[(String, String)]),
     launcher: Option<&sandbox::Launcher>,
     mut on_text: impl FnMut(&str, usize),
     stop: impl Fn() -> bool,
@@ -400,6 +411,9 @@ fn run_shell(
             process
         }
     };
+    process.envs(env.iter().map(|(key, value)| (key, value)));
+    // A child server's verdict token authenticates only its own `rlm.finish`; commands never see it.
+    process.env_remove(PARENT_TOKEN_ENV);
     let (reader, writer) = std::io::pipe().map_err(|error| error.to_string())?;
     let stderr = writer.try_clone().map_err(|error| error.to_string())?;
     let mut child = process
@@ -482,7 +496,6 @@ impl Host {
             shared: Arc::new(Shared {
                 jobs: Mutex::new(Vec::new()),
                 journal: Mutex::new(None),
-                cwd: cwd.to_string_lossy().into_owned(),
                 released: AtomicBool::new(false),
                 ends: Mutex::new(None),
                 roots: Mutex::new(None),
@@ -493,7 +506,25 @@ impl Host {
             guard,
             launcher: None,
             shell_path: None,
+            env: Vec::new(),
+            owns_jobs: true,
         }
+    }
+
+    /// Every command (blocking bash and shell jobs) runs with `env` over the inherited environment, as
+    /// `withShellEnv(operations, laneWorkspace(lane).env)` runs a worktree subagent's.
+    pub fn with_env(mut self, env: Vec<(String, String)>) -> Self {
+        self.env = env;
+        self
+    }
+
+    /// This host's shell jobs join `session`'s one table (TypeScript's single `ShellJobs` for every lane): the root
+    /// lane lists them, the root turn's abort cancels them, their ends are announced and journaled by the session's
+    /// hooks. The jobs keep running after this host is dropped (they are the session's).
+    pub fn sharing_jobs(mut self, session: &Host) -> Self {
+        self.shared = session.shared.clone();
+        self.owns_jobs = false;
+        self
     }
 
     /// Commands run under `shell_path` (the `shellPath` setting), resolved for each command as TypeScript's
@@ -521,7 +552,7 @@ impl Host {
                 let job = Arc::new(Job::new(
                     saved.id.clone(),
                     (saved.lane.clone(), saved.root_id.clone()),
-                    saved.command.clone(),
+                    (saved.command.clone(), saved.cwd.clone()),
                     saved.timeout,
                     // The record names its own spill file; the keeper's files sit next to it.
                     Path::new(&saved.output_path).parent().unwrap_or(&self.jobs_dir),
@@ -609,6 +640,17 @@ impl Host {
             .iter()
             .find(|job| job.id == id)
             .map_or(0, |job| job.waiters.load(Ordering::SeqCst))
+    }
+
+    /// Every job's record, newest first (`ShellJobs.list()`), as `lane` may see them: the root lane every job, another
+    /// lane its own.
+    pub fn job_records(&self, lane: &str) -> Vec<JobRecord> {
+        lock(&self.shared.jobs)
+            .iter()
+            .rev()
+            .filter(|job| visible(job, lane))
+            .map(|job| job_record(job))
+            .collect()
     }
 
     /// Running jobs of every lane.
@@ -770,7 +812,7 @@ impl Host {
         let exit = run_shell(
             &shell,
             &command,
-            &self.cwd,
+            (&self.cwd, &self.env),
             self.launcher.as_deref(),
             |text, raw| {
                 // The decoder's flush at the end (no bytes read) is not a chunk of the command's output.
@@ -858,7 +900,7 @@ impl Host {
         let job = Arc::new(Job::new(
             id,
             (lane.to_string(), root),
-            command,
+            (command, self.cwd.to_string_lossy().into_owned()),
             timeout,
             &self.jobs_dir,
             Record {
@@ -897,12 +939,12 @@ impl Host {
         let (runner, shared, cwd, launcher, shell) = (
             job.clone(),
             self.shared.clone(),
-            self.cwd.clone(),
+            (self.cwd.clone(), self.env.clone()),
             self.launcher.clone(),
             self.shell(),
         );
         std::thread::spawn(move || {
-            match shell.and_then(|shell| spawn_keeper(&runner, &shell, &cwd, launcher.as_deref())) {
+            match shell.and_then(|shell| spawn_keeper(&runner, &shell, (&cwd.0, &cwd.1), launcher.as_deref())) {
                 Ok(child) => {
                     let pid = child.id() as i32;
                     *lock(&runner.process) = Some((pid, process_start(pid)));
@@ -935,7 +977,7 @@ const KEEPER: &str = r#""$1" "$2" "$0" 2>&1 </dev/null; printf '%s\n' "$?" >&2"#
 fn spawn_keeper(
     job: &Job,
     shell: &shell::ShellConfig,
-    cwd: &Path,
+    (cwd, env): (&Path, &[(String, String)]),
     launcher: Option<&sandbox::Launcher>,
 ) -> Result<std::process::Child, String> {
     let create = |path: &Path| {
@@ -962,6 +1004,8 @@ fn spawn_keeper(
         }
     };
     process
+        .envs(env.iter().map(|(key, value)| (key, value)))
+        .env_remove(PARENT_TOKEN_ENV)
         .stdin(Stdio::null())
         .stdout(raw)
         .stderr(exit)
@@ -1146,7 +1190,7 @@ fn follow(job: &Arc<Job>, child: Option<std::process::Child>, shared: &Shared) {
     // `onEnd`, before the job's waiters wake: a caller still waiting gets the result inline, so nothing is announced.
     let reason = *lock(&job.reason);
     let end = JobEnd {
-        record: job_record(job, &shared.cwd),
+        record: job_record(job),
         awaited: job.waiters.load(Ordering::SeqCst) > 0,
         root_aborted: reason == Some(StopReason::RootAborted),
     };
@@ -1317,7 +1361,7 @@ fn visible(job: &Job, lane: &str) -> bool {
 impl Drop for Host {
     /// Worker shutdown: stop every running job, unless they were released to the next owner.
     fn drop(&mut self) {
-        if !self.shared.released.load(Ordering::SeqCst) {
+        if self.owns_jobs && !self.shared.released.load(Ordering::SeqCst) {
             self.stop_jobs();
         }
     }

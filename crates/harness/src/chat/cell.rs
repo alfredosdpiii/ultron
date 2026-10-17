@@ -402,6 +402,31 @@ fn call_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) -> 
         name: name.clone(),
         arguments: arguments.clone(),
     };
+    // `before_tool`: a blocked cell never runs; its result is the reason (`immediateError`), and `terminate` ends
+    // the run after the round.
+    if let Some(gate) = &services.hooks.gate_tool {
+        let run = runtime.read(|tx| super::gate::gate_run(tx, call.conversation_id))?;
+        if let Some(block) = gate(&run, &call) {
+            let blocked = CellResult {
+                output: Some(vec![json!({ "type": "text", "text": block.reason })]),
+                is_error: true,
+                control: block.terminate.then_some(Control {
+                    terminate: Some(true),
+                    handoff: None,
+                }),
+                ..CellResult::default()
+            };
+            return settle(
+                runtime,
+                task,
+                &call_id,
+                &name,
+                Ending::Completed,
+                |_| blocked.clone(),
+                None,
+            );
+        }
+    }
     let replay = services.cells.replay(&call);
     let conversation_id = runtime.conversation_id();
     let task_id = runtime.task_id();

@@ -17,7 +17,7 @@ mod session;
 mod trace;
 
 pub use map::{DEFAULT_MAP_TOKENS, Frames, INFERENCE_PROMPT, ModelSettings};
-pub use session::{FrameExecution, FrameMeter, FrameSession, FrameTasks};
+pub use session::{FrameExecution, FrameGate, FrameMeter, FrameSession, FrameTasks};
 pub use trace::{MemoryTraceStore, TRACE_NAMESPACE, TraceStore};
 
 use ai::{AssistantMessage, Message, Model, SimpleStreamOptions, Transport};

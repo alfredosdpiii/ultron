@@ -1,5 +1,6 @@
 //! The refinement hook a typed-agent host applies to its prompts (TS `NativeHostOptions.refinements` as the worker
-//! builds it: the active `instruction:<definition>` refinement as `{id, version, text: String(content)}`), and the
+//! builds it in session-worker.ts: the active `instruction:<definition>` refinement as `{id, version, text}`, text
+//! content as is and any other content as `JSON.stringify(content)`), and the
 //! session-value stores (`ultron.local` keyed documents scanned by prefix and namespace, whole documents replaced,
 //! both restored when the session is reopened).
 
@@ -41,9 +42,9 @@ fn services_instruction_hook_yields_the_active_instruction_of_a_definition_and_n
         hook("rlm-child").unwrap(),
         vec![json!({ "id": text, "version": 1, "text": "Check empty inputs." })]
     );
-    assert_eq!(hook("correctness-reviewer").unwrap()[0]["text"], "[object Object]");
+    assert_eq!(hook("correctness-reviewer").unwrap()[0]["text"], r#"{"rule":"x"}"#);
     assert_eq!(hook("correctness-reviewer").unwrap()[0]["id"], object);
-    assert_eq!(hook("tests-reviewer").unwrap()[0]["text"], "a,,3");
+    assert_eq!(hook("tests-reviewer").unwrap()[0]["text"], r#"["a",null,3]"#);
     assert_eq!(hook("tests-reviewer").unwrap()[0]["id"], list);
     assert_eq!(hook("style-reviewer").unwrap(), Vec::<Value>::new());
     services

@@ -1,0 +1,440 @@
+{
+	"cases": [
+		{
+			"name": "anthropic auth token wins over the api key",
+			"models": {},
+			"auth": {},
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok-env",
+				"ANTHROPIC_API_KEY": "sk-env"
+			},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": null,
+				"headers": {
+					"Authorization": "Bearer tok-env"
+				},
+				"env": null
+			},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {
+					"authorization": "Bearer tok-env"
+				}
+			}
+		},
+		{
+			"name": "anthropic stored key wins over the auth token",
+			"models": {},
+			"auth": {
+				"anthropic": {
+					"type": "api_key",
+					"key": "sk-stored"
+				}
+			},
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok-env",
+				"ANTHROPIC_API_KEY": "sk-env"
+			},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": "sk-stored",
+				"headers": null,
+				"env": null
+			},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {
+					"x-api-key": "sk-stored"
+				}
+			}
+		},
+		{
+			"name": "anthropic stored credential without a key uses the auth token",
+			"models": {},
+			"auth": {
+				"anthropic": {
+					"type": "api_key",
+					"env": {
+						"EXTRA": "x"
+					}
+				}
+			},
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok-env",
+				"ANTHROPIC_API_KEY": "sk-env"
+			},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": null,
+				"headers": {
+					"Authorization": "Bearer tok-env"
+				},
+				"env": null
+			},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {
+					"authorization": "Bearer tok-env"
+				}
+			}
+		},
+		{
+			"name": "anthropic models.json apiKey wins over the auth token",
+			"models": {
+				"providers": {
+					"anthropic": {
+						"apiKey": "sk-models"
+					}
+				}
+			},
+			"auth": {},
+			"env": {
+				"ANTHROPIC_AUTH_TOKEN": "tok-env"
+			},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": "sk-models",
+				"headers": null,
+				"env": null
+			},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {
+					"x-api-key": "sk-models"
+				}
+			}
+		},
+		{
+			"name": "anthropic api key alone",
+			"models": {},
+			"auth": {},
+			"env": {
+				"ANTHROPIC_API_KEY": "sk-env"
+			},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": "sk-env",
+				"headers": null,
+				"env": null
+			},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {
+					"x-api-key": "sk-env"
+				}
+			}
+		},
+		{
+			"name": "anthropic stored key with an env",
+			"models": {},
+			"auth": {
+				"anthropic": {
+					"type": "api_key",
+					"key": "sk-stored",
+					"env": {
+						"ANTHROPIC_EXTRA": "e"
+					}
+				}
+			},
+			"env": {},
+			"model": "anthropic/claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"getAuth": {
+				"apiKey": "sk-stored",
+				"headers": null,
+				"env": {
+					"ANTHROPIC_EXTRA": "e"
+				}
+			},
+			"request": null
+		},
+		{
+			"name": "workers ai stored credential names the account",
+			"models": {},
+			"auth": {
+				"cloudflare-workers-ai": {
+					"type": "api_key",
+					"key": "cf-stored",
+					"env": {
+						"CLOUDFLARE_ACCOUNT_ID": "acct-stored"
+					}
+				}
+			},
+			"env": {},
+			"model": "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+			"getAuth": {
+				"apiKey": "cf-stored",
+				"headers": null,
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-stored"
+				}
+			},
+			"request": {
+				"url": "https://api.cloudflare.com/client/v4/accounts/acct-stored/ai/v1/chat/completions",
+				"headers": {
+					"authorization": "Bearer cf-stored"
+				}
+			}
+		},
+		{
+			"name": "workers ai from the environment",
+			"models": {},
+			"auth": {},
+			"env": {
+				"CLOUDFLARE_API_KEY": "cf-env",
+				"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+			},
+			"model": "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+			"getAuth": {
+				"apiKey": "cf-env",
+				"headers": null,
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+				}
+			},
+			"request": {
+				"url": "https://api.cloudflare.com/client/v4/accounts/acct-env/ai/v1/chat/completions",
+				"headers": {
+					"authorization": "Bearer cf-env"
+				}
+			}
+		},
+		{
+			"name": "workers ai stored key takes the account from the environment",
+			"models": {},
+			"auth": {
+				"cloudflare-workers-ai": {
+					"type": "api_key",
+					"key": "cf-stored"
+				}
+			},
+			"env": {
+				"CLOUDFLARE_API_KEY": "cf-env",
+				"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+			},
+			"model": "cloudflare-workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+			"getAuth": {
+				"apiKey": "cf-stored",
+				"headers": null,
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+				}
+			},
+			"request": {
+				"url": "https://api.cloudflare.com/client/v4/accounts/acct-env/ai/v1/chat/completions",
+				"headers": {
+					"authorization": "Bearer cf-stored"
+				}
+			}
+		},
+		{
+			"name": "ai gateway anthropic from the stored login",
+			"models": {},
+			"auth": {
+				"cloudflare-ai-gateway": {
+					"type": "api_key",
+					"key": "cf-gw",
+					"env": {
+						"CLOUDFLARE_ACCOUNT_ID": "acct-gw",
+						"CLOUDFLARE_GATEWAY_ID": "gw-1"
+					}
+				}
+			},
+			"env": {
+				"ANTHROPIC_API_KEY": "sk-ignored"
+			},
+			"model": "cloudflare-ai-gateway/claude-fable-5",
+			"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic",
+			"getAuth": {
+				"apiKey": null,
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-gw",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-gw",
+					"CLOUDFLARE_GATEWAY_ID": "gw-1"
+				}
+			},
+			"request": {
+				"url": "https://gateway.ai.cloudflare.com/v1/acct-gw/gw-1/anthropic/v1/messages?beta=true",
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-gw"
+				}
+			}
+		},
+		{
+			"name": "ai gateway openai completions from the environment",
+			"models": {},
+			"auth": {},
+			"env": {
+				"CLOUDFLARE_API_KEY": "cf-env",
+				"CLOUDFLARE_ACCOUNT_ID": "acct-env",
+				"CLOUDFLARE_GATEWAY_ID": "gw-env"
+			},
+			"model": "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+			"getAuth": {
+				"apiKey": null,
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-env",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env",
+					"CLOUDFLARE_GATEWAY_ID": "gw-env"
+				}
+			},
+			"request": {
+				"url": "https://gateway.ai.cloudflare.com/v1/acct-env/gw-env/compat/chat/completions",
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-env"
+				}
+			}
+		},
+		{
+			"name": "ai gateway stored key with the ids from the environment",
+			"models": {},
+			"auth": {
+				"cloudflare-ai-gateway": {
+					"type": "api_key",
+					"key": "cf-gw"
+				}
+			},
+			"env": {
+				"CLOUDFLARE_ACCOUNT_ID": "acct-env",
+				"CLOUDFLARE_GATEWAY_ID": "gw-env"
+			},
+			"model": "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+			"getAuth": {
+				"apiKey": null,
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-gw",
+					"Authorization": null,
+					"x-api-key": null
+				},
+				"env": {
+					"CLOUDFLARE_ACCOUNT_ID": "acct-env",
+					"CLOUDFLARE_GATEWAY_ID": "gw-env"
+				}
+			},
+			"request": {
+				"url": "https://gateway.ai.cloudflare.com/v1/acct-env/gw-env/compat/chat/completions",
+				"headers": {
+					"cf-aig-authorization": "Bearer cf-gw"
+				}
+			}
+		},
+		{
+			"name": "ai gateway without a gateway id is not configured",
+			"models": {},
+			"auth": {},
+			"env": {
+				"CLOUDFLARE_API_KEY": "cf-env",
+				"CLOUDFLARE_ACCOUNT_ID": "acct-env"
+			},
+			"model": "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731",
+			"baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+			"getAuth": null,
+			"request": null
+		},
+		{
+			"name": "vertex stored api key: no env",
+			"models": {},
+			"auth": {
+				"google-vertex": {
+					"type": "api_key",
+					"key": "vk-stored",
+					"env": {
+						"GOOGLE_CLOUD_PROJECT": "proj-stored",
+						"GOOGLE_CLOUD_LOCATION": "europe-west4"
+					}
+				}
+			},
+			"env": {},
+			"model": "google-vertex/gemini-2.5-flash",
+			"baseUrl": "https://{location}-aiplatform.googleapis.com",
+			"getAuth": {
+				"apiKey": "vk-stored",
+				"headers": null,
+				"env": null
+			},
+			"request": null
+		},
+		{
+			"name": "vertex stored adc credential with project and location",
+			"models": {},
+			"auth": {
+				"google-vertex": {
+					"type": "api_key",
+					"env": {
+						"GOOGLE_APPLICATION_CREDENTIALS": "<dir>/adc.json",
+						"GOOGLE_CLOUD_PROJECT": "proj-stored",
+						"GOOGLE_CLOUD_LOCATION": "europe-west4"
+					}
+				}
+			},
+			"env": {},
+			"model": "google-vertex/gemini-2.5-flash",
+			"baseUrl": "https://{location}-aiplatform.googleapis.com",
+			"getAuth": {
+				"apiKey": null,
+				"headers": null,
+				"env": {
+					"GOOGLE_APPLICATION_CREDENTIALS": "<dir>/adc.json",
+					"GOOGLE_CLOUD_LOCATION": "europe-west4",
+					"GOOGLE_CLOUD_PROJECT": "proj-stored"
+				}
+			},
+			"request": null
+		},
+		{
+			"name": "custom provider stored credential env",
+			"models": {
+				"providers": {
+					"custom": {
+						"baseUrl": "http://127.0.0.1:9/v1",
+						"api": "openai-completions",
+						"models": [
+							{
+								"id": "m"
+							}
+						]
+					}
+				}
+			},
+			"auth": {
+				"custom": {
+					"type": "api_key",
+					"key": "ck",
+					"env": {
+						"PI_CACHE_RETENTION": "long"
+					}
+				}
+			},
+			"env": {},
+			"model": "custom/m",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"getAuth": {
+				"apiKey": "ck",
+				"headers": null,
+				"env": {
+					"PI_CACHE_RETENTION": "long"
+				}
+			},
+			"request": null
+		}
+	]
+}

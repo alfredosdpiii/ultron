@@ -1,8 +1,9 @@
 //! Clipboard image reads on Linux: replays fixtures/clipboard-image.json (utils/clipboard-image.ts
 //! `readClipboardImage` over fake `wl-paste`/`xclip`, recorded by fixtures/generate-clipboard-image.mjs) through
 //! `tui::clipboard_image` with the same fake tools on an injected PATH, comparing the image and every tool call.
-//! PNG, JPEG, WebP and GIF images pass through byte for byte; a BMP is converted to PNG (Photon there, the `image`
-//! crate here), compared by its decoded RGBA pixels since the two PNG encoders compress differently.
+//! PNG, JPEG, WebP and GIF images pass through byte for byte; a BMP, TIFF (first page of a multi-page one) or ICO
+//! (the entry Photon's decoder picks) is converted to PNG (Photon there, the `image` crate here), compared by its
+//! decoded RGBA pixels since the two PNG encoders compress differently.
 
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
@@ -70,7 +71,7 @@ fn fake_tools(tmp: &TempDir, i: usize, files: &Value) -> (std::path::PathBuf, st
 #[test]
 fn tui_clipboard_image_reads_like_ts() {
     let fixture: Value = serde_json::from_str(include_str!("../fixtures/clipboard-image.json")).unwrap();
-    assert_eq!(fixture["cases"].as_array().unwrap().len(), 18);
+    assert_eq!(fixture["cases"].as_array().unwrap().len(), 32);
     for (i, case) in fixture["cases"].as_array().unwrap().iter().enumerate() {
         let tmp = TempDir::new(i);
         let (bin, scenario) = fake_tools(&tmp, i, &fixture["scenarios"][case["scenario"].as_str().unwrap()]);
@@ -95,7 +96,8 @@ fn tui_clipboard_image_reads_like_ts() {
             ImageRead::Image { bytes, mime_type } => Some((bytes, mime_type)),
             ImageRead::NoImage | ImageRead::Failed => None,
         };
-        let converted = case["scenario"].as_str().unwrap().ends_with("-bmp");
+        let name = case["scenario"].as_str().unwrap();
+        let converted = ["-bmp", "-tiff", "-ico"].iter().any(|kind| name.contains(kind)) && name != "x11-tiff-and-png";
         match (&got, &want) {
             (Some((got_bytes, got_type)), Some((want_bytes, want_type))) if converted => {
                 assert_eq!(got_type, want_type, "{case}");
@@ -153,6 +155,10 @@ fn tui_system_clipboard_reads_typed_images_from_the_injected_path() {
     let cases = [
         ("x11-jpeg", "image/jpeg"),
         ("x11-bmp", "image/png"),
+        ("x11-tiff", "image/png"),
+        ("wayland-tiff-pages", ""),
+        ("x11-ico-sizes", "image/png"),
+        ("x11-tiff-truncated", ""),
         ("x11-undecodable", ""),
     ];
     for (i, (scenario, mime_type)) in cases.into_iter().enumerate() {

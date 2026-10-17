@@ -11,6 +11,7 @@ use tui::components::Component;
 use tui::fuzzy::fuzzy_filter;
 use tui::input::Input;
 use tui::keybindings::KeybindingsManager;
+use tui::mouse::{MouseButton, MouseEvent, MouseEventType, MouseResult};
 use tui::select::{SelectEvent, SelectItem, SelectList, SelectListTheme};
 use tui::theme::Theme;
 use tui::utils::{truncate_to_width, visible_width, wrap_text_with_ansi};
@@ -153,6 +154,8 @@ struct List {
     selected: usize,
     max_visible: usize,
     search: Option<Input>,
+    /// The row a left press selected (`mousePressedIndex`).
+    pressed: Option<usize>,
 }
 
 enum ListAction {
@@ -177,7 +180,67 @@ impl List {
             selected: 0,
             max_visible,
             search,
+            pressed: None,
         }
+    }
+
+    /// `SettingsList.handleMouse` (no submenu open): the search row goes to the search input, the wheel moves the
+    /// selection, a left press selects the row and the click that follows activates the pressed row.
+    fn handle_mouse(&mut self, event: &MouseEvent) -> Option<(MouseResult, Option<ListAction>)> {
+        if let Some(search) = self.search.as_mut() {
+            if event.y == 0 {
+                let result = search.handle_mouse(event)?;
+                return Some((
+                    MouseResult {
+                        focus: Some(true),
+                        ..result
+                    },
+                    None,
+                ));
+            }
+            if event.y == 1 {
+                return None;
+            }
+        }
+        let n = self.filtered.len();
+        if n == 0 {
+            return None;
+        }
+        let handled = |render: Option<bool>, focus: Option<bool>| MouseResult {
+            handled: Some(true),
+            render,
+            focus,
+            ..MouseResult::default()
+        };
+        if event.kind == MouseEventType::Wheel
+            && let Some(delta) = event.wheel_delta.filter(|d| *d != 0)
+        {
+            let previous = self.selected;
+            self.selected = if delta < 0 {
+                self.selected.saturating_sub(1)
+            } else {
+                (self.selected + 1).min(n - 1)
+            };
+            return Some((handled(Some(self.selected != previous), None), None));
+        }
+        if event.button != MouseButton::Left || !matches!(event.kind, MouseEventType::Press | MouseEventType::Click) {
+            return None;
+        }
+        let offset = if self.search.is_some() { 2 } else { 0 };
+        let (start, end) = self.range();
+        let index = start as i64 + event.y - offset;
+        if index < start as i64 || index >= end as i64 {
+            return None;
+        }
+        let index = index as usize;
+        if event.kind == MouseEventType::Press {
+            self.pressed = Some(index);
+            self.selected = index;
+            return Some((handled(None, Some(true)), None));
+        }
+        self.selected = self.pressed.take().unwrap_or(index);
+        let action = self.activate();
+        Some((handled(None, None), action))
     }
 
     fn update(&mut self, id: &str, value: &str) {
@@ -714,8 +777,8 @@ impl SettingsSelector {
             item(
                 "tui-mode",
                 "TUI mode",
-                "Interface layout; fullscreen mode is experimental",
-                c.str("tuiMode", "regular"),
+                "Interface layout; regular keeps the finished transcript in the terminal's scrollback",
+                c.str("tuiMode", "fullscreen"),
                 &["regular", "fullscreen"],
             ),
             item(
@@ -1345,6 +1408,31 @@ impl SettingsSelector {
                 }
             }
         }
+    }
+
+    /// `handleMouse` on the selector (`event` in its rows: the border, then the list) while no submenu is open:
+    /// what the click answered, as [`Self::handle_input`] would.
+    pub fn handle_mouse(&mut self, event: &MouseEvent) -> Option<(MouseResult, Option<SettingsEvent>)> {
+        if !self.stack.is_empty() || event.y < 1 {
+            return None;
+        }
+        let local = MouseEvent {
+            y: event.y - 1,
+            ..*event
+        };
+        let (result, action) = self.list.handle_mouse(&local)?;
+        let event = match action {
+            None => None,
+            Some(ListAction::Cancel) => Some(SettingsEvent::Cancelled),
+            Some(ListAction::Open(index)) => {
+                if let Some(kind) = self.list.items[index].sub.clone() {
+                    self.open(kind);
+                }
+                None
+            }
+            Some(ListAction::Changed(id, value)) => Some(self.main_change(&id, &value)),
+        };
+        Some((result, event))
     }
 
     pub fn handle_input(&mut self, data: &str) -> Option<SettingsEvent> {

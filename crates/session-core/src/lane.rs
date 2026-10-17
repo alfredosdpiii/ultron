@@ -21,7 +21,7 @@ use serde_json::{Value, json};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::Poll;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -58,6 +58,25 @@ pub fn text_block(text: String) -> UserContent {
         text,
         text_signature: None,
     })
+}
+
+/// `formatClock`: local time with its UTC offset, to the minute ("2026-10-05 14:03 UTC+02:00"), in `zone` (the
+/// session's `TZ`, else `/etc/localtime`).
+pub fn format_clock(ms: i64, zone: &kernel_apis::localtime::Zone) -> String {
+    let offset = zone.offset(ms as f64);
+    let local = kernel_apis::localtime::fields(ms as f64, offset);
+    let minutes = offset.div_euclid(60);
+    let sign = if minutes >= 0 { '+' } else { '-' };
+    format!(
+        "{}-{:02}-{:02} {:02}:{:02} UTC{sign}{:02}:{:02}",
+        local.year,
+        local.month,
+        local.day,
+        local.hour,
+        local.minute,
+        minutes.abs() / 60,
+        minutes.abs() % 60
+    )
 }
 
 /// `formatClock` for UTC: "2026-10-05 14:03 UTC+00:00".
@@ -98,6 +117,11 @@ pub fn format_gap(ms: i64) -> String {
     }
 }
 
+/// The zone clock lines are in: the session's `TZ`, else `/etc/localtime` (`new Date(...)` of the TypeScript worker).
+pub fn clock_zone(env: &Env) -> kernel_apis::localtime::Zone {
+    kernel_apis::localtime::Zone::from_env((env.var)("TZ").as_deref())
+}
+
 /// `clockContextEnabled`: `ULTRON_CLOCK_CONTEXT=off|0|false` disables clock lines.
 pub fn clock_enabled(env: &Env) -> bool {
     !(env.var)("ULTRON_CLOCK_CONTEXT")
@@ -106,7 +130,7 @@ pub fn clock_enabled(env: &Env) -> bool {
 
 /// The clock lines of `withClockLines` as `(index, text, timestamp)`: one before each user message that opens the
 /// conversation or follows a gap of `CLOCK_GAP_MS` or more; `index` is the user message the line precedes.
-fn clock_texts(messages: &[Value]) -> Vec<(usize, String, i64)> {
+fn clock_texts(messages: &[Value], zone: &kernel_apis::localtime::Zone) -> Vec<(usize, String, i64)> {
     let mut out = Vec::new();
     let mut previous: Option<i64> = None;
     for (index, message) in messages.iter().enumerate() {
@@ -117,12 +141,13 @@ fn clock_texts(messages: &[Value]) -> Vec<(usize, String, i64)> {
             .map(|t| t as i64);
         if let Some(at) = at
             && message.get("role").and_then(Value::as_str) == Some("user")
+            && !is_compaction_summary(message)
             && previous.is_none_or(|p| at - p >= CLOCK_GAP_MS)
         {
             let gap = previous.map_or(String::new(), |p| {
                 format!(", {} after the previous message", format_gap(at - p))
             });
-            out.push((index, format!("[clock] {}{gap}", format_clock_utc(at)), at));
+            out.push((index, format!("[clock] {}{gap}", format_clock(at, zone)), at));
         }
         if at.is_some() {
             previous = at;
@@ -131,9 +156,25 @@ fn clock_texts(messages: &[Value]) -> Vec<(usize, String, i64)> {
     out
 }
 
-/// One clock line (a user message) per [`clock_texts`] entry, with the index of the message it precedes.
+/// A durable conversation's compaction summary (a user message there; `compactionSummary` in TypeScript, which
+/// gets no clock line).
+fn is_compaction_summary(message: &Value) -> bool {
+    let text = match &message["content"] {
+        Value::String(text) => Some(text.as_str()),
+        Value::Array(blocks) => blocks.first().and_then(|block| block["text"].as_str()),
+        _ => None,
+    };
+    text.is_some_and(|text| text.starts_with(compaction::COMPACTION_SUMMARY_PREFIX))
+}
+
+/// One clock line (a user message) per [`clock_texts`] entry, with the index of the message it precedes, in UTC.
 pub fn clock_lines(messages: &[Value]) -> Vec<(usize, Message)> {
-    clock_texts(messages)
+    clock_lines_in(messages, &kernel_apis::localtime::Zone::utc())
+}
+
+/// [`clock_lines`] in `zone`.
+pub fn clock_lines_in(messages: &[Value], zone: &kernel_apis::localtime::Zone) -> Vec<(usize, Message)> {
+    clock_texts(messages, zone)
         .into_iter()
         .map(|(index, text, at)| {
             let line = Message::User(UserMessage {
@@ -148,7 +189,12 @@ pub fn clock_lines(messages: &[Value]) -> Vec<(usize, Message)> {
 /// `withClockLines`: the messages with their clock lines in place; `None` when no line was added. Lines are derived,
 /// never stored.
 pub fn with_clock_lines(messages: &[Value]) -> Option<Vec<Value>> {
-    let lines = clock_texts(messages);
+    with_clock_lines_in(messages, &kernel_apis::localtime::Zone::utc())
+}
+
+/// [`with_clock_lines`] in `zone`.
+pub fn with_clock_lines_in(messages: &[Value], zone: &kernel_apis::localtime::Zone) -> Option<Vec<Value>> {
+    let lines = clock_texts(messages, zone);
     if lines.is_empty() {
         return None;
     }
@@ -192,7 +238,7 @@ pub fn system_prompt_with_guide(
     extensions: Option<&str>,
     guide: &resources::runtime_guide::RuntimeGuideOptions,
 ) -> Result<String, String> {
-    let settings = config::settings::SettingsManager::create(Path::new(cwd), &env.agent_dir(), false);
+    let settings = config::settings::SettingsManager::for_worker(Path::new(cwd), &env.agent_dir(), &env.home);
     let mode = PromptMode::from_settings(&settings);
     system_prompt_in_mode(env, cwd, loki_root, extensions, guide, &mode).map(|(prompt, _)| prompt)
 }
@@ -340,11 +386,10 @@ fn stored_oauth(env: &Env, provider: &str) -> bool {
 
 fn prepare(registry: &ModelRegistry, model: Model, env: &Env, oauth: bool) -> Model {
     let mut model = registry.for_requests(model, env.var.clone());
-    if oauth {
+    if oauth || crate::stored_auth::has_request_auth(env, &model.provider) {
         let (env, provider) = (env.clone(), model.provider.clone());
-        model.request.get_or_insert_default().stored_auth = Some(Arc::new(move || {
-            crate::stored_auth::oauth_request_auth(&env, &provider)
-        }));
+        model.request.get_or_insert_default().stored_auth =
+            Some(Arc::new(move || crate::stored_auth::request_auth(&env, &provider)));
     }
     model
 }
@@ -421,7 +466,7 @@ pub fn initial_model(env: &Env) -> Option<Model> {
 }
 
 fn initial_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Option<ModelChoice> {
-    let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
     let all = settings.settings();
     let text = |v: Option<Value>| v.and_then(|v| v.as_str().map(str::to_string));
     let registry = registry(env);
@@ -499,7 +544,7 @@ fn initial_level(all: &serde_json::Map<String, Value>, model: &Model) -> String 
 /// (`modelThinkingLevels`), else `defaultThinkingLevel`, else medium. Stored as chosen, like TS: requests clamp it
 /// to what the model supports.
 pub fn initial_thinking(model: &Model, env: &Env) -> String {
-    let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
     initial_level(settings.settings(), model)
 }
 
@@ -572,6 +617,9 @@ pub fn request_key(flags: &ModelFlags, env: &Env, provider: &str) -> Result<Opti
     if let Some(key) = flags.api_key.as_deref() {
         return Ok(Some(key.to_string()));
     }
+    if let Some(key) = crate::stored_auth::resolved_key(env, provider)? {
+        return Ok(key);
+    }
     match crate::stored_auth::stored_key(env, provider)? {
         crate::stored_auth::Stored::Owns(key) => Ok(key),
         crate::stored_auth::Stored::Nothing => {
@@ -582,10 +630,12 @@ pub fn request_key(flags: &ModelFlags, env: &Env, provider: &str) -> Result<Opti
     }
 }
 
-/// Whether `provider`'s stored OAuth credential authenticates requests by its headers alone (Kimi For Coding's
-/// `Authorization: Bearer`, `toAuth` with no key): `getAuth` resolves, so a request needs no API key.
+/// Whether `provider` authenticates requests by headers alone: a stored OAuth credential's (Kimi For Coding's
+/// `Authorization: Bearer`, `toAuth` with no key), `ANTHROPIC_AUTH_TOKEN`, the AI Gateway (`getAuth` resolves, so a
+/// request needs no API key).
 pub fn header_auth(env: &Env, provider: &str) -> bool {
     crate::stored_auth::oauth_request_auth(env, provider).is_some_and(|auth| auth.headers.is_some())
+        || crate::stored_auth::header_owned(env, provider)
 }
 
 /// The provider's key from the environment and the profile's credential files. A models.json Radius provider
@@ -621,13 +671,27 @@ pub fn process_transport() -> ReqwestTransport {
     ReqwestTransport::for_env(&|key| std::env::var(key).ok(), None)
 }
 
+/// Reads the worker's settings as they are now ([`crate::compose::Config::settings_reader`]).
+pub type SettingsReader = Arc<dyn Fn() -> config::settings::SettingsManager + Send + Sync>;
+
+/// A transport whose idle timeout follows `httpIdleTimeoutMs` as it is now (TS reconfigures its process dispatcher
+/// when the setting changes): rebuilt when the setting changes.
+struct LiveTransport {
+    current: Mutex<(Option<std::time::Duration>, Arc<dyn Transport>)>,
+}
+
 pub struct Provider {
     transport: Arc<dyn Transport>,
     api_key: Option<String>,
     /// Routes `claude-subscription` calls (subscription first, API credits when out of usage): the process's.
     router: Arc<ai::claude_subscription::fallback::Router>,
-    /// What the settings fill into every request (`thinkingBudgets`, `websocketConnectTimeoutMs`).
+    /// What the settings fill into every request (`thinkingBudgets`, `websocketConnectTimeoutMs`, the stream
+    /// options and `transport`).
     request: crate::request_settings::RequestSettings,
+    /// Read before each request instead of `request` (see [`Provider::with_live_settings`]).
+    live: Option<SettingsReader>,
+    /// With `live`: the process transport at the idle timeout the settings name now.
+    live_transport: Option<LiveTransport>,
 }
 
 impl Provider {
@@ -637,6 +701,8 @@ impl Provider {
             api_key: None,
             router: ai::claude_subscription::fallback::global(),
             request: Default::default(),
+            live: None,
+            live_transport: None,
         }
     }
 
@@ -646,6 +712,54 @@ impl Provider {
         self
     }
 
+    /// Requests take the settings as `settings` reads them before each request, so a `/settings` change of
+    /// `transport`, `httpIdleTimeoutMs` (the request timeout and the transport's idle timeout) or `retry.provider`
+    /// applies to the next request (TS `harness.setStreamOptions`). `idle_transport`: the process transport follows
+    /// `httpIdleTimeoutMs` too (the session's; tests over their own transport leave it off).
+    pub fn with_live_settings(mut self, settings: SettingsReader, idle_transport: bool) -> Self {
+        if idle_transport {
+            let idle = ai::http::http_idle_timeout(settings().settings().get("httpIdleTimeoutMs"));
+            let transport: Arc<dyn Transport> = Arc::new(process_transport().with_idle_timeout(idle));
+            self.transport = transport.clone();
+            self.live_transport = Some(LiveTransport {
+                current: Mutex::new((idle, transport)),
+            });
+        }
+        self.live = Some(settings);
+        self
+    }
+
+    /// The request settings now, and the transport to send on.
+    fn current(
+        &self,
+    ) -> (
+        std::borrow::Cow<'_, crate::request_settings::RequestSettings>,
+        Arc<dyn Transport>,
+    ) {
+        let Some(read) = &self.live else {
+            return (std::borrow::Cow::Borrowed(&self.request), self.transport.clone());
+        };
+        let settings = read();
+        let request = crate::request_settings::RequestSettings::from_manager(&settings);
+        let transport = match &self.live_transport {
+            Some(live) => {
+                let idle = ai::http::http_idle_timeout(settings.settings().get("httpIdleTimeoutMs"));
+                let mut current = live.current.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                if current.0 != idle {
+                    *current = (idle, Arc::new(process_transport().with_idle_timeout(idle)));
+                }
+                current.1.clone()
+            }
+            None => self.transport.clone(),
+        };
+        (std::borrow::Cow::Owned(request), transport)
+    }
+
+    /// The stream options requests carry now (an operation's `streamOptions` in the session journal).
+    pub fn stream_options(&self) -> Option<Value> {
+        self.current().0.stream_options()
+    }
+
     /// A provider over `transport` whose Claude subscription calls go through `router` (tests and embedders).
     pub fn with_router(router: Arc<ai::claude_subscription::fallback::Router>, transport: Arc<dyn Transport>) -> Self {
         Provider {
@@ -653,6 +767,8 @@ impl Provider {
             api_key: None,
             router,
             request: Default::default(),
+            live: None,
+            live_transport: None,
         }
     }
 
@@ -697,7 +813,8 @@ impl StreamFn for Provider {
             if keyed.base.api_key.is_none() && self.api_key.is_some() {
                 keyed.base.api_key = self.api_key.clone();
             }
-            if let Err(error) = self.request.apply(&mut keyed) {
+            let (request, transport) = self.current();
+            if let Err(error) = request.apply(&mut keyed) {
                 return error_message(model, error);
             }
             let options = &keyed;
@@ -709,7 +826,7 @@ impl StreamFn for Provider {
             };
             let model = routed.as_ref().unwrap_or(model);
             let options = prepared.as_ref().unwrap_or(options);
-            let transport = &*self.transport;
+            let transport = &*transport;
             let result = match model.api.as_str() {
                 // The process's (or the embedder's) router: subscription first, API credits when out of usage.
                 "claude-subscription" => Ok(self.router.stream(model, context, options, transport, sink).await),

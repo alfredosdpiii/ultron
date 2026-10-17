@@ -20,6 +20,7 @@ use super::compaction::{Threshold, create_compaction, estimate_planned, select_c
 use super::context::read_context;
 use super::docs::{AGENT, LIVE, PROVIDER};
 use super::entries;
+use super::gate::{FINAL_TOOL_CHOICE, RequestGate, gate_run};
 use super::inbox::{At, apply_boundary, prepare_boundary, user_entry};
 use super::live::{GENERATION_KIND, append_assistant, convert_partial, end_run, hand_over, live, run_task};
 use super::models::{ModelRef, StreamRequest, is_context_overflow, is_retryable};
@@ -226,6 +227,26 @@ fn fail_model_error(runtime: &TaskRuntime, text: &str) -> Result<()> {
     })
 }
 
+/// A request the gate refused (`request_blocked`): the run's inputs settle `unanswered` with the reason, no answer
+/// is appended, and the run fails.
+fn fail_blocked(runtime: &TaskRuntime, reason: &str) -> Result<()> {
+    let task_id = runtime.task_id();
+    let conversation_id = runtime.conversation_id();
+    runtime.commit(&runtime.ctx(), |tx, _| {
+        let live = live(tx, conversation_id)?;
+        end_run(
+            tx,
+            &live,
+            task_id,
+            SubmissionSettlement::Unanswered {
+                reason: "request_blocked".into(),
+                detail: Some(json!(reason)),
+            },
+        )?;
+        Ok(failed(reason, "request_blocked"))
+    })
+}
+
 /// Settle the run's inputs `unanswered` with `no_model` and fail.
 fn fail_no_model(runtime: &TaskRuntime, model: Option<&ModelRef>) -> Result<()> {
     let message = match model {
@@ -399,11 +420,25 @@ fn request_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime) 
     if let Some(hook) = &services.hooks.before_request {
         messages = hook(messages);
     }
+    let mut stream_options = stream_options;
+    let mut final_note = None;
+    if let Some(gate) = &services.hooks.gate_request {
+        let run = runtime.read(|tx| gate_run(tx, conversation_id))?;
+        match gate(&run) {
+            RequestGate::Allow => {}
+            RequestGate::Final { note } => {
+                stream_options.insert("toolChoice".into(), json!(FINAL_TOOL_CHOICE));
+                final_note = Some(note);
+            }
+            RequestGate::Block { reason } => return fail_blocked(runtime, &reason),
+        }
+    }
     let request = StreamRequest {
         options: stream_options,
         session_id: Some(ensure_provider_session_id(runtime)?),
         reasoning: (thinking_level != "off").then_some(thinking_level),
         conversation_id: Some(conversation_id),
+        final_note,
     };
     let message = stream_response(services, runtime, &model, messages, &request, attempt)?;
     let request = Request {

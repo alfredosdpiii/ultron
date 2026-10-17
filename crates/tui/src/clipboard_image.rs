@@ -8,8 +8,11 @@
 //! type (a BMP from a Windows DIB, say) is decoded and re-encoded as an RGBA PNG (`convertToPng`, Photon there, the
 //! `image` crate here). An image that cannot be decoded is no image.
 //!
-//! Not ported: the WSL PowerShell fallback and the native clipboard module. The `image` crate here decodes BMP,
-//! GIF, JPEG, PNG and WebP; Photon also decodes TIFF, ICO and a few others, which here are no image.
+//! The `image` crate here decodes BMP, GIF, ICO, JPEG, PNG, TIFF and WebP, like Photon (which wraps the same crate):
+//! a multi-page TIFF converts its first page (an undecodable first page is no image), an ICO its deepest entry,
+//! the largest among equals, the last among ties.
+//!
+//! Not ported: the WSL PowerShell fallback and the native clipboard module.
 
 /// The image types tried, in order of preference (`SUPPORTED_IMAGE_MIME_TYPES`).
 pub const SUPPORTED_IMAGE_MIME_TYPES: [&str; 4] = ["image/png", "image/jpeg", "image/webp", "image/gif"];

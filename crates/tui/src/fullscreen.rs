@@ -17,6 +17,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::keybindings::KeybindingsManager;
 use crate::keys::{KeyEventType, key_event_type};
+use crate::mouse::{MouseButton, MouseEvent, MouseEventType, MouseResult};
 use crate::overlay::composite_line;
 use crate::renderer::is_image_line;
 use crate::scroll_view::{
@@ -130,6 +131,66 @@ fn osc8_url(code: &str) -> Option<&str> {
 /// A viewport key's effect.
 type ViewportAction<'a> = dyn Fn(&mut FullscreenViewport) + 'a;
 
+/// `TuiMouseDispatchTarget`: the component that took an event and where its box was on the screen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MouseTarget {
+    /// The application's name for the component.
+    pub id: usize,
+    pub origin_x: i64,
+    pub origin_y: i64,
+    pub width: usize,
+    pub height: usize,
+}
+
+/// `TuiMouseDispatchResult`: what the component answered, and where it is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MouseDispatch {
+    pub result: MouseResult,
+    pub target: MouseTarget,
+}
+
+/// The application's mouse-aware components (`dispatchMouseToLayout`, `dispatchMouseToTarget`).
+pub trait MouseTargets {
+    /// The first component under `event.screen_x`, `event.screen_y` that handles `event` (with its local
+    /// coordinates), if any.
+    fn dispatch_at(&mut self, event: &MouseEvent) -> Option<MouseDispatch>;
+    /// `event` (already in `target`'s coordinates) to the component that took the press or the capture.
+    fn dispatch_to(&mut self, target: &MouseTarget, event: &MouseEvent) -> Option<MouseDispatch>;
+}
+
+/// An application without mouse-aware components.
+pub struct NoMouseTargets;
+
+impl MouseTargets for NoMouseTargets {
+    fn dispatch_at(&mut self, _: &MouseEvent) -> Option<MouseDispatch> {
+        None
+    }
+    fn dispatch_to(&mut self, _: &MouseTarget, _: &MouseEvent) -> Option<MouseDispatch> {
+        None
+    }
+}
+
+/// `decodeMouseButton`.
+fn decode_button(button: u32) -> MouseButton {
+    match button & 3 {
+        0 => MouseButton::Left,
+        1 => MouseButton::Middle,
+        2 => MouseButton::Right,
+        _ => MouseButton::None,
+    }
+}
+
+/// `retargetMouseEvent`.
+pub fn retarget_mouse_event(event: &MouseEvent, target: &MouseTarget) -> MouseEvent {
+    MouseEvent {
+        x: event.screen_x - target.origin_x,
+        y: event.screen_y - target.origin_y,
+        width: target.width,
+        height: target.height,
+        ..*event
+    }
+}
+
 /// What the viewport did with an input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ViewportInput {
@@ -238,6 +299,12 @@ pub struct FullscreenViewport {
     pub open_url: Option<UrlOpener>,
     /// The hyperlink under the press, opened when the release ends a click (`pressedUrl`).
     pressed_url: Option<String>,
+    /// `mouseCapture`, `mousePressTarget`, `mousePressPoint`, `mousePressMoved`, `lastComponentClick`.
+    mouse_capture: Option<MouseTarget>,
+    press_target: Option<MouseTarget>,
+    press_point: Option<(i64, i64)>,
+    press_moved: bool,
+    last_component_click: Option<(Instant, u32, usize, i64, i64)>,
 }
 
 impl Default for FullscreenViewport {
@@ -277,6 +344,11 @@ impl FullscreenViewport {
             right_click_paste: false,
             open_url: None,
             pressed_url: None,
+            mouse_capture: None,
+            press_target: None,
+            press_point: None,
+            press_moved: false,
+            last_component_click: None,
         }
     }
 
@@ -312,6 +384,8 @@ impl FullscreenViewport {
         self.dragged = false;
         self.rect = None;
         self.screen.clear();
+        self.clear_component_gesture();
+        self.mouse_capture = None;
     }
 
     /// Lay the transcript out: `content` (rendered at `view.content_width(rect.width)`) shown in `rect`, scrolled
@@ -445,6 +519,19 @@ impl FullscreenViewport {
 
     /// Route `data` (`handleViewportInput`): focus reports, wheel, mouse, then the viewport keys.
     pub fn handle_input(&mut self, data: &str, keys: &KeybindingsManager, now: Instant) -> ViewportInput {
+        self.handle_input_with(data, keys, now, &mut NoMouseTargets)
+    }
+
+    /// [`Self::handle_input`] with the application's mouse-aware components: a press on one becomes its gesture
+    /// (its drag and release go to it, and a release on the press cell adds a click), and a click that ends an
+    /// empty text selection goes to the component under it (`handleMouseEvent`).
+    pub fn handle_input_with(
+        &mut self,
+        data: &str,
+        keys: &KeybindingsManager,
+        now: Instant,
+        targets: &mut dyn MouseTargets,
+    ) -> ViewportInput {
         if data == FOCUS_OUT {
             let had_active = self.press_active;
             self.press_active = false;
@@ -453,6 +540,8 @@ impl FullscreenViewport {
             self.scrollbar_drag = None;
             self.pressed_url = None;
             self.dragged = false;
+            self.clear_component_gesture();
+            self.last_component_click = None;
             if had_active {
                 self.anchor = None;
                 self.focus = None;
@@ -479,6 +568,7 @@ impl FullscreenViewport {
                     release: m.release,
                 },
                 now,
+                targets,
             );
         }
         if is_mouse_sequence(data) {
@@ -539,8 +629,108 @@ impl FullscreenViewport {
         }
     }
 
-    /// `handleMouseEvent` for an application without mouse-aware components.
-    fn handle_mouse(&mut self, ev: Sgr, now: Instant) -> ViewportInput {
+    /// `createMouseEvent`: screen coordinates over the whole terminal.
+    fn mouse_event(&self, kind: MouseEventType, button: u32, x: i64, y: i64, click_count: Option<u32>) -> MouseEvent {
+        MouseEvent {
+            kind,
+            button: if kind == MouseEventType::Wheel {
+                MouseButton::None
+            } else {
+                decode_button(button)
+            },
+            x,
+            y,
+            screen_x: x,
+            screen_y: y,
+            width: self.cols.max(1),
+            height: self.rows.max(1),
+            shift: button & 4 != 0,
+            alt: button & 8 != 0,
+            ctrl: button & 16 != 0,
+            wheel_delta: None,
+            click_count,
+        }
+    }
+
+    /// `applyMouseDispatchResult`: a capture keeps the following events on the component.
+    fn apply_dispatch(&mut self, dispatch: MouseDispatch) {
+        if dispatch.result.capture == Some(true) {
+            self.mouse_capture = Some(dispatch.target);
+        }
+    }
+
+    /// `clearComponentMouseGesture`.
+    fn clear_component_gesture(&mut self) {
+        self.mouse_capture = None;
+        self.press_target = None;
+        self.press_point = None;
+        self.press_moved = false;
+    }
+
+    /// `getComponentClickCount`.
+    fn component_click_count(&mut self, target: &MouseTarget, x: i64, y: i64, now: Instant) -> u32 {
+        let count = match self.last_component_click {
+            Some((at, count, id, px, py))
+                if now.saturating_duration_since(at) <= DOUBLE_CLICK_INTERVAL
+                    && id == target.id
+                    && px == x
+                    && py == y =>
+            {
+                count % 3 + 1
+            }
+            _ => 1,
+        };
+        self.last_component_click = Some((now, count, target.id, x, y));
+        count
+    }
+
+    /// `clearTextSelection`.
+    fn clear_text_selection(&mut self) {
+        self.stop_auto_scroll();
+        self.press_active = false;
+        self.anchor = None;
+        self.focus = None;
+        self.granularity = Granularity::Character;
+        self.initial = None;
+        self.pressed_url = None;
+        self.dragged = false;
+    }
+
+    /// `handleMouseEvent`: the component gesture in progress, the jump-to-end indicator, the scrollbar, the
+    /// component under the pointer, right-click paste, then text selection.
+    fn handle_mouse(&mut self, ev: Sgr, now: Instant, targets: &mut dyn MouseTargets) -> ViewportInput {
+        let kind = if ev.release {
+            MouseEventType::Release
+        } else if ev.button & 32 != 0 {
+            if decode_button(ev.button) == MouseButton::None {
+                MouseEventType::Move
+            } else {
+                MouseEventType::Drag
+            }
+        } else {
+            MouseEventType::Press
+        };
+        let event = self.mouse_event(kind, ev.button, ev.x, ev.y, None);
+        if let Some(target) = self.mouse_capture.or(self.press_target) {
+            if self.press_point.is_some_and(|p| p != (ev.x, ev.y)) {
+                self.press_moved = true;
+                self.last_component_click = None;
+            }
+            if let Some(d) = targets.dispatch_to(&target, &retarget_mouse_event(&event, &target)) {
+                self.apply_dispatch(d);
+            }
+            if ev.release {
+                if !self.press_moved && self.press_point == Some((ev.x, ev.y)) {
+                    let count = self.component_click_count(&target, ev.x, ev.y, now);
+                    let click = self.mouse_event(MouseEventType::Click, ev.button, ev.x, ev.y, Some(count));
+                    if let Some(d) = targets.dispatch_to(&target, &retarget_mouse_event(&click, &target)) {
+                        self.apply_dispatch(d);
+                    }
+                }
+                self.clear_component_gesture();
+            }
+            return ViewportInput::Consumed;
+        }
         if self.indicator_click(ev) {
             return ViewportInput::Consumed;
         }
@@ -551,10 +741,20 @@ impl FullscreenViewport {
         if handled {
             return ViewportInput::Consumed;
         }
+        if let Some(d) = targets.dispatch_at(&event) {
+            self.apply_dispatch(d);
+            if kind == MouseEventType::Press {
+                self.clear_text_selection();
+                self.press_target = Some(d.target);
+                self.press_point = Some((ev.x, ev.y));
+                self.press_moved = false;
+            }
+            return ViewportInput::Consumed;
+        }
         if self.right_click_paste && crate::right_click_paste::is_right_click_press(ev.button, ev.release) {
             return ViewportInput::RightClickPaste;
         }
-        self.selection_mouse(ev, now)
+        self.selection_mouse(ev, now, targets)
     }
 
     fn indicator_click(&mut self, ev: Sgr) -> bool {
@@ -824,7 +1024,7 @@ impl FullscreenViewport {
     }
 
     /// `handleSelectionMouseEvent`.
-    fn selection_mouse(&mut self, ev: Sgr, now: Instant) -> ViewportInput {
+    fn selection_mouse(&mut self, ev: Sgr, now: Instant, targets: &mut dyn MouseTargets) -> ViewportInput {
         let button = ev.button & 3;
         if button != 0 && !(ev.release && button == 3) {
             return ViewportInput::Consumed;
@@ -851,6 +1051,15 @@ impl FullscreenViewport {
                 self.focus = None;
                 open(&url);
                 return ViewportInput::Consumed;
+            }
+            if is_click {
+                let count = self.last_click.map_or(1, |c| c.count);
+                let click = self.mouse_event(MouseEventType::Click, ev.button, ev.x, ev.y, Some(count));
+                if let Some(d) = targets.dispatch_at(&click) {
+                    self.apply_dispatch(d);
+                    self.clear_text_selection();
+                    return ViewportInput::Consumed;
+                }
             }
             if self.copy_on_select
                 && let Some(text) = self.selection_text()
@@ -1015,66 +1224,12 @@ impl FullscreenViewport {
     }
 }
 
-/// The script of a character that Intl.Segmenter splits with ICU's CJ dictionary: Han, Hiragana or Katakana
-/// (word-break Katakana: the prolonged sound mark, the vertical kana repeat marks and the half-width forms too).
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum CjScript {
-    Han,
-    Hiragana,
-    Katakana,
-}
-
-fn cj_script(c: char) -> Option<CjScript> {
-    match u32::from(c) {
-        0x2E80..=0x2FDF
-        | 0x3005..=0x3007
-        | 0x3021..=0x3029
-        | 0x3038..=0x303B
-        | 0x3400..=0x4DBF
-        | 0x4E00..=0x9FFF
-        | 0xF900..=0xFAFF
-        | 0x20000..=0x3FFFF => Some(CjScript::Han),
-        0x3041..=0x3096 | 0x309D..=0x309F | 0x1B001..=0x1B11F | 0x1F200 => Some(CjScript::Hiragana),
-        0x3031..=0x3035
-        | 0x309B..=0x309C
-        | 0x30A1..=0x30FA
-        | 0x30FC..=0x30FF
-        | 0x31F0..=0x31FF
-        | 0x32D0..=0x32FE
-        | 0x3300..=0x3357
-        | 0xFF66..=0xFF9D
-        | 0x1AFF0..=0x1AFFE
-        | 0x1B000 => Some(CjScript::Katakana),
-        _ => None,
-    }
-}
-
-/// `wordSegmenter.segment(line)` with `isWordLike`: UAX #29 word bounds, where a run of one CJ script is one word.
-/// Node's ICU splits such runs with its Chinese/Japanese dictionary; without one, a script change is the boundary
-/// (日本語|の|テキスト as ICU; 中文分词 stays whole where ICU splits 中文|分词).
-fn word_segments(line: &str) -> Vec<(&str, bool)> {
-    let mut segments: Vec<(&str, bool, Option<CjScript>)> = Vec::new();
-    let mut at = 0;
-    for segment in line.split_word_bounds() {
-        let script = segment.chars().next().and_then(cj_script);
-        let word_like = script.is_some() || segment.chars().any(char::is_alphanumeric);
-        match segments.last_mut() {
-            Some(last) if script.is_some() && last.2 == script => {
-                last.0 = &line[at - last.0.len()..at + segment.len()];
-            }
-            _ => segments.push((segment, word_like, script)),
-        }
-        at += segment.len();
-    }
-    segments.into_iter().map(|(s, w, _)| (s, w)).collect()
-}
-
 /// `getWordSelection` on a plain `line`: the columns `[start, end)` of the word under column `col` (`/` and `-`
 /// join selectable neighbours, so paths and kebab-case stay whole), or `None` past the line's end.
 pub fn word_selection(line: &str, col: usize) -> Option<(usize, usize)> {
     let mut segments: Vec<(usize, usize, bool, bool)> = Vec::new();
     let mut start = 0;
-    for (segment, word_like) in word_segments(line) {
+    for (segment, word_like) in crate::word_segment::word_segments(line) {
         let end = start + visible_width(segment);
         let joiner = segment == "/" || segment == "-";
         segments.push((start, end, word_like || joiner, joiner));

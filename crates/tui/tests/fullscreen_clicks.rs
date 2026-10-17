@@ -1,8 +1,8 @@
 //! Replays fixtures/fullscreen-clicks-parity.json (packages/tui/src/tui-alt-screen.ts and utils.ts, recorded by
 //! fixtures/generate-fullscreen-clicks.mjs) against `tui::fullscreen`: OSC 8 hyperlinks under a column, the URLs a
 //! click opens (and the clicks, drags, buttons and focus changes that open none), and double-click word selection
-//! on CJK text. Word selection matches TypeScript except where Node's ICU splits a run of one CJ script with its
-//! Chinese/Japanese dictionary; those lines carry literal Rust expectations (one word per script run).
+//! on CJK, Korean, Thai/Lao/Khmer/Burmese and mixed text, which matches TypeScript (Node's ICU dictionaries) on
+//! every line and column.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -118,29 +118,11 @@ fn tui_fullscreen_click_on_a_link_without_an_opener_only_clicks() {
     assert_eq!(view.finish_frame(base.clone(), 24, 8), base);
 }
 
-/// Lines whose ICU (dictionary) segmentation splits a run of one CJ script: the Rust selection of every column.
-fn rust_only(line: &str) -> Option<Vec<Option<(usize, usize)>>> {
-    let runs: &[(usize, usize)] = match line {
-        "東京都に住んでいます" => &[(0, 6), (6, 8), (8, 10), (10, 20)],
-        "カタカナとひらがな" => &[(0, 8), (8, 18)],
-        "コンパイルエラー" => &[(0, 16)],
-        "中文分词测试很重要" => &[(0, 18)],
-        "请检查配置文件。下一步" => &[(0, 14), (14, 16), (16, 22)],
-        "〇々〆 ゝゞ ヽヾ ー" => &[(0, 6), (6, 7), (7, 11), (11, 12), (12, 16), (16, 17), (17, 19)],
-        _ => return None,
-    };
-    let width = runs.last().unwrap().1;
-    Some(
-        (0..=width)
-            .map(|col| runs.iter().copied().find(|(a, b)| col >= *a && col < *b))
-            .collect(),
-    )
-}
-
 #[test]
-fn tui_fullscreen_double_click_word_selection_on_cjk_matches_ts_or_selects_the_script_run() {
-    let mut divergent = 0;
-    for case in fixture()["words"].as_array().unwrap() {
+fn tui_fullscreen_double_click_word_selection_on_cjk_matches_ts() {
+    let words = fixture()["words"].as_array().unwrap().clone();
+    assert_eq!(words.len(), 50);
+    for case in &words {
         let line = case["line"].as_str().unwrap();
         let ts: Vec<Option<(usize, usize)>> = case["selections"]
             .as_array()
@@ -152,25 +134,27 @@ fn tui_fullscreen_double_click_word_selection_on_cjk_matches_ts_or_selects_the_s
             })
             .collect();
         let rust: Vec<Option<(usize, usize)>> = (0..ts.len()).map(|col| word_selection(line, col)).collect();
-        match rust_only(line) {
-            Some(expected) => {
-                divergent += 1;
-                assert_eq!(rust, expected, "{line}");
-                // The script run holds the dictionary word TypeScript selects.
-                for (r, t) in rust.iter().zip(&ts) {
-                    if let (Some(r), Some(t)) = (r, t) {
-                        assert!(r.0 <= t.0 && t.1 <= r.1, "{line}: {r:?} does not hold {t:?}");
-                    }
-                }
-                assert_ne!(
-                    rust, ts,
-                    "{line} now matches TypeScript: drop its Rust-only expectation"
-                );
-            }
-            None => assert_eq!(rust, ts, "{line}"),
-        }
+        assert_eq!(rust, ts, "{line}");
     }
-    assert_eq!(divergent, 6);
+}
+
+/// A double click inside a Chinese run selects (and copies) the dictionary word under it, as ICU splits 中文分词测试.
+#[test]
+fn tui_fullscreen_double_click_copies_a_chinese_dictionary_word() {
+    let keys = KeybindingsManager::new(tui_keybindings(), Default::default(), KeyContext::default());
+    let mut view = FullscreenViewport::default();
+    let screen = vec!["中文分词测试很重要".to_string(), String::new()];
+    view.set_size(20, 2);
+    view.finish_frame(screen.clone(), 20, 2);
+    let now = Instant::now();
+    let mut copied = Vec::new();
+    for data in ["\x1b[<0;6;1M", "\x1b[<0;6;1m", "\x1b[<0;6;1M", "\x1b[<0;6;1m"] {
+        if let ViewportInput::Copy(text) = view.handle_input(data, &keys, now) {
+            copied.push(text);
+        }
+        view.finish_frame(screen.clone(), 20, 2);
+    }
+    assert_eq!(copied, ["分词"]);
 }
 
 /// A double click on Japanese text selects (and copies) the word under it, as ICU does for 日本語のテキスト.

@@ -52,6 +52,32 @@ pub trait FrameTasks: Send + Sync {
     fn frame_context(&self, lane: &str, model: &ai::Model, meter: FrameMeter) {
         let _ = (lane, model, meter);
     }
+    /// Count one model response of a frame toward its root's tree limits (`recordTurn(usageRootForLane(lane,
+    /// runId))` of every lane's `after_response`).
+    fn charge_turn(&self, root: Option<&str>, reply: &AssistantMessage) {
+        let _ = (root, reply);
+    }
+    /// The tree-limit gate of a request of the frame running code on `lane` (`before_request`).
+    fn gate_request(&self, lane: &str, root: Option<&str>) -> FrameGate {
+        let _ = (lane, root);
+        FrameGate::Allow
+    }
+    /// The tree-limit gate of a cell of the frame running code on `lane` (`before_tool`): `(reason, terminate)`
+    /// refuses it.
+    fn gate_tool(&self, lane: &str, root: Option<&str>) -> Option<(String, bool)> {
+        let _ = (lane, root);
+        None
+    }
+}
+
+/// What the tree-limit gate decided for a frame's request.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FrameGate {
+    Allow,
+    /// The run's final request: tool choice `none`, with the note appended to its context.
+    Final(String),
+    /// Refused unsent with the reason.
+    Block(String),
 }
 
 /// A frame conversation's context use, once it has one.
@@ -429,6 +455,9 @@ impl FrameSession {
                 Err(error) => return Outcome::Error(format!("frame request failed: {}", Value::String(error))),
             };
             add_measured(live, std::slice::from_ref(&reply));
+            if let (Some(run), Some(tasks)) = (run, self.tasks.get()) {
+                tasks.charge_turn(run.usage_root.as_deref(), &reply);
+            }
             if signal.is_aborted() {
                 return Outcome::Error("cancelled".into());
             }
@@ -477,10 +506,25 @@ impl FrameSession {
             deadline,
             signal: run.signal.clone(),
             context_use,
+            tasks: tasks.clone(),
+            lane: run.lane.clone(),
+            root: run.usage_root.clone(),
         };
         let mut agent_options = AgentOptions::new(engine.model.clone());
         agent_options.system_prompt = Some(system.clone());
         agent_options.tools = vec![tool];
+        // A spent tree's cells are refused (`before_tool` of the frame's lane).
+        let (gate_tasks, gate_lane, gate_root) = (tasks.clone(), run.lane.clone(), run.usage_root.clone());
+        agent_options.before_tool_call = Some(Arc::new(move |_, _| {
+            let decision = gate_tasks.gate_tool(&gate_lane, gate_root.as_deref());
+            Box::pin(async move {
+                Ok(decision.map(|(reason, terminate)| agent::BeforeToolCallResult {
+                    block: true,
+                    reason: Some(reason),
+                    terminate: Some(terminate),
+                }))
+            })
+        }));
         agent_options.thinking_level = options
             .thinking
             .clone()
@@ -885,6 +929,10 @@ struct BudgetedStream {
     signal: Signal,
     /// The conversation's context use after the newest answer (`estimateContextTokens` over the request and it).
     context_use: Arc<Mutex<Option<u64>>>,
+    /// The tree-limit gate and turn charge of the frame's lane, under its usage root.
+    tasks: Arc<dyn FrameTasks>,
+    lane: String,
+    root: Option<String>,
 }
 
 impl StreamFn for BudgetedStream {
@@ -899,6 +947,25 @@ impl StreamFn for BudgetedStream {
             let session = &self.session;
             let live = &self.live;
             let engine = &live.engine();
+            // A spent tree: one final request without tools, then nothing more.
+            let mut options = options.clone();
+            let gated;
+            let context = match self.tasks.gate_request(&self.lane, self.root.as_deref()) {
+                FrameGate::Allow => context,
+                FrameGate::Block(reason) => {
+                    if let Some((held, _)) = lock(&self.pending).take() {
+                        session.release(live, held);
+                    }
+                    return unsent(engine, StopReason::Error, reason);
+                }
+                FrameGate::Final(note) => {
+                    options.tool_choice = Some("none".into());
+                    let mut messages = context.messages.clone();
+                    messages.push(user_message(&note));
+                    gated = ai::TranscriptContext { messages };
+                    &gated
+                }
+            };
             let hold = lock(&self.pending).take().or_else(|| {
                 let estimate = serde_json::to_string(context)
                     .map_or(0, |text| text.len() as u64)
@@ -914,7 +981,6 @@ impl StreamFn for BudgetedStream {
                     format!("Inference frame {}: {FOLLOW_UP_EXHAUSTED}", live.id),
                 );
             };
-            let mut options = options.clone();
             engine.prepare(&mut options, tranche, live.options.contract.as_ref());
             let response = engine
                 .stream(context, &options, sink, self.deadline, &self.signal)
@@ -931,6 +997,7 @@ impl StreamFn for BudgetedStream {
                 charged,
             );
             if let Ok(Some(reply)) = &response {
+                self.tasks.charge_turn(self.root.as_deref(), reply);
                 let mut messages = context.messages.clone();
                 messages.push(Message::Assistant(reply.clone()));
                 *lock(&self.context_use) = Some(ai::transcript::estimate_context_tokens(&messages).tokens);

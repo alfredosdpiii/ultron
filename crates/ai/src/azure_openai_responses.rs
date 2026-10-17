@@ -286,6 +286,7 @@ async fn drive(
     headers.set("Accept", "application/json").set("api-key", api_key);
     headers
         .set("User-Agent", pi_user_agent())
+        .openai_sdk_identity()
         .extend_set(model.headers.iter().flatten());
     headers.extend(base.headers.iter().flatten());
     headers.set("Content-Type", "application/json");

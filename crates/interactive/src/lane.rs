@@ -89,13 +89,16 @@ pub struct ForkMessage {
     pub text: String,
 }
 
-/// A queued user message (`LaneSnapshot.queues` item).
+/// A queued item (`LaneSnapshot.queues` item): a message, or a host item shown as `<customType>`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Queued {
     pub entry_id: String,
     /// `steer`, `followUp` or `nextRun`.
     pub kind: QueueKind,
     pub text: String,
+    /// A `type: "message"` item with `role: "user"`: what the user typed. Only these return to the editor
+    /// (Esc, Alt+Up) and show the dequeue hint; queued runtime events (custom messages) stay queued.
+    pub user: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -213,6 +216,8 @@ pub enum LoginStep {
 /// Lane to TUI.
 #[derive(Clone, Debug, PartialEq)]
 pub enum LaneEvent {
+    /// `<agentDir>/keybindings.json` read again (`/reload`): the user bindings every key manager resolves.
+    Keybindings(tui::keybindings_file::UserBindings),
     /// A session was opened (startup, `/new`, resume).
     Opened(SessionOpened),
     /// The opened session's lane entries on its branch (format-4 entries: messages, compactions with their retained

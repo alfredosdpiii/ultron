@@ -252,3 +252,28 @@ fn cli_extension_shortcuts_are_listed_and_run_through_the_session() {
     );
     world.close();
 }
+
+/// The composition root's `KeybindingsManager.create(agentDir)`: `<agentDir>/keybindings.json` migrated and kept to
+/// string bindings; a missing or malformed file is no bindings.
+#[test]
+fn cli_user_keybindings_load_the_agent_dir_file() {
+    let dir = std::env::temp_dir().join(format!("cli-user-keybindings-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let linux = tui::keybindings::Platform::new("linux", false);
+    assert!(cli::interactive::user_keybindings(&dir, linux).is_empty());
+    std::fs::write(
+        dir.join("keybindings.json"),
+        r#"{"app.clear": 1, "exit": "ctrl+q", "zzz": ["a"]}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        cli::interactive::user_keybindings(&dir, linux),
+        [
+            ("app.exit".to_string(), Some(vec!["ctrl+q".to_string()])),
+            ("zzz".to_string(), Some(vec!["a".to_string()])),
+        ]
+    );
+    std::fs::write(dir.join("keybindings.json"), "{broken").unwrap();
+    assert!(cli::interactive::user_keybindings(&dir, linux).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}

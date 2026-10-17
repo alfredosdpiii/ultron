@@ -755,7 +755,7 @@ pub fn builtin_provider_auth_with_clock(
         |name: &str, vars: &[&str]| -> Option<Arc<dyn ApiKeyAuth>> { Some(Arc::new(EnvApiKeyAuth::new(name, vars))) };
     Some(match provider_id {
         "anthropic" => ProviderAuth {
-            api_key: Some(Arc::new(AnthropicApiKeyAuth)),
+            api_key: builtin_api_key_auth(provider_id),
             oauth: oauth(OAuthProvider::Anthropic),
         },
         // OpenRouter's OAuth login (crate::oauth_openrouter) exchanges the code for a permanent API key.
@@ -781,12 +781,28 @@ pub fn builtin_provider_auth_with_clock(
             api_key: env("Gemini API key", &["GEMINI_API_KEY"]),
             oauth: None,
         },
-        "google-vertex" => ProviderAuth {
-            api_key: Some(Arc::new(VertexAuth)),
+        "google-vertex" | "cloudflare-workers-ai" | "cloudflare-ai-gateway" => ProviderAuth {
+            api_key: builtin_api_key_auth(provider_id),
             oauth: None,
         },
         _ => return None,
     })
+}
+
+/// The built-in api-key auth of the providers whose resolution is more than "the stored key, else an environment
+/// key": Anthropic (`ANTHROPIC_AUTH_TOKEN` as a bearer header), Google Vertex (Application Default Credentials and
+/// the project/location env) and Cloudflare (account and gateway ids merged per field from the stored credential and
+/// the environment; the AI Gateway authenticates by `cf-aig-authorization`). `None` for every other provider.
+pub fn builtin_api_key_auth(provider_id: &str) -> Option<Arc<dyn ApiKeyAuth>> {
+    use crate::cloudflare::{CloudflareAuth, CloudflareAuthKind};
+    let auth: Arc<dyn ApiKeyAuth> = match provider_id {
+        "anthropic" => Arc::new(AnthropicApiKeyAuth),
+        "google-vertex" => Arc::new(VertexAuth),
+        "cloudflare-workers-ai" => Arc::new(CloudflareAuth(CloudflareAuthKind::WorkersAi)),
+        "cloudflare-ai-gateway" => Arc::new(CloudflareAuth(CloudflareAuthKind::AiGateway)),
+        _ => return None,
+    };
+    Some(auth)
 }
 
 /// GitHub Copilot's `filterModels`: with an OAuth credential listing `availableModelIds` (all strings), only those

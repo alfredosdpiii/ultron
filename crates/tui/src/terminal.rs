@@ -1,17 +1,21 @@
 //! Process terminal: raw mode and size through crossterm, escape-sequence writes, and an input pump that feeds stdin
-//! bytes through [`StdinBuffer`] (port of `ProcessTerminal` in packages/tui/src/terminal.ts, without Kitty keyboard
-//! protocol negotiation, modifyOtherKeys, progress keepalive or the Windows VT input switch).
+//! bytes through [`StdinBuffer`] (port of `ProcessTerminal` in packages/tui/src/terminal.ts; the Kitty keyboard
+//! protocol negotiation is [`crate::keyboard_protocol`], whose replies the run loop reads from the input; no progress
+//! keepalive or Windows VT input switch).
 
 use std::io::{self, Read, Write};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 
+use crate::keyboard_protocol::KeyboardProtocol;
 use crate::stdin_buffer::{InputEvent, StdinBuffer};
 
 /// Escape output of the terminal, over any writer.
 pub struct Terminal<W: Write> {
     pub out: W,
+    /// The keyboard protocol negotiation ([`Terminal::start_keyboard_protocol`]); [`Terminal::stop`] pops it.
+    pub keyboard: KeyboardProtocol,
     was_raw: bool,
     started: bool,
 }
@@ -20,6 +24,7 @@ impl<W: Write> Terminal<W> {
     pub fn new(out: W) -> Self {
         Self {
             out,
+            keyboard: KeyboardProtocol::new(),
             was_raw: false,
             started: false,
         }
@@ -40,9 +45,20 @@ impl<W: Write> Terminal<W> {
         self.write("\x1b[?2004h")
     }
 
-    /// Disable bracketed paste and restore the previous raw-mode state.
+    /// `queryAndEnableKittyProtocol` (the end of `start`): push and query the Kitty flags, with the DA sentinel.
+    pub fn start_keyboard_protocol(&mut self) -> io::Result<()> {
+        let query = self.keyboard.query();
+        self.write(query)
+    }
+
+    /// Disable bracketed paste, pop the Kitty flags and reset modifyOtherKeys when they were set, and restore the
+    /// previous raw-mode state.
     pub fn stop(&mut self) -> io::Result<()> {
         self.write("\x1b[?2004l")?;
+        let keyboard = self.keyboard.stop();
+        if !keyboard.is_empty() {
+            self.write(&keyboard)?;
+        }
         if std::mem::take(&mut self.started) && !self.was_raw {
             crossterm::terminal::disable_raw_mode()?;
         }

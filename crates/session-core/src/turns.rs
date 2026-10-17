@@ -407,8 +407,8 @@ pub struct TurnModels {
     /// The root conversation's provider session ID: requests that carry it are the root's turns; every other
     /// conversation is a subagent's.
     pub root_session: Arc<std::sync::OnceLock<String>>,
-    /// Charges a response of another conversation (a subagent's, a typed agent's, another root conversation's) to
-    /// the usage ledger; the root's own turns are charged by the actor.
+    /// Charges every response of every conversation (the root's, a subagent's, a typed agent's, another root
+    /// conversation's) to the usage ledger.
     pub charge: Option<ChargeTurn>,
     /// Changes a child conversation's request before it is sent (`transform_context`: what `ctx` kept across a
     /// compaction).
@@ -438,14 +438,19 @@ impl TurnModels {
         options.reasoning = request.reasoning.clone();
         let mut sink = |event: &AssistantMessageEvent| on_event(event);
         let transformed;
-        let context = match (&self.transform_child, request.conversation_id) {
-            (Some(transform), Some(conversation)) => {
+        let context = match (&self.transform_child, request.conversation_id, &request.final_note) {
+            (None, _, None) | (_, None, None) => context,
+            (transform, conversation, note) => {
                 let mut messages = context.messages.clone();
-                transform(conversation, &mut messages);
+                if let (Some(transform), Some(conversation)) = (transform, conversation) {
+                    transform(conversation, &mut messages);
+                }
+                if let Some(note) = note {
+                    harness::chat::gate::apply_final(note, &mut messages, &mut options, crate::lane::now_ms());
+                }
                 transformed = ai::TranscriptContext { messages };
                 &transformed
             }
-            _ => context,
         };
         let message = runtime()?.block_on(self.provider.stream(model, context, &options, &mut sink));
         drop(bridged);
@@ -533,9 +538,12 @@ impl TurnModels {
         options.base.api_key = start.api_key;
         options.base.signal = Some(bridged.abort.clone());
         options.reasoning = request.reasoning.clone();
-        let llm = ai::TranscriptContext {
-            messages: start.messages,
-        };
+        let mut messages = start.messages;
+        // The run's final request: tools off, and the note saying why after its context (not stored).
+        if let Some(note) = &request.final_note {
+            harness::chat::gate::apply_final(note, &mut messages, &mut options, crate::lane::now_ms());
+        }
+        let llm = ai::TranscriptContext { messages };
         let bridge = self.bridge.clone();
         let mut started = false;
         let mut sink = |event: &AssistantMessageEvent| {
@@ -568,6 +576,14 @@ impl TurnModels {
         };
         let message = runtime()?.block_on(self.provider.stream(model, &llm, &options, &mut sink));
         drop(bridged);
+        // The ledger counts the response before its entry commits and before the next request or cell is gated, as
+        // the TypeScript drive's `after_response` does; a response a closing worker drops is not counted (the
+        // reopened runtime resends it).
+        if (!signal.is_cancelled() || *lock(&self.bridge.user_abort))
+            && let Some(charge) = &self.charge
+        {
+            charge(ROOT_CONVERSATION_ID, &message);
+        }
         // A request that failed before its stream started has no `message_start` (the harness reports only its
         // committed answer); an aborted one is announced, so the actor can hide it.
         if !started && message.stop_reason != StopReason::Error {
@@ -593,12 +609,13 @@ impl TurnModels {
 /// for its reply.
 pub const CELL_OUTPUT: &str = "cell.output";
 
-/// Append `text` (secrets masked, as the cell's result will be) to the running cell's durable partial output.
-pub fn publish_output(progress: &Mutex<Option<CellProgress>>, text: &str) {
+/// Append `text` (secrets masked with the session's `mask`, as the cell's result will be) to the running cell's
+/// durable partial output.
+pub fn publish_output(progress: &Mutex<Option<CellProgress>>, text: &str, mask: &crate::async_events::MaskText) {
     if text.is_empty() {
         return;
     }
-    let (masked, _) = host::secrets::OutputMasker::default().mask_counted(text, None);
+    let masked = mask(text);
     if let Some(progress) = lock(progress).as_ref() {
         progress.output(&masked);
     }

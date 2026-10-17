@@ -33,7 +33,8 @@ pub fn default_settings() -> Value {
     })
 }
 
-/// Stream options and retry policy of a generation (`timeoutMs` 300000, 4 attempts from 2000 ms).
+/// Default stream options and retry policy of a generation (`timeoutMs` 300000, 4 attempts from 2000 ms); a run
+/// takes the ones its settings name with [`Run::set_stream_options`].
 fn stream_options() -> Value {
     json!({"timeoutMs": 300000, "maxRetryDelayMs": 60000})
 }
@@ -105,6 +106,8 @@ pub struct Run {
     inbox: Value,
     /// The entry the current generation answers when it took queued messages (else the run's trigger).
     generation_trigger: Option<String>,
+    /// The generations' `streamOptions` (see [`Run::set_stream_options`]).
+    stream_options: Value,
 }
 
 fn entry(id: &str, parent: Option<&str>, message: Value) -> Write {
@@ -156,6 +159,7 @@ impl Run {
             control: json!({"status": "running"}),
             inbox: json!([]),
             generation_trigger: None,
+            stream_options: stream_options(),
         };
         let meta = json!({
             "operationId": operation_id, "lane": "main", "sourceTipId": source_tip, "startedAt": started_at,
@@ -174,6 +178,11 @@ impl Run {
         let checkpoint = run.checkpoint(json!({"kind": "need_assistant", "overflowRecoveryUsed": false}));
         session.commit(&[Write::set(OP_STATE, &run.operation_id, checkpoint)])?;
         Ok(run)
+    }
+
+    /// The stream options the generations run with (`providerRequestOptions` of the settings, and `transport`).
+    pub fn set_stream_options(&mut self, options: Value) {
+        self.stream_options = options;
     }
 
     pub fn operation_id(&self) -> &str {
@@ -212,7 +221,7 @@ impl Run {
             "stepId": self.step_id,
             "triggerEntryId": self.generation_trigger.as_ref().unwrap_or(&self.trigger),
             "configuration": self.config,
-            "streamOptions": stream_options(), "retryPolicy": retry_policy(), "overflowRecoveryUsed": false,
+            "streamOptions": self.stream_options, "retryPolicy": retry_policy(), "overflowRecoveryUsed": false,
         })
     }
 

@@ -9,12 +9,14 @@
 //! requests, and turns interrupted cells into interrupted results without running them again.
 
 pub mod cell;
+pub mod child_summary;
 pub mod children;
 pub mod compaction;
 pub mod context;
 pub mod docs;
 pub mod entries;
 pub mod faux;
+pub mod gate;
 pub mod generation;
 pub mod host_ops;
 pub mod inbox;
@@ -86,6 +88,10 @@ pub struct Hooks {
     pub before_request: Option<BeforeRequest>,
     /// Observe every terminal provider message before classification.
     pub after_response: Option<AfterResponse>,
+    /// Decide each model request of a run: send it, send it as the run's final request, or refuse it.
+    pub gate_request: Option<gate::GateRequest>,
+    /// Decide each cell of a run before it runs: a blocked cell's result is the block's reason.
+    pub gate_tool: Option<gate::GateTool>,
 }
 
 /// What the built-in tasks read: shared by every invocation of one Harness.

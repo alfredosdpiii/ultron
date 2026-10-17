@@ -68,6 +68,10 @@ pub struct ChildRun {
 
 /// Runs a child to its final reply text, or fails with an error message.
 pub type ChildRunner = Arc<dyn Fn(ChildRun) -> Result<String, String> + Send + Sync>;
+/// Sees a subagent's terminal record.
+pub type TaskEndObserver = Arc<dyn Fn(&Value) + Send + Sync>;
+/// The limit text of child `task_id`'s root while its tree is spent (`turnBudgetExhausted(task.usageReservation.rootId)`).
+pub type LimitReason = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
 /// A detached task reached its durable terminal result (`DetachedTaskEnd`).
 #[derive(Clone, Debug, PartialEq)]
@@ -191,11 +195,43 @@ struct Inner {
     merging: Mutex<()>,
     /// Refuses a spawn's `model=` the session cannot run (see [`Delegation::set_model_check`]).
     model_check: Mutex<Option<ModelCheck>>,
+    /// The limit text of a child's root once its tree is spent (see [`Delegation::set_limit_reason`]).
+    limit_reason: Mutex<Option<LimitReason>>,
     /// Where a forked child starts (see [`Delegation::set_fork_point`]); none: `fork=True` is refused.
     fork_point: Mutex<Option<crate::fork::ForkPointHook>>,
     /// Told how each worktree child's merge ended (see [`Delegation::on_merge`]).
     on_merge: Mutex<Option<MergeObserver>>,
+    /// Read at each spawn in place of `child_model` (see [`Delegation::set_child_model_source`]).
+    child_model_source: Mutex<Option<ChildModelSource>>,
+    /// Read at each worktree spawn in place of `worktree_setup` (see [`Delegation::set_worktree_setup_source`]).
+    worktree_setup_source: Mutex<Option<WorktreeSetupSource>>,
+    /// Sees every subagent's terminal record (`onTaskEnd`).
+    on_task_end: Mutex<Option<TaskEndObserver>>,
+    /// See [`Delegation::set_root_spawn`], [`Delegation::set_root_finish`], [`Delegation::set_child_model`].
+    root: Mutex<RootOptions>,
 }
+
+/// Where a root that is itself a subagent (an `ultron mcp --child` server) sends its `rlm.finish` verdict
+/// (`rootFinish`): the payload in, its parent's answer out.
+pub type RootFinish = Arc<dyn Fn(Map<String, Value>) -> Result<Value, String> + Send + Sync>;
+
+/// The root of this host when it is itself a subagent (`rootSpawn`, `rootFinish`), and the model of spawns that
+/// name none when it changes after the host is built (`childModel`).
+#[derive(Clone, Default)]
+struct RootOptions {
+    /// Nesting levels above the root.
+    level: u32,
+    /// How many more levels the root may create (`None`: unlimited).
+    allowance: Option<i64>,
+    finish: Option<RootFinish>,
+    child_model: Option<String>,
+}
+
+/// The model of spawns that name none, read at each spawn (TS `childModel` as a function: a changed setting
+/// applies to the next subagent).
+pub type ChildModelSource = Arc<dyn Fn() -> Option<String> + Send + Sync>;
+/// The default worktree setup, read at each worktree spawn (TS `worktreeSetup`).
+pub type WorktreeSetupSource = Arc<dyn Fn() -> Option<WorktreeSetup> + Send + Sync>;
 
 /// Sees how a worktree child's merge ended: its task id and merge status (`merged`, `conflict`, `empty`, ...).
 pub type MergeObserver = Arc<dyn Fn(&str, &str) + Send + Sync>;
@@ -344,6 +380,17 @@ fn merged_setup(default: Option<&WorktreeSetup>, spawn: Option<&WorktreeSetup>) 
     }
 }
 
+/// `publicRecord`: id, key, fingerprint, definition, state, result?, parentId?.
+fn public_record(record: &Value) -> Value {
+    let mut out = Map::new();
+    for key in ["id", "key", "fingerprint", "definition", "state", "result", "parentId"] {
+        if let Some(value) = record.get(key).filter(|value| !value.is_null()) {
+            out.insert(key.into(), value.clone());
+        }
+    }
+    Value::Object(out)
+}
+
 fn public_task(task: &Task) -> Value {
     let mut out = json!({ "id": task.id, "definition": task.record["definition"], "state": task.record["state"] });
     if let Some(parent) = &task.parent_id {
@@ -421,8 +468,13 @@ impl Delegation {
                 keep_worktrees: options.keep_worktrees,
                 merging: Mutex::new(()),
                 model_check: Mutex::new(None),
+                limit_reason: Mutex::new(None),
                 fork_point: Mutex::new(None),
                 on_merge: Mutex::new(None),
+                child_model_source: Mutex::new(None),
+                worktree_setup_source: Mutex::new(None),
+                on_task_end: Mutex::new(None),
+                root: Mutex::new(RootOptions::default()),
             }),
         };
         (host, receiver)
@@ -433,10 +485,119 @@ impl Delegation {
         *self.inner.model_check.lock().unwrap_or_else(PoisonError::into_inner) = Some(check);
     }
 
+    /// `withLimitReason`: a child that failed once its root's tree ran out of turns, tokens or cost (its run was
+    /// stopped by the budget gate) fails with the limit text rather than whatever the stopped run left behind.
+    /// `reason(task_id)` is that text while the child's root is spent.
+    pub fn set_limit_reason(&self, reason: LimitReason) {
+        *self.inner.limit_reason.lock().unwrap_or_else(PoisonError::into_inner) = Some(reason);
+    }
+
+    fn with_limit_reason(&self, id: &str, result: Value) -> Value {
+        if result["status"] != "failed" {
+            return result;
+        }
+        let hook = self
+            .inner
+            .limit_reason
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        match hook.and_then(|reason| reason(id)) {
+            Some(reason) if result["error"] != reason.as_str() => {
+                let mut result = result;
+                result["error"] = json!(reason);
+                result
+            }
+            _ => result,
+        }
+    }
+
     /// Lets `rlm.spawn(fork=True)` start a child on its caller's conversation: `hook` names where (the conversation
     /// so far, before the call still running), which the runner receives as [`ChildRun::fork_at`].
     pub fn set_fork_point(&self, hook: crate::fork::ForkPointHook) {
         *self.inner.fork_point.lock().unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// Read the model of spawns that name none from `source` at each spawn (instead of the fixed `child_model`).
+    pub fn set_child_model_source(&self, source: ChildModelSource) {
+        *self
+            .inner
+            .child_model_source
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(source);
+    }
+
+    /// Read the default worktree setup from `source` at each worktree spawn (instead of the fixed `worktree_setup`).
+    pub fn set_worktree_setup_source(&self, source: WorktreeSetupSource) {
+        *self
+            .inner
+            .worktree_setup_source
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(source);
+    }
+
+    fn child_model(&self) -> Option<String> {
+        let source = self
+            .inner
+            .child_model_source
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        match source {
+            Some(source) => source(),
+            None => self.inner.child_model.clone(),
+        }
+    }
+
+    fn default_worktree_setup(&self) -> Option<WorktreeSetup> {
+        let source = self
+            .inner
+            .worktree_setup_source
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        match source {
+            Some(source) => source(),
+            None => self.inner.worktree_setup.clone(),
+        }
+    }
+
+    /// Startup pruning (native-host.ts `loadTasks`): the worktrees of sessions that ended without cleaning up (a
+    /// crash) are removed, their work kept on its branch; none with `ULTRON_KEEP_WORKTREES` or without a workspace,
+    /// and never this session's own (see [`wt::prune_orphan_worktrees`]).
+    pub fn prune_orphan_worktrees(&self) -> wt::PruneReport {
+        match self.inner.workspace.as_deref().filter(|_| !self.inner.keep_worktrees) {
+            Some(workspace) => wt::prune_orphan_worktrees(workspace, &self.inner.session_id),
+            None => wt::PruneReport::default(),
+        }
+    }
+
+    /// `rootSpawn`: this host's root is itself a subagent, `level` levels deep, that may create `allowance` more
+    /// levels (`None`: unlimited). Nesting limits and children's levels count from it.
+    pub fn set_root_spawn(&self, level: u32, allowance: Option<i64>) {
+        let mut root = self.inner.root.lock().unwrap_or_else(PoisonError::into_inner);
+        root.level = level;
+        root.allowance = allowance;
+    }
+
+    /// `rootFinish`: the root's own `rlm.finish` goes to `finish` (its parent's host) instead of being refused.
+    pub fn set_root_finish(&self, finish: RootFinish) {
+        self.inner.root.lock().unwrap_or_else(PoisonError::into_inner).finish = Some(finish);
+    }
+
+    /// The model of spawns that name none from now on (`childModel`, read per spawn); `None`: the options' one.
+    pub fn set_child_model(&self, model: Option<String>) {
+        self.inner
+            .root
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .child_model = model;
+    }
+
+    /// Who sees each subagent's end (`onTaskEnd(publicRecord(task), info)`): its terminal journal record (id, key,
+    /// definition, state, result, parentId?). Observers never affect the result.
+    pub fn on_task_end(&self, observer: TaskEndObserver) {
+        *self.inner.on_task_end.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
     }
 
     /// Tell `observer` how each worktree child's merge ended (`onMerge`: the session's counters).
@@ -908,14 +1069,17 @@ impl Delegation {
     fn spawn(&self, payload: &Map<String, Value>, parent: Option<&str>, lane: &str) -> Result<Value, String> {
         fields(payload, &["prompt", "kwargs"])?;
         let limit = self.inner.spawn_depth;
+        let root = self.inner.root.lock().unwrap_or_else(PoisonError::into_inner).clone();
         let (depth, allowance) = {
             let state = lock(&self.inner.state);
             let children: Vec<String> = state.line(parent).into_iter().filter(|id| state.is_child(id)).collect();
             let allowance = children
                 .first()
                 .and_then(|id| state.task(id))
-                .map_or(i64::MAX, |spawner| i64::from(spawner.spawn_depth));
-            (children.len() as i64, allowance)
+                .map_or(root.allowance.unwrap_or(i64::MAX), |spawner| {
+                    i64::from(spawner.spawn_depth)
+                });
+            (i64::from(root.level) + children.len() as i64, allowance)
         };
         if limit > 0 && depth >= i64::from(limit) {
             return Err(format!(
@@ -1008,7 +1172,7 @@ impl Delegation {
                 }
                 Some(model.clone())
             }
-            _ => self.inner.child_model.clone(),
+            _ => root.child_model.clone().or_else(|| self.child_model()),
         };
         let timeout = match kwargs.get("timeout_ms") {
             Some(value @ Value::Number(_)) => value.clone(),
@@ -1088,7 +1252,7 @@ impl Delegation {
                 before: None,
                 merge_status: None,
             });
-            let level = state.line(Some(&id)).iter().filter(|a| state.is_child(a)).count() as u32;
+            let level = root.level + state.line(Some(&id)).iter().filter(|a| state.is_child(a)).count() as u32;
             let running = state.journal.transition(&id, "running", None)?;
             if let Some(task) = state.task_mut(&id) {
                 task.record = running;
@@ -1174,7 +1338,8 @@ impl Delegation {
             }
             return Err("worktree=True needs a working directory, and this session has none".into());
         };
-        let setup = merged_setup(self.inner.worktree_setup.as_ref(), setup);
+        let default_setup = self.default_worktree_setup();
+        let setup = merged_setup(default_setup.as_ref(), setup);
         let created = wt::create_child_worktree(&wt::CreateWorktreeOptions {
             cwd: &from,
             session_id: &self.inner.session_id,
@@ -1205,6 +1370,7 @@ impl Delegation {
         };
         let result =
             result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
+        let result = self.with_limit_reason(&id, result);
         let _ = self.end(&id, result);
     }
 
@@ -1409,6 +1575,7 @@ impl Delegation {
         }
         // A worktree child's work is committed on its branch before its result is published.
         let result = self.finalize_worktree(id, result);
+        let mut ended = None;
         let event = {
             let mut state = lock(&self.inner.state);
             let terminal = match result["status"].as_str() {
@@ -1447,6 +1614,9 @@ impl Delegation {
                 record["result"].clone()
             });
             task.outcome = Some(outcome.clone());
+            if outcome.is_ok() {
+                ended = Some(public_record(&task.record));
+            }
             self.inner.changed.notify_all();
             let event = match outcome {
                 Ok(_) if !closed => Some(DetachedEnd {
@@ -1472,6 +1642,15 @@ impl Delegation {
             }
             event
         };
+        let observer = self
+            .inner
+            .on_task_end
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let (Some(observer), Some(record)) = (observer, &ended) {
+            observer(record);
+        }
         if let Some(event) = event {
             return Ok(event.task["result"].clone());
         }
@@ -1563,6 +1742,39 @@ impl Delegation {
         }
         result["worktree"] = info;
         result
+    }
+
+    /// `agents.inspect` / `agents.result` / `agents.cancel` of subagent `id` (TypeScript keeps `rlm-child@1` tasks in
+    /// the one task journal the typed agents use): `None` when `id` is no subagent `lane` may see (the root lane
+    /// sees every one, another lane its own subtree). `cell` ends a result's wait.
+    pub fn agents_request(
+        &self,
+        kind: &str,
+        id: &str,
+        lane: &str,
+        cell: Option<&Signal>,
+    ) -> Option<Result<Value, String>> {
+        let (task, live) = {
+            let state = lock(&self.inner.state);
+            let parent = state.lane_tasks.get(lane).cloned();
+            let task = state
+                .task(id)
+                .filter(|_| state.is_child(id) && state.visible(id, parent.as_deref()))?;
+            (public_task(task), task.outcome.is_none())
+        };
+        Some(match kind {
+            "agents.inspect" => Ok(task),
+            "agents.cancel" => self
+                .cancel(id, "Ultron task cancelled")
+                .map(|result| json!({ "cancelled": result["status"] == "cancelled" })),
+            _ if !live => Ok(task.get("result").cloned().unwrap_or(Value::Null)),
+            _ => match self.wait_until(&[id.to_string()], None, cell).pop() {
+                Some((_, outcome)) => outcome,
+                None => Err(cell
+                    .and_then(Signal::reason)
+                    .unwrap_or_else(|| "the calling cell was aborted".into())),
+            },
+        })
     }
 
     /// Cancel a task and, after it, its unfinished descendants.
@@ -1705,6 +1917,19 @@ impl Delegation {
     }
 
     fn finish_request(&self, mut payload: Map<String, Value>, parent: Option<&str>) -> Result<Value, String> {
+        // A root that is itself a subagent (an `ultron mcp --child` server) gives its verdict to its parent's host.
+        if parent.is_none() {
+            let finish = self
+                .inner
+                .root
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .finish
+                .clone();
+            if let Some(finish) = finish {
+                return finish(payload);
+            }
+        }
         let mut state = lock(&self.inner.state);
         let id = parent
             .filter(|id| state.is_child(id))

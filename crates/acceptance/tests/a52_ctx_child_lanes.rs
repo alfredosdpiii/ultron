@@ -259,9 +259,10 @@ fn acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane_and_is_observed_on
         seen.iter().any(|(r, t)| r == "tool" && t.starts_with("answer 1")),
         "{seen:?}"
     );
-    // The brief, the summary, the second call and its result, the edit cell and its result, the note.
+    // The clock line (a subagent lane's, clock-context.ts `clockLane`), the brief, the summary, the second call and
+    // its result, the edit cell and its result, the note.
     let without_system: Vec<&(String, String)> = seen.iter().filter(|(r, _)| r != "system").collect();
-    assert_eq!(without_system.len(), 7, "{seen:?}");
+    assert_eq!(without_system.len(), 8, "{seen:?}");
 
     // After unpinning, forgetting the result leaves a stub, keeping its call paired.
     let last = step("UNPIN_DONE");

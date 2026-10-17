@@ -109,6 +109,13 @@ impl ToolRoundNudger {
         }
     }
 
+    /// `nextCall: true`: the wait steer says events arrive at the top of a later rlm result (an external root, whose
+    /// runs nothing can start).
+    pub fn with_next_call(mut self) -> ToolRoundNudger {
+        self.next_call = true;
+        self
+    }
+
     /// One model turn of `run` ended with `tool_calls` calls while `running` root-started subagents or tasks run.
     pub fn turn_ended(&mut self, run: &str, tool_calls: usize, running: u64) -> Option<String> {
         if self.threshold == 0 {

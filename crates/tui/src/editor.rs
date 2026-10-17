@@ -380,6 +380,17 @@ impl Editor {
         }
     }
 
+    /// `setKittyProtocolActive`: the editor's own key checks and its bindings match Kitty input.
+    pub fn set_kitty_active(&mut self, active: bool) {
+        self.ctx.kitty_active = active;
+        self.keys.set_kitty_active(active);
+    }
+
+    /// New user bindings (`<agentDir>/keybindings.json` read again on `/reload`).
+    pub fn set_user_keybindings(&mut self, user: Vec<(String, Option<Vec<String>>)>) {
+        self.keys.set_user_bindings(user);
+    }
+
     /// TS `EditorTheme.selectList`.
     pub fn set_select_list_theme(&mut self, theme: SelectListTheme) {
         self.select_list_theme = Rc::new(theme);

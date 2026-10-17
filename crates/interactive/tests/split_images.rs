@@ -1,4 +1,4 @@
-//! Tool result images in the split viewport (the default tuiMode: finished transcript in the terminal's scrollback):
+//! Tool result images in the split viewport (tuiMode "regular": finished transcript in the terminal's scrollback):
 //! on Kitty the image is drawn into scrollback as TypeScript's main screen draws it (its rows made first, then the
 //! image placed on its first row), and a display reset (a replay of scrollback) deletes it before clearing. The
 //! renderer's image rules are ported in crates/tui/tests/split_kitty_images.rs.
@@ -58,8 +58,10 @@ fn app() -> App {
         context_window: 1000,
         thinking_levels: Vec::new(),
     };
-    let qol = QolSettings::default();
-    assert!(qol.viewport_split);
+    let qol = QolSettings {
+        viewport_split: true,
+        ..QolSettings::default()
+    };
     let mut app = App::new(
         AppOptions {
             theme,

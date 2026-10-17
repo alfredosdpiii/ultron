@@ -265,11 +265,13 @@ fn interactive_escape_restores_queued_messages_then_aborts() {
             entry_id: "f1".into(),
             kind: interactive::lane::QueueKind::FollowUp,
             text: "second".into(),
+            user: true,
         },
         interactive::lane::Queued {
             entry_id: "s1".into(),
             kind: interactive::lane::QueueKind::Steer,
             text: "first".into(),
+            user: true,
         },
     ]));
     let s = screen(&mut app);
@@ -288,6 +290,47 @@ fn interactive_escape_restores_queued_messages_then_aborts() {
     assert_eq!(calls(&c).len(), 3);
 }
 
+/// client-tui.ts `#restoreQueuedToEditor`: only queued `type: "message"` items with `role: "user"` return to the
+/// editor (Esc and Alt+Up); a queued runtime event (a custom message) stays queued, shown, and is not cancelled. The
+/// dequeue hint shows only while a user message is queued (`#syncQueues`).
+#[test]
+fn interactive_dequeue_leaves_queued_runtime_events_queued() {
+    use interactive::lane::{QueueKind, Queued};
+    let (mut app, c) = app();
+    app.apply(LaneEvent::OperationStarted("op1".into()));
+    let queued = |id: &str, kind, text: &str, user| Queued {
+        entry_id: id.into(),
+        kind,
+        text: text.into(),
+        user,
+    };
+    app.apply(LaneEvent::Queues(vec![
+        queued("r1", QueueKind::FollowUp, "", false),
+        queued("u1", QueueKind::FollowUp, "mine", true),
+        queued("r2", QueueKind::Steer, "<ultron-wake>", false),
+    ]));
+    let s = screen(&mut app);
+    assert!(
+        s.contains(" Steering: <ultron-wake>\n Follow-up:\n Follow-up: mine\n ↳ Alt+Up to edit all queued messages"),
+        "{s}"
+    );
+    app.handle_input("\x1b[1;3A");
+    assert_eq!(calls(&c), ["cancel u1"]);
+    let s = screen(&mut app);
+    assert!(s.contains("Restored 1 queued message to editor"), "{s}");
+    assert_eq!(app.editor_text(), "mine");
+    // The runtime events stay pending, without the dequeue hint.
+    assert!(s.contains(" Steering: <ultron-wake>\n Follow-up:\n"), "{s}");
+    assert!(!s.contains("to edit all queued messages"), "{s}");
+    // Alt+Up again: nothing of the user's is queued.
+    app.handle_input("\x1b[1;3A");
+    assert_eq!(calls(&c), ["cancel u1"]);
+    assert!(screen(&mut app).contains("No queued messages to restore"));
+    // Esc aborts without cancelling the runtime events.
+    app.handle_input("\x1b");
+    assert_eq!(calls(&c), ["cancel u1", "abort"]);
+}
+
 /// client-tui-chat.ts `#syncQueues` with `QUEUE_LABELS`: steering first, then the rest in queue order, a next-run
 /// message labelled "Next run".
 #[test]
@@ -299,6 +342,7 @@ fn interactive_pending_messages_label_next_run_like_typescript() {
         entry_id: id.into(),
         kind,
         text: text.into(),
+        user: true,
     };
     app.apply(LaneEvent::Queues(vec![
         queued("n1", QueueKind::NextRun, "next time"),

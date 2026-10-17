@@ -69,13 +69,28 @@ pub fn max_event_runs_from_env(value: Option<&str>) -> usize {
         .unwrap_or(DEFAULT_MAX_EVENT_RUNS)
 }
 
-/// `runtimeEventText`: one `<runtime_event>` line per completion.
+/// Masks secrets in text that reaches the model (`maskCellOutput`: the session's known secrets and the shipped rules,
+/// unless `ULTRON_MASK_SECRETS` turns masking off).
+pub type MaskText = Arc<dyn Fn(&str) -> String + Send + Sync>;
+
+/// The shipped rules only, masking on (no session: nothing registered).
+pub fn default_mask() -> MaskText {
+    Arc::new(|text: &str| host::secrets::OutputMasker::default().mask_counted(text, None).0)
+}
+
+/// `runtimeEventText`: one `<runtime_event>` line per completion, with the shipped masking rules.
 pub fn runtime_event_text(events: &[RuntimeEvent]) -> String {
+    runtime_event_text_with(events, &default_mask())
+}
+
+/// `runtimeEventText` with the session's masking: each summary is cut to 4 × 240 UTF-16 units, masked, then
+/// bounded.
+pub fn runtime_event_text_with(events: &[RuntimeEvent], mask: &MaskText) -> String {
     events
         .iter()
         .map(|e| {
-            let summary: String = e.summary.chars().take(4 * 240).collect();
-            crate::compose::runtime_event_line(&e.kind, &e.id, &e.status, &summary, &e.fetch)
+            let summary = crate::compose::js_slice(&e.summary, 4 * 240);
+            crate::compose::runtime_event_line_with(&e.kind, &e.id, &e.status, &summary, &e.fetch, mask)
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -83,10 +98,15 @@ pub fn runtime_event_text(events: &[RuntimeEvent]) -> String {
 
 /// `runtimeEventMessage`: the events as one Pi custom message.
 pub fn runtime_event_message(events: &[RuntimeEvent], now: u64) -> Value {
+    runtime_event_message_with(events, now, &default_mask())
+}
+
+/// [`runtime_event_message`] with the session's masking.
+pub fn runtime_event_message_with(events: &[RuntimeEvent], now: u64, mask: &MaskText) -> Value {
     json!({
         "role": "custom",
         "customType": RUNTIME_EVENT_MESSAGE_TYPE,
-        "content": runtime_event_text(events),
+        "content": runtime_event_text_with(events, mask),
         "display": true,
         "details": {"events": events.iter().map(|e| json!({"kind": e.kind, "id": e.id, "status": e.status})).collect::<Vec<_>>()},
         "timestamp": now,
@@ -166,6 +186,8 @@ pub struct DispatcherOptions {
     pub retry_after: Duration,
     /// Ends the message of a batch with a backgrounded cell's end (`cell_done`), as the cell's result would end.
     pub note: Option<EventNote>,
+    /// Masks the summaries (none: the shipped rules only).
+    pub mask: Option<MaskText>,
 }
 
 impl DispatcherOptions {
@@ -180,6 +202,7 @@ impl DispatcherOptions {
             on_delivery: None,
             retry_after: RETRY_AFTER,
             note: None,
+            mask: None,
         }
     }
 }
@@ -423,7 +446,8 @@ impl Worker {
     }
 
     fn message(&mut self, lane: &str, events: &[RuntimeEvent]) -> Value {
-        let mut message = runtime_event_message(events, (self.now)());
+        let mask = self.options.mask.clone().unwrap_or_else(default_mask);
+        let mut message = runtime_event_message_with(events, (self.now)(), &mask);
         let cells: Vec<&str> = events
             .iter()
             .filter(|e| e.kind == "cell_done")

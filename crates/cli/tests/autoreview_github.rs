@@ -211,3 +211,33 @@ fn cli_autoreview_status_renders_recent_reviews() {
         "{out}"
     );
 }
+
+/// Every gh token the daemon reads is a known secret (`TokenStore` `registerSecretValues`, accounts.ts): a log line
+/// carrying it (here a GitHub failure whose body echoes it) is written masked to the autoreview log.
+#[test]
+fn cli_autoreview_daemon_log_masks_the_gh_token() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = env_for(dir.path());
+    let hub = FakeHub::new();
+    let token = hub.add_account(BOT, "github.com", true);
+    hub.add_pull(FakePull::new("o", "r", 1).requested(&[BOT]));
+    hub.lock().notifications = vec![github_common::Notification::new("review_requested", 1)];
+    hub.fail("GET repos/o/r/pulls/1", 500, &[], &format!("upstream echoed {token}"));
+    let engine = FakeEngine::new(vec![]);
+    let overrides = Overrides {
+        runner: Some(hub.clone()),
+        engine: Some(engine),
+    };
+    let (code, _, err) = run(&env, &overrides, &["once", "--json", "--dry-run"]);
+    assert_eq!(code, 0, "{err}");
+    let logs = dir.path().join("agent/autoreview/logs");
+    let text: String = std::fs::read_dir(&logs)
+        .unwrap_or_else(|e| panic!("{}: {e}", logs.display()))
+        .map(|entry| std::fs::read_to_string(entry.unwrap().path()).unwrap())
+        .collect();
+    assert!(
+        text.contains("the decision failed: GitHub GET repos/o/r/pulls/1: 500 upstream echoed [REDACTED:known_secret]"),
+        "{text}"
+    );
+    assert!(!text.contains(&token), "{text}");
+}

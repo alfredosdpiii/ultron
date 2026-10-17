@@ -1,0 +1,2691 @@
+{
+ "global": {
+  "defaultModel": "global-model",
+  "rlm": {
+   "childModel": "global/child",
+   "frameModel": "global/frame"
+  },
+  "review": {
+   "model": "global/review"
+  },
+  "compaction": {
+   "enabled": true,
+   "reserveTokens": 1000
+  }
+ },
+ "project": {
+  "defaultProvider": "project-provider",
+  "defaultModel": "project-model",
+  "defaultThinkingLevel": "high",
+  "compaction": {
+   "enabled": false,
+   "keepRecentTokens": 777
+  },
+  "retry": {
+   "maxRetries": 7,
+   "baseDelayMs": 10,
+   "provider": {
+    "timeoutMs": 1234,
+    "maxRetries": 1
+   }
+  },
+  "httpIdleTimeoutMs": 4000,
+  "thinkingBudgets": {
+   "low": 5
+  },
+  "transport": "sse",
+  "rlm": {
+   "childModel": "project/child"
+  },
+  "review": {
+   "model": "project/review"
+  },
+  "worktrees": {
+   "setupCommand": "make setup",
+   "link": [
+    "deps"
+   ]
+  }
+ },
+ "getters": [
+  {
+   "settings": {},
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "rlm": {
+     "frameModel": "openai/gpt-5",
+     "childModel": "anthropic/claude-sonnet-4-5",
+     "frameThinking": "high"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "openai/gpt-5",
+     "childModel": "anthropic/claude-sonnet-4-5",
+     "frameThinking": "high"
+    }
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "rlm": {
+     "childModel": "claude-code/sonnet",
+     "frameThinking": "max"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameThinking": "max"
+    }
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "rlm": {
+     "frameModel": " openai/gpt-5 ",
+     "childModel": "nope",
+     "frameThinking": "bogus"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "openai/gpt-5"
+    }
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "rlm": {
+     "frameModel": "a/b c",
+     "childModel": "x/y/z"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "childModel": "x/y/z"
+    }
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "rlm": "openai/gpt-5"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "review": {
+     "model": "openai/gpt-5-codex"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": "openai/gpt-5-codex"
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "review": {
+     "model": "bad"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "review": "openai/gpt-5"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "reviewModel": "openai/gpt-5"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "worktrees": {
+     "link": [
+      "node_modules",
+      " ",
+      3,
+      " .venv"
+     ],
+     "copy": [],
+     "setupCommand": "  npm ci  "
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {
+     "link": [
+      "node_modules",
+      " .venv"
+     ],
+     "copy": [],
+     "command": "npm ci"
+    }
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "worktrees": {
+     "setupCommand": "   ",
+     "copy": [
+      ".env.local"
+     ]
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {
+     "copy": [
+      ".env.local"
+     ]
+    }
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "worktrees": {
+     "link": "node_modules",
+     "setupCommand": 7
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "worktrees": "x"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "retry": {
+     "provider": {
+      "timeoutMs": 1000,
+      "maxRetries": 2,
+      "maxRetryDelayMs": 5000
+     }
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "timeoutMs": 1000,
+     "maxRetries": 2,
+     "maxRetryDelayMs": 5000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 1000,
+     "maxRetries": 2,
+     "maxRetryDelayMs": 5000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "retry": {
+     "provider": {
+      "maxRetries": 0
+     }
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetries": 0,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetries": 0,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "retry": {
+     "provider": {
+      "timeoutMs": null,
+      "maxRetries": null,
+      "maxRetryDelayMs": null
+     }
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "timeoutMs": null,
+     "maxRetries": null,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetries": null,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "retry": {
+     "maxDelayMs": 7000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 7000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 7000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "retry": {
+     "provider": "x"
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": 0
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 0
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 2147483647,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": "disabled"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 0
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 2147483647,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": " 45000 "
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 45000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 45000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": 12.7
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 12
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 12,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": "soon"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "error": "Invalid httpIdleTimeoutMs setting: soon"
+   },
+   "providerRequestOptions": {
+    "error": "Invalid httpIdleTimeoutMs setting: soon"
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": -1
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "error": "Invalid httpIdleTimeoutMs setting: -1"
+   },
+   "providerRequestOptions": {
+    "error": "Invalid httpIdleTimeoutMs setting: -1"
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": 9000,
+    "retry": {
+     "provider": {
+      "timeoutMs": 1
+     }
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "timeoutMs": 1,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 9000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 1,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "httpIdleTimeoutMs": 0,
+    "retry": {
+     "provider": {
+      "maxRetries": 4
+     }
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetries": 4,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 0
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 2147483647,
+     "maxRetries": 4,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "transport": "sse"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "sse"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "transport": "websocket-cached"
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "websocket-cached"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "websockets": true
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "websocket"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "websockets": false
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "sse"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "showHardwareCursor": false,
+    "terminal": {
+     "clearOnShrink": false
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": false
+     },
+     "clearOnShrink": {
+      "value": false
+     }
+    }
+   ]
+  },
+  {
+   "settings": {
+    "showHardwareCursor": true,
+    "terminal": {
+     "clearOnShrink": true
+    }
+   },
+   "rlmModelSettings": {
+    "value": {}
+   },
+   "reviewModel": {
+    "value": null
+   },
+   "worktreeSettings": {
+    "value": {}
+   },
+   "providerRetrySettings": {
+    "value": {
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "terminal": [
+    {
+     "env": {},
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "1",
+      "PI_CLEAR_ON_SHRINK": "1"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    },
+    {
+     "env": {
+      "PI_HARDWARE_CURSOR": "true",
+      "PI_CLEAR_ON_SHRINK": "yes"
+     },
+     "showHardwareCursor": {
+      "value": true
+     },
+     "clearOnShrink": {
+      "value": true
+     }
+    }
+   ]
+  }
+ ],
+ "trust": [
+  {
+   "name": "undecided-ask",
+   "trust": null,
+   "defaultProjectTrust": null,
+   "projectFiles": true,
+   "trusted": true,
+   "compaction": {
+    "value": {
+     "enabled": false,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 777
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 7,
+     "baseDelayMs": 10,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": "project-provider"
+   },
+   "defaultModel": {
+    "value": "project-model"
+   },
+   "defaultThinkingLevel": {
+    "value": "high"
+   },
+   "httpIdleTimeoutMs": {
+    "value": 4000
+   },
+   "thinkingBudgets": {
+    "value": {
+     "low": 5
+    }
+   },
+   "transport": {
+    "value": "sse"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 1234,
+     "maxRetries": 1,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {
+     "link": [
+      "deps"
+     ],
+     "command": "make setup"
+    }
+   }
+  },
+  {
+   "name": "distrusted",
+   "trust": false,
+   "defaultProjectTrust": null,
+   "projectFiles": true,
+   "trusted": false,
+   "compaction": {
+    "value": {
+     "enabled": true,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 20000
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 3,
+     "baseDelayMs": 2000,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": null
+   },
+   "defaultModel": {
+    "value": "global-model"
+   },
+   "defaultThinkingLevel": {
+    "value": null
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {}
+   }
+  },
+  {
+   "name": "default-never",
+   "trust": null,
+   "defaultProjectTrust": "never",
+   "projectFiles": true,
+   "trusted": false,
+   "compaction": {
+    "value": {
+     "enabled": true,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 20000
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 3,
+     "baseDelayMs": 2000,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": null
+   },
+   "defaultModel": {
+    "value": "global-model"
+   },
+   "defaultThinkingLevel": {
+    "value": null
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {}
+   }
+  },
+  {
+   "name": "trusted-over-never",
+   "trust": true,
+   "defaultProjectTrust": "never",
+   "projectFiles": true,
+   "trusted": true,
+   "compaction": {
+    "value": {
+     "enabled": false,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 777
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 7,
+     "baseDelayMs": 10,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": "project-provider"
+   },
+   "defaultModel": {
+    "value": "project-model"
+   },
+   "defaultThinkingLevel": {
+    "value": "high"
+   },
+   "httpIdleTimeoutMs": {
+    "value": 4000
+   },
+   "thinkingBudgets": {
+    "value": {
+     "low": 5
+    }
+   },
+   "transport": {
+    "value": "sse"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 1234,
+     "maxRetries": 1,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {
+     "link": [
+      "deps"
+     ],
+     "command": "make setup"
+    }
+   }
+  },
+  {
+   "name": "parent-distrusted",
+   "trust": "parent-false",
+   "defaultProjectTrust": null,
+   "projectFiles": true,
+   "trusted": false,
+   "compaction": {
+    "value": {
+     "enabled": true,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 20000
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 3,
+     "baseDelayMs": 2000,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": null
+   },
+   "defaultModel": {
+    "value": "global-model"
+   },
+   "defaultThinkingLevel": {
+    "value": null
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {}
+   }
+  },
+  {
+   "name": "nothing-to-trust",
+   "trust": false,
+   "defaultProjectTrust": "never",
+   "projectFiles": false,
+   "trusted": true,
+   "compaction": {
+    "value": {
+     "enabled": true,
+     "reserveTokens": 1000,
+     "keepRecentTokens": 20000
+    }
+   },
+   "retry": {
+    "value": {
+     "enabled": true,
+     "maxRetries": 3,
+     "baseDelayMs": 2000,
+     "maxAgentDelayMs": 60000
+    }
+   },
+   "defaultProvider": {
+    "value": null
+   },
+   "defaultModel": {
+    "value": "global-model"
+   },
+   "defaultThinkingLevel": {
+    "value": null
+   },
+   "httpIdleTimeoutMs": {
+    "value": 300000
+   },
+   "thinkingBudgets": {
+    "value": null
+   },
+   "transport": {
+    "value": "auto"
+   },
+   "providerRequestOptions": {
+    "value": {
+     "timeoutMs": 300000,
+     "maxRetryDelayMs": 60000
+    }
+   },
+   "rlmModelSettings": {
+    "value": {
+     "frameModel": "global/frame",
+     "childModel": "global/child"
+    }
+   },
+   "reviewModel": {
+    "value": "global/review"
+   },
+   "worktreeSettings": {
+    "value": {}
+   }
+  }
+ ]
+}

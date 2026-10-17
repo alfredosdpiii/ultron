@@ -10,6 +10,7 @@ pub mod child;
 pub mod claude_cli;
 pub mod cli;
 pub mod control;
+pub mod external_lane;
 pub mod external_root;
 pub mod guide;
 pub mod hooks;

@@ -24,6 +24,7 @@ use std::io::{BufRead, IsTerminal, Write};
 use std::rc::Rc;
 use std::sync::{Arc, mpsc};
 use tui::keybindings::KeybindingsManager;
+use tui::keybindings_file::UserBindings;
 use tui::qol_keys::native_app_keybindings;
 use tui::theme::{ColorMode, builtin_theme_json, create_theme};
 
@@ -603,15 +604,27 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter(|item| item["type"] == "message")
-                .map(|item| Queued {
-                    entry_id: item["entryId"].as_str().unwrap_or_default().to_string(),
-                    kind: match item["kind"].as_str() {
-                        Some("steer") => QueueKind::Steer,
-                        Some("nextRun") => QueueKind::NextRun,
-                        _ => QueueKind::FollowUp,
-                    },
-                    text: session_core::view::message_text(&item["message"]),
+                .map(|item| {
+                    let message = item["type"] == "message";
+                    let user = message && item["message"]["role"] == "user";
+                    Queued {
+                        entry_id: item["entryId"].as_str().unwrap_or_default().to_string(),
+                        kind: match item["kind"].as_str() {
+                            Some("steer") => QueueKind::Steer,
+                            Some("nextRun") => QueueKind::NextRun,
+                            _ => QueueKind::FollowUp,
+                        },
+                        // client-tui-chat.ts `#syncQueues`: a message's user text (none for another role), else
+                        // `<customType>`.
+                        text: if user {
+                            session_core::view::message_text(&item["message"])
+                        } else if message {
+                            String::new()
+                        } else {
+                            format!("<{}>", item["customType"].as_str().unwrap_or("undefined"))
+                        },
+                        user,
+                    }
                 })
                 .collect(),
         )],
@@ -892,7 +905,8 @@ fn link_thread(
                     Ok(model) => {
                         // `Models.select` (models-provider.ts): the selection becomes the saved default.
                         let (cwd, agent_dir) = &settings_path;
-                        let mut settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                        let mut settings =
+                            config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
                         settings.set_global("defaultProvider", Some(json!(provider)));
                         settings.set_global("defaultModel", Some(json!(model_id)));
                         send(LaneEvent::Model(model_info(&model.unwrap_or_default())));
@@ -1200,7 +1214,7 @@ fn link_thread(
             },
             Command::SaveSetting(key, value) => {
                 let (cwd, agent_dir) = &settings_path;
-                let mut settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                let mut settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
                 save_setting(&mut settings, &key, value.clone());
                 // What the session applies live (worker-settings.ts): compaction and the queue modes.
                 let live = match key.as_str() {
@@ -1407,7 +1421,7 @@ fn link_thread(
             }
             Command::ReadSettings => {
                 let (cwd, agent_dir) = &settings_path;
-                let settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                let settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
                 let env_overrides = [
                     ("rlm.frameModel", "ULTRON_RLM_FRAME_MODEL"),
                     ("review.model", "ULTRON_REVIEW_MODEL"),
@@ -1456,7 +1470,7 @@ fn link_thread(
             }
             Command::ReadMode => {
                 let (cwd, agent_dir) = &settings_path;
-                let settings = config::settings::SettingsManager::create(cwd, agent_dir, false);
+                let settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
                 let mode = session_core::lane::PromptMode::from_settings(&settings);
                 send(LaneEvent::Mode {
                     engineering: mode.engineering,
@@ -1488,10 +1502,17 @@ fn link_thread(
             Command::WriteDebugLog(capture) => {
                 send(write_debug_log(&link, &catalog_env, &settings_path.1, &capture));
             }
-            Command::ReloadPlugins => send(LaneEvent::Status(match reload_plugins(&link) {
-                Ok(()) => "Reloaded plugins.".into(),
-                Err(error) => format!("Error: {error}"),
-            })),
+            Command::ReloadPlugins => {
+                // `KeybindingsManager.reload()` (interactive-mode.ts `/reload`): keybindings.json is read again.
+                send(LaneEvent::Keybindings(user_keybindings(
+                    &settings_path.1,
+                    crate::terminal_settings::platform(&catalog_env),
+                )));
+                send(LaneEvent::Status(match reload_plugins(&link) {
+                    Ok(()) => "Reloaded plugins.".into(),
+                    Err(error) => format!("Error: {error}"),
+                }));
+            }
             Command::Shutdown => break,
         }
     }
@@ -2207,6 +2228,15 @@ pub fn recovery_events(event: &Value, lane_open: &mut bool) -> (Vec<LaneEvent>, 
     )
 }
 
+/// `KeybindingsManager.create(agentDir)` (core/keybindings.ts): the user bindings in `<agentDir>/keybindings.json`,
+/// legacy names migrated and ordered by the TypeScript definitions; nothing when the file is missing or malformed.
+pub fn user_keybindings(agent_dir: &std::path::Path, platform: tui::keybindings::Platform) -> UserBindings {
+    tui::keybindings_file::load_user_bindings(
+        &tui::keybindings_file::keybindings_path(agent_dir),
+        &tui::keybindings::app_keybindings(platform),
+    )
+}
+
 /// Run the TUI over the link `open_link` opens (its watch events go to the TUI) until the user exits.
 fn run_tui(
     parsed: &Args,
@@ -2217,7 +2247,8 @@ fn run_tui(
     let models = catalog(env);
     let splash =
         !(env.var)("ULTRON_SPLASH").is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
-    let settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
+    // The worker's project trust: a trusted project's `.pi/settings.json` applies, a distrusted one's does not.
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
     let qol = interactive::qol::from_settings(&Value::Object(settings.settings().clone()), &|k| (env.var)(k));
     let caps = crate::terminal_settings::capabilities(env, &settings);
     let theme_name = settings.theme().unwrap_or_else(|| "dark".into());
@@ -2232,10 +2263,11 @@ fn run_tui(
         code_block_indent: Some(settings.code_block_indent()),
     });
     let platform = crate::terminal_settings::platform(env);
-    let keys = || KeybindingsManager::new(native_app_keybindings(platform), Vec::new(), Default::default());
-    let fd_path = std::env::split_paths(&(env.var)("PATH").unwrap_or_default())
-        .map(|dir| dir.join("fd"))
-        .find(|p| p.is_file());
+    let user_keys = user_keybindings(&env.agent_dir(), platform);
+    let key_context = crate::terminal_settings::key_context(env);
+    let keys = || KeybindingsManager::new(native_app_keybindings(platform), user_keys.clone(), key_context);
+    // `ensureTool("fd")` before the TUI starts (client-tui.ts `runClientTui`).
+    let fd_path = crate::tools_manager::ensure_fd(env, crate::tools_manager::GITHUB);
 
     let (ui_tx, ui_rx) = mpsc::channel::<UiEvent>();
     let (command_tx, command_rx) = mpsc::channel::<Command>();
@@ -2664,7 +2696,8 @@ mod tests {
             [LaneEvent::Queues(vec![Queued {
                 entry_id: "e1".into(),
                 kind: QueueKind::Steer,
-                text: "go".into()
+                text: "go".into(),
+                user: true,
             }])]
         );
         let next = json!({"type": "queue_update", "lane": "main", "queues": [
@@ -2677,12 +2710,37 @@ mod tests {
                 Queued {
                     entry_id: "e2".into(),
                     kind: QueueKind::NextRun,
-                    text: "later".into()
+                    text: "later".into(),
+                    user: true,
                 },
                 Queued {
                     entry_id: "e3".into(),
                     kind: QueueKind::FollowUp,
-                    text: "after".into()
+                    text: "after".into(),
+                    user: true,
+                }
+            ])]
+        );
+        // Queued host items (client-tui-chat.ts `#syncQueues`): a custom-role message shows no text, a non-message
+        // item its `<customType>`; neither is the user's.
+        let host = json!({"type": "queue_update", "lane": "main", "queues": [
+            {"type": "message", "kind": "followUp", "entryId": "r1", "message": {"role": "custom", "customType": "wake", "content": "event"}},
+            {"type": "custom", "kind": "steer", "entryId": "r2", "customType": "ultron-wake"}
+        ]});
+        assert_eq!(
+            tui_events(&host),
+            [LaneEvent::Queues(vec![
+                Queued {
+                    entry_id: "r1".into(),
+                    kind: QueueKind::FollowUp,
+                    text: String::new(),
+                    user: false,
+                },
+                Queued {
+                    entry_id: "r2".into(),
+                    kind: QueueKind::Steer,
+                    text: "<ultron-wake>".into(),
+                    user: false,
                 }
             ])]
         );

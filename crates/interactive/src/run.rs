@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant};
 
+use tui::keyboard_protocol::KeyboardProtocol;
 use tui::screen::AltScreen;
 use tui::terminal::Terminal;
 use tui::tty_writer::TtyWriter;
@@ -182,10 +183,17 @@ pub fn run_with<W: Write>(
     tty: Option<&TtyWriter>,
 ) -> std::io::Result<()> {
     terminal.start(true)?;
+    terminal.start_keyboard_protocol()?;
     match tty {
-        None => paint_loop(app, events, &mut |data| terminal.write(data), size, None)?,
+        None => {
+            let mut write = |data: &str| {
+                terminal.out.write_all(data.as_bytes())?;
+                terminal.out.flush()
+            };
+            paint_loop_with(app, events, &mut write, size, None, &mut terminal.keyboard)?
+        }
         Some(tty) => {
-            let result = paint_loop(
+            let result = paint_loop_with(
                 app,
                 events,
                 &mut |data| {
@@ -200,6 +208,7 @@ pub fn run_with<W: Write>(
                 },
                 size,
                 Some(&|| tty.pending()),
+                &mut terminal.keyboard,
             );
             tty.flush_sync(EXIT_FLUSH);
             result?;
@@ -216,6 +225,20 @@ pub fn paint_loop(
     out: &mut dyn FnMut(&str) -> std::io::Result<()>,
     size: &dyn Fn() -> (u16, u16),
     pending: Option<&dyn Fn() -> usize>,
+) -> std::io::Result<()> {
+    paint_loop_with(app, events, out, size, pending, &mut KeyboardProtocol::new())
+}
+
+/// [`paint_loop`] reading the keyboard protocol replies of `keyboard` (queried at terminal start) out of the input:
+/// they set the app's Kitty state or the modifyOtherKeys fallback and never reach the components; leaving the
+/// terminal for an external editor or a suspend pops the protocol and queries it again on return.
+pub fn paint_loop_with(
+    app: &mut App,
+    events: &Receiver<UiEvent>,
+    out: &mut dyn FnMut(&str) -> std::io::Result<()>,
+    size: &dyn Fn() -> (u16, u16),
+    pending: Option<&dyn Fn() -> usize>,
+    keyboard: &mut KeyboardProtocol,
 ) -> std::io::Result<()> {
     let split = app.qol().viewport_split;
     let gated = app.qol().render_gate;
@@ -258,6 +281,7 @@ pub fn paint_loop(
                 out(&release)?;
             }
             out(leave_bytes(app, split))?;
+            leave_keyboard(app, keyboard, out)?;
             let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
             if raw {
                 let _ = crossterm::terminal::disable_raw_mode();
@@ -267,6 +291,7 @@ pub fn paint_loop(
                 let _ = crossterm::terminal::enable_raw_mode();
             }
             out("\x1b[?2004h")?;
+            out(keyboard.query())?;
             gate.store(false, Ordering::SeqCst);
             app.finish_edit(edited);
             app.reset_display = true;
@@ -280,6 +305,7 @@ pub fn paint_loop(
                 out(&release)?;
             }
             out(leave_bytes(app, split))?;
+            leave_keyboard(app, keyboard, out)?;
             let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
             if raw {
                 let _ = crossterm::terminal::disable_raw_mode();
@@ -289,10 +315,16 @@ pub fn paint_loop(
                 let _ = crossterm::terminal::enable_raw_mode();
             }
             out("\x1b[?2004h")?;
+            out(keyboard.query())?;
             gate.store(false, Ordering::SeqCst);
             app.reset_display = true;
         }
         if app.poll_rlm() {
+            dirty = true;
+        }
+        if let Some(fragment) = keyboard.poll(Instant::now()) {
+            // A held reply fragment that never completed is input after all.
+            app.handle_input(&fragment);
             dirty = true;
         }
         if !split && app.poll_viewport(Instant::now()) {
@@ -360,11 +392,14 @@ pub fn paint_loop(
         if let Some(at) = app.viewport_deadline().filter(|_| !split) {
             wait = wait.min(at.saturating_duration_since(Instant::now()));
         }
+        if let Some(at) = keyboard.flush_deadline() {
+            wait = wait.min(at.saturating_duration_since(Instant::now()));
+        }
         match events.recv_timeout(wait) {
             Ok(event) => {
-                handle(app, event);
+                handle(app, event, keyboard, out)?;
                 while let Ok(event) = events.try_recv() {
-                    handle(app, event);
+                    handle(app, event, keyboard, out)?;
                 }
                 dirty = true;
             }
@@ -410,11 +445,39 @@ fn leave_bytes(app: &App, split: bool) -> &'static str {
     }
 }
 
-fn handle(app: &mut App, event: UiEvent) {
+/// `stop()` while the TUI leaves the terminal: pop the Kitty flags, reset modifyOtherKeys, Kitty matching off.
+fn leave_keyboard(
+    app: &mut App,
+    keyboard: &mut KeyboardProtocol,
+    out: &mut dyn FnMut(&str) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    let bytes = keyboard.stop();
+    app.set_kitty_protocol_active(false);
+    if bytes.is_empty() { Ok(()) } else { out(&bytes) }
+}
+
+fn handle(
+    app: &mut App,
+    event: UiEvent,
+    keyboard: &mut KeyboardProtocol,
+    out: &mut dyn FnMut(&str) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     match event {
-        UiEvent::Input(data) => app.handle_input(&data),
+        UiEvent::Input(data) => {
+            let negotiated = keyboard.input(&data, Instant::now());
+            if !negotiated.write.is_empty() {
+                out(&negotiated.write)?;
+            }
+            if negotiated.kitty_activated {
+                app.set_kitty_protocol_active(true);
+            }
+            for data in negotiated.forward {
+                app.handle_input(&data);
+            }
+        }
         UiEvent::Lane(event) => app.apply(event),
         UiEvent::InputClosed => app.exit = true,
         UiEvent::Wake => {}
     }
+    Ok(())
 }

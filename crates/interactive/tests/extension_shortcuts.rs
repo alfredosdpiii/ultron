@@ -240,3 +240,44 @@ fn interactive_extension_shortcut_conflicts_show_as_extension_issues() {
         "{shown}"
     );
 }
+
+/// `/reload` re-reads `<agentDir>/keybindings.json` (`KeybindingsManager.reload()`): the app's keys, the editor's,
+/// and the extension shortcut conflicts (resolved again under the effective bindings) all follow the file.
+#[test]
+fn interactive_keybindings_reload_applies_the_file_to_app_editor_and_shortcut_conflicts() {
+    let dir = std::env::temp_dir().join(format!("interactive-keybindings-reload-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = tui::keybindings_file::keybindings_path(&dir);
+    // Legacy names migrate (`exit`, `cursorLineStart`, `interrupt`).
+    std::fs::write(
+        &path,
+        r#"{"exit": "ctrl+q", "cursorLineStart": "f6", "interrupt": ["ctrl+x"]}"#,
+    )
+    .unwrap();
+    let defs = tui::keybindings::app_keybindings(Platform::new("linux", false));
+    let user = tui::keybindings_file::load_user_bindings(&path, &defs);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let (mut app, calls) = app();
+    calls.0.borrow_mut().clear();
+    app.apply(LaneEvent::Keybindings(user));
+    assert_eq!(*calls.0.borrow(), ["shortcuts app.interrupt=ctrl+x"]);
+    typed(&mut app, "abc");
+    app.handle_input("\x1b[17~");
+    typed(&mut app, "X");
+    assert_eq!(app.editor_text(), "Xabc");
+    // Ctrl+A is no longer cursorLineStart: the cursor stays after "X".
+    app.handle_input("\x01");
+    typed(&mut app, "Y");
+    assert_eq!(app.editor_text(), "XYabc");
+    // Ctrl+E (End belongs to the fullscreen viewport).
+    app.handle_input("\x05");
+    for _ in 0..5 {
+        app.handle_input("\x7f");
+    }
+    assert_eq!(app.editor_text(), "");
+    app.handle_input("\x04");
+    assert!(!app.exit, "ctrl+d is no longer app.exit");
+    app.handle_input("\x11");
+    assert!(app.exit, "ctrl+q is app.exit");
+}

@@ -543,6 +543,12 @@ pub trait WorktreeChildren: Send + Sync {
     /// Wait for the child's terminal result (`{status, value?, error?, verdict?, worktree?}`); once `cell` is
     /// aborted the child is cancelled and its cancelled result returned.
     fn result(&self, id: &str, cell: Option<&Signal>) -> Value;
+    /// `agents.inspect` / `agents.result` / `agents.cancel` of a subagent this host does not keep (`rlm-child@1`
+    /// tasks are in the one TypeScript journal): `None` when `id` is none of `lane`'s.
+    fn agents_request(&self, kind: &str, id: &str, lane: &str, cell: Option<&Signal>) -> Option<Result<Value, String>> {
+        let _ = (kind, id, lane, cell);
+        None
+    }
 }
 
 impl Agents {
@@ -1764,6 +1770,12 @@ impl Agents {
                 let id = nonempty_string(payload.get("id"), "id")?;
                 let stored = records.iter().find(|r| r["id"] == id.as_str());
                 let Some(stored) = stored.filter(|_| visible(&id)) else {
+                    // A subagent's id: the subagent host answers for it.
+                    if let Some(children) = self.inner.worktree_children.get()
+                        && let Some(answer) = children.agents_request(kind, &id, lane, cell)
+                    {
+                        return answer;
+                    }
                     return Err("Unknown Ultron task".into());
                 };
                 match kind {

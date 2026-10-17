@@ -166,7 +166,12 @@ impl Fixture {
         let (long_gate, long_state) = (release_long.clone(), long.clone());
         let provider = Provider::start(move |request: &Request| {
             let users = request.users();
-            let first = users.first().cloned().unwrap_or_default();
+            // A subagent lane's request opens with its clock line (clock-context.ts `clockLane`), then its brief.
+            let first = users
+                .iter()
+                .find(|u| !u.starts_with("[clock] "))
+                .cloned()
+                .unwrap_or_default();
             let last_role = request.body["messages"].as_array().unwrap().last().unwrap()["role"].clone();
             if users.iter().any(|u| u == LONG_PROMPT) {
                 if last_role == "tool" {
@@ -645,7 +650,12 @@ fn acceptance_a22_a_running_child_survives_a_worker_kill_and_its_result_stays_co
         .provider
         .requests()
         .into_iter()
-        .filter(|r| r.users().first().is_some_and(|u| u.contains(CHILD_PROMPT)))
+        .filter(|r| {
+            r.users()
+                .iter()
+                .find(|u| !u.starts_with("[clock] "))
+                .is_some_and(|u| u.contains(CHILD_PROMPT))
+        })
         .map(|r| r.body)
         .collect();
     assert_eq!(child_bodies.len(), 2);

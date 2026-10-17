@@ -188,14 +188,14 @@ fn daemon_session_control_set_setting_persists_and_applies_live() {
             mode: "one-at-a-time".into()
         })
     );
-    // The Rust session reads its transport and idle timeout when it opens: they apply on restart.
+    // Transport and the idle timeout apply live, as in TS: the session's provider reads them before each request.
     assert_eq!(
         f.call("setSetting", json!(["transport", "sse"])).unwrap(),
-        Some(json!({"applied": "restart"}))
+        Some(json!({"applied": "live"}))
     );
     assert_eq!(
         f.call("setSetting", json!(["httpIdleTimeoutMs", 0])).unwrap(),
-        Some(json!({"applied": "restart"}))
+        Some(json!({"applied": "live"}))
     );
     assert_eq!(f.ops(), vec![Op::State, Op::State]);
     assert_eq!(

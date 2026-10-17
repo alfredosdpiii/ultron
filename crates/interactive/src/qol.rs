@@ -6,8 +6,8 @@
 //!
 //! Settings keys (all optional):
 //! - `notifications`: bool or `"on"`/`"off"` (default on; `ULTRON_NOTIFICATIONS=off` still silences delivery).
-//! - `tuiMode`: `"fullscreen"` keeps the alternate screen; anything else (default `"regular"`) uses the
-//!   scrollback/live split.
+//! - `tuiMode`: the alternate screen (fullscreen) by default, like the TypeScript native client, which always runs
+//!   fullscreen; only an explicit `"regular"` uses the scrollback/live split.
 //! - `terminal.writerThread`, `terminal.frameGate`: bool (default on).
 //! - `statusLine`: bool, or `{enabled, preset, left, right, separator, symbols: "unicode"|"nerd"|"ascii", pr}`
 //!   (default on, preset `default`, unicode symbols, no `gh` PR lookups).
@@ -62,6 +62,9 @@ impl StatusSymbols {
     }
 }
 
+/// The `tuiMode` value that selects the scrollback/live split; every other value (and none) is fullscreen.
+pub const SPLIT_TUI_MODE: &str = "regular";
+
 /// Which Rust-only additions are on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QolSettings {
@@ -72,7 +75,7 @@ pub struct QolSettings {
     /// Frame pacing with output backpressure ([`tui::viewport::RenderGate`]).
     pub render_gate: bool,
     /// Finished transcript goes to the terminal's scrollback once; only the live area and the dock are repainted
-    /// (main screen). Off: the alternate-screen layout.
+    /// (main screen). Off (the default): the alternate-screen layout.
     pub viewport_split: bool,
     /// A status line above the editor.
     pub status_line: bool,
@@ -102,7 +105,7 @@ impl Default for QolSettings {
             notifications: true,
             tty_writer: true,
             render_gate: true,
-            viewport_split: true,
+            viewport_split: false,
             status_line: true,
             status_layout: StatusLineSettings::default(),
             status_symbols: StatusSymbols::Unicode,
@@ -185,7 +188,7 @@ impl QolSettings {
             }
         };
         set(&mut q.notifications, &settings["notifications"]);
-        q.viewport_split = settings["tuiMode"].as_str() != Some("fullscreen");
+        q.viewport_split = settings["tuiMode"].as_str() == Some(SPLIT_TUI_MODE);
         set(&mut q.tty_writer, &settings["terminal"]["writerThread"]);
         set(&mut q.render_gate, &settings["terminal"]["frameGate"]);
         let status = &settings["statusLine"];

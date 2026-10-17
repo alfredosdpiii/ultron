@@ -3017,6 +3017,160 @@ W9C-25	claude-root	frame models of claude-code come from ai::claude_code::MODELS
 W9C-26	mcp	dies server: connect_failed first and after a failed connect	mcp_dies_connection_reports_connect_failed_first_and_after_a_failed_connect
 W9C-27	mcp	dies server: connect_failed during a listing and after start	mcp_dies_connection_reports_connect_failed_while_every_server_is_listed
 W9C-28	mcp	dies server: connect_failed to 12 concurrent describes	mcp_dies_connection_reports_connect_failed_to_concurrent_describes
+W10S-01	config	workerProjectTrusted decides which settings apply (stored decision, parent decision, defaultProjectTrust never, nothing to trust) replayed from TS	config_worker_project_trust_decides_which_settings_apply_like_ts
+W10S-02	config	getRlmModelSettings/getReviewModel/getWorktreeSettings/getProviderRetrySettings/getHttpIdleTimeoutMs/providerRequestOptions/getTransport/getShowHardwareCursor/getClearOnShrink match TS	config_worker_settings_getters_match_ts
+W10S-03	session	trusted project .pi/settings.json overrides thinking level, thinkingBudgets, compaction and stream options; defaultProjectTrust never keeps it out	session_core_trusted_project_settings_reach_the_session_and_untrusted_ones_do_not
+W10S-04	session	rlm.frameModel/frameThinking/childModel and review.model read per frame (also mid-cell) and per spawn; claude-code child dropped; spawn uses rlm.childModel	session_core_model_settings_are_read_per_frame_and_per_spawn
+W10S-05	session	worktrees.setupCommand is the default worktree setup; ULTRON_KEEP_WORKTREES keeps an ended child's worktree on close	session_core_worktrees_setting_sets_up_children_and_keep_worktrees_keeps_them
+W10S-06	session	opening a session prunes dead owners' worktrees in the background	session_core_opening_a_session_prunes_orphan_worktrees
+W10S-07	session	images.autoResize read with the worker's project trust	session_core_view_image_auto_resize_follows_the_worker_project_trust
+W10S-08	session	retry.provider.maxRetries/maxRetryDelayMs drive provider retries, re-read per request	session_core_provider_retries_follow_retry_provider_settings_live
+W10S-09	session	retry.provider.timeoutMs else httpIdleTimeoutMs bounds each attempt ("Request timed out."); invalid idle timeout fails the request	session_core_provider_request_timeout_follows_the_settings
+W10S-10	session	provider stream options equal TS providerRequestOptions (+configured transport) for every fixture case	session_core_provider_stream_options_are_providerrequestoptions_of_the_current_settings
+W10S-11	session	transport setting fills the request transport; request's own wins; unset stays unset	session_core_transport_setting_fills_the_request_transport
+W10S-12	delegation	startup prune removes dead owners' worktrees, keeps live owners and the starting session's own, nothing with keep_worktrees	delegation_startup_prunes_dead_owners_worktrees_unless_kept
+W10S-13	delegation	startup prune leaves repositories without ultron-worktrees alone (no git worktree prune)	delegation_startup_pruning_leaves_repositories_without_ultron_worktrees_alone
+W10S-14	tui	showHardwareCursor / terminal.clearOnShrink fall back to PI_HARDWARE_CURSOR=1 / PI_CLEAR_ON_SHRINK=1	interactive_startup_hardware_cursor_and_clear_on_shrink_fall_back_to_the_pi_env_vars
+W10S-15	cli	ULTRON_TOOLS / ULTRON_EXTENSION_TOOLS / ULTRON_NATIVE_EXTENSION_TOOLS / extensionTools.mode / extensionTools.native warn; tools stay [rlm]	cli_tool_env_and_extension_tools_setting_warn_and_keep_only_rlm
+W10S-16	daemon	setSetting transport and httpIdleTimeoutMs apply live	daemon_session_control_set_setting_persists_and_applies_live
+W10A-01	ai/session	getAuth key/headers/env for Anthropic AUTH_TOKEN, Cloudflare, Vertex, stored env replay TS	session_core_request_auth_env_matches_typescript_get_auth
+W10A-02	ai/session	lane requests carry TS URL and auth headers (Bearer token, cf-aig-authorization, account/gateway in URL)	session_core_request_auth_env_requests_match_typescript
+W10A-03	ai/session	AI Gateway without gateway id is not configured	session_core_request_auth_env_gateway_without_ids_is_not_configured
+W10A-04	ai/session	ANTHROPIC_AUTH_TOKEN alone passes the preflight with no key	session_core_request_auth_env_auth_token_passes_the_preflight
+W10A-05	cli	ultron -p sends Authorization: Bearer token, no x-api-key; stored key wins	cli_anthropic_auth_token_print_mode_sends_the_bearer_header
+W10A-06	cli	AI Gateway /login credential fills base URL and sends cf-aig-authorization only	cli_cloudflare_gateway_login_fills_the_base_url_and_sends_cf_aig_authorization
+W10A-07	cli	Workers AI env account fills the base URL	cli_cloudflare_workers_ai_env_account_fills_the_base_url
+W10A-08	ai	x-opencode-session on every OpenCode API, caller header wins, empty/no session none	session_core_opencode_session_header_matches_typescript
+W10A-09	ai/cli	OpenAI-Organization/Project from process env (trimmed) for completions/responses/azure, not anthropic	cli_openai_organization_and_project_headers_match_typescript
+W10A-10	ai	Codex retry-after HTTP date waits until the date	ai_codex_retry_after_http_date_waits_until_the_date
+W10A-11	ai	Codex retry-after date over the cap fails	ai_codex_retry_after_http_date_over_the_cap_fails
+W10A-12	ai	Codex past retry-after date retries at once	ai_codex_retry_after_past_http_date_retries_at_once
+W10A-13	ai	SDK retry waits until retry-after date	ai_provider_retry_after_http_date_waits_until_the_date
+W10A-14	ai	SDK retry-after date checked against maxRetryDelayMs (0 disables)	ai_provider_retry_after_http_date_is_checked_against_the_cap
+W10A-15	ai	Bedrock configured endpoint precedence replays the AWS SDK	ai_bedrock_configured_endpoint_url_matches_typescript
+W10A-16	cli	Bedrock configured endpoint through the binary (process env, shared config files)	cli_bedrock_configured_endpoint_matches_typescript
+W10A-17	ai	AWS_BEDROCK_FORCE_HTTP1=1 negotiates http/1.1 (TS NodeHttpHandler)	ai_bedrock_force_http1_negotiates_http1_like_typescript
+W10A-18	ai	default and non-"1" values negotiate h2 (TS NodeHttp2Handler)	ai_bedrock_default_and_non_one_values_negotiate_h2_like_typescript
+W10A-19	mcp	response stream closed before answer resumed via GET Last-Event-ID, server retry honoured	mcp_http_resumes_a_response_stream_closed_before_answering
+W10A-20	mcp	response stream without ids fails without resuming	mcp_http_response_stream_without_ids_fails_without_resuming
+W10A-21	mcp	resumption gives up after maxRetries with the last failure	mcp_http_resumption_gives_up_after_max_retries
+W10A-22	mcp	non-transient failure ends resumption at once	mcp_http_resumption_stops_at_a_non_transient_failure
+W10A-23	mcp	GET stream reconnects with Last-Event-ID and server retry	mcp_http_get_stream_reconnects_with_last_event_id_and_retry
+W10A-24	cli/review	gh token registered as known secret; daemon log masks it	cli_autoreview_daemon_log_masks_the_gh_token
+W10A-25	kernel	key store defaults to file, keyring untouched; setting parse	kernel_snapshot_key_store_defaults_to_the_file_without_touching_the_keyring
+W10A-26	kernel	keyring takes over a file key, marker left	kernel_snapshot_key_store_keyring_takes_over_an_existing_file_key
+W10A-27	kernel	fresh profile with keyring writes no key file	kernel_snapshot_key_store_fresh_profile_with_a_keyring_writes_no_key_file
+W10A-28	kernel	unreachable/refusing keyring falls back to file in auto	kernel_snapshot_key_store_unreachable_keyring_uses_the_file
+W10A-29	kernel	marker prevents a second persistent key; process key + warning	kernel_snapshot_key_store_never_forks_a_second_persistent_key
+W10A-30	kernel	disagreeing file warning; keyring mode degrades to process key	kernel_snapshot_key_store_disagreeing_file_is_left_with_a_warning
+W10A-31	kernel	secret-tool CLI from injected PATH only (fake binary)	kernel_snapshot_key_store_secret_tool_speaks_the_cli_from_the_injected_path
+W10A-32	session	composed session key from keyring with ULTRON_RLM_SNAPSHOT_KEY_STORE=auto	session_core_snapshot_key_auto_store_uses_the_session_path_keyring
+W10A-33	session	composed session key defaults to the profile file	session_core_snapshot_key_defaults_to_the_profile_file
+W10A-34	loki	ULTRON_LOKI_PROJECT_PYTHON wins, LOKI_PYTHON left to engine	loki_project_python_named_wins_and_loki_python_is_left_to_the_engine
+W10A-35	loki	session-PATH python/python3 of an environment is the project python	loki_project_python_uses_the_environment_python_bash_would_run
+W10A-36	loki	system interpreter skipped; venv/.venv found	loki_project_python_skips_a_system_interpreter_and_finds_a_venv
+W10A-37	loki	failing python falls through to python3	loki_project_python_failing_python_falls_through_to_python3
+W10A-38	host/loki	project python reaches the post-write engine import check	host_loki_project_python_decides_unresolved_imports
+W10A-39	session	ULTRON_LOKI_BUILTIN=1 reaches extensions when Loki on/advise, not off	session_core_loki_builtin_reaches_extensions_when_loki_is_on
+W10A-40	ai	OpenRouter images timeoutMs: timeout, retry, success replay TS	ai_images_timeout_ms_matches_typescript
+W10A-41	ai	pi-messages unknown event skipped, unknown done reason stops	ai_pi_messages_unknown_event_and_reason_finish_the_stream
+W10A-42	ai	pi-messages error with unknown reason is an error	ai_pi_messages_error_with_an_unknown_reason_is_an_error
+W10T-01	interactive qol	tuiMode defaults to fullscreen; only "regular" selects the split	interactive_qol_tui_mode_defaults_to_fullscreen_like_ts
+W10T-02	interactive settings	TUI mode row defaults to fullscreen; toggle saves regular with restart status	interactive_tui_mode_change_says_when_it_applies
+W10T-03	tui keybindings	keybindings.json load/migrate/order/filter/conflicts match TS create()	tui_keybindings_file_load_and_migrate_match_ts_create
+W10T-04	tui keybindings	reload() re-reads the file like TS	tui_keybindings_file_reload_rereads_the_file_like_ts
+W10T-05	interactive keybindings	/reload bindings reach app keys, editor and extension shortcut resolution	interactive_keybindings_reload_applies_the_file_to_app_editor_and_shortcut_conflicts
+W10T-06	cli keybindings	composition root loads <agentDir>/keybindings.json	cli_user_keybindings_load_the_agent_dir_file
+W10T-07	tui keyboard	query bytes before any fallback	tui_keyboard_protocol_queries_kitty_mode_before_enabling_modify_other_keys
+W10T-08	tui keyboard	non-zero flags activate Kitty; stop pops once	tui_keyboard_protocol_activates_kitty_for_non_zero_flags
+W10T-09	tui keyboard	zero flags enable modifyOtherKeys; stop resets	tui_keyboard_protocol_falls_back_to_modify_other_keys_for_zero_flags
+W10T-10	tui keyboard	DA before flags enables modifyOtherKeys; late Kitty disables it	tui_keyboard_protocol_falls_back_for_device_attributes_without_kitty_flags
+W10T-11	tui keyboard	DA after Kitty keeps Kitty	tui_keyboard_protocol_device_attributes_after_kitty_keep_kitty
+W10T-12	tui keyboard	normal input forwarded while waiting	tui_keyboard_protocol_forwards_normal_input_while_waiting
+W10T-13	tui keyboard	split reply completed	tui_keyboard_protocol_tracks_split_kitty_confirmation
+W10T-14	tui keyboard	held CSI prefix replayed after 150 ms (restarted per fragment)	tui_keyboard_protocol_replays_a_buffered_csi_prefix_that_is_not_a_reply
+W10T-15	tui keyboard	reply parsing matches TS regexes	tui_keyboard_protocol_parses_replies_like_ts
+W10T-16	tui terminal	terminal start/stop exact bytes	tui_keyboard_protocol_terminal_start_and_stop_write_exact_bytes
+W10T-17	interactive keyboard	run loop Kitty reply: shift+enter newline, releases dropped	interactive_kitty_reply_switches_the_app_to_kitty_input
+W10T-18	interactive keyboard	run loop DA reply writes CSI >4;2m	interactive_device_attributes_reply_enables_modify_other_keys
+W10T-19	interactive keyboard	run loop split reply held and completed	interactive_split_kitty_reply_is_held_and_completed
+W10T-20	interactive mouse	editor click moves cursor; drag does not	interactive_mouse_click_in_the_editor_moves_the_cursor
+W10T-21	interactive mouse	autocomplete row click picks it	interactive_mouse_click_on_an_autocomplete_row_picks_it
+W10T-22	interactive mouse	selection row click confirms	interactive_mouse_click_on_a_selection_row_confirms_it
+W10T-23	interactive mouse	settings row click activates and saves	interactive_mouse_click_on_a_settings_row_changes_it
+W10T-24	interactive mouse	settings search press moves the input cursor	interactive_mouse_press_in_the_settings_search_moves_its_cursor
+W10T-25	interactive mouse	tool result click toggles that tool's expansion	interactive_mouse_click_on_a_tool_result_toggles_its_expansion
+W10T-26	interactive mouse	thinking run click toggles visibility	interactive_mouse_click_on_a_thinking_block_toggles_it
+W10T-27	interactive mouse	press moved before release is no click	interactive_mouse_press_moved_off_its_cell_is_no_click
+W10T-28	interactive queue	Esc/Alt+Up leave queued runtime events queued; hint only for user items	interactive_dequeue_leaves_queued_runtime_events_queued
+W10T-29	cli queue	queue_update maps host items as not the user's	cli_interactive_watch_events_become_tui_events
+W10T-30	cli fd	lookup order agent bin, fd, fdfind; offline no download	cli_tools_manager_fd_lookup_order_matches_ts
+W10T-31	cli fd	PI_OFFLINE values, asset names, release redirect parsing	cli_tools_manager_offline_and_assets_match_ts
+W10T-32	cli fd	download from 127.0.0.1 fake, retry 503, extract, 755, cleanup	cli_tools_manager_downloads_the_latest_fd_release_from_the_host
+W10T-33	cli fd	failed download is no fd, nothing left	cli_tools_manager_failed_download_is_no_fd
+W10T-34	cli terminal	WT_SESSION without SSH sets windows_terminal	cli_terminal_settings_windows_terminal_session_needs_wt_session_without_ssh
+W10T-35	interactive keys	WT raw BS is ctrl+backspace	interactive_windows_terminal_raw_bs_is_ctrl_backspace
+W10T-36	cli terminal	tmux probe reads client_termfeatures (injected PATH, cleared env, timeout)	cli_terminal_settings_tmux_probe_reads_client_termfeatures
+W10T-37	cli terminal	tmux probe only inside tmux when undecided	cli_terminal_settings_capabilities_probe_tmux_only_when_undecided
+W10T-38	interactive settings	PI_HARDWARE_CURSOR / PI_CLEAR_ON_SHRINK fallbacks	interactive_hardware_cursor_and_clear_on_shrink_fall_back_to_env
+W10R-01	budget	turn limit: one final request (toolChoice none + [Ultron] note, not stored) then the run ends; blocks counted	session_core_budget_gate_turn_limit_grants_one_final_request_then_ends_the_run
+W10R-02	budget	the final request's answer ends the run	session_core_budget_gate_final_request_answer_ends_the_run_with_it
+W10R-03	budget	token limit behaves as a turn-like limit	session_core_budget_gate_token_limit_is_a_turn_like_limit
+W10R-04	budget	cost cap stops at once, no final request	session_core_budget_gate_cost_cap_stops_at_once
+W10R-05	budget	a child's turns count against the root: R C C C C C* R*; child fails with the limit text	session_core_budget_gate_counts_a_childs_turns_against_the_root
+W10R-06	budget	frame responses count once in the tree spend	session_core_budget_gate_a_frames_responses_count_once_in_the_tree
+W10R-07	budget	ledger refusal counted at the root limit (onRefused)	session_core_stats_count_work_refused_at_a_root_limit
+W10R-08	async	re-invoke refused once the wall budget is used up	delegation_usage_reinvoke_is_refused_once_the_wall_budget_is_used_up
+W10R-09	async	re-invoke reports a spent tree first	delegation_usage_reinvoke_reports_a_spent_tree_before_the_wall
+W10R-10	async	re-invoke refused at an unenforceable cost cap	delegation_usage_reinvoke_is_refused_at_a_cost_cap_that_cannot_be_enforced
+W10R-11	worktree	worktree host commands and jobs get the worktree env	host_shared_jobs_a_worktree_hosts_commands_get_its_environment
+W10R-12	worktree	worktree lane jobs are the session's (list, cancel_root, on_end, journal cwd, survive drop)	host_shared_jobs_a_worktree_lanes_jobs_are_the_sessions
+W10R-13	worktree	product: worktree subagent shell env and root lists its job after it ended	session_core_worktree_subagent_shell_has_its_worktree_env_and_its_jobs_are_the_sessions
+W10R-14	agents	agents.inspect/result/cancel accept subagent ids; status carries jobs/toolCalls; subagent end collapses with its task line and cost	session_core_agents_api_answers_for_subagents_and_status_carries_jobs
+W10R-15	agents	status extras slice like JavaScript (UTF-16)	session_core_status_extras_slices_like_javascript
+W10R-16	clock	subagent lanes get clock lines in the session TZ	session_core_clock_lines_on_subagent_lanes_in_the_local_zone
+W10R-17	clock	formatClock in a zone matches TS literals	session_core_clock_format_matches_format_clock_in_its_zone
+W10R-18	modules	jobs journal is a session value; resume restores it; no module file	session_core_module_values_jobs_journal_is_a_session_value_that_resume_restores
+W10R-19	modules	tree fork copies module values, branch fork does not	session_core_module_values_a_tree_fork_copies_them_and_a_branch_fork_does_not
+W10R-20	refinements	instruction hook text: string as is, other content JSON.stringify	services_instruction_hook_yields_the_active_instruction_of_a_definition_and_nothing_else
+W10R-21	masking	event summaries masked	session_core_event_summaries_are_masked
+W10R-22	masking	ULTRON_MASK_SECRETS=off honoured for event summaries	session_core_event_summaries_honour_ultron_mask_secrets_off
+W10R-23	masking	registered values masked in event lines	session_core_event_lines_mask_registered_values
+W10R-24	compaction	child compaction requests and summary match the TS harness (fixture)	harness_child_compaction_requests_and_summary_match_the_typescript_harness
+W10R-25	compaction	plan splits a turn cut at an answer, previous summary + file lists	harness_chat_compaction_plan_splits_a_turn_cut_at_an_answer_and_updates_the_previous_summary
+W10R-26	compaction	second compaction updates the first summary	harness_chat_compaction_a_second_compaction_updates_the_first_summary
+W10R-27	pool	idle sweep evicts kernels past their TTL on the timer (injected clock, ticks)	delegation_idle_sweep_evicts_kernels_past_their_ttl_on_the_timer
+W10C-01	claude-root	child rlm.finish relayed as child.finish with token; kernel env lacks token	claude_root_mcp_child_server_relays_its_verdict_with_its_token_hidden_from_the_kernel
+W10C-02	claude-root	verdict travels claude child -> its own child server -> parent; recorded and verified	cli_claude_root_child_verdict_relays_from_its_own_server_to_the_parent
+W10C-03	claude-root	delegation rootSpawn/rootFinish: allowance, too-deep, levels toward ULTRON_SPAWN_DEPTH, child level	claude_root_subagent_root_spawns_only_within_its_allowance_and_relays_its_verdict
+W10C-04	claude-root	--level/--allowance bound spawns of a child server	claude_root_mcp_child_server_spawns_count_from_its_level_and_allowance
+W10C-05	claude-root	grandchildren get level+1/allowance and their own token, never the parent's	cli_claude_root_nested_children_carry_their_level_and_never_their_parents_token
+W10C-06	claude-root	user turn opens root turn, Stop closes it; Loki setup note once	claude_root_external_user_turn_opens_a_root_turn_and_stop_closes_it
+W10C-07	claude-root	setup note with first user turn; second prompt ends open turn	claude_root_external_setup_note_comes_with_the_first_user_turn_when_the_session_did_not_show_it
+W10C-08	claude-root	wait nudge appended with nextCall wording	claude_root_external_wait_nudge_is_appended_without_promising_a_wake_up
+W10C-09	claude-root	research brake at N and 2N cells; Stop resets	claude_root_external_research_brake_counts_cells_of_a_turn_and_starts_over_with_the_next
+W10C-10	claude-root	skill hint after N successful cells, once	claude_root_external_skill_hint_follows_successful_cells_once
+W10C-11	claude-root	spent turn budget refuses the cell (TS text)	claude_root_external_spent_budget_refuses_the_cell
+W10C-12	claude-root	children get configured child model unless named	claude_root_harness_lane_children_get_the_configured_child_model
+W10C-13	claude-root	--children ultron runs on --ultron-child-model (127.0.0.1 fake)	claude_root_mcp_ultron_children_run_on_the_ultron_child_model
+W10C-14	claude-root	ctx.* on Claude root kernel; ctx.state, rlm.pool, async.pending over control	claude_root_mcp_root_kernel_has_ctx_and_answers_the_viewer
+W10C-15	claude-root	shell-job ends lead the next rlm result	claude_root_mcp_shell_job_ends_lead_the_next_result
+W10C-16	claude-root	events off: async.pending in TS shape	claude_root_mcp_events_off_answers_async_pending_as_typescript
+W10C-17	claude-root	ULTRON_TOOL_ROUNDS_NUDGE through product path; Stop hook resets	claude_root_mcp_tool_round_nudge_is_appended_to_cell_results
+W10C-18	claude-root	signal shutdown function unregisters, closes runtime, idempotent	claude_root_mcp_signal_shutdown_unregisters_and_closes_the_runtime
+W10C-19	claude-root	turn work charged to the turn's root	claude_root_mcp_work_of_a_turn_is_charged_to_that_turns_root
+W10C-20	claude-root	usage.report answers the session report	cli_claude_root_mcp_answers_usage_report_with_its_session_report
+W11K-01	tui/clipboard	TIFF clipboard image (LE/BE, multi-page -> first page, gray/16-bit/RGBA/PackBits) converts to RGBA PNG like Photon; bad first page or truncated -> no image	tui_clipboard_image_reads_like_ts
+W11K-02	tui/clipboard	ICO clipboard image converts the entry Photon picks (highest bpp, then area, last on tie; AND-mask alpha) to RGBA PNG; truncated -> no image	tui_clipboard_image_reads_like_ts
+W11K-03	tui/clipboard	SystemClipboard product path returns TIFF/ICO as image/png and truncated TIFF as no image	tui_system_clipboard_reads_typed_images_from_the_injected_path
+W11K-04	tui/selection	double-click word selection matches TS (Node ICU 78.3) on every column of 50 CJK/Korean/SEA/mixed/emoji lines	tui_fullscreen_double_click_word_selection_on_cjk_matches_ts
+W11K-05	tui/selection	double click in 中文分词测试很重要 copies the dictionary word 分词 through FullscreenViewport	tui_fullscreen_double_click_copies_a_chinese_dictionary_word
+W11K-06	tui/word_segment	word segments and isWordLike equal Intl.Segmenter on 2,532 recorded lines (paragraphs, seeded random, Thai/Lao/Khmer/Burmese, long katakana)	tui_word_segment_matches_node_icu_on_the_recorded_lines
+W11K-07	tui/word_segment	word segments equal Intl.Segmenter on the 50 click-fixture lines	tui_word_segment_matches_node_icu_on_the_click_fixture_lines
+W11K-08	tui/word_segment	CjkBreakEngine best path: cjdict costs, katakana run cost, NFKC map (half-width, ㌀), range-end break dropped, Han+VS rule segment	tui_word_segment_cj_best_path_like_icu
+W11K-09	tui/word_segment	Thai/Lao/Burmese engines: lookahead, Thai joining Latin in a rule segment, PAIYANNOI/MAIYAMOK suffixes	tui_word_segment_south_east_asian_engines_like_icu
+W11K-10	tui/word_segment	isWordLike from rule statuses (々 vs 〆, Hangul+mark, ZWJ emoji after a letter, lone ExtendNumLet)	tui_word_segment_rule_statuses_like_icu
+W10M-01	host	bash commands and shell jobs never see ULTRON_PARENT_TOKEN (a child server verdict token)	host_commands_and_jobs_never_see_the_parent_verdict_token
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

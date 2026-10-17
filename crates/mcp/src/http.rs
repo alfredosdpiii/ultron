@@ -1,6 +1,7 @@
 //! Streamable HTTP transport (`transports/streamable-http.ts`): JSON-RPC over POST, answered with JSON or an SSE
 //! stream; the session id and protocol version travel as headers; a server-to-client GET stream opens after
-//! initialization and reconnects with backoff; close ends the session with DELETE.
+//! initialization and reconnects with backoff; a response stream that drops before its answer is resumed with GET and
+//! `Last-Event-ID`; close ends the session with DELETE.
 //!
 //! HTTP failures are `Error::Mcp` with code [`HTTP_ERROR_CODE`] and `data` `{kind, status, body}`, so the client's
 //! error type stays unchanged; [`http_error`] reads them back. `kind` is the TypeScript class name, and network
@@ -386,16 +387,20 @@ impl Shared {
         ))
     }
 
-    /// Reads an SSE body, emitting JSON-RPC messages. Returns the stream's last event id and retry, and whether
-    /// any event arrived.
-    fn consume(&self, mut body: Response, on_message: &mut dyn FnMut(&Value)) -> Result<bool, Error> {
+    /// Reads an SSE body (`consumeSse`), emitting JSON-RPC messages: every `id` field moves the cursor's last event
+    /// id, every valid `retry` field its server delay, and an event with data marks it as having received one.
+    fn consume(
+        &self,
+        mut body: Response,
+        cursor: &mut Cursor,
+        on_message: &mut dyn FnMut(&Value),
+    ) -> Result<(), Error> {
         let max = self.options.max_message_bytes.unwrap_or(DEFAULT_MAX_MESSAGE_BYTES);
         let mut parser = SseParser::new(max);
         let mut chunk = vec![0u8; 16 * 1024];
-        let mut received = false;
         loop {
             if self.closed() {
-                return Ok(received);
+                return Ok(());
             }
             let n = body
                 .read(&mut chunk)
@@ -407,8 +412,19 @@ impl Shared {
             }
             .map_err(Error::Other)?;
             for item in items {
-                let SseItem::Event(event) = item else { continue };
-                received = true;
+                let event = match item {
+                    SseItem::Id(id) => {
+                        cursor.last_event_id = Some(id);
+                        continue;
+                    }
+                    SseItem::Retry(ms) => {
+                        cursor.retry_ms = Some(ms);
+                        continue;
+                    }
+                    SseItem::Event(event) => event,
+                };
+                cursor.received = true;
+                // Events without data prime resumption; other event types are not JSON-RPC.
                 if event.data.trim().is_empty() || event.event.as_deref().is_some_and(|e| e != "message") {
                     continue;
                 }
@@ -424,7 +440,7 @@ impl Shared {
                 }
             }
             if n == 0 {
-                return Ok(received);
+                return Ok(());
             }
         }
     }
@@ -441,40 +457,135 @@ impl Shared {
         !self.closed()
     }
 
-    /// The server-to-client GET stream, reopened with backoff while it keeps failing transiently.
-    fn run_get_stream(self: Arc<Self>) {
+    fn max_delay(&self) -> Duration {
+        self.options.reconnect_max_delay.unwrap_or(Duration::from_secs(30))
+    }
+
+    fn max_retries(&self) -> u32 {
+        self.options.reconnect_max_retries.unwrap_or(5)
+    }
+
+    /// `reconnectDelay`: the server's `retry`, else the initial delay doubled per attempt, capped.
+    fn reconnect_delay(&self, attempt: u32, server_delay_ms: Option<u64>) -> Duration {
+        if let Some(ms) = server_delay_ms {
+            return Duration::from_millis(ms);
+        }
         let initial = self.options.reconnect_initial_delay.unwrap_or(Duration::from_secs(1));
-        let max_delay = self.options.reconnect_max_delay.unwrap_or(Duration::from_secs(30));
-        let max_retries = self.options.reconnect_max_retries.unwrap_or(5);
+        initial
+            .saturating_mul(2u32.saturating_pow(attempt))
+            .min(self.max_delay())
+    }
+
+    /// `openSseStream`: a GET SSE stream, resuming after `last_event_id` (`Last-Event-ID`) when there is one;
+    /// `None` when the server answers 405 (no GET stream).
+    fn open_sse_stream(&self, last_event_id: Option<&str>) -> Result<Option<Response>, Error> {
+        let response = self.authorized(reqwest::Method::GET, &|b| {
+            let b = b.header("accept", "text/event-stream");
+            match last_event_id {
+                Some(id) => b.header("last-event-id", id),
+                None => b,
+            }
+        })?;
+        if response.status().as_u16() == 405 {
+            return Ok(None);
+        }
+        let response = self.check(response)?;
+        self.capture_session(&response);
+        if content_type(&response).as_deref() != Some("text/event-stream") {
+            let kind = content_type(&response).unwrap_or_else(|| "missing".into());
+            return Err(http_failure(
+                "McpHttpError",
+                response.status().as_u16(),
+                format!("Unsupported MCP GET response content type: {kind}"),
+                "",
+            ));
+        }
+        Ok(Some(response))
+    }
+
+    /// `consumeResponseStream`: the SSE stream answering request `id`. When it ends or breaks before the response
+    /// and the server assigned event ids, it is resumed with GET and `Last-Event-ID` (backoff, or the server's
+    /// `retry`), up to the reconnect limit; an attempt that delivered events resets the count. Otherwise only this
+    /// request fails.
+    fn consume_response_stream(&self, body: Response, id: &Value) {
+        let mut cursor = Cursor::default();
+        let mut answered = false;
+        let mut stream = Some(body);
+        let mut failure: Option<Error> = None;
         let mut attempt: u32 = 0;
-        while !self.closed() {
-            let opened = self.authorized(reqwest::Method::GET, &|b| b.header("accept", "text/event-stream"));
-            let outcome = opened.and_then(|response| {
-                if response.status().as_u16() == 405 {
-                    return Ok(None);
-                }
-                let response = self.check(response)?;
-                self.capture_session(&response);
-                if content_type(&response).as_deref() != Some("text/event-stream") {
-                    let kind = content_type(&response).unwrap_or_else(|| "missing".into());
-                    return Err(http_failure(
-                        "McpHttpError",
-                        response.status().as_u16(),
-                        format!("Unsupported MCP GET response content type: {kind}"),
-                        "",
-                    ));
-                }
-                let opened_at = Instant::now();
-                let received = self.consume(response, &mut |_| {})?;
-                Ok(Some(received || opened_at.elapsed() > max_delay))
-            });
-            match outcome {
-                Ok(None) => return,
-                Ok(Some(healthy)) => {
-                    if healthy {
-                        attempt = 0;
+        loop {
+            if let Some(stream) = stream.take() {
+                let mut on_message = |m: &Value| {
+                    if m.get("method").is_none() && m["id"] == *id {
+                        answered = true;
+                    }
+                };
+                failure = self.consume(stream, &mut cursor, &mut on_message).err();
+            }
+            if answered || self.closed() {
+                return;
+            }
+            if failure.as_ref().is_some_and(|f| !is_retryable(f)) {
+                break;
+            }
+            if cursor.last_event_id.is_none() || attempt >= self.max_retries() {
+                break;
+            }
+            if cursor.received {
+                attempt = 0;
+            }
+            cursor.received = false;
+            let delay = self.reconnect_delay(attempt, cursor.retry_ms);
+            attempt += 1;
+            if !self.sleep(delay) {
+                return;
+            }
+            match self.open_sse_stream(cursor.last_event_id.as_deref()) {
+                Ok(opened) => stream = opened,
+                Err(error) => {
+                    let retryable = is_retryable(&error);
+                    failure = Some(error);
+                    if !retryable {
+                        break;
                     }
                 }
+            }
+        }
+        if self.closed() {
+            return;
+        }
+        let reason = match failure {
+            None => "stream ended without a response".to_string(),
+            Some(error) => error.to_string(),
+        };
+        self.emit(Incoming::Message(json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "error": { "code": INTERNAL_ERROR, "message": format!("MCP response stream failed: {reason}") },
+        })));
+    }
+
+    /// The server-to-client GET stream, reopened with backoff (or the server's `retry`) while it keeps failing
+    /// transiently, resuming after the last event id it saw.
+    fn run_get_stream(self: Arc<Self>) {
+        let mut cursor = Cursor::default();
+        let mut attempt: u32 = 0;
+        while !self.closed() {
+            let outcome = self
+                .open_sse_stream(cursor.last_event_id.as_deref())
+                .and_then(|opened| {
+                    let Some(response) = opened else { return Ok(false) };
+                    let opened_at = Instant::now();
+                    self.consume(response, &mut cursor, &mut |_| {})?;
+                    // A stream that stayed up for a while counts as healthy, even if it was idle.
+                    if cursor.received || opened_at.elapsed() > self.max_delay() {
+                        attempt = 0;
+                    }
+                    Ok(true)
+                });
+            match outcome {
+                Ok(false) => return,
+                Ok(true) => {}
                 Err(error) => {
                     if self.closed() {
                         return;
@@ -485,19 +596,28 @@ impl Shared {
                     }
                 }
             }
-            if attempt >= max_retries {
+            cursor.received = false;
+            if attempt >= self.max_retries() {
                 self.emit(Incoming::Error(
                     "MCP server-to-client stream dropped and could not be reopened".into(),
                 ));
                 return;
             }
-            let delay = initial.saturating_mul(2u32.saturating_pow(attempt)).min(max_delay);
+            let delay = self.reconnect_delay(attempt, cursor.retry_ms);
             attempt += 1;
             if !self.sleep(delay) {
                 return;
             }
         }
     }
+}
+
+/// Where a stream stands for resumption (`StreamCursor`).
+#[derive(Default)]
+struct Cursor {
+    last_event_id: Option<String>,
+    retry_ms: Option<u64>,
+    received: bool,
 }
 
 /// Network failures and transient statuses (408, 429, 5xx) are worth reopening a stream for.
@@ -584,26 +704,7 @@ impl Transport for HttpTransport {
             Some("text/event-stream") => {
                 let shared = Arc::clone(shared);
                 let id = message["id"].clone();
-                std::thread::spawn(move || {
-                    let mut answered = false;
-                    let result = shared.consume(response, &mut |m| {
-                        if m.get("method").is_none() && m["id"] == id {
-                            answered = true;
-                        }
-                    });
-                    if answered || shared.closed() {
-                        return;
-                    }
-                    let reason = match result {
-                        Ok(_) => "stream ended without a response".to_string(),
-                        Err(error) => error.to_string(),
-                    };
-                    shared.emit(Incoming::Message(json!({
-                        "jsonrpc": "2.0",
-                        "id": id,
-                        "error": { "code": INTERNAL_ERROR, "message": format!("MCP response stream failed: {reason}") },
-                    })));
-                });
+                std::thread::spawn(move || shared.consume_response_stream(response, &id));
                 Ok(())
             }
             other => Err(http_failure(

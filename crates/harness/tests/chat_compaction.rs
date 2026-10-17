@@ -453,6 +453,8 @@ fn harness_chat_compaction_overflow_compacts_and_retries_with_the_same_attempt_l
     history(&chat);
     chat.setup.settings(|settings| settings.compaction = ENABLED);
     chat.faux.summary(step(text_message("SUMMARY")));
+    // The cut falls on an answer: the split turn's prefix is summarized too (compaction.ts `compactWithRequest`).
+    chat.faux.summary(step(text_message("PREFIX")));
     chat.faux.agent(step(failure(OVERFLOW)));
     let attempt: Arc<Mutex<Option<serde_json::Value>>> = Arc::default();
     {
@@ -476,7 +478,11 @@ fn harness_chat_compaction_overflow_compacts_and_retries_with_the_same_attempt_l
         .into_iter()
         .find(|record| record.kind == "pi.compaction")
         .unwrap();
-    assert_eq!(compaction.data, Some(json!({ "reason": "overflow" })));
+    // The entry keeps the file lists for the next compaction (`CompactionDetails`).
+    assert_eq!(
+        compaction.data,
+        Some(json!({ "reason": "overflow", "details": { "readFiles": [], "modifiedFiles": [] } }))
+    );
     let retry = chat.faux.agent_requests().last().unwrap().messages.clone();
     assert!(user_text(retry.first()).contains("SUMMARY"));
     assert!(
@@ -494,6 +500,8 @@ fn harness_chat_compaction_overflow_fails_a_second_overflow_with_its_error_entry
     history(&chat);
     chat.setup.settings(|settings| settings.compaction = ENABLED);
     chat.faux.summary(step(text_message("SUMMARY")));
+    // The cut falls on an answer: the split turn's prefix is summarized too (compaction.ts `compactWithRequest`).
+    chat.faux.summary(step(text_message("PREFIX")));
     chat.faux.agent(step(failure(OVERFLOW)));
     chat.faux.agent(step(failure(OVERFLOW)));
     let input = chat.root.submit(SubmissionDraft::input(text("u4", 100))).unwrap();
@@ -505,7 +513,7 @@ fn harness_chat_compaction_overflow_fails_a_second_overflow_with_its_error_entry
     assert_eq!(entries.iter().filter(|kind| *kind == "pi.compaction").count(), 1);
     assert_eq!(entries.last().unwrap(), "pi.assistant");
     // The second overflow starts no second compaction: one summarization request in all.
-    assert_eq!(chat.faux.summary_requests().len(), 1);
+    assert_eq!(chat.faux.summary_requests().len(), 2);
     chat.chat.close().unwrap();
 }
 
@@ -601,6 +609,8 @@ fn harness_chat_compaction_keeps_the_full_retry_budget_after_an_overflow_compact
     history(&chat);
     chat.setup.settings(|settings| settings.compaction = ENABLED);
     chat.faux.summary(step(text_message("SUMMARY")));
+    // The cut falls on an answer: the split turn's prefix is summarized too (compaction.ts `compactWithRequest`).
+    chat.faux.summary(step(text_message("PREFIX")));
     for message in [
         failure("prompt is too long"),
         failure("overloaded"),
@@ -696,8 +706,10 @@ fn harness_chat_compaction_blocking_sends_the_request_once_without_a_second_comp
         }
     });
     chat.faux.summary(step(text_message("SUMMARY")));
+    // The cut falls on an answer: the split turn's prefix is summarized too (compaction.ts `compactWithRequest`).
+    chat.faux.summary(step(text_message("PREFIX")));
     turn(&chat, &text("u4", 400), "a4");
-    assert_eq!(chat.faux.summary_requests().len(), 1);
+    assert_eq!(chat.faux.summary_requests().len(), 2);
     assert_eq!(
         kinds(&chat.root).iter().filter(|kind| *kind == "pi.compaction").count(),
         1
@@ -894,5 +906,89 @@ fn harness_chat_compaction_keeps_the_edits_of_kept_entries() {
     );
     let prompt = user_text(chat.faux.summary_requests()[0].messages.get(1));
     assert!(!prompt.contains("u2 "), "{prompt}");
+    chat.chat.close().unwrap();
+}
+
+// ─── the summary plan (compaction.ts `prepareCompaction`, as every lane but the root's compacts) ────────────────
+
+#[test]
+fn harness_chat_compaction_plan_splits_a_turn_cut_at_an_answer_and_updates_the_previous_summary() {
+    let summary = "The conversation history before this point was compacted into the following summary:\n\n<summary>\nPREVIOUS\n</summary>";
+    let mut head = entry(1, "pi.compaction", vec![user(summary)], Some(2));
+    head.data = Some(json!({ "reason": "threshold", "details": { "readFiles": ["a.md"], "modifiedFiles": ["b.rs"] } }));
+    let edit = {
+        let mut message = assistant("editing", &["c1"], "toolUse");
+        message["content"][1]["name"] = json!("edit");
+        message["content"][1]["arguments"] = json!({ "path": "c.rs" });
+        message
+    };
+    let view = view(
+        vec![
+            entry(2, "pi.user", vec![user("u1")], None),
+            entry(3, "pi.assistant", vec![assistant("a1", &[], "stop")], None),
+            entry(4, "pi.user", vec![user("u2")], None),
+            entry(5, "pi.assistant", vec![edit], None),
+            entry(6, "pi.tool-result", vec![tool_result("c1", "ok")], None),
+            entry(7, "pi.assistant", vec![assistant("a2", &[], "stop")], None),
+        ],
+        Some(head),
+    );
+    // Cut at the answer of the second turn: the turn is split at its user message.
+    let plan = harness::chat::compaction::summary_plan(&view, 6);
+    assert!(plan.split);
+    let roles = |messages: &[serde_json::Value]| -> Vec<String> {
+        messages
+            .iter()
+            .map(|m| m["role"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(roles(&plan.history), ["user", "assistant"]);
+    assert_eq!(
+        plan.history[0]["content"], "u1",
+        "the previous summary is not summarized again"
+    );
+    assert_eq!(roles(&plan.prefix), ["user", "assistant", "toolResult"]);
+    assert_eq!(plan.previous_summary.as_deref(), Some("PREVIOUS"));
+    let (read, modified) = compaction::compute_file_lists(&plan.file_ops);
+    assert_eq!(read, ["a.md"]);
+    assert_eq!(modified, ["b.rs", "c.rs"]);
+    // Cut at a user message: no split, everything before it is history.
+    let plan = harness::chat::compaction::summary_plan(&view, 3);
+    assert!(!plan.split && plan.prefix.is_empty());
+    assert_eq!(roles(&plan.history), ["user", "assistant"]);
+}
+
+#[test]
+fn harness_chat_compaction_a_second_compaction_updates_the_first_summary() {
+    let chat = open_new(100_000);
+    let compact = |summary: &str| {
+        chat.faux.summary(step(text_message(summary)));
+        let id = chat.root.compact(None).unwrap();
+        let outcome = js(&chat.chat.wait_for_task(id, &bg()).unwrap().state)["outcome"].clone();
+        assert_eq!(outcome["status"], "completed", "{outcome}");
+        let submission = durable::SubmissionId(outcome["result"]["submissionId"].as_u64().unwrap());
+        let placed = chat.chat.submission(submission).unwrap().unwrap().wait(&bg()).unwrap();
+        assert_eq!(placed.status, SubmissionStatus::Done);
+    };
+    history(&chat);
+    compact("FIRST");
+    turn(&chat, &text("u4", 100), &text("a4", 100));
+    turn(&chat, &text("u5", 100), &text("a5", 100));
+    compact("SECOND");
+    let requests = chat.faux.summary_requests();
+    assert_eq!(requests.len(), 2);
+    let first = user_text(requests[0].messages.get(1));
+    assert!(!first.contains("<previous-summary>"), "{first}");
+    let second = user_text(requests[1].messages.get(1));
+    assert!(
+        second.contains("\n</conversation>\n\n<previous-summary>\nFIRST\n</previous-summary>\n\n"),
+        "{second}"
+    );
+    assert!(
+        second.contains("The messages above are NEW conversation messages"),
+        "{second}"
+    );
+    assert!(!second.contains("compacted into the following summary"), "{second}");
+    assert!(second.starts_with("<conversation>\n[User]: u3 "), "{second}");
     chat.chat.close().unwrap();
 }

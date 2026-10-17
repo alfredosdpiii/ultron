@@ -19,6 +19,7 @@ pub mod installation;
 pub mod jsrules;
 pub mod langrules;
 pub mod proc;
+pub mod project;
 pub mod py;
 pub mod pyast;
 pub mod pyjson;

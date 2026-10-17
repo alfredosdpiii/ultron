@@ -36,9 +36,16 @@ pub fn effective_keybindings(keys: &KeybindingsManager) -> Vec<(String, Vec<Stri
 
 /// The shortcut `data` is (`matchesKey` against each in order), if any.
 pub fn matching<'a>(shortcuts: &'a [ExtensionShortcut], data: &str) -> Option<&'a ExtensionShortcut> {
-    shortcuts
-        .iter()
-        .find(|s| matches_key(data, &s.key, KeyContext::default()))
+    matching_in(shortcuts, data, KeyContext::default())
+}
+
+/// [`matching`] under the terminal's key-matching state (Kitty protocol, Windows Terminal).
+pub fn matching_in<'a>(
+    shortcuts: &'a [ExtensionShortcut],
+    data: &str,
+    ctx: KeyContext,
+) -> Option<&'a ExtensionShortcut> {
+    shortcuts.iter().find(|s| matches_key(data, &s.key, ctx))
 }
 
 /// The **Extensions** section `/hotkeys` appends (nothing without shortcuts): each key as `formatKeyText(key,

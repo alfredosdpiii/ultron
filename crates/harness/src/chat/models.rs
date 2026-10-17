@@ -41,6 +41,9 @@ pub struct StreamRequest {
     pub reasoning: Option<String>,
     /// The conversation the request is for (e.g. to charge its usage to the work that owns it).
     pub conversation_id: Option<durable::ConversationId>,
+    /// Set on a run's final request ([`super::gate::RequestGate::Final`]): the note its context ends with. The
+    /// request's options carry tool choice `none`; [`super::gate::apply_final`] applies both to what is sent.
+    pub final_note: Option<String>,
 }
 
 impl StreamRequest {

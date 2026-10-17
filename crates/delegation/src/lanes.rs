@@ -54,7 +54,12 @@ pub struct PoolLimits {
     pub max_pinned: Option<usize>,
     pub idle_ttl: Duration,
     pub snapshot_path: Option<SnapshotPathFn>,
+    /// The pool's clock in milliseconds since the epoch (none: the system clock), for idle times.
+    pub now: Option<Arc<dyn Fn() -> f64 + Send + Sync>>,
 }
+
+/// How often the session sweeps idle kernels (`setInterval(() => kernels.sweep(), 60_000)`).
+pub const IDLE_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 
 impl PoolLimits {
     /// The TS defaults for `max_live` kernels: half of them pinnable, a 30 minute idle TTL.
@@ -64,6 +69,7 @@ impl PoolLimits {
             max_pinned: Some(max_live / 2),
             idle_ttl: Duration::from_secs(30 * 60),
             snapshot_path,
+            now: None,
         }
     }
 }
@@ -203,12 +209,15 @@ impl Lanes {
             max_pinned: limits.as_ref().and_then(|l| l.max_pinned),
             snapshot_path: snapshot_path
                 .map(|path| Box::new(move |lane: &str| path(lane)) as crate::kernel_pool::SnapshotPath),
-            now: Box::new(|| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_millis() as f64)
-                    .unwrap_or(0.0)
-            }),
+            now: match limits.as_ref().and_then(|l| l.now.clone()) {
+                Some(now) => Box::new(move || now()),
+                None => Box::new(|| {
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as f64)
+                        .unwrap_or(0.0)
+                }),
+            },
         })?;
         let (sender, receiver) = channel();
         Ok((
@@ -243,6 +252,47 @@ impl Lanes {
             .map(|k| k.0.clone())
             .ok_or("leased kernel vanished")?;
         Ok((lease, kernel))
+    }
+
+    /// `kernels.sweep()`: snapshot and evict every idle unpinned kernel past its TTL; the lanes it evicted.
+    pub fn sweep(&self) -> Vec<String> {
+        if lock(&self.inner.state).closed {
+            return Vec::new();
+        }
+        self.pool()
+            .sweep()
+            .iter()
+            .filter(|record| record["evicted"] == true)
+            .filter_map(|record| record["lane"].as_str().map(str::to_string))
+            .collect()
+    }
+
+    /// Sweep idle kernels on every tick until `ticks` closes (the session's sweeper: [`Lanes::sweep_every`]).
+    /// Each sweep's evicted lanes go to `swept`, when given.
+    pub fn sweep_on(&self, ticks: Receiver<()>, swept: Option<Sender<Vec<String>>>) -> std::thread::JoinHandle<()> {
+        let lanes = self.clone();
+        std::thread::spawn(move || {
+            while ticks.recv().is_ok() {
+                let evicted = lanes.sweep();
+                if let Some(swept) = &swept {
+                    let _ = swept.send(evicted);
+                }
+            }
+        })
+    }
+
+    /// Sweep idle kernels every `interval` until the session stops (the TS session's 60 s `kernels.sweep()`):
+    /// `stopped(interval)` waits up to `interval` and says whether the session stopped.
+    pub fn sweep_every(&self, interval: Duration, stopped: impl Fn(Duration) -> bool + Send + 'static) {
+        let (tick, ticks) = channel();
+        let _ = self.sweep_on(ticks, None);
+        std::thread::spawn(move || {
+            while !stopped(interval) {
+                if tick.send(()).is_err() {
+                    return;
+                }
+            }
+        });
     }
 
     /// Whether a kernel for `lane` could be admitted now: it has one, there is room, or an idle unpinned kernel

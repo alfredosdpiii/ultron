@@ -264,6 +264,15 @@ impl LokiGuard {
         self
     }
 
+    /// Post-write checks ask `python` (the project's interpreter, `findProjectPython`; loki.ts passes it to the
+    /// engine as `LOKI_PYTHON`) whether newly imported modules exist.
+    pub fn with_project_python(mut self, python: Option<String>) -> Self {
+        self.hook = std::sync::Arc::new(move |root: &Path, files: &[String]| {
+            loki::run::hook_with_python(root, files, true, python.as_deref())
+        });
+        self
+    }
+
     /// The same guard with another post-write engine (tests: a stand-in that answers scripted reports).
     pub fn with_hook(mut self, hook: HookRunner) -> Self {
         self.hook = hook;

@@ -458,6 +458,11 @@ impl KeybindingsManager {
         self.ctx.kitty_active = active;
     }
 
+    /// The key-matching state this manager matches with.
+    pub fn ctx(&self) -> KeyContext {
+        self.ctx
+    }
+
     pub fn matches(&self, data: &str, keybinding: &str) -> bool {
         self.get_keys(keybinding).iter().any(|k| matches_key(data, k, self.ctx))
     }

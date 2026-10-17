@@ -52,6 +52,27 @@ pub struct StackFrameTasks {
     pub stack: Weak<Stack>,
 }
 
+impl StackFrameTasks {
+    /// The per-root limits on the lanes of frames that run code (crate::core::budget_gate).
+    fn gate(&self) -> Option<Arc<crate::core::budget_gate::BudgetGate>> {
+        let stack = self.stack.upgrade()?;
+        Some(crate::core::budget_gate::BudgetGate::with_finals(
+            self.usage.clone(),
+            stack.stats.clone(),
+            Arc::new(|_| None),
+            crate::core::budget_gate::frame_finals(),
+        ))
+    }
+}
+
+/// A code frame's lane run: one per frame (a spent tree admits no further attempt).
+fn frame_run(lane: &str) -> crate::core::budget_gate::LaneRun {
+    crate::core::budget_gate::LaneRun {
+        lane: format!("frame:{lane}"),
+        run: String::new(),
+    }
+}
+
 impl FrameTasks for StackFrameTasks {
     fn caller_task(&self, lane: &str) -> Option<String> {
         self.agents.caller_task(lane)
@@ -119,6 +140,32 @@ impl FrameTasks for StackFrameTasks {
             stack.context_reminders.set_frame_lane(lane, None);
             let _ = stack.lanes.close_lane(lane);
         }
+    }
+
+    /// Every frame response counts one turn of its root's tree, with the tokens and cost the provider reported.
+    fn charge_turn(&self, root: Option<&str>, reply: &ai::AssistantMessage) {
+        let usage = serde_json::to_value(&reply.usage).unwrap_or(Value::Null);
+        let _ = self
+            .usage
+            .record_turn(root, usage["totalTokens"].as_f64(), usage["cost"]["total"].as_f64());
+    }
+
+    fn gate_request(&self, lane: &str, root: Option<&str>) -> inference::FrameGate {
+        use crate::core::budget_gate::RequestDecision;
+        let Some(gate) = self.gate() else {
+            return inference::FrameGate::Allow;
+        };
+        match gate.request(&frame_run(lane), root) {
+            RequestDecision::Allow => inference::FrameGate::Allow,
+            RequestDecision::Final(note) => inference::FrameGate::Final(note),
+            RequestDecision::Block(reason) => inference::FrameGate::Block(reason),
+        }
+    }
+
+    fn gate_tool(&self, lane: &str, root: Option<&str>) -> Option<(String, bool)> {
+        self.gate()?
+            .tool(&frame_run(lane), root)
+            .map(|block| (block.reason, block.terminate))
     }
 
     /// A frame's cells are reminded as its conversation nears the frame model's window (it never compacts).

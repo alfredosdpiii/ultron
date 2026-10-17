@@ -367,18 +367,18 @@ fn interactive_tui_mode_change_says_when_it_applies() {
         .find(|l| l.contains("TUI mode"))
         .unwrap_or_else(|| panic!("{s}"))
         .to_string();
-    // The selector shows the configured mode (default regular), not a fixed "fullscreen".
-    assert!(row.contains("regular"), "{row}");
+    // The selector shows the configured mode (default fullscreen, like the TS native client).
+    assert!(row.contains("fullscreen") && !row.contains("regular"), "{row}");
     app.handle_input("\r");
     let s = screen(&mut app).join("\n");
-    assert_eq!(*saved.lock().unwrap(), ["tuiMode=\"fullscreen\""]);
+    assert_eq!(*saved.lock().unwrap(), ["tuiMode=\"regular\""]);
     let words = s.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(
-        words.contains("Saved tuiMode: fullscreen. It takes effect when Ultron restarts."),
+        words.contains("Saved tuiMode: regular. It takes effect when Ultron restarts."),
         "{s}"
     );
     let row = s.lines().find(|l| l.contains("TUI mode")).unwrap().to_string();
-    assert!(row.contains("fullscreen"), "{row}");
+    assert!(row.contains("regular"), "{row}");
 }
 
 fn entry(id: &str, parent: Option<&str>, role: &str, text: &str) -> Value {

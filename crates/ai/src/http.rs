@@ -46,6 +46,12 @@ pub trait Transport: Send + Sync {
         Err("this HTTP transport cannot present a TLS client certificate".into())
     }
 
+    /// This transport speaking HTTP/1.1 only (the SDK's `NodeHttpHandler` in place of its HTTP/2 handler); `None`
+    /// when it cannot, and requests keep this transport.
+    fn http1_only(&self) -> Option<Arc<dyn Transport>> {
+        None
+    }
+
     /// Whether [`Transport::websocket`] opens sockets (the runtime has `WebSocket`); without, a provider that
     /// prefers WebSockets falls back as upstream does in a runtime without one.
     fn websocket_available(&self) -> bool {
@@ -190,6 +196,14 @@ impl Failure {
         }
     }
 
+    /// The SDK's `APIConnectionTimeoutError` (statusless, so retried like a connection failure).
+    fn timed_out() -> Self {
+        Failure {
+            api: true,
+            ..Failure::plain(REQUEST_TIMED_OUT)
+        }
+    }
+
     fn header(&self, name: &str) -> Option<&str> {
         self.headers.as_ref()?.get(name).map(String::as_str)
     }
@@ -250,6 +264,9 @@ pub(crate) fn truncate_error_text(text: &str, max: usize) -> String {
 pub(crate) struct RetryOptions {
     pub max_retries: Option<u32>,
     pub max_retry_delay_ms: Option<f64>,
+    /// The SDKs' per-request `timeout` (`options.timeoutMs`): the longest wait for the response headers of one
+    /// attempt; it ends as `APIConnectionTimeoutError` ("Request timed out."), which is retried.
+    pub timeout_ms: Option<u64>,
 }
 
 const DEFAULT_MAX_RETRY_DELAY_MS: f64 = 60_000.0;
@@ -322,8 +339,18 @@ fn validate_delay(delay_ms: f64, max: Option<f64>, message: &str) -> Result<f64,
     Ok(delay_ms)
 }
 
-/// Delay before retry `retry_index`. A non-numeric `retry-after` (an HTTP date) waits 0 ms here; upstream waits until
-/// that date.
+/// `Date.parse(text) - Date.now()` for a `retry-after` HTTP date (`Wed, 21 Oct 2015 07:28:00 GMT`); `None` (NaN) when
+/// it is not one.
+pub(crate) fn until_http_date_ms(text: &str) -> Option<f64> {
+    let date = crate::model_refresh::parse_http_date_ms(text)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
+    Some(date as f64 - now)
+}
+
+/// Delay before retry `retry_index`. A non-numeric `retry-after` is an HTTP date: wait until then (a past date at
+/// once); one that does not parse is `NaN` upstream, which passes the cap and sleeps 0 ms.
 fn retry_delay_ms(failure: &Failure, retry_index: u32, max: Option<f64>) -> Result<f64, Failure> {
     if let Some(value) = failure
         .header("retry-after-ms")
@@ -333,7 +360,10 @@ fn retry_delay_ms(failure: &Failure, retry_index: u32, max: Option<f64>) -> Resu
         return validate_delay(value, max, &failure.message);
     }
     if let Some(retry_after) = failure.header("retry-after").filter(|v| !v.is_empty()) {
-        let delay = parse_float(retry_after).map_or(0.0, |seconds| seconds * 1000.0);
+        let delay = match parse_float(retry_after) {
+            Some(seconds) => seconds * 1000.0,
+            None => until_http_date_ms(retry_after).unwrap_or(0.0),
+        };
         return validate_delay(delay, max, &failure.message);
     }
     let exponential = (0.5 * 2f64.powi(retry_index as i32)).min(8.0) * 1000.0;
@@ -363,7 +393,7 @@ pub(crate) async fn send_with_retry(
     let max_retries = retry.max_retries.unwrap_or(0);
     let mut remaining = max_retries;
     loop {
-        let attempt = send_once(transport, request, sdk, signal).await;
+        let attempt = send_once(transport, request, sdk, retry.timeout_ms, signal).await;
         let failure = match attempt {
             Ok(response) => return Ok(response),
             Err(failure) => failure,
@@ -389,6 +419,7 @@ async fn send_once(
     transport: &dyn Transport,
     request: &HttpRequest,
     sdk: Sdk,
+    timeout_ms: Option<u64>,
     signal: Option<&AbortSignal>,
 ) -> Result<HttpResponse, Failure> {
     if is_aborted(signal) {
@@ -397,11 +428,24 @@ async fn send_once(
             ..Failure::plain("Request was aborted.")
         });
     }
+    let timed_out = async {
+        match timeout_ms {
+            Some(ms) => tokio::time::sleep(Duration::from_millis(ms)).await,
+            None => std::future::pending().await,
+        }
+    };
     let sent = tokio::select! {
         sent = transport.send(request.clone()) => sent,
         () = cancelled(signal) => return Err(Failure { api: true, ..Failure::plain("Request was aborted.") }),
+        () = timed_out => return Err(Failure { api: true, ..Failure::plain("Request timed out.") }),
     };
-    let mut response = sent.map_err(|_| Failure::connection())?;
+    let mut response = sent.map_err(|error| {
+        if error == REQUEST_TIMED_OUT {
+            Failure::timed_out()
+        } else {
+            Failure::connection()
+        }
+    })?;
     if (200..300).contains(&response.status) {
         return Ok(response);
     }
@@ -419,6 +463,27 @@ async fn send_once(
         body,
         text,
     ))
+}
+
+/// What a [`TimeoutTransport`] fails a request with; [`send_with_retry`] reports it as the SDK's
+/// `APIConnectionTimeoutError`.
+pub(crate) const REQUEST_TIMED_OUT: &str = "Request timed out.";
+
+/// A transport whose requests fail with [`REQUEST_TIMED_OUT`] when the response headers take longer than `timeout`
+/// (the OpenAI SDK's request `timeout`: aborted until `fetch` resolves, not while the body is read).
+pub(crate) struct TimeoutTransport<'a> {
+    pub inner: &'a dyn Transport,
+    pub timeout: Duration,
+}
+
+impl Transport for TimeoutTransport<'_> {
+    fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {
+        Box::pin(async move {
+            tokio::time::timeout(self.timeout, self.inner.send(request))
+                .await
+                .map_err(|_| REQUEST_TIMED_OUT.to_string())?
+        })
+    }
 }
 
 /// Ordered header assignments: names are case-insensitive, later values win, `None` removes.
@@ -451,6 +516,25 @@ impl HeaderBuilder {
     {
         self.0
             .extend(headers.into_iter().map(|(k, v)| (k.clone(), Some(v.clone()))));
+        self
+    }
+
+    /// The OpenAI SDK client's `OpenAI-Organization` and `OpenAI-Project` headers (its constructor defaults
+    /// `organization = readEnv('OPENAI_ORG_ID')`, `project = readEnv('OPENAI_PROJECT_ID')`: the process environment,
+    /// trimmed, blank as unset), under the model's and the caller's headers.
+    pub fn openai_sdk_identity(&mut self) -> &mut Self {
+        for (header, var) in [
+            ("OpenAI-Organization", "OPENAI_ORG_ID"),
+            ("OpenAI-Project", "OPENAI_PROJECT_ID"),
+        ] {
+            if let Some(value) = std::env::var(var)
+                .ok()
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+            {
+                self.set(header, value);
+            }
+        }
         self
     }
 
@@ -613,6 +697,16 @@ impl Transport for ReqwestTransport {
             .build()
             .map_err(|e| e.to_string())?;
         Ok(Arc::new(ReqwestTransport {
+            client,
+            timeout: self.timeout,
+            idle: self.idle,
+            config: self.config.clone(),
+        }))
+    }
+
+    fn http1_only(&self) -> Option<Arc<dyn Transport>> {
+        let client = self.config.as_ref()?.builder().ok()?.http1_only().build().ok()?;
+        Some(Arc::new(ReqwestTransport {
             client,
             timeout: self.timeout,
             idle: self.idle,

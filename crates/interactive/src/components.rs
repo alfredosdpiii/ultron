@@ -294,12 +294,31 @@ fn visible(b: &AssistantBlock) -> bool {
     }
 }
 
+/// The rows of one thinking run in a rendered assistant message (its `MouseRegion`): a left click shows or hides it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ThinkingRows {
+    pub run: usize,
+    pub start: usize,
+    pub len: usize,
+    /// Hidden behind the label when rendered.
+    pub hidden: bool,
+}
+
 impl Component for AssistantMessage {
     fn render(&mut self, width: usize) -> Vec<String> {
+        self.render_with_thinking_rows(width).0
+    }
+}
+
+impl AssistantMessage {
+    /// [`Component::render`], with the rows each thinking run took.
+    pub fn render_with_thinking_rows(&mut self, width: usize) -> (Vec<String>, Vec<ThinkingRows>) {
         let theme = &self.theme;
         let pad = self.output_pad;
         let content = &self.message.content;
         let mut c = Container::default();
+        // The child index of each thinking run's component.
+        let mut runs: Vec<(usize, usize, bool)> = Vec::new();
         if content.iter().any(visible) {
             c.children.push(Box::new(Spacer(1)));
         }
@@ -334,6 +353,7 @@ impl Component for AssistantMessage {
                             .iter()
                             .find(|(r, _)| *r == index)
                             .map_or(self.hide_thinking, |(_, h)| *h);
+                        runs.push((c.children.len(), index, hidden));
                         if hidden {
                             let label = italic(&fg(theme, "thinkingText", &self.hidden_thinking_label));
                             c.children.push(Box::new(Text::new(&label, pad, 0, None)));
@@ -386,11 +406,24 @@ impl Component for AssistantMessage {
             c.children.push(Box::new(Spacer(1)));
             c.children.push(Box::new(n));
         }
-        let lines = c.render(width);
+        let mut lines = Vec::new();
+        let mut rows = Vec::new();
+        for (i, child) in c.children.iter_mut().enumerate() {
+            let rendered = child.render(width);
+            if let Some(&(_, run, hidden)) = runs.iter().find(|(child, ..)| *child == i) {
+                rows.push(ThinkingRows {
+                    run,
+                    start: lines.len(),
+                    len: rendered.len(),
+                    hidden,
+                });
+            }
+            lines.extend(rendered);
+        }
         if has_tool_calls || lines.is_empty() {
-            lines
+            (lines, rows)
         } else {
-            zone(lines)
+            (zone(lines), rows)
         }
     }
 }
@@ -794,14 +827,41 @@ impl ToolExecution {
     }
 }
 
+/// The cells a tool's call and result take in its rendered rows (`createResultRegion` around each): once there is a
+/// result, a left click there toggles the tool's expansion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RowRegion {
+    pub start: usize,
+    pub len: usize,
+    pub x_start: usize,
+    pub x_end: usize,
+}
+
 impl Component for ToolExecution {
     fn render(&mut self, width: usize) -> Vec<String> {
+        self.render_with_region(width).0
+    }
+}
+
+impl ToolExecution {
+    /// [`Component::render`], with the region of the call and result (none before a result).
+    pub fn render_with_region(&mut self, width: usize) -> (Vec<String>, Option<RowRegion>) {
         let images = self.image_lines(width);
+        let has_result = self.result.is_some();
+        let region = |start: usize, len: usize, x_start: usize, x_end: usize| {
+            (has_result && len > 0).then_some(RowRegion {
+                start,
+                len,
+                x_start,
+                x_end,
+            })
+        };
         let Some(r) = &self.renderers else {
             let mut lines = vec![String::new()];
             lines.extend(Text::new(&self.format_generic(), 1, 1, Some(self.bg())).render(width));
+            let text_rows = lines.len() - 1;
             lines.extend(images);
-            return lines;
+            return (lines, region(1, text_rows, 0, width));
         };
         let state = self.state();
         let call_fallback = || -> Box<dyn Component> { Box::new(Text::new(&self.title(), 0, 0, None)) };
@@ -820,25 +880,28 @@ impl Component for ToolExecution {
         if r.self_shell {
             let content = Container { children }.render(width);
             if content.is_empty() && images.is_empty() {
-                return content;
+                return (content, None);
             }
+            let rows = content.len();
             let mut lines = vec![String::new()];
             lines.extend(content);
             lines.extend(images);
-            return lines;
+            return (lines, region(1, rows, 0, width));
         }
         let mut lines = vec![String::new()];
-        lines.extend(
-            Panel {
-                children,
-                padding_x: 1,
-                padding_y: 1,
-                bg: Some(self.bg()),
-            }
-            .render(width),
-        );
+        let panel = Panel {
+            children,
+            padding_x: 1,
+            padding_y: 1,
+            bg: Some(self.bg()),
+        }
+        .render(width);
+        // `Box.handleMouse`: inside the padding only.
+        let content_rows = panel.len().saturating_sub(2);
+        let content_width = width.saturating_sub(2).max(1);
+        lines.extend(panel);
         lines.extend(images);
-        lines
+        (lines, region(2, content_rows, 1, 1 + content_width))
     }
 }
 

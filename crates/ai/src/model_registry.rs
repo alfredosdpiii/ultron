@@ -29,12 +29,16 @@ pub type Lookup<'a> = &'a dyn Fn(&str) -> Option<String>;
 /// An environment variable lookup a model keeps for its requests.
 pub type SharedLookup = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
-/// What a stored OAuth credential adds to a request (`ModelAuth` beyond its key): the base URL it names (GitHub
-/// Copilot's token proxy endpoint) and its headers (Kimi For Coding's `Authorization: Bearer <access>`).
+/// What a provider's resolved auth adds to a request (`AuthResult` beyond its key): the base URL a stored OAuth
+/// credential names (GitHub Copilot's token proxy endpoint), its headers (Kimi For Coding's `Authorization: Bearer
+/// <access>`, `ANTHROPIC_AUTH_TOKEN`'s bearer, the AI Gateway's `cf-aig-authorization`), and the provider env it
+/// resolves (a stored credential's `env`, Cloudflare's account and gateway ids), which the request's own env
+/// overrides (`applyAuth`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct StoredRequestAuth {
     pub base_url: Option<String>,
     pub headers: Option<ProviderHeaders>,
+    pub env: Option<crate::env::ProviderEnv>,
 }
 
 /// The [`StoredRequestAuth`] of the provider's stored OAuth credential, resolved (and refreshed) at request time.
@@ -160,11 +164,18 @@ fn options_with(
     };
     let configured = request.headers(&model.provider, options.base.api_key.as_deref())?;
     let auth = merge_headers(stored.and_then(|s| s.headers.as_ref()), configured.as_ref());
-    if auth.is_none() {
+    let env = stored.and_then(|s| s.env.as_ref());
+    if auth.is_none() && env.is_none() {
         return Ok(None);
     }
     let mut options = options.clone();
     options.base.headers = merge_headers(auth.as_ref(), options.base.headers.as_ref());
+    // `{ ...(resolution.env ?? {}), ...(options?.env ?? {}) }`.
+    if let Some(env) = env {
+        let mut merged = env.clone();
+        merged.extend(options.base.env.take().unwrap_or_default());
+        options.base.env = Some(merged);
+    }
     Ok(Some(options))
 }
 

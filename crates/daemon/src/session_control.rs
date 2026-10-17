@@ -82,8 +82,10 @@ fn set_retry(core: &CoreCall, context: &ControlContext, enabled: bool) -> Result
     Ok(())
 }
 
-/// Apply what the running session takes now. Transport and the HTTP idle timeout are read when the session opens
-/// in the Rust build, so `setSetting` reports them as applying on restart (see [`set_setting`]).
+/// Apply what the running session takes now. Transport and the HTTP idle timeout (with the request timeout it
+/// implies) need no operation: the session's provider reads them from the settings before each request
+/// (`session_core::lane::Provider::with_live_settings`), so the saved value applies to the next request, as TS's
+/// `harness.setStreamOptions` and `configureHttpDispatcher` do.
 fn apply_change(core: &CoreCall, context: &ControlContext, change: Change) -> Result<(), ServiceError> {
     let op = match change {
         Change::Compaction(enabled) => Op::SetAutoCompaction(enabled),
@@ -107,10 +109,7 @@ fn set_setting(core: &CoreCall, context: &ControlContext, key: &str, value: &Val
     let model = state(core)?["model"].clone();
     let current = model["provider"].as_str().zip(model["id"].as_str());
     let mut settings = context.settings();
-    let (mut applied, changes) = worker_settings::apply(&mut settings, key, value, current).map_err(internal)?;
-    if matches!(key, "transport" | "httpIdleTimeoutMs") {
-        applied = worker_settings::Applied::Restart;
-    }
+    let (applied, changes) = worker_settings::apply(&mut settings, key, value, current).map_err(internal)?;
     for change in changes {
         apply_change(core, context, change)?;
     }

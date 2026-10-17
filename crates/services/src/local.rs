@@ -813,22 +813,56 @@ pub fn js_string(value: &Value) -> String {
     }
 }
 
+/// The conversation branch refinements follow (`mainBranch`): the main lane's tip and which anchors are on its
+/// path, read when a request is made.
+pub type BranchSource = Arc<dyn Fn() -> Branch + Send + Sync>;
+
 /// The active instruction refinements of a definition id as a typed-agent host's refinement hook
-/// (`refinements` of `NativeHostOptions`): `[{id, version, text}]` of `instruction:<definition id>`.
+/// (`refinements` of `NativeHostOptions`): `[{id, version, text}]` of `instruction:<definition id>` on the branch
+/// `branch` names (every event without one); text content as is, other content as its JSON.
 pub fn instruction_hook(services: Arc<LocalServices>) -> Hook {
+    instruction_hook_on(services, None)
+}
+
+/// [`instruction_hook`] following `branch` (`mainBranch`).
+pub fn instruction_hook_on(services: Arc<LocalServices>, branch: Option<BranchSource>) -> Hook {
     Arc::new(move |definition: &str| {
-        let current = services.current("instruction", &format!("instruction:{definition}"), None)?;
+        let branch = branch.as_ref().map(|source| source());
+        let current = services.current("instruction", &format!("instruction:{definition}"), branch.as_ref())?;
         Ok(current
             .map(|record| {
-                vec![json!({"id": record["id"], "version": record["version"], "text": js_string(&record["content"])})]
+                let text = match &record["content"] {
+                    Value::String(text) => text.clone(),
+                    other => kernel_apis::util::stringify(other),
+                };
+                vec![json!({"id": record["id"], "version": record["version"], "text": text})]
             })
             .unwrap_or_default())
     })
 }
 
-/// `refinements.*` and `experiments.*` as a host module.
+/// `refinements.*` and `experiments.*` as a host module, every refinement event applied.
 pub struct LocalServicesModule {
     pub services: Arc<LocalServices>,
+}
+
+/// [`LocalServicesModule`] whose refinements follow the conversation branch (session-worker.ts `branchedServices`):
+/// a change is anchored at the main lane's tip and read back only while that anchor is on the branch in use.
+pub struct BranchedLocalServices {
+    pub services: Arc<LocalServices>,
+    pub branch: BranchSource,
+}
+
+impl kernel_apis::ApiModule for BranchedLocalServices {
+    fn prefixes(&self) -> &[&str] {
+        &["refinements.", "experiments."]
+    }
+
+    fn handle(&self, request: &kernel_apis::Request<'_>) -> Result<Value, String> {
+        let branch = request.kind.starts_with("refinements.").then(|| (self.branch)());
+        self.services
+            .handle(request.kind, &Value::Object(request.payload.clone()), branch.as_ref())
+    }
 }
 
 impl kernel_apis::ApiModule for LocalServicesModule {

@@ -300,6 +300,8 @@ pub fn run_claude_child(
     for name in PARENT_ONLY_ENV {
         command.env_remove(name);
     }
+    // A subagent server's own verdict token never reaches its children (TypeScript deletes it from the env).
+    command.env_remove("ULTRON_PARENT_TOKEN");
     let mut child = command.spawn().map_err(|e| e.to_string())?;
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(run.prompt.as_bytes());

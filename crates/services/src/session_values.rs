@@ -12,19 +12,45 @@ use kernel_apis::artifacts::KeyedDocuments;
 use kernel_apis::util::lock;
 use serde_json::Value;
 use session_journal::{Session, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// An open session shared by the stores over its values; clones share it.
 #[derive(Clone)]
 pub struct SessionValues {
     session: Arc<Mutex<Session>>,
+    /// Set once the worker hands the session to a successor: the journal is the successor's from then on, so what
+    /// this worker would still write is dropped.
+    handed_over: Option<Arc<AtomicBool>>,
 }
 
 impl SessionValues {
     pub fn new(session: Session) -> Self {
         SessionValues {
             session: Arc::new(Mutex::new(session)),
+            handed_over: None,
         }
+    }
+
+    /// Values of a session another owner holds open (the session actor's); clones share it.
+    pub fn shared(session: Arc<Mutex<Session>>) -> Self {
+        SessionValues {
+            session,
+            handed_over: Some(Arc::new(AtomicBool::new(false))),
+        }
+    }
+
+    /// The worker hands the session to a successor: from now on every write through these values is dropped.
+    pub fn hand_over(&self) {
+        if let Some(flag) = &self.handed_over {
+            flag.store(true, Ordering::SeqCst);
+        }
+    }
+
+    fn handed_over(&self) -> bool {
+        self.handed_over
+            .as_ref()
+            .is_some_and(|flag| flag.load(Ordering::SeqCst))
     }
 
     pub fn session(&self) -> &Arc<Mutex<Session>> {
@@ -37,6 +63,9 @@ impl SessionValues {
 
     /// One committed transaction setting the value.
     pub fn set(&self, namespace: &str, key: &str, value: &Value) -> Result<(), String> {
+        if self.handed_over() {
+            return Ok(());
+        }
         lock(&self.session)
             .commit(&[Write::set(namespace, key, value.clone())])
             .map(drop)

@@ -25,6 +25,7 @@ mod output;
 mod process;
 mod sandboxed;
 pub mod snapshot;
+pub mod snapshot_store;
 pub mod tree_memory;
 
 pub use continuity::{ContinuityPolicy, ContinuityReport, LostName};

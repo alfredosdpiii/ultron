@@ -1175,6 +1175,7 @@ fn client_headers(
         .set("Authorization", format!("Bearer {api_key}"));
     headers
         .set("User-Agent", pi_user_agent())
+        .openai_sdk_identity()
         .extend_set(model.headers.iter().flatten());
     if model.provider == "github-copilot" {
         for (name, value) in copilot_headers(&context.messages) {

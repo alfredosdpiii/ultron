@@ -45,16 +45,19 @@ pub struct ViewImages {
     /// Where `images.autoResize` is read (per cell, as TypeScript reads it).
     cwd: PathBuf,
     agent_dir: PathBuf,
+    /// The worker's project trust: a trusted project's `.pi/settings.json` is read too.
+    project_trusted: bool,
 }
 
 impl ViewImages {
-    pub fn new(model: Model, cwd: PathBuf, agent_dir: PathBuf) -> ViewImages {
+    pub fn new(model: Model, cwd: PathBuf, agent_dir: PathBuf, project_trusted: bool) -> ViewImages {
         ViewImages {
             cells: Mutex::default(),
             models: Mutex::default(),
             default_model: Mutex::new(model),
             cwd,
             agent_dir,
+            project_trusted,
         }
     }
 
@@ -70,7 +73,7 @@ impl ViewImages {
 
     /// Pi's `images.autoResize` (default on).
     fn auto_resize(&self) -> bool {
-        let settings = config::settings::SettingsManager::create(&self.cwd, &self.agent_dir, false);
+        let settings = config::settings::SettingsManager::create(&self.cwd, &self.agent_dir, self.project_trusted);
         settings.settings().get("images").and_then(|i| i.get("autoResize")) != Some(&Value::Bool(false))
     }
 

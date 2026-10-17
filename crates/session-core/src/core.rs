@@ -790,6 +790,7 @@ mod user_bash;
 pub use extension_ops::before_fork;
 pub use user_bash::USER_BASH_FAILED;
 mod agent_ops;
+pub mod budget_gate;
 mod context_children;
 mod context_lane;
 mod durable_turns;
@@ -928,13 +929,15 @@ impl Core {
         // Extensions load before the model is chosen: the providers they declare can be the session's model
         // (agent-session-services.ts registers them before `findInitialModel`).
         let sessions_dir = session_root.join(lane::session_directory_name(&metadata.cwd));
-        let runtime = Runtime::new(&env, &mode, sessions_dir, services)?;
+        let mut runtime = Runtime::new(&env, &mode, sessions_dir, services)?;
         let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
         let api_key = lane::api_key(&flags, &env, &model.provider);
         let announced = session.state().entries().len();
         let announced_usage = session.state().usage_rows().len();
         let session_id = session.id().to_string();
         let session: SharedSession = Arc::new(Mutex::new(session));
+        // The host modules' documents are values of the session (crate::session_modules).
+        runtime.services.values = Some(crate::session_modules::session_values(&session));
         // Subagents run as child conversations of the durable runtime; their task journal is in the session.
         let children = crate::subagents::DurableChildren::new();
         let unfinished = crate::subagents::unfinished(&session);
@@ -960,14 +963,9 @@ impl Core {
         )));
         child_context.observe(&context, runtime.extensions.clone());
         let _ = lane.stack.context.set(context.clone());
-        let provider = Arc::new(
-            Provider::with_idle_timeout(ai::http::http_idle_timeout(
-                runtime.config.settings.get("httpIdleTimeoutMs"),
-            ))
-            .with_request_settings(crate::request_settings::RequestSettings::from_settings(
-                &runtime.config.settings,
-            )),
-        );
+        // Requests read the settings as they are now (crate::request_settings): the stream options, transport and
+        // idle timeout of `/settings` apply to the next request.
+        let provider = Arc::new(Provider::new().with_live_settings(runtime.config.settings_reader(), true));
         let queues = Arc::new(Mutex::new(Queues {
             items: recovered
                 .queued
@@ -1059,6 +1057,13 @@ impl Core {
             durable.stop.clone(),
         );
         event_lanes::tick_activity(tx.clone(), durable.stop.clone());
+        // Idle kernels are swept every minute (evicted after their idle TTL), not only when a lane is leased.
+        let sweep_stop = durable.stop.clone();
+        lane.stack
+            .lanes
+            .sweep_every(delegation::lanes::IDLE_SWEEP_INTERVAL, move |interval| {
+                sweep_stop.wait_timeout(interval).is_some()
+            });
         // `compaction.enabled` (default on); `set_auto_compaction` changes it for the session.
         let auto_compaction = runtime.config.settings["compaction"]["enabled"] != false;
         let (env_var, async_events) = (env.var.clone(), runtime.config.async_events);
@@ -1478,10 +1483,6 @@ impl Core {
                         self.fail_run(error);
                     }
                 } else {
-                    // The ledger counts the response before its entry commits, as the TypeScript drive does.
-                    if value["role"] == "assistant" {
-                        self.charge_turn(&value);
-                    }
                     if let Message::Assistant(answer) = message {
                         retry = self.retry_decision(answer);
                     }
@@ -1782,6 +1783,9 @@ impl Core {
         // as the runtime closes) is dropped, so its tasks stay unfinished for the successor to reattach.
         if hand_over {
             self.durable.children.hand_over();
+            if let Some(values) = &self.runtime.services.values {
+                values.hand_over();
+            }
         }
         // The durable runtime stops without settling anything: a run in progress resumes when the session opens.
         self.durable.stop.abort();
@@ -2458,6 +2462,9 @@ impl Core {
         // Work the turn admits is charged to a usage root of its own; the ledger counts its responses.
         journal.ledger_counts_turns();
         journal.set_retry_policy(self.summary_retry().value());
+        if let Some(options) = self.provider.stream_options() {
+            journal.set_stream_options(options);
+        }
         self.before_agent_start(&prompt, journal.run().map(|r| r.operation_id()));
         if let Some(run) = journal.run() {
             self.lane.stack.agents.begin_root_turn(run.operation_id());

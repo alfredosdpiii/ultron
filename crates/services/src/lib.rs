@@ -20,6 +20,9 @@ pub mod session_values;
 pub mod validation;
 
 pub use gates::ReleaseGateModule;
-pub use local::{Branch, LocalOptions, LocalServices, LocalServicesModule, instruction_hook};
+pub use local::{
+    Branch, BranchSource, BranchedLocalServices, LocalOptions, LocalServices, LocalServicesModule, instruction_hook,
+    instruction_hook_on,
+};
 pub use session_values::{SessionDocument, SessionKeyed, SessionValues};
 pub use validation::{validate_refinement_content, worker_validator};

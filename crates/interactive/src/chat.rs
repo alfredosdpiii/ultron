@@ -87,6 +87,8 @@ struct Tool {
     args_complete: bool,
     /// The Kitty image id of each image of the result, by position (allocated on first draw, kept after).
     image_ids: Vec<u32>,
+    /// A click toggled this tool (`setExpanded(!expanded)`); `None` follows the transcript's expansion.
+    expanded: Option<bool>,
 }
 
 /// How tool images are drawn (`getCapabilities().images`, `terminal.showImages`, `terminal.imageWidthCells`, the
@@ -128,6 +130,28 @@ struct Item {
     cache: Option<(usize, Vec<String>)>,
     /// An animated component's id while it still changes ([`ChatView::append_live_notice`]): never settled.
     live: Option<u64>,
+    /// The `MouseRegion`s of the cached rows.
+    regions: Vec<ItemRegion>,
+    /// Thinking runs a click showed or hid (`thinkingVisibilityOverrides`), by run index.
+    thinking: Vec<(usize, bool)>,
+}
+
+/// What a left click in a transcript item's rows does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RegionAction {
+    /// `ToolExecutionComponent.createResultRegion`: toggle the tool's expansion.
+    ToggleTool,
+    /// `AssistantMessageComponent`'s thinking `MouseRegion`: show or hide the run.
+    ToggleThinking { run: usize, hidden: bool },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ItemRegion {
+    start: usize,
+    len: usize,
+    x_start: usize,
+    x_end: usize,
+    action: RegionAction,
 }
 
 /// The rendering context components need.
@@ -336,6 +360,8 @@ impl ChatView {
             kind,
             cache: None,
             live: None,
+            regions: Vec::new(),
+            thinking: Vec::new(),
         });
         self.items.len() - 1
     }
@@ -462,6 +488,7 @@ impl ChatView {
             started: false,
             args_complete: false,
             image_ids: Vec::new(),
+            expanded: None,
         }))
     }
 
@@ -669,19 +696,73 @@ impl ChatView {
     pub fn set_tools_expanded(&mut self, expanded: bool) {
         self.tools_expanded = expanded;
         for item in &mut self.items {
-            if let Kind::Bash(bash) = &mut item.kind {
-                bash.expanded = expanded;
+            match &mut item.kind {
+                Kind::Bash(bash) => bash.expanded = expanded,
+                // `setExpanded(expanded)` on every tool: a click's toggle gives way.
+                Kind::Tool(tool) => tool.expanded = None,
+                _ => {}
             }
             item.cache = None;
         }
     }
 
-    /// Pi's Ctrl+T: show or hide thinking blocks in every assistant message.
+    /// Pi's Ctrl+T: show or hide thinking blocks in every assistant message (`setHideThinkingBlock` clears the
+    /// runs a click toggled).
     pub fn set_hide_thinking(&mut self, hide: bool) {
         self.hide_thinking = hide;
         for item in &mut self.items {
+            item.thinking.clear();
             item.cache = None;
         }
+    }
+
+    /// The row count of every item at `width` (rendered like [`ChatView::render_transcript`]).
+    pub fn item_heights(&mut self, width: usize) -> Vec<usize> {
+        (0..self.items.len())
+            .map(|i| {
+                if let Some((w, cached)) = &self.items[i].cache
+                    && *w == width
+                {
+                    return cached.len();
+                }
+                let rendered = self.render_item(i, width);
+                let len = rendered.len();
+                self.items[i].cache = Some((width, rendered));
+                len
+            })
+            .collect()
+    }
+
+    /// `handleMouse` of item `i` (`event` in its own rows): a left click on a tool's call or result toggles its
+    /// expansion, on a thinking run shows or hides it. The item is drawn again.
+    pub fn handle_item_mouse(&mut self, i: usize, event: &tui::mouse::MouseEvent) -> Option<tui::mouse::MouseResult> {
+        use tui::mouse::{MouseButton, MouseEventType, MouseResult};
+        let item = self.items.get_mut(i)?;
+        let (x, y) = (usize::try_from(event.x).ok()?, usize::try_from(event.y).ok()?);
+        let region = *item
+            .regions
+            .iter()
+            .find(|r| y >= r.start && y < r.start + r.len && x >= r.x_start && x < r.x_end)?;
+        if event.kind != MouseEventType::Click || event.button != MouseButton::Left {
+            return None;
+        }
+        match region.action {
+            RegionAction::ToggleTool => {
+                let global = self.tools_expanded;
+                if let Kind::Tool(tool) = &mut item.kind {
+                    tool.expanded = Some(!tool.expanded.unwrap_or(global));
+                }
+            }
+            RegionAction::ToggleThinking { run, hidden } => {
+                item.thinking.retain(|(r, _)| *r != run);
+                item.thinking.push((run, !hidden));
+            }
+        }
+        item.cache = None;
+        Some(MouseResult {
+            handled: Some(true),
+            ..MouseResult::default()
+        })
     }
 
     /// Drop everything (a new or switched session).
@@ -737,7 +818,9 @@ impl ChatView {
         let expanded = self.tools_expanded;
         let hide_thinking = self.hide_thinking;
         let style = &self.style;
-        match &mut self.items[i].kind {
+        let thinking_overrides = self.items[i].thinking.clone();
+        let mut regions = Vec::new();
+        let lines = match &mut self.items[i].kind {
             Kind::Spacer => Spacer(1).render(width),
             Kind::User(text) => UserMessage {
                 theme,
@@ -745,26 +828,39 @@ impl ChatView {
                 output_pad: 1,
             }
             .render(width),
-            Kind::Assistant(view) => AssistantMessage {
-                theme,
-                message: view.clone(),
-                hide_thinking,
-                hidden_thinking_label: "Thinking...".into(),
-                output_pad: 1,
-                thinking_overrides: Vec::new(),
-                code_highlight: style.code_highlight.clone(),
+            Kind::Assistant(view) => {
+                let (lines, runs) = AssistantMessage {
+                    theme,
+                    message: view.clone(),
+                    hide_thinking,
+                    hidden_thinking_label: "Thinking...".into(),
+                    output_pad: 1,
+                    thinking_overrides,
+                    code_highlight: style.code_highlight.clone(),
+                }
+                .render_with_thinking_rows(width);
+                regions.extend(runs.into_iter().map(|r| ItemRegion {
+                    start: r.start,
+                    len: r.len,
+                    x_start: 0,
+                    x_end: usize::MAX,
+                    action: RegionAction::ToggleThinking {
+                        run: r.run,
+                        hidden: r.hidden,
+                    },
+                }));
+                lines
             }
-            .render(width),
             Kind::Tool(t) => {
                 let renderers =
                     (t.name == "rlm").then(|| rlm_renderers(&theme, Rc::clone(&style.highlight), &style.expand_key));
-                ToolExecution {
+                let (lines, region) = ToolExecution {
                     theme,
                     tool_name: t.name.clone(),
                     args: t.args.clone(),
                     result: t.result.clone(),
                     is_partial: t.partial,
-                    expanded,
+                    expanded: t.expanded.unwrap_or(expanded),
                     show_images,
                     execution_started: t.started,
                     args_complete: t.args_complete,
@@ -772,12 +868,22 @@ impl ChatView {
                     expand_key: style.expand_key.clone(),
                     inline,
                 }
-                .render(width)
+                .render_with_region(width);
+                regions.extend(region.map(|r| ItemRegion {
+                    start: r.start,
+                    len: r.len,
+                    x_start: r.x_start,
+                    x_end: r.x_end,
+                    action: RegionAction::ToggleTool,
+                }));
+                lines
             }
             Kind::Text(text) => Text::new(text, 1, 0, None).render(width),
             Kind::Component(c) => c.render(width),
             Kind::Bash(bash) => bash.render(width),
-        }
+        };
+        self.items[i].regions = regions;
+        lines
     }
 
     /// Pending messages: steering first, then follow-ups, then the dequeue hint.
@@ -802,8 +908,10 @@ impl ChatView {
             let line = fg(t, "dim", &format!("{label}: {}", text.join(" ")));
             lines.extend(truncated(line, width));
         }
-        let hint = format!("↳ {} to edit all queued messages", self.style.dequeue_key);
-        lines.extend(truncated(fg(t, "dim", &hint), width));
+        if self.queues.iter().any(|q| q.user) {
+            let hint = format!("↳ {} to edit all queued messages", self.style.dequeue_key);
+            lines.extend(truncated(fg(t, "dim", &hint), width));
+        }
         lines
     }
 

@@ -307,6 +307,17 @@ impl Tui {
             format!(r#"{{"providers":{{"anthropic":{{"baseUrl":"http://127.0.0.1:{port}"}}}}}}"#),
         )
         .unwrap();
+        // `ensureTool("fd")` finds `<agentDir>/bin/fd` first: a run never downloads fd from GitHub.
+        let bin = agent.join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        if bin.join("fd").symlink_metadata().is_ok() {
+            // A restart over the same agent directory.
+        } else if std::path::Path::new("/usr/bin/fd").exists() {
+            std::os::unix::fs::symlink("/usr/bin/fd", bin.join("fd")).unwrap();
+        } else {
+            std::fs::write(bin.join("fd"), "#!/bin/sh\nexit 1\n").unwrap();
+            std::fs::set_permissions(bin.join("fd"), std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        }
         let quote = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
         let mut vars: Vec<(String, String)> = vec![
             ("PATH".into(), "/usr/bin:/bin".into()),

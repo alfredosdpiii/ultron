@@ -76,7 +76,7 @@ pub(super) fn open_durable(
     let auto_retry = Arc::new(AtomicBool::new(true));
     let retry = auto_retry.clone();
     // settings.json's `retry` (`getRetrySettings`); `set_auto_retry` turns it off for the session.
-    let retry_settings = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false)
+    let retry_settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home)
         .settings()
         .get("retry")
         .cloned()
@@ -106,18 +106,39 @@ pub(super) fn open_durable(
     let catalog_env = env.clone();
     let (key_env, key_flags) = (env.clone(), flags.clone());
     let root_session = Arc::new(std::sync::OnceLock::new());
+    // A subagent's model cost (`task.cost`: what its lane's responses reported), for the line its end leaves on the
+    // cell that returns it (`onTaskEnd` -> `contextControl.taskEnded`, root-level subagents only).
+    let child_costs: ChildCosts = Arc::default();
+    let (ended_costs, ended_stack) = (child_costs.clone(), Arc::downgrade(&lane.stack));
+    lane.stack.delegation.on_task_end(Arc::new(move |task: &Value| {
+        let cost = task["id"].as_str().and_then(|id| lock(&ended_costs).remove(id));
+        if let Some(stack) = ended_stack.upgrade()
+            && let Some(context) = stack.context.get()
+        {
+            context.task_ended(task, cost);
+        }
+    }));
     let models = TurnModels {
         bridge: bridge.clone(),
         provider: provider as Arc<dyn agent::StreamFn>,
         resolve: Arc::new(move |provider, id| lane::catalog_model(provider, id, &catalog_env).ok()),
         api_key: Arc::new(move |provider| lane::api_key(&key_flags, &key_env, provider)),
         root_session: root_session.clone(),
-        charge: Some(charge_turns(children.clone(), lane.stack.clone())),
+        charge: Some(charge_turns(children.clone(), lane.stack.clone(), child_costs.clone())),
         transform_child: Some({
             let context = child_context.clone();
             let budget = crate::view_images::context_image_budget((env.var)("ULTRON_CONTEXT_IMAGES").as_deref());
+            // Subagent lanes get clock lines as the root does (`clockLane`); typed agents and frames do not.
+            let clock = lane::clock_enabled(env).then(|| (lane::clock_zone(env), children.clone()));
             Arc::new(move |conversation, messages: &mut Vec<ai::Message>| {
                 context.transform_request(conversation, messages);
+                if let Some((zone, children)) = &clock
+                    && children
+                        .lane_of(conversation)
+                        .is_some_and(|lane| lane.starts_with(crate::subagents::LANE_PREFIX))
+                {
+                    add_clock_lines(messages, zone);
+                }
                 crate::view_images::apply_image_budget(messages, budget);
             })
         }),
@@ -145,6 +166,24 @@ pub(super) fn open_durable(
     let mut options = ChatOptions::new(Registry::new(), Arc::new(models), Arc::new(cells));
     options.settings = Some(settings);
     options.sections = Some(sections);
+    // Per-root limits on every lane run: a spent tree's cells are refused, its runs get one final request (turn and
+    // token limits) and then nothing more.
+    let gate = super::budget_gate::BudgetGate::new(
+        lane.stack.usage.clone(),
+        lane.stack.stats.clone(),
+        usage_root_of(children.clone(), lane.stack.clone()),
+    );
+    // A subagent stopped by the gate fails with its root's limit text (`withLimitReason`).
+    let (limit_children, limit_stack) = (children.clone(), Arc::downgrade(&lane.stack));
+    lane.stack.delegation.set_limit_reason(Arc::new(move |task: &str| {
+        let stack = limit_stack.upgrade()?;
+        let lane = format!("{}{task}", crate::subagents::LANE_PREFIX);
+        let root = limit_children.usage_root_of_lane(&lane, &stack.agents);
+        stack.usage.turn_budget_exhausted(root.as_deref()).ok().flatten()
+    }));
+    let request_gate = gate.clone();
+    options.hooks.gate_request = Some(Arc::new(move |run| request_gate.before_request(run)));
+    options.hooks.gate_tool = Some(Arc::new(move |run, call| gate.before_tool(run, call)));
     // A child conversation compacts at its threshold as a TypeScript lane does (the harness's default policy; the
     // root's compactions are the actor's), and `ctx` may trim instead (`before_compaction`).
     options.hooks.compaction = Some(Arc::new(|conversation| {
@@ -179,16 +218,62 @@ pub(super) fn open_durable(
     })
 }
 
-/// Every model response of a subagent, typed agent or other root conversation is charged to the usage ledger
+/// `withClockLines` over a request's messages: a clock line before each user message that opens the conversation or
+/// follows a gap (derived from the messages' own timestamps, never stored).
+fn add_clock_lines(messages: &mut Vec<ai::Message>, zone: &kernel_apis::localtime::Zone) {
+    // The positional system prompt sections are no message of the conversation (TypeScript's system prompt is
+    // not in the lane's messages): they neither get a line nor count as the message before one.
+    let values: Vec<Value> = messages
+        .iter()
+        .map(|message| match message {
+            ai::Message::System(_) => Value::Null,
+            message => serde_json::to_value(message).unwrap_or(Value::Null),
+        })
+        .collect();
+    for (index, line) in lane::clock_lines_in(&values, zone).into_iter().rev() {
+        messages.insert(index, line);
+    }
+}
+
+/// Model cost reported by each subagent's responses so far, by task id.
+type ChildCosts = Arc<Mutex<std::collections::HashMap<String, f64>>>;
+
+/// The usage root a conversation's model turns are charged to (`usageRootForLane`): the root turn running now for the
+/// root conversation, else the child's (crate::subagents::DurableChildren::usage_root).
+fn usage_root_of(
+    children: Arc<crate::subagents::DurableChildren>,
+    stack: Arc<crate::compose::Stack>,
+) -> super::budget_gate::RootOf {
+    Arc::new(move |conversation| {
+        if conversation == ROOT_CONVERSATION_ID {
+            children.current_root()
+        } else {
+            children.usage_root(conversation, &stack.agents)
+        }
+    })
+}
+
+/// Every model response of any conversation (the root's, a subagent's, a typed agent's, another root
+/// conversation's) is charged to the usage ledger when it arrives, before the next request is prepared
 /// (`recordTurn(usageRootForLane(lane, runId))` in session-worker.ts's `after_response` hook), so per-root turn,
-/// token and cost limits count the whole tree.
+/// token and cost limits count the whole tree and the budget gate sees every response.
 fn charge_turns(
     children: Arc<crate::subagents::DurableChildren>,
     stack: Arc<crate::compose::Stack>,
+    costs: ChildCosts,
 ) -> crate::turns::ChargeTurn {
+    let root_of = usage_root_of(children.clone(), stack.clone());
     Arc::new(move |conversation, message| {
-        let root = children.usage_root(conversation, &stack.agents);
+        let root = root_of(conversation);
         let usage = serde_json::to_value(&message.usage).unwrap_or(Value::Null);
+        if conversation != ROOT_CONVERSATION_ID
+            && let Some(cost) = usage["cost"]["total"].as_f64()
+            && let Some(task) = children
+                .lane_of(conversation)
+                .and_then(|lane| lane.strip_prefix(crate::subagents::LANE_PREFIX).map(str::to_string))
+        {
+            *lock(&costs).entry(task).or_insert(0.0) += cost;
+        }
         let _ = stack.usage.record_turn(
             root.as_deref(),
             usage["totalTokens"].as_f64(),
@@ -214,18 +299,6 @@ impl Core {
             .as_ref()
             .and_then(|run| run.journal.run())
             .map(|run| run.operation_id().to_string())
-    }
-
-    /// Charge a root response to its usage root in the ledger (after the operation journal counted it).
-    pub(super) fn charge_turn(&self, message: &Value) {
-        let Some(operation) = self.operation_id() else { return };
-        let root = self.lane.stack.agents.usage_root_for_lane(LANE, &operation);
-        let usage = &message["usage"];
-        let _ = self.lane.stack.usage.record_turn(
-            root.as_deref(),
-            usage["totalTokens"].as_f64(),
-            usage["cost"]["total"].as_f64(),
-        );
     }
 
     /// The submission a queued message is waiting as (request ID `<entry>#<attempt>`): the newest one, and the
@@ -527,7 +600,7 @@ impl Core {
         let first = run.first().cloned();
         history.extend(first.clone());
         if lane::clock_enabled(&self.env)
-            && let Some(lined) = lane::with_clock_lines(&history)
+            && let Some(lined) = lane::with_clock_lines_in(&history, &lane::clock_zone(&self.env))
         {
             history = lined;
         }

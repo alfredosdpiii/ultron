@@ -15,7 +15,8 @@ use session_journal::session::{BRANCH_TIP, LANE_STATE};
 use session_journal::usage::num;
 use session_journal::{Session, Write, lock_clock};
 
-/// Stream options and retry policy of a generation (`timeoutMs` 300000, 4 attempts from 2000 ms).
+/// Default stream options and retry policy of a generation (`timeoutMs` 300000, 4 attempts from 2000 ms); a session
+/// sets the ones its settings name ([`Run::set_stream_options`]).
 fn stream_options() -> Value {
     json!({"timeoutMs": 300000, "maxRetryDelayMs": 60000})
 }
@@ -71,6 +72,8 @@ pub struct Run {
     /// The generation's retry policy (`generationContext.retryPolicy`, `normalizedRetryPolicy` of settings.json's
     /// `retry`).
     retry_policy: Value,
+    /// The generations' `streamOptions` (`providerRequestOptions`; see [`Run::set_stream_options`]).
+    stream_options: Value,
     /// The generation's attempt in progress (1-based).
     attempt: u64,
     /// The next error answer is retried: it commits with `assistant.retry_wait` until `(notBefore, error)`.
@@ -167,6 +170,7 @@ impl Run {
             ready_written: false,
             error_answer: Vec::new(),
             retry_policy: retry_policy(),
+            stream_options: stream_options(),
             attempt: 1,
             retry_next: None,
             retry_waiting: None,
@@ -302,6 +306,10 @@ impl Run {
                 Value::Null => retry_policy(),
                 policy => policy.clone(),
             },
+            stream_options: match &context["streamOptions"] {
+                Value::Null => stream_options(),
+                options => options.clone(),
+            },
             attempt: state["attempt"]
                 .as_u64()
                 .or_else(|| state["nextAttempt"].as_u64())
@@ -314,6 +322,11 @@ impl Run {
     }
 
     /// The generation's retry policy from now on (`{maxAttempts, baseDelayMs, maxAgentDelayMs}`).
+    /// The stream options the generations run with (the settings' `providerRequestOptions`, and `transport`).
+    pub fn set_stream_options(&mut self, options: Value) {
+        self.stream_options = options;
+    }
+
     pub fn set_retry_policy(&mut self, policy: Value) {
         self.retry_policy = policy;
     }
@@ -415,7 +428,7 @@ impl Run {
             "stepId": self.step_id,
             "triggerEntryId": self.generation_trigger.as_ref().unwrap_or(&self.trigger),
             "configuration": self.config,
-            "streamOptions": stream_options(), "retryPolicy": self.retry_policy,
+            "streamOptions": self.stream_options, "retryPolicy": self.retry_policy,
             "overflowRecoveryUsed": self.overflow_recovery_used,
         })
     }

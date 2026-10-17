@@ -1732,6 +1732,43 @@ pub struct PruneOptions<'a> {
     pub delete_branches: bool,
 }
 
+/// [`prune_worktrees`] of every record whose owner is gone, as session `session_id` starts, but that session's own:
+/// its open children are reattached with their worktrees (the durable host resumes them; TypeScript, which does not,
+/// prunes them too). A repository without Ultron's worktrees directory has nothing of ours to prune: no `git
+/// worktree prune` runs there.
+pub fn prune_orphan_worktrees(cwd: &Path, session_id: &str) -> PruneReport {
+    let Ok(info) = repo_info(cwd) else {
+        return PruneReport::default();
+    };
+    if !records_dir(&info.common_dir).exists() {
+        return PruneReport::default();
+    }
+    let others = |record: &WorktreeRecord| record.session_id != session_id;
+    let mut report = prune_worktrees(
+        cwd,
+        &PruneOptions {
+            select: Some(&others),
+            ..PruneOptions::default()
+        },
+    );
+    remove_torn(&info, &read_records(&info.common_dir), &mut report);
+    report
+}
+
+/// Directories of ours with no record (a torn record) are leftovers too.
+fn remove_torn(info: &RepoInfo, records: &[WorktreeRecord], report: &mut PruneReport) {
+    let dir = records_dir(&info.common_dir);
+    for entry in sorted_entries(&dir) {
+        if entry.ends_with(".json") || records.iter().any(|r| r.id == entry) {
+            continue;
+        }
+        let path = text(&dir.join(&entry));
+        let _ = git(&info.top, &quiet(&["worktree", "remove", "--force", "--force", &path]));
+        let _ = std::fs::remove_dir_all(&path);
+        report.removed.push(path);
+    }
+}
+
 /// Remove the worktrees of owners that are gone: uncommitted work is committed on the branch first, the directory is
 /// removed, and the branch deleted unless it holds work. Then `git worktree prune`.
 pub fn prune_worktrees(cwd: &Path, options: &PruneOptions<'_>) -> PruneReport {
@@ -1767,16 +1804,7 @@ pub fn prune_worktrees(cwd: &Path, options: &PruneOptions<'_>) -> PruneReport {
         }
     }
     if options.select.is_none() {
-        let dir = records_dir(&info.common_dir);
-        for entry in sorted_entries(&dir) {
-            if entry.ends_with(".json") || records.iter().any(|r| r.id == entry) {
-                continue;
-            }
-            let path = text(&dir.join(&entry));
-            let _ = git(&info.top, &quiet(&["worktree", "remove", "--force", "--force", &path]));
-            let _ = std::fs::remove_dir_all(&path);
-            report.removed.push(path);
-        }
+        remove_torn(&info, &records, &mut report);
     }
     let _ = git(&info.top, &["worktree", "prune"]);
     report

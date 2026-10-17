@@ -83,6 +83,17 @@ pub fn env_off(value: Option<&str>) -> bool {
     )
 }
 
+/// JavaScript truthiness of a settings value.
+fn js_truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
 /// What the app was started with.
 pub struct AppOptions {
     pub theme: Rc<Theme>,
@@ -279,6 +290,117 @@ struct Selection {
     purpose: Purpose,
 }
 
+/// The mouse-aware parts of a fullscreen frame (`currentLayout`): the dock slot holding the editor or the selector
+/// in its place, and the transcript with the rows of each item.
+#[derive(Clone, Debug, Default)]
+struct MouseLayout {
+    slot: Option<tui::scroll_view::Rect>,
+    transcript: Option<tui::scroll_view::Rect>,
+    /// Header rows above the first transcript item.
+    header_rows: usize,
+    item_heights: Vec<usize>,
+}
+
+/// The dock slot's [`tui::fullscreen::MouseTarget`] id; transcript item `i` is `i + 1`.
+const SLOT_TARGET: usize = 0;
+
+/// The app's components for [`tui::fullscreen::FullscreenViewport::handle_input_with`]: they change themselves;
+/// what the app does about a selection or a settings change is collected and done after the gesture.
+struct AppMouse<'a> {
+    layout: &'a MouseLayout,
+    /// The transcript's first shown row.
+    top: usize,
+    editor: &'a mut Editor,
+    chat: &'a mut ChatView,
+    selection: &'a mut Option<Selection>,
+    panel: &'a mut Option<Panel>,
+    select_events: Vec<SelectEvent>,
+    settings_events: Vec<SettingsEvent>,
+}
+
+impl AppMouse<'_> {
+    /// The dock slot's component (`event` in the slot's rows).
+    fn slot_mouse(&mut self, event: &tui::mouse::MouseEvent) -> Option<tui::mouse::MouseResult> {
+        match (self.selection.as_mut(), self.panel.as_mut()) {
+            (Some(selection), _) => {
+                // The title (`Text` with padding 1) above the list.
+                let title = Text::new(&bold(&selection.title), 1, 1, None).render(event.width).len() as i64;
+                let local = tui::mouse::MouseEvent {
+                    y: event.y - title,
+                    ..*event
+                };
+                let mut events = Vec::new();
+                let result = selection.list.handle_mouse(&local, &mut events);
+                self.select_events.extend(events);
+                result
+            }
+            (None, Some(Panel::Settings(selector))) => {
+                let (result, event) = selector.handle_mouse(event)?;
+                self.settings_events.extend(event);
+                Some(result)
+            }
+            (None, None) => self.editor.handle_mouse(event),
+            (None, Some(_)) => None,
+        }
+    }
+
+    fn dispatch(
+        &mut self,
+        target: tui::fullscreen::MouseTarget,
+        event: &tui::mouse::MouseEvent,
+    ) -> Option<tui::fullscreen::MouseDispatch> {
+        let result = if target.id == SLOT_TARGET {
+            self.slot_mouse(event)?
+        } else {
+            self.chat.handle_item_mouse(target.id - 1, event)?
+        };
+        Some(tui::fullscreen::MouseDispatch { result, target })
+    }
+}
+
+impl tui::fullscreen::MouseTargets for AppMouse<'_> {
+    fn dispatch_at(&mut self, event: &tui::mouse::MouseEvent) -> Option<tui::fullscreen::MouseDispatch> {
+        use tui::fullscreen::{MouseTarget, retarget_mouse_event};
+        let (x, y) = (event.screen_x, event.screen_y);
+        if let Some(rect) = self.layout.slot.filter(|r| r.contains(x, y)) {
+            let target = MouseTarget {
+                id: SLOT_TARGET,
+                origin_x: rect.x as i64,
+                origin_y: rect.y as i64,
+                width: rect.width,
+                height: rect.height,
+            };
+            return self.dispatch(target, &retarget_mouse_event(event, &target));
+        }
+        let rect = self.layout.transcript.filter(|r| r.contains(x, y))?;
+        let row = (self.top as i64 + y - rect.y as i64).checked_sub(self.layout.header_rows as i64)?;
+        let mut start = 0i64;
+        for (i, &height) in self.layout.item_heights.iter().enumerate() {
+            let end = start + height as i64;
+            if row >= start && row < end {
+                let target = MouseTarget {
+                    id: i + 1,
+                    origin_x: rect.x as i64,
+                    origin_y: rect.y as i64 + self.layout.header_rows as i64 + start - self.top as i64,
+                    width: rect.width,
+                    height,
+                };
+                return self.dispatch(target, &retarget_mouse_event(event, &target));
+            }
+            start = end;
+        }
+        None
+    }
+
+    fn dispatch_to(
+        &mut self,
+        target: &tui::fullscreen::MouseTarget,
+        event: &tui::mouse::MouseEvent,
+    ) -> Option<tui::fullscreen::MouseDispatch> {
+        self.dispatch(*target, event)
+    }
+}
+
 pub struct App {
     theme: Rc<Theme>,
     keys: KeybindingsManager,
@@ -459,6 +581,8 @@ pub struct App {
     edit_dialog: bool,
     /// A multi-field API-key login in progress: its flow and provider.
     api_login: Option<(crate::api_key_login::ApiKeyLogin, crate::selectors::AuthProvider)>,
+    /// Where the mouse-aware parts of the last fullscreen frame were.
+    mouse_layout: MouseLayout,
 }
 
 fn select_theme(t: &Rc<Theme>, scroll: &'static str, no_match: &'static str) -> SelectListTheme {
@@ -638,9 +762,10 @@ impl App {
     pub fn new(options: AppOptions, client: Box<dyn LaneClient>) -> Self {
         let theme = options.theme;
         let editor_keys = options.editor_keys.clone();
+        let editor_ctx = options.editor_keys.ctx();
         let mut editor = Editor::new(
             options.editor_keys,
-            Default::default(),
+            editor_ctx,
             thinking_border(&theme, &options.thinking_level),
             1,
         );
@@ -708,7 +833,7 @@ impl App {
             exit: false,
             terminal_writes: Vec::new(),
             rows: 24,
-            vim: qol.vim.then(|| VimEditor::new(Default::default())),
+            vim: qol.vim.then(|| VimEditor::new(editor_ctx)),
             qol,
             attachments: Attachments::default(),
             clipboard: None,
@@ -793,8 +918,40 @@ impl App {
             operation_started_ms: None,
             edit_dialog: false,
             api_login: None,
+            mouse_layout: MouseLayout::default(),
         }
         .with_cancel_key()
+    }
+
+    /// `setKittyProtocolActive` (the terminal's keyboard protocol negotiation): every key manager, the editor and
+    /// the Vim layer match Kitty input (`shift+enter` from `ESC CR` or LF, ...).
+    pub fn set_kitty_protocol_active(&mut self, active: bool) {
+        self.keys.set_kitty_active(active);
+        self.editor_keys.set_kitty_active(active);
+        self.editor.set_kitty_active(active);
+        if let Some(vim) = self.vim.as_mut() {
+            vim.ctx.kitty_active = active;
+        }
+    }
+
+    /// Whether key matching treats the input as Kitty keyboard protocol input.
+    pub fn kitty_protocol_active(&self) -> bool {
+        self.keys.ctx().kitty_active
+    }
+
+    /// `KeybindingsManager.setUserBindings`: the app's keys, the editor's and every component built from them
+    /// afterwards resolve `user` (extension shortcut conflicts use these effective bindings).
+    pub fn set_user_keybindings(&mut self, user: tui::keybindings_file::UserBindings) {
+        self.keys.set_user_bindings(user.clone());
+        self.editor_keys.set_user_bindings(user.clone());
+        self.editor.set_user_keybindings(user);
+        self.chat.cancel_key = key_text(&self.keys, "tui.select.cancel", false);
+        if self.session_id.is_some() {
+            // The session resolves its extensions' shortcuts again under the new effective bindings.
+            self.extension_shortcuts.clear();
+            self.client
+                .extension_shortcuts(crate::extension_shortcuts::effective_keybindings(&self.keys));
+        }
     }
 
     fn with_cancel_key(mut self) -> Self {
@@ -881,8 +1038,16 @@ impl App {
     /// clear-on-shrink, the double-Esc action, `quietStartup` (no splash), `rlmPaneAutoOpen` (with
     /// `ULTRON_RLM_PANE_AUTO`); and an explicitly set `editorPaddingX` and `autocompleteMaxVisible`.
     pub fn apply_startup_settings(&mut self, settings: &Value, var: &dyn Fn(&str) -> Option<String>) {
-        self.show_hardware_cursor = settings["showHardwareCursor"] == true;
-        self.clear_on_shrink = settings["terminal"]["clearOnShrink"] == true;
+        // `getShowHardwareCursor`: the setting, else (`??`) `PI_HARDWARE_CURSOR=1`.
+        self.show_hardware_cursor = match &settings["showHardwareCursor"] {
+            Value::Null => var("PI_HARDWARE_CURSOR").as_deref() == Some("1"),
+            value => js_truthy(value),
+        };
+        // `getClearOnShrink`: a present setting (even null), else `PI_CLEAR_ON_SHRINK=1`.
+        self.clear_on_shrink = match settings["terminal"].get("clearOnShrink") {
+            None => var("PI_CLEAR_ON_SHRINK").as_deref() == Some("1"),
+            Some(value) => js_truthy(value),
+        };
         if let Some(action) = settings["doubleEscapeAction"].as_str() {
             self.double_escape_action = action.to_string();
         }
@@ -1276,7 +1441,27 @@ impl App {
         if self.overlay.is_some() && !tui::fullscreen::is_focus_report(data) {
             return false;
         }
-        match self.viewport.handle_input(data, &self.keys, Instant::now()) {
+        let mut mouse = AppMouse {
+            layout: &self.mouse_layout,
+            top: self.viewport.viewport_top(),
+            editor: &mut self.editor,
+            chat: &mut self.chat,
+            selection: &mut self.selection,
+            panel: &mut self.panel,
+            select_events: Vec::new(),
+            settings_events: Vec::new(),
+        };
+        let input = self
+            .viewport
+            .handle_input_with(data, &self.keys, Instant::now(), &mut mouse);
+        let (select_events, settings_events) = (mouse.select_events, mouse.settings_events);
+        for event in select_events {
+            self.select_event(Some(event));
+        }
+        for event in settings_events {
+            self.settings_event(Some(event));
+        }
+        match input {
             tui::fullscreen::ViewportInput::Pass => false,
             tui::fullscreen::ViewportInput::Consumed => true,
             tui::fullscreen::ViewportInput::Copy(text) => {
@@ -1617,6 +1802,7 @@ impl App {
 
     pub fn apply(&mut self, event: LaneEvent) {
         match event {
+            LaneEvent::Keybindings(user) => self.set_user_keybindings(user),
             LaneEvent::Opened(opened) => {
                 let switched = self.session_id.is_some();
                 self.chat.clear();
@@ -2295,6 +2481,10 @@ impl App {
         if self.fullscreen_input(data) {
             return;
         }
+        // tui.ts `handleInput`: Kitty key releases never reach a component (none wants them).
+        if tui::editor::is_key_release(data) {
+            return;
+        }
         // `handleInput` while `#busy`: only Ctrl+C, and Ctrl+D on an empty editor, are read.
         if self.recovering {
             if self.keys.matches(data, "app.clear") {
@@ -2330,7 +2520,9 @@ impl App {
             return;
         }
         // custom-editor.ts: extension shortcuts before any built-in binding; the handler runs in the session.
-        if let Some(shortcut) = crate::extension_shortcuts::matching(&self.extension_shortcuts, data) {
+        if let Some(shortcut) =
+            crate::extension_shortcuts::matching_in(&self.extension_shortcuts, data, self.keys.ctx())
+        {
             let key = shortcut.key.clone();
             self.client
                 .extension_shortcut(&key, crate::extension_shortcuts::effective_keybindings(&self.keys));
@@ -2578,9 +2770,12 @@ impl App {
         self.editor.set_text("");
     }
 
-    /// Queued user messages back into the editor (steering first); returns how many.
+    /// Queued user messages back into the editor (steering first); returns how many. Queued host items (runtime
+    /// events, custom messages) are not the user's: they stay queued and shown (client-tui.ts
+    /// `#restoreQueuedToEditor`).
     fn restore_queued_to_editor(&mut self) -> usize {
-        let queued: Vec<Queued> = self.chat.queues().to_vec();
+        let all: Vec<Queued> = self.chat.queues().to_vec();
+        let queued: Vec<Queued> = all.iter().filter(|q| q.user).cloned().collect();
         if queued.is_empty() {
             return 0;
         }
@@ -2600,7 +2795,8 @@ impl App {
         for q in &ordered {
             self.client.cancel_queued(&q.entry_id);
         }
-        self.chat.set_queues(Vec::new());
+        // The next queue_update answers the cancels; until then only the host items stay pending.
+        self.chat.set_queues(all.into_iter().filter(|q| !q.user).collect());
         ordered.len()
     }
 
@@ -3246,6 +3442,58 @@ impl App {
         self.model = next;
     }
 
+    /// What the settings selector answered (a key or a click).
+    fn settings_event(&mut self, event: Option<SettingsEvent>) {
+        match event {
+            Some(SettingsEvent::Cancelled) => self.panel = None,
+            // `onThemePreview`: the theme shows while the user browses; leaving restores the setting's.
+            Some(SettingsEvent::Preview(setting)) => {
+                if let Some(theme) = self.theme_controller.as_mut().and_then(|c| c.preview(&setting)) {
+                    self.adopt_theme(&theme);
+                }
+            }
+            Some(SettingsEvent::Change(key, value)) => self.setting_changed(&key, value),
+            Some(SettingsEvent::SessionModel(selector)) => {
+                if let Some(model) = self
+                    .models
+                    .iter()
+                    .find(|m| format!("{}/{}", m.provider, m.id) == selector)
+                    .cloned()
+                {
+                    self.client.select_model(&model.provider, &model.id);
+                    self.client
+                        .save_setting("defaultProvider", Value::String(model.provider.clone()));
+                    self.client
+                        .save_setting("defaultModel", Value::String(model.id.clone()));
+                    self.model = model;
+                    self.show_status(&format!("Session model: {selector} (saved as default)"));
+                }
+            }
+            Some(SettingsEvent::ModelSetting { key, label, value }) => {
+                let stored = if value.is_empty() {
+                    Value::Null
+                } else {
+                    Value::String(value.clone())
+                };
+                self.client.save_setting(&key, stored);
+                let next = match key.as_str() {
+                    "rlm.frameModel" | "rlm.frameThinking" => Some("the next frame"),
+                    "review.model" => Some("the next /review"),
+                    "rlm.childModel" => Some("the next sub-agent"),
+                    _ => None,
+                };
+                let when = match next {
+                    Some(next) => format!("applies to {next}"),
+                    None if key.starts_with("claudeCode.") => "applies when ultron claude next starts".to_string(),
+                    None => "applies to the running session".to_string(),
+                };
+                let shown = if value.is_empty() { "default".to_string() } else { value };
+                self.show_status(&format!("{label}: {shown} ({when})"));
+            }
+            None => {}
+        }
+    }
+
     fn handle_panel_input(&mut self, data: &str) {
         match self.panel.as_mut() {
             Some(Panel::Fork(selector)) => match selector.handle_input(&self.keys, data) {
@@ -3391,54 +3639,10 @@ impl App {
                 Some(Err(())) => self.panel = None,
                 None => {}
             },
-            Some(Panel::Settings(selector)) => match selector.handle_input(data) {
-                Some(SettingsEvent::Cancelled) => self.panel = None,
-                // `onThemePreview`: the theme shows while the user browses; leaving restores the setting's.
-                Some(SettingsEvent::Preview(setting)) => {
-                    if let Some(theme) = self.theme_controller.as_mut().and_then(|c| c.preview(&setting)) {
-                        self.adopt_theme(&theme);
-                    }
-                }
-                Some(SettingsEvent::Change(key, value)) => self.setting_changed(&key, value),
-                Some(SettingsEvent::SessionModel(selector)) => {
-                    if let Some(model) = self
-                        .models
-                        .iter()
-                        .find(|m| format!("{}/{}", m.provider, m.id) == selector)
-                        .cloned()
-                    {
-                        self.client.select_model(&model.provider, &model.id);
-                        self.client
-                            .save_setting("defaultProvider", Value::String(model.provider.clone()));
-                        self.client
-                            .save_setting("defaultModel", Value::String(model.id.clone()));
-                        self.model = model;
-                        self.show_status(&format!("Session model: {selector} (saved as default)"));
-                    }
-                }
-                Some(SettingsEvent::ModelSetting { key, label, value }) => {
-                    let stored = if value.is_empty() {
-                        Value::Null
-                    } else {
-                        Value::String(value.clone())
-                    };
-                    self.client.save_setting(&key, stored);
-                    let next = match key.as_str() {
-                        "rlm.frameModel" | "rlm.frameThinking" => Some("the next frame"),
-                        "review.model" => Some("the next /review"),
-                        "rlm.childModel" => Some("the next sub-agent"),
-                        _ => None,
-                    };
-                    let when = match next {
-                        Some(next) => format!("applies to {next}"),
-                        None if key.starts_with("claudeCode.") => "applies when ultron claude next starts".to_string(),
-                        None => "applies to the running session".to_string(),
-                    };
-                    let shown = if value.is_empty() { "default".to_string() } else { value };
-                    self.show_status(&format!("{label}: {shown} ({when})"));
-                }
-                None => {}
-            },
+            Some(Panel::Settings(selector)) => {
+                let event = selector.handle_input(data);
+                self.settings_event(event);
+            }
             Some(Panel::Tree(tree)) => match tree.handle_input(data) {
                 Some(TreeAction::Selected(entry)) => {
                     self.panel = None;
@@ -4669,7 +4873,13 @@ impl App {
         let Some(selection) = self.selection.as_mut() else {
             return;
         };
-        match selection.list.handle_input(data) {
+        let event = selection.list.handle_input(data);
+        self.select_event(event);
+    }
+
+    /// What the selection list answered (a key or a click).
+    fn select_event(&mut self, event: Option<SelectEvent>) {
+        match event {
             Some(SelectEvent::Selected(item)) => {
                 let selection = self.selection.take().expect("selection is open");
                 match selection.purpose {
@@ -4901,6 +5111,7 @@ impl App {
     /// The transcript document: the startup header, then the conversation.
     fn document(&mut self, width: usize) -> Vec<String> {
         let mut lines = self.header_lines(width);
+        self.mouse_layout.header_rows = lines.len();
         lines.extend(self.chat.render_transcript(width));
         lines
     }
@@ -5066,6 +5277,7 @@ impl App {
         self.cols = width;
         if let Some(frame) = self.overlay_frame(width, height) {
             self.viewport.hide_layout();
+            self.mouse_layout = MouseLayout::default();
             return frame;
         }
         let frame = self.render_columns(width, height);
@@ -5119,10 +5331,10 @@ impl App {
                 ..StackEntry::default()
             })
             .collect();
-        let dock_height: usize =
-            tui::screen::allocate_stack_sizes(&dock_entries, &dock.iter().map(Vec::len).collect::<Vec<_>>(), None)
-                .iter()
-                .sum();
+        let dock_intrinsic: Vec<usize> = dock.iter().map(Vec::len).collect();
+        let dock_height: usize = tui::screen::allocate_stack_sizes(&dock_entries, &dock_intrinsic, None)
+            .iter()
+            .sum();
         let root = [
             StackEntry {
                 basis: Some(0),
@@ -5137,6 +5349,21 @@ impl App {
         ];
         let sizes = tui::screen::allocate_stack_sizes(&root, &[document.len(), dock_height], Some(height));
         let dock_lines = stack_lines(dock, &dock_entries, &[], sizes[1]);
+        // The rows each dock part got, for the mouse: the slot is the editor's (second to last).
+        let dock_sizes = tui::screen::allocate_stack_sizes(&dock_entries, &dock_intrinsic, Some(sizes[1]));
+        self.mouse_layout.slot = Some(tui::scroll_view::Rect {
+            x: 0,
+            y: sizes[0] + dock_sizes[..editor].iter().sum::<usize>(),
+            width,
+            height: dock_sizes[editor],
+        });
+        self.mouse_layout.transcript = Some(tui::scroll_view::Rect {
+            x: 0,
+            y: 0,
+            width,
+            height: sizes[0],
+        });
+        self.mouse_layout.item_heights = self.chat.item_heights(width);
         self.style_viewport();
         let mut lines = self.viewport.layout(
             document,

@@ -1,0 +1,118 @@
+{
+	"model": {
+		"id": "black-forest-labs/flux.2-pro",
+		"name": "Black Forest Labs: FLUX.2 Pro",
+		"api": "openrouter-images",
+		"provider": "openrouter",
+		"baseUrl": "https://openrouter.ai/api/v1",
+		"input": [
+			"text",
+			"image"
+		],
+		"output": [
+			"image"
+		],
+		"cost": {
+			"input": 0,
+			"output": 0,
+			"cacheRead": 0,
+			"cacheWrite": 0
+		}
+	},
+	"cases": [
+		{
+			"name": "a hanging request times out",
+			"options": {
+				"apiKey": "k",
+				"timeoutMs": 30
+			},
+			"script": [
+				"hang"
+			],
+			"requests": 1,
+			"result": {
+				"api": "openrouter-images",
+				"provider": "openrouter",
+				"model": "black-forest-labs/flux.2-pro",
+				"output": [],
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Request timed out."
+			}
+		},
+		{
+			"name": "a timed out request is retried",
+			"options": {
+				"apiKey": "k",
+				"timeoutMs": 30,
+				"maxRetries": 1
+			},
+			"script": [
+				"hang",
+				"ok"
+			],
+			"requests": 2,
+			"result": {
+				"api": "openrouter-images",
+				"provider": "openrouter",
+				"model": "black-forest-labs/flux.2-pro",
+				"output": [
+					{
+						"type": "text",
+						"text": "done"
+					}
+				],
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "img-1"
+			}
+		},
+		{
+			"name": "every attempt times out",
+			"options": {
+				"apiKey": "k",
+				"timeoutMs": 30,
+				"maxRetries": 1
+			},
+			"script": [
+				"hang",
+				"hang"
+			],
+			"requests": 2,
+			"result": {
+				"api": "openrouter-images",
+				"provider": "openrouter",
+				"model": "black-forest-labs/flux.2-pro",
+				"output": [],
+				"stopReason": "error",
+				"timestamp": 1767225600000,
+				"errorMessage": "Request timed out."
+			}
+		},
+		{
+			"name": "a quick answer is within the timeout",
+			"options": {
+				"apiKey": "k",
+				"timeoutMs": 5000
+			},
+			"script": [
+				"ok"
+			],
+			"requests": 1,
+			"result": {
+				"api": "openrouter-images",
+				"provider": "openrouter",
+				"model": "black-forest-labs/flux.2-pro",
+				"output": [
+					{
+						"type": "text",
+						"text": "done"
+					}
+				],
+				"stopReason": "stop",
+				"timestamp": 1767225600000,
+				"responseId": "img-1"
+			}
+		}
+	]
+}

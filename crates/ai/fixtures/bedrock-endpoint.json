@@ -1,0 +1,239 @@
+{
+	"cases": [
+		{
+			"name": "default endpoint for the region",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_ENDPOINT_URL",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/global/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "the service variable wins over AWS_ENDPOINT_URL",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global",
+				"AWS_ENDPOINT_URL_BEDROCK_RUNTIME": "http://127.0.0.1:<port>/service"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/service/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true ignores them",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global",
+				"AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "true"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=false",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global",
+				"AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "false"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/global/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "an ignore value that is not a boolean falls through to the profile",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global",
+				"AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "yes"
+			},
+			"config": "[default]\nignore_configured_endpoint_urls = true\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "the profile's endpoint_url",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": "[default]\nendpoint_url = http://127.0.0.1:<port>/profile\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/profile/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "the services section wins over the profile's endpoint_url",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": "[default]\nendpoint_url = http://127.0.0.1:<port>/profile\nservices = mine\n\n[services mine]\nbedrock_runtime =\n  endpoint_url = http://127.0.0.1:<port>/services\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/services/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "a services section without bedrock_runtime uses the profile's endpoint_url",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": "[default]\nendpoint_url = http://127.0.0.1:<port>/profile\nservices = mine\n\n[services mine]\ns3 =\n  endpoint_url = http://127.0.0.1:<port>/s3\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/profile/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "a missing services section uses no configured endpoint",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": "[default]\nendpoint_url = http://127.0.0.1:<port>/profile\nservices = absent\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_PROFILE selects the profile",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_PROFILE": "p"
+			},
+			"config": "[default]\nendpoint_url = http://127.0.0.1:<port>/default\n\n[profile p]\nendpoint_url = http://127.0.0.1:<port>/p\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/p/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "the credentials file's endpoint_url under the config file's",
+			"env": {
+				"AWS_REGION": "us-west-2"
+			},
+			"config": null,
+			"credentials": "[default]\nendpoint_url = http://127.0.0.1:<port>/credentials\n",
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/credentials/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "the profile's ignore_configured_endpoint_urls",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global"
+			},
+			"config": "[default]\nignore_configured_endpoint_urls = true\n",
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "a custom base URL is the endpoint: configured ones do not apply",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "http://127.0.0.1:<port>/proxy",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "http://127.0.0.1:<port>/proxy/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "no region: the catalog endpoint is explicit",
+			"env": {
+				"AWS_ENDPOINT_URL": "http://127.0.0.1:<port>/global"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-east-1.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_BEDROCK_FORCE_HTTP1=1 uses HTTP/1.1",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_BEDROCK_FORCE_HTTP1": "1"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttpHandler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		},
+		{
+			"name": "AWS_BEDROCK_FORCE_HTTP1=true does not",
+			"env": {
+				"AWS_REGION": "us-west-2",
+				"AWS_BEDROCK_FORCE_HTTP1": "true"
+			},
+			"config": null,
+			"credentials": null,
+			"baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+			"request": {
+				"handler": "NodeHttp2Handler",
+				"url": "https://bedrock-runtime.us-west-2.amazonaws.com/model/amazon.nova-lite-v1%3A0/converse-stream"
+			}
+		}
+	]
+}

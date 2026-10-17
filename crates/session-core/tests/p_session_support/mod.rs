@@ -156,6 +156,7 @@ pub fn actor(script: Script, setup: Setup) -> Actor {
         std::fs::write(agent_dir.join("settings.json"), settings.to_string()).unwrap();
     }
     for (name, bytes) in &setup.files {
+        std::fs::create_dir_all(cwd.join(name).parent().unwrap()).unwrap();
         std::fs::write(cwd.join(name), bytes).unwrap();
     }
     let mut vars: Vec<(String, String)> = vec![

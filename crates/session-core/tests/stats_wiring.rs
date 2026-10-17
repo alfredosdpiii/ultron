@@ -46,11 +46,14 @@ fn session_core_stats_count_the_steers_sent_to_the_root() {
 
 #[test]
 fn session_core_stats_count_work_refused_at_a_root_limit() {
-    let cell = "try:\n    await rlm.infer('q')\nexcept Exception as e:\n    print('refused:', e)";
+    // The cell's first inference spends the root's second turn, so the ledger refuses the second (the root's next
+    // cell would be refused by the budget gate itself: crate::core::budget_gate).
+    let cell =
+        "await rlm.infer('q')\ntry:\n    await rlm.infer('q2')\nexcept Exception as e:\n    print('refused:', e)";
     let a = actor(
-        in_order(vec![tool("toolu_1", cell), text("done")]),
+        in_order(vec![tool("toolu_1", cell), text("42"), text("done")]),
         Setup {
-            vars: vec![("ULTRON_MAX_TOTAL_TURNS", "1".into())],
+            vars: vec![("ULTRON_MAX_TOTAL_TURNS", "2".into())],
             ..Setup::default()
         },
     );

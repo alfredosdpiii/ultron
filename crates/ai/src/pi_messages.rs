@@ -126,9 +126,13 @@ impl Converter {
         }
     }
 
-    fn finish(&mut self, event: &Value) -> Result<(), String> {
+    /// `Object.assign(partial, { stopReason: event.reason, ... })`. A reason this build does not know (a newer
+    /// backend's) passes through upstream as an opaque string; the closed [`StopReason`] keeps the outcome instead:
+    /// a finished stream (`done`) stops, a failed one (`error`) errs.
+    fn finish(&mut self, event: &Value, failed: bool) -> Result<(), String> {
+        let fallback = if failed { StopReason::Error } else { StopReason::Stop };
         self.partial.stop_reason =
-            serde_json::from_value(event.get("reason").cloned().unwrap_or(Value::Null)).map_err(|e| e.to_string())?;
+            serde_json::from_value(event.get("reason").cloned().unwrap_or(Value::Null)).unwrap_or(fallback);
         self.partial.usage = serde_json::from_value(event.get("usage").cloned().unwrap_or(Value::Null))
             .unwrap_or_else(|_| Usage::default());
         self.partial.response_id = str_of(event, "responseId");
@@ -156,14 +160,14 @@ impl Converter {
         Ok(Some(
             match event.get("type").and_then(Value::as_str).unwrap_or_default() {
                 "done" => {
-                    self.finish(event)?;
+                    self.finish(event, false)?;
                     AssistantMessageEvent::Done {
                         reason: self.partial.stop_reason,
                         message: partial(self),
                     }
                 }
                 "error" => {
-                    self.finish(event)?;
+                    self.finish(event, true)?;
                     self.partial.error_message = str_of(event, "errorMessage");
                     AssistantMessageEvent::Error {
                         reason: self.partial.stop_reason,
@@ -300,6 +304,8 @@ impl Converter {
                         partial: partial(self),
                     }
                 }
+                // Upstream passes an unknown event on (`{ ...event, partial }`); the closed event type here has no
+                // place for it, and no consumer acts on one.
                 _ => return Ok(None),
             },
         ))

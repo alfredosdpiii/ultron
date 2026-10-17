@@ -106,7 +106,133 @@ pub fn oauth_request_auth(env: &Env, provider: &str) -> Option<ai::model_registr
     Some(ai::model_registry::StoredRequestAuth {
         base_url: auth.base_url,
         headers: auth.headers,
+        env: None,
     })
+}
+
+/// What `provider`'s resolved auth adds to each request beyond its key: a stored OAuth credential's base URL and
+/// headers ([`oauth_request_auth`]), else the api-key auth's headers and env ([`api_key_request_auth`]).
+pub fn request_auth(env: &Env, provider: &str) -> Option<ai::model_registry::StoredRequestAuth> {
+    if let Some(oauth) = oauth_request_auth(env, provider) {
+        return Some(oauth);
+    }
+    let result = api_key_request_auth(env, provider).ok().flatten()?;
+    let request = ai::model_registry::StoredRequestAuth {
+        base_url: None,
+        headers: result.auth.headers,
+        env: result.env.map(|env| env.into_iter().collect()),
+    };
+    (request.headers.is_some() || request.env.is_some()).then_some(request)
+}
+
+/// Whether requests of `provider` need [`request_auth`]: a stored OAuth credential, a provider whose api-key auth
+/// adds headers or env (Anthropic, Vertex, Cloudflare), or a stored api-key credential with an `env`.
+pub fn has_request_auth(env: &Env, provider: &str) -> bool {
+    if ai::auth::builtin_api_key_auth(provider).is_some() {
+        return true;
+    }
+    let path = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    config::auth::read_stored_credential(&path, provider).is_some_and(|c| match c.get("type").and_then(Value::as_str) {
+        Some("oauth") => true,
+        Some("api_key") => c.get("env").and_then(Value::as_object).is_some_and(|e| !e.is_empty()),
+        _ => false,
+    })
+}
+
+/// Whether `provider` authenticates by headers alone with no key (`ANTHROPIC_AUTH_TOKEN`'s bearer, the AI Gateway's
+/// `cf-aig-authorization`): its requests carry no API key, and they need none.
+pub fn header_owned(env: &Env, provider: &str) -> bool {
+    api_key_request_auth(env, provider)
+        .ok()
+        .flatten()
+        .is_some_and(|result| {
+            result.auth.api_key.is_none() && result.auth.headers.iter().flatten().any(|(_, value)| value.is_some())
+        })
+}
+
+/// The request key of a provider whose built-in api-key auth decides it (Anthropic: a stored or models.json key,
+/// else `ANTHROPIC_AUTH_TOKEN` with no key, else `ANTHROPIC_OAUTH_TOKEN`/`ANTHROPIC_API_KEY`; Cloudflare: the
+/// Workers AI key, none for the AI Gateway, and no key at all, so not configured, without the account or gateway
+/// id); `None` for every other provider and when a stored OAuth credential owns the provider.
+pub fn resolved_key(env: &Env, provider: &str) -> Result<Option<Option<String>>, String> {
+    if !matches!(
+        provider,
+        "anthropic" | "cloudflare-workers-ai" | "cloudflare-ai-gateway"
+    ) {
+        return Ok(None);
+    }
+    let path = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    if config::auth::read_stored_credential(&path, provider)
+        .filter(|c| !c.is_null())
+        .is_some_and(|c| c.get("type").and_then(Value::as_str) != Some("api_key"))
+    {
+        return Ok(None);
+    }
+    // An unreadable auth.json fails the request as the store's read does.
+    stored_key(env, provider)?;
+    Ok(Some(api_key_request_auth(env, provider)?.and_then(|r| r.auth.api_key)))
+}
+
+/// `composeApiKeyAuth(...).resolve` (provider-composer.ts) for one request: the stored api-key credential (its key
+/// template resolved, with its `env`), else the models.json `apiKey` as the credential's key, else none, resolved by
+/// the provider's built-in api-key auth ([`ai::auth::builtin_api_key_auth`]), or for any other provider the stored
+/// key with the credential's `env`. `None` when a stored OAuth (or other) credential owns the provider or nothing
+/// resolves.
+pub fn api_key_request_auth(env: &Env, provider: &str) -> Result<Option<ai::auth::AuthResult>, String> {
+    let path = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    let stored = config::auth::read_stored_credential(&path, provider).filter(|c| !c.is_null());
+    let credential = match stored {
+        Some(credential) if credential.get("type").and_then(Value::as_str) == Some("api_key") => {
+            let var = env.var.clone();
+            let resolved = config::auth::resolve_stored_api_key(credential, &move |name: &str| var(name))
+                .map_err(|e| format!("Credential store read failed for {provider}: {e}"))?
+                .unwrap_or(Value::Null);
+            Some(ai::auth::ApiKeyCredential {
+                key: resolved.get("key").and_then(Value::as_str).map(str::to_string),
+                env: resolved.get("env").and_then(Value::as_object).map(|env| {
+                    env.iter()
+                        .filter_map(|(k, v)| Some((k.clone(), v.as_str()?.to_string())))
+                        .collect()
+                }),
+            })
+        }
+        Some(_) => return Ok(None),
+        None => crate::lane::registry(env)
+            .api_key(provider, None, &*env.var, None)?
+            .map(|key| ai::auth::ApiKeyCredential {
+                key: Some(key),
+                env: None,
+            }),
+    };
+    let Some(auth) = ai::auth::builtin_api_key_auth(provider) else {
+        return Ok(credential.and_then(|c| {
+            let key = c.key.filter(|k| !k.is_empty())?;
+            Some(ai::auth::AuthResult {
+                auth: ai::auth::ModelAuth {
+                    api_key: Some(key),
+                    ..Default::default()
+                },
+                env: c.env,
+                source: Some("stored credential".into()),
+            })
+        }));
+    };
+    let ctx = EnvContext(env.clone());
+    ready(auth.resolve(&ctx, credential.as_ref()))
+        .unwrap_or_else(|| Err(format!("API key auth for {provider} did not resolve at once")))
+}
+
+/// The value of a future that is ready on its first poll (the built-in api-key auths read only the environment and
+/// the file system); `None` when it is not.
+fn ready<T>(future: impl std::future::Future<Output = T>) -> Option<T> {
+    let mut future = std::pin::pin!(future);
+    match future
+        .as_mut()
+        .poll(&mut std::task::Context::from_waker(std::task::Waker::noop()))
+    {
+        std::task::Poll::Ready(value) => Some(value),
+        std::task::Poll::Pending => None,
+    }
 }
 
 /// How an OAuth handler reaches its provider: the transport, and the port a browser login's callback server listens

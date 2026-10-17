@@ -10,6 +10,7 @@
 //! - [`core`]: the session actor that owns all of it and reports lane-watch events.
 
 pub mod agent_hub;
+pub mod agents;
 pub mod async_events;
 pub mod auto_compaction;
 pub mod budget_note;
@@ -45,6 +46,7 @@ pub mod recovery;
 pub mod request_settings;
 pub mod review_command;
 pub mod session_flags;
+pub mod session_modules;
 pub mod session_resources;
 pub mod session_stats;
 pub mod session_tools;

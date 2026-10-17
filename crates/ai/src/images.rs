@@ -113,6 +113,8 @@ pub struct ImagesOptions {
     pub env: Option<ProviderEnv>,
     pub max_retries: Option<u32>,
     pub max_retry_delay_ms: Option<f64>,
+    /// `timeoutMs`: how long each attempt may wait for the response headers (the SDK's request `timeout`).
+    pub timeout_ms: Option<u64>,
     pub metadata: Option<Map<String, Value>>,
     pub signal: Option<AbortSignal>,
     pub on_payload: Option<ImagesPayloadHook>,
@@ -373,6 +375,7 @@ async fn openrouter_request(
         .set("Accept", "application/json")
         .set("Content-Type", "application/json")
         .set("User-Agent", OPENAI_SDK_USER_AGENT)
+        .openai_sdk_identity()
         .set("Authorization", format!("Bearer {api_key}"));
     for (name, value) in &custom {
         if let Some(value) = value {
@@ -392,8 +395,20 @@ async fn openrouter_request(
     let retry = crate::http::RetryOptions {
         max_retries: options.max_retries,
         max_retry_delay_ms: options.max_retry_delay_ms,
+        ..Default::default()
     };
     let signal = options.signal.as_ref();
+    let timed;
+    let transport = match options.timeout_ms {
+        Some(ms) => {
+            timed = crate::http::TimeoutTransport {
+                inner: transport,
+                timeout: std::time::Duration::from_millis(ms),
+            };
+            &timed as &dyn Transport
+        }
+        None => transport,
+    };
     let mut response = send_with_retry(transport, &request, Sdk::OpenAi, retry, signal).await?;
     let mut bytes = Vec::new();
     while let Some(chunk) = response.body.next_chunk().await.map_err(Failure::plain)? {

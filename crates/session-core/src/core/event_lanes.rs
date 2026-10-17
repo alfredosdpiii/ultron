@@ -165,9 +165,7 @@ pub(super) fn install(
     options.max_runs = max_event_runs_from_env((env.var)("ULTRON_ASYNC_EVENTS_MAX_RUNS").as_deref());
     // A completion re-invokes the root only within the budget of the request that started the work.
     let usage = stack.usage.clone();
-    options.refuse = Some(Arc::new(move |root: &str| {
-        usage.budget_exhaustion(Some(root)).ok().flatten().map(|e| e.reason)
-    }));
+    options.refuse = Some(Arc::new(move |root: &str| usage.reinvoke_refusal(root).ok().flatten()));
     // Esc on a root turn stops the shell jobs it started.
     let host = stack.host.clone();
     let tools = stack.tool_calls().clone();
@@ -175,6 +173,8 @@ pub(super) fn install(
         host.cancel_root(root);
         tools.cancel_root(root);
     }));
+    // Event summaries are masked with the session's secrets (`maskCellOutput`).
+    options.mask = Some(stack.mask());
     // A backgrounded cell's end carries the context reminder its result would have carried.
     let reminders = stack.context_reminders.clone();
     options.note = Some(Arc::new(move |lane: &str, text: &str| {

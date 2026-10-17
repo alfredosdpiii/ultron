@@ -147,6 +147,68 @@ pub fn tool_flag_warnings(parsed: &Args) -> Vec<String> {
     warnings
 }
 
+/// The warnings for the environment and settings that would give the model native tools in TypeScript
+/// (prompt.ts `rlmToolMode`, extension-tools.ts `extensionToolMode` / `nativeExtensionToolAllowlist`): the Rust
+/// build's model has exactly one tool, `rlm`, so `ULTRON_TOOLS=native`, `ULTRON_EXTENSION_TOOLS=native`,
+/// `ULTRON_NATIVE_EXTENSION_TOOLS` and the `extensionTools` setting (`mode: "native"`, `native: [...]`) are reported
+/// and ignored. The settings are the worker's (its project trust).
+pub fn tool_env_warnings(env: &Env) -> Vec<String> {
+    const ONLY_RLM: &str = "the model's only tool is rlm";
+    let mut warnings = Vec::new();
+    let lower = |key: &str| (env.var)(key).map(|v| v.trim().to_lowercase());
+    if lower("ULTRON_TOOLS").as_deref() == Some("native") {
+        warnings.push(format!(
+            "ULTRON_TOOLS=native is ignored: {ONLY_RLM}, whose REPL has read, edit, write and bash as Python functions"
+        ));
+    }
+    let extension_tools = format!("{ONLY_RLM}; extension tools stay in its REPL (tools.call)");
+    if lower("ULTRON_EXTENSION_TOOLS").as_deref() == Some("native") {
+        warnings.push(format!("ULTRON_EXTENSION_TOOLS=native is ignored: {extension_tools}"));
+    }
+    let listed: Vec<String> = (env.var)("ULTRON_NATIVE_EXTENSION_TOOLS")
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect();
+    if !listed.is_empty() {
+        warnings.push(format!(
+            "ULTRON_NATIVE_EXTENSION_TOOLS ({}) is ignored: {extension_tools}",
+            listed.join(", ")
+        ));
+    }
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
+    let configured = settings.settings().get("extensionTools");
+    if configured
+        .and_then(|c| c.get("mode"))
+        .and_then(serde_json::Value::as_str)
+        == Some("native")
+    {
+        warnings.push(format!(
+            "The extensionTools.mode setting \"native\" is ignored: {extension_tools}"
+        ));
+    }
+    let native: Vec<&str> = configured
+        .and_then(|c| c.get("native"))
+        .and_then(serde_json::Value::as_array)
+        .map(|names| {
+            names
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .filter(|name| !name.trim().is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    if !native.is_empty() {
+        warnings.push(format!(
+            "The extensionTools.native setting ({}) is ignored: {extension_tools}",
+            native.join(", ")
+        ));
+    }
+    warnings
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

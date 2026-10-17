@@ -168,12 +168,25 @@ fn assistant(text: &str, stop: &str) -> Value {
 
 // ---- settings ----
 
+/// client-tui.ts `createInteractiveTui({ tuiMode: "fullscreen" })`: fullscreen by default; only an explicit
+/// "regular" keeps the scrollback split (any other value stays fullscreen).
+#[test]
+fn interactive_qol_tui_mode_defaults_to_fullscreen_like_ts() {
+    let none = |_: &str| None;
+    assert!(!from_settings(&json!({}), &none).viewport_split);
+    assert!(!QolSettings::default().viewport_split);
+    assert!(from_settings(&json!({"tuiMode": "regular"}), &none).viewport_split);
+    assert!(!from_settings(&json!({"tuiMode": "fullscreen"}), &none).viewport_split);
+    assert!(!from_settings(&json!({"tuiMode": "split"}), &none).viewport_split);
+    assert!(!from_settings(&json!({"tuiMode": true}), &none).viewport_split);
+}
+
 #[test]
 fn interactive_qol_settings_keys_defaults_and_parity_env() {
     let none = |_: &str| None;
     let d = from_settings(&json!({}), &none);
     assert_eq!(d, QolSettings::default());
-    assert!(d.notifications && d.tty_writer && d.render_gate && d.viewport_split && d.status_line);
+    assert!(d.notifications && d.tty_writer && d.render_gate && d.status_line);
     assert!(d.attachments && d.highlight && d.autocomplete_emoji && d.autocomplete_models);
     assert!(!d.vim && !d.autocomplete_github && !d.status_pr);
 
@@ -707,6 +720,14 @@ fn script() -> Vec<Vec<UiEvent>> {
     batches
 }
 
+/// The defaults with the scrollback split (tuiMode "regular"), which these runs measure.
+fn split() -> QolSettings {
+    QolSettings {
+        viewport_split: true,
+        ..QolSettings::default()
+    }
+}
+
 fn run_script(qol: QolSettings, out: &mut dyn FnMut(&str) -> std::io::Result<()>, pending: Option<&dyn Fn() -> usize>) {
     let (mut app, _) = fresh(qol);
     let (tx, rx) = mpsc::channel();
@@ -736,7 +757,7 @@ fn interactive_qol_render_gate_writes_nothing_while_the_writer_is_backlogged() {
     };
     let mut writes = Vec::new();
     run_script(
-        QolSettings::default(),
+        split(),
         &mut |data| {
             writes.push((backlog.get(), data.to_string()));
             Ok(())
@@ -754,7 +775,7 @@ fn interactive_qol_render_gate_writes_nothing_while_the_writer_is_backlogged() {
     run_script(
         QolSettings {
             render_gate: false,
-            ..QolSettings::default()
+            ..split()
         },
         &mut |_| {
             ungated += 1;
@@ -782,7 +803,7 @@ impl std::io::Write for Shared {
 fn interactive_qol_writer_thread_delivers_the_frames_in_order() {
     let no_gate = QolSettings {
         render_gate: false,
-        ..QolSettings::default()
+        ..split()
     };
     let mut direct = String::new();
     run_script(

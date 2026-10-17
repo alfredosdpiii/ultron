@@ -138,6 +138,7 @@ pub fn batches() -> Vec<Vec<UiEvent>> {
                 entry_id: "f1".into(),
                 kind: QueueKind::FollowUp,
                 text: "and then?".into(),
+                user: true,
             }])),
         ],
         vec![

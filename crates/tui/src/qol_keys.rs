@@ -4,7 +4,8 @@
 //! `app_keybindings` stays a byte-for-byte port of Ultron's TypeScript `KEYBINDINGS` (its fixture test compares
 //! the whole list), so these ids live here and the composition root resolves [`native_app_keybindings`]. Every
 //! overlay matches keys through a [`crate::keybindings::KeybindingsManager`] built from it, never with literal key
-//! checks, so a user override in `keybindings.json` reaches the overlays too.
+//! checks, so a user override in `<agentDir>/keybindings.json` (loaded by the composition root through
+//! [`crate::keybindings_file`], and again on `/reload`) reaches the overlays too.
 //!
 //! Global ids reuse omp's names and defaults (oh-my-pi packages/tui/src/app-keybindings.ts) except where a key is
 //! already Ultron's: omp binds `app.retry` to `["f5", "alt+r"]`, but `alt+r` is Ultron's `app.history.search`

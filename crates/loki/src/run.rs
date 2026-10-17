@@ -182,6 +182,11 @@ pub fn hook_violations(
 /// `loki --root ROOT hook --file F... [--format json]`: the post-write check of written files, as the command
 /// prints and returns it.
 pub fn hook(root: &Path, files: &[String], json: bool) -> Outcome {
+    hook_with_python(root, files, json, None)
+}
+
+/// [`hook`] with the project's interpreter (`LOKI_PYTHON` of the engine's environment), which import checks ask.
+pub fn hook_with_python(root: &Path, files: &[String], json: bool, python: Option<&str>) -> Outcome {
     let root = resolve(root);
     let config = match load(&root) {
         Ok(config) => config,
@@ -197,7 +202,7 @@ pub fn hook(root: &Path, files: &[String], json: bool) -> Outcome {
             &root,
             &config,
             &paths,
-            None,
+            python,
             crate::proc::Deadline::after(20.0),
             &mut warnings,
         )

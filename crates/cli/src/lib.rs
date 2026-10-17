@@ -39,6 +39,7 @@ pub mod setup_wizard;
 pub mod startup;
 pub mod startup_checks;
 pub mod terminal_settings;
+pub mod tools_manager;
 pub mod tui_login;
 pub mod usage;
 
@@ -159,6 +160,12 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     {
         package_files(env)?;
     }
+    // `ultron mcp` answers `usage.report` inspections with the report `/usage` shows.
+    claude_root::mcp_server::set_session_report(|path| {
+        usage::log::read_session_log(path)
+            .map(|log| usage::report::build_session_report(&log))
+            .map_err(|e| e.message().to_string())
+    });
     if let Some(code) = claude_root::cli::run(argv, env, out, err) {
         return Ok(code);
     }
@@ -253,7 +260,10 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     }
     // RPC reads its commands from stdin, so it is not read as a prompt.
     let stdin = startup::read_piped_stdin(&parsed);
-    for warning in startup::tool_flag_warnings(&parsed) {
+    for warning in startup::tool_flag_warnings(&parsed)
+        .into_iter()
+        .chain(startup::tool_env_warnings(env))
+    {
         writeln!(err, "Warning: {warning}").map_err(io)?;
     }
     match native_run(&parsed, env, stdin, out, err) {

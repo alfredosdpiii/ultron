@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use super::Services;
+use super::child_summary::SummaryPlan;
 use super::context::{ContextView, order_tool_results, read_context};
 use super::entries;
 use super::generation::{ensure_provider_session_id, read_agent};
@@ -255,6 +256,63 @@ fn is_candidate(contributions: &[Vec<Message>], index: usize) -> bool {
     true
 }
 
+/// What a compaction cutting `view` at `cut` summarizes (`prepareCompaction`): the context before the cut (after the
+/// previous compaction's summary, which is updated instead), split at the start of the cut's turn when the cut is
+/// inside one, and the files the summarized part and the previous compaction touched.
+pub fn summary_plan(view: &ContextView, cut: usize) -> SummaryPlan {
+    let previous = view.head.as_ref().filter(|head| head.kind == entries::COMPACTION);
+    let previous_summary = previous.and_then(|head| {
+        let content = &head.model.as_ref()?.first()?["content"];
+        let text = content.as_str().or_else(|| content[0]["text"].as_str())?.to_string();
+        let text = text
+            .strip_prefix(compaction::COMPACTION_SUMMARY_PREFIX)
+            .unwrap_or(&text);
+        Some(
+            text.strip_suffix(compaction::COMPACTION_SUMMARY_SUFFIX)
+                .unwrap_or(text)
+                .to_string(),
+        )
+    });
+    let start = usize::from(previous.is_some());
+    let cut = cut.max(start);
+    // `findTurnStartIndex`: a cut at an answer splits its turn, which starts at the user message before it.
+    // A turn starts at a user input (`role === "user"` of a message entry): the positional prompt sections, notes
+    // and other custom entries do not start one (`findTurnStartIndex`).
+    let starts_turn = |index: usize| {
+        view.entries
+            .get(index)
+            .is_some_and(|entry| entry.kind == entries::USER || entry.kind == entries::RESET)
+    };
+    let turn_start = if cut >= view.contributions.len() || starts_turn(cut) {
+        None
+    } else {
+        (start..cut).rev().find(|index| starts_turn(*index))
+    };
+    let values = |range: std::ops::Range<usize>| -> Vec<Value> {
+        order_tool_results(&view.contributions[range].concat())
+            .iter()
+            .filter(|message| !matches!(message, Message::System(_)))
+            .map(|message| strict(to_value(message)))
+            .collect()
+    };
+    let (history, prefix) = match turn_start {
+        Some(turn) => (values(start..turn), values(turn..cut)),
+        None => (values(start..cut), Vec::new()),
+    };
+    let details = previous
+        .and_then(|head| head.data.as_ref())
+        .map(|data| &data["details"]);
+    let file_ops =
+        super::child_summary::file_operations(details, &history.iter().chain(prefix.iter()).collect::<Vec<_>>());
+    SummaryPlan {
+        split: turn_start.is_some(),
+        history,
+        prefix,
+        previous_summary,
+        file_ops,
+    }
+}
+
 /// Model messages of the entries before `cut`, ordered like model context.
 pub fn summarized_messages(view: &ContextView, cut: usize) -> Vec<Message> {
     order_tool_results(&view.contributions[..cut].concat())
@@ -375,24 +433,24 @@ fn summary_text(message: &AssistantMessage) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
-fn summary_failure(message: &AssistantMessage) -> String {
+fn summary_failure(message: &AssistantMessage, label: &str) -> String {
     match message.stop_reason {
         StopReason::Error | StopReason::Aborted => format!(
-            "Summarization failed: {}",
+            "{label} failed: {}",
             message
                 .error_message
                 .clone()
                 .unwrap_or_else(|| to_value(&message.stop_reason).as_str().unwrap_or_default().to_owned())
         ),
-        StopReason::Length => "Summarization hit the token limit; the summary is incomplete".into(),
+        StopReason::Length => format!("{label} hit the token limit; the summary is incomplete"),
         _ if message
             .content
             .iter()
             .any(|content| matches!(content, AssistantContent::ToolCall(_))) =>
         {
-            "Summarization attempted to call a tool".into()
+            format!("{label} attempted to call a tool")
         }
-        _ => "Summarization produced no text".into(),
+        _ => format!("{label} produced no text"),
     }
 }
 
@@ -419,10 +477,7 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
         .iter()
         .position(|entry| entry.id == request.first_kept)
         .unwrap_or(0);
-    let messages: Vec<Value> = summarized_messages(&view, cut)
-        .iter()
-        .map(|message| strict(to_value(message)))
-        .collect();
+    let plan = summary_plan(&view, cut);
     let session_id = ensure_provider_session_id(runtime)?;
     let settings = (services.settings)();
     let instructions = task.input["instructions"].as_str();
@@ -433,34 +488,53 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
         session_id: Some(session_id.as_str()),
         now_ms: runtime.now()? as i64,
     };
-    let summary_request = compaction::history_summary_request(
-        &messages,
-        services
-            .compaction_policy(runtime.conversation_id(), &settings)
-            .reserve_tokens,
-        None,
-        &options,
-    );
-    let mut stream_options = request.stream_options.clone();
-    stream_options.remove("deferred");
-    stream_options.insert("cacheRetention".into(), json!("none"));
-    stream_options.insert("maxTokens".into(), json!(summary_request.max_tokens));
-    let stream_request = StreamRequest {
-        options: stream_options,
-        session_id: summary_request.session_id.clone(),
-        reasoning: summary_request.reasoning.clone(),
-        conversation_id: Some(runtime.conversation_id()),
+    let reserve = services
+        .compaction_policy(runtime.conversation_id(), &settings)
+        .reserve_tokens;
+    // The history summary, then a split turn's prefix summary; the first response that is no summary ends them.
+    let mut texts = Vec::new();
+    let mut responses = Vec::new();
+    let mut message = None;
+    let requests = super::child_summary::summary_requests(&plan, reserve, &options);
+    // A split turn's last request is its prefix summary (`Turn prefix summarization failed: ...`).
+    let prefix_request = (plan.split && !plan.prefix.is_empty()).then(|| requests.len() - 1);
+    for summary_request in requests {
+        let mut stream_options = request.stream_options.clone();
+        stream_options.remove("deferred");
+        stream_options.insert("cacheRetention".into(), json!("none"));
+        stream_options.insert("maxTokens".into(), json!(summary_request.max_tokens));
+        let stream_request = StreamRequest {
+            options: stream_options,
+            session_id: summary_request.session_id.clone(),
+            reasoning: summary_request.reasoning.clone(),
+            conversation_id: Some(runtime.conversation_id()),
+            final_note: None,
+        };
+        let response = services.models.stream(
+            &model,
+            &summary_request.context,
+            &stream_request,
+            runtime.signal(),
+            &mut |_| {},
+        )?;
+        // An abort mark or close: the abort invocation or the reopened task handles the committed state.
+        runtime.signal().check()?;
+        let text = summary_text(&response);
+        responses.push((
+            to_value(&response.usage),
+            format!("{}/{}", response.provider, response.model),
+        ));
+        let failed = text.is_none();
+        texts.extend(text);
+        message = Some(response);
+        if failed {
+            break;
+        }
+    }
+    let Some(message) = message else {
+        return Err(HarnessError::msg("compaction made no summary request"));
     };
-    let message = services.models.stream(
-        &model,
-        &summary_request.context,
-        &stream_request,
-        runtime.signal(),
-        &mut |_| {},
-    )?;
-    // An abort mark or close: the abort invocation or the reopened task handles the committed state.
-    runtime.signal().check()?;
-    let summary = summary_text(&message);
+    let summary = (texts.len() == responses.len()).then(|| super::child_summary::compose_summary(&plan, &texts));
     let policy = settings.retry;
     let retry = message.stop_reason == StopReason::Error
         && is_retryable(&message)
@@ -471,14 +545,23 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
     } else {
         0
     };
-    let usage = to_value(&message.usage);
-    let key = format!("{}/{}", message.provider, message.model);
     let modes = settings.queue_modes();
     runtime.commit(&runtime.ctx(), |tx, current| {
-        record_usage(tx, conversation_id, Bucket::Models, &key, &usage)?;
+        for (usage, key) in &responses {
+            record_usage(tx, conversation_id, Bucket::Models, key, usage)?;
+        }
         let live = live(tx, conversation_id)?;
-        if let Some(summary) = summary {
-            return place_summary(tx, runtime, current, &live, request.first_kept, &summary, modes);
+        if let Some((summary, read, modified)) = &summary {
+            let details = json!({ "readFiles": read, "modifiedFiles": modified });
+            return place_summary(
+                tx,
+                runtime,
+                current,
+                &live,
+                request.first_kept,
+                (summary, &details),
+                modes,
+            );
         }
         if retry {
             if let Some(index) = compaction_status_index(&live, task_id)? {
@@ -501,7 +584,17 @@ fn summarize_phase(services: &Services, task: &TaskRecord, runtime: &TaskRuntime
         }
         remove_compaction_status(&live, task_id)?;
         Ok(Some(NextState::Terminal {
-            outcome: fail(summary_failure(&message), "model_error"),
+            outcome: fail(
+                summary_failure(
+                    &message,
+                    if prefix_request == Some(responses.len() - 1) {
+                        "Turn prefix summarization"
+                    } else {
+                        "Summarization"
+                    },
+                ),
+                "model_error",
+            ),
         }))
     })
 }
@@ -542,7 +635,7 @@ fn place_summary(
     current: &TaskRecord,
     live: &chord_delta::Draft,
     first_kept: EntryId,
-    summary: &str,
+    (summary, details): (&str, &Value),
     modes: super::inbox::QueueModes,
 ) -> Result<Option<NextState>> {
     let conversation_id = runtime.conversation_id();
@@ -560,7 +653,7 @@ fn place_summary(
                 "kind": entries::COMPACTION,
                 "head": first_kept.0,
                 "model": [{ "role": "user", "content": [{ "type": "text", "text": text }], "timestamp": now }],
-                "data": { "reason": reason },
+                "data": { "reason": reason, "details": details },
             });
             let draft = SubmissionDraft::write(entry).request_id(&format!("compaction:{}", runtime.task_id().0));
             let id = admit_submission(tx, conversation_id, &draft, now, modes)?;
@@ -574,7 +667,7 @@ fn place_summary(
                     model: Some(vec![
                         json!({ "role": "user", "content": [{ "type": "text", "text": text }], "timestamp": now }),
                     ]),
-                    data: Some(json!({ "reason": reason })),
+                    data: Some(json!({ "reason": reason, "details": details })),
                     ..EntryDraft::new(entries::COMPACTION)
                 },
             )?;

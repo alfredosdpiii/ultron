@@ -68,23 +68,11 @@ pub fn setup_record(mode: &str, project_python: Option<&str>, ms: u64) -> Value 
     })
 }
 
-/// `findProjectPython` without running an interpreter: ULTRON_LOKI_PROJECT_PYTHON, else nothing when LOKI_PYTHON is
-/// set (left to the engine), else a `.venv` or `venv` interpreter in `cwd`.
+/// `findProjectPython` (loki::project): ULTRON_LOKI_PROJECT_PYTHON, else nothing when LOKI_PYTHON is set (left to
+/// the engine), else the session PATH's `python`/`python3` when it is a virtual or conda environment's, else a
+/// `.venv` or `venv` interpreter in `cwd`.
 pub fn project_python(var: &dyn Fn(&str) -> Option<String>, cwd: &Path) -> Option<String> {
-    let set = |key: &str| var(key).map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
-    if let Some(named) = set("ULTRON_LOKI_PROJECT_PYTHON") {
-        return Some(named);
-    }
-    if set("LOKI_PYTHON").is_some() {
-        return None;
-    }
-    [".venv", "venv"].iter().find_map(|directory| {
-        ["bin/python", "bin/python3", "Scripts/python.exe"]
-            .iter()
-            .map(|relative| cwd.join(directory).join(relative))
-            .find(|candidate| candidate.is_file())
-            .map(|candidate| candidate.display().to_string())
-    })
+    loki::project::find_project_python(cwd, var)
 }
 
 /// The session's Loki setup, written to `ULTRON_LOKI_LOG` when the guard is on (loki.ts `options.record?.({phase:
@@ -106,4 +94,24 @@ pub fn loki_setup(config: &crate::compose::Config) {
         line.extend(fields);
     }
     append(&target, &format!("{line}\n"));
+}
+
+/// session-worker.ts: when Loki is not off the worker sets `ULTRON_LOKI_BUILTIN=1`, so a project's Loki extension
+/// defers to the built-in integration instead of checking every write twice. Extensions here are processes: each
+/// gets the variable in its environment.
+pub fn with_loki_builtin(
+    manifests: Vec<extensions::manifest::Manifest>,
+    loki: host::loki_guard::LokiMode,
+) -> Vec<extensions::manifest::Manifest> {
+    if loki == host::loki_guard::LokiMode::Off {
+        return manifests;
+    }
+    manifests
+        .into_iter()
+        .map(|mut manifest| {
+            manifest.env.retain(|(name, _)| name != "ULTRON_LOKI_BUILTIN");
+            manifest.env.push(("ULTRON_LOKI_BUILTIN".into(), "1".into()));
+            manifest
+        })
+        .collect()
 }

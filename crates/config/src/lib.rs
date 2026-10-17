@@ -12,3 +12,4 @@ pub mod paths;
 pub mod settings;
 pub mod settings_keys;
 pub mod trust;
+pub mod worker_settings_keys;

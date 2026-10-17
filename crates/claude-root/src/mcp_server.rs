@@ -277,6 +277,8 @@ pub struct Opened {
     pub lane: Arc<Lane>,
     pub root: ExternalRoot,
     pub session_id: String,
+    /// The session file (`usage.report` reads it).
+    pub session_path: PathBuf,
     pub model: String,
     _lock: Option<SessionLock>,
 }
@@ -294,6 +296,7 @@ fn open_runtime(
     claude_session_id: Option<&str>,
     resolved: &Resolved,
     subagents: Option<SubagentHost>,
+    root_finish: Option<delegation::host::RootFinish>,
 ) -> Result<Opened, String> {
     let agent_dir = env.agent_dir();
     let cwd = env.cwd.display().to_string();
@@ -343,6 +346,31 @@ fn open_runtime(
         eprintln!("Warning: {diagnostic}");
     }
     let lane = Arc::new(Lane::open_with(&runtime, &model, api_key, &metadata.id, subagents)?);
+    let delegation = &lane.stack.delegation;
+    // The root is itself a subagent (`rootSpawn`, `rootFinish`): nesting counts from its level and allowance, and its
+    // `rlm.finish` verdict goes to its parent's server.
+    if args.child {
+        let allowance =
+            (args.allowance != crate::guide::UNLIMITED).then(|| i64::try_from(args.allowance).unwrap_or(i64::MAX));
+        delegation.set_root_spawn(u32::try_from(args.level).unwrap_or(u32::MAX), allowance);
+    }
+    if let Some(finish) = root_finish {
+        delegation.set_root_finish(finish);
+    }
+    // `childModel`: `--children ultron`'s child model, else `rlm.childModel` (/settings -> Models), for spawns that
+    // name none.
+    let settings_child = runtime.config.settings["rlm"]["childModel"]
+        .as_str()
+        .filter(|m| !m.is_empty())
+        .map(str::to_string);
+    let child_model = resolved
+        .ultron_child_model
+        .clone()
+        .filter(|_| resolved.children == "ultron")
+        .or(settings_child);
+    if child_model.is_some() {
+        delegation.set_child_model(child_model);
+    }
     let loki_context = runtime
         .config
         .loki_root
@@ -352,15 +380,20 @@ fn open_runtime(
     // The runtime counters (`/usage`, `ultron usage`) are the session value `ultron.module/stats` of a session whose
     // root is Claude Code (counting continues from a resumed one).
     lane.stack.stats.set_root("external");
+    let session: session_core::durable_store::SharedSession = Arc::new(Mutex::new(session));
     lane.stack
         .stats
-        .attach(Arc::new(session_core::session_stats::SessionStore(Arc::new(
-            Mutex::new(session),
-        ))));
-    let root = ExternalRoot::over_lane(lane.clone(), loki_context);
+        .attach(Arc::new(session_core::session_stats::SessionStore(session.clone())));
+    // What the session actor wires for its own root lane: `ctx.*`, the budget line, shell jobs' roots and the
+    // completion events of root work (into the root's inbox).
+    let host = Arc::new(crate::external_lane::LaneRootHost::new(lane.stack.clone()));
+    let inbox: Arc<Mutex<Vec<String>>> = Arc::default();
+    crate::external_lane::wire(&lane, session, &host, inbox.clone());
+    let root = ExternalRoot::over_lane(lane.clone(), loki_context, inbox, host, &*env.var);
     Ok(Opened {
         lane,
         root,
+        session_path: metadata.path.clone(),
         session_id: metadata.id,
         model: format!("{}/{}", model.provider, model.id),
         _lock: lock,
@@ -530,11 +563,21 @@ impl Server {
                     _ => Map::new(),
                 };
                 let opened = self.runtime()?;
-                opened
-                    .lane
-                    .stack
-                    .cell_handler(MAIN, None)
-                    .handle(&inspect, payload, &kernel::Signal::new())
+                let stack = &opened.lane.stack;
+                match inspect.as_str() {
+                    // The worker answers these itself (session-worker.ts `inspect`).
+                    "rlm.pool" => Ok(stack.pool_stats()),
+                    "async.pending" => Ok(crate::external_lane::async_pending(stack)),
+                    "usage.report" => {
+                        let report = SESSION_REPORT.get().ok_or("the session report is not available")?;
+                        // The counters still in memory go to the session file first.
+                        stack.stats.flush();
+                        report(&opened.session_path)
+                    }
+                    _ => stack
+                        .cell_handler(MAIN, None)
+                        .handle(&inspect, payload, &kernel::Signal::new()),
+                }
             }
             "hook" => {
                 let event = match request.get("event") {
@@ -669,7 +712,7 @@ impl Server {
 }
 
 /// The MCP face of a [`Server`].
-struct Handlers(Arc<Server>);
+pub struct Handlers(Arc<Server>);
 
 impl McpHandlers for Handlers {
     fn name(&self) -> String {
@@ -726,15 +769,77 @@ impl McpHandlers for Handlers {
     }
 }
 
-/// Run `ultron mcp` on stdio until Claude Code disconnects; returns the exit code.
+/// Builds the session report (`usage.report`) from a session file; the CLI, which owns the report, sets it.
+pub type SessionReport = fn(&Path) -> Result<Value, String>;
+
+static SESSION_REPORT: std::sync::OnceLock<SessionReport> = std::sync::OnceLock::new();
+
+/// Answer `usage.report` inspections with `report`.
+pub fn set_session_report(report: SessionReport) {
+    let _ = SESSION_REPORT.set(report);
+}
+
+/// What a running server holds: shut down once, by Claude Code disconnecting or by a signal.
+pub struct Running {
+    pub server: Arc<Server>,
+    control: Mutex<Option<crate::control::ControlServer>>,
+    parent: Arc<Mutex<Option<ControlClient>>>,
+    done: std::sync::atomic::AtomicBool,
+}
+
+impl Running {
+    /// Shut down like a disconnect (TypeScript's end of `runMcpServer`): stop the control server and unregister,
+    /// drop the parent connection, and close the runtime once it opened (kernels are snapshotted, running subagents
+    /// and jobs stop). A second call does nothing.
+    pub fn shutdown(&self) {
+        if self.done.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return;
+        }
+        if let Some(control) = self.control.lock().unwrap_or_else(PoisonError::into_inner).take() {
+            control.close();
+        }
+        self.parent.lock().unwrap_or_else(PoisonError::into_inner).take();
+        if let Ok(opened) = self.server.runtime() {
+            opened.close();
+        }
+    }
+
+    /// The control socket's path.
+    pub fn socket(&self) -> String {
+        self.server.record.socket.clone()
+    }
+}
+
+/// Run `ultron mcp` on stdio until Claude Code disconnects; returns the exit code. SIGTERM, SIGINT and SIGHUP of
+/// this process shut it down the same way and exit 0.
 pub fn run(
     argv: &[String],
     ctx: &Ctx,
     stdin: &mut dyn std::io::BufRead,
     stdout: Box<dyn std::io::Write + Send>,
 ) -> Result<i32, String> {
+    let (running, handlers) = start(argv, ctx)?;
+    let signalled = running.clone();
+    daemon::signals::set_handler(Arc::new(move |_| {
+        signalled.shutdown();
+        std::process::exit(0);
+    }));
+    serve(handlers, stdin, stdout);
+    // Claude Code closed the connection: shut down (running subagents and jobs stop with the host).
+    running.shutdown();
+    daemon::signals::clear_handler();
+    Ok(0)
+}
+
+/// Start a server: its runtime opening in the background, its control socket listening. [`serve`] the returned
+/// handlers on the MCP connection, then [`Running::shutdown`].
+pub fn start(argv: &[String], ctx: &Ctx) -> Result<(Arc<Running>, Arc<Handlers>), String> {
     let args = parse_mcp_args(argv).map_err(|e| e.0)?;
     let mut env = ctx.env.clone();
+    // A subagent server's verdict token (TypeScript then deletes it from the process env, which Rust cannot do
+    // without `unsafe`: the kernel's environment drops it as a credential and Claude Code children are started
+    // without it).
+    let parent_token = (ctx.env.var)("ULTRON_PARENT_TOKEN");
     let var = env.var.clone();
     // A worktree subagent's server works in the worktree its parent gave it.
     if args.child
@@ -782,15 +887,16 @@ pub fn run(
         session_id: None,
         parent: args.parent_name.clone().filter(|_| args.child),
     };
-    // A subagent server talks to its parent; the token stays out of the kernel's environment.
-    let _parent = if args.child {
+    // A subagent server talks to its parent: its `rlm.finish` is relayed as `child.finish` with its token.
+    let parent = Arc::new(Mutex::new(if args.child {
         Some(ControlClient::connect(
             Path::new(args.parent_socket.as_deref().unwrap_or_default()),
             Duration::from_secs(10),
         )?)
     } else {
         None
-    };
+    }));
+    let root_finish = args.child.then(|| root_finish(parent.clone(), parent_token));
     let server = Arc::new(Server {
         hints: hints_enabled(var("ULTRON_HINTS").as_deref()),
         args: args.clone(),
@@ -817,6 +923,7 @@ pub fn run(
                 starter.claude_session_id.as_deref(),
                 &starter.resolved,
                 subagents,
+                root_finish,
             )
         });
         let mut startup = starter.startup.lock().unwrap_or_else(PoisonError::into_inner);
@@ -833,13 +940,30 @@ pub fn run(
     let handler_server = server.clone();
     let handler: ControlHandler = Arc::new(move |request| handler_server.control(request));
     let control = start_control_server(&record, handler, &dir)?;
-    serve(Arc::new(Handlers(server.clone())), stdin, stdout);
-    // Claude Code closed the connection: shut down (running subagents and jobs stop with the host).
-    control.close();
-    if let Ok(opened) = server.runtime() {
-        opened.close();
-    }
-    Ok(0)
+    let handlers = Arc::new(Handlers(server.clone()));
+    let running = Arc::new(Running {
+        server,
+        control: Mutex::new(Some(control)),
+        parent,
+        done: std::sync::atomic::AtomicBool::new(false),
+    });
+    Ok((running, handlers))
+}
+
+/// `rootFinish`: the verdict goes to the parent server as `child.finish` with this server's token.
+fn root_finish(parent: Arc<Mutex<Option<ControlClient>>>, token: Option<String>) -> delegation::host::RootFinish {
+    Arc::new(move |payload: Map<String, Value>| {
+        let mut parent = parent.lock().unwrap_or_else(PoisonError::into_inner);
+        let client = parent
+            .as_mut()
+            .ok_or("rlm.finish: the parent server is not reachable")?;
+        let mut fields = Map::new();
+        if let Some(token) = &token {
+            fields.insert("token".into(), token.clone().into());
+        }
+        fields.insert("payload".into(), Value::Object(payload));
+        client.request("child.finish", fields, Duration::from_secs(30))
+    })
 }
 
 /// Child tokens of running Claude Code subagents, by token: their lane.

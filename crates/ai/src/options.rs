@@ -70,6 +70,7 @@ impl StreamOptions {
         crate::http::RetryOptions {
             max_retries: self.max_retries,
             max_retry_delay_ms: self.max_retry_delay_ms,
+            timeout_ms: self.timeout_ms,
         }
     }
 

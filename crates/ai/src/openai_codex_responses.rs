@@ -385,7 +385,8 @@ fn js_to_number(text: &str) -> Option<f64> {
     trimmed.parse::<f64>().ok()
 }
 
-/// `getRetryAfterDelayMs`. A `retry-after` HTTP date is not parsed (upstream waits until that date).
+/// `getRetryAfterDelayMs`: `retry-after-ms`, else `retry-after` in seconds, else as an HTTP date (the time until
+/// then, at least 0).
 fn retry_after_delay_ms(headers: &crate::http::HeaderMap) -> Option<f64> {
     if let Some(value) = headers.get("retry-after-ms")
         && let Some(millis) = js_to_number(value).filter(|m| m.is_finite())
@@ -393,9 +394,10 @@ fn retry_after_delay_ms(headers: &crate::http::HeaderMap) -> Option<f64> {
         return Some(millis.max(0.0));
     }
     let retry_after = headers.get("retry-after").filter(|v| !v.is_empty())?;
-    js_to_number(retry_after)
-        .filter(|s| s.is_finite())
-        .map(|seconds| (seconds * 1000.0).max(0.0))
+    if let Some(seconds) = js_to_number(retry_after).filter(|s| s.is_finite()) {
+        return Some((seconds * 1000.0).max(0.0));
+    }
+    crate::http::until_http_date_ms(retry_after).map(|ms| ms.max(0.0))
 }
 
 fn validate_retry_delay_ms(delay_ms: f64, max: Option<f64>) -> Result<f64, CodexError> {

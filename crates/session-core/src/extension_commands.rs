@@ -24,13 +24,7 @@ pub struct ExtensionCommand {
 /// `workerProjectTrusted` (worker-settings.ts): nothing to trust, else the stored decision, else
 /// `defaultProjectTrust` is not "never".
 pub fn worker_project_trusted(cwd: &Path, agent_dir: &Path, home: &Path) -> bool {
-    if !config::trust::has_trust_requiring_project_resources(cwd, home) {
-        return true;
-    }
-    if let Ok(Some(decision)) = config::trust::ProjectTrustStore::new(agent_dir).get(cwd) {
-        return decision;
-    }
-    SettingsManager::create(cwd, agent_dir, false).default_project_trust() != "never"
+    config::trust::worker_project_trusted(cwd, agent_dir, home)
 }
 
 fn entries(settings: &Map<String, Value>) -> Vec<String> {

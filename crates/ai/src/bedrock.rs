@@ -824,8 +824,17 @@ fn resolve_target(model: &Model, options: &BedrockOptions) -> Result<Target, Bed
         .or_else(|| (!ambient_profile).then(|| "us-east-1".to_string()))
         .or_else(|| profile_config_value(profile.as_deref().unwrap_or("default"), "region", env))
         .ok_or_else(|| BedrockError::plain("Region is missing"))?;
+    let configured_endpoint = (!explicit_endpoint)
+        .then(|| {
+            configured_endpoint_url(&|name| provider_env_value(name, None), &|| {
+                crate::aws_credentials::load_shared_files(env)
+            })
+        })
+        .flatten();
     let endpoint = if explicit_endpoint {
         model.base_url.trim_end_matches('/').to_string()
+    } else if let Some(url) = configured_endpoint {
+        url.trim_end_matches('/').to_string()
     } else if region.starts_with("cn-") {
         format!("https://bedrock-runtime.{region}.amazonaws.com.cn")
     } else {
@@ -844,6 +853,47 @@ fn resolve_target(model: &Model, options: &BedrockOptions) -> Result<Target, Bed
         },
     };
     Ok(Target { endpoint, region, auth })
+}
+
+/// The SDK's configured endpoint (`getEndpointFromConfig("Bedrock Runtime")`, used when the client sets no
+/// `endpoint`): none when `AWS_IGNORE_CONFIGURED_ENDPOINT_URLS` (else the profile's `ignore_configured_endpoint_urls`)
+/// is `true`; else `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, then `AWS_ENDPOINT_URL`, then the profile's `services`
+/// section's `bedrock_runtime.endpoint_url`, then the profile's `endpoint_url`. `lookup` is the process environment
+/// (`loadConfig` reads `process.env`); the profile is `AWS_PROFILE` or `default`, config file over credentials file.
+/// A boolean that is neither `true` nor `false` is skipped, as `loadConfig` moves on to the next source.
+pub fn configured_endpoint_url(
+    lookup: &dyn Fn(&str) -> Option<String>,
+    files: &dyn Fn() -> (crate::aws_credentials::Profiles, crate::aws_credentials::Profiles),
+) -> Option<String> {
+    let (config, credentials) = files();
+    let name = lookup("AWS_PROFILE").unwrap_or_else(|| "default".into());
+    let mut profile = credentials.get(&name).cloned().unwrap_or_default();
+    for (key, value) in config.get(&name).cloned().unwrap_or_default() {
+        profile.insert(key, value);
+    }
+    let boolean = |value: Option<String>| match value.as_deref() {
+        Some("true") => Some(true),
+        Some("false") => Some(false),
+        _ => None,
+    };
+    let ignore = boolean(lookup("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS"))
+        .or_else(|| boolean(profile.get("ignore_configured_endpoint_urls").cloned()))
+        .unwrap_or(false);
+    if ignore {
+        return None;
+    }
+    let set = |v: Option<String>| v.filter(|v| !v.is_empty());
+    if let Some(url) = set(lookup("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")).or_else(|| set(lookup("AWS_ENDPOINT_URL"))) {
+        return Some(url);
+    }
+    if let Some(services) = profile.get("services") {
+        // A missing services section fails this source; the default (none) follows.
+        let section = config.get(&format!("services.{services}"))?;
+        if let Some(url) = set(section.get("bedrock_runtime.endpoint_url").cloned()) {
+            return Some(url);
+        }
+    }
+    set(profile.get("endpoint_url").cloned())
 }
 
 fn env_credentials(env: Option<&crate::env::ProviderEnv>) -> Option<AwsCredentials> {
@@ -1457,7 +1507,11 @@ async fn drive(
         &serde_json::to_string(&body).unwrap_or_default(),
         options,
     );
-    let mut stream = send_with_retry(transport, &request, options).await?;
+    // `AWS_BEDROCK_FORCE_HTTP1=1`: "Some custom endpoints require HTTP/1.1 instead of HTTP/2".
+    let http1 = (provider_env_value("AWS_BEDROCK_FORCE_HTTP1", options.base.env.as_ref()).as_deref() == Some("1"))
+        .then(|| transport.http1_only())
+        .flatten();
+    let mut stream = send_with_retry(http1.as_deref().unwrap_or(transport), &request, options).await?;
     *response_id = diagnostic_value(stream.request_id.as_deref());
     while let Some(message) = stream.next(signal).await? {
         let header = |name: &str| message.headers.get(name).map(String::as_str);

@@ -151,6 +151,13 @@ impl RunJournal {
         });
     }
 
+    /// The stream options of the run's generations (see [`Run::set_stream_options`]).
+    pub fn set_stream_options(&mut self, options: Value) {
+        if let Some(run) = self.run.as_mut() {
+            run.set_stream_options(options);
+        }
+    }
+
     /// The generation's retry policy (see [`Run::set_retry_policy`]).
     pub fn set_retry_policy(&mut self, policy: Value) {
         if let Some(run) = self.run.as_mut() {

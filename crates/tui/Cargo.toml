@@ -11,7 +11,12 @@ arboard = { version = "=3.6.1", default-features = false, features = ["wayland-d
 base64 = "=0.23.1"
 crossterm = { version = "=0.29.0", default-features = false }
 fancy-regex = "=0.19.2"
-image = { version = "=0.25.10", default-features = false, features = ["bmp", "gif", "jpeg", "png", "webp"] }
+icu_collections = { version = "=2.3.0", default-features = false }
+icu_normalizer = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
+icu_properties = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
+icu_provider = { version = "=2.3.1", default-features = false }
+icu_segmenter = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
+image = { version = "=0.25.10", default-features = false, features = ["bmp", "gif", "ico", "jpeg", "png", "tiff", "webp"] }
 unicode-segmentation = "=1.13.3"
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 syntect = { version = "=5.3.0", default-features = false, features = ["default-syntaxes", "regex-fancy", "yaml-load"] }

@@ -14,12 +14,18 @@ use std::time::Instant;
 const POOL_CELL: &str =
     "p = await rlm.host_request('rlm.pool', {})\nprint([(g['name'], g['checks'], g['blocked']) for g in p['guards']])";
 
+/// The first user text that is not a clock line (root and subagent lanes open with one, clock-context.ts).
 fn first_user_text(body: &Value) -> String {
-    let content = &body["messages"][0]["content"];
-    match content {
-        Value::String(text) => text.clone(),
-        _ => content[0]["text"].as_str().unwrap_or_default().to_string(),
-    }
+    body["messages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|m| match &m["content"] {
+            Value::String(text) => text.clone(),
+            content => content[0]["text"].as_str().unwrap_or_default().to_string(),
+        })
+        .find(|text| !text.starts_with("[clock] "))
+        .unwrap_or_default()
 }
 
 fn git(cwd: &std::path::Path, home: &std::path::Path, args: &[&str]) {

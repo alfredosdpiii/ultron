@@ -658,9 +658,16 @@ pub fn logo_text() -> String {
 
 /// Log lines (`createLogger`): `<ISO time> <line with secrets masked>` on the process's stderr as they happen (and,
 /// for the service, in the day's log file).
+/// The secrets this process knows (`output-secrets.ts` `knownSecrets`, module-global): every gh token the token
+/// store reads is registered here (`registerSecretValues`), and every autoreview log line is masked with it.
+fn known_secrets() -> Arc<host::secrets::OutputMasker> {
+    static MASKER: std::sync::OnceLock<Arc<host::secrets::OutputMasker>> = std::sync::OnceLock::new();
+    MASKER.get_or_init(Arc::default).clone()
+}
+
 fn logger(var: &crate::VarLookup) -> Log {
     let mask = var("ULTRON_MASK_SECRETS");
-    let masker = Arc::new(host::secrets::OutputMasker::default());
+    let masker = known_secrets();
     Arc::new(move |line: &str| {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1500,7 +1507,11 @@ fn reviewer_deps(
     };
     Ok(review::reviewer::ReviewerDeps {
         runner: runner.clone(),
-        tokens: Arc::new(review::accounts::TokenStore::new(runner.clone())),
+        tokens: Arc::new(
+            review::accounts::TokenStore::new(runner.clone()).with_secret_sink(Arc::new(|token: &str| {
+                known_secrets().register_secret_values(&[Value::from(token)])
+            })),
+        ),
         engine,
         store: Arc::new(review::state::StateStore::new(&paths.state)),
         checkouts: Arc::new(review::checkout::CheckoutManager::new(runner, &paths.cache)),
@@ -1617,7 +1628,7 @@ fn daemon_command(
 ) -> Result<i32, Failure> {
     let mut deps = reviewer_deps(config, saved, env, paths, ov)?;
     let mask_setting = (env.var)("ULTRON_MASK_SECRETS");
-    let masker = Arc::new(host::secrets::OutputMasker::default());
+    let masker = known_secrets();
     deps.log = review::daemon::create_logger(
         Some(paths.logs.clone()),
         Arc::new(now_ms),

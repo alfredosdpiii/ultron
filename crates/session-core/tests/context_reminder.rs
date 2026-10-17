@@ -498,12 +498,13 @@ fn session_core_context_reminder_reaches_a_subagent_lane() {
     assert_eq!(texts(tool_results(&parent[1])), ["spawned"]);
 }
 
+/// The first user text that is not a clock line (root and subagent lanes open with one, clock-context.ts).
 fn first_user_text(body: &Value) -> String {
     body["messages"]
         .as_array()
         .into_iter()
         .flatten()
-        .find(|m| m["role"] == "user")
+        .filter(|m| m["role"] == "user")
         .map(|m| match &m["content"] {
             Value::String(text) => text.clone(),
             Value::Array(blocks) => blocks
@@ -513,6 +514,7 @@ fn first_user_text(body: &Value) -> String {
                 .join(""),
             _ => String::new(),
         })
+        .find(|text| !text.starts_with("[clock] "))
         .unwrap_or_default()
 }
 

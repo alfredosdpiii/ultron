@@ -1,0 +1,258 @@
+{
+	"cases": [
+		{
+			"name": "opencode completions with a session",
+			"model": "opencode/big-pickle",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-1"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/chat/completions",
+				"headers": {
+					"x-opencode-session": "sess-1"
+				}
+			}
+		},
+		{
+			"name": "opencode anthropic with a session",
+			"model": "opencode/claude-fable-5",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-2"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/messages?beta=true",
+				"headers": {
+					"x-opencode-session": "sess-2"
+				}
+			}
+		},
+		{
+			"name": "opencode google with a session",
+			"model": "opencode/gemini-3-flash",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-3"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/models/gemini-3-flash:streamGenerateContent?alt=sse",
+				"headers": {
+					"x-opencode-session": "sess-3"
+				}
+			}
+		},
+		{
+			"name": "opencode responses with a session",
+			"model": "opencode/gpt-5",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-4"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/responses",
+				"headers": {
+					"x-opencode-session": "sess-4"
+				}
+			}
+		},
+		{
+			"name": "opencode go anthropic with a session",
+			"model": "opencode-go/claude-haiku-5-5",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-5"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/go/v1/messages?beta=true",
+				"headers": {
+					"x-opencode-session": "sess-5"
+				}
+			}
+		},
+		{
+			"name": "opencode go completions with a session",
+			"model": "opencode-go/deepseek-v4-flash",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-6"
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/go/v1/chat/completions",
+				"headers": {
+					"x-opencode-session": "sess-6"
+				}
+			}
+		},
+		{
+			"name": "opencode without a session",
+			"model": "opencode/big-pickle",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/chat/completions",
+				"headers": {}
+			}
+		},
+		{
+			"name": "opencode with an empty session id",
+			"model": "opencode/big-pickle",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": ""
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/chat/completions",
+				"headers": {}
+			}
+		},
+		{
+			"name": "opencode caller header wins in any case",
+			"model": "opencode/big-pickle",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake"
+			},
+			"options": {
+				"sessionId": "sess-7",
+				"headers": {
+					"X-OpenCode-Session": "mine"
+				}
+			},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/chat/completions",
+				"headers": {
+					"x-opencode-session": "mine"
+				}
+			}
+		},
+		{
+			"name": "openai responses with a session has no opencode header",
+			"model": "openai/gpt-4",
+			"env": {
+				"OPENAI_API_KEY": "sk-openai-fake"
+			},
+			"options": {
+				"sessionId": "sess-8"
+			},
+			"request": {
+				"url": "https://api.openai.com/v1/responses",
+				"headers": {}
+			}
+		},
+		{
+			"name": "openai responses organization and project",
+			"model": "openai/gpt-4",
+			"env": {
+				"OPENAI_API_KEY": "sk-openai-fake",
+				"OPENAI_ORG_ID": " org-fake ",
+				"OPENAI_PROJECT_ID": "proj-fake"
+			},
+			"options": {},
+			"request": {
+				"url": "https://api.openai.com/v1/responses",
+				"headers": {
+					"openai-organization": "org-fake",
+					"openai-project": "proj-fake"
+				}
+			}
+		},
+		{
+			"name": "openai blank organization is unset",
+			"model": "openai/gpt-4",
+			"env": {
+				"OPENAI_API_KEY": "sk-openai-fake",
+				"OPENAI_ORG_ID": "  ",
+				"OPENAI_PROJECT_ID": ""
+			},
+			"options": {},
+			"request": {
+				"url": "https://api.openai.com/v1/responses",
+				"headers": {}
+			}
+		},
+		{
+			"name": "caller headers override the organization",
+			"model": "openai/gpt-4",
+			"env": {
+				"OPENAI_API_KEY": "sk-openai-fake",
+				"OPENAI_ORG_ID": "org-fake",
+				"OPENAI_PROJECT_ID": "proj-fake"
+			},
+			"options": {
+				"headers": {
+					"openai-organization": "org-caller"
+				}
+			},
+			"request": {
+				"url": "https://api.openai.com/v1/responses",
+				"headers": {
+					"openai-organization": "org-caller",
+					"openai-project": "proj-fake"
+				}
+			}
+		},
+		{
+			"name": "opencode completions organization",
+			"model": "opencode/big-pickle",
+			"env": {
+				"OPENCODE_API_KEY": "oc-fake",
+				"OPENAI_ORG_ID": "org-fake"
+			},
+			"options": {},
+			"request": {
+				"url": "https://opencode.ai/zen/v1/chat/completions",
+				"headers": {
+					"openai-organization": "org-fake"
+				}
+			}
+		},
+		{
+			"name": "azure responses organization and project",
+			"model": "azure-openai-responses/gpt-4",
+			"env": {
+				"AZURE_OPENAI_API_KEY": "az-fake",
+				"AZURE_OPENAI_BASE_URL": "https://fake-resource.openai.azure.com/openai/v1",
+				"OPENAI_ORG_ID": "org-fake",
+				"OPENAI_PROJECT_ID": "proj-fake"
+			},
+			"options": {},
+			"request": {
+				"url": "https://fake-resource.openai.azure.com/openai/v1/responses?api-version=v1",
+				"headers": {
+					"openai-organization": "org-fake",
+					"openai-project": "proj-fake"
+				}
+			}
+		},
+		{
+			"name": "anthropic sends no organization",
+			"model": "anthropic/claude-haiku-4-5",
+			"env": {
+				"ANTHROPIC_API_KEY": "sk-ant-fake",
+				"OPENAI_ORG_ID": "org-fake",
+				"OPENAI_PROJECT_ID": "proj-fake"
+			},
+			"options": {},
+			"request": {
+				"url": "https://api.anthropic.com/v1/messages?beta=true",
+				"headers": {}
+			}
+		}
+	]
+}
