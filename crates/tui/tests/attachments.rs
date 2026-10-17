@@ -216,6 +216,9 @@ fn tui_clipboard_service_is_off_thread_and_ordered() {
     svc.request(ClipboardRead::ImageOrText);
     assert_eq!(
         svc.replies().recv_timeout(HANG_GUARD).unwrap(),
-        ClipboardReply::Image("iVBOR2RhdGE=".into())
+        ClipboardReply::Image {
+            data: "iVBOR2RhdGE=".into(),
+            mime_type: "image/png".into()
+        }
     );
 }

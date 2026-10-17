@@ -173,22 +173,84 @@ fn session_core_context_reminder_adds_the_result_to_the_meter() {
     let reminders = ContextReminders::new(ON);
     reminders.set_limit("main", Some(limit(200_000, 16_384)));
     // No meter (the external Claude Code root has no session actor): no reminder.
-    assert_eq!(reminders.reminder("main", "x"), None);
+    assert_eq!(reminders.reminder("main", "x", 0), None);
     let used = Arc::new(Mutex::new(163_610u64));
     let seen = used.clone();
     reminders.set_meter(Arc::new(move |lane: &str| {
         (lane == "main").then(|| at(*seen.lock().unwrap()))
     }));
     // 163,610 + ceil(20 / 4) = 163,615: one short.
-    assert_eq!(reminders.reminder("main", "abcdefghijklmnopqrst"), None);
+    assert_eq!(reminders.reminder("main", "abcdefghijklmnopqrst", 0), None);
     // 163,610 + ceil(21 / 4) = 163,616.
     assert_eq!(
-        reminders.reminder("main", "abcdefghijklmnopqrstu"),
+        reminders.reminder("main", "abcdefghijklmnopqrstu", 0),
         Some(format!(
             "[context: 163.6k of 183.6k tokens used before compaction{TAIL}"
         ))
     );
-    assert_eq!(reminders.reminder("scout", &"x".repeat(1_000_000)), None);
+    assert_eq!(reminders.reminder("scout", &"x".repeat(1_000_000), 0), None);
+}
+
+#[test]
+fn session_core_context_reminder_counts_a_results_images_as_the_compaction_estimator_does() {
+    let reminders = ContextReminders::new(ON);
+    reminders.set_limit("main", Some(limit(200_000, 16_384)));
+    reminders.set_meter(Arc::new(|_: &str| Some(at(162_000))));
+    // 162,000 + ceil(6,000 / 4) = 163,500: below the trigger (163,616).
+    assert_eq!(reminders.reminder("main", &"x".repeat(6_000), 0), None);
+    // The same text with one image: 162,000 + ceil((6,000 + 4,800) / 4) = 164,700.
+    assert_eq!(
+        reminders.reminder("main", &"x".repeat(6_000), 1),
+        Some(format!(
+            "[context: 164.7k of 183.6k tokens used before compaction{TAIL}"
+        ))
+    );
+    let fresh = ContextReminders::new(ON);
+    fresh.set_limit("main", Some(limit(200_000, 16_384)));
+    fresh.set_meter(Arc::new(|_: &str| Some(at(161_216))));
+    // Two images and no text: 161,216 + 2 * 1,200 = 163,616, exactly the trigger.
+    assert_eq!(
+        fresh.reminder("main", "", 2),
+        Some(format!(
+            "[context: 163.6k of 183.6k tokens used before compaction{TAIL}"
+        ))
+    );
+}
+
+#[test]
+fn session_core_context_reminder_measures_a_frame_lane_by_its_own_meter_until_it_ends() {
+    let reminders = ContextReminders::new(ON);
+    // The session's meter knows no frame lane.
+    reminders.set_meter(Arc::new(|lane: &str| (lane == "main").then(|| at(10))));
+    let window = Limit {
+        context_window: 32_000,
+        reserve_tokens: 0,
+        compaction: false,
+    };
+    let used = Arc::new(Mutex::new(None::<u64>));
+    let seen = used.clone();
+    reminders.set_frame_lane("frame-1", Some((window, Arc::new(move || *seen.lock().unwrap()))));
+    // No answer yet: nothing to measure.
+    assert_eq!(reminders.reminder("frame-1", "x", 0), None);
+    // A 32,000-token window keeps the 3,200-token margin: the trigger is 28,800.
+    *used.lock().unwrap() = Some(28_799);
+    assert_eq!(reminders.reminder("frame-1", "", 0), None);
+    assert_eq!(
+        reminders.reminder("frame-1", "abcd", 0),
+        Some(format!(
+            "[context: 28.8k of 32k tokens used before the context limit{TAIL}"
+        ))
+    );
+    assert_eq!(reminders.reminder("frame-1", "abcd", 0), None);
+    // The frame ended: no limit, no meter, no state.
+    reminders.set_frame_lane("frame-1", None);
+    assert_eq!(reminders.limit("frame-1"), None);
+    *used.lock().unwrap() = Some(31_000);
+    assert_eq!(reminders.reminder("frame-1", "x", 0), None);
+    // A new frame on the same lane name starts armed.
+    let again = used.clone();
+    reminders.set_frame_lane("frame-1", Some((window, Arc::new(move || *again.lock().unwrap()))));
+    assert!(reminders.reminder("frame-1", "x", 0).is_some());
 }
 
 #[test]
@@ -452,4 +514,321 @@ fn first_user_text(body: &Value) -> String {
             _ => String::new(),
         })
         .unwrap_or_default()
+}
+
+#[test]
+fn session_core_context_reminder_ends_an_error_result_too() {
+    let a = actor(
+        in_order(vec![
+            tool_at("toolu_1", "print('one')", 50_000),
+            tool_at("toolu_2", "raise ValueError('two')", 95_000),
+            tool_at("toolu_3", "raise ValueError('three')", 96_000),
+            text("done"),
+        ]),
+        Setup {
+            settings: Some(settings(true)),
+            vars: vars(&[]),
+            ..Setup::default()
+        },
+    );
+    a.prompt("count");
+    let requests = a.requests();
+    assert_eq!(requests.len(), 4);
+    let results = texts(tool_results(requests.last().unwrap()));
+    let traceback = |n: &str| {
+        format!(
+            "Traceback (most recent call last):\n  File \"<rlm-cell>\", line 1, in <module>\n    raise ValueError('{n}')\nValueError: {n}"
+        )
+    };
+    assert_eq!(
+        results,
+        vec![
+            "one".to_string(),
+            format!(
+                "{}\n[context: 95k of 100k tokens used before compaction{TAIL}",
+                traceback("two")
+            ),
+            traceback("three"),
+        ]
+    );
+}
+
+/// A text answer whose response reports `input` input tokens.
+fn text_at(answer: &str, input: u64) -> String {
+    sse(&[
+        json!({"type": "message_start", "message": {"id": "msg_t", "type": "message", "role": "assistant", "model": "claude-sonnet-4-5", "content": [], "stop_reason": null, "usage": {"input_tokens": input, "output_tokens": 1}}}),
+        json!({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+        json!({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": answer}}),
+        json!({"type": "content_block_stop", "index": 0}),
+        json!({"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}}),
+        json!({"type": "message_stop"}),
+    ])
+}
+
+/// The texts of a request's user messages.
+fn user_messages(body: &Value) -> Vec<String> {
+    body["messages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|m| m["role"] == "user")
+        .map(|m| match &m["content"] {
+            Value::String(text) => text.clone(),
+            Value::Array(blocks) => blocks
+                .iter()
+                .filter_map(|b| b["text"].as_str())
+                .collect::<Vec<_>>()
+                .join(""),
+            _ => String::new(),
+        })
+        .collect()
+}
+
+#[test]
+fn session_core_context_reminder_ends_a_backgrounded_cells_completion() {
+    // The root's cell waits on its child in the host (`rlm.merge`), so it is detached and its end arrives as a `cell_done`
+    // event. The child's cell waits for `release`, which the script writes when the root answers after the detach
+    // (with 95,000 input tokens: past the 90,000 trigger).
+    let gate = tempfile::tempdir().unwrap();
+    let release = gate.path().join("release");
+    let child_code = format!(
+        "import os, time\nwhile not os.path.exists({:?}):\n    time.sleep(0.01)\nprint('c1')",
+        release.display().to_string()
+    );
+    let (seen_tx, seen_rx) = std::sync::mpsc::channel::<Value>();
+    let counters = Arc::new(Mutex::new((0usize, 0usize)));
+    let script = Box::new(move |body: &Value, _| {
+        let mut counters = counters.lock().unwrap();
+        if first_user_text(body).contains("look around") {
+            counters.1 += 1;
+            return match counters.1 {
+                1 => tool_at("toolu_c1", &child_code, 1_000),
+                _ => text("child done"),
+            };
+        }
+        counters.0 += 1;
+        match counters.0 {
+            1 => tool_at(
+                "toolu_root",
+                "h = await rlm.spawn('look around', name='scout')\nawait rlm.merge([h])",
+                1_000,
+            ),
+            2 => {
+                std::fs::write(&release, "go").unwrap();
+                text_at("waiting", 95_000)
+            }
+            _ => {
+                if user_messages(body).iter().any(|m| m.contains("kind=\"cell_done\"")) {
+                    let _ = seen_tx.send(body.clone());
+                }
+                // A `child_done` delivered on its own keeps the use where it was.
+                text_at("thanks", 95_000)
+            }
+        }
+    });
+    let a = actor(
+        script,
+        Setup {
+            settings: Some(settings(true)),
+            vars: vars(&[]),
+            ..Setup::default()
+        },
+    );
+    a.prompt("delegate");
+    let request = seen_rx.recv_timeout(p_session_support::HANG).unwrap_or_else(|_| {
+        let seen: Vec<(Vec<String>, Vec<String>)> = a
+            .requests()
+            .iter()
+            .map(|r| (user_messages(r), texts(tool_results(r))))
+            .collect();
+        panic!("the root got no cell completion: {seen:#?}")
+    });
+    let event = user_messages(&request)
+        .into_iter()
+        .find(|m| m.contains("kind=\"cell_done\""))
+        .unwrap();
+    // The cell's end (with the child's, when they fall in one coalescing window), then the reminder: 95,005 tokens
+    // after the last answer plus the message's own estimate.
+    let lines: Vec<&str> = event.lines().collect();
+    let (reminder, events) = lines.split_last().unwrap();
+    assert!(events.iter().all(|l| l.starts_with("<runtime_event kind=")), "{event}");
+    assert!(
+        events
+            .iter()
+            .any(|l| l.starts_with("<runtime_event kind=\"cell_done\" id=\"cell-1\" status=\"completed\"")),
+        "{event}"
+    );
+    assert_eq!(
+        *reminder,
+        format!("[context: 95.1k of 100k tokens used before compaction{TAIL}")
+    );
+    // The detach note itself carried none.
+    let root: Vec<Value> = a
+        .requests()
+        .into_iter()
+        .filter(|r| !first_user_text(r).contains("look around"))
+        .collect();
+    let detached = texts(tool_results(&root[1]));
+    assert!(detached[0].starts_with("Cell "), "{detached:?}");
+    assert!(!detached[0].contains("[context:"), "{detached:?}");
+}
+
+#[test]
+fn session_core_context_reminder_reaches_an_inference_frame_that_runs_code() {
+    // The frame runs on anthropic/claude-sonnet-4-5 too: its limit is the 1,000,000-token window (frames never
+    // compact), so the trigger is 990,000 with the 10,000-token margin.
+    let frame_requests = Arc::new(Mutex::new(Vec::new()));
+    let seen = frame_requests.clone();
+    let counters = Arc::new(Mutex::new((0usize, 0usize)));
+    let script = Box::new(move |body: &Value, _| {
+        let mut counters = counters.lock().unwrap();
+        if user_messages(body).iter().any(|m| m.contains("count the frame")) {
+            seen.lock().unwrap().push(body.clone());
+            counters.1 += 1;
+            return match counters.1 {
+                1 => tool_at("toolu_f1", "print('f1')", 990_000),
+                2 => tool_at("toolu_f2", "print('f2')", 991_000),
+                _ => text("frame answer"),
+            };
+        }
+        counters.0 += 1;
+        match counters.0 {
+            1 => tool_at(
+                "toolu_root",
+                "r = await rlm.infer('count the frame', budget={'depth': 2, 'calls': 8, 'tokens': 5000000})\nprint(r)",
+                1_000,
+            ),
+            _ => text("done"),
+        }
+    });
+    let a = actor(
+        script,
+        Setup {
+            vars: vars(&[]),
+            ..Setup::default()
+        },
+    );
+    a.prompt("infer");
+    let requests = frame_requests.lock().unwrap().clone();
+    let root: Vec<Value> = a
+        .requests()
+        .into_iter()
+        .filter(|r| !user_messages(r).iter().any(|m| m.contains("count the frame")))
+        .collect();
+    assert_eq!(
+        requests.len(),
+        3,
+        "root: {:?}",
+        root.iter().map(|r| texts(tool_results(r))).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        texts(tool_results(requests.last().unwrap())),
+        vec![
+            format!("f1\n[context: 990k of 1000k tokens used before the context limit{TAIL}"),
+            "f2".to_string(),
+        ]
+    );
+    // The frame's answer reached the root's cell; the root's own lane stayed far below its trigger.
+    assert_eq!(texts(tool_results(&root[1])), ["frame answer"]);
+}
+
+#[test]
+fn session_core_context_reminder_counts_an_attached_image() {
+    // 88,907 tokens after the answer: the text alone stays below the 90,000 trigger, the image's 1,200 cross it.
+    let a = actor(
+        in_order(vec![
+            tool_at("toolu_1", "print('plain')", 88_900),
+            tool_at("toolu_2", "print(await view_image('dot.png'))", 88_900),
+            text("done"),
+        ]),
+        Setup {
+            settings: Some(settings(true)),
+            vars: vars(&[]),
+            files: vec![("dot.png", p_session_support::png(4, 3))],
+        },
+    );
+    a.prompt("look");
+    let requests = a.requests();
+    assert_eq!(requests.len(), 3);
+    let results = tool_results(requests.last().unwrap());
+    assert_eq!(texts(vec![results[0].clone()]), ["plain"]);
+    let blocks = results[1].as_array().unwrap();
+    assert_eq!(blocks[1]["type"], "image", "{blocks:?}");
+    let text = blocks[0]["text"].as_str().unwrap();
+    assert_eq!(
+        text.lines().last().unwrap(),
+        format!("[context: 90.1k of 100k tokens used before compaction{TAIL}"),
+        "{text}"
+    );
+}
+
+/// A lane that looks idle but turns out busy when the event's run would start: the batch is steered instead.
+#[derive(Default)]
+struct RacingLane {
+    accepted: Mutex<Vec<Value>>,
+    steered: Mutex<Vec<Value>>,
+}
+
+impl session_core::async_events::EventLanes for RacingLane {
+    fn execution(&self, _lane: &str) -> session_core::async_events::Execution {
+        if self.steered.lock().unwrap().is_empty() {
+            session_core::async_events::Execution::Idle
+        } else {
+            session_core::async_events::Execution::Run
+        }
+    }
+    fn accept(&self, _lane: &str, message: &Value, _root: &str) -> session_core::async_events::Accepted {
+        self.accepted.lock().unwrap().push(message.clone());
+        session_core::async_events::Accepted::Busy
+    }
+    fn steer(&self, _lane: &str, message: &Value) -> Result<String, String> {
+        self.steered.lock().unwrap().push(message.clone());
+        Ok("entry-1".into())
+    }
+    fn next_run(&self, _lane: &str, _message: &Value) -> Result<String, String> {
+        Err("unused".into())
+    }
+    fn cancel_queued(&self, _lane: &str, _entry: &str) -> Result<session_core::async_events::Cancelled, String> {
+        Ok(session_core::async_events::Cancelled::NotFound)
+    }
+}
+
+#[test]
+fn session_core_context_reminder_of_a_cell_end_is_decided_once_per_batch() {
+    use session_core::async_events::{Dispatcher, DispatcherOptions, RuntimeEvent};
+    let lane = Arc::new(RacingLane::default());
+    let asked = Arc::new(Mutex::new(Vec::new()));
+    let seen = asked.clone();
+    let mut options = DispatcherOptions::new(Arc::new(|run: &str| format!("turn:{run}")));
+    // As the reminder is: due the first time, not again in the same approach.
+    options.note = Some(Arc::new(move |lane: &str, text: &str| {
+        let mut asked = seen.lock().unwrap();
+        asked.push((lane.to_string(), text.to_string()));
+        (asked.len() == 1).then(|| "[context: reminder]".to_string())
+    }));
+    let dispatcher = Dispatcher::new(options, lane.clone());
+    let event = |kind: &str, id: &str| RuntimeEvent {
+        kind: kind.into(),
+        id: id.into(),
+        status: "completed".into(),
+        summary: "ok".into(),
+        fetch: "await rlm.cells()".into(),
+        lane: "main".into(),
+        root_id: Some("root-1".into()),
+    };
+    dispatcher.publish(event("cell_done", "cell-1"));
+    dispatcher.drain();
+    let content = |m: &Value| m["content"].as_str().unwrap().to_string();
+    let line = "<runtime_event kind=\"cell_done\" id=\"cell-1\" status=\"completed\" summary=\"ok\" fetch=\"await rlm.cells()\" />";
+    // The run it would have started and the steer it became carry the same note.
+    let accepted: Vec<String> = lane.accepted.lock().unwrap().iter().map(content).collect();
+    let steered: Vec<String> = lane.steered.lock().unwrap().iter().map(content).collect();
+    assert_eq!(accepted, [format!("{line}\n[context: reminder]")]);
+    assert_eq!(steered, accepted);
+    assert_eq!(*asked.lock().unwrap(), [("main".to_string(), line.to_string())]);
+    // A batch without a cell end asks for no note.
+    dispatcher.publish(event("job_done", "job-1"));
+    dispatcher.drain();
+    assert_eq!(asked.lock().unwrap().len(), 1);
+    dispatcher.close();
 }

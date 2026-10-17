@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 ai = { path = "../ai" }
+mcp = { path = "../mcp" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["float_roundtrip", "preserve_order"] }
 

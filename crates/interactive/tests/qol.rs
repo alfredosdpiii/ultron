@@ -467,6 +467,71 @@ fn interactive_qol_clipboard_paste_image_then_text_fallback() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// A clipboard holding one typed image (`readClipboardImage` returns JPEG, WebP and GIF as read).
+struct TypedClipboard(tui::clipboard::ClipboardImage);
+
+impl Clipboard for TypedClipboard {
+    fn get_text(&mut self) -> Result<String, String> {
+        Ok("clip text".into())
+    }
+    fn set_text(&mut self, _: &str) -> Result<(), String> {
+        Ok(())
+    }
+    fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
+        Err("not a PNG".into())
+    }
+    fn get_image(&mut self) -> Result<tui::clipboard::ClipboardImage, String> {
+        Ok(self.0.clone())
+    }
+}
+
+/// Ctrl+V of a JPEG, WebP or GIF clipboard image (`clipboardPasteText`): saved with the extension of its type
+/// (`extensionForImageMimeType`), bytes unchanged; with the attachments, an attachment of that type.
+#[test]
+fn interactive_qol_clipboard_paste_keeps_the_image_type_like_ts() {
+    let mut jpeg = Vec::new();
+    image::RgbImage::new(4, 2)
+        .write_to(&mut std::io::Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+        .unwrap();
+    let dir = std::env::temp_dir().join(format!("qol-typed-paste-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let cases = [
+        ("image/jpeg", jpeg.clone(), "jpg"),
+        ("image/webp", b"RIFF\x10\0\0\0WEBPVP8 ".to_vec(), "webp"),
+        ("image/gif", b"GIF89a".to_vec(), "gif"),
+    ];
+    for (mime_type, bytes, extension) in cases {
+        let image = tui::clipboard::ClipboardImage {
+            bytes: bytes.clone(),
+            mime_type: mime_type.into(),
+        };
+        let (mut parity, _) = fresh(QolSettings::parity());
+        parity.set_temp_dir(dir.clone());
+        parity.set_clipboard(ClipboardService::spawn(TypedClipboard(image)));
+        parity.handle_input("\x16");
+        poll_until(&mut parity, |a| !a.editor_text().is_empty());
+        let path = parity.editor_text();
+        assert!(
+            path.starts_with(&format!("{}/ultron-clipboard-", dir.display()))
+                && path.ends_with(&format!(".{extension}")),
+            "{path}"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes, "{mime_type}");
+    }
+    let (mut app, _) = fresh(QolSettings::default());
+    app.set_clipboard(ClipboardService::spawn(TypedClipboard(
+        tui::clipboard::ClipboardImage {
+            bytes: jpeg,
+            mime_type: "image/jpeg".into(),
+        },
+    )));
+    app.handle_input("\x16");
+    poll_until(&mut app, |a| !a.editor_text().is_empty());
+    assert_eq!(app.editor_text(), "[Image #1, 4x2] ");
+    assert_eq!(app.attachments().images[0].mime, "image/jpeg");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 // ---- highlighting ----
 
 fn rlm_transcript() -> Vec<Value> {

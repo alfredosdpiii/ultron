@@ -246,6 +246,64 @@ pub fn admit_submission(
     }
 }
 
+/// Admit input that starts a run together with the steering it takes before its first request, in one commit: the
+/// TypeScript agent loop polls its steering queue once before the first request (`runLoop`), so a steer queued when
+/// the run starts reaches the run's first request, after its prompt. On an idle conversation with an empty inbox, and
+/// when no draft names a known request, `first`'s user entry and then each steer's are placed (all `placed`) and one
+/// run starts for them; the IDs are returned in order. Otherwise nothing is written and `None` says to admit them one
+/// by one.
+pub fn admit_run_with_steering(
+    tx: &mut Tx<'_>,
+    conversation_id: ConversationId,
+    first: &SubmissionDraft,
+    steering: &[SubmissionDraft],
+    now: u64,
+    modes: QueueModes,
+) -> Result<Option<Vec<SubmissionId>>> {
+    let drafts: Vec<&SubmissionDraft> = std::iter::once(first).chain(steering).collect();
+    if drafts
+        .iter()
+        .any(|draft| !matches!(draft, SubmissionDraft::Input { .. }))
+    {
+        return Ok(None);
+    }
+    for draft in &drafts {
+        if let Some(request_id) = draft.request()
+            && tx.submission_by_request(conversation_id, request_id)?.is_some()
+        {
+            return Ok(None);
+        }
+    }
+    let live = live(tx, conversation_id)?;
+    if super::util::get(&live, &["run"])?.is_some() {
+        return Ok(None);
+    }
+    let boundary = prepare_boundary(tx, conversation_id, modes)?;
+    if !items(&boundary.inbox)?.is_empty() {
+        return Ok(None);
+    }
+    let mut ids = Vec::new();
+    for draft in drafts {
+        let SubmissionDraft::Input {
+            content, request_id, ..
+        } = draft
+        else {
+            unreachable!("checked above")
+        };
+        let entry = tx.append_entry(conversation_id, super::inbox::user_entry(&strict(content.clone()), now))?;
+        let mut placed = raw(
+            conversation_id,
+            request_id.as_deref(),
+            SubmissionType::Input,
+            SubmissionStatus::Placed,
+        );
+        placed.entry = Some(entry.id);
+        ids.push(tx.create_submission(placed)?.id);
+    }
+    start_run(tx, conversation_id, &live, ids.clone())?;
+    Ok(Some(ids))
+}
+
 /// Place input on a conversation created in this transaction (idle, with an empty inbox, so no table read is needed):
 /// a user entry, a `placed` input submission, and a run for it.
 pub fn place_initial_input(

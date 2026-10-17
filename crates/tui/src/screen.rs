@@ -130,7 +130,7 @@ pub fn stack_lines(
 
 /// `paintBox` for Kitty images: an image running past the bottom of its rows is cropped to the rows it has, and
 /// one whose first line scrolled above them is cropped to its visible rows and placed on the first row.
-fn crop_images(child: &[String], skip: usize, shown: &mut [String]) {
+pub(crate) fn crop_images(child: &[String], skip: usize, shown: &mut [String]) {
     use crate::image::{crop_kitty_image_line, kitty_image_metadata};
     let height = shown.len() as i64;
     for (row, line) in shown.iter_mut().enumerate() {

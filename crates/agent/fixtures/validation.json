@@ -1,0 +1,9636 @@
+{
+ "model": {
+  "id": "faux-1",
+  "name": "Faux Model",
+  "api": "faux",
+  "provider": "faux",
+  "baseUrl": "http://localhost:0",
+  "reasoning": false,
+  "input": [
+   "text",
+   "image"
+  ],
+  "cost": {
+   "input": 0,
+   "output": 0,
+   "cacheRead": 0,
+   "cacheWrite": 0
+  },
+  "contextWindow": 128000,
+  "maxTokens": 16384
+ },
+ "schemas": {
+  "rlm": {
+   "type": "object",
+   "required": [
+    "code"
+   ],
+   "properties": {
+    "code": {
+     "type": "string",
+     "description": "Python code for persistent RLM computation, typed agents, and data processing"
+    }
+   }
+  },
+  "lane": {
+   "type": "object",
+   "required": [
+    "code"
+   ],
+   "properties": {
+    "code": {
+     "type": "string"
+    },
+    "lane": {
+     "type": "string"
+    }
+   }
+  },
+  "rich": {
+   "type": "object",
+   "required": [
+    "count",
+    "ratio",
+    "flag"
+   ],
+   "properties": {
+    "count": {
+     "type": "integer"
+    },
+    "ratio": {
+     "type": "number"
+    },
+    "flag": {
+     "type": "boolean"
+    },
+    "name": {
+     "type": "string"
+    },
+    "tags": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "ids": {
+     "type": "array",
+     "items": {
+      "type": "integer"
+     }
+    },
+    "mode": {
+     "anyOf": [
+      {
+       "type": "string",
+       "const": "fast"
+      },
+      {
+       "type": "string",
+       "const": "slow"
+      }
+     ]
+    },
+    "limit": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "nested": {
+     "type": "object",
+     "required": [
+      "depth"
+     ],
+     "properties": {
+      "depth": {
+       "type": "integer"
+      },
+      "label": {
+       "type": "string"
+      }
+     }
+    },
+    "on": {
+     "type": "boolean",
+     "const": true
+    },
+    "nothing": {
+     "type": "null"
+    },
+    "level": {
+     "type": "number",
+     "const": 2
+    }
+   }
+  },
+  "extra": {
+   "type": "object",
+   "required": [
+    "n"
+   ],
+   "properties": {
+    "n": {
+     "type": "number"
+    },
+    "flag": {
+     "type": "boolean"
+    }
+   },
+   "additionalProperties": {
+    "type": "number"
+   }
+  },
+  "closed": {
+   "type": "object",
+   "required": [
+    "n"
+   ],
+   "properties": {
+    "n": {
+     "type": "number"
+    }
+   },
+   "additionalProperties": false
+  },
+  "bounded": {
+   "type": "object",
+   "required": [
+    "text"
+   ],
+   "properties": {
+    "text": {
+     "type": "string",
+     "minLength": 2,
+     "maxLength": 5
+    },
+    "n": {
+     "type": "number",
+     "minimum": 0,
+     "maximum": 10
+    }
+   }
+  }
+ },
+ "toolSchema": {
+  "type": "object",
+  "required": [
+   "text"
+  ],
+  "properties": {
+   "text": {
+    "type": "string"
+   }
+  }
+ },
+ "cases": [
+  {
+   "schema": "rlm",
+   "args": {
+    "code": "print(1)"
+   },
+   "ok": {
+    "code": "print(1)"
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {},
+   "error": "Validation failed for tool \"rlm\":\n  - code: must have required properties code\n\nReceived arguments:\n{}"
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": 5
+   },
+   "ok": {
+    "code": "5"
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": 1.5
+   },
+   "ok": {
+    "code": "1.5"
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": true
+   },
+   "ok": {
+    "code": "true"
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": null
+   },
+   "ok": {
+    "code": "null"
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": [
+     "x"
+    ]
+   },
+   "error": "Validation failed for tool \"rlm\":\n  - code: must be string\n\nReceived arguments:\n{\n  \"code\": [\n    \"x\"\n  ]\n}"
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": {
+     "a": 1
+    }
+   },
+   "error": "Validation failed for tool \"rlm\":\n  - code: must be string\n\nReceived arguments:\n{\n  \"code\": {\n    \"a\": 1\n  }\n}"
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "code": "x",
+    "extra": 1
+   },
+   "ok": {
+    "code": "x",
+    "extra": 1
+   }
+  },
+  {
+   "schema": "rlm",
+   "args": {
+    "cell": "x"
+   },
+   "error": "Validation failed for tool \"rlm\":\n  - code: must have required properties code\n\nReceived arguments:\n{\n  \"cell\": \"x\"\n}"
+  },
+  {
+   "schema": "lane",
+   "args": {
+    "code": "x",
+    "lane": "work"
+   },
+   "ok": {
+    "code": "x",
+    "lane": "work"
+   }
+  },
+  {
+   "schema": "lane",
+   "args": {
+    "code": "x",
+    "lane": null
+   },
+   "ok": {
+    "code": "x"
+   }
+  },
+  {
+   "schema": "lane",
+   "args": {
+    "code": "x",
+    "lane": 7
+   },
+   "ok": {
+    "code": "x",
+    "lane": "7"
+   }
+  },
+  {
+   "schema": "lane",
+   "args": {
+    "code": "x",
+    "lane": false
+   },
+   "ok": {
+    "code": "x",
+    "lane": "false"
+   }
+  },
+  {
+   "schema": "lane",
+   "args": {
+    "lane": "work"
+   },
+   "error": "Validation failed for tool \"lane\":\n  - code: must have required properties code\n\nReceived arguments:\n{\n  \"lane\": \"work\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": "3",
+    "ratio": "2.5",
+    "flag": "true"
+   },
+   "ok": {
+    "count": 3,
+    "ratio": 2.5,
+    "flag": true
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": "3.5",
+    "ratio": "",
+    "flag": "1"
+   },
+   "ok": {
+    "count": 3,
+    "ratio": 0,
+    "flag": true
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 2.7,
+    "ratio": "1e3",
+    "flag": "FALSE"
+   },
+   "ok": {
+    "count": 2,
+    "ratio": 1000,
+    "flag": false
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": true,
+    "ratio": false,
+    "flag": 0
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0,
+    "flag": false
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": null,
+    "ratio": null,
+    "flag": null
+   },
+   "ok": {
+    "count": 0,
+    "ratio": 0,
+    "flag": false
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": "abc",
+    "ratio": "x",
+    "flag": "yes"
+   },
+   "error": "Validation failed for tool \"rich\":\n  - count: must be integer\n  - ratio: must be number\n  - flag: must be boolean\n\nReceived arguments:\n{\n  \"count\": \"abc\",\n  \"ratio\": \"x\",\n  \"flag\": \"yes\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": " 4 ",
+    "ratio": "0x10",
+    "flag": 2
+   },
+   "error": "Validation failed for tool \"rich\":\n  - flag: must be boolean\n\nReceived arguments:\n{\n  \"count\": \" 4 \",\n  \"ratio\": \"0x10\",\n  \"flag\": 2\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": "12n",
+    "ratio": "-0",
+    "flag": "0"
+   },
+   "ok": {
+    "count": 12,
+    "ratio": 0,
+    "flag": false
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "name": 42,
+    "tags": "solo",
+    "ids": [
+     "1",
+     "2",
+     "x"
+    ]
+   },
+   "error": "Validation failed for tool \"rich\":\n  - ids.2: must be integer\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"name\": 42,\n  \"tags\": \"solo\",\n  \"ids\": [\n    \"1\",\n    \"2\",\n    \"x\"\n  ]\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "name": null,
+    "tags": null,
+    "mode": null,
+    "limit": null,
+    "nested": null
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "limit": null
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "mode": "fast",
+    "limit": "7"
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "mode": "fast",
+    "limit": 7
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "mode": "medium",
+    "limit": "seven"
+   },
+   "error": "Validation failed for tool \"rich\":\n  - mode: must be equal to constant\n  - mode: must be equal to constant\n  - mode: must match a schema in anyOf\n  - limit: must be number\n  - limit: must be null\n  - limit: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"mode\": \"medium\",\n  \"limit\": \"seven\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "mode": 1,
+    "limit": true
+   },
+   "error": "Validation failed for tool \"rich\":\n  - mode: must be string\n  - mode: must be equal to constant\n  - mode: must be string\n  - mode: must be equal to constant\n  - mode: must match a schema in anyOf\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"mode\": 1,\n  \"limit\": true\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "nested": {
+     "depth": "2",
+     "label": 3
+    }
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "nested": {
+     "depth": 2,
+     "label": "3"
+    }
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "nested": {
+     "label": "x"
+    }
+   },
+   "error": "Validation failed for tool \"rich\":\n  - nested.depth: must have required properties depth\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"nested\": {\n    \"label\": \"x\"\n  }\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "nested": "deep"
+   },
+   "error": "Validation failed for tool \"rich\":\n  - nested: must be object\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"nested\": \"deep\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "on": "true",
+    "nothing": "null"
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "on": true,
+    "nothing": null
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "on": 1,
+    "nothing": ""
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "on": true,
+    "nothing": null
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "on": false,
+    "nothing": 0
+   },
+   "error": "Validation failed for tool \"rich\":\n  - on: must be equal to constant\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"on\": false,\n  \"nothing\": 0\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "tags": [
+     1,
+     true,
+     null
+    ]
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "tags": [
+     "1",
+     "true",
+     "null"
+    ]
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "level": "3"
+   },
+   "error": "Validation failed for tool \"rich\":\n  - level: must be equal to constant\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"level\": \"3\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "level": "2"
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "level": 2
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "level": "TRUE"
+   },
+   "error": "Validation failed for tool \"rich\":\n  - level: must be number\n  - level: must be equal to constant\n\nReceived arguments:\n{\n  \"count\": 1,\n  \"ratio\": 0.5,\n  \"flag\": true,\n  \"level\": \"TRUE\"\n}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "limit": "TRUE"
+   },
+   "ok": {
+    "count": 1,
+    "ratio": 0.5,
+    "flag": true,
+    "limit": 1
+   }
+  },
+  {
+   "schema": "rich",
+   "args": {},
+   "error": "Validation failed for tool \"rich\":\n  - count: must have required properties count, ratio, flag\n\nReceived arguments:\n{}"
+  },
+  {
+   "schema": "rich",
+   "args": {
+    "ratio": [],
+    "flag": {}
+   },
+   "error": "Validation failed for tool \"rich\":\n  - count: must have required properties count\n  - ratio: must be number\n  - flag: must be boolean\n\nReceived arguments:\n{\n  \"ratio\": [],\n  \"flag\": {}\n}"
+  },
+  {
+   "schema": "extra",
+   "args": {
+    "n": "1",
+    "x": "2",
+    "flag": "true"
+   },
+   "ok": {
+    "n": 1,
+    "x": 2,
+    "flag": true
+   }
+  },
+  {
+   "schema": "extra",
+   "args": {
+    "n": 1,
+    "x": "y"
+   },
+   "error": "Validation failed for tool \"extra\":\n  - x: must be number\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"n\": 1,\n  \"x\": \"y\"\n}"
+  },
+  {
+   "schema": "extra",
+   "args": {
+    "n": 1,
+    "x": "TRUE"
+   },
+   "ok": {
+    "n": 1,
+    "x": 1
+   }
+  },
+  {
+   "schema": "extra",
+   "args": {
+    "n": "3",
+    "flag": "0",
+    "z": true
+   },
+   "ok": {
+    "n": 3,
+    "flag": false,
+    "z": 1
+   }
+  },
+  {
+   "schema": "closed",
+   "args": {
+    "n": "4"
+   },
+   "ok": {
+    "n": 4
+   }
+  },
+  {
+   "schema": "closed",
+   "args": {
+    "n": 4,
+    "other": 1
+   },
+   "error": "Validation failed for tool \"closed\":\n  - other: schema is false\n  - root: must not have additional properties\n\nReceived arguments:\n{\n  \"n\": 4,\n  \"other\": 1\n}"
+  },
+  {
+   "schema": "bounded",
+   "args": {
+    "text": "abc"
+   },
+   "ok": {
+    "text": "abc"
+   }
+  },
+  {
+   "schema": "bounded",
+   "args": {
+    "text": "a"
+   },
+   "error": "Validation failed for tool \"bounded\":\n  - text: must not have fewer than 2 characters\n\nReceived arguments:\n{\n  \"text\": \"a\"\n}"
+  },
+  {
+   "schema": "bounded",
+   "args": {
+    "text": "abcdef",
+    "n": 11
+   },
+   "error": "Validation failed for tool \"bounded\":\n  - text: must not have more than 5 characters\n  - n: must be <= 10\n\nReceived arguments:\n{\n  \"text\": \"abcdef\",\n  \"n\": 11\n}"
+  },
+  {
+   "schema": "bounded",
+   "args": {
+    "text": 12345,
+    "n": "-1"
+   },
+   "error": "Validation failed for tool \"bounded\":\n  - n: must be >= 0\n\nReceived arguments:\n{\n  \"text\": 12345,\n  \"n\": \"-1\"\n}"
+  },
+  {
+   "schema": "bounded",
+   "args": {
+    "text": 123456
+   },
+   "error": "Validation failed for tool \"bounded\":\n  - text: must not have more than 5 characters\n\nReceived arguments:\n{\n  \"text\": 123456\n}"
+  }
+ ],
+ "scenarios": [
+  {
+   "name": "invalid_parallel",
+   "tools": [
+    "echo"
+   ],
+   "hooks": null,
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "p1",
+       "name": "echo",
+       "arguments": {}
+      },
+      {
+       "type": "toolCall",
+       "id": "p2",
+       "name": "echo",
+       "arguments": {
+        "text": 5
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "p3",
+       "name": "echo",
+       "arguments": {
+        "text": {
+         "a": 1
+        }
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "p4",
+       "name": "missing",
+       "arguments": {}
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000000,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000000,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "p1",
+        "name": "echo",
+        "arguments": {}
+       },
+       {
+        "type": "toolCall",
+        "id": "p2",
+        "name": "echo",
+        "arguments": {
+         "text": 5
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p3",
+        "name": "echo",
+        "arguments": {
+         "text": {
+          "a": 1
+         }
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p4",
+        "name": "missing",
+        "arguments": {}
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "p1",
+        "name": "echo",
+        "arguments": {}
+       },
+       {
+        "type": "toolCall",
+        "id": "p2",
+        "name": "echo",
+        "arguments": {
+         "text": 5
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p3",
+        "name": "echo",
+        "arguments": {
+         "text": {
+          "a": 1
+         }
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p4",
+        "name": "missing",
+        "arguments": {}
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "p1",
+     "toolName": "echo",
+     "args": {}
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "p1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "p2",
+     "toolName": "echo",
+     "args": {
+      "text": 5
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "p3",
+     "toolName": "echo",
+     "args": {
+      "text": {
+       "a": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "p3",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "p4",
+     "toolName": "missing",
+     "args": {}
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "p4",
+     "toolName": "missing",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool missing not found"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "p2",
+     "toolName": "echo",
+     "args": {
+      "text": 5
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "p2",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 5"
+       }
+      ],
+      "details": {
+       "text": "5"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000001
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000001
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 5"
+       }
+      ],
+      "details": {
+       "text": "5"
+      },
+      "isError": false,
+      "timestamp": 1700000000002
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 5"
+       }
+      ],
+      "details": {
+       "text": "5"
+      },
+      "isError": false,
+      "timestamp": 1700000000002
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000003
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000003
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p4",
+      "toolName": "missing",
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool missing not found"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000004
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "p4",
+      "toolName": "missing",
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool missing not found"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000004
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "p1",
+        "name": "echo",
+        "arguments": {}
+       },
+       {
+        "type": "toolCall",
+        "id": "p2",
+        "name": "echo",
+        "arguments": {
+         "text": 5
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p3",
+        "name": "echo",
+        "arguments": {
+         "text": {
+          "a": 1
+         }
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "p4",
+        "name": "missing",
+        "arguments": {}
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "p1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000001
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: 5"
+        }
+       ],
+       "details": {
+        "text": "5"
+       },
+       "isError": false,
+       "timestamp": 1700000000002
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000003
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p4",
+       "toolName": "missing",
+       "content": [
+        {
+         "type": "text",
+         "text": "Tool missing not found"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000004
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000000,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "p1",
+         "name": "echo",
+         "arguments": {}
+        },
+        {
+         "type": "toolCall",
+         "id": "p2",
+         "name": "echo",
+         "arguments": {
+          "text": 5
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "p3",
+         "name": "echo",
+         "arguments": {
+          "text": {
+           "a": 1
+          }
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "p4",
+         "name": "missing",
+         "arguments": {}
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000001
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: 5"
+        }
+       ],
+       "details": {
+        "text": "5"
+       },
+       "isError": false,
+       "timestamp": 1700000000002
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000003
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "p4",
+       "toolName": "missing",
+       "content": [
+        {
+         "type": "text",
+         "text": "Tool missing not found"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000004
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000000,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "p1",
+       "name": "echo",
+       "arguments": {}
+      },
+      {
+       "type": "toolCall",
+       "id": "p2",
+       "name": "echo",
+       "arguments": {
+        "text": 5
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "p3",
+       "name": "echo",
+       "arguments": {
+        "text": {
+         "a": 1
+        }
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "p4",
+       "name": "missing",
+       "arguments": {}
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "p1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Validation failed for tool \"echo\":\n  - text: must have required properties text\n\nReceived arguments:\n{}"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000001
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "p2",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: 5"
+      }
+     ],
+     "details": {
+      "text": "5"
+     },
+     "isError": false,
+     "timestamp": 1700000000002
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "p3",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": {\n    \"a\": 1\n  }\n}"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000003
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "p4",
+     "toolName": "missing",
+     "content": [
+      {
+       "type": "text",
+       "text": "Tool missing not found"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000004
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "invalid_sequential",
+   "tools": [
+    "echo"
+   ],
+   "hooks": null,
+   "toolExecution": "sequential",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "s1",
+       "name": "echo",
+       "arguments": {
+        "text": [
+         1
+        ]
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "s2",
+       "name": "echo",
+       "arguments": {
+        "text": "ok"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000005,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000005,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "s1",
+        "name": "echo",
+        "arguments": {
+         "text": [
+          1
+         ]
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "s2",
+        "name": "echo",
+        "arguments": {
+         "text": "ok"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "s1",
+        "name": "echo",
+        "arguments": {
+         "text": [
+          1
+         ]
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "s2",
+        "name": "echo",
+        "arguments": {
+         "text": "ok"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "s1",
+     "toolName": "echo",
+     "args": {
+      "text": [
+       1
+      ]
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "s1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "s1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000006
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "s1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000006
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "s2",
+     "toolName": "echo",
+     "args": {
+      "text": "ok"
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "s2",
+     "toolName": "echo",
+     "args": {
+      "text": "ok"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "s2",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: ok"
+       }
+      ],
+      "details": {
+       "text": "ok"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "s2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: ok"
+       }
+      ],
+      "details": {
+       "text": "ok"
+      },
+      "isError": false,
+      "timestamp": 1700000000007
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "s2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: ok"
+       }
+      ],
+      "details": {
+       "text": "ok"
+      },
+      "isError": false,
+      "timestamp": 1700000000007
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "s1",
+        "name": "echo",
+        "arguments": {
+         "text": [
+          1
+         ]
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "s2",
+        "name": "echo",
+        "arguments": {
+         "text": "ok"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "s1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000006
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "s2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: ok"
+        }
+       ],
+       "details": {
+        "text": "ok"
+       },
+       "isError": false,
+       "timestamp": 1700000000007
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000005,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "s1",
+         "name": "echo",
+         "arguments": {
+          "text": [
+           1
+          ]
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "s2",
+         "name": "echo",
+         "arguments": {
+          "text": "ok"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "s1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000006
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "s2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: ok"
+        }
+       ],
+       "details": {
+        "text": "ok"
+       },
+       "isError": false,
+       "timestamp": 1700000000007
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000005,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "s1",
+       "name": "echo",
+       "arguments": {
+        "text": [
+         1
+        ]
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "s2",
+       "name": "echo",
+       "arguments": {
+        "text": "ok"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "s1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Validation failed for tool \"echo\":\n  - text: must be string\n\nReceived arguments:\n{\n  \"text\": [\n    1\n  ]\n}"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000006
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "s2",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: ok"
+      }
+     ],
+     "details": {
+      "text": "ok"
+     },
+     "isError": false,
+     "timestamp": 1700000000007
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "prepare_arguments",
+   "tools": [
+    "legacy"
+   ],
+   "hooks": null,
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "l1",
+       "name": "legacy",
+       "arguments": {
+        "old": "hi"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l2",
+       "name": "legacy",
+       "arguments": {
+        "boom": true
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l3",
+       "name": "legacy",
+       "arguments": {
+        "text": 3
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l4",
+       "name": "legacy",
+       "arguments": {
+        "old": 4
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000008,
+      "toolsAdded": [
+       {
+        "name": "legacy",
+        "description": "Accepts the old argument name",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000008,
+      "toolsAdded": [
+       {
+        "name": "legacy",
+        "description": "Accepts the old argument name",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "l1",
+        "name": "legacy",
+        "arguments": {
+         "old": "hi"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l2",
+        "name": "legacy",
+        "arguments": {
+         "boom": true
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l3",
+        "name": "legacy",
+        "arguments": {
+         "text": 3
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l4",
+        "name": "legacy",
+        "arguments": {
+         "old": 4
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "l1",
+        "name": "legacy",
+        "arguments": {
+         "old": "hi"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l2",
+        "name": "legacy",
+        "arguments": {
+         "boom": true
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l3",
+        "name": "legacy",
+        "arguments": {
+         "text": 3
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l4",
+        "name": "legacy",
+        "arguments": {
+         "old": 4
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "l1",
+     "toolName": "legacy",
+     "args": {
+      "old": "hi"
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "l2",
+     "toolName": "legacy",
+     "args": {
+      "boom": true
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "l2",
+     "toolName": "legacy",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "cannot prepare"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "l3",
+     "toolName": "legacy",
+     "args": {
+      "text": 3
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "l4",
+     "toolName": "legacy",
+     "args": {
+      "old": 4
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "l1",
+     "toolName": "legacy",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"hi\"}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": false
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "l3",
+     "toolName": "legacy",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"3\"}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": false
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "l4",
+     "toolName": "legacy",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"4\"}"
+       }
+      ],
+      "details": {}
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l1",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"hi\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000009
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l1",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"hi\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000009
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l2",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "cannot prepare"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000010
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l2",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "cannot prepare"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000010
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l3",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"3\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000011
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l3",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"3\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000011
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l4",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"4\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000012
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "l4",
+      "toolName": "legacy",
+      "content": [
+       {
+        "type": "text",
+        "text": "legacy: {\"text\":\"4\"}"
+       }
+      ],
+      "details": {},
+      "isError": false,
+      "timestamp": 1700000000012
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "l1",
+        "name": "legacy",
+        "arguments": {
+         "old": "hi"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l2",
+        "name": "legacy",
+        "arguments": {
+         "boom": true
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l3",
+        "name": "legacy",
+        "arguments": {
+         "text": 3
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "l4",
+        "name": "legacy",
+        "arguments": {
+         "old": 4
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "l1",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"hi\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000009
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l2",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "cannot prepare"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000010
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l3",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"3\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000011
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l4",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"4\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000012
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000008,
+       "toolsAdded": [
+        {
+         "name": "legacy",
+         "description": "Accepts the old argument name",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "l1",
+         "name": "legacy",
+         "arguments": {
+          "old": "hi"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "l2",
+         "name": "legacy",
+         "arguments": {
+          "boom": true
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "l3",
+         "name": "legacy",
+         "arguments": {
+          "text": 3
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "l4",
+         "name": "legacy",
+         "arguments": {
+          "old": 4
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l1",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"hi\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000009
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l2",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "cannot prepare"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000010
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l3",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"3\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000011
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "l4",
+       "toolName": "legacy",
+       "content": [
+        {
+         "type": "text",
+         "text": "legacy: {\"text\":\"4\"}"
+        }
+       ],
+       "details": {},
+       "isError": false,
+       "timestamp": 1700000000012
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000008,
+     "toolsAdded": [
+      {
+       "name": "legacy",
+       "description": "Accepts the old argument name",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "l1",
+       "name": "legacy",
+       "arguments": {
+        "old": "hi"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l2",
+       "name": "legacy",
+       "arguments": {
+        "boom": true
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l3",
+       "name": "legacy",
+       "arguments": {
+        "text": 3
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "l4",
+       "name": "legacy",
+       "arguments": {
+        "old": 4
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "l1",
+     "toolName": "legacy",
+     "content": [
+      {
+       "type": "text",
+       "text": "legacy: {\"text\":\"hi\"}"
+      }
+     ],
+     "details": {},
+     "isError": false,
+     "timestamp": 1700000000009
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "l2",
+     "toolName": "legacy",
+     "content": [
+      {
+       "type": "text",
+       "text": "cannot prepare"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000010
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "l3",
+     "toolName": "legacy",
+     "content": [
+      {
+       "type": "text",
+       "text": "legacy: {\"text\":\"3\"}"
+      }
+     ],
+     "details": {},
+     "isError": false,
+     "timestamp": 1700000000011
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "l4",
+     "toolName": "legacy",
+     "content": [
+      {
+       "type": "text",
+       "text": "legacy: {\"text\":\"4\"}"
+      }
+     ],
+     "details": {},
+     "isError": false,
+     "timestamp": 1700000000012
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "before_hooks",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "policy",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "b1",
+       "name": "echo",
+       "arguments": {
+        "text": "block"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b2",
+       "name": "echo",
+       "arguments": {
+        "text": "quiet"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b3",
+       "name": "echo",
+       "arguments": {
+        "text": "explode"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b4",
+       "name": "echo",
+       "arguments": {
+        "text": "pass"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b5",
+       "name": "echo",
+       "arguments": {
+        "text": 9
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000013,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000013,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "b1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b2",
+        "name": "echo",
+        "arguments": {
+         "text": "quiet"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b3",
+        "name": "echo",
+        "arguments": {
+         "text": "explode"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b4",
+        "name": "echo",
+        "arguments": {
+         "text": "pass"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b5",
+        "name": "echo",
+        "arguments": {
+         "text": 9
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "b1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b2",
+        "name": "echo",
+        "arguments": {
+         "text": "quiet"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b3",
+        "name": "echo",
+        "arguments": {
+         "text": "explode"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b4",
+        "name": "echo",
+        "arguments": {
+         "text": "pass"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b5",
+        "name": "echo",
+        "arguments": {
+         "text": 9
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "b1",
+     "toolName": "echo",
+     "args": {
+      "text": "block"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "b1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "b2",
+     "toolName": "echo",
+     "args": {
+      "text": "quiet"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "b2",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool execution was blocked"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "b3",
+     "toolName": "echo",
+     "args": {
+      "text": "explode"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "b3",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "hook exploded"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "b4",
+     "toolName": "echo",
+     "args": {
+      "text": "pass"
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "b5",
+     "toolName": "echo",
+     "args": {
+      "text": 9
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "b4",
+     "toolName": "echo",
+     "args": {
+      "text": "pass"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "b5",
+     "toolName": "echo",
+     "args": {
+      "text": 9
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "b4",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: pass"
+       }
+      ],
+      "details": {
+       "text": "pass"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "b5",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 9"
+       }
+      ],
+      "details": {
+       "text": "9"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000014
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000014
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool execution was blocked"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000015
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Tool execution was blocked"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000015
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "hook exploded"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000016
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "hook exploded"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000016
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b4",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: pass"
+       }
+      ],
+      "details": {
+       "text": "pass"
+      },
+      "isError": false,
+      "timestamp": 1700000000017
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b4",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: pass"
+       }
+      ],
+      "details": {
+       "text": "pass"
+      },
+      "isError": false,
+      "timestamp": 1700000000017
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b5",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 9"
+       }
+      ],
+      "details": {
+       "text": "9"
+      },
+      "isError": false,
+      "timestamp": 1700000000018
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "b5",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 9"
+       }
+      ],
+      "details": {
+       "text": "9"
+      },
+      "isError": false,
+      "timestamp": 1700000000018
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "b1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b2",
+        "name": "echo",
+        "arguments": {
+         "text": "quiet"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b3",
+        "name": "echo",
+        "arguments": {
+         "text": "explode"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b4",
+        "name": "echo",
+        "arguments": {
+         "text": "pass"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "b5",
+        "name": "echo",
+        "arguments": {
+         "text": 9
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "b1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "blocked by policy"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000014
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Tool execution was blocked"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000015
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "hook exploded"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000016
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b4",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: pass"
+        }
+       ],
+       "details": {
+        "text": "pass"
+       },
+       "isError": false,
+       "timestamp": 1700000000017
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b5",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: 9"
+        }
+       ],
+       "details": {
+        "text": "9"
+       },
+       "isError": false,
+       "timestamp": 1700000000018
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000013,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "b1",
+         "name": "echo",
+         "arguments": {
+          "text": "block"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "b2",
+         "name": "echo",
+         "arguments": {
+          "text": "quiet"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "b3",
+         "name": "echo",
+         "arguments": {
+          "text": "explode"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "b4",
+         "name": "echo",
+         "arguments": {
+          "text": "pass"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "b5",
+         "name": "echo",
+         "arguments": {
+          "text": 9
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "blocked by policy"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000014
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Tool execution was blocked"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000015
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "hook exploded"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000016
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b4",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: pass"
+        }
+       ],
+       "details": {
+        "text": "pass"
+       },
+       "isError": false,
+       "timestamp": 1700000000017
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "b5",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: 9"
+        }
+       ],
+       "details": {
+        "text": "9"
+       },
+       "isError": false,
+       "timestamp": 1700000000018
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "b1",
+     "toolCallArgs": {
+      "text": "block"
+     },
+     "args": {
+      "text": "block"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "b2",
+     "toolCallArgs": {
+      "text": "quiet"
+     },
+     "args": {
+      "text": "quiet"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "b3",
+     "toolCallArgs": {
+      "text": "explode"
+     },
+     "args": {
+      "text": "explode"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "b4",
+     "toolCallArgs": {
+      "text": "pass"
+     },
+     "args": {
+      "text": "pass"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "b5",
+     "toolCallArgs": {
+      "text": 9
+     },
+     "args": {
+      "text": "9"
+     }
+    },
+    {
+     "hook": "after",
+     "id": "b4",
+     "args": {
+      "text": "pass"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: pass"
+       }
+      ],
+      "details": {
+       "text": "pass"
+      }
+     },
+     "isError": false
+    },
+    {
+     "hook": "after",
+     "id": "b5",
+     "args": {
+      "text": "9"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: 9"
+       }
+      ],
+      "details": {
+       "text": "9"
+      }
+     },
+     "isError": false
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000013,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "b1",
+       "name": "echo",
+       "arguments": {
+        "text": "block"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b2",
+       "name": "echo",
+       "arguments": {
+        "text": "quiet"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b3",
+       "name": "echo",
+       "arguments": {
+        "text": "explode"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b4",
+       "name": "echo",
+       "arguments": {
+        "text": "pass"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "b5",
+       "name": "echo",
+       "arguments": {
+        "text": 9
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "b1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "blocked by policy"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000014
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "b2",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Tool execution was blocked"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000015
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "b3",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "hook exploded"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000016
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "b4",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: pass"
+      }
+     ],
+     "details": {
+      "text": "pass"
+     },
+     "isError": false,
+     "timestamp": 1700000000017
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "b5",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: 9"
+      }
+     ],
+     "details": {
+      "text": "9"
+     },
+     "isError": false,
+     "timestamp": 1700000000018
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "before_hooks_sequential",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "policy",
+   "toolExecution": "sequential",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "q1",
+       "name": "echo",
+       "arguments": {
+        "text": "block"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "q2",
+       "name": "echo",
+       "arguments": {
+        "text": "fine"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000019,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000019,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "q1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "q2",
+        "name": "echo",
+        "arguments": {
+         "text": "fine"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "q1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "q2",
+        "name": "echo",
+        "arguments": {
+         "text": "fine"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "q1",
+     "toolName": "echo",
+     "args": {
+      "text": "block"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "q1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "q1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000020
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "q1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "blocked by policy"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000020
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "q2",
+     "toolName": "echo",
+     "args": {
+      "text": "fine"
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "q2",
+     "toolName": "echo",
+     "args": {
+      "text": "fine"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "q2",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: fine"
+       }
+      ],
+      "details": {
+       "text": "fine"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "q2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: fine"
+       }
+      ],
+      "details": {
+       "text": "fine"
+      },
+      "isError": false,
+      "timestamp": 1700000000021
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "q2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: fine"
+       }
+      ],
+      "details": {
+       "text": "fine"
+      },
+      "isError": false,
+      "timestamp": 1700000000021
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "q1",
+        "name": "echo",
+        "arguments": {
+         "text": "block"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "q2",
+        "name": "echo",
+        "arguments": {
+         "text": "fine"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "q1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "blocked by policy"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000020
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "q2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: fine"
+        }
+       ],
+       "details": {
+        "text": "fine"
+       },
+       "isError": false,
+       "timestamp": 1700000000021
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000019,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "q1",
+         "name": "echo",
+         "arguments": {
+          "text": "block"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "q2",
+         "name": "echo",
+         "arguments": {
+          "text": "fine"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "q1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "blocked by policy"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000020
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "q2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: fine"
+        }
+       ],
+       "details": {
+        "text": "fine"
+       },
+       "isError": false,
+       "timestamp": 1700000000021
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "q1",
+     "toolCallArgs": {
+      "text": "block"
+     },
+     "args": {
+      "text": "block"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "q2",
+     "toolCallArgs": {
+      "text": "fine"
+     },
+     "args": {
+      "text": "fine"
+     }
+    },
+    {
+     "hook": "after",
+     "id": "q2",
+     "args": {
+      "text": "fine"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: fine"
+       }
+      ],
+      "details": {
+       "text": "fine"
+      }
+     },
+     "isError": false
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000019,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "q1",
+       "name": "echo",
+       "arguments": {
+        "text": "block"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "q2",
+       "name": "echo",
+       "arguments": {
+        "text": "fine"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "q1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "blocked by policy"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000020
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "q2",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: fine"
+      }
+     ],
+     "details": {
+      "text": "fine"
+     },
+     "isError": false,
+     "timestamp": 1700000000021
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "before_terminate",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "policy",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "h1",
+       "name": "echo",
+       "arguments": {
+        "text": "halt"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 1,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000022,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000022,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "h1",
+        "name": "echo",
+        "arguments": {
+         "text": "halt"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "h1",
+        "name": "echo",
+        "arguments": {
+         "text": "halt"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "h1",
+     "toolName": "echo",
+     "args": {
+      "text": "halt"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "h1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "halted"
+       }
+      ],
+      "details": {},
+      "terminate": true
+     },
+     "isError": true
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "h1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "halted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000023
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "h1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "halted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000023
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "h1",
+        "name": "echo",
+        "arguments": {
+         "text": "halt"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "h1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "halted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000023
+      }
+     ]
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000022,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "h1",
+         "name": "echo",
+         "arguments": {
+          "text": "halt"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "h1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "halted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000023
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "h1",
+     "toolCallArgs": {
+      "text": "halt"
+     },
+     "args": {
+      "text": "halt"
+     }
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000022,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "h1",
+       "name": "echo",
+       "arguments": {
+        "text": "halt"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "h1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "halted"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000023
+    }
+   ]
+  },
+  {
+   "name": "after_hooks",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "policy",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "a1",
+       "name": "echo",
+       "arguments": {
+        "text": "swap"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "a2",
+       "name": "echo",
+       "arguments": {
+        "text": "boom"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "a3",
+       "name": "echo",
+       "arguments": {
+        "text": "plain"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000024,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000024,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "a1",
+        "name": "echo",
+        "arguments": {
+         "text": "swap"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a2",
+        "name": "echo",
+        "arguments": {
+         "text": "boom"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a3",
+        "name": "echo",
+        "arguments": {
+         "text": "plain"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "a1",
+        "name": "echo",
+        "arguments": {
+         "text": "swap"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a2",
+        "name": "echo",
+        "arguments": {
+         "text": "boom"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a3",
+        "name": "echo",
+        "arguments": {
+         "text": "plain"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "a1",
+     "toolName": "echo",
+     "args": {
+      "text": "swap"
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "a2",
+     "toolName": "echo",
+     "args": {
+      "text": "boom"
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "a3",
+     "toolName": "echo",
+     "args": {
+      "text": "plain"
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "a1",
+     "toolName": "echo",
+     "args": {
+      "text": "swap"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "a2",
+     "toolName": "echo",
+     "args": {
+      "text": "boom"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "a3",
+     "toolName": "echo",
+     "args": {
+      "text": "plain"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "a1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "replaced"
+       }
+      ],
+      "details": {
+       "swapped": true
+      }
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "a2",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "after exploded"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "a3",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: plain"
+       }
+      ],
+      "details": {
+       "text": "plain"
+      }
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "replaced"
+       }
+      ],
+      "details": {
+       "swapped": true
+      },
+      "isError": true,
+      "timestamp": 1700000000025
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "replaced"
+       }
+      ],
+      "details": {
+       "swapped": true
+      },
+      "isError": true,
+      "timestamp": 1700000000025
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "after exploded"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000026
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a2",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "after exploded"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000026
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: plain"
+       }
+      ],
+      "details": {
+       "text": "plain"
+      },
+      "isError": false,
+      "timestamp": 1700000000027
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "a3",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: plain"
+       }
+      ],
+      "details": {
+       "text": "plain"
+      },
+      "isError": false,
+      "timestamp": 1700000000027
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "a1",
+        "name": "echo",
+        "arguments": {
+         "text": "swap"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a2",
+        "name": "echo",
+        "arguments": {
+         "text": "boom"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "a3",
+        "name": "echo",
+        "arguments": {
+         "text": "plain"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "a1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "replaced"
+        }
+       ],
+       "details": {
+        "swapped": true
+       },
+       "isError": true,
+       "timestamp": 1700000000025
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "a2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "after exploded"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000026
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "a3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: plain"
+        }
+       ],
+       "details": {
+        "text": "plain"
+       },
+       "isError": false,
+       "timestamp": 1700000000027
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000024,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "a1",
+         "name": "echo",
+         "arguments": {
+          "text": "swap"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "a2",
+         "name": "echo",
+         "arguments": {
+          "text": "boom"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "a3",
+         "name": "echo",
+         "arguments": {
+          "text": "plain"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "a1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "replaced"
+        }
+       ],
+       "details": {
+        "swapped": true
+       },
+       "isError": true,
+       "timestamp": 1700000000025
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "a2",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "after exploded"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000026
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "a3",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: plain"
+        }
+       ],
+       "details": {
+        "text": "plain"
+       },
+       "isError": false,
+       "timestamp": 1700000000027
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "done"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "a1",
+     "toolCallArgs": {
+      "text": "swap"
+     },
+     "args": {
+      "text": "swap"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "a2",
+     "toolCallArgs": {
+      "text": "boom"
+     },
+     "args": {
+      "text": "boom"
+     }
+    },
+    {
+     "hook": "before",
+     "id": "a3",
+     "toolCallArgs": {
+      "text": "plain"
+     },
+     "args": {
+      "text": "plain"
+     }
+    },
+    {
+     "hook": "after",
+     "id": "a1",
+     "args": {
+      "text": "swap"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: swap"
+       }
+      ],
+      "details": {
+       "text": "swap"
+      }
+     },
+     "isError": false
+    },
+    {
+     "hook": "after",
+     "id": "a2",
+     "args": {
+      "text": "boom"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: boom"
+       }
+      ],
+      "details": {
+       "text": "boom"
+      }
+     },
+     "isError": false
+    },
+    {
+     "hook": "after",
+     "id": "a3",
+     "args": {
+      "text": "plain"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: plain"
+       }
+      ],
+      "details": {
+       "text": "plain"
+      }
+     },
+     "isError": false
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000024,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "a1",
+       "name": "echo",
+       "arguments": {
+        "text": "swap"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "a2",
+       "name": "echo",
+       "arguments": {
+        "text": "boom"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "a3",
+       "name": "echo",
+       "arguments": {
+        "text": "plain"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "a1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "replaced"
+      }
+     ],
+     "details": {
+      "swapped": true
+     },
+     "isError": true,
+     "timestamp": 1700000000025
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "a2",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "after exploded"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000026
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "a3",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: plain"
+      }
+     ],
+     "details": {
+      "text": "plain"
+     },
+     "isError": false,
+     "timestamp": 1700000000027
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "done"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "after_terminate",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "policy",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "echo",
+       "arguments": {
+        "text": "stop"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 1,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000028,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000028,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "t1",
+        "name": "echo",
+        "arguments": {
+         "text": "stop"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "t1",
+        "name": "echo",
+        "arguments": {
+         "text": "stop"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "t1",
+     "toolName": "echo",
+     "args": {
+      "text": "stop"
+     }
+    },
+    {
+     "type": "tool_execution_update",
+     "toolCallId": "t1",
+     "toolName": "echo",
+     "args": {
+      "text": "stop"
+     },
+     "partialResult": {
+      "content": [
+       {
+        "type": "text",
+        "text": "working"
+       }
+      ],
+      "details": {
+       "step": 1
+      }
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "t1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: stop"
+       }
+      ],
+      "details": {
+       "text": "stop"
+      },
+      "terminate": true
+     },
+     "isError": false
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "t1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: stop"
+       }
+      ],
+      "details": {
+       "text": "stop"
+      },
+      "isError": false,
+      "timestamp": 1700000000029
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "t1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: stop"
+       }
+      ],
+      "details": {
+       "text": "stop"
+      },
+      "isError": false,
+      "timestamp": 1700000000029
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "t1",
+        "name": "echo",
+        "arguments": {
+         "text": "stop"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "t1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: stop"
+        }
+       ],
+       "details": {
+        "text": "stop"
+       },
+       "isError": false,
+       "timestamp": 1700000000029
+      }
+     ]
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000028,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "t1",
+         "name": "echo",
+         "arguments": {
+          "text": "stop"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "t1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "echo: stop"
+        }
+       ],
+       "details": {
+        "text": "stop"
+       },
+       "isError": false,
+       "timestamp": 1700000000029
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "t1",
+     "toolCallArgs": {
+      "text": "stop"
+     },
+     "args": {
+      "text": "stop"
+     }
+    },
+    {
+     "hook": "after",
+     "id": "t1",
+     "args": {
+      "text": "stop"
+     },
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "echo: stop"
+       }
+      ],
+      "details": {
+       "text": "stop"
+      }
+     },
+     "isError": false
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000028,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "t1",
+       "name": "echo",
+       "arguments": {
+        "text": "stop"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "t1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "echo: stop"
+      }
+     ],
+     "details": {
+      "text": "stop"
+     },
+     "isError": false,
+     "timestamp": 1700000000029
+    }
+   ]
+  },
+  {
+   "name": "abort_and_block_in_before",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "abortBlock",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "y1",
+       "name": "echo",
+       "arguments": {
+        "text": "x"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000030,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000030,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "y1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "y1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "y1",
+     "toolName": "echo",
+     "args": {
+      "text": "x"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "y1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "y1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000031
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "y1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000031
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "y1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "y1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Operation aborted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000031
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000030,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "y1",
+         "name": "echo",
+         "arguments": {
+          "text": "x"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "y1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Operation aborted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000031
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "never"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "y1",
+     "toolCallArgs": {
+      "text": "x"
+     },
+     "args": {
+      "text": "x"
+     }
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000030,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "y1",
+       "name": "echo",
+       "arguments": {
+        "text": "x"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "y1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Operation aborted"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000031
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  },
+  {
+   "name": "abort_in_before",
+   "tools": [
+    "echo"
+   ],
+   "hooks": "abort",
+   "toolExecution": "parallel",
+   "responses": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "x1",
+       "name": "echo",
+       "arguments": {
+        "text": "x"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "x2",
+       "name": "echo",
+       "arguments": {
+        "text": "y"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "calls": 2,
+   "events": [
+    {
+     "type": "agent_start"
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000032,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "system",
+      "content": "",
+      "timestamp": 1700000000032,
+      "toolsAdded": [
+       {
+        "name": "echo",
+        "description": "Echo the text back",
+        "parameters": {
+         "type": "object",
+         "required": [
+          "text"
+         ],
+         "properties": {
+          "text": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "go"
+       }
+      ],
+      "timestamp": 1
+     }
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "x1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "x2",
+        "name": "echo",
+        "arguments": {
+         "text": "y"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "x1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "x2",
+        "name": "echo",
+        "arguments": {
+         "text": "y"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "tool_execution_start",
+     "toolCallId": "x1",
+     "toolName": "echo",
+     "args": {
+      "text": "x"
+     }
+    },
+    {
+     "type": "tool_execution_end",
+     "toolCallId": "x1",
+     "toolName": "echo",
+     "result": {
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {}
+     },
+     "isError": true
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "x1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000033
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "toolResult",
+      "toolCallId": "x1",
+      "toolName": "echo",
+      "content": [
+       {
+        "type": "text",
+        "text": "Operation aborted"
+       }
+      ],
+      "details": {},
+      "isError": true,
+      "timestamp": 1700000000033
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "x1",
+        "name": "echo",
+        "arguments": {
+         "text": "x"
+        }
+       },
+       {
+        "type": "toolCall",
+        "id": "x2",
+        "name": "echo",
+        "arguments": {
+         "text": "y"
+        }
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 2
+     },
+     "toolResults": [
+      {
+       "role": "toolResult",
+       "toolCallId": "x1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Operation aborted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000033
+      }
+     ]
+    },
+    {
+     "type": "turn_start"
+    },
+    {
+     "type": "message_start",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "message_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     }
+    },
+    {
+     "type": "turn_end",
+     "message": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "never"
+       }
+      ],
+      "api": "faux",
+      "provider": "faux",
+      "model": "faux-1",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 2
+     },
+     "toolResults": []
+    },
+    {
+     "type": "agent_end",
+     "messages": [
+      {
+       "role": "system",
+       "content": "",
+       "timestamp": 1700000000032,
+       "toolsAdded": [
+        {
+         "name": "echo",
+         "description": "Echo the text back",
+         "parameters": {
+          "type": "object",
+          "required": [
+           "text"
+          ],
+          "properties": {
+           "text": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "go"
+        }
+       ],
+       "timestamp": 1
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "x1",
+         "name": "echo",
+         "arguments": {
+          "text": "x"
+         }
+        },
+        {
+         "type": "toolCall",
+         "id": "x2",
+         "name": "echo",
+         "arguments": {
+          "text": "y"
+         }
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "toolUse",
+       "timestamp": 2
+      },
+      {
+       "role": "toolResult",
+       "toolCallId": "x1",
+       "toolName": "echo",
+       "content": [
+        {
+         "type": "text",
+         "text": "Operation aborted"
+        }
+       ],
+       "details": {},
+       "isError": true,
+       "timestamp": 1700000000033
+      },
+      {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "never"
+        }
+       ],
+       "api": "faux",
+       "provider": "faux",
+       "model": "faux-1",
+       "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "totalTokens": 0,
+        "cost": {
+         "input": 0,
+         "output": 0,
+         "cacheRead": 0,
+         "cacheWrite": 0,
+         "total": 0
+        }
+       },
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     ]
+    }
+   ],
+   "hookCalls": [
+    {
+     "hook": "before",
+     "id": "x1",
+     "toolCallArgs": {
+      "text": "x"
+     },
+     "args": {
+      "text": "x"
+     }
+    }
+   ],
+   "messages": [
+    {
+     "role": "system",
+     "content": "",
+     "timestamp": 1700000000032,
+     "toolsAdded": [
+      {
+       "name": "echo",
+       "description": "Echo the text back",
+       "parameters": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "user",
+     "content": [
+      {
+       "type": "text",
+       "text": "go"
+      }
+     ],
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "toolCall",
+       "id": "x1",
+       "name": "echo",
+       "arguments": {
+        "text": "x"
+       }
+      },
+      {
+       "type": "toolCall",
+       "id": "x2",
+       "name": "echo",
+       "arguments": {
+        "text": "y"
+       }
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "toolUse",
+     "timestamp": 2
+    },
+    {
+     "role": "toolResult",
+     "toolCallId": "x1",
+     "toolName": "echo",
+     "content": [
+      {
+       "type": "text",
+       "text": "Operation aborted"
+      }
+     ],
+     "details": {},
+     "isError": true,
+     "timestamp": 1700000000033
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "never"
+      }
+     ],
+     "api": "faux",
+     "provider": "faux",
+     "model": "faux-1",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ]
+  }
+ ]
+}

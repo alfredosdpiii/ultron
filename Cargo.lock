@@ -49,6 +49,7 @@ name = "agent"
 version = "0.1.0"
 dependencies = [
  "ai",
+ "mcp",
  "serde",
  "serde_json",
  "tokio",
@@ -2906,6 +2907,7 @@ dependencies = [
  "base64 0.23.1",
  "crossterm",
  "fancy-regex 0.19.2",
+ "image",
  "serde_json",
  "syntect",
  "unicode-segmentation",

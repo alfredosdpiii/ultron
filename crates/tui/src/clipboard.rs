@@ -8,12 +8,27 @@ use std::thread::{self, JoinHandle};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
 
+/// A clipboard image (`ClipboardImage`): its bytes and base MIME type.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClipboardImage {
+    pub bytes: Vec<u8>,
+    pub mime_type: String,
+}
+
 /// Clipboard access. Implementations may block (X11/Wayland round trips); only the service thread calls them.
 pub trait Clipboard: Send {
     fn get_text(&mut self) -> Result<String, String>;
     fn set_text(&mut self, text: &str) -> Result<(), String>;
     /// PNG bytes of a clipboard image.
     fn get_image_png(&mut self) -> Result<Vec<u8>, String>;
+    /// A clipboard image (`readClipboardImage`): PNG, JPEG, WebP or GIF as read, other types converted to PNG.
+    /// By default the PNG of [`Clipboard::get_image_png`].
+    fn get_image(&mut self) -> Result<ClipboardImage, String> {
+        self.get_image_png().map(|bytes| ClipboardImage {
+            bytes,
+            mime_type: "image/png".to_string(),
+        })
+    }
     /// A user-visible copy (`copyToClipboard`): the OSC 52 sequence to write when one is due, else why it failed.
     fn copy_checked(&mut self, text: &str) -> Result<Option<String>, String> {
         self.set_text(text).map(|()| None)
@@ -35,10 +50,11 @@ impl SystemClipboard {
         Self::with_env(std::env::var("PATH").ok(), std::env::vars().collect())
     }
 
-    /// A clipboard whose tools come from `path` and whose decisions read `vars`.
+    /// A clipboard whose tools come from `path` and whose decisions read `vars`. The desktop clipboard connection
+    /// opens on the first text access (an image read only runs the tools).
     pub fn with_env(path: Option<String>, vars: Vec<(String, String)>) -> Self {
         Self {
-            inner: arboard::Clipboard::new().ok(),
+            inner: None,
             path,
             vars,
         }
@@ -93,20 +109,23 @@ impl Clipboard for SystemClipboard {
         self.board()?.set_text(text.to_string()).map_err(|e| e.to_string())
     }
 
-    /// `readClipboardImage` (crate::clipboard_image): `wl-paste` in a Wayland session or WSL, then `xclip`; only a PNG
-    /// image is taken.
+    /// A PNG [`Clipboard::get_image`].
     fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
+        match self.get_image()? {
+            image if image.mime_type == "image/png" => Ok(image.bytes),
+            _ => Err("no image on the clipboard".to_string()),
+        }
+    }
+
+    /// `readClipboardImage` (crate::clipboard_image): `wl-paste` in a Wayland session or WSL, then `xclip`.
+    fn get_image(&mut self) -> Result<ClipboardImage, String> {
         let path = self.path.clone();
         let vars = &self.vars;
         let var = |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
         let proc_version = std::fs::read_to_string("/proc/version").ok();
         let mut run = |program: &str, args: &[&str]| tool_run(path.as_deref(), program, args);
         match crate::clipboard_image::read_clipboard_image(&var, proc_version.as_deref(), &mut run) {
-            crate::clipboard_image::ImageRead::Image { bytes, mime_type }
-                if mime_type == "image/png" && bytes.starts_with(b"\x89PNG") =>
-            {
-                Ok(bytes)
-            }
+            crate::clipboard_image::ImageRead::Image { bytes, mime_type } => Ok(ClipboardImage { bytes, mime_type }),
             _ => Err("no image on the clipboard".to_string()),
         }
     }
@@ -116,8 +135,11 @@ impl Clipboard for SystemClipboard {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClipboardReply {
     Text(String),
-    /// Base64 PNG.
-    Image(String),
+    /// A clipboard image: standard base64 of its bytes and its MIME type (PNG, JPEG, WebP or GIF).
+    Image {
+        data: String,
+        mime_type: String,
+    },
     Error(String),
     /// A [`ClipboardService::copy_checked`] finished: the OSC 52 sequence to write when one is due, or why the
     /// copy failed.
@@ -163,12 +185,10 @@ impl ClipboardService {
                         }
                         Job::CopyChecked(text) => Ok(ClipboardReply::Copied(clipboard.copy_checked(&text))),
                         Job::Read(ClipboardRead::Text) => clipboard.get_text().map(ClipboardReply::Text),
-                        Job::Read(ClipboardRead::Image) => {
-                            clipboard.get_image_png().map(|b| ClipboardReply::Image(B64.encode(b)))
-                        }
+                        Job::Read(ClipboardRead::Image) => clipboard.get_image().map(image_reply),
                         Job::Read(ClipboardRead::ImageOrText) => clipboard
-                            .get_image_png()
-                            .map(|b| ClipboardReply::Image(B64.encode(b)))
+                            .get_image()
+                            .map(image_reply)
                             .or_else(|_| clipboard.get_text().map(ClipboardReply::Text)),
                     };
                     if reply_tx.send(reply.unwrap_or_else(ClipboardReply::Error)).is_err() {
@@ -246,6 +266,13 @@ impl Drop for ClipboardService {
         if let Some(tx) = self.tx.take() {
             let _ = tx.send(Job::Stop);
         }
+    }
+}
+
+fn image_reply(image: ClipboardImage) -> ClipboardReply {
+    ClipboardReply::Image {
+        data: B64.encode(image.bytes),
+        mime_type: image.mime_type,
     }
 }
 

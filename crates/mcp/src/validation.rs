@@ -33,6 +33,33 @@ pub fn prepare_tool_arguments(
             _ => Map::new(),
         });
     }
+    Err(failure(name, &errors, &Value::Object(params.clone())))
+}
+
+/// `validateToolArguments` for a tool whose schema is a TypeBox schema in TypeScript (the agent loop's tools): as
+/// [`prepare_tool_arguments`], with TypeBox's `Value.Convert` ([`crate::typebox_convert`]) applied to an object
+/// before the JSON-schema coercion. `args` may be any JSON value; the error shows it as received.
+pub fn validate_tool_arguments(name: &str, schema: &Value, args: &Value) -> Result<Value, String> {
+    let mut value = args.clone();
+    normalize_optional_nulls(&mut value, schema);
+    // TypeScript discards `Convert`'s return value: only the in-place conversion of an object schema's object counts.
+    if value.is_object()
+        && schema["type"] == "object"
+        && schema["properties"].is_object()
+        && schema.get("anyOf").is_none()
+    {
+        value = crate::typebox_convert::convert(schema, value);
+    }
+    let value = coerce(value, schema);
+    let mut errors = Vec::new();
+    check(&value, schema, "", &mut errors);
+    if errors.is_empty() {
+        return Ok(value);
+    }
+    Err(failure(name, &errors, args))
+}
+
+fn failure(name: &str, errors: &[(String, String)], received: &Value) -> String {
     let lines: Vec<String> = errors
         .iter()
         .map(|(path, message)| {
@@ -40,11 +67,11 @@ pub fn prepare_tool_arguments(
             format!("  - {}: {message}", if path.is_empty() { "root" } else { &path })
         })
         .collect();
-    Err(format!(
+    format!(
         "Validation failed for tool \"{name}\":\n{}\n\nReceived arguments:\n{}",
         lines.join("\n"),
-        stringify_indented(&Value::Object(params.clone()), "  ")
-    ))
+        stringify_indented(received, "  ")
+    )
 }
 
 fn types(schema: &Value) -> Vec<&str> {
@@ -68,7 +95,7 @@ fn matches_type(value: &Value, kind: &str) -> bool {
     }
 }
 
-fn valid(value: &Value, schema: &Value) -> bool {
+pub(crate) fn valid(value: &Value, schema: &Value) -> bool {
     let mut errors = Vec::new();
     check(value, schema, "", &mut errors);
     errors.is_empty()

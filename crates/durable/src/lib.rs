@@ -8,6 +8,7 @@
 //! - Records are typed, so malformed records fail to deserialize instead of reaching storage, and a
 //!   `document.create` whose content is a delta is rejected at commit (upstream's types forbid it).
 
+mod document_state;
 mod documents;
 mod jsonl;
 mod memory;
@@ -18,6 +19,7 @@ mod session;
 mod sqlite;
 mod transaction;
 
+pub use document_state::{Delivery, DeliveryKind, DocumentState, StateSubscription};
 pub use documents::{CheckpointInfo, Doc, DocDefinition, DocSemantics, Owner};
 pub use jsonl::{JsonlFs, JsonlOptions, JsonlStorage, StdFs};
 pub use memory::{MemoryStorage, PreparedCommit};

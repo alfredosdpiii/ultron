@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ai::http::BoxFuture;
 use ai::{
-    AbortSignal, AssistantMessage, AssistantMessageEvent, EventSink, Message, Model, ToolResultMessage,
+    AbortSignal, AssistantMessage, AssistantMessageEvent, EventSink, Message, Model, ToolCall, ToolResultMessage,
     TranscriptContext, Usage, UserContent,
 };
 use serde::{Deserialize, Serialize};
@@ -55,6 +55,11 @@ pub trait AgentTool: Send + Sync {
     fn execution_mode(&self) -> Option<ToolExecutionMode> {
         None
     }
+    /// `prepareArguments`: adapt the raw call arguments before validation (for example an old argument name). `Err`
+    /// is a thrown error: the call fails with the message as text.
+    fn prepare_arguments(&self, args: &Value) -> Result<Value, String> {
+        Ok(args.clone())
+    }
     fn execute<'a>(
         &'a self,
         tool_call_id: &'a str,
@@ -84,6 +89,63 @@ pub struct AgentContext {
 /// Polls queued messages; called between turns.
 pub type MessageSource = Box<dyn FnMut() -> Vec<AgentMessage> + Send>;
 
+/// What `beforeToolCall` sees: the call as the model sent it and its validated arguments.
+pub struct BeforeToolCallContext<'a> {
+    pub assistant_message: &'a AssistantMessage,
+    pub tool_call: &'a ToolCall,
+    pub args: &'a Value,
+    pub context: &'a AgentContext,
+}
+
+/// `beforeToolCall`'s decision: `block` fails the call with `reason` (default "Tool execution was blocked");
+/// `terminate` marks that error result as ending the run.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BeforeToolCallResult {
+    pub block: bool,
+    pub reason: Option<String>,
+    pub terminate: Option<bool>,
+}
+
+/// What `afterToolCall` sees: the executed call, its validated arguments and its result.
+pub struct AfterToolCallContext<'a> {
+    pub assistant_message: &'a AssistantMessage,
+    pub tool_call: &'a ToolCall,
+    pub args: &'a Value,
+    pub result: &'a AgentToolResult,
+    pub is_error: bool,
+    pub context: &'a AgentContext,
+}
+
+/// `afterToolCall`'s replacement: each field present replaces the result's.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AfterToolCallResult {
+    pub content: Option<Vec<UserContent>>,
+    pub details: Option<Value>,
+    pub usage: Option<Usage>,
+    pub terminate: Option<bool>,
+    pub is_error: Option<bool>,
+}
+
+/// Runs after validation, before execution. `Err` is a thrown error: the call fails with the message as text.
+pub type BeforeToolCall = Arc<
+    dyn for<'a> Fn(
+            BeforeToolCallContext<'a>,
+            &'a AbortSignal,
+        ) -> BoxFuture<'a, Result<Option<BeforeToolCallResult>, String>>
+        + Send
+        + Sync,
+>;
+
+/// Runs after execution. `Err` is a thrown error: the result becomes an error with the message as text.
+pub type AfterToolCall = Arc<
+    dyn for<'a> Fn(
+            AfterToolCallContext<'a>,
+            &'a AbortSignal,
+        ) -> BoxFuture<'a, Result<Option<AfterToolCallResult>, String>>
+        + Send
+        + Sync,
+>;
+
 pub struct AgentLoopConfig {
     pub model: Model,
     /// `None` is thinking off.
@@ -93,6 +155,8 @@ pub struct AgentLoopConfig {
     pub tool_execution: ToolExecutionMode,
     pub get_steering_messages: Option<MessageSource>,
     pub get_follow_up_messages: Option<MessageSource>,
+    pub before_tool_call: Option<BeforeToolCall>,
+    pub after_tool_call: Option<AfterToolCall>,
 }
 
 impl AgentLoopConfig {
@@ -105,6 +169,8 @@ impl AgentLoopConfig {
             tool_execution: ToolExecutionMode::Parallel,
             get_steering_messages: None,
             get_follow_up_messages: None,
+            before_tool_call: None,
+            after_tool_call: None,
         }
     }
 }

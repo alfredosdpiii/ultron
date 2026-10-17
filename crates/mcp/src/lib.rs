@@ -26,6 +26,7 @@ pub mod resolve;
 pub mod results;
 pub mod runtime;
 pub mod stdio;
+mod typebox_convert;
 pub mod validation;
 
 pub use client::{CancelToken, Client, ClientOptions, ConnState, RequestOptions};

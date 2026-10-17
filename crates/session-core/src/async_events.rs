@@ -146,6 +146,8 @@ pub type RootRefusal = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 pub type RootCallback = Arc<dyn Fn(&str) + Send + Sync>;
 pub type DeliveryCallback = Arc<dyn Fn(&Delivery) + Send + Sync>;
 pub type RootOfRun = Arc<dyn Fn(&str) -> String + Send + Sync>;
+/// A line that ends a lane's event message (`lane`, the message text): the context reminder (crate::context_reminder).
+pub type EventNote = Arc<dyn Fn(&str, &str) -> Option<String> + Send + Sync>;
 
 /// `AsyncEventOptions`.
 #[derive(Clone)]
@@ -162,6 +164,8 @@ pub struct DispatcherOptions {
     pub on_root_aborted: Option<RootCallback>,
     pub on_delivery: Option<DeliveryCallback>,
     pub retry_after: Duration,
+    /// Ends the message of a batch with a backgrounded cell's end (`cell_done`), as the cell's result would end.
+    pub note: Option<EventNote>,
 }
 
 impl DispatcherOptions {
@@ -175,6 +179,7 @@ impl DispatcherOptions {
             on_root_aborted: None,
             on_delivery: None,
             retry_after: RETRY_AFTER,
+            note: None,
         }
     }
 }
@@ -223,6 +228,7 @@ impl Dispatcher {
             retries: Vec::new(),
             steered: Vec::new(),
             chain_runs: HashMap::new(),
+            notes: HashMap::new(),
             now: now_ms,
         };
         let thread = std::thread::spawn(move || worker.run(&rx));
@@ -324,6 +330,8 @@ struct Worker {
     retries: Vec<(Instant, Vec<RuntimeEvent>)>,
     steered: Vec<Steered>,
     chain_runs: HashMap<String, usize>,
+    /// The note of each batch with cell ends, by its cells, decided once: a batch delivered again keeps it.
+    notes: HashMap<String, Option<String>>,
     now: fn() -> u64,
 }
 
@@ -414,8 +422,25 @@ impl Worker {
         lock(&self.counts).in_flight -= 1;
     }
 
-    fn message(&self, events: &[RuntimeEvent]) -> Value {
-        runtime_event_message(events, (self.now)())
+    fn message(&mut self, lane: &str, events: &[RuntimeEvent]) -> Value {
+        let mut message = runtime_event_message(events, (self.now)());
+        let cells: Vec<&str> = events
+            .iter()
+            .filter(|e| e.kind == "cell_done")
+            .map(|e| e.id.as_str())
+            .collect();
+        if let (Some(note), false) = (&self.options.note, cells.is_empty()) {
+            let text = message["content"].as_str().unwrap_or_default().to_string();
+            let line = self
+                .notes
+                .entry(cells.join("\n"))
+                .or_insert_with(|| note(lane, &text))
+                .clone();
+            if let Some(line) = line {
+                message["content"] = Value::String(format!("{text}\n{line}"));
+            }
+        }
+        message
     }
 
     fn delivered(&self, lane: &str, mode: &'static str, events: &[RuntimeEvent], reason: Option<String>) {
@@ -438,7 +463,7 @@ impl Worker {
             Execution::Run => return self.steer(lane, events),
             Execution::Idle => {}
         }
-        let message = self.message(&events);
+        let message = self.message(lane, &events);
         let reason = self.refusal(lane, &events);
         if reason.is_none() {
             let root = chain_root(&events).unwrap_or_default();
@@ -477,7 +502,7 @@ impl Worker {
     }
 
     fn steer(&mut self, lane: &str, events: Vec<RuntimeEvent>) {
-        let message = self.message(&events);
+        let message = self.message(lane, &events);
         let entry = match self.lanes.steer(lane, &message) {
             Ok(entry) => entry,
             Err(_) => return self.retry_later(events),

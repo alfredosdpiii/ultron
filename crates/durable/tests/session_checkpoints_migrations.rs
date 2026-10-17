@@ -1,6 +1,5 @@
 //! Port of upstream `test/session-checkpoints-migrations.test.ts`, run against every backend.
-//! Not ported: strict-JSON checks of migration results (a `serde_json::Value` is always strict JSON) and the
-//! `documentState` half of the older-shape observer test (Chord replicated state is not ported).
+//! Not ported: strict-JSON checks of migration results (a `serde_json::Value` is always strict JSON).
 
 #![allow(clippy::type_complexity)]
 
@@ -891,6 +890,7 @@ fn durable_session_cache_sends_observers_of_an_older_shape_a_root_replacement() 
     each_backend(|backend| {
         let t = TestSession::open(backend);
         touch(&t, &v1_doc());
+        let state = t.session.document_state(&v1_doc(), Owner::Session).unwrap().unwrap();
         let watch = t.session.watch_doc(&v1_doc(), Owner::Session).unwrap().unwrap();
         let frames: Arc<Mutex<Vec<Vec<Value>>>> = Arc::default();
         let sink = frames.clone();
@@ -909,11 +909,13 @@ fn durable_session_cache_sends_observers_of_an_older_shape_a_root_replacement() 
             })
             .unwrap();
         eventually(|| !frames.lock().unwrap().is_empty());
+        assert_eq!(*state.value().unwrap(), json!({ "names": ["first", "second"] }));
         assert_eq!(*watch.value().unwrap(), json!({ "names": ["first", "second"] }));
         assert_eq!(
             *frames.lock().unwrap(),
             [vec![json!(["r", { "names": ["first", "second"] }])]]
         );
+        state.dispose();
         watch.stop();
     });
 }

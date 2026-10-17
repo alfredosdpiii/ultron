@@ -116,7 +116,16 @@ impl FrameTasks for StackFrameTasks {
 
     fn close_lane(&self, lane: &str) {
         if let Some(stack) = self.stack.upgrade() {
+            stack.context_reminders.set_frame_lane(lane, None);
             let _ = stack.lanes.close_lane(lane);
+        }
+    }
+
+    /// A frame's cells are reminded as its conversation nears the frame model's window (it never compacts).
+    fn frame_context(&self, lane: &str, model: &ai::Model, meter: inference::FrameMeter) {
+        if let Some(stack) = self.stack.upgrade() {
+            let frame = crate::context_reminder::lane_limit(model, false, 0).map(|limit| (limit, meter));
+            stack.context_reminders.set_frame_lane(lane, frame);
         }
     }
 }

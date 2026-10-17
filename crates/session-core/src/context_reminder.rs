@@ -8,7 +8,12 @@
 //!   `max(2048, contextWindow / 10)`; `ULTRON_CONTEXT_REMINDER_TOKENS=<n>` sets it, `ULTRON_CONTEXT_REMINDER=off`
 //!   (`0`, `false`) disables the reminder.
 //! - The context use is the estimate the harness compacts by: the newest answer's usage plus estimates of the
-//!   messages after it (the session actor wires that meter, [`ContextReminders::set_meter`]), plus this result.
+//!   messages after it (the session actor wires that meter, [`ContextReminders::set_meter`]), plus this result
+//!   (its text, and 4,800 characters per image as the compaction estimator counts one). An inference frame's lane
+//!   (`rlm.infer` / `rlm.map` with depth) measures its own conversation the same way against the frame model's
+//!   window ([`ContextReminders::set_frame_lane`]).
+//! - Successful results, error results (a raised exception, a kernel failure) and the completion message of a cell
+//!   that kept running in the background (`cell_done`) all carry it; an aborted cell does not.
 //! - Once per approach: a lane that was reminded is not reminded again until its use fell below the trigger (after
 //!   `ctx` edits) or its context was compacted.
 //! - Every lane whose model has a known window, except lanes on Claude Code (`claude-code/*`, whose context is Claude
@@ -117,6 +122,12 @@ pub struct Measure {
 /// A lane's context use before its cell result, if known.
 pub type ContextMeter = Arc<dyn Fn(&str) -> Option<Measure> + Send + Sync>;
 
+/// One lane's own context use (an inference frame's conversation, which has no durable conversation).
+pub type LaneMeter = Arc<dyn Fn() -> Option<u64> + Send + Sync>;
+
+/// The characters an image counts as in the estimate, as the compaction estimator counts it (`estimateTokens`).
+pub const ESTIMATED_IMAGE_CHARS: u64 = 4800;
+
 #[derive(Default)]
 struct LaneState {
     /// Reminded since the use last fell below the trigger or the context was compacted.
@@ -130,6 +141,7 @@ pub struct ContextReminders {
     limits: Mutex<HashMap<String, Limit>>,
     lanes: Mutex<HashMap<String, LaneState>>,
     meter: OnceLock<ContextMeter>,
+    lane_meters: Mutex<HashMap<String, LaneMeter>>,
 }
 
 impl ContextReminders {
@@ -139,6 +151,7 @@ impl ContextReminders {
             limits: Mutex::default(),
             lanes: Mutex::default(),
             meter: OnceLock::new(),
+            lane_meters: Mutex::default(),
         }
     }
 
@@ -159,6 +172,22 @@ impl ContextReminders {
             Some(limit) => limits.insert(lane.to_string(), limit),
             None => limits.remove(lane),
         };
+    }
+
+    /// An inference frame's lane (crate::frames): its own meter (the frame conversation's estimate) and its limit,
+    /// the frame model's window (frames never compact). `None` ends both (the frame ended).
+    pub fn set_frame_lane(&self, lane: &str, frame: Option<(Limit, LaneMeter)>) {
+        match frame {
+            Some((limit, meter)) => {
+                self.set_limit(lane, Some(limit));
+                lock(&self.lane_meters).insert(lane.to_string(), meter);
+            }
+            None => {
+                self.set_limit(lane, None);
+                lock(&self.lane_meters).remove(lane);
+                lock(&self.lanes).remove(lane);
+            }
+        }
     }
 
     pub fn limit(&self, lane: &str) -> Option<Limit> {
@@ -196,18 +225,26 @@ impl ContextReminders {
         Some(reminder_line(measure.tokens, &limit))
     }
 
-    /// The reminder for `lane`'s result `text`: the meter's use plus the result's own estimate (`ceil(chars / 4)`,
-    /// as the harness estimates a tool result's text).
-    pub fn reminder(&self, lane: &str, text: &str) -> Option<String> {
+    /// The reminder for `lane`'s result `text` with `images` images: the meter's use plus the result's own estimate,
+    /// as the harness estimates a tool result (`ceil(chars / 4)`, an image counting
+    /// [`ESTIMATED_IMAGE_CHARS`]). A lane with its own meter (a frame) reads that one.
+    pub fn reminder(&self, lane: &str, text: &str, images: usize) -> Option<String> {
         if !self.settings.enabled {
             return None;
         }
-        let measure = (self.meter.get()?)(lane)?;
-        let result = (text.encode_utf16().count() as u64).div_ceil(4);
+        let own = lock(&self.lane_meters).get(lane).cloned();
+        let measure = match own {
+            Some(meter) => Measure {
+                tokens: meter()?,
+                epoch: None,
+            },
+            None => (self.meter.get()?)(lane)?,
+        };
+        let chars = text.encode_utf16().count() as u64 + images as u64 * ESTIMATED_IMAGE_CHARS;
         self.observe(
             lane,
             Measure {
-                tokens: measure.tokens + result,
+                tokens: measure.tokens + chars.div_ceil(4),
                 epoch: measure.epoch,
             },
         )

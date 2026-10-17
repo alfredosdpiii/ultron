@@ -6,12 +6,19 @@
 //! editor and status line) is rendered and diffed each frame, so frame cost is bounded by the live area, not by the
 //! transcript length.
 //!
+//! Kitty images are drawn as the TypeScript main screen (tui-main-screen.ts) draws them: an image line's reserved
+//! rows are made (and cleared) before the image is placed on its first row, an image whose rows change is deleted
+//! by id before it is drawn again, and a full repaint deletes the images it repaints. Images written to scrollback
+//! scroll with it; a replay (which clears scrollback) deletes them too.
+//!
 //! [`RenderGate`] paces frames (30 fps cadence, adaptive duty cycle) and skips frames while the terminal writer's
 //! backlog exceeds [`crate::tty_writer::MAX_PENDING_OUTPUT_BYTES`]; the retry paints the latest state only.
 
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use crate::components::Component;
+use crate::image::delete_kitty_image;
 use crate::renderer::{CURSOR_MARKER, is_image_line};
 use crate::tty_writer::MAX_PENDING_OUTPUT_BYTES;
 use crate::utils::{normalize_terminal_output, truncate_to_width, visible_width};
@@ -73,6 +80,112 @@ pub struct ViewportRenderer {
     /// Viewport rows written over the renderer's lifetime (diff efficiency, tests).
     pub rows_written: usize,
     pub history_rows_written: usize,
+    /// Kitty image ids written to scrollback (deleted when a replay clears it).
+    history_images: BTreeSet<u32>,
+}
+
+/// `parseKittyImageHeader`: the image ids (`i=`) and cell rows (`r=`, default 1) of a line's first Kitty command.
+fn kitty_header(line: &str) -> Option<(Vec<u32>, usize)> {
+    let start = line.find("\x1b_G")? + 3;
+    let end = start + line[start..].find(';')?;
+    let mut ids = Vec::new();
+    let mut rows = 1;
+    for param in line[start..end].split(',') {
+        let Some((key, value)) = param.split_once('=') else {
+            continue;
+        };
+        // `Number(value)`: an integer in 1..=0xffffffff.
+        let Some(n) = value
+            .trim()
+            .parse::<u64>()
+            .ok()
+            .filter(|n| (1..=0xffff_ffff).contains(n))
+        else {
+            continue;
+        };
+        match key {
+            "i" => ids.push(n as u32),
+            "r" => rows = n as usize,
+            _ => {}
+        }
+    }
+    Some((ids, rows))
+}
+
+fn kitty_ids(line: &str) -> Vec<u32> {
+    kitty_header(line).map(|(ids, _)| ids).unwrap_or_default()
+}
+
+/// `getKittyImageReservedRows`: the rows an image line at `index` keeps (its `r=`, through the blank rows after it,
+/// at most to `max_index`).
+fn reserved_rows(lines: &[String], index: usize, max_index: usize) -> usize {
+    let rows = kitty_header(&lines[index]).map_or(1, |(_, rows)| rows);
+    if rows <= 1 {
+        return 1;
+    }
+    let max = rows.min((max_index + 1).saturating_sub(index)).min(lines.len() - index);
+    let mut reserved = 1;
+    while reserved < max {
+        let line = &lines[index + reserved];
+        if is_image_line(line) || visible_width(line) > 0 {
+            break;
+        }
+        reserved += 1;
+    }
+    reserved
+}
+
+/// The rows of `rows` to rewrite: those that differ from `prev`, widened to whole images
+/// (`expandChangedRangeForKittyImages`): an image (shown before or now) with a changed row, or a row past the new
+/// end, is redrawn whole.
+fn changed_rows(prev: &[String], rows: &[String]) -> Vec<bool> {
+    let n = rows.len();
+    let original: Vec<bool> = (0..n).map(|i| prev.get(i) != Some(&rows[i])).collect();
+    let mut changed = original.clone();
+    for lines in [prev, rows] {
+        for i in 0..lines.len() {
+            if kitty_ids(&lines[i]).is_empty() {
+                continue;
+            }
+            let end = i + reserved_rows(lines, i, lines.len() - 1);
+            if (i..end).any(|row| original.get(row).is_none_or(|c| *c)) {
+                for flag in changed.iter_mut().take(end).skip(i) {
+                    *flag = true;
+                }
+            }
+        }
+    }
+    changed
+}
+
+/// `fullRender`'s rows: an image line taller than one row makes its rows first (`\r\n` each), goes back up, is
+/// placed, and goes down again, so placing it never scrolls; one taller than `height` is placed on its first row.
+/// Every row is followed by `\r\n` with `trailing`, else only separated by it.
+fn write_rows(out: &mut String, rows: &[String], height: usize, trailing: bool) {
+    let mut i = 0;
+    while i < rows.len() {
+        if i > 0 && !trailing {
+            out.push_str("\r\n");
+        }
+        let line = &rows[i];
+        let reserved = if is_image_line(line) {
+            reserved_rows(rows, i, rows.len() - 1)
+        } else {
+            1
+        };
+        if reserved > 1 && reserved <= height {
+            let up = reserved - 1;
+            out.push_str(&"\r\n".repeat(up));
+            out.push_str(&format!("\x1b[{up}A{line}\x1b[{up}B"));
+            i += reserved;
+        } else {
+            out.push_str(line);
+            i += 1;
+        }
+        if trailing {
+            out.push_str("\r\n");
+        }
+    }
 }
 
 impl ViewportRenderer {
@@ -83,6 +196,14 @@ impl ViewportRenderer {
     /// Repaint the whole viewport on the next frame (overlay close, theme change).
     pub fn invalidate(&mut self) {
         self.force_repaint = true;
+    }
+
+    /// Delete every Kitty image this renderer drew, in scrollback and in the viewport (before the terminal is
+    /// cleared by someone else, as a display reset clears it).
+    pub fn delete_images(&mut self) -> String {
+        let mut ids: BTreeSet<u32> = self.prev.iter().flat_map(|l| kitty_ids(l)).collect();
+        ids.append(&mut self.history_images);
+        ids.into_iter().map(delete_kitty_image).collect()
     }
 
     /// Rows of the last painted viewport (prepared: normalized, clamped, reset-terminated).
@@ -125,6 +246,8 @@ impl ViewportRenderer {
         let height = height.max(1);
         let skip = plan.viewport.len().saturating_sub(height);
         let mut rows: Vec<String> = plan.viewport[skip..].to_vec();
+        // An image cut by the top of the screen shows its visible rows on the first row.
+        crate::screen::crop_images(&plan.viewport, skip, &mut rows);
         let cursor = extract_cursor(&mut rows);
         let rows: Vec<String> = rows.iter().map(|r| Self::prepare(r, width)).collect();
 
@@ -140,6 +263,15 @@ impl ViewportRenderer {
         let shrunk = self.painted && self.clear_on_shrink && rows.len() < self.max_rows;
         let mut out = String::from(SYNC_BEGIN);
         if !self.painted || history.is_some() || geometry_changed || self.force_repaint || shrunk {
+            // The images being repainted go first (`deleteKittyImages(previousKittyImageIds)`); a replay clears
+            // scrollback, so the images written there go too.
+            let mut deleted: BTreeSet<u32> = self.prev.iter().flat_map(|l| kitty_ids(l)).collect();
+            if replay {
+                deleted.append(&mut self.history_images);
+            }
+            for id in deleted {
+                out.push_str(&delete_kitty_image(id));
+            }
             if replay {
                 out.push_str("\x1b[H\x1b[2J\x1b[3J");
             } else if self.painted {
@@ -150,27 +282,62 @@ impl ViewportRenderer {
                 out.push_str("\r\x1b[J");
             }
             if let Some(h) = history {
-                for row in &h.rows {
-                    out.push_str(&Self::prepare(row, width));
-                    out.push_str("\r\n");
-                }
+                let prepared: Vec<String> = h.rows.iter().map(|row| Self::prepare(row, width)).collect();
+                write_rows(&mut out, &prepared, height, true);
+                self.history_images.extend(prepared.iter().flat_map(|l| kitty_ids(l)));
                 self.history_rows_written += h.rows.len();
                 self.accepted_history = h.id;
             }
-            out.push_str(&rows.join("\r\n"));
+            write_rows(&mut out, &rows, height, false);
             self.rows_written += rows.len();
             self.cursor_row = rows.len().saturating_sub(1);
             self.drawn = rows.len().max(1);
             self.max_rows = rows.len();
         } else {
             self.max_rows = self.max_rows.max(rows.len());
-            for (i, row) in rows.iter().enumerate() {
-                if self.prev.get(i) != Some(row) {
-                    self.goto(&mut out, i);
-                    out.push_str("\r\x1b[2K");
-                    out.push_str(row);
-                    self.rows_written += 1;
+            let changed = changed_rows(&self.prev, &rows);
+            // `deleteChangedKittyImages`: the images shown on changed rows (or rows now gone) are deleted before
+            // anything is drawn.
+            let deleted: BTreeSet<u32> = self
+                .prev
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| changed.get(*i).is_none_or(|c| *c))
+                .flat_map(|(_, l)| kitty_ids(l))
+                .collect();
+            for id in deleted {
+                out.push_str(&delete_kitty_image(id));
+            }
+            let mut i = 0;
+            while i < rows.len() {
+                if !changed[i] {
+                    i += 1;
+                    continue;
                 }
+                let row = &rows[i];
+                let reserved = if is_image_line(row) {
+                    reserved_rows(&rows, i, rows.len() - 1)
+                } else {
+                    1
+                };
+                self.goto(&mut out, i);
+                if reserved > 1 {
+                    // Clear the reserved rows first, then place the image on its first row.
+                    let up = reserved - 1;
+                    out.push_str("\r\x1b[2K");
+                    for k in 1..reserved {
+                        self.goto(&mut out, i + k);
+                        out.push_str("\r\x1b[2K");
+                    }
+                    out.push_str(&format!("\x1b[{up}A{row}\x1b[{up}B"));
+                    self.rows_written += reserved;
+                    i += reserved;
+                    continue;
+                }
+                out.push_str("\r\x1b[2K");
+                out.push_str(row);
+                self.rows_written += 1;
+                i += 1;
             }
             if rows.len() < self.prev.len() {
                 self.goto(&mut out, rows.len());

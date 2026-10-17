@@ -11,8 +11,13 @@ use ai::{
 };
 use serde_json::Value;
 
+use std::sync::Arc;
+
+use mcp::validation::validate_tool_arguments;
+
 use crate::types::{
-    AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, AgentToolResult, StreamFn, ToolExecutionMode,
+    AfterToolCall, AfterToolCallContext, AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, AgentTool,
+    AgentToolResult, BeforeToolCallContext, StreamFn, ToolExecutionMode,
 };
 
 pub(crate) fn now_ms() -> i64 {
@@ -138,7 +143,7 @@ async fn run_loop(
                 let batch = if message.stop_reason == StopReason::Length {
                     fail_truncated_tool_calls(&tool_calls, emit)
                 } else {
-                    execute_tool_calls(&context, &tool_calls, &config, signal, emit).await
+                    execute_tool_calls(&context, &message, &tool_calls, &config, signal, emit).await
                 };
                 has_more_tool_calls = !batch.terminate;
                 for result in &batch.messages {
@@ -397,6 +402,7 @@ fn should_terminate(finalized: &[Finalized]) -> bool {
 
 async fn execute_tool_calls(
     context: &AgentContext,
+    assistant: &AssistantMessage,
     calls: &[ToolCall],
     config: &AgentLoopConfig,
     signal: &AbortSignal,
@@ -411,12 +417,19 @@ async fn execute_tool_calls(
                 .and_then(|t| t.execution_mode())
                 == Some(ToolExecutionMode::Sequential)
         });
+    let after = config.after_tool_call.as_ref();
     let mut finalized = Vec::new();
     if sequential {
         let mut messages = Vec::new();
         for call in calls {
             emit_start(call, emit);
-            let done = run_tool_call(context, call, signal, emit).await;
+            let done = match prepare_tool_call(context, assistant, call, config, signal).await {
+                Prepared::Immediate(done) => *done,
+                Prepared::Ready { tool, args } => {
+                    let executed = execute_prepared(call, tool, &args, signal, emit).await;
+                    finalize(context, assistant, call, &args, executed, after, signal).await
+                }
+            };
             emit_end(&done, emit);
             let message = tool_result_message(&done);
             emit_result_message(&message, emit);
@@ -432,35 +445,27 @@ async fn execute_tool_calls(
         };
     }
 
-    // Parallel: start events in order, immediate outcomes (unknown tool, abort) at once, then every runnable call
-    // concurrently; result messages follow in call order.
+    // Parallel: each call is prepared in order (lookup, argument preparation, validation, `beforeToolCall`), and an
+    // immediate outcome ends at once; then every prepared call runs concurrently; result messages follow in call
+    // order.
     let mut slots: Vec<Option<Finalized>> = Vec::new();
     let mut running: Vec<BoxFuture<'_, (usize, Finalized)>> = Vec::new();
     for call in calls {
         emit_start(call, emit);
-        match context.tools.iter().find(|t| t.tool().name == call.name) {
-            None => {
-                let done = Finalized {
-                    call: call.clone(),
-                    result: AgentToolResult::error(format!("Tool {} not found", call.name)),
-                    is_error: true,
-                };
+        match prepare_tool_call(context, assistant, call, config, signal).await {
+            Prepared::Immediate(done) => {
                 emit_end(&done, emit);
-                slots.push(Some(done));
+                slots.push(Some(*done));
             }
-            Some(_) if signal.aborted() => {
-                let done = Finalized {
-                    call: call.clone(),
-                    result: AgentToolResult::error("Operation aborted"),
-                    is_error: true,
-                };
-                emit_end(&done, emit);
-                slots.push(Some(done));
-            }
-            Some(_) => {
+            Prepared::Ready { tool, args } => {
                 let index = slots.len();
                 running.push(Box::pin(async move {
-                    let done = run_tool_call(context, call, signal, emit).await;
+                    let done = if signal.aborted() {
+                        immediate(call, "Operation aborted")
+                    } else {
+                        let executed = execute_prepared(call, tool, &args, signal, emit).await;
+                        finalize(context, assistant, call, &args, executed, after, signal).await
+                    };
                     emit_end(&done, emit);
                     (index, done)
                 }));
@@ -510,22 +515,85 @@ async fn join_all<T>(mut futures: Vec<BoxFuture<'_, T>>) -> Vec<T> {
     out
 }
 
-/// Prepare and execute one call. Arguments are passed through unvalidated (see decisions).
-async fn run_tool_call(context: &AgentContext, call: &ToolCall, signal: &AbortSignal, emit: &Emit<'_>) -> Finalized {
-    let Some(tool) = context.tools.iter().find(|t| t.tool().name == call.name) else {
-        return Finalized {
-            call: call.clone(),
-            result: AgentToolResult::error(format!("Tool {} not found", call.name)),
-            is_error: true,
-        };
-    };
-    if signal.aborted() {
-        return Finalized {
-            call: call.clone(),
-            result: AgentToolResult::error("Operation aborted"),
-            is_error: true,
-        };
+enum Prepared<'c> {
+    Immediate(Box<Finalized>),
+    Ready { tool: &'c Arc<dyn AgentTool>, args: Value },
+}
+
+fn immediate(call: &ToolCall, message: impl Into<String>) -> Finalized {
+    Finalized {
+        call: call.clone(),
+        result: AgentToolResult::error(message),
+        is_error: true,
     }
+}
+
+/// `prepareToolCall`: find the tool, apply its `prepareArguments`, validate and coerce the arguments against its
+/// schema (`validateToolArguments`, same error text), then ask `beforeToolCall`. Anything that fails or blocks is an
+/// immediate error result.
+async fn prepare_tool_call<'c>(
+    context: &'c AgentContext,
+    assistant: &AssistantMessage,
+    call: &ToolCall,
+    config: &AgentLoopConfig,
+    signal: &AbortSignal,
+) -> Prepared<'c> {
+    let Some(tool) = context.tools.iter().find(|t| t.tool().name == call.name) else {
+        return Prepared::Immediate(Box::new(immediate(call, format!("Tool {} not found", call.name))));
+    };
+    let args = match tool
+        .prepare_arguments(&call.arguments)
+        .and_then(|prepared| validate_tool_arguments(&call.name, &tool.tool().parameters, &prepared))
+    {
+        Ok(args) => args,
+        Err(message) => return Prepared::Immediate(Box::new(immediate(call, message))),
+    };
+    if let Some(before) = &config.before_tool_call {
+        let decision = before(
+            BeforeToolCallContext {
+                assistant_message: assistant,
+                tool_call: call,
+                args: &args,
+                context,
+            },
+            signal,
+        )
+        .await;
+        let decision = match decision {
+            Ok(decision) => decision,
+            Err(message) => return Prepared::Immediate(Box::new(immediate(call, message))),
+        };
+        if signal.aborted() {
+            return Prepared::Immediate(Box::new(immediate(call, "Operation aborted")));
+        }
+        if let Some(decision) = decision.filter(|d| d.block) {
+            let mut done = immediate(
+                call,
+                decision
+                    .reason
+                    .filter(|r| !r.is_empty())
+                    .unwrap_or_else(|| "Tool execution was blocked".into()),
+            );
+            if decision.terminate == Some(true) {
+                done.result.terminate = Some(true);
+            }
+            return Prepared::Immediate(Box::new(done));
+        }
+    }
+    if signal.aborted() {
+        return Prepared::Immediate(Box::new(immediate(call, "Operation aborted")));
+    }
+    Prepared::Ready { tool, args }
+}
+
+/// `executePreparedToolCall`: run the tool with the validated arguments; a thrown error is an error result.
+async fn execute_prepared(
+    call: &ToolCall,
+    tool: &Arc<dyn AgentTool>,
+    args: &Value,
+    signal: &AbortSignal,
+    emit: &Emit<'_>,
+) -> (AgentToolResult, bool) {
     let on_update = |partial: AgentToolResult| {
         emit.emit(AgentEvent::ToolExecutionUpdate {
             tool_call_id: call.id.clone(),
@@ -534,17 +602,55 @@ async fn run_tool_call(context: &AgentContext, call: &ToolCall, signal: &AbortSi
             partial_result: partial,
         })
     };
-    let args: Value = call.arguments.clone();
-    match tool.execute(&call.id, args, signal, &on_update).await {
-        Ok(result) => Finalized {
-            call: call.clone(),
-            result,
-            is_error: false,
-        },
-        Err(message) => Finalized {
-            call: call.clone(),
-            result: AgentToolResult::error(message),
-            is_error: true,
-        },
+    match tool.execute(&call.id, args.clone(), signal, &on_update).await {
+        Ok(result) => (result, false),
+        Err(message) => (AgentToolResult::error(message), true),
+    }
+}
+
+/// `finalizeExecutedToolCall`: `afterToolCall` may replace any part of the result; a throw makes it an error.
+async fn finalize(
+    context: &AgentContext,
+    assistant: &AssistantMessage,
+    call: &ToolCall,
+    args: &Value,
+    (mut result, mut is_error): (AgentToolResult, bool),
+    after: Option<&AfterToolCall>,
+    signal: &AbortSignal,
+) -> Finalized {
+    if let Some(after) = after {
+        let outcome = after(
+            AfterToolCallContext {
+                assistant_message: assistant,
+                tool_call: call,
+                args,
+                result: &result,
+                is_error,
+                context,
+            },
+            signal,
+        )
+        .await;
+        match outcome {
+            Ok(Some(replacement)) => {
+                result = AgentToolResult {
+                    content: replacement.content.unwrap_or(result.content),
+                    details: replacement.details.unwrap_or(result.details),
+                    usage: replacement.usage.or(result.usage),
+                    terminate: replacement.terminate.or(result.terminate),
+                };
+                is_error = replacement.is_error.unwrap_or(is_error);
+            }
+            Ok(None) => {}
+            Err(message) => {
+                result = AgentToolResult::error(message);
+                is_error = true;
+            }
+        }
+    }
+    Finalized {
+        call: call.clone(),
+        result,
+        is_error,
     }
 }

@@ -320,6 +320,15 @@ pub fn install_services(app: &mut App, path_var: Option<String>) {
     app.set_clipboard(tui::clipboard::ClipboardService::spawn(
         tui::clipboard::SystemClipboard::with_env(path_var.clone(), std::env::vars().collect()),
     ));
+    // Clicked hyperlinks open with the launcher on `path_var` only (`openBrowser`).
+    app.set_url_opener(crate::url_opener::url_opener_with(
+        path_var.clone(),
+        std::env::var("HOME").ok(),
+        crate::url_opener::DESKTOP_VARS
+            .iter()
+            .filter_map(|name| std::env::var(name).ok().map(|value| (name.to_string(), value)))
+            .collect(),
+    ));
     // Pi's footer branch: read and watched on its own thread (`git` from `path_var` only).
     app.set_footer_branch(crate::footer_data::FooterBranch::spawn(
         PathBuf::from(app.cwd()),

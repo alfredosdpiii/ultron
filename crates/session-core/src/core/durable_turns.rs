@@ -261,33 +261,40 @@ impl Core {
             .cloned()
             .collect();
         for queued in pending {
-            let (existing, attempt) = self.queued_submission(&queued.entry_id);
-            let id = match existing {
-                Some(record) if matches!(record.status, SubmissionStatus::Queued | SubmissionStatus::Placed) => {
-                    record.id
-                }
-                _ => {
-                    let when = match queued.kind {
-                        QueueKind::Steer => WhenBusy::Steer,
-                        QueueKind::FollowUp | QueueKind::NextRun => WhenBusy::FollowUp,
-                    };
-                    let draft = SubmissionDraft::Input {
-                        content: queued.message["content"].clone(),
-                        when_busy: when,
-                        request_id: Some(format!("{}#{attempt}", queued.entry_id)),
-                    };
-                    self.durable.root.submit(draft).map_err(harness_error)?.id
-                }
+            let id = match self.queued_draft(&queued) {
+                Ok(id) => id,
+                Err(draft) => self.durable.root.submit(draft).map_err(harness_error)?.id,
             };
-            if let Some(item) = lock(&self.queues)
-                .items
-                .iter_mut()
-                .find(|q| q.entry_id == queued.entry_id)
-            {
-                item.submission = Some(id);
-            }
+            self.mark_submitted(&queued.entry_id, id);
         }
         Ok(())
+    }
+
+    /// A queued message's live submission in the runtime (`Ok`), or the draft that submits it (`Err`).
+    fn queued_draft(&self, queued: &Queued) -> Result<SubmissionId, SubmissionDraft> {
+        let (existing, attempt) = self.queued_submission(&queued.entry_id);
+        match existing {
+            Some(record) if matches!(record.status, SubmissionStatus::Queued | SubmissionStatus::Placed) => {
+                Ok(record.id)
+            }
+            _ => {
+                let when = match queued.kind {
+                    QueueKind::Steer => WhenBusy::Steer,
+                    QueueKind::FollowUp | QueueKind::NextRun => WhenBusy::FollowUp,
+                };
+                Err(SubmissionDraft::Input {
+                    content: queued.message["content"].clone(),
+                    when_busy: when,
+                    request_id: Some(format!("{}#{attempt}", queued.entry_id)),
+                })
+            }
+        }
+    }
+
+    fn mark_submitted(&self, entry_id: &str, id: SubmissionId) {
+        if let Some(item) = lock(&self.queues).items.iter_mut().find(|q| q.entry_id == entry_id) {
+            item.submission = Some(id);
+        }
     }
 
     /// Take queued messages back out of the runtime's inbox (an aborted run: they wait for the user again).
@@ -324,9 +331,31 @@ impl Core {
             when_busy: WhenBusy::FollowUp,
             request_id: Some(prompt_entry.to_string()),
         };
-        let submission = self.durable.root.submit(draft).map_err(harness_error)?;
+        // The agent loop polls steering once before its first request (`runLoop`): the first queued steer (every
+        // one when steering is `all`) is placed after the prompt, in the run's first request.
+        let steering: Vec<(String, SubmissionDraft)> = {
+            let queues = lock(&self.queues);
+            let steers = queues
+                .items
+                .iter()
+                .filter(|q| q.submission.is_none() && q.kind == QueueKind::Steer)
+                .take(if queues.steering_all { usize::MAX } else { 1 })
+                .cloned()
+                .collect::<Vec<_>>();
+            drop(queues);
+            steers
+                .iter()
+                .filter_map(|q| self.queued_draft(q).err().map(|draft| (q.entry_id.clone(), draft)))
+                .collect()
+        };
+        let (entries, drafts): (Vec<String>, Vec<SubmissionDraft>) = steering.into_iter().unzip();
+        let submissions = self.durable.root.submit_run(draft, drafts).map_err(harness_error)?;
+        let (first, steered) = submissions.split_first().ok_or("The runtime admitted no submission")?;
+        for (entry_id, submission) in entries.iter().zip(steered) {
+            self.mark_submitted(entry_id, submission.id);
+        }
         self.submit_queued()?;
-        Ok(submission.id)
+        Ok(first.id)
     }
 
     /// Notice when the runtime has nothing left to do for the turn.

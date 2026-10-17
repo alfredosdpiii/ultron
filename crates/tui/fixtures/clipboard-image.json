@@ -36,6 +36,26 @@
   "x11-gif-only": {
    "xclip.-selection_clipboard_-t_TARGETS_-o_": "image/gif\n",
    "xclip.-selection_clipboard_-t_image-gif_-o_": "GIF89a"
+  },
+  "x11-jpeg": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "TARGETS\nimage/jpeg\n",
+   "xclip.-selection_clipboard_-t_image-jpeg_-o_": "ÿØÿàjpeg"
+  },
+  "wayland-webp": {
+   "wl-paste.--list-types_": "image/webp\n",
+   "wl-paste.--type_image-webp_--no-newline_": "RIFF\u0010\u0000\u0000\u0000WEBPVP8 "
+  },
+  "x11-bmp": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "TARGETS\nimage/bmp\n",
+   "xclip.-selection_clipboard_-t_image-bmp_-o_": "BMN\u0000\u0000\u0000\u0000\u0000\u0000\u00006\u0000\u0000\u0000(\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0001\u0000\u0018\u0000\u0000\u0000\u0000\u0000\u0018\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000ÿÿÿ\u0000\u0000\u0000 @\u0000\u0000\u0000\u0000\u0000ÿ\u0000ÿ\u0000ÿ\u0000\u0000\u0000\u0000\u0000"
+  },
+  "wayland-bmp": {
+   "wl-paste.--list-types_": "image/x-MS-bmp;foo=1\n",
+   "wl-paste.--type_image-x-MS-bmp;foo=1_--no-newline_": "BMN\u0000\u0000\u0000\u0000\u0000\u0000\u00006\u0000\u0000\u0000(\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0001\u0000\u0018\u0000\u0000\u0000\u0000\u0000\u0018\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000ÿÿÿ\u0000\u0000\u0000 @\u0000\u0000\u0000\u0000\u0000ÿ\u0000ÿ\u0000ÿ\u0000\u0000\u0000\u0000\u0000"
+  },
+  "x11-undecodable": {
+   "xclip.-selection_clipboard_-t_TARGETS_-o_": "image/x-unknown\n",
+   "xclip.-selection_clipboard_-t_image-x-unknown_-o_": "not an image"
   }
  },
  "cases": [
@@ -172,6 +192,58 @@
    },
    "image": null,
    "calls": ""
+  },
+  {
+   "scenario": "x11-jpeg",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "ÿØÿàjpeg",
+    "mimeType": "image/jpeg"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-jpeg_-o_\n"
+  },
+  {
+   "scenario": "wayland-webp",
+   "env": {
+    "WAYLAND_DISPLAY": "wayland-0"
+   },
+   "image": {
+    "bytes": "RIFF\u0010\u0000\u0000\u0000WEBPVP8 ",
+    "mimeType": "image/webp"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-webp_--no-newline_\n"
+  },
+  {
+   "scenario": "x11-bmp",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0002\b\u0006\u0000\u0000\u0000tf\u001a\u0000\u0000\u0000%IDATx\u0001\u0001\u001a\u0000åÿ\u0000ÿ\u0000\u0000ÿ\u0000ÿ\u0000ÿ\u0000\u0000ÿÿ\u0000ÿÿÿÿ\u0000\u0000\u0000ÿ@ ÿ¤x\fÕ³eÓ¢\u0000\u0000\u0000\u0000IEND®B`",
+    "mimeType": "image/png"
+   },
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-bmp_-o_\n"
+  },
+  {
+   "scenario": "wayland-bmp",
+   "env": {
+    "WAYLAND_DISPLAY": "wayland-0"
+   },
+   "image": {
+    "bytes": "PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0003\u0000\u0000\u0000\u0002\b\u0006\u0000\u0000\u0000tf\u001a\u0000\u0000\u0000%IDATx\u0001\u0001\u001a\u0000åÿ\u0000ÿ\u0000\u0000ÿ\u0000ÿ\u0000ÿ\u0000\u0000ÿÿ\u0000ÿÿÿÿ\u0000\u0000\u0000ÿ@ ÿ¤x\fÕ³eÓ¢\u0000\u0000\u0000\u0000IEND®B`",
+    "mimeType": "image/png"
+   },
+   "calls": "wl-paste --list-types_\nwl-paste --type_image-x-MS-bmp;foo=1_--no-newline_\n"
+  },
+  {
+   "scenario": "x11-undecodable",
+   "env": {
+    "DISPLAY": ":0"
+   },
+   "image": null,
+   "calls": "xclip -selection_clipboard_-t_TARGETS_-o_\nxclip -selection_clipboard_-t_image-x-unknown_-o_\n"
   }
  ]
 }

@@ -367,44 +367,11 @@ fn open_runtime(
     })
 }
 
-/// `CLAUDE_CODE_MODELS` of packages/ai/src/providers/claude-code.ts: the Claude Code CLI's models (not in the
-/// generated catalog).
-pub fn claude_code_model(id: &str) -> Option<ai::Model> {
-    let name = match id {
-        "claude-opus-5-5" => "Claude Opus 5.5",
-        "claude-haiku-5-5" => "Claude Haiku 5.5",
-        "opus" => "Claude Opus",
-        "sonnet" => "Claude Sonnet",
-        "haiku" => "Claude Haiku",
-        _ => return None,
-    };
-    let effort =
-        json!({"minimal": "low", "low": "low", "medium": "medium", "high": "high", "xhigh": "xhigh", "max": "max"});
-    serde_json::from_value(json!({
-        "id": id,
-        "name": format!("{name} (Claude Code CLI)"),
-        "api": "claude-code-cli",
-        "provider": crate::worker_root::CLAUDE_CODE_PROVIDER_ID,
-        "baseUrl": "claude-code://cli",
-        "reasoning": true,
-        "thinkingLevelMap": effort,
-        "input": ["text", "image"],
-        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
-        "contextWindow": 200_000,
-        "maxTokens": 32_000,
-    }))
-    .ok()
-}
-
-/// The frames' model: `provider/id` from the catalog (or the Claude Code CLI's models), else the configured
+/// The frames' model: `provider/id` from the catalog (the Claude Code CLI's models included), else the configured
 /// default model.
 fn frame_model(frame: &str, env: &RunEnv) -> Result<ai::Model, String> {
     if let Some((provider, id)) = split_model(frame) {
-        if provider == crate::worker_root::CLAUDE_CODE_PROVIDER_ID
-            && let Some(model) = claude_code_model(&id)
-        {
-            return Ok(model);
-        }
+        // The catalog includes the Claude Code CLI's models (`ai::claude_code::MODELS`).
         if let Ok(model) = session_core::lane::catalog_model(&provider, &id, env) {
             return Ok(model);
         }
@@ -956,4 +923,49 @@ fn claude_subagents(server: &Arc<Server>, claude: String) -> Result<SubagentHost
         }),
         agents: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn env(root: &std::path::Path) -> RunEnv {
+        let agent = root.join("agent");
+        let vars = [
+            ("ULTRON_CODING_AGENT_DIR".to_string(), agent.display().to_string()),
+            ("PI_OFFLINE".to_string(), "1".to_string()),
+        ];
+        RunEnv {
+            cwd: root.to_path_buf(),
+            home: root.to_path_buf(),
+            var: Arc::new(move |k: &str| vars.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone())),
+            docs: root.join("docs"),
+        }
+    }
+
+    #[test]
+    fn claude_root_frame_model_names_the_claude_code_providers_own_models() {
+        let tmp = tempfile::tempdir().unwrap();
+        let env = env(tmp.path());
+        for id in ["claude-opus-5-5", "claude-haiku-5-5", "opus", "sonnet", "haiku"] {
+            let model = frame_model(&format!("claude-code/{id}"), &env).unwrap();
+            assert_eq!(model, ai::claude_code::MODELS[id], "{id}");
+        }
+        let sonnet = frame_model("claude-code/sonnet", &env).unwrap();
+        assert_eq!(
+            (
+                sonnet.name.as_str(),
+                sonnet.api.as_str(),
+                sonnet.context_window,
+                sonnet.max_tokens
+            ),
+            ("Claude Sonnet (Claude Code CLI)", "claude-code-cli", 200_000, 32_000)
+        );
+        // An id the provider does not list is no Claude Code model; without a default model nothing resolves.
+        assert_eq!(
+            frame_model("claude-code/claude-sonnet-9", &env).unwrap_err(),
+            "Model \"claude-code/claude-sonnet-9\" not found"
+        );
+    }
 }

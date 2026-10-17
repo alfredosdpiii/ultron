@@ -46,7 +46,16 @@ pub trait FrameTasks: Send + Sync {
     fn code_tool(&self, lane: &str) -> Result<Arc<dyn AgentTool>, String>;
     /// Close `lane` once its frame ended.
     fn close_lane(&self, lane: &str);
+    /// The frame running code on `lane` talks to `model`; `meter` reads its conversation's context use (the
+    /// newest answer's usage plus estimates after it), for the context reminder of the lane's cells. Ends with
+    /// [`FrameTasks::close_lane`].
+    fn frame_context(&self, lane: &str, model: &ai::Model, meter: FrameMeter) {
+        let _ = (lane, model, meter);
+    }
 }
+
+/// A frame conversation's context use, once it has one.
+pub type FrameMeter = Arc<dyn Fn() -> Option<u64> + Send + Sync>;
 
 /// One `rlm-frame@1` task run, as the task host hands it over (`NativeFrameRun`).
 pub struct FrameExecution {
@@ -458,12 +467,16 @@ impl FrameSession {
             frame_prompt(&frame.task, &frame.views, options.contract.as_ref())
         };
         let pending: Arc<Mutex<Option<(u64, u64)>>> = Arc::default();
+        let context_use: Arc<Mutex<Option<u64>>> = Arc::default();
+        let meter_use = context_use.clone();
+        tasks.frame_context(&run.lane, &engine.model, Arc::new(move || *lock(&meter_use)));
         let stream = BudgetedStream {
             session: self.clone(),
             live: live.clone(),
             pending: pending.clone(),
             deadline,
             signal: run.signal.clone(),
+            context_use,
         };
         let mut agent_options = AgentOptions::new(engine.model.clone());
         agent_options.system_prompt = Some(system.clone());
@@ -870,6 +883,8 @@ struct BudgetedStream {
     pending: Arc<Mutex<Option<(u64, u64)>>>,
     deadline: Instant,
     signal: Signal,
+    /// The conversation's context use after the newest answer (`estimateContextTokens` over the request and it).
+    context_use: Arc<Mutex<Option<u64>>>,
 }
 
 impl StreamFn for BudgetedStream {
@@ -915,6 +930,11 @@ impl StreamFn for BudgetedStream {
                 response.as_ref().ok().and_then(Option::as_ref),
                 charged,
             );
+            if let Ok(Some(reply)) = &response {
+                let mut messages = context.messages.clone();
+                messages.push(Message::Assistant(reply.clone()));
+                *lock(&self.context_use) = Some(ai::transcript::estimate_context_tokens(&messages).tokens);
+            }
             match response {
                 Ok(Some(reply)) => reply,
                 Ok(None) => unsent(engine, StopReason::Aborted, "cancelled".into()),

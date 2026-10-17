@@ -28,6 +28,7 @@ pub mod outline;
 pub mod overlay;
 pub mod qol_keys;
 pub mod renderer;
+pub mod right_click_paste;
 pub mod screen;
 pub mod scroll_view;
 pub mod select;

@@ -4,7 +4,12 @@
 //! A tool that ran but found no image ends the read: an empty Wayland clipboard never falls through to a stale X11
 //! one. Only a tool that failed (missing, non-zero exit) passes the read on.
 //!
-//! Not ported: the WSL PowerShell fallback and the native clipboard module.
+//! A PNG, JPEG, WebP or GIF image is returned as read (its type names the pasted file's extension); any other image
+//! type (a BMP from a Windows DIB, say) is decoded and re-encoded as an RGBA PNG (`convertToPng`, Photon there, the
+//! `image` crate here). An image that cannot be decoded is no image.
+//!
+//! Not ported: the WSL PowerShell fallback and the native clipboard module. The `image` crate here decodes BMP,
+//! GIF, JPEG, PNG and WebP; Photon also decodes TIFF, ICO and a few others, which here are no image.
 
 /// The image types tried, in order of preference (`SUPPORTED_IMAGE_MIME_TYPES`).
 pub const SUPPORTED_IMAGE_MIME_TYPES: [&str; 4] = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -39,6 +44,32 @@ pub fn is_wsl(var: &dyn Fn(&str) -> Option<String>, proc_version: Option<&str>) 
 
 fn base_mime_type(mime_type: &str) -> String {
     mime_type.split(';').next().unwrap_or(mime_type).trim().to_lowercase()
+}
+
+/// `extensionForImageMimeType`: the pasted file's extension for a supported image type.
+pub fn extension_for_image_mime_type(mime_type: &str) -> Option<&'static str> {
+    match base_mime_type(mime_type).as_str() {
+        "image/png" => Some("png"),
+        "image/jpeg" => Some("jpg"),
+        "image/webp" => Some("webp"),
+        "image/gif" => Some("gif"),
+        _ => None,
+    }
+}
+
+/// `isSupportedImageMimeType`.
+fn is_supported_image_mime_type(mime_type: &str) -> bool {
+    SUPPORTED_IMAGE_MIME_TYPES.contains(&base_mime_type(mime_type).as_str())
+}
+
+/// `convertToPng`: decode any image the codecs know and encode it as an RGBA PNG (Photon's `get_bytes`).
+pub fn convert_to_png(bytes: &[u8]) -> Option<Vec<u8>> {
+    let image = ::image::load_from_memory(bytes).ok()?.to_rgba8();
+    let mut png = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut png), ::image::ImageFormat::Png)
+        .ok()?;
+    Some(png)
 }
 
 /// `selectPreferredImageMimeType`.
@@ -112,7 +143,8 @@ fn via_xclip(run: &mut RunTool<'_>) -> ImageRead {
     ImageRead::Failed
 }
 
-/// `readClipboardImage` on Linux, without the PowerShell and native fallbacks: `Image` or why there is none.
+/// `readClipboardImage` on Linux, without the PowerShell and native fallbacks: `Image` (converted to PNG unless it
+/// is a supported type) or why there is none.
 pub fn read_clipboard_image(
     var: &dyn Fn(&str) -> Option<String>,
     proc_version: Option<&str>,
@@ -128,5 +160,16 @@ pub fn read_clipboard_image(
     if image == ImageRead::Failed {
         image = via_xclip(run);
     }
-    image
+    match image {
+        ImageRead::Image { bytes, mime_type } if !is_supported_image_mime_type(&mime_type) => {
+            match convert_to_png(&bytes) {
+                Some(bytes) => ImageRead::Image {
+                    bytes,
+                    mime_type: "image/png".to_string(),
+                },
+                None => ImageRead::NoImage,
+            }
+        }
+        image => image,
+    }
 }

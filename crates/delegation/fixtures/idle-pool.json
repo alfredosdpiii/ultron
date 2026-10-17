@@ -1,0 +1,11 @@
+{
+	"idle": {
+		"stats": {
+			"live": 0,
+			"maxLive": 16,
+			"lanes": [],
+			"evictions": 0
+		},
+		"strip": "kernels ················ 0/16 · 0 busy · 0 pinned · 0 evicted"
+	}
+}

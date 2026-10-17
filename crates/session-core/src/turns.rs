@@ -660,8 +660,10 @@ impl CellExecutor for TurnCells {
     }
 
     fn prepare(&self, arguments: &Value) -> Result<Value, String> {
-        // The agent loop passes arguments through unvalidated; the tool reports a missing `code` itself.
-        Ok(arguments.clone())
+        // `prepareToolCall` of the TypeScript harness: validated and coerced against the tool's schema, with
+        // `validateToolArguments`'s error text.
+        let tool = self.tool.tool();
+        mcp::validation::validate_tool_arguments(&tool.name, &tool.parameters, arguments)
     }
 
     fn execute(&self, call: &CellCall, progress: &CellProgress, signal: &Cancel) -> Result<CellResult, String> {

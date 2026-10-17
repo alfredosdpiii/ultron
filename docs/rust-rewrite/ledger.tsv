@@ -2954,6 +2954,69 @@ W8R-12	context-reminder	ULTRON_CONTEXT_REMINDER=off in a live session	session_co
 W8R-13	context-reminder	order: result, budget line, then reminder	session_core_context_reminder_comes_after_the_budget_line
 W8R-14	context-reminder	root threshold compaction re-arms the reminder	session_core_context_reminder_rearms_after_the_root_compacts
 W8R-15	context-reminder	subagent lane is reminded at its own threshold, root is not	session_core_context_reminder_reaches_a_subagent_lane
+W9I-01	tui/clipboard	JPEG/WebP/GIF pass through, other image types converted to RGBA PNG, undecodable is no image (TS fixture, 18 cases)	tui_clipboard_image_reads_like_ts
+W9I-02	tui/clipboard	extensionForImageMimeType	tui_clipboard_image_extension_for_mime_type_like_ts
+W9I-03	tui/clipboard	SystemClipboard returns typed images using only injected-PATH tools	tui_system_clipboard_reads_typed_images_from_the_injected_path
+W9I-04	interactive/paste	Ctrl+V saves JPEG/WebP/GIF with its extension; attachment keeps its type	interactive_qol_clipboard_paste_keeps_the_image_type_like_ts
+W9I-05	tui/right-click	enabled only on win32 outside VS Code	tui_right_click_paste_is_on_only_on_windows_outside_vscode
+W9I-06	tui/right-click	only a bare button-2 press pastes	tui_right_click_paste_takes_a_bare_right_button_press
+W9I-07	tui/fullscreen	viewport routes a right press to RightClickPaste when enabled, else to selection	tui_fullscreen_viewport_routes_a_right_click_to_paste_when_enabled
+W9I-08	interactive/right-click	right click pastes clipboard text as bracketed paste; ordered with Ctrl+V; text only; off by default	interactive_fullscreen_right_click_pastes_the_clipboard_text_when_enabled
+W9I-09	durable/documentState	hydrate/update sequences, never creates, older shape, migration-only base, retire, dispose, close, unsubscribe, overflow (upstream fixture, every backend)	durable_document_state_replays_upstream_scenarios
+W9I-10	durable/documentState	a family member's state follows that member only	durable_document_state_member_follows_one_member
+W9I-11	durable/documentState	older-shape observers: documentState half restored	durable_session_cache_sends_observers_of_an_older_shape_a_root_replacement
+W9T-01	tui/fullscreen	OSC 8 link under a column (ST/BEL, params, wide, tab, adjacent links)	tui_fullscreen_osc8_link_under_a_column_matches_ts
+W9T-02	tui/fullscreen	primary click opens an OSC 8 link; drag, double/triple click, other buttons, focus loss open none; modifiers open	tui_fullscreen_click_opens_osc8_links_like_ts
+W9T-03	tui/fullscreen	without an opener a link click is an ordinary click	tui_fullscreen_click_on_a_link_without_an_opener_only_clicks
+W9T-04	interactive/link	markdown link click opens via fake launcher on injected PATH, env only PATH/HOME, drag opens nothing	interactive_fullscreen_click_on_a_markdown_link_opens_it_with_the_session_launcher
+W9T-05	interactive/link	/copy picker opens a link with the session launcher	interactive_copy_picker_opens_a_link_with_the_session_launcher
+W9T-06	interactive/link	/copy picker without an opener reports it	interactive_copy_picker_without_an_opener_opens_nothing
+W9T-07	interactive/link	openBrowser launcher per platform, lookup on the given PATH only	interactive_url_opener_finds_the_launcher_on_the_given_path_only
+W9T-08	tui/fullscreen	CJK double-click selection matches TS, or the script run containing ICU's word	tui_fullscreen_double_click_word_selection_on_cjk_matches_ts_or_selects_the_script_run
+W9T-09	tui/fullscreen	double click copies a Japanese word	tui_fullscreen_double_click_copies_a_japanese_word
+W9T-10	tui/viewport	reserved rows cleared before an appended image is placed	tui_split_kitty_reserved_rows_are_cleared_before_an_appended_image_is_placed
+W9T-11	tui/viewport	full paint reserves image rows before placing	tui_split_kitty_full_paint_reserves_image_rows_before_placing
+W9T-12	tui/viewport	scrollback images reserve rows; replay deletes them once	tui_split_kitty_history_rows_reserve_image_rows_in_scrollback
+W9T-13	tui/viewport	image taller than the screen placed on its first row (#4461)	tui_split_kitty_image_taller_than_the_screen_is_placed_on_its_first_row
+W9T-14	tui/viewport	image cut by the screen top cropped onto row 0	tui_split_kitty_image_cut_by_the_top_of_the_screen_is_cropped_onto_the_first_row
+W9T-15	tui/viewport	changed image deleted before the moved placement	tui_split_kitty_changed_image_is_deleted_before_the_moved_placement_is_drawn
+W9T-16	tui/viewport	reserved-row change redraws the image without 2J	tui_split_kitty_image_is_redrawn_when_one_of_its_reserved_rows_changes
+W9T-17	tui/viewport	unrelated row change leaves the image alone	tui_split_kitty_image_untouched_by_an_unrelated_row_change
+W9T-18	tui/viewport	full repaint and shrink delete the images first	tui_split_kitty_full_repaint_deletes_the_images_it_repaints_first
+W9T-19	interactive/split	split mode draws tool images into scrollback on Kitty; Alt+L deletes them before clearing	interactive_split_viewport_draws_tool_images_into_scrollback_on_kitty
+W9T-20	interactive/split	without a protocol the split names the image	interactive_split_viewport_without_images_names_the_image
+W9T-21	delegation/lanes	open lane is no live kernel (pool stats = TS idle fixture); first cell admits	delegation_idle_pool_counts_no_kernel_for_an_open_lane_like_ts
+W9T-22	delegation/lanes	open evicts nothing; refuses only a full pool	delegation_idle_pool_open_evicts_nothing_and_refuses_only_a_full_pool
+W9T-23	session-core	composed idle session reports 0 live kernels like TS	session_core_idle_session_reports_no_live_kernel_before_its_first_cell_like_ts
+W9T-24	interactive/rlm	idle kernel strip text equals TS (0/16)	interactive_idle_session_kernel_strip_shows_no_live_kernel_like_ts
+W9C-01	agent	TypeBox tool arguments validated and coerced as validateToolArguments (53 TS cases)	agent_validate_tool_arguments_matches_typescript
+W9C-02	agent	invalid arguments fail with TS text, parallel round	agent_loop_invalid_arguments_fail_like_typescript_in_parallel
+W9C-03	agent	invalid arguments fail with TS text, sequential round	agent_loop_invalid_arguments_fail_like_typescript_in_sequence
+W9C-04	agent	prepareArguments runs before validation; a throw fails the call	agent_loop_prepare_arguments_runs_before_validation_like_typescript
+W9C-05	agent	beforeToolCall block, default reason and throw	agent_loop_before_tool_call_blocks_and_throws_like_typescript
+W9C-06	agent	beforeToolCall in a sequential round	agent_loop_before_tool_call_in_sequence_like_typescript
+W9C-07	agent	beforeToolCall block with terminate ends the run	agent_loop_before_tool_call_terminate_ends_the_run_like_typescript
+W9C-08	agent	afterToolCall replaces the result; a throw makes it an error	agent_loop_after_tool_call_replaces_and_throws_like_typescript
+W9C-09	agent	afterToolCall terminate ends the run	agent_loop_after_tool_call_terminate_ends_the_run_like_typescript
+W9C-10	agent	abort during beforeToolCall reports Operation aborted	agent_loop_abort_during_before_tool_call_like_typescript
+W9C-11	agent	abort beats a block decision	agent_loop_abort_during_a_blocking_before_tool_call_reports_the_abort_like_typescript
+W9C-12	agent	validation fixture scenario list	agent_validation_fixture_covers_every_scenario
+W9C-13	session-core	root lane validates and coerces rlm arguments like the TS harness	session_core_rlm_arguments_are_validated_and_coerced_like_typescript
+W9C-14	session-core	one-at-a-time steer left by admission reaches the first request	session_core_idle_queue_takes_the_first_of_each_kind_one_at_a_time_and_delivers_the_rest
+W9C-15	session-core	one-at-a-time steering with all follow-ups, TS requests exactly	session_core_idle_queue_mixes_one_at_a_time_steering_with_all_follow_ups
+W9C-16	session-core	reminder estimate counts result images (4800 chars each)	session_core_context_reminder_counts_a_results_images_as_the_compaction_estimator_does
+W9C-17	session-core	frame lane uses its own meter until the frame ends	session_core_context_reminder_measures_a_frame_lane_by_its_own_meter_until_it_ends
+W9C-18	session-core	error results end with the reminder	session_core_context_reminder_ends_an_error_result_too
+W9C-19	session-core	backgrounded cell's cell_done message ends with the reminder	session_core_context_reminder_ends_a_backgrounded_cells_completion
+W9C-20	session-core	inference frame running code gets the reminder near its window	session_core_context_reminder_reaches_an_inference_frame_that_runs_code
+W9C-21	session-core	an attached image crosses the trigger	session_core_context_reminder_counts_an_attached_image
+W9C-22	session-core	cell-end note decided once per batch, kept on redelivery	session_core_context_reminder_of_a_cell_end_is_decided_once_per_batch
+W9C-23	session-core	session close closes the Codex sockets of its provider session ids	session_core_close_closes_the_codex_sockets_of_its_provider_sessions
+W9C-24	cli	auth check claude-code matches TS (CLI on injected PATH, BIN env, none, credentials, model)	cli_auth_check_claude_code_matches_typescript
+W9C-25	claude-root	frame models of claude-code come from ai::claude_code::MODELS	claude_root_frame_model_names_the_claude_code_providers_own_models
+W9C-26	mcp	dies server: connect_failed first and after a failed connect	mcp_dies_connection_reports_connect_failed_first_and_after_a_failed_connect
+W9C-27	mcp	dies server: connect_failed during a listing and after start	mcp_dies_connection_reports_connect_failed_while_every_server_is_listed
+W9C-28	mcp	dies server: connect_failed to 12 concurrent describes	mcp_dies_connection_reports_connect_failed_to_concurrent_describes
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

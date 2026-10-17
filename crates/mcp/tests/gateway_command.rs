@@ -244,3 +244,51 @@ fn mcp_gateway_browser_opener_uses_only_the_given_path() {
     mcp::gateway::browser_opener(None, None)("https://example.com/y");
     assert!(!out.exists());
 }
+
+/// The opener passes the session's desktop variables (DISPLAY, WAYLAND_DISPLAY, ...) so xdg-open reaches the
+/// desktop, and nothing else from the session.
+#[test]
+fn mcp_gateway_browser_opener_passes_only_the_given_desktop_vars() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let out = dir.path().join("env.txt");
+    let launcher = bin.join("xdg-open");
+    std::fs::write(
+        &launcher,
+        format!(
+            "#!/bin/sh\nprintf '%s|%s|%s\\n' \"$DISPLAY\" \"$WAYLAND_DISPLAY\" \"$SECRET_TOKEN\" > {}.tmp && mv {}.tmp {}\n",
+            out.display(),
+            out.display(),
+            out.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let session = |name: &str| match name {
+        "DISPLAY" => Some(":fake".to_string()),
+        "WAYLAND_DISPLAY" => Some("wayland-fake".to_string()),
+        "SECRET_TOKEN" => Some("nope".to_string()),
+        _ => None,
+    };
+    let desktop = mcp::gateway::opener_vars(&session);
+    assert_eq!(
+        desktop,
+        vec![
+            ("DISPLAY".to_string(), ":fake".to_string()),
+            ("WAYLAND_DISPLAY".to_string(), "wayland-fake".to_string())
+        ]
+    );
+    mcp::gateway::browser_opener_with(Some(path), None, desktop)("https://example.com/d");
+    let start = std::time::Instant::now();
+    while !out.exists() {
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(120),
+            "the launcher never ran"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(std::fs::read_to_string(&out).unwrap(), ":fake|wayland-fake|\n");
+}

@@ -175,6 +175,11 @@ pub(super) fn install(
         host.cancel_root(root);
         tools.cancel_root(root);
     }));
+    // A backgrounded cell's end carries the context reminder its result would have carried.
+    let reminders = stack.context_reminders.clone();
+    options.note = Some(Arc::new(move |lane: &str, text: &str| {
+        reminders.reminder(lane, text, 0)
+    }));
     let lanes = Arc::new(SessionLanes {
         actor: Mutex::new(actor),
         chat,

@@ -82,29 +82,10 @@ fn replay(scenario: &Value) {
         .unwrap();
     assert_eq!(ended["error"], Value::Null, "{name}: {ended}");
 
+    // Steering the admission left (one-at-a-time, a second steer) reaches the run's first request after the prompt,
+    // as TypeScript's agent loop polls steering before its first request.
     let requests: Vec<Vec<Value>> = w.requests().iter().map(users).collect();
-    // Steering the admission left (one-at-a-time, a second steer) is delivered by the durable runtime at the run's
-    // first boundary, after the first answer; TypeScript's agent loop takes it before the first request. So the
-    // Rust run makes one request more: the first without it, then TypeScript's requests (docs: DECISIONS w3).
-    let left_steering: Vec<Value> = scenario["inboxAfterAdmission"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|item| item[0] == "steer")
-        .map(|item| item[1].clone())
-        .collect();
-    let mut expected: Vec<Value> = scenario["requests"].as_array().unwrap().clone();
-    if !left_steering.is_empty() {
-        let first: Vec<Value> = expected[0]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|t| !left_steering.contains(t))
-            .cloned()
-            .collect();
-        expected.insert(0, json!(first));
-    }
-    assert_eq!(json!(requests), json!(expected), "{name}: requests");
+    assert_eq!(json!(requests), scenario["requests"], "{name}: requests");
     // The admission's lane state (the first one naming the run) keeps what it did not take, in queue order.
     let admitted = home.values(LANE_STATE)[lanes_before..]
         .iter()
@@ -118,12 +99,7 @@ fn replay(scenario: &Value) {
         .map(|item| json!([item["kind"], texts[item["entryId"].as_str().unwrap()]]))
         .collect();
     assert_eq!(json!(inbox), scenario["inboxAfterAdmission"], "{name}: inbox");
-    // The transcript, as the branch holds it (with left steering, it follows the first answer).
-    if !left_steering.is_empty() {
-        assert_eq!(home.values(LANE_STATE).pop().unwrap()["inbox"], json!([]), "{name}");
-        w.close();
-        return;
-    }
+    // The transcript, as the branch holds it.
     let transcript: Vec<String> = w
         .events("message_end")
         .iter()

@@ -430,6 +430,8 @@ pub struct App {
     /// Success statuses of copies waiting for the clipboard's answer, oldest first; `None` is a fullscreen
     /// selection copy, which answers with a flash.
     pending_copies: std::collections::VecDeque<Option<String>>,
+    /// Clipboard reads waiting for their answer, oldest first: true for a right-click paste, false for Ctrl+V.
+    pending_reads: std::collections::VecDeque<bool>,
     /// The fullscreen transcript viewport (`TuiAltScreen`): scroll position, selection, scrollbar, flashes.
     viewport: tui::fullscreen::FullscreenViewport,
     /// The mouse tracking the alternate screen turns on (`None`: none, as in tests that paint frames).
@@ -769,6 +771,7 @@ impl App {
             suspend_request: false,
             suspend_hook: None,
             pending_copies: std::collections::VecDeque::new(),
+            pending_reads: std::collections::VecDeque::new(),
             viewport: {
                 let mut viewport = tui::fullscreen::FullscreenViewport::default();
                 // The frames keep the OSC 133 marks the TUI always painted (the qol_parity byte guard); TS strips
@@ -1044,6 +1047,12 @@ impl App {
         &self.cwd
     }
 
+    /// Opens hyperlinks: an OSC 8 link clicked in the fullscreen transcript (`openUrl`) and a link chosen in the copy
+    /// picker. Without one, clicks select as usual and nothing opens.
+    pub fn set_url_opener(&mut self, opener: tui::fullscreen::UrlOpener) {
+        self.viewport.open_url = Some(opener);
+    }
+
     /// The clipboard for image paste and Vim yanks.
     pub fn set_clipboard(&mut self, clipboard: ClipboardService) {
         if let Some(vim) = self.vim.as_mut() {
@@ -1111,12 +1120,22 @@ impl App {
                     }
                     (None, Err(error)) => self.viewport.copied(Err(error), Instant::now()),
                 },
-                ClipboardReply::Image(data) if self.qol.attachments => {
-                    let placeholder = self.attachments.add_image(data, "image/png", None);
+                // interactive-mode.ts `handleRightClickPaste`: the clipboard's text as a bracketed paste into the
+                // editor, unless it is empty or an overlay took the focus meanwhile; errors are ignored.
+                reply if self.pending_reads.pop_front() == Some(true) => {
+                    if let ClipboardReply::Text(text) = reply
+                        && !text.is_empty()
+                        && self.overlay.is_none()
+                    {
+                        self.editor.handle_input(&format!("{PASTE_START}{text}{PASTE_END}"));
+                    }
+                }
+                ClipboardReply::Image { data, mime_type } if self.qol.attachments => {
+                    let placeholder = self.attachments.add_image(data, &mime_type, None);
                     self.editor.insert_text_at_cursor(&format!("{placeholder} "));
                 }
-                ClipboardReply::Image(data) => {
-                    if let Some(path) = self.save_clipboard_image(&data) {
+                ClipboardReply::Image { data, mime_type } => {
+                    if let Some(path) = self.save_clipboard_image(&data, &mime_type) {
                         self.editor.insert_text_at_cursor(&path);
                     }
                 }
@@ -1162,15 +1181,17 @@ impl App {
         changed
     }
 
-    /// A clipboard image (base64 PNG) saved as `<tmp>/ultron-clipboard-<id>.png`; its path.
-    fn save_clipboard_image(&self, data: &str) -> Option<String> {
+    /// A clipboard image (base64) saved as `<tmp>/ultron-clipboard-<id>.<ext>`, the extension by its MIME type
+    /// (`extensionForImageMimeType`, else `png`); its path.
+    fn save_clipboard_image(&self, data: &str, mime_type: &str) -> Option<String> {
         let bytes = tui::clipboard::image_bytes(data)?;
+        let extension = tui::clipboard_image::extension_for_image_mime_type(mime_type).unwrap_or("png");
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos());
         let path = self
             .temp_dir
-            .join(format!("ultron-clipboard-{}-{nanos:x}.png", std::process::id()));
+            .join(format!("ultron-clipboard-{}-{nanos:x}.{extension}", std::process::id()));
         std::fs::write(&path, bytes).ok()?;
         Some(path.display().to_string())
     }
@@ -1217,6 +1238,12 @@ impl App {
         self.mouse_tracking
     }
 
+    /// Right-click paste in fullscreen ([`tui::right_click_paste::right_click_paste_enabled`] of the terminal's
+    /// platform and environment; off unless the product turns it on).
+    pub fn set_right_click_paste(&mut self, enabled: bool) {
+        self.viewport.right_click_paste = enabled;
+    }
+
     /// The fullscreen transcript viewport.
     pub fn viewport(&self) -> &tui::fullscreen::FullscreenViewport {
         &self.viewport
@@ -1254,6 +1281,13 @@ impl App {
             tui::fullscreen::ViewportInput::Consumed => true,
             tui::fullscreen::ViewportInput::Copy(text) => {
                 self.copy_selection(&text);
+                true
+            }
+            tui::fullscreen::ViewportInput::RightClickPaste => {
+                if let Some(clipboard) = &self.clipboard {
+                    self.pending_reads.push_back(true);
+                    clipboard.request(ClipboardRead::Text);
+                }
                 true
             }
         }
@@ -2319,6 +2353,7 @@ impl App {
         // clipboard's text (with the attachments, an image becomes an attachment instead).
         if k("app.clipboard.pasteImage") {
             if let Some(clipboard) = &self.clipboard {
+                self.pending_reads.push_back(false);
                 clipboard.request(ClipboardRead::ImageOrText);
             }
             return;
@@ -4430,17 +4465,14 @@ impl App {
                 }
                 PickerEvent::Open { href, .. } => {
                     self.overlay = None;
-                    let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
-                    let spawned = std::process::Command::new(opener)
-                        .arg(&href)
-                        .stdin(std::process::Stdio::null())
-                        .stdout(std::process::Stdio::null())
-                        .stderr(std::process::Stdio::null())
-                        .spawn();
-                    self.show_status(&match spawned {
-                        Ok(_) => format!("Opened {href}"),
-                        Err(e) => format!("Error: {e}"),
-                    });
+                    // The session's opener (launcher from its PATH only), never the process's PATH.
+                    match self.viewport.open_url.clone() {
+                        Some(open) => {
+                            open(&href);
+                            self.show_status(&format!("Opened {href}"));
+                        }
+                        None => self.show_status("Error: no browser opener"),
+                    }
                 }
                 PickerEvent::Rewind { entry_id } => {
                     self.overlay = None;

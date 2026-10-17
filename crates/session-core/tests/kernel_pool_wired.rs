@@ -84,8 +84,8 @@ fn session_core_a43_a_second_lane_evicts_the_idle_first_one_after_a_snapshot_and
     assert_eq!((&pool["live"], &pool["maxLive"]), (&json!(1), &json!(1)));
     assert_eq!(pool["lanes"][0]["lane"], "lane-a");
     assert_eq!(pool["lanes"][0]["running"], 1);
-    // main (never started), lane A, then lane B made room.
-    assert_eq!(pool["evictions"], 3);
+    // Lane A, then lane B made room (main never ran a cell, so it never held a kernel).
+    assert_eq!(pool["evictions"], 2);
     let refused = run(
         &stack,
         "lane-a",
@@ -103,7 +103,7 @@ fn session_core_a43_a_pinned_lane_is_never_evicted_and_a_full_pool_refuses_a_new
     // The instances module pins a retained lane through the typed-agent host.
     assert!(stack.lanes.pin("lane-a", "instance:x"));
     run(&stack, "lane-b", "1");
-    // main was evicted for lane B; lane A stays pinned, lane B is idle and makes room for lane C.
+    // Lane A stays pinned, lane B is idle and makes room for lane C (main never held a kernel).
     run(&stack, "lane-c", "1");
     assert!(stack.lanes.kernel("lane-a").is_some());
     assert!(stack.lanes.kernel("lane-b").is_none());

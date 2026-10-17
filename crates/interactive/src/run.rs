@@ -159,6 +159,10 @@ pub fn run_stdout(app: &mut App, events: &Receiver<UiEvent>, size: &dyn Fn() -> 
     app.set_suspend_hook(Box::new(suspend_process));
     // Fullscreen owns the mouse (wheel, scrollbar, selection); the tracking mode follows the terminal multiplexer.
     app.set_mouse_tracking(Some(tui::fullscreen::mouse_tracking(&|name| std::env::var(name).ok())));
+    app.set_right_click_paste(tui::right_click_paste::right_click_paste_enabled(
+        tui::clipboard_copy::platform(),
+        &|name| std::env::var(name).ok(),
+    ));
     let mut terminal = Terminal::new(std::io::stdout());
     if app.qol().tty_writer {
         let tty = TtyWriter::stdout()?;
@@ -295,8 +299,10 @@ pub fn paint_loop(
             dirty = true;
         }
         if app.take_reset_display() {
-            // Alt+L: forget what the terminal shows and paint everything again.
-            out("\x1b[2J\x1b[3J\x1b[H")?;
+            // Alt+L: forget what the terminal shows and paint everything again; the split's Kitty images (in
+            // scrollback too) are deleted before the clear, as a full redraw deletes them.
+            let images = if split { viewport.delete_images() } else { String::new() };
+            out(&format!("{images}\x1b[2J\x1b[3J\x1b[H"))?;
             screen = AltScreen::new();
             viewport = ViewportRenderer::new();
             if !split {

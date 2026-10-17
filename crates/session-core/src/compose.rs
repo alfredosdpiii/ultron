@@ -195,7 +195,11 @@ impl Config {
                 ..mcp::connection::ConnectionEnv::default()
             },
             // The session's PATH finds the launcher (never the process's).
-            open_url: Some(mcp::gateway::browser_opener((self.var)("PATH"), (self.var)("HOME"))),
+            open_url: Some(mcp::gateway::browser_opener_with(
+                (self.var)("PATH"),
+                (self.var)("HOME"),
+                mcp::gateway::opener_vars(&*self.var),
+            )),
         })
     }
 

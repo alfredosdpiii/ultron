@@ -1,0 +1,2559 @@
+{
+	"icu": "78.3",
+	"links": {
+		"cols": 24,
+		"rows": 8,
+		"lines": [
+			"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\",
+			"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007",
+			"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\",
+			"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x",
+			"a\t\u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\",
+			"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end",
+			"plain https://example.com/not-a-link"
+		],
+		"frames": [
+			{
+				"name": "click, generic release",
+				"inputs": [
+					"\u001b[<0;2;1M",
+					"\u001b[<3;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "click, specific release",
+				"inputs": [
+					"\u001b[<0;2;2M",
+					"\u001b[<0;2;2m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "wide emoji, second cell",
+				"inputs": [
+					"\u001b[<0;2;3M",
+					"\u001b[<0;2;3m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "after wide text",
+				"inputs": [
+					"\u001b[<0;7;4M",
+					"\u001b[<0;7;4m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "before the link",
+				"inputs": [
+					"\u001b[<0;3;4M",
+					"\u001b[<0;3;4m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "after a tab",
+				"inputs": [
+					"\u001b[<0;6;5M",
+					"\u001b[<0;6;5m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "tab cell",
+				"inputs": [
+					"\u001b[<0;3;5M",
+					"\u001b[<0;3;5m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "adjacent links, first",
+				"inputs": [
+					"\u001b[<0;7;6M",
+					"\u001b[<0;7;6m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "adjacent links, second",
+				"inputs": [
+					"\u001b[<0;8;6M",
+					"\u001b[<0;8;6m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "plain URL text",
+				"inputs": [
+					"\u001b[<0;11;7M",
+					"\u001b[<0;11;7m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "past the end of the line",
+				"inputs": [
+					"\u001b[<0;21;1M",
+					"\u001b[<0;21;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "drag off the link",
+				"inputs": [
+					"\u001b[<0;2;1M",
+					"\u001b[<32;4;1M",
+					"\u001b[<0;4;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [
+					"ink"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\l\u001b[7m\u001b]8;;https://example.com/path?q=1\u001b\\ink           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "drag back to the press",
+				"inputs": [
+					"\u001b[<0;2;2M",
+					"\u001b[<32;4;2M",
+					"\u001b[<32;2;2M",
+					"\u001b[<0;2;2m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [
+					"ink"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "release elsewhere",
+				"inputs": [
+					"\u001b[<0;2;2M",
+					"\u001b[<0;3;2m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2"
+				],
+				"copies": [
+					"ink",
+					"in"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007l\u001b[7m\u001b]8;;https://example.com/bel\u0007in\u001b[27m\u001b]8;;https://example.com/bel\u0007k           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "double click",
+				"inputs": [
+					"\u001b[<0;3;1M",
+					"\u001b[<0;3;1m",
+					"\u001b[<0;3;1M",
+					"\u001b[<0;3;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link"
+				],
+				"screen": [
+					"\u001b[7m\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "triple click",
+				"inputs": [
+					"\u001b[<0;3;2M",
+					"\u001b[<0;3;2m",
+					"\u001b[<0;3;2M",
+					"\u001b[<0;3;2m",
+					"\u001b[<0;3;2M",
+					"\u001b[<0;3;2m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b[7m\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "double click on the first cell of a link",
+				"inputs": [
+					"\u001b[<0;1;3M",
+					"\u001b[<0;1;3m",
+					"\u001b[<0;1;3M",
+					"\u001b[<0;1;3m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b[7m\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "middle button",
+				"inputs": [
+					"\u001b[<1;2;1M",
+					"\u001b[<1;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b[7m\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "right button",
+				"inputs": [
+					"\u001b[<2;2;1M",
+					"\u001b[<2;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b[7m\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "shift click",
+				"inputs": [
+					"\u001b[<4;2;1M",
+					"\u001b[<4;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "alt click",
+				"inputs": [
+					"\u001b[<8;2;1M",
+					"\u001b[<8;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "ctrl click",
+				"inputs": [
+					"\u001b[<16;2;1M",
+					"\u001b[<16;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "focus lost between press and release",
+				"inputs": [
+					"\u001b[<0;2;1M",
+					"\u001b[O",
+					"\u001b[<0;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "release without press",
+				"inputs": [
+					"\u001b[<0;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			},
+			{
+				"name": "click again",
+				"inputs": [
+					"\u001b[<0;2;1M",
+					"\u001b[<0;2;1m"
+				],
+				"opened": [
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/日本",
+					"https://example.com/tab",
+					"https://a.example/1",
+					"https://b.example/2",
+					"https://example.com/path?q=1",
+					"https://example.com/bel",
+					"https://example.com/emoji",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1",
+					"https://example.com/path?q=1"
+				],
+				"copies": [
+					"ink",
+					"in",
+					"link",
+					"link",
+					"link",
+					"🙂"
+				],
+				"screen": [
+					"\u001b]8;;https://example.com/path?q=1\u001b\\link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/bel\u0007link           \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"\u001b]8;;https://example.com/emoji\u001b\\🙂             \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x    \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"a   \u001b]8;id=7;https://example.com/tab\u001b\\tab        \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end \u001b[0m\u001b]8;;\u0007\u001b[7m Copied! \u001b[0m\u001b]8;;\u0007\u001b[0m\u001b]8;;\u0007",
+					"plain https://example.co",
+					"\u001b[0m\u001b]8;;\u0007"
+				]
+			}
+		]
+	},
+	"osc8": [
+		{
+			"line": "\u001b]8;;https://example.com/path?q=1\u001b\\link\u001b]8;;\u001b\\",
+			"links": [
+				"https://example.com/path?q=1",
+				"https://example.com/path?q=1",
+				"https://example.com/path?q=1",
+				"https://example.com/path?q=1",
+				null,
+				null
+			]
+		},
+		{
+			"line": "\u001b]8;;https://example.com/bel\u0007link\u001b]8;;\u0007",
+			"links": [
+				"https://example.com/bel",
+				"https://example.com/bel",
+				"https://example.com/bel",
+				"https://example.com/bel",
+				null,
+				null
+			]
+		},
+		{
+			"line": "\u001b]8;;https://example.com/emoji\u001b\\🙂\u001b]8;;\u001b\\",
+			"links": [
+				"https://example.com/emoji",
+				"https://example.com/emoji",
+				null,
+				null
+			]
+		},
+		{
+			"line": "日本 \u001b]8;;https://example.com/日本\u001b\\docs\u001b]8;;\u001b\\ x",
+			"links": [
+				null,
+				null,
+				null,
+				null,
+				null,
+				"https://example.com/日本",
+				"https://example.com/日本",
+				"https://example.com/日本",
+				"https://example.com/日本",
+				null,
+				null,
+				null,
+				null
+			]
+		},
+		{
+			"line": "a\t\u001b]8;id=7;https://example.com/tab\u001b\\tab\u001b]8;;\u001b\\",
+			"links": [
+				null,
+				null,
+				null,
+				null,
+				"https://example.com/tab",
+				"https://example.com/tab",
+				"https://example.com/tab",
+				null,
+				null
+			]
+		},
+		{
+			"line": "see \u001b]8;;https://a.example/1\u001b\\one\u001b]8;;\u001b\\\u001b]8;;https://b.example/2\u001b\\two\u001b]8;;\u001b\\ end",
+			"links": [
+				null,
+				null,
+				null,
+				null,
+				"https://a.example/1",
+				"https://a.example/1",
+				"https://a.example/1",
+				"https://b.example/2",
+				"https://b.example/2",
+				"https://b.example/2",
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+			]
+		},
+		{
+			"line": "plain https://example.com/not-a-link",
+			"links": [
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+			]
+		}
+	],
+	"words": [
+		{
+			"line": "日本語 テキスト wide",
+			"selections": [
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					6,
+					7
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					7,
+					15
+				],
+				[
+					15,
+					16
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				null
+			],
+			"segments": [
+				[
+					"日本語",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"テキスト",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"wide",
+					true
+				]
+			]
+		},
+		{
+			"line": "日本語のテキスト",
+			"selections": [
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					6,
+					8
+				],
+				[
+					6,
+					8
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				[
+					8,
+					16
+				],
+				null
+			],
+			"segments": [
+				[
+					"日本語",
+					true
+				],
+				[
+					"の",
+					true
+				],
+				[
+					"テキスト",
+					true
+				]
+			]
+		},
+		{
+			"line": "漢字abc漢字",
+			"selections": [
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					4,
+					7
+				],
+				[
+					4,
+					7
+				],
+				[
+					4,
+					7
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				null
+			],
+			"segments": [
+				[
+					"漢字",
+					true
+				],
+				[
+					"abc",
+					true
+				],
+				[
+					"漢字",
+					true
+				]
+			]
+		},
+		{
+			"line": "私は学生です",
+			"selections": [
+				[
+					0,
+					2
+				],
+				[
+					0,
+					2
+				],
+				[
+					2,
+					4
+				],
+				[
+					2,
+					4
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				null
+			],
+			"segments": [
+				[
+					"私",
+					true
+				],
+				[
+					"は",
+					true
+				],
+				[
+					"学生",
+					true
+				],
+				[
+					"です",
+					true
+				]
+			]
+		},
+		{
+			"line": "東京都に住んでいます",
+			"selections": [
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					4,
+					6
+				],
+				[
+					4,
+					6
+				],
+				[
+					6,
+					8
+				],
+				[
+					6,
+					8
+				],
+				[
+					8,
+					10
+				],
+				[
+					8,
+					10
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					14,
+					16
+				],
+				[
+					14,
+					16
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				[
+					16,
+					20
+				],
+				null
+			],
+			"segments": [
+				[
+					"東京",
+					true
+				],
+				[
+					"都",
+					true
+				],
+				[
+					"に",
+					true
+				],
+				[
+					"住",
+					true
+				],
+				[
+					"んで",
+					true
+				],
+				[
+					"い",
+					true
+				],
+				[
+					"ます",
+					true
+				]
+			]
+		},
+		{
+			"line": "カタカナとひらがな",
+			"selections": [
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					0,
+					8
+				],
+				[
+					8,
+					10
+				],
+				[
+					8,
+					10
+				],
+				[
+					10,
+					12
+				],
+				[
+					10,
+					12
+				],
+				[
+					12,
+					14
+				],
+				[
+					12,
+					14
+				],
+				[
+					14,
+					16
+				],
+				[
+					14,
+					16
+				],
+				[
+					16,
+					18
+				],
+				[
+					16,
+					18
+				],
+				null
+			],
+			"segments": [
+				[
+					"カタカナ",
+					true
+				],
+				[
+					"と",
+					true
+				],
+				[
+					"ひ",
+					true
+				],
+				[
+					"ら",
+					true
+				],
+				[
+					"が",
+					true
+				],
+				[
+					"な",
+					true
+				]
+			]
+		},
+		{
+			"line": "コンパイルエラー",
+			"selections": [
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					10,
+					16
+				],
+				[
+					10,
+					16
+				],
+				[
+					10,
+					16
+				],
+				[
+					10,
+					16
+				],
+				[
+					10,
+					16
+				],
+				[
+					10,
+					16
+				],
+				null
+			],
+			"segments": [
+				[
+					"コンパイル",
+					true
+				],
+				[
+					"エラー",
+					true
+				]
+			]
+		},
+		{
+			"line": "データベース接続",
+			"selections": [
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					0,
+					12
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				null
+			],
+			"segments": [
+				[
+					"データベース",
+					true
+				],
+				[
+					"接続",
+					true
+				]
+			]
+		},
+		{
+			"line": "中文分词测试很重要",
+			"selections": [
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					0,
+					4
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					4,
+					8
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				[
+					8,
+					12
+				],
+				[
+					12,
+					14
+				],
+				[
+					12,
+					14
+				],
+				[
+					14,
+					18
+				],
+				[
+					14,
+					18
+				],
+				[
+					14,
+					18
+				],
+				[
+					14,
+					18
+				],
+				null
+			],
+			"segments": [
+				[
+					"中文",
+					true
+				],
+				[
+					"分词",
+					true
+				],
+				[
+					"测试",
+					true
+				],
+				[
+					"很",
+					true
+				],
+				[
+					"重要",
+					true
+				]
+			]
+		},
+		{
+			"line": "请检查配置文件。下一步",
+			"selections": [
+				[
+					0,
+					2
+				],
+				[
+					0,
+					2
+				],
+				[
+					2,
+					6
+				],
+				[
+					2,
+					6
+				],
+				[
+					2,
+					6
+				],
+				[
+					2,
+					6
+				],
+				[
+					6,
+					10
+				],
+				[
+					6,
+					10
+				],
+				[
+					6,
+					10
+				],
+				[
+					6,
+					10
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					10,
+					14
+				],
+				[
+					14,
+					16
+				],
+				[
+					14,
+					16
+				],
+				[
+					16,
+					22
+				],
+				[
+					16,
+					22
+				],
+				[
+					16,
+					22
+				],
+				[
+					16,
+					22
+				],
+				[
+					16,
+					22
+				],
+				[
+					16,
+					22
+				],
+				null
+			],
+			"segments": [
+				[
+					"请",
+					true
+				],
+				[
+					"检查",
+					true
+				],
+				[
+					"配置",
+					true
+				],
+				[
+					"文件",
+					true
+				],
+				[
+					"。",
+					false
+				],
+				[
+					"下一步",
+					true
+				]
+			]
+		},
+		{
+			"line": "README.mdを更新",
+			"selections": [
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					0,
+					9
+				],
+				[
+					9,
+					11
+				],
+				[
+					9,
+					11
+				],
+				[
+					11,
+					15
+				],
+				[
+					11,
+					15
+				],
+				[
+					11,
+					15
+				],
+				[
+					11,
+					15
+				],
+				null
+			],
+			"segments": [
+				[
+					"README.md",
+					true
+				],
+				[
+					"を",
+					true
+				],
+				[
+					"更新",
+					true
+				]
+			]
+		},
+		{
+			"line": "src/日本語/main.rs の関数",
+			"selections": [
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					0,
+					18
+				],
+				[
+					18,
+					19
+				],
+				[
+					19,
+					21
+				],
+				[
+					19,
+					21
+				],
+				[
+					21,
+					25
+				],
+				[
+					21,
+					25
+				],
+				[
+					21,
+					25
+				],
+				[
+					21,
+					25
+				],
+				null
+			],
+			"segments": [
+				[
+					"src",
+					true
+				],
+				[
+					"/",
+					false
+				],
+				[
+					"日本語",
+					true
+				],
+				[
+					"/",
+					false
+				],
+				[
+					"main.rs",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"の",
+					true
+				],
+				[
+					"関数",
+					true
+				]
+			]
+		},
+		{
+			"line": "バージョン2.0 と ｶﾀｶﾅ",
+			"selections": [
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					0,
+					10
+				],
+				[
+					10,
+					13
+				],
+				[
+					10,
+					13
+				],
+				[
+					10,
+					13
+				],
+				[
+					13,
+					14
+				],
+				[
+					14,
+					16
+				],
+				[
+					14,
+					16
+				],
+				[
+					16,
+					17
+				],
+				[
+					17,
+					21
+				],
+				[
+					17,
+					21
+				],
+				[
+					17,
+					21
+				],
+				[
+					17,
+					21
+				],
+				null
+			],
+			"segments": [
+				[
+					"バージョン",
+					true
+				],
+				[
+					"2.0",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"と",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"ｶﾀｶﾅ",
+					true
+				]
+			]
+		},
+		{
+			"line": "〇々〆 ゝゞ ヽヾ ー",
+			"selections": [
+				[
+					0,
+					2
+				],
+				[
+					0,
+					2
+				],
+				[
+					2,
+					4
+				],
+				[
+					2,
+					4
+				],
+				[
+					4,
+					6
+				],
+				[
+					4,
+					6
+				],
+				[
+					6,
+					7
+				],
+				[
+					7,
+					9
+				],
+				[
+					7,
+					9
+				],
+				[
+					9,
+					11
+				],
+				[
+					9,
+					11
+				],
+				[
+					11,
+					12
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					16,
+					17
+				],
+				[
+					17,
+					19
+				],
+				[
+					17,
+					19
+				],
+				null
+			],
+			"segments": [
+				[
+					"〇",
+					true
+				],
+				[
+					"々",
+					true
+				],
+				[
+					"〆",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"ゝ",
+					true
+				],
+				[
+					"ゞ",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"ヽヾ",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"ー",
+					true
+				]
+			]
+		},
+		{
+			"line": "한국어 단어 선택",
+			"selections": [
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					0,
+					6
+				],
+				[
+					6,
+					7
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				[
+					7,
+					11
+				],
+				[
+					11,
+					12
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				[
+					12,
+					16
+				],
+				null
+			],
+			"segments": [
+				[
+					"한국어",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"단어",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"선택",
+					true
+				]
+			]
+		},
+		{
+			"line": "mixed 漢字-kana かな-カナ",
+			"selections": [
+				[
+					0,
+					5
+				],
+				[
+					0,
+					5
+				],
+				[
+					0,
+					5
+				],
+				[
+					0,
+					5
+				],
+				[
+					0,
+					5
+				],
+				[
+					5,
+					6
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					6,
+					15
+				],
+				[
+					15,
+					16
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				[
+					16,
+					25
+				],
+				null
+			],
+			"segments": [
+				[
+					"mixed",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"漢字",
+					true
+				],
+				[
+					"-",
+					false
+				],
+				[
+					"kana",
+					true
+				],
+				[
+					" ",
+					false
+				],
+				[
+					"かな",
+					true
+				],
+				[
+					"-",
+					false
+				],
+				[
+					"カナ",
+					true
+				]
+			]
+		}
+	]
+}

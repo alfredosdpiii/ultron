@@ -798,9 +798,17 @@ impl Rlm {
         self
     }
 
-    /// The context reminder this lane's result `text` ends with, if it is due.
-    fn context_reminder(&self, text: &str) -> Option<String> {
-        self.reminders.as_ref()?.reminder(&self.lane, text)
+    /// The context reminder this lane's result `text` (with `images` images) ends with, if it is due.
+    fn context_reminder(&self, text: &str, images: usize) -> Option<String> {
+        self.reminders.as_ref()?.reminder(&self.lane, text, images)
+    }
+
+    /// An error result's text, ending with the context reminder when it is due.
+    fn with_reminder(&self, text: String) -> String {
+        match self.context_reminder(&text, 0) {
+            Some(line) => format!("{text}\n{line}"),
+            None => text,
+        }
     }
 
     fn count_cell(&self, code: &str, failed: bool, masked: usize) {
@@ -919,9 +927,9 @@ impl Rlm {
                 None => text,
             };
             // What the cell attached ends with its tool call (a cell that keeps running loses later ones).
-            let outcome = outcome.map_err(|e| with_findings(e.to_string()));
+            let outcome = outcome.map_err(|e| self.with_reminder(with_findings(e.to_string())));
             let images = self.images.take(&self.lane);
-            let outcome = outcome?.map_err(|e| with_findings(e.to_string()))?;
+            let outcome = outcome?.map_err(|e| self.with_reminder(with_findings(e.to_string())))?;
             if signal.aborted() {
                 if has_result {
                     // It ran to its end; the turn was aborted meanwhile.
@@ -930,7 +938,9 @@ impl Rlm {
                 return Err(with_findings(ABORT_REQUESTED.into()));
             }
             let result = match outcome {
-                CellOutcome::Done(result) => result.map_err(|e| with_findings(self.with_hint(e, Some("Error"))))?,
+                CellOutcome::Done(result) => {
+                    result.map_err(|e| self.with_reminder(with_findings(self.with_hint(e, Some("Error")))))?
+                }
                 CellOutcome::Running { cell, parked } => {
                     if !parked {
                         self.lanes.detach(&cell)?;
@@ -953,8 +963,9 @@ impl Rlm {
                     .as_ref()
                     .map_or_else(|failure| failure.masked, |output| output.masked),
             );
-            let output =
-                output.map_err(|failure| with_findings(self.with_hint(failure.message, Some(&failure.ename))))?;
+            let output = output.map_err(|failure| {
+                self.with_reminder(with_findings(self.with_hint(failure.message, Some(&failure.ename))))
+            })?;
             // Only a hint is appended: output that itself starts with a newline stays as it is.
             let hint = self.hint(&output.text, None);
             let text = with_findings(match output.text.is_empty() {
@@ -971,7 +982,8 @@ impl Rlm {
                 None => text,
             };
             // The context reminder ends it, once per approach to the lane's limit.
-            let text = match self.context_reminder(&text) {
+            let image_count = images.as_ref().map_or(0, |i| i.images.len());
+            let text = match self.context_reminder(&text, image_count) {
                 Some(line) => format!("{text}\n{line}"),
                 None => text,
             };

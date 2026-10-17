@@ -451,3 +451,103 @@ fn interactive_split_mode_keeps_prompt_marks_in_scrollback_for_terminal_jumps() 
     }
     assert_eq!(app.editor_text(), "Xab");
 }
+
+/// A clipboard holding text only, counting text reads.
+struct TextClipboard(Arc<Mutex<usize>>, &'static str);
+
+/// A clipboard holding an image and text.
+struct ImageAndText;
+
+impl Clipboard for ImageAndText {
+    fn get_text(&mut self) -> Result<String, String> {
+        Ok("the text".into())
+    }
+    fn set_text(&mut self, _: &str) -> Result<(), String> {
+        Ok(())
+    }
+    fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
+        Ok(b"\x89PNG\r\n\x1a\n".to_vec())
+    }
+}
+
+impl Clipboard for TextClipboard {
+    fn get_text(&mut self) -> Result<String, String> {
+        *self.0.lock().unwrap() += 1;
+        Ok(self.1.into())
+    }
+    fn set_text(&mut self, _: &str) -> Result<(), String> {
+        Ok(())
+    }
+    fn get_image_png(&mut self) -> Result<Vec<u8>, String> {
+        Err("none".into())
+    }
+}
+
+/// interactive-mode.ts `handleRightClickPaste` on Windows: a right-button press in the transcript pastes the
+/// clipboard's text into the editor as a bracketed paste; its release and other platforms (the default) do not.
+/// Clipboard reads answer in order, so a right-click paste and a Ctrl+V each land once.
+#[test]
+fn interactive_fullscreen_right_click_pastes_the_clipboard_text_when_enabled() {
+    let (mut on, _) = app(3);
+    let reads = Arc::new(Mutex::new(0));
+    on.set_clipboard(ClipboardService::spawn(TextClipboard(
+        Arc::clone(&reads),
+        "pasted text",
+    )));
+    on.set_right_click_paste(true);
+    screen(&mut on);
+    let row = row_of(&mut on, "answer 3") + 1;
+    on.handle_input(&format!("\x1b[<2;3;{row}M"));
+    on.handle_input(&format!("\x1b[<2;3;{row}m"));
+    poll_until(&mut on, |a| !a.editor_text().is_empty());
+    assert_eq!(on.editor_text(), "pasted text");
+    // A right-click paste, then Ctrl+V: both answers land, in order.
+    on.handle_input(&format!("\x1b[<2;3;{row}M"));
+    on.handle_input("\x16");
+    poll_until(&mut on, |a| a.editor_text().len() > "pasted text".len() * 2);
+    assert_eq!(on.editor_text(), "pasted textpasted textpasted text");
+    assert_eq!(*reads.lock().unwrap(), 3);
+    // It is a bracketed paste (the editor folds a long one into a marker), not typed text as Ctrl+V inserts.
+    let (mut long, _) = app(3);
+    let text = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12";
+    long.set_clipboard(ClipboardService::spawn(TextClipboard(Arc::new(Mutex::new(0)), text)));
+    long.set_right_click_paste(true);
+    screen(&mut long);
+    long.handle_input(&format!("\x1b[<2;3;{row}M"));
+    poll_until(&mut long, |a| !a.editor_text().is_empty());
+    assert_eq!(long.editor_text(), "[paste #1 +12 lines]");
+    // Ctrl+V first, then a right click: the Ctrl+V answer is typed text, the right click's a bracketed paste.
+    let (mut both, _) = app(3);
+    both.set_clipboard(ClipboardService::spawn(TextClipboard(Arc::new(Mutex::new(0)), text)));
+    both.set_right_click_paste(true);
+    screen(&mut both);
+    both.handle_input("\x16");
+    both.handle_input(&format!("\x1b[<2;3;{row}M"));
+    poll_until(&mut both, |a| a.editor_text().ends_with(']'));
+    assert_eq!(both.editor_text(), format!("{text}[paste #1 +12 lines]"));
+    // A right click pastes the text even when the clipboard also holds an image (it reads text only).
+    let (mut image, _) = app(3);
+    image.set_clipboard(ClipboardService::spawn(ImageAndText));
+    image.set_right_click_paste(true);
+    screen(&mut image);
+    image.handle_input(&format!("\x1b[<2;3;{row}M"));
+    image.handle_input("\x16");
+    poll_until(&mut image, |a| {
+        a.editor_text().contains("ultron-clipboard-") || a.editor_text().contains("[Image")
+    });
+    assert!(image.editor_text().starts_with("the text"), "{}", image.editor_text());
+
+    // Off (not Windows, or VS Code's terminal): the press reads nothing; only the following Ctrl+V pastes.
+    let (mut off, _) = app(3);
+    let reads = Arc::new(Mutex::new(0));
+    off.set_clipboard(ClipboardService::spawn(TextClipboard(
+        Arc::clone(&reads),
+        "pasted text",
+    )));
+    screen(&mut off);
+    off.handle_input(&format!("\x1b[<2;3;{row}M"));
+    off.handle_input("\x16");
+    poll_until(&mut off, |a| !a.editor_text().is_empty());
+    assert_eq!(off.editor_text(), "pasted text");
+    assert_eq!(*reads.lock().unwrap(), 1);
+}

@@ -245,6 +245,26 @@ impl Lanes {
         Ok((lease, kernel))
     }
 
+    /// Whether a kernel for `lane` could be admitted now: it has one, there is room, or an idle unpinned kernel
+    /// can make room. Expired idle kernels go first, as with a lease.
+    fn check_room(&self, lane: &str) -> Result<(), String> {
+        let mut pool = self.pool();
+        pool.sweep();
+        let stats = pool.stats();
+        let lanes = stats["lanes"].as_array().cloned().unwrap_or_default();
+        let live = stats["live"].as_u64().unwrap_or(0) as usize;
+        let max = stats["maxLive"].as_u64().unwrap_or(0) as usize;
+        let has = lanes.iter().any(|l| l["lane"] == lane);
+        let evictable = lanes
+            .iter()
+            .any(|l| l["running"].as_u64() == Some(0) && l["pinnedBy"].as_array().is_none_or(Vec::is_empty));
+        if has || live < max || evictable {
+            Ok(())
+        } else {
+            Err(crate::kernel_pool::capacity_error(live, max))
+        }
+    }
+
     /// Keeps `lane`'s kernel live for `holder` (a retained instance); false when the pool has no pin left.
     pub fn pin(&self, lane: &str, holder: &str) -> bool {
         lock(&self.inner.state).closed.then_some(()).is_none() && self.pool().pin(lane, holder).is_ok()
@@ -326,10 +346,10 @@ impl Lanes {
                 self.inner.options.max_lanes
             ));
         }
-        // The lane's kernel is admitted now (it starts with its first cell): past the pool's capacity the lane is
-        // refused.
-        let (lease, _) = self.lease(lane)?;
-        self.pool().release(lease);
+        // The lane's kernel is admitted with its first cell, as the TS rlm tool admits a kernel only for a cell
+        // (`kernels.use`): an open lane is not a live kernel (`rlm.pool` shows 0/16 at idle). Past the pool's capacity
+        // (every live kernel running or pinned) the lane is refused now.
+        self.check_room(lane)?;
         state.lanes.insert(lane.to_string(), Lane { busy: None });
         Ok(())
     }

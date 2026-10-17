@@ -6,8 +6,9 @@
 //! from auth.json, models.json (literal, `$VAR`, `!command`) or the environment, and stored OAuth tokens refreshed
 //! through the provider (Anthropic, OpenAI Codex, GitHub Copilot, xAI, Kimi For Coding, Meta, OpenRouter, Radius)
 //! when they expire within the requested window. `--model` resolves as `resolveCliModel` does: under `--provider`,
-//! or alone across the providers with stored credentials. Not ported: extension providers (the Rust extension
-//! protocol registers no model providers) and the `claude-code` provider's CLI probe.
+//! or alone across the providers with stored credentials. The `claude-code` provider is configured when its CLI
+//! exists (`claudeCodeCliAuth`, found on the run's PATH without running it). Not ported: extension providers (the
+//! Rust extension protocol registers no model providers).
 
 use crate::Env;
 use crate::args::{Args, parse_args};
@@ -300,6 +301,23 @@ fn check(
         ));
     }
     let not_configured = json!({"status": "not_ready", "provider": provider, "reason": "credentials_not_configured"});
+    if provider == ai::claude_code::PROVIDER {
+        // `claudeCodeCliAuth`: configured when a `claude` executable exists (`ULTRON_CLAUDE_CODE_BIN`, else on the
+        // run's PATH; never run), and every request resolves with no credential to print.
+        let source = ai::env::EnvSource {
+            lookup: &*env.var,
+            exists: &|p: &std::path::Path| p.exists(),
+            home: Some(env.home.clone()),
+        };
+        let result = if !ai::claude_code::configured(&source) {
+            not_configured
+        } else if command.credentials {
+            json!({"status": "not_ready", "provider": provider, "reason": "credential_not_available"})
+        } else {
+            json!({"status": "ready", "provider": provider, "authType": "api_key"})
+        };
+        return Ok((result, None));
+    }
     let outcome = (|| -> Result<(Value, Option<String>), Unsupported> {
         let Some(auth_type) = credentials.check(&provider)? else {
             return Ok((not_configured.clone(), None));

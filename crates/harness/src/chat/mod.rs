@@ -47,7 +47,7 @@ pub use inbox::{QueueMode, QueueModes};
 pub use models::{
     CompactionPolicy, ModelRef, Models, RetryPolicy, Settings, SettingsSource, StreamRequest, ToolExecution,
 };
-pub use submissions::{SubmissionAbort, SubmissionDraft, WhenBusy, admit_submission};
+pub use submissions::{SubmissionAbort, SubmissionDraft, WhenBusy, admit_run_with_steering, admit_submission};
 
 use crate::scheduler::{
     AbortResult, Clock, Ctx, Extension, FallibleClock, Harness, HarnessError, HarnessOptions, Inspection, Registry,
@@ -370,9 +370,22 @@ impl ChatHarness {
             .collect())
     }
 
-    /// Sum every conversation's committed `pi.usage` (spec §8.6).
-    pub fn usage(&self) -> Result<Value> {
-        let conversations = self.harness.commit(|tx| {
+    /// Every conversation's provider session ID (`pi.provider`), the key provider connection caches use (the Codex
+    /// WebSocket cache), in conversation order.
+    pub fn provider_session_ids(&self) -> Result<Vec<String>> {
+        let mut ids = Vec::new();
+        for id in self.conversation_ids()? {
+            if let Some(state) = self.snapshot(&docs::PROVIDER, Owner::Conversation(id))?
+                && let Some(session) = state["sessionId"].as_str()
+            {
+                ids.push(session.to_owned());
+            }
+        }
+        Ok(ids)
+    }
+
+    fn conversation_ids(&self) -> Result<Vec<ConversationId>> {
+        self.harness.commit(|tx| {
             let mut ids = Vec::new();
             let mut cursor: Option<Cursor> = None;
             loop {
@@ -383,7 +396,12 @@ impl ChatHarness {
                     None => return Ok(ids),
                 }
             }
-        })?;
+        })
+    }
+
+    /// Sum every conversation's committed `pi.usage` (spec §8.6).
+    pub fn usage(&self) -> Result<Value> {
+        let conversations = self.conversation_ids()?;
         let mut total = json!({ "models": {}, "tools": {} });
         for id in conversations {
             if let Some(state) = self.snapshot(&docs::USAGE, Owner::Conversation(id))? {
@@ -416,6 +434,35 @@ impl ChatHarness {
             )
         })?;
         Ok(Submission { id, chat: self.clone() })
+    }
+
+    fn submit_run(
+        &self,
+        conversation_id: ConversationId,
+        first: &SubmissionDraft,
+        steering: &[SubmissionDraft],
+    ) -> Result<Vec<Submission>> {
+        let _ = self.harness.resume();
+        let placed = self.harness.commit(|tx| {
+            admit_run_with_steering(
+                tx,
+                conversation_id,
+                first,
+                steering,
+                (self.now)(),
+                (self.settings)().queue_modes(),
+            )
+        })?;
+        match placed {
+            Some(ids) => Ok(ids
+                .into_iter()
+                .map(|id| Submission { id, chat: self.clone() })
+                .collect()),
+            None => std::iter::once(first)
+                .chain(steering)
+                .map(|draft| self.submit(conversation_id, draft))
+                .collect(),
+        }
     }
 }
 
@@ -461,6 +508,13 @@ impl Conversation {
     /// Admit a submission (spec §6).
     pub fn submit(&self, draft: SubmissionDraft) -> Result<Submission> {
         self.chat.submit(self.id, &draft)
+    }
+
+    /// Admit input that starts a run with the steering its first request takes ([`admit_run_with_steering`]);
+    /// when the conversation cannot start a run at once, each draft is admitted on its own. The submissions are in
+    /// draft order.
+    pub fn submit_run(&self, first: SubmissionDraft, steering: Vec<SubmissionDraft>) -> Result<Vec<Submission>> {
+        self.chat.submit_run(self.id, &first, &steering)
     }
 
     /// Start a new context: a `pi.reset` write with `head: "self"`, placed at once when idle, else at the next

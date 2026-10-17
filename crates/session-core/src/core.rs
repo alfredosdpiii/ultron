@@ -1785,6 +1785,11 @@ impl Core {
         }
         // The durable runtime stops without settling anything: a run in progress resumes when the session opens.
         self.durable.stop.abort();
+        // `cleanupSessionResources(sessionId)` of AgentSession.dispose: the provider connections cached under this
+        // session's provider session IDs (the Codex WebSockets) are closed with it.
+        for id in self.durable.chat.provider_session_ids().unwrap_or_default() {
+            ai::openai_codex_responses::close_openai_codex_websocket_sessions(Some(&id));
+        }
         let _ = self.durable.chat.close();
         if let Some(signal) = &self.bash {
             signal.abort("closing");

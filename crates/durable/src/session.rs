@@ -12,10 +12,11 @@
 //! - Commit callbacks are synchronous, so a callback cannot settle with Tx operations still pending and the Tx
 //!   cannot be used after it settles (the borrow ends); escaped drafts are revoked.
 //! - Storage writes own copies of document values; published values are shared (`Arc`) with snapshots and watches.
-//! - `documentState` (Chord replicated state) is not ported; watches cover committed observation.
+//! - `documentState` delivers on subscriber threads and has no delivery `Context` (see [`crate::document_state`]).
 
 mod scheduler_access;
 
+use crate::document_state::{DocumentState, StateShared};
 use crate::documents::{
     Doc, DocDefinition, DocSemantics, Owner, check_record_scope, check_record_version, materialize_document,
     resolve_address,
@@ -23,8 +24,8 @@ use crate::documents::{
 use crate::observation::{Observed, Watch, WatchEnd, WatchShared};
 use crate::transaction::{Tx, TxScope};
 use crate::{
-    ConversationId, DocumentAddress, DocumentCopySource, DocumentPoint, DocumentRecord, EntryId, Seq, Storage,
-    StorageError, StorageWrite,
+    ConversationId, DocumentAddress, DocumentCopySource, DocumentId, DocumentPoint, DocumentRecord, EntryId, Seq,
+    Storage, StorageError, StorageWrite,
 };
 use chord_delta::{DeltaError, Op, Tracker};
 use serde_json::Value;
@@ -227,9 +228,46 @@ type CommitListener = Arc<dyn Fn(&CommitPublication) + Send + Sync>;
 type CloseListener = Arc<dyn Fn() + Send + Sync>;
 
 struct Observer {
-    watch: Arc<WatchShared>,
-    /// Definition version of the watch's value; another version's change arrives as a root replacement.
+    target: ObserverTarget,
+    /// Definition version of the observed value; another version's change arrives as a root replacement.
     version: u64,
+}
+
+/// What follows a document's commits (`#attachDocument`): a watch or a document state.
+enum ObserverTarget {
+    Watch(Arc<WatchShared>),
+    State(Arc<StateShared>),
+}
+
+impl ObserverTarget {
+    fn record(&self) -> DocumentId {
+        match self {
+            ObserverTarget::Watch(watch) => watch.record,
+            ObserverTarget::State(state) => state.record,
+        }
+    }
+
+    fn is_ended(&self) -> bool {
+        match self {
+            ObserverTarget::Watch(watch) => watch.is_ended(),
+            ObserverTarget::State(state) => state.is_ended(),
+        }
+    }
+
+    fn advance(&self, value: Observed, ops: Vec<Op>) {
+        match self {
+            ObserverTarget::Watch(watch) => watch.advance(value, ops),
+            ObserverTarget::State(state) => state.advance(value),
+        }
+    }
+
+    /// `closeSession`: a watch ends with `end`; a state stops publishing and keeps its value.
+    fn close(&self, end: WatchEnd) {
+        match self {
+            ObserverTarget::Watch(watch) => watch.terminate(end),
+            ObserverTarget::State(state) => state.detach(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -410,6 +448,37 @@ impl Session {
     }
 
     fn watch_at(&self, doc: &Doc, owner: Owner, key: Option<&str>) -> Result<Option<Watch>> {
+        self.attach(doc, owner, key, |record, value| {
+            let shared = WatchShared::new(record, value);
+            (ObserverTarget::Watch(shared.clone()), Watch { shared })
+        })
+    }
+
+    /// A hydrated read-only state of a committed document that follows its commits (`documentState`); never
+    /// creates one.
+    pub fn document_state(&self, doc: &Doc, owner: Owner) -> Result<Option<DocumentState>> {
+        self.state_at(doc, owner, None)
+    }
+
+    pub fn document_state_member(&self, doc: &Doc, owner: Owner, key: &str) -> Result<Option<DocumentState>> {
+        self.state_at(doc, owner, Some(key))
+    }
+
+    fn state_at(&self, doc: &Doc, owner: Owner, key: Option<&str>) -> Result<Option<DocumentState>> {
+        self.attach(doc, owner, key, |record, value| {
+            let shared = StateShared::new(record, value);
+            (ObserverTarget::State(shared.clone()), DocumentState { shared })
+        })
+    }
+
+    /// `#attachDocument`: load the current incarnation on the line and register an observer of its commits.
+    fn attach<T>(
+        &self,
+        doc: &Doc,
+        owner: Owner,
+        key: Option<&str>,
+        create: impl FnOnce(DocumentId, Arc<Value>) -> (ObserverTarget, T),
+    ) -> Result<Option<T>> {
         self.inner.assert_usable()?;
         let definition = doc.definition();
         let resolved = resolve_address(definition, owner, key)?;
@@ -424,12 +493,12 @@ impl Session {
         let loaded = lock(&loaded);
         check_record_scope(definition, &loaded.record.identity)?;
         check_record_version(definition, &loaded.record.identity, loaded.stored_version)?;
-        let watch = WatchShared::new(loaded.record.identity.id, loaded.tracker.value().clone());
+        let (target, handle) = create(loaded.record.identity.id, loaded.tracker.value().clone());
         lock(&self.inner.listeners).observers.push(Observer {
-            watch: watch.clone(),
+            target,
             version: loaded.value_version,
         });
-        Ok(Some(Watch { shared: watch }))
+        Ok(Some(handle))
     }
 
     /// The value of a rewindable conversation document as of the commit that persisted the visible entry `at`.
@@ -657,7 +726,7 @@ impl Inner {
             Some(failure) => WatchEnd::SessionFailed(failure.clone()),
         };
         for observer in observers {
-            observer.watch.terminate(end.clone());
+            observer.target.close(end.clone());
         }
     }
 
@@ -665,7 +734,7 @@ impl Inner {
     fn publish(&self, publication: &CommitPublication) {
         let commits = {
             let mut listeners = lock(&self.listeners);
-            listeners.observers.retain(|observer| !observer.watch.is_ended());
+            listeners.observers.retain(|observer| !observer.target.is_ended());
             for observer in &mut listeners.observers {
                 for change in &publication.changes {
                     let CommitChange::Document {
@@ -678,7 +747,7 @@ impl Inner {
                     else {
                         continue;
                     };
-                    if record.identity.id != observer.watch.record {
+                    if record.identity.id != observer.target.record() {
                         continue;
                     }
                     let ops = match (value, version) {
@@ -692,7 +761,7 @@ impl Inner {
                     };
                     // A migration-only base changes nothing for an observer of the new version.
                     if !ops.is_empty() {
-                        observer.watch.advance(value.clone(), ops);
+                        observer.target.advance(value.clone(), ops);
                     }
                 }
             }

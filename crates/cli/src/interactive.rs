@@ -2340,15 +2340,11 @@ fn run_tui(
     }));
     app.set_hide_thinking(hide_thinking);
     app.set_enabled_models(enabled_models);
-    // Inline tool images: Kitty on the alternate screen (TypeScript's alternate screen turns iTerm2 images off; the
-    // Rust-only split viewport writes scrollback and draws none).
-    let split = app.qol().viewport_split;
+    // Inline tool images: Kitty, on the alternate screen (TypeScript's alternate screen turns iTerm2 images off) and in
+    // the split viewport (drawn into scrollback as TypeScript's main screen draws them).
     let wezterm = (env.var)("WEZTERM_PANE").is_some_and(|v| !v.is_empty())
         || (env.var)("TERM_PROGRAM").is_some_and(|v| v.eq_ignore_ascii_case("wezterm"));
-    app.set_image_protocol(
-        caps.images.filter(|p| *p == tui::image::ImageProtocol::Kitty && !split),
-        wezterm,
-    );
+    app.set_image_protocol(caps.images.filter(|p| *p == tui::image::ImageProtocol::Kitty), wezterm);
     // The theme setting (custom themes from `<agent dir>/themes`, automatic light/dark pairs) and the presentation
     // settings the TUI applies to itself.
     let mut registry = tui::theme::registry::ThemeRegistry::new(

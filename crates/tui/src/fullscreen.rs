@@ -10,6 +10,7 @@
 //! for the application to copy (through its injected clipboard), which then reports with
 //! [`FullscreenViewport::copied`]. Time is passed in: timers are deadlines that [`FullscreenViewport::poll`] expires.
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use unicode_segmentation::UnicodeSegmentation;
@@ -23,7 +24,10 @@ use crate::scroll_view::{
     slice_by_column,
 };
 use crate::sgr_mouse::parse_sgr_mouse;
-use crate::utils::{extract_ansi_code, js_trim_end, strip_terminal_sequences, truncate_to_width, visible_width};
+use crate::utils::{
+    ansi_len, extract_ansi_code, grapheme_width, js_trim_end, strip_terminal_sequences, truncate_to_width,
+    visible_width,
+};
 
 /// Rows a page scroll keeps from the previous page (`PAGE_SCROLL_OVERLAP`).
 pub const PAGE_SCROLL_OVERLAP: usize = 4;
@@ -82,6 +86,47 @@ pub fn strip_zone_prefix(line: &str) -> &str {
     }
 }
 
+/// Opens a clicked OSC 8 hyperlink (`openUrl`); the application injects it (its launcher comes from the session's
+/// PATH only).
+pub type UrlOpener = Arc<dyn Fn(&str) + Send + Sync>;
+
+/// `getOsc8LinkAtColumn`: the OSC 8 hyperlink covering visible column `column` of `line` (tabs are 3 columns).
+pub fn osc8_link_at_column(line: &str, column: usize) -> Option<String> {
+    let mut active: Option<&str> = None;
+    let mut col = 0;
+    let mut i = 0;
+    while i < line.len() {
+        if let Some(len) = ansi_len(line, i) {
+            if let Some(url) = osc8_url(&line[i..i + len]) {
+                active = (!url.is_empty()).then_some(url);
+            }
+            i += len;
+            continue;
+        }
+        let mut end = i;
+        while end < line.len() && ansi_len(line, end).is_none() {
+            end += line[end..].chars().next().map_or(1, char::len_utf8);
+        }
+        for g in line[i..end].graphemes(true) {
+            let width = if g == "\t" { 3 } else { grapheme_width(g) };
+            if column >= col && column < col + width {
+                return active.map(str::to_string);
+            }
+            col += width;
+        }
+        i = end;
+    }
+    None
+}
+
+/// `/^\x1b\]8;[^;]*;([^\x07\x1b]*)(?:\x07|\x1b\\)$/`: the URL of an OSC 8 sequence (empty closes the link).
+fn osc8_url(code: &str) -> Option<&str> {
+    let body = code.strip_prefix("\x1b]8;")?;
+    let body = body.strip_suffix('\x07').or_else(|| body.strip_suffix("\x1b\\"))?;
+    let (params, url) = body.split_once(';')?;
+    (!params.contains(';') && !url.contains(['\x07', '\x1b'])).then_some(url)
+}
+
 /// A viewport key's effect.
 type ViewportAction<'a> = dyn Fn(&mut FullscreenViewport) + 'a;
 
@@ -94,6 +139,9 @@ pub enum ViewportInput {
     Consumed,
     /// A selection finished with copy-on-select: copy this text, then report with [`FullscreenViewport::copied`].
     Copy(String),
+    /// A right-button press with [`FullscreenViewport::right_click_paste`] on: paste the clipboard's text
+    /// ([`crate::right_click_paste`]).
+    RightClickPaste,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,6 +231,13 @@ pub struct FullscreenViewport {
     pub indicator: Option<String>,
     /// Paint rows with their OSC 133 zone marks (TypeScript strips them; they are invisible either way).
     pub keep_zone_marks: bool,
+    /// A right-button press pastes instead of selecting ([`crate::right_click_paste::right_click_paste_enabled`];
+    /// off by default).
+    pub right_click_paste: bool,
+    /// Opens an OSC 8 hyperlink clicked with the primary button (`openUrl`); `None` opens nothing.
+    pub open_url: Option<UrlOpener>,
+    /// The hyperlink under the press, opened when the release ends a click (`pressedUrl`).
+    pressed_url: Option<String>,
 }
 
 impl Default for FullscreenViewport {
@@ -219,6 +274,9 @@ impl FullscreenViewport {
             copy_on_select: true,
             indicator: None,
             keep_zone_marks: false,
+            right_click_paste: false,
+            open_url: None,
+            pressed_url: None,
         }
     }
 
@@ -250,6 +308,7 @@ impl FullscreenViewport {
         self.granularity = Granularity::Character;
         self.initial = None;
         self.last_click = None;
+        self.pressed_url = None;
         self.dragged = false;
         self.rect = None;
         self.screen.clear();
@@ -392,6 +451,7 @@ impl FullscreenViewport {
             self.stop_auto_scroll();
             self.set_hover(false);
             self.scrollbar_drag = None;
+            self.pressed_url = None;
             self.dragged = false;
             if had_active {
                 self.anchor = None;
@@ -491,6 +551,9 @@ impl FullscreenViewport {
         if handled {
             return ViewportInput::Consumed;
         }
+        if self.right_click_paste && crate::right_click_paste::is_right_click_press(ev.button, ev.release) {
+            return ViewportInput::RightClickPaste;
+        }
         self.selection_mouse(ev, now)
     }
 
@@ -567,6 +630,7 @@ impl FullscreenViewport {
         self.granularity = Granularity::Character;
         self.initial = None;
         self.last_click = None;
+        self.pressed_url = None;
         self.dragged = false;
         self.set_hover(true);
         let on_thumb = ev.y >= g.thumb_top as i64 && ev.y < (g.thumb_top + g.thumb_height) as i64;
@@ -627,29 +691,7 @@ impl FullscreenViewport {
 
     /// `getWordSelection`: the word (paths and kebab-case kept whole) under `p`.
     fn word(&self, p: Point) -> Option<Range> {
-        let line = strip_terminal_sequences(self.source_line(p));
-        let mut segments: Vec<(usize, usize, bool, bool)> = Vec::new();
-        let mut start = 0;
-        for segment in line.split_word_bounds() {
-            let end = start + visible_width(segment);
-            let joiner = segment == "/" || segment == "-";
-            let word_like = segment.chars().any(char::is_alphanumeric);
-            segments.push((start, end, word_like || joiner, joiner));
-            start = end;
-        }
-        let clicked = segments.iter().position(|s| p.col >= s.0 && p.col < s.1)?;
-        let join = |l: (usize, usize, bool, bool), r: (usize, usize, bool, bool)| l.2 && r.2 && (l.3 || r.3);
-        let (mut from, mut to) = (segments[clicked].0, segments[clicked].1);
-        let mut i = clicked;
-        while i > 0 && join(segments[i - 1], segments[i]) {
-            from = segments[i - 1].0;
-            i -= 1;
-        }
-        let mut i = clicked;
-        while i + 1 < segments.len() && join(segments[i], segments[i + 1]) {
-            to = segments[i + 1].1;
-            i += 1;
-        }
+        let (from, to) = word_selection(&strip_terminal_sequences(self.source_line(p)), p.col)?;
         Some(Range {
             start: Point { col: from, ..p },
             end: Point {
@@ -799,6 +841,17 @@ impl FullscreenViewport {
                 return ViewportInput::Consumed;
             }
             self.update_focus(point);
+            let is_click = !self.dragged
+                && self
+                    .anchor
+                    .is_some_and(|a| a.scroll == point.scroll && a.row == point.row && a.col == point.col);
+            let clicked = self.pressed_url.take().filter(|_| is_click);
+            if let (Some(url), Some(open)) = (clicked, self.open_url.clone()) {
+                self.anchor = None;
+                self.focus = None;
+                open(&url);
+                return ViewportInput::Consumed;
+            }
             if self.copy_on_select
                 && let Some(text) = self.selection_text()
             {
@@ -812,6 +865,7 @@ impl FullscreenViewport {
             }
             self.dragged = true;
             self.last_click = None;
+            self.pressed_url = None;
             self.update_focus(point);
             self.update_auto_scroll(ev, now);
             return ViewportInput::Consumed;
@@ -836,6 +890,13 @@ impl FullscreenViewport {
         self.anchor = Some(range.map_or(anchor, |r| r.start));
         self.focus = Some(range.map_or(anchor, |r| r.end));
         self.dragged = false;
+        self.pressed_url = if range.is_some() {
+            None
+        } else {
+            let row = ev.y.clamp(0, (self.rows as i64 - 1).max(0)) as usize;
+            let col = ev.x.clamp(0, (self.cols as i64 - 1).max(0)) as usize;
+            self.screen.get(row).and_then(|line| osc8_link_at_column(line, col))
+        };
         ViewportInput::Consumed
     }
 
@@ -952,6 +1013,87 @@ impl FullscreenViewport {
         }
         screen
     }
+}
+
+/// The script of a character that Intl.Segmenter splits with ICU's CJ dictionary: Han, Hiragana or Katakana
+/// (word-break Katakana: the prolonged sound mark, the vertical kana repeat marks and the half-width forms too).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CjScript {
+    Han,
+    Hiragana,
+    Katakana,
+}
+
+fn cj_script(c: char) -> Option<CjScript> {
+    match u32::from(c) {
+        0x2E80..=0x2FDF
+        | 0x3005..=0x3007
+        | 0x3021..=0x3029
+        | 0x3038..=0x303B
+        | 0x3400..=0x4DBF
+        | 0x4E00..=0x9FFF
+        | 0xF900..=0xFAFF
+        | 0x20000..=0x3FFFF => Some(CjScript::Han),
+        0x3041..=0x3096 | 0x309D..=0x309F | 0x1B001..=0x1B11F | 0x1F200 => Some(CjScript::Hiragana),
+        0x3031..=0x3035
+        | 0x309B..=0x309C
+        | 0x30A1..=0x30FA
+        | 0x30FC..=0x30FF
+        | 0x31F0..=0x31FF
+        | 0x32D0..=0x32FE
+        | 0x3300..=0x3357
+        | 0xFF66..=0xFF9D
+        | 0x1AFF0..=0x1AFFE
+        | 0x1B000 => Some(CjScript::Katakana),
+        _ => None,
+    }
+}
+
+/// `wordSegmenter.segment(line)` with `isWordLike`: UAX #29 word bounds, where a run of one CJ script is one word.
+/// Node's ICU splits such runs with its Chinese/Japanese dictionary; without one, a script change is the boundary
+/// (日本語|の|テキスト as ICU; 中文分词 stays whole where ICU splits 中文|分词).
+fn word_segments(line: &str) -> Vec<(&str, bool)> {
+    let mut segments: Vec<(&str, bool, Option<CjScript>)> = Vec::new();
+    let mut at = 0;
+    for segment in line.split_word_bounds() {
+        let script = segment.chars().next().and_then(cj_script);
+        let word_like = script.is_some() || segment.chars().any(char::is_alphanumeric);
+        match segments.last_mut() {
+            Some(last) if script.is_some() && last.2 == script => {
+                last.0 = &line[at - last.0.len()..at + segment.len()];
+            }
+            _ => segments.push((segment, word_like, script)),
+        }
+        at += segment.len();
+    }
+    segments.into_iter().map(|(s, w, _)| (s, w)).collect()
+}
+
+/// `getWordSelection` on a plain `line`: the columns `[start, end)` of the word under column `col` (`/` and `-`
+/// join selectable neighbours, so paths and kebab-case stay whole), or `None` past the line's end.
+pub fn word_selection(line: &str, col: usize) -> Option<(usize, usize)> {
+    let mut segments: Vec<(usize, usize, bool, bool)> = Vec::new();
+    let mut start = 0;
+    for (segment, word_like) in word_segments(line) {
+        let end = start + visible_width(segment);
+        let joiner = segment == "/" || segment == "-";
+        segments.push((start, end, word_like || joiner, joiner));
+        start = end;
+    }
+    let clicked = segments.iter().position(|s| col >= s.0 && col < s.1)?;
+    let join = |l: (usize, usize, bool, bool), r: (usize, usize, bool, bool)| l.2 && r.2 && (l.3 || r.3);
+    let (mut from, mut to) = (segments[clicked].0, segments[clicked].1);
+    let mut i = clicked;
+    while i > 0 && join(segments[i - 1], segments[i]) {
+        from = segments[i - 1].0;
+        i -= 1;
+    }
+    let mut i = clicked;
+    while i + 1 < segments.len() && join(segments[i], segments[i + 1]) {
+        to = segments[i + 1].1;
+        i += 1;
+    }
+    Some((from, to))
 }
 
 fn to_screen(p: Point, shift: i64) -> ScreenPoint {

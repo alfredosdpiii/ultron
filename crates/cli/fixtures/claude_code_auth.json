@@ -1,0 +1,148 @@
+{
+	"cases": [
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code"
+			],
+			"cli": "path",
+			"stdout": "ready\n",
+			"stderr": "",
+			"code": 0
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json"
+			],
+			"cli": "path",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"claude-code\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json",
+				"--no-refresh"
+			],
+			"cli": "path",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"claude-code\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json",
+				"--credentials"
+			],
+			"cli": "path",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"claude-code\",\"reason\":\"credential_not_available\"}\n",
+			"stderr": "",
+			"code": 1
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code"
+			],
+			"cli": "none",
+			"stdout": "not_ready\n",
+			"stderr": "",
+			"code": 1
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json"
+			],
+			"cli": "none",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"claude-code\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json",
+				"--credentials"
+			],
+			"cli": "none",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"claude-code\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json"
+			],
+			"cli": "configured",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"claude-code\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--provider",
+				"claude-code",
+				"--json"
+			],
+			"cli": "configured-missing",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"claude-code\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"claude-code/sonnet",
+				"--json"
+			],
+			"cli": "path",
+			"stdout": "{\"status\":\"ready\",\"provider\":\"claude-code\",\"authType\":\"api_key\"}\n",
+			"stderr": "",
+			"code": 0
+		},
+		{
+			"args": [
+				"auth",
+				"check",
+				"--model",
+				"claude-code/claude-opus-5-5",
+				"--json"
+			],
+			"cli": "none",
+			"stdout": "{\"status\":\"not_ready\",\"provider\":\"claude-code\",\"reason\":\"credentials_not_configured\"}\n",
+			"stderr": "",
+			"code": 1
+		}
+	]
+}

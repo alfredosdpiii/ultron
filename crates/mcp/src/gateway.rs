@@ -235,9 +235,35 @@ pub fn spawn_detached(command: &str, args: &[String]) {
 
 pub type UrlOpener = Arc<dyn Fn(&str) + Send + Sync>;
 
+/// The session variables a browser launcher needs to reach the desktop (xdg-open finds the display and the
+/// session bus through them); only these pass to it besides PATH and HOME.
+pub const OPENER_VARS: [&str; 8] = [
+    "DISPLAY",
+    "WAYLAND_DISPLAY",
+    "XDG_RUNTIME_DIR",
+    "DBUS_SESSION_BUS_ADDRESS",
+    "XAUTHORITY",
+    "XDG_CURRENT_DESKTOP",
+    "XDG_SESSION_TYPE",
+    "BROWSER",
+];
+
+/// [`OPENER_VARS`] as `var` (the session's environment) has them.
+pub fn opener_vars(var: &dyn Fn(&str) -> Option<String>) -> Vec<(String, String)> {
+    OPENER_VARS
+        .iter()
+        .filter_map(|name| var(name).map(|value| (name.to_string(), value)))
+        .collect()
+}
+
 /// `openBrowser` with the launcher found on `path` (the session's PATH, never the process's), run detached with
 /// only that PATH and `home` in its environment; a missing launcher opens nothing.
 pub fn browser_opener(path: Option<String>, home: Option<String>) -> UrlOpener {
+    browser_opener_with(path, home, Vec::new())
+}
+
+/// [`browser_opener`] that also passes `desktop` (from [`opener_vars`]) to the launcher.
+pub fn browser_opener_with(path: Option<String>, home: Option<String>, desktop: Vec<(String, String)>) -> UrlOpener {
     Arc::new(move |url: &str| {
         let (name, args) = browser_command(node_platform(), url);
         let Some(launcher) = path.as_deref().and_then(|path| {
@@ -258,6 +284,7 @@ pub fn browser_opener(path: Option<String>, home: Option<String>) -> UrlOpener {
         if let Some(home) = &home {
             command.env("HOME", home);
         }
+        command.envs(desktop.iter().map(|(name, value)| (name, value)));
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut command, 0);
         if let Ok(mut child) = command.spawn() {
