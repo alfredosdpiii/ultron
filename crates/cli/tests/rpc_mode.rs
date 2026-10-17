@@ -412,6 +412,8 @@ fn run_case_with(case: &Value, journals: bool) -> Vec<Value> {
         ("ULTRON_SERVER_DIR", root_dir.join("server").display().to_string()),
         ("ANTHROPIC_API_KEY", "test-key".into()),
         ("ULTRON_HINDSIGHT_URL", "off".into()),
+        // TypeScript has no context reminder (session_core::context_reminder, Rust-only).
+        ("ULTRON_CONTEXT_REMINDER", "off".into()),
         ("PI_OFFLINE", "1".into()),
         ("NO_COLOR", "1".into()),
         ("TZ", "UTC".into()),

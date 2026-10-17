@@ -600,6 +600,12 @@ impl Core {
             });
             self.on_agent_event(AgentEvent::MessageEnd { message });
         }
+        // The root lane's context reminder follows its model and compaction settings as of this request.
+        let settings = self.compaction_settings();
+        self.lane.stack.context_reminders.set_limit(
+            LANE,
+            crate::context_reminder::lane_limit(&self.model, settings.enabled, settings.reserve_tokens),
+        );
         let start = self
             .request_messages(source_tip.as_deref())
             .map(|messages| GenerationStart {

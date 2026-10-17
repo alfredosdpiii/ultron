@@ -2939,6 +2939,21 @@ W7C-10	cli	--model/--provider claude-code resolve for sessions, with request aut
 W7C-11	cli	autoreview fixture repository identical	cli_autoreview_claude_code_fixture_repository_matches
 W7C-12	cli	autoreview picks claude-code/claude-haiku-5-5 and runs frames on the CLI	cli_autoreview_claude_code_recommended_model_runs_on_the_cli
 W7C-13	cli	autoreview explicit claude-code finder/verifier models	cli_autoreview_claude_code_explicit_models_run_on_the_cli
+W8R-01	context-reminder	margin = max(2048, window/10), env override wins	session_core_context_reminder_margin_is_the_larger_of_2048_and_a_tenth_of_the_window
+W8R-02	context-reminder	trigger = (window - reserve) - margin, saturating	session_core_context_reminder_triggers_at_the_compaction_threshold_minus_the_margin
+W8R-03	context-reminder	line text and token formatting, compaction on/off wording	session_core_context_reminder_line_names_the_use_the_limit_and_ctx
+W8R-04	context-reminder	once per approach; re-armed when use falls below the trigger	session_core_context_reminder_reminds_once_per_approach_and_rearms_below_the_trigger
+W8R-05	context-reminder	re-armed by rearm() and by a new compaction epoch	session_core_context_reminder_rearms_after_a_compaction
+W8R-06	context-reminder	per-lane state; no limit / zero window / cleared limit never reminds	session_core_context_reminder_keeps_each_lane_apart
+W8R-07	context-reminder	ULTRON_CONTEXT_REMINDER off|0|false, ULTRON_CONTEXT_REMINDER_TOKENS parsing	session_core_context_reminder_reads_its_environment
+W8R-08	context-reminder	meter use plus ceil(chars/4) of the result; no meter, no reminder	session_core_context_reminder_adds_the_result_to_the_meter
+W8R-09	context-reminder	no limit for claude-code lanes	session_core_context_reminder_skips_claude_code_lanes
+W8R-10	context-reminder	end-to-end root session: reminder on crossing, once, re-armed after a usage drop	session_core_context_reminder_ends_the_root_result_that_crosses_the_trigger
+W8R-11	context-reminder	auto-compaction off: "before the context limit"	session_core_context_reminder_names_the_context_limit_with_auto_compaction_off
+W8R-12	context-reminder	ULTRON_CONTEXT_REMINDER=off in a live session	session_core_context_reminder_is_off_with_the_environment_switch
+W8R-13	context-reminder	order: result, budget line, then reminder	session_core_context_reminder_comes_after_the_budget_line
+W8R-14	context-reminder	root threshold compaction re-arms the reminder	session_core_context_reminder_rearms_after_the_root_compacts
+W8R-15	context-reminder	subagent lane is reminded at its own threshold, root is not	session_core_context_reminder_reaches_a_subagent_lane
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

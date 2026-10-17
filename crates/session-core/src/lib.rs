@@ -16,6 +16,7 @@ pub mod budget_note;
 pub mod commands;
 pub mod compaction_op;
 pub mod compose;
+pub mod context_reminder;
 pub mod core;
 pub mod durable_store;
 pub mod extension_apis;

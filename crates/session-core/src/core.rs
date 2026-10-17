@@ -1027,6 +1027,22 @@ impl Core {
             lane.stack.agents.clone(),
             lane.stack.usage.clone(),
         ));
+        // Each lane's context use for its reminder: the estimate the harness compacts by, over the lane's durable
+        // conversation (the root's, or the child's); its summary entry marks a compaction.
+        let meter_children = children.clone();
+        lane.stack.context_reminders.set_meter(Arc::new(move |lane_name: &str| {
+            let chat = meter_children.chat()?;
+            let conversation = if lane_name == lane::MAIN {
+                durable::ROOT_CONVERSATION_ID
+            } else {
+                meter_children.conversation_of_lane(lane_name)?
+            };
+            let view = chat.conversation(conversation).ok().flatten()?.context(None).ok()?;
+            Some(crate::context_reminder::Measure {
+                tokens: harness::chat::compaction::estimate_context(&view, &[]),
+                epoch: view.head.as_ref().map(|head| head.id.0),
+            })
+        }));
         let _ = lane
             .stack
             .swarm

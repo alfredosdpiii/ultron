@@ -693,6 +693,12 @@ impl Runtime {
         };
         // Situational hints (`ULTRON_HINTS=on`): what a cell did, observed per lane, ends its result with one line.
         let var = |key: &str| (config.var)(key);
+        let context_reminders = Arc::new(crate::context_reminder::ContextReminders::new(
+            crate::context_reminder::ReminderSettings::from_vars(
+                var("ULTRON_CONTEXT_REMINDER").as_deref(),
+                var("ULTRON_CONTEXT_REMINDER_TOKENS").as_deref(),
+            ),
+        ));
         let cell_hints = Arc::new(kernel_apis::cell_hints::CellHints::new(
             apis.hints.clone(),
             kernel_apis::cell_hints::CellHintsOptions {
@@ -881,6 +887,7 @@ impl Runtime {
                 images,
                 swarm: std::sync::OnceLock::new(),
                 budget_note: Arc::new(std::sync::OnceLock::new()),
+                context_reminders,
                 lane_steer: Arc::new(std::sync::OnceLock::new()),
                 stats,
                 retired_guards: Mutex::new(Vec::new()),
@@ -1059,6 +1066,9 @@ pub struct Stack {
     pub swarm: std::sync::OnceLock<Arc<crate::swarm_ops::SwarmOps>>,
     /// The budget line every lane's cell results end with, once the session actor wired it (crate::budget_note).
     pub budget_note: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
+    /// The context-pressure reminder every lane's cell results may end with (crate::context_reminder): each lane's
+    /// limit and, once the session actor wired it, the meter of its context use.
+    pub context_reminders: Arc<crate::context_reminder::ContextReminders>,
     /// Steering into a child lane's running conversation (crate::agent_hub), once the session actor wired it.
     pub lane_steer: Arc<std::sync::OnceLock<crate::agent_hub::LaneSteer>>,
     /// The session's runtime counters (crate::session_stats), for `/usage`.
@@ -1302,7 +1312,8 @@ impl Stack {
             Some(self.host_of(lane)),
         )
         .with_budget_note(self.budget_note.clone())
-        .with_stats(self.stats.clone()))
+        .with_stats(self.stats.clone())
+        .with_context_reminders(self.context_reminders.clone()))
     }
 
     /// `listCommands`: the extensions' slash commands, `/review`, prompt templates and skills (crate::commands).
@@ -1670,6 +1681,11 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
     }
     // A subagent's `view_image` resizes for its own model.
     stack.images.set_model(Some(&run.lane_name), model.clone());
+    // Its context reminder: a child conversation compacts at the harness's default threshold.
+    stack.context_reminders.set_limit(
+        &run.lane_name,
+        crate::context_reminder::lane_limit(&model, true, harness::chat::CompactionPolicy::default().reserve_tokens),
+    );
     // The model each `rlm.spawn` subagent runs on is counted (`childModel`; a subagent run as a process has no lane
     // to ask).
     stack

@@ -174,6 +174,8 @@ impl Core {
         self.compacting = None;
         let (message, from_extension, status) = match work {
             Work::Done(id, from_hook) => {
+                // A compacted context starts a new approach to the limit: its next crossing reminds again.
+                self.lane.stack.context_reminders.rearm(LANE);
                 self.announce();
                 self.still_compacting(|core| core.after_compact(&id, from_hook, reason.name(), will_retry));
                 self.compaction_event("compaction_end", reason, Some(("completed", None)));

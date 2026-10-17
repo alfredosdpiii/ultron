@@ -774,6 +774,9 @@ pub struct Rlm {
     budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
     /// The session's runtime counters: each cell is counted where it runs.
     stats: Option<Arc<crate::session_stats::SessionStats>>,
+    /// The context-pressure reminder a cell's result ends with when the lane nears its limit
+    /// (crate::context_reminder).
+    reminders: Option<Arc<crate::context_reminder::ContextReminders>>,
 }
 
 impl Rlm {
@@ -787,6 +790,17 @@ impl Rlm {
     pub(crate) fn with_stats(mut self, stats: Arc<crate::session_stats::SessionStats>) -> Rlm {
         self.stats = Some(stats);
         self
+    }
+
+    /// This tool with the stack's context reminders on its results.
+    pub(crate) fn with_context_reminders(mut self, reminders: Arc<crate::context_reminder::ContextReminders>) -> Rlm {
+        self.reminders = Some(reminders);
+        self
+    }
+
+    /// The context reminder this lane's result `text` ends with, if it is due.
+    fn context_reminder(&self, text: &str) -> Option<String> {
+        self.reminders.as_ref()?.reminder(&self.lane, text)
     }
 
     fn count_cell(&self, code: &str, failed: bool, masked: usize) {
@@ -956,6 +970,11 @@ impl Rlm {
                 Some(line) => format!("{text}\n{line}"),
                 None => text,
             };
+            // The context reminder ends it, once per approach to the lane's limit.
+            let text = match self.context_reminder(&text) {
+                Some(line) => format!("{text}\n{line}"),
+                None => text,
+            };
             Ok(AgentToolResult {
                 content: crate::view_images::cell_content(images.as_ref(), text),
                 details: json!({}),
@@ -1068,5 +1087,6 @@ pub(crate) fn rlm_over(
         host,
         budget: Arc::new(std::sync::OnceLock::new()),
         stats: None,
+        reminders: None,
     }
 }
