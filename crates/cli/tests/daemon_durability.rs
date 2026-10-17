@@ -99,18 +99,19 @@ impl Provider {
         wait_until(HANG_GUARD, what, || self.count() >= count);
     }
 
-    /// [`Provider::wait_for`] while `client` runs: a client that exits first fails at once, with its output.
-    fn wait_for_client(&self, count: usize, what: &str, client: &mut Child) {
-        wait_until(HANG_GUARD, what, || {
+    /// [`Provider::wait_for`] while `client` runs: a client that exits first fails at once with its stderr (the
+    /// file at `stderr`); on the hang guard the test fails with [`common::hang_report`] for everything under `root`.
+    fn wait_for_client(&self, count: usize, what: &str, client: &mut Child, root: &Path, stderr: &Path) {
+        let deadline = Instant::now() + HANG_GUARD;
+        while self.count() < count {
             if let Some(status) = client.try_wait().unwrap() {
-                let mut stderr = String::new();
-                if let Some(pipe) = client.stderr.as_mut() {
-                    let _ = pipe.read_to_string(&mut stderr);
-                }
-                panic!("the client exited ({status}) before {what}; stderr:\n{stderr}");
+                common::exited_early(what, status, stderr);
             }
-            self.count() >= count
-        });
+            if Instant::now() >= deadline {
+                common::hang(what, root, client);
+            }
+            std::thread::sleep(Duration::from_millis(25));
+        }
     }
 }
 
@@ -565,20 +566,27 @@ fn cli_durable_print_client_rejoins_after_its_coordinator_is_killed() {
         (text_reply("Recovered."), Duration::ZERO),
     ]);
     let home = Home::new(provider.port);
+    let (stderr, stderr_path) = home.stderr_file("client");
     let mut client = home
         .command(&["--mode", "json", "--model", MODEL, "first"])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(stderr)
         .spawn()
         .unwrap();
-    provider.wait_for_client(1, "the turn reached the provider", &mut client);
+    provider.wait_for_client(
+        1,
+        "the turn reached the provider",
+        &mut client,
+        &home.root,
+        &stderr_path,
+    );
     let coordinator = coordinator_pid(&home).expect("the coordinator runs");
     signal(coordinator, rustix::process::Signal::KILL);
     let output = client.wait_with_output().unwrap();
     assert!(
         output.status.success(),
         "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
+        std::fs::read_to_string(&stderr_path).unwrap_or_default()
     );
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["kind"], "prompted");
@@ -666,13 +674,20 @@ fn cli_durable_rpc_client_rejoins_after_its_coordinator_is_killed() {
 fn cli_durable_sigint_aborts_the_print_turn() {
     let provider = provider(vec![(text_reply("Never seen."), STALL)]);
     let home = Home::new(provider.port);
+    let (stderr, stderr_path) = home.stderr_file("client");
     let mut client = home
         .command(&["--mode", "json", "--model", MODEL, "stop me"])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(stderr)
         .spawn()
         .unwrap();
-    provider.wait_for_client(1, "the turn reached the provider", &mut client);
+    provider.wait_for_client(
+        1,
+        "the turn reached the provider",
+        &mut client,
+        &home.root,
+        &stderr_path,
+    );
     signal(client.id(), rustix::process::Signal::INT);
     let output = client.wait_with_output().unwrap();
     assert_eq!(output.status.code(), Some(130));

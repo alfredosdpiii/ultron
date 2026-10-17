@@ -157,6 +157,8 @@ pub fn run<W: Write>(
 pub fn run_stdout(app: &mut App, events: &Receiver<UiEvent>, size: &dyn Fn() -> (u16, u16)) -> std::io::Result<()> {
     crate::qol::install_services(app, std::env::var("PATH").ok());
     app.set_suspend_hook(Box::new(suspend_process));
+    // Fullscreen owns the mouse (wheel, scrollbar, selection); the tracking mode follows the terminal multiplexer.
+    app.set_mouse_tracking(Some(tui::fullscreen::mouse_tracking(&|name| std::env::var(name).ok())));
     let mut terminal = Terminal::new(std::io::stdout());
     if app.qol().tty_writer {
         let tty = TtyWriter::stdout()?;
@@ -216,8 +218,19 @@ pub fn paint_loop(
     let mut screen = AltScreen::new();
     let mut viewport = ViewportRenderer::new();
     let mut gate = RenderGate::new();
+    let mouse = app.mouse_tracking().filter(|_| !split);
+    // `beforeTerminalStart` / `beforeTerminalStop` with the mouse captured.
+    let enter = |screen: &mut AltScreen, app: &mut App| {
+        app.reset_viewport();
+        screen.enter_with_mouse(mouse.unwrap_or(""))
+    };
+    let release = if mouse.is_some() {
+        AltScreen::release_mouse()
+    } else {
+        String::new()
+    };
     if !split {
-        out(&screen.enter())?;
+        out(&enter(&mut screen, app))?;
     }
     let mut last_size = (0, 0);
     let mut dirty = true;
@@ -237,6 +250,9 @@ pub fn paint_loop(
             // Pi's Ctrl+G: the TUI stops (input paused, alternate screen left, cooked mode) while the editor runs.
             let gate = app.input_gate();
             gate.store(true, Ordering::SeqCst);
+            if !release.is_empty() {
+                out(&release)?;
+            }
             out(if split {
                 "\x1b[?2004l\x1b[?25h\r\n"
             } else {
@@ -260,6 +276,9 @@ pub fn paint_loop(
             // and on continue everything is painted again.
             let gate = app.input_gate();
             gate.store(true, Ordering::SeqCst);
+            if !release.is_empty() {
+                out(&release)?;
+            }
             out(if split {
                 "\x1b[?2004l\x1b[?25h\r\n"
             } else {
@@ -280,13 +299,16 @@ pub fn paint_loop(
         if app.poll_rlm() {
             dirty = true;
         }
+        if !split && app.poll_viewport(Instant::now()) {
+            dirty = true;
+        }
         if app.take_reset_display() {
             // Alt+L: forget what the terminal shows and paint everything again.
             out("\x1b[2J\x1b[3J\x1b[H")?;
             screen = AltScreen::new();
             viewport = ViewportRenderer::new();
             if !split {
-                out(&screen.enter())?;
+                out(&enter(&mut screen, app))?;
             }
             dirty = true;
         }
@@ -335,6 +357,9 @@ pub fn paint_loop(
         if let Some(d) = deferred {
             wait = wait.min(d);
         }
+        if let Some(at) = app.viewport_deadline().filter(|_| !split) {
+            wait = wait.min(at.saturating_duration_since(Instant::now()));
+        }
         match events.recv_timeout(wait) {
             Ok(event) => {
                 handle(app, event);
@@ -369,6 +394,9 @@ pub fn paint_loop(
         out(&write)?;
     }
     let document = app.exit_document(width);
+    if !release.is_empty() {
+        out(&release)?;
+    }
     out(&screen.exit(&document, width))
 }
 

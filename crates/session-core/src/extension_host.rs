@@ -9,10 +9,16 @@
 //! `void lane.followUp(...)`, ...) are queued to the actor and answered at once. So an extension handler that the
 //! actor waits for (`before_agent_start`, `context`) can still use them. Only `model/set`, `session/navigateTree`
 //! and `agent/waitForIdle` wait for the actor, as TypeScript awaits them.
+//!
+//! `ctx.sessionManager` is crate::extension_session, `ctx.modelRegistry` and `ctx.scopedModels` are
+//! crate::extension_registry. The active tool list (`getActiveTools`/`setActiveTools`) is the adapter's: the REPL
+//! stays pinned and the extension functions (REPL tools) are filtered out, so the model's tool list is `[rlm]`
+//! whatever an extension activates.
 
 use crate::compose::{Stack, SystemPrompt};
 use crate::core::{Input, Op, OpResult, QueueKind};
 use crate::durable_store::{SharedSession, lock as lock_session};
+use crate::{ModelFlags, RunEnv};
 use extensions::rpc::{CancelToken, RpcError, method_not_found};
 use extensions::ui::{NoticeLevel, Placement, UiUpdate, no_ui_answer};
 use extensions::{ExtensionHost, HostApi};
@@ -98,7 +104,17 @@ pub struct SessionHost {
     pub(crate) shutdown: Mutex<Value>,
     /// `before_agent_start` messages of the run in progress: (operation id, user messages).
     pub(crate) injected: Mutex<Option<(String, Vec<Value>)>>,
+    /// The session's environment and model flags (the model registry extensions read), once the session opened.
+    models: OnceLock<(RunEnv, ModelFlags)>,
+    /// `getActiveTools`: the REPL, plus whatever an extension activated that is not one of its REPL tools.
+    active_tools: Mutex<Vec<String>>,
 }
+
+/// The tool no extension can deactivate: without the REPL the model has nothing to work with.
+const PINNED_TOOLS: [&str; 1] = ["rlm"];
+
+/// The worker's headless `setTheme` (legacy-extension-adapter.ts `createHeadlessExtensionUI`).
+pub const SET_THEME_ERROR: &str = "Native worker UI adapter does not switch themes";
 
 impl SessionHost {
     pub fn new(
@@ -126,7 +142,38 @@ impl SessionHost {
             facts: Mutex::new(Facts::default()),
             shutdown: Mutex::new(json!({"reason": "quit"})),
             injected: Mutex::new(None),
+            models: OnceLock::new(),
+            active_tools: Mutex::new(PINNED_TOOLS.iter().map(|t| t.to_string()).collect()),
         }
+    }
+
+    /// The session's environment and model flags, for `models/*` and `scopedModels`.
+    pub(crate) fn bind_models(&self, env: RunEnv, flags: ModelFlags) {
+        let _ = self.models.set((env, flags));
+    }
+
+    /// `getActiveTools`.
+    pub fn active_tools(&self) -> Vec<String> {
+        lock(&self.active_tools).clone()
+    }
+
+    /// `setActiveTools(names)` as the worker filters it: the session's REPL tools (extension functions) stay out
+    /// of the model's tool list, and the REPL stays in front.
+    pub fn set_active_tools(&self, names: &[String]) {
+        let registered: Vec<String> = self
+            .extensions
+            .get()
+            .and_then(Weak::upgrade)
+            .map(|host| host.functions().into_iter().map(|(_, f)| f.name).collect())
+            .unwrap_or_default();
+        let next: Vec<String> = names.iter().filter(|n| !registered.contains(n)).cloned().collect();
+        let mut active: Vec<String> = PINNED_TOOLS
+            .iter()
+            .map(|t| t.to_string())
+            .filter(|t| !next.contains(t))
+            .collect();
+        active.extend(next);
+        *lock(&self.active_tools) = active;
     }
 
     /// Whether the session can show extension UI at all (Pi's `hasUI` modes: the TUI and RPC with a bridge).
@@ -201,6 +248,12 @@ impl SessionHost {
             // The worker reports no context usage (`getContextUsage: () => undefined`).
             "contextUsage": null,
             "systemPrompt": self.system.get().map(SystemPrompt::current),
+            "scopedModels": self
+                .models
+                .get()
+                .map_or_else(|| json!([]), |(env, flags)| crate::extension_registry::scoped_models(env, flags)),
+            // The command context's `getSystemPromptOptions` (the worker's `{ cwd }`).
+            "systemPromptOptions": {"cwd": self.cwd.display().to_string()},
         })
     }
 
@@ -220,6 +273,9 @@ impl SessionHost {
                 .into_iter()
                 .map(|(extension, f)| {
                     let mut tool = json!({"name": f.name, "description": f.description, "parameters": f.parameters});
+                    if let Some(guidelines) = &f.prompt_guidelines {
+                        tool["promptGuidelines"] = json!(guidelines);
+                    }
                     if let Some((_, path)) = paths.iter().find(|(name, _)| *name == extension)
                         && let Some(info) = crate::extension_commands::source_info(
                             path,
@@ -345,6 +401,27 @@ impl HostApi for SessionHost {
             "ui/getEditorText" | "ui/getToolsExpanded" | "ui/getAllThemes" => {
                 Ok(no_ui_answer(method).unwrap_or_default())
             }
+            "ui/setTheme" => Ok(json!({"success": false, "error": SET_THEME_ERROR})),
+            "tools/active" => Ok(json!(self.active_tools())),
+            "tools/setActive" => {
+                let names: Vec<String> = params
+                    .get("names")
+                    .and_then(Value::as_array)
+                    .and_then(|names| names.iter().map(|n| n.as_str().map(str::to_string)).collect())
+                    .ok_or_else(|| RpcError::remote(-32602, "\"names\" must be an array of strings"))?;
+                self.set_active_tools(&names);
+                Ok(Value::Null)
+            }
+            _ if method.starts_with("models/") => {
+                let (env, flags) = self
+                    .models
+                    .get()
+                    .ok_or_else(|| RpcError::Other("The session is not open".into()))?;
+                match crate::extension_registry::request(env, flags, method, params) {
+                    Some(answer) => answer.map_err(|e| RpcError::remote(-32602, e)),
+                    None => Err(method_not_found(method)),
+                }
+            }
             "host/context" => Ok(self.context()),
             "host/exec" => extensions::exec::exec(params, &self.cwd, cancel),
             // The worker binds no shutdown handler (`this.#onShutdown?.()`); an embedder may.
@@ -361,14 +438,25 @@ impl HostApi for SessionHost {
                 .get()
                 .and_then(Weak::upgrade)
                 .map_or_else(|| json!([]), |stack| Value::Array(stack.commands()))),
-            "session/getName" => Ok(json!(lock_session(self.session()?).name())),
-            "session/entries" | "session/branch" | "session/leaf" => {
-                let pi = crate::pi_view::pi_manager(&lock_session(self.session()?));
-                Ok(match method {
-                    "session/entries" => Value::Array(pi.entries().into_iter().cloned().collect()),
-                    "session/branch" => Value::Array(pi.branch_entries(None).into_iter().cloned().collect()),
-                    _ => pi.leaf_id().cloned().unwrap_or(Value::Null),
-                })
+            "session/getName"
+            | "session/entries"
+            | "session/branch"
+            | "session/leaf"
+            | "session/leafEntry"
+            | "session/entry"
+            | "session/label"
+            | "session/tree"
+            | "session/contextEntries"
+            | "session/file"
+            | "session/id"
+            | "session/dir"
+            | "session/cwd"
+            | "session/header" => {
+                let session = lock_session(self.session()?);
+                match crate::extension_session::request(&session, method, params) {
+                    Some(answer) => answer.map_err(|e| RpcError::remote(-32602, e)),
+                    None => Err(method_not_found(method)),
+                }
             }
             // `sendMessage: () => {}` in the worker.
             "session/sendMessage" => Ok(Value::Null),

@@ -5,11 +5,13 @@ PROBE_LOG (path): every `initialize`, event, notification and command it receive
 PROBE_ANSWERS (JSON): `{event type: result}` returned for events (default null). A result `{"$host": [method, params]}`
     makes the handler call the host first and return `{"host": <answer or {"error": message}>}`.
 PROBE_COMMANDS (JSON): `{command name: [[method, params], ...]}`: `commands/run` calls the host with each request in
-    order and logs the answers.
+    order and logs the answers. A params value `{"$result": method}` is replaced by the latest answer to that method.
 PROBE_SHORTCUT_ERRORS (JSON): `{key: message}`: `shortcuts/run` for that key fails with the message.
 
 Functions: `host(method, params)` calls the host and returns its answer in `details` (`isError` with the message when it
-fails); `notify(method, params)` sends a notification.
+fails); `notify(method, params)` sends a notification; `progress(updates, gate?)` reports each text of `updates` as
+`functions/update` for its `toolCallId`, then waits for the file `gate` (when given) and returns "done" with the call's
+`toolCallId` in `details`.
 """
 
 import json
@@ -92,6 +94,15 @@ def handle_request(message):
                 result = {"content": [{"type": "text", "text": outcome["error"]}], "isError": True}
             else:
                 result = {"content": [], "details": outcome["result"]}
+        elif params["name"] == "progress":
+            call_id = params.get("toolCallId")
+            for text in args.get("updates") or []:
+                send({"jsonrpc": "2.0", "method": "functions/update",
+                      "params": {"toolCallId": call_id, "content": [{"type": "text", "text": text}]}})
+            gate = args.get("gate")
+            while gate and not os.path.exists(gate):
+                threading.Event().wait(0.01)
+            result = {"content": [{"type": "text", "text": "done"}], "details": {"toolCallId": call_id}}
         elif params["name"] == "notify":
             send({"jsonrpc": "2.0", "method": args["method"], "params": args.get("params") or {}})
             result = {"content": [{"type": "text", "text": "sent"}]}
@@ -100,8 +111,15 @@ def handle_request(message):
             return
     elif method == "commands/run":
         log({"command": params})
+        answers = {}
         for host_method, host_params in env_json("PROBE_COMMANDS", {}).get(params["name"], []):
-            log({"host": host_method, "outcome": call_host(host_method, host_params)})
+            host_params = {
+                key: answers.get(value["$result"]) if isinstance(value, dict) and "$result" in value else value
+                for key, value in host_params.items()
+            }
+            outcome = call_host(host_method, host_params)
+            answers[host_method] = outcome.get("result")
+            log({"host": host_method, "outcome": outcome})
         result = None
     elif method == "shortcuts/run":
         log({"shortcut": params})

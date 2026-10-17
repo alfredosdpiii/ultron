@@ -150,8 +150,23 @@ impl AltScreen {
 
     /// Switch to the alternate screen, without autowrap, cleared, cursor hidden.
     pub fn enter(&mut self) -> String {
+        self.enter_with_mouse("")
+    }
+
+    /// [`AltScreen::enter`] that also turns on `mouse` tracking (`beforeTerminalStart` with `mouse: true`; see
+    /// [`crate::fullscreen::mouse_tracking`]).
+    pub fn enter_with_mouse(&mut self, mouse: &str) -> String {
         self.previous.clear();
-        format!("{ENTER_ALT_SCREEN}{DISABLE_AUTOWRAP}\x1b[2J\x1b[H\x1b[?25l")
+        format!("{ENTER_ALT_SCREEN}{DISABLE_AUTOWRAP}{mouse}\x1b[2J\x1b[H\x1b[?25l")
+    }
+
+    /// `beforeTerminalStop` with mouse tracking on: tracking off and autowrap back on, before [`AltScreen::exit`] or
+    /// a handover of the terminal.
+    pub fn release_mouse() -> String {
+        format!(
+            "{BEGIN_SYNC}{}{ENABLE_AUTOWRAP}{END_SYNC}",
+            crate::fullscreen::DISABLE_MOUSE
+        )
     }
 
     /// One frame of exactly `height` rows (extra rows are dropped, missing rows blank); a cursor marker places the

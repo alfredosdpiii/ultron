@@ -83,11 +83,62 @@ pub struct ProviderSpec {
     pub config: Map<String, Value>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// `registerTool(tool)` as a kernel-API function: its name, description and parameter schema, and the metadata
+/// TypeScript's `ToolDefinition` carries for the REPL (`label`, `executionMode`) and for `getAllTools`
+/// (`promptGuidelines`).
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionSpec {
     pub name: String,
     pub description: String,
     pub parameters: Value,
+    /// Human-readable label (`tools.list`, `tools.describe`).
+    pub label: Option<String>,
+    /// `"sequential"`: the call runs alone among its lane's REPL calls; `"parallel"` or absent: concurrently.
+    pub execution_mode: Option<String>,
+    /// Guideline bullets (`getAllTools` reports them; the REPL tool never joins the model's tool list).
+    pub prompt_guidelines: Option<Vec<String>>,
+}
+
+/// One registered function from `capabilities.functions`.
+fn parse_function(f: &Value) -> Result<FunctionSpec, String> {
+    let name = f
+        .get("name")
+        .and_then(Value::as_str)
+        .filter(|n| is_identifier(n))
+        .ok_or("each function needs a \"name\" that is a Python identifier")?;
+    let execution_mode = match f.get("executionMode") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(mode)) if mode == "sequential" || mode == "parallel" => Some(mode.clone()),
+        Some(_) => {
+            return Err(format!(
+                "function \"{name}\": executionMode must be \"sequential\" or \"parallel\""
+            ));
+        }
+    };
+    let prompt_guidelines = match f.get("promptGuidelines") {
+        None | Some(Value::Null) => None,
+        Some(value) => Some(strings(Some(value), &format!("function \"{name}\" promptGuidelines"))?),
+    };
+    let label = match f.get("label") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(label)) => Some(label.clone()),
+        Some(_) => return Err(format!("function \"{name}\": label must be a string")),
+    };
+    Ok(FunctionSpec {
+        name: name.to_string(),
+        description: f
+            .get("description")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        parameters: f
+            .get("parameters")
+            .cloned()
+            .unwrap_or_else(|| json!({ "type": "object" })),
+        label,
+        execution_mode,
+        prompt_guidelines,
+    })
 }
 
 /// What an extension registered: from `initialize`'s `capabilities`, replaced whole by `registrations/changed`.
@@ -206,28 +257,7 @@ impl Registrations {
         }
         let functions = match capabilities.get("functions") {
             None => Vec::new(),
-            Some(Value::Array(items)) => items
-                .iter()
-                .map(|f| {
-                    let name = f
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .filter(|n| is_identifier(n))
-                        .ok_or("each function needs a \"name\" that is a Python identifier")?;
-                    Ok(FunctionSpec {
-                        name: name.to_string(),
-                        description: f
-                            .get("description")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default()
-                            .to_string(),
-                        parameters: f
-                            .get("parameters")
-                            .cloned()
-                            .unwrap_or_else(|| json!({ "type": "object" })),
-                    })
-                })
-                .collect::<Result<_, String>>()?,
+            Some(Value::Array(items)) => items.iter().map(parse_function).collect::<Result<_, String>>()?,
             Some(_) => return Err("functions must be an array".into()),
         };
         Ok(Registrations {
@@ -353,6 +383,9 @@ struct ProcState {
     disabled: Option<String>,
 }
 
+/// Receives a running function's partial results (`functions/update`, TypeScript's `onUpdate`).
+pub type UpdateFn = Arc<dyn Fn(Value) + Send + Sync>;
+
 pub struct ExtensionProcess {
     manifest: Manifest,
     display_path: String,
@@ -361,6 +394,8 @@ pub struct ExtensionProcess {
     state: Mutex<ProcState>,
     /// Serializes (re)starts so concurrent callers start one process.
     starting: Mutex<()>,
+    /// The `onUpdate` callbacks of the function calls in flight, by `toolCallId`.
+    updates: Mutex<std::collections::HashMap<String, UpdateFn>>,
 }
 
 impl ExtensionProcess {
@@ -458,6 +493,23 @@ impl ExtensionProcess {
                         .shared
                         .broadcast(channel, params.get("data").unwrap_or(&Value::Null));
                 }
+                // `onUpdate(partial)` of a function call in flight: `{ toolCallId, content, details? }`.
+                "functions/update" => {
+                    let id = params.get("toolCallId").and_then(Value::as_str).unwrap_or_default();
+                    let callback = lock(&process.updates).get(id).cloned();
+                    match callback {
+                        Some(callback) => {
+                            let mut partial = params.as_object().cloned().unwrap_or_default();
+                            partial.remove("toolCallId");
+                            callback(Value::Object(partial));
+                        }
+                        None => host.log(
+                            name,
+                            "warning",
+                            &format!("functions/update for no call in flight: {id}"),
+                        ),
+                    }
+                }
                 "log" => {
                     let level = params.get("level").and_then(Value::as_str).unwrap_or("info");
                     host.log(
@@ -512,7 +564,7 @@ impl ExtensionProcess {
             "restart": restart,
             "capabilities": {
                 "ui": { "status": true, "panels": true, "prompts": has_ui },
-                "events": EVENTS.as_slice(),
+                "events": DELIVERED_EVENTS.as_slice(),
             },
         });
         let handshake = peer
@@ -623,6 +675,29 @@ impl ExtensionProcess {
         )
     }
 
+    /// `execute(toolCallId, params, signal, onUpdate)`: `functions/call` with the call's id; the extension's
+    /// `functions/update` notifications for that id reach `on_update` until the call ends.
+    pub fn call_function_with_updates(
+        &self,
+        name: &str,
+        arguments: Value,
+        tool_call_id: &str,
+        on_update: UpdateFn,
+        timeout: Option<Duration>,
+        cancel: Option<&CancelToken>,
+    ) -> Result<Value, RpcError> {
+        let peer = self.peer()?;
+        lock(&self.updates).insert(tool_call_id.to_string(), on_update);
+        let result = peer.request(
+            "functions/call",
+            json!({ "name": name, "arguments": arguments, "toolCallId": tool_call_id }),
+            timeout,
+            cancel,
+        );
+        lock(&self.updates).remove(tool_call_id);
+        result
+    }
+
     /// Runs a registered slash command (`commands/run`); commands may prompt the user, so there is no timeout.
     pub fn run_command(&self, name: &str, args: &str, cancel: Option<&CancelToken>) -> Result<Value, RpcError> {
         self.peer()?
@@ -707,7 +782,9 @@ impl Endpoint for ExtensionProcess {
     }
 }
 
-/// Every event type the host can deliver (`ExtensionEvent["type"]` in types.ts).
+/// Every event type an extension may subscribe to (`ExtensionEvent["type"]` in types.ts). `pi.on` accepts each of
+/// them; the host delivers only [`DELIVERED_EVENTS`], so a subscription to another one never fires (as a TypeScript
+/// handler for an AgentSession event never fires in the native worker).
 pub const EVENTS: [&str; 41] = [
     "project_trust",
     "resources_discover",
@@ -748,6 +825,32 @@ pub const EVENTS: [&str; 41] = [
     "tool_result",
     "user_bash",
     "input",
+    "before_file_write",
+    "after_cell_changes",
+];
+
+/// The events this host emits (`initialize.capabilities.events`): the native worker's events
+/// (legacy-extension-adapter.ts: `session_start`, `before_agent_start`, `context`, `agent_end`,
+/// `session_before_fork`, `session_shutdown`, `before_file_write`, `after_cell_changes`), the compaction and tree
+/// events, `session_info_changed`, `user_bash`, the UI prompt brackets, and `project_trust` (package commands).
+pub const DELIVERED_EVENTS: [&str; 19] = [
+    "project_trust",
+    "session_start",
+    "session_info_changed",
+    "session_before_fork",
+    "session_before_compact",
+    "session_compact",
+    "session_compact_failed",
+    "session_shutdown",
+    "session_before_tree",
+    "session_tree",
+    "context",
+    "context_with_system",
+    "before_agent_start",
+    "agent_end",
+    "ui_prompt_start",
+    "ui_prompt_end",
+    "user_bash",
     "before_file_write",
     "after_cell_changes",
 ];
@@ -831,6 +934,7 @@ impl ExtensionHost {
                         disabled: None,
                     }),
                     starting: Mutex::new(()),
+                    updates: Mutex::new(std::collections::HashMap::new()),
                 })
             })
             .collect();
@@ -949,13 +1053,40 @@ impl ExtensionHost {
         timeout: Option<Duration>,
         cancel: Option<&CancelToken>,
     ) -> Result<Value, RpcError> {
+        self.function_process(extension, name)?
+            .call_function(name, arguments, timeout, cancel)
+    }
+
+    /// [`ExtensionHost::call_function`] with the call's id and its `onUpdate` callback (`functions/update`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn call_function_with_updates(
+        &self,
+        extension: &str,
+        name: &str,
+        arguments: Value,
+        tool_call_id: &str,
+        on_update: UpdateFn,
+        timeout: Option<Duration>,
+        cancel: Option<&CancelToken>,
+    ) -> Result<Value, RpcError> {
+        self.function_process(extension, name)?.call_function_with_updates(
+            name,
+            arguments,
+            tool_call_id,
+            on_update,
+            timeout,
+            cancel,
+        )
+    }
+
+    fn function_process(&self, extension: &str, name: &str) -> Result<&Arc<ExtensionProcess>, RpcError> {
         let process = self
             .process(extension)
             .ok_or_else(|| RpcError::Other(format!("No extension named {extension}")))?;
         if !process.registrations().functions.iter().any(|f| f.name == name) {
             return Err(RpcError::Other(format!("Extension {extension} has no function {name}")));
         }
-        process.call_function(name, arguments, timeout, cancel)
+        Ok(process)
     }
 
     /// `getShortcuts`: the extension shortcuts the TUI binds given its resolved keybindings (action, keys), and the

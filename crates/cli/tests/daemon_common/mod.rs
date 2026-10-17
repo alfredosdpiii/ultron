@@ -130,11 +130,15 @@ impl Home {
         self.agent().join("experimental/sessions")
     }
 
-    /// The private environment every process of a test runs with.
+    /// The private environment every process of a test runs with. Stdin is null unless the caller sets it: a print
+    /// run reads a piped stdin to its end before its first request (`readPipedStdin`), and a test's own stdin is
+    /// whatever launched `cargo test`. Under a launcher whose stdin is a pipe or socket that never closes, every
+    /// print client that inherited it waited there forever (W6D-01).
     pub fn command(&self, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_ultron"));
         command
             .args(args)
+            .stdin(Stdio::null())
             .env_clear()
             .current_dir(self.cwd())
             .env("PATH", std::env::var("PATH").unwrap_or_default())
@@ -158,6 +162,123 @@ impl Home {
         command.env_remove("ULTRON_SERVER_DIR").current_dir(cwd);
         command
     }
+
+    /// A file under the root for a client's stderr: the hang report includes it, and a pipe nobody reads while the
+    /// test waits could fill and block the client.
+    pub fn stderr_file(&self, name: &str) -> (Stdio, PathBuf) {
+        let path = self.root.join(format!("{name}.stderr"));
+        (Stdio::from(std::fs::File::create(&path).unwrap()), path)
+    }
+}
+
+/// What a hang guard reports: every process the test started (found by its temp root, plus `extra` such as a client
+/// whose command line names no temp path, plus their descendants), with each thread's state and wait channel and
+/// where its standard fds point; then the tail of every log and stderr file under the root.
+pub fn hang_report(root: &Path, extra: &[u32]) -> String {
+    use std::collections::BTreeSet;
+    use std::fmt::Write as _;
+    let parents: Vec<(u32, u32)> = std::fs::read_dir("/proc")
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter_map(|e| {
+                    let pid = e.file_name().to_string_lossy().parse::<u32>().ok()?;
+                    let status = std::fs::read_to_string(e.path().join("status")).ok()?;
+                    let ppid = status
+                        .lines()
+                        .find_map(|l| l.strip_prefix("PPid:"))?
+                        .trim()
+                        .parse()
+                        .ok()?;
+                    Some((pid, ppid))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut pids: BTreeSet<u32> = processes_mentioning(root)
+        .into_iter()
+        .chain(extra.iter().copied())
+        .collect();
+    loop {
+        let before = pids.len();
+        for (pid, ppid) in &parents {
+            if pids.contains(ppid) {
+                pids.insert(*pid);
+            }
+        }
+        if pids.len() == before {
+            break;
+        }
+    }
+    let read = |path: String| std::fs::read_to_string(path).unwrap_or_default().trim().to_string();
+    let mut out = String::from("--- processes ---\n");
+    for pid in &pids {
+        let cmdline = std::fs::read(format!("/proc/{pid}/cmdline"))
+            .map(|c| String::from_utf8_lossy(&c).replace('\0', " "))
+            .unwrap_or_else(|_| "(gone)".to_string());
+        let fds: Vec<String> = (0..3)
+            .map(|fd| {
+                std::fs::read_link(format!("/proc/{pid}/fd/{fd}"))
+                    .map(|t| format!("{fd}={}", t.display()))
+                    .unwrap_or_else(|_| format!("{fd}=-"))
+            })
+            .collect();
+        let _ = writeln!(out, "pid {pid}: {cmdline}\n  fds {}", fds.join(" "));
+        let tasks = std::fs::read_dir(format!("/proc/{pid}/task"))
+            .map(|e| {
+                e.flatten()
+                    .map(|e| e.file_name().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        for tid in tasks {
+            let stat = read(format!("/proc/{pid}/task/{tid}/stat"));
+            // `pid (comm) state ...`: the comm may hold spaces, the state follows its closing parenthesis.
+            let (comm, state) = match (stat.find('('), stat.rfind(')')) {
+                (Some(a), Some(b)) if a < b => {
+                    (&stat[a + 1..b], stat[b + 1..].split_whitespace().next().unwrap_or("?"))
+                }
+                _ => ("?", "?"),
+            };
+            let wchan = read(format!("/proc/{pid}/task/{tid}/wchan"));
+            let _ = writeln!(out, "  task {tid} {comm} {state} wchan={wchan}");
+        }
+    }
+    let mut stack = vec![root.to_path_buf()];
+    let mut logs = Vec::new();
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            let Ok(kind) = entry.file_type() else { continue };
+            if kind.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "log" || e == "stderr") {
+                logs.push(path);
+            }
+        }
+    }
+    logs.sort();
+    for path in logs {
+        let bytes = std::fs::read(&path).unwrap_or_default();
+        let tail = &bytes[bytes.len().saturating_sub(16 * 1024)..];
+        let _ = writeln!(out, "--- {} ---\n{}", path.display(), String::from_utf8_lossy(tail));
+    }
+    out
+}
+
+/// A hang guard firing while `client` runs: the report, then the client (this test's own child) is killed so it
+/// cannot outlive the test.
+pub fn hang(what: &str, root: &Path, client: &mut Child) -> ! {
+    let report = hang_report(root, &[client.id()]);
+    let _ = client.kill();
+    let _ = client.wait();
+    panic!("timed out: {what}\n{report}");
+}
+
+/// A client that exited before `what`: fail with its stderr file.
+pub fn exited_early(what: &str, status: std::process::ExitStatus, stderr: &Path) -> ! {
+    let text = std::fs::read_to_string(stderr).unwrap_or_default();
+    panic!("the client exited ({status}) before {what}; stderr:\n{text}");
 }
 
 pub const SERVER_ID: &str = "00000000-0000-4000-8000-0000000000aa";

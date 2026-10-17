@@ -715,7 +715,7 @@ impl SettingsSelector {
                 "tui-mode",
                 "TUI mode",
                 "Interface layout; fullscreen mode is experimental",
-                "fullscreen".into(),
+                c.str("tuiMode", "regular"),
                 &["regular", "fullscreen"],
             ),
             item(
@@ -1621,10 +1621,6 @@ impl SettingsSelector {
             other => (other, value.into()),
         };
         set_path(&mut self.input.settings, key, v.clone());
-        if id == "tui-mode" {
-            // The native TUI always runs fullscreen; the setting is saved for Pi.
-            self.list.update("tui-mode", "fullscreen");
-        }
         SettingsEvent::Change(key.to_string(), v)
     }
 }

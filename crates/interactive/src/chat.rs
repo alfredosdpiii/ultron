@@ -129,6 +129,8 @@ pub struct ChatView {
     indicator: Option<Loader>,
     /// The indicator is a summary's retry countdown (`RetryStatusIndicator`): its message and when it started.
     retry: Option<RetryCountdown>,
+    /// The indicator is the navigation's ([`ChatView::set_navigating`]).
+    navigating: bool,
     pub tools_expanded: bool,
     pub hide_thinking: bool,
     /// Formatted `tui.select.cancel` key (the running `!` command's hint).
@@ -144,6 +146,7 @@ impl ChatView {
             queues: Vec::new(),
             indicator: None,
             retry: None,
+            navigating: false,
             tools_expanded: false,
             hide_thinking: false,
             cancel_key: "escape".into(),
@@ -400,6 +403,7 @@ impl ChatView {
         if self.indicator.is_none() {
             let t = Rc::clone(&self.style.theme);
             let t2 = Rc::clone(&self.style.theme);
+            self.navigating = false;
             self.indicator = Some(Loader::new(
                 Box::new(move |s| fg(&t, "accent", s)),
                 Box::new(move |s| fg(&t2, "muted", s)),
@@ -421,6 +425,7 @@ impl ChatView {
         };
         let t = Rc::clone(&self.style.theme);
         let t2 = Rc::clone(&self.style.theme);
+        self.navigating = false;
         self.indicator = Some(Loader::new(
             Box::new(move |s| fg(&t, "warning", s)),
             Box::new(move |s| fg(&t2, "muted", s)),
@@ -444,12 +449,37 @@ impl ChatView {
         let t = Rc::clone(&self.style.theme);
         let t2 = Rc::clone(&self.style.theme);
         self.retry = None;
+        self.navigating = false;
         self.indicator = Some(Loader::new(
             Box::new(move |s| fg(&t, "accent", s)),
             Box::new(move |s| fg(&t2, "muted", s)),
             &label,
             None,
         ));
+    }
+
+    /// Show or hide the navigation indicator (client-tui-chat.ts `#setWorking` for a `navigation` operation:
+    /// `WorkingStatusIndicator` `Navigating... (escape to cancel)`). Hiding leaves any other indicator alone.
+    pub fn set_navigating(&mut self, navigating: bool) {
+        if !navigating {
+            if std::mem::take(&mut self.navigating) {
+                self.indicator = None;
+                self.retry = None;
+            }
+            return;
+        }
+        let label = format!("Navigating... ({} to cancel)", self.style.interrupt_key);
+        let t = Rc::clone(&self.style.theme);
+        let t2 = Rc::clone(&self.style.theme);
+        self.retry = None;
+        self.navigating = false;
+        self.indicator = Some(Loader::new(
+            Box::new(move |s| fg(&t, "accent", s)),
+            Box::new(move |s| fg(&t2, "muted", s)),
+            &label,
+            None,
+        ));
+        self.navigating = true;
     }
 
     /// Show or hide the compaction indicator (`Compacting context... (escape to cancel)`).
@@ -474,6 +504,7 @@ impl ChatView {
         let t = Rc::clone(&self.style.theme);
         let t2 = Rc::clone(&self.style.theme);
         self.retry = None;
+        self.navigating = false;
         self.indicator = Some(Loader::new(
             Box::new(move |s| fg(&t, "accent", s)),
             Box::new(move |s| fg(&t2, "muted", s)),

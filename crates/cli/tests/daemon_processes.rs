@@ -74,6 +74,128 @@ fn cli_daemon_reattach_after_client_exit_resumes_the_session() {
     assert_no_processes(&home.root, Duration::from_secs(120));
 }
 
+/// Set only in the copy of this test binary that [`cli_daemon_test_clients_ignore_the_launchers_open_stdin`] runs.
+const INNER: &str = "ULTRON_W6D_OPEN_STDIN_INNER";
+
+/// The gate condition behind four tests that hung in about half of the full runs (W6D-01): `cargo test` launched
+/// with a stdin that never reaches EOF (a pipe or socket its launcher holds open). This binary runs its own inner
+/// test with exactly that stdin; the inner test's print client, made by `Home::command`, must still reach the
+/// provider and finish.
+#[test]
+fn cli_daemon_test_clients_ignore_the_launchers_open_stdin() {
+    let mut inner = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "cli_daemon_print_client_spawned_under_an_open_stdin_reaches_the_provider",
+            "--test-threads=1",
+            "--nocapture",
+        ])
+        .env(INNER, "1")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    // Held open (never written) until the inner run exits: `wait_with_output` would close it first.
+    let held = inner.stdin.take();
+    let output = inner.wait_with_output().unwrap();
+    drop(held);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success() && stdout.contains("test result: ok. 1 passed"),
+        "inner run ({}):\n{stdout}\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// The inner half of [`cli_daemon_test_clients_ignore_the_launchers_open_stdin`]; passes trivially elsewhere.
+#[test]
+fn cli_daemon_print_client_spawned_under_an_open_stdin_reaches_the_provider() {
+    if std::env::var_os(INNER).is_none() {
+        return;
+    }
+    let own = std::fs::read_link("/proc/self/fd/0").unwrap();
+    assert!(own.to_string_lossy().starts_with("pipe:"), "this run's stdin: {own:?}");
+    let provider = provider(vec![text_reply("Fine.")], Duration::ZERO);
+    let home = Home::new(provider.port);
+    let (stderr, stderr_path) = home.stderr_file("client");
+    // Spawned like the four tests that hung, without setting stdin: `Home::command` must have set it.
+    let mut client = home
+        .command(&["--mode", "json", "--model", "anthropic/claude-sonnet-4-5", "hello"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(stderr)
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + common::HANG_GUARD;
+    while provider.requests.lock().unwrap().is_empty() {
+        if let Some(status) = client.try_wait().unwrap() {
+            common::exited_early("its first request", status, &stderr_path);
+        }
+        if Instant::now() >= deadline {
+            common::hang("the first request under an open stdin", &home.root, &mut client);
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let output = client.wait_with_output().unwrap();
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["text"], "Fine.");
+    assert_no_processes(&home.root, common::HANG_GUARD);
+}
+
+/// What the gate's hung clients were doing, shown by the hang report: a print client whose stdin is an open pipe
+/// reads it to its end before anything else (`readPipedStdin`), so no request leaves while the pipe stays open; once
+/// it closes, the piped text leads the prompt.
+#[test]
+fn cli_daemon_print_client_reads_an_open_stdin_to_its_end_before_its_first_request() {
+    let provider = provider(vec![text_reply("Read.")], Duration::ZERO);
+    let home = Home::new(provider.port);
+    let (stderr, stderr_path) = home.stderr_file("client");
+    let mut client = home
+        .command(&["--mode", "json", "--model", "anthropic/claude-sonnet-4-5", "hello"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(stderr)
+        .spawn()
+        .unwrap();
+    let pid = client.id();
+    let reading = || {
+        std::fs::read_dir(format!("/proc/{pid}/task"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|t| std::fs::read_to_string(t.path().join("wchan")).is_ok_and(|w| w.contains("pipe_read")))
+    };
+    let deadline = Instant::now() + common::HANG_GUARD;
+    while !reading() {
+        if let Some(status) = client.try_wait().unwrap() {
+            common::exited_early("reading its stdin", status, &stderr_path);
+        }
+        if Instant::now() >= deadline {
+            common::hang("the client reading its stdin", &home.root, &mut client);
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let report = common::hang_report(&home.root, &[pid]);
+    let client_section = report
+        .split("pid ")
+        .find(|s| s.starts_with(&format!("{pid}:")))
+        .unwrap();
+    assert!(client_section.contains("fds 0=pipe:"), "{report}");
+    assert!(client_section.contains("pipe_read"), "{report}");
+    assert!(report.contains("client.stderr ---"), "{report}");
+    assert!(provider.requests.lock().unwrap().is_empty());
+    let mut stdin = client.stdin.take().unwrap();
+    std::io::Write::write_all(&mut stdin, b"piped text\n").unwrap();
+    drop(stdin);
+    let output = client.wait_with_output().unwrap();
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["text"], "Read.");
+    let requests = provider.requests.lock().unwrap().clone();
+    assert_eq!(user_texts(&requests[0]), ["piped text\n\nhello"]);
+    assert_no_processes(&home.root, common::HANG_GUARD);
+}
+
 #[test]
 fn cli_daemon_busy_worker_survives_a_killed_client_and_is_adopted() {
     // The first reply takes long enough to kill the client mid-run.
@@ -83,17 +205,21 @@ fn cli_daemon_busy_worker_survives_a_killed_client_and_is_adopted() {
     );
     let home = Home::new(provider.port);
     let model = "anthropic/claude-sonnet-4-5";
+    let (stderr, stderr_path) = home.stderr_file("client");
     let mut client = home
         .command(&["--mode", "json", "--model", model, "slow"])
+        .stderr(stderr)
         .spawn()
         .unwrap();
     let deadline = Instant::now() + Duration::from_secs(120);
     while provider.requests.lock().unwrap().is_empty() {
-        // A client that exited cannot send it: fail now (its stderr is the test's).
+        // A client that exited cannot send it: fail now, with its stderr.
         if let Some(status) = client.try_wait().unwrap() {
-            panic!("the client exited ({status}) before its first request");
+            common::exited_early("its first request", status, &stderr_path);
         }
-        assert!(Instant::now() < deadline, "the first request never arrived");
+        if Instant::now() >= deadline {
+            common::hang("the first request never arrived", &home.root, &mut client);
+        }
         std::thread::sleep(Duration::from_millis(20));
     }
     client.kill().unwrap();

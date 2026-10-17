@@ -206,6 +206,8 @@ pub fn no_ui_answer(method: &str) -> Option<Value> {
         "ui/getEditorText" => Some(json!("")),
         "ui/getToolsExpanded" => Some(json!(false)),
         "ui/getAllThemes" => Some(json!([])),
+        // `setTheme(name)` as a request answers its result (`noOpUIContext`).
+        "ui/setTheme" => Some(json!({"success": false, "error": "UI not available"})),
         _ => None,
     }
 }

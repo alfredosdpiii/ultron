@@ -106,7 +106,13 @@ Host to extension, request `initialize`:
 ```
 
 `mode` is `interactive`, `print`, `json` or `rpc`. `flags` holds the values given on the command line for flags
-the extension registered. `capabilities.events` lists every event this host can deliver.
+the extension registered. `capabilities.events` lists the events this host delivers (`DELIVERED_EVENTS`):
+`project_trust`, `session_start`, `session_info_changed`, `session_before_fork`, `session_before_compact`,
+`session_compact`, `session_compact_failed`, `session_shutdown`, `session_before_tree`, `session_tree`, `context`,
+`context_with_system`, `before_agent_start`, `agent_end`, `ui_prompt_start`, `ui_prompt_end`, `user_bash`,
+`before_file_write`, `after_cell_changes`. An extension may still subscribe to any other event type of section 5
+(`pi.on` accepts every `ExtensionEvent` type): it loads, and the handler never runs, as an AgentSession-only
+handler never runs in the TypeScript native worker. An unknown event name fails the load.
 
 Result:
 
@@ -116,7 +122,8 @@ Result:
   "extensionInfo": { "name": "hello", "version": "1.0.0" },
   "capabilities": {
     "events": ["session_before_switch", "tool_call", "input"],
-    "functions": [{ "name": "greet", "description": "Greet someone", "parameters": { "type": "object" } }],
+    "functions": [{ "name": "greet", "label": "Greet", "description": "Greet someone", "parameters": { "type": "object" },
+                    "executionMode": "sequential", "promptGuidelines": ["Greet before working."] }],
     "commands": [{ "name": "hello", "description": "Say hello", "completions": true }],
     "shortcuts": [{ "key": "ctrl+shift+h", "description": "Hello" }],
     "flags": [{ "name": "plan", "type": "boolean", "default": false, "description": "Start in plan mode" }],
@@ -125,7 +132,10 @@ Result:
 }
 ```
 
-`protocolVersion` must equal the host's. Function names must be Python identifiers. A flag's `type` is `boolean` or
+`protocolVersion` must equal the host's. Function names must be Python identifiers. A function's optional `label`
+(shown by `tools.list()`/`tools.describe()`), `executionMode` (`"sequential"`: its REPL calls run alone among the
+lane's calls, first come first served; `"parallel"`; anything else fails the load) and `promptGuidelines`
+(reported by `tools/list`) are `registerTool`'s. A flag's `type` is `boolean` or
 `string`, and a `default` must have that type (`Invalid default for flag "<name>": expected <type>, got <typeof>`
 fails the load, as `registerFlag` throws). The first registered default of a name is the session's value;
 command-line values given in `initialize.session` flags override it (`applyExtensionFlags`: a boolean flag becomes
@@ -146,7 +156,7 @@ Host to extension:
 | `notifications/initialized` | notification | `{}` | |
 | `event` | request | the event object (`type` plus fields, section 5) | the handler result or `null` |
 | `notifications/event` | notification | an event delivered without waiting (`ui_prompt_start`, `ui_prompt_end`) | |
-| `functions/call` | request | `{ name, arguments }` | `{ content: (TextContent or ImageContent)[], details?, isError? }` |
+| `functions/call` | request | `{ name, arguments, toolCallId? }` (`toolCallId` for REPL tool calls: `repl-call-<hex>`) | `{ content: (TextContent or ImageContent)[], details?, isError? }` |
 | `commands/run` | request | `{ name, args }` (no timeout: commands may prompt) | `null` |
 | `commands/complete` | request | `{ name, prefix }` | `AutocompleteItem[]` or `null` |
 | `shortcuts/run` | request | `{ key }` | `null` |
@@ -163,6 +173,7 @@ Extension to host (requests unless marked; the host answers unknown methods with
 | `ui/input` | `{ title, placeholder?, timeoutMs? }` | string or `null` |
 | `ui/editor` | `{ title, prefill? }` | string or `null` |
 | `ui/getEditorText`, `ui/getToolsExpanded`, `ui/getAllThemes` | `{}` | string, boolean, `{ name, path }[]` |
+| `ui/setTheme` | `{ name }` | `{ success, error? }` (also accepted as a notification, without an answer) |
 | `ui/setStatus` (notification) | `{ key, text \| null }` | |
 | `ui/setPanel` (notification) | `{ key, lines: string[] \| null, placement?: "aboveEditor" \| "belowEditor" }` | |
 | `ui/notify` (notification) | `{ message, type?: "info" \| "warning" \| "error" }` | |
@@ -171,13 +182,21 @@ Extension to host (requests unless marked; the host answers unknown methods with
 | `session/sendUserMessage` | `{ content, deliverAs?, expandPromptTemplates? }` | `null` |
 | `session/appendEntry` | `{ customType, data? }` | `null` |
 | `session/setName`, `session/getName`, `session/setLabel` | `{ name }`, `{}`, `{ entryId, label \| null }` | `null`, string or `null`, `null` |
-| `session/entries`, `session/branch`, `session/leaf` | `{}` | the read-only session views of `ReadonlySessionManager` |
+| `session/entries`, `session/branch`, `session/leaf`, `session/leafEntry`, `session/tree`, `session/contextEntries` | `{}` | `getEntries`, `getBranch`, `getLeafId`, `getLeafEntry`, `getTree`, `buildContextEntries` |
+| `session/entry`, `session/label` | `{ id }` | `getEntry`, `getLabel` (`null` when absent) |
+| `session/file`, `session/id`, `session/dir`, `session/cwd`, `session/header` | `{}` | `getSessionFile`, `getSessionId`, `getSessionDir`, `getCwd`, `getHeader` |
 | `session/new`, `session/fork`, `session/navigateTree`, `session/switch`, `session/reload` | as `ExtensionCommandContext` | `{ cancelled }` (commands only) |
 | `host/exec` | `{ command, args, cwd?, timeoutMs? }` | `{ stdout, stderr, code, killed }` |
-| `host/context` | `{}` | `{ cwd, mode, hasUI, model, thinkingLevel, isIdle, projectTrusted, hasPendingMessages, contextUsage, systemPrompt }` |
+| `host/context` | `{}` | `{ cwd, mode, hasUI, model, thinkingLevel, isIdle, projectTrusted, hasPendingMessages, contextUsage, systemPrompt, scopedModels, systemPromptOptions }` |
+| `models/all`, `models/available` | `{}` | `Model[]` (`modelRegistry.getAll`, `getAvailable`) |
+| `models/find` | `{ provider, id }` | `Model` or `null` |
+| `models/getApiKeyAndHeaders` | `{ provider, id }` | `{ ok: true, apiKey?, headers?, baseUrl? }` or `{ ok: false, error }` |
+| `models/getApiKeyForProvider`, `models/hasConfiguredAuth`, `models/isUsingOAuth` | `{ provider }` | string or `null`, boolean, boolean |
 | `agent/abort`, `agent/compact`, `agent/waitForIdle`, `host/shutdown` | `{}`, `{ customInstructions? }`, `{}`, `{}` | `null` |
 | `model/set`, `thinking/get`, `thinking/set` | `{ provider, id }`, `{}`, `{ level }` | boolean, level, `null` |
-| `tools/list`, `commands/list` | `{}` | `ToolInfo[]`, `SlashCommandInfo[]` |
+| `tools/list`, `commands/list` | `{}` | `ToolInfo[]` (with `promptGuidelines`, `sourceInfo`), `SlashCommandInfo[]` |
+| `tools/active`, `tools/setActive` | `{}`, `{ names: string[] }` | `string[]`, `null` |
+| `functions/update` (notification) | `{ toolCallId, content, details? }`: a partial result of the `functions/call` with that id | |
 | `flags/get` | `{ name }` | the flag value or `null` |
 | `bus/emit` (notification) | `{ channel, data }` | |
 | `registrations/changed` (notification) | section 3 `capabilities` | |
@@ -236,7 +255,7 @@ ends aborted, as AgentSession ends it whatever a hook returns after the abort. A
 | TypeScript | Protocol |
 | --- | --- |
 | `on(event, handler)` | `capabilities.events` + `event` requests (section 5); the returned unsubscribe is `registrations/changed`. |
-| `registerTool(tool)` | `capabilities.functions` + `functions/call`: a kernel-API function `ext.<extension>.<name>(**arguments)`, never a model tool. `renderCall`/`renderResult` and tool `state` are dropped (render code). |
+| `registerTool(tool)` | `capabilities.functions` + `functions/call`: a kernel-API function `ext.<extension>.<name>(**arguments)` and a REPL tool (`tools.<name>(...)`), never a model tool. `label`, `executionMode` and `promptGuidelines` are function fields; `execute`'s `toolCallId` is the call's `toolCallId` and `onUpdate(partial)` is `functions/update` (the running call's preview). `renderCall`/`renderResult`, `prepareArguments` and tool `state` are dropped (code); arguments are validated against `parameters`. |
 | `registerCommand(name, { description, getArgumentCompletions, handler })` | `capabilities.commands` + `commands/run`, `commands/complete`. Duplicate names get `name:1`, `name:2`, ... in load order (`getRegisteredCommands`). |
 | `registerShortcut(key, { description, handler })` | `capabilities.shortcuts` + `shortcuts/run`. The conflict rules of `getShortcuts` apply (`ExtensionHost::shortcuts`): keys of reserved editor actions are refused, other built-in keys and keys two extensions register warn and go to the later one. |
 | `registerFlag(name, options)`, `getFlag(name)` | `capabilities.flags`; values in `initialize.flags` and `flags/get`. |
@@ -244,15 +263,16 @@ ends aborted, as AgentSession ends it whatever a hook returns after the abort. A
 | `sendMessage`, `sendUserMessage`, `appendEntry` | `session/sendMessage`, `session/sendUserMessage`, `session/appendEntry`. |
 | `setSessionName`, `getSessionName`, `setLabel` | `session/setName`, `session/getName`, `session/setLabel`. |
 | `exec(command, args, options)` | `host/exec` (the host runs it with its guards; an extension may also spawn processes itself). |
-| `getActiveTools`, `getAllTools`, `setActiveTools`, `refreshTools` | `tools/list`. Setting active tools is dropped: the model has one tool. |
+| `getActiveTools`, `getAllTools`, `setActiveTools`, `refreshTools` | `tools/active`, `tools/list`, `tools/setActive` as the worker filters it: the REPL (`rlm`) stays pinned (in front unless the list names it) and the extensions' REPL tools are left out, so the model's tool list stays `[rlm]`; the list is what `before_agent_start` reports as `selectedTools`. `refreshTools` is a no-op. |
 | `getCommands` | `commands/list`. |
 | `setModel`, `getThinkingLevel`, `setThinkingLevel` | `model/set`, `thinking/get`, `thinking/set`. |
 | `registerProvider`, `unregisterProvider` | `capabilities.providers` (declarative config only; `registrations/changed` without one unregisters it), read with `ExtensionHost::providers` and applied to the model registry in load order (a later declaration of a name merges over an earlier one). Code members (`streamSimple`, OAuth `login`/`refreshToken`, `refreshModels`) cannot cross the process boundary. |
 | `events` (EventBus `emit`/`on`) | `bus/emit` notification; subscribers list channels in `capabilities.bus` and get `bus/message` (the sender too, like `EventEmitter`). |
 | `ctx.ui.select`, `confirm`, `input`, `editor`, `notify`, `setStatus`, `setWidget(string[])`, `setWorkingMessage`, `setWorkingVisible`, `setHiddenThinkingLabel`, `setTitle`, `pasteToEditor`, `setEditorText`, `getEditorText`, `setTheme(name)`, `getAllThemes`, `getToolsExpanded`, `setToolsExpanded` | The `ui/*` methods; `setWidget` is `ui/setPanel`. |
 | `ctx.ui.custom`, `setWidget(factory)`, `setFooter`, `setHeader`, `setEditorComponent`, `getEditorComponent`, `addAutocompleteProvider`, `onTerminalInput`, `setWorkingIndicator(frames)`, `getTheme`/`theme` objects | Dropped: TUI components and raw input handlers are code in the host's render loop. Declarative replacements: panels, status lines, selectors (`ui/select`), command completions. |
-| `ctx.cwd`, `mode`, `hasUI`, `model`, `scopedModels`, `thinkingLevel`, `isIdle`, `isProjectTrusted`, `hasPendingMessages`, `getContextUsage`, `getSystemPrompt` | `initialize.session` and `host/context`. |
-| `ctx.sessionManager` (read-only), `ctx.modelRegistry` | `session/entries`, `session/branch`, `session/leaf`; the model registry is not exposed beyond `host/context.model`. |
+| `ctx.cwd`, `mode`, `hasUI`, `model`, `scopedModels`, `thinkingLevel`, `isIdle`, `isProjectTrusted`, `hasPendingMessages`, `getContextUsage`, `getSystemPrompt`, command context `getSystemPromptOptions` | `initialize.session` and `host/context` (`scopedModels`: `[{ model, thinkingLevel? }]` from `--models` or `enabledModels`; `systemPromptOptions`: the worker's `{ cwd }`). |
+| `ctx.sessionManager` (read-only) | `session/*` getters (section 4) on the real session (the Pi view of its entries). |
+| `ctx.modelRegistry` | `models/*` (section 4): the profile's models and the auth a request carries, for the extension's own model calls. `stream`/`complete`, `refresh` and code providers do not cross the boundary. |
 | `ctx.abort`, `compact`, `shutdown`, `signal` | `agent/abort`, `agent/compact`, `host/shutdown`; `signal` is `notifications/cancelled`. |
 | Command context `waitForIdle`, `newSession`, `fork`, `navigateTree`, `switchSession`, `reload`, `getSystemPromptOptions` | `agent/waitForIdle`, `session/new`, `session/fork`, `session/navigateTree`, `session/switch`, `session/reload`; `withSession`/`setup` callbacks are dropped (the extension continues after the result, and receives `session_start`). |
 | `user_bash` result `{ operations }` | Dropped (it carries functions); return `{ result }` after running the command yourself. |
@@ -273,7 +293,17 @@ The session (`crates/session-core` `extension_host`, `core/extension_ops`) answe
 events that worker emits: `session_start`, `before_agent_start`, `context`/`context_with_system`, `agent_end`,
 `session_before_fork`, `session_shutdown`, `before_file_write`, the compaction and tree events, `ui_prompt_*`. The
 worker emits no other AgentSession events (`turn_*`, `message_*`, `tool_*`, `input`, `user_bash`, provider hooks,
-`model_select`, ...), so neither does the Rust session.
+`model_select`, ...), so neither does the Rust session; the handshake advertises exactly what it emits
+(`DELIVERED_EVENTS`).
+
+`ctx.modelRegistry` (`models/*`, session-core `extension_registry`), `ctx.sessionManager` (`session/*`,
+`extension_session`), the active tool list, `scopedModels`/`systemPromptOptions`, function metadata and progress
+(`functions/update` into the `tools.*` call's preview; `executionMode: "sequential"` through the lane gate of
+kernel-apis `tool_calls`) are implemented. The rest of the UI context is the worker's headless one even with a client
+attached (`createHeadlessExtensionUI`): `setWorkingMessage`, `setWorkingVisible`, `setHiddenThinkingLabel`,
+`setToolsExpanded` and `setTheme` change nothing, `getEditorText` is `""`, `getToolsExpanded` `false`,
+`getAllThemes` `[]`, and `ui/setTheme` answers `{ success: false, error: "Native worker UI adapter does not switch
+themes" }` (`"UI not available"` from a host without UI, `noOpUIContext`).
 
 Declared `providers` join the model registry of the session's profile while its extensions run
 (`session-core` `extension_providers`, the `ai` registry's extension layer): `/model`, Ctrl+P, `--list-models` and

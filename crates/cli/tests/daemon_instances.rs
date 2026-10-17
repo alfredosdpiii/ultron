@@ -146,8 +146,10 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
     let again = home.instance_command(&home.cwd(), &["durable"]).output().unwrap();
     assert_eq!(String::from_utf8(again.stdout).unwrap(), line);
     // A project run in progress is a second instance; the durable one lists none of its sessions.
+    let (stderr, stderr_path) = home.stderr_file("client");
     let mut client = home
         .instance_command(&project, &["--mode", "json", "--model", MODEL, "busy"])
+        .stderr(stderr)
         .spawn()
         .unwrap();
     let deadline = Instant::now() + common::HANG_GUARD;
@@ -156,11 +158,17 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
         if running.len() == 2 {
             break running;
         }
-        // A client that exited cannot become the second instance: fail now (its stderr is the test's).
+        // A client that exited cannot become the second instance: fail now, with its stderr.
         if let Some(status) = client.try_wait().unwrap() {
-            panic!("the project client exited ({status}); instances: {running:?}");
+            common::exited_early(&format!("a second instance ({running:?})"), status, &stderr_path);
         }
-        assert!(Instant::now() < deadline, "instances: {running:?}");
+        if Instant::now() >= deadline {
+            common::hang(
+                &format!("a second instance; instances: {running:?}"),
+                &home.root,
+                &mut client,
+            );
+        }
         std::thread::sleep(Duration::from_millis(50));
     };
     let kinds: Vec<&str> = running.iter().map(|r| r[0].as_str()).collect();

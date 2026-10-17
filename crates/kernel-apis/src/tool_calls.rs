@@ -11,8 +11,11 @@
 //! ([`ToolCalls::cancel_root`], `rootAborted`). A call does not outlive the worker: a journaled running call reads as
 //! `interrupted` after a restart.
 //!
-//! Not ported: the per-lane gate for `executionMode: "sequential"` tools (Rust extension functions declare no
-//! execution mode) and the records of native tool calls (the model's only tool is `rlm`).
+//! Calls on a lane honor the tool's `executionMode` as the harness does for a model's tool calls: a "sequential" tool
+//! waits for the lane's calls in flight and runs alone, and calls started after it wait for it (first come, first
+//! served; [`LaneGate`]). A running call's progress (`onUpdate`) becomes its record's preview.
+//!
+//! Not ported: the records of native tool calls (the model's only tool is `rlm`).
 
 use crate::store::{DocumentStore, read_versioned};
 use crate::util::{Clock, fields, lock, stringify, system_clock};
@@ -41,7 +44,12 @@ pub struct ToolInfo {
     pub label: Option<String>,
     pub description: String,
     pub parameters: Value,
+    /// `"sequential"`: the tool runs alone among its lane's calls (Pi's `executionMode`).
+    pub execution_mode: Option<String>,
 }
+
+/// A running call's partial result (`onUpdate(partial)`: `{content, details?}`).
+pub type ToolUpdate<'a> = &'a (dyn Fn(&Value) + Send + Sync);
 
 /// The session's tools and how to run one (`ExtensionToolRunner`).
 pub trait ToolRunner: Send + Sync {
@@ -49,6 +57,80 @@ pub trait ToolRunner: Send + Sync {
     /// Runs tool `name` to its end (blocking); `cancel` aborts it. Ok is the tool result `{content, details}`.
     fn execute(&self, name: &str, call_id: &str, params: &Map<String, Value>, cancel: &Signal)
     -> Result<Value, String>;
+    /// [`ToolRunner::execute`] with the tool's progress reported to `on_update` (`onUpdate`); a runner whose tools
+    /// report none runs them as `execute`.
+    fn execute_with_updates(
+        &self,
+        name: &str,
+        call_id: &str,
+        params: &Map<String, Value>,
+        cancel: &Signal,
+        on_update: ToolUpdate<'_>,
+    ) -> Result<Value, String> {
+        let _ = on_update;
+        self.execute(name, call_id, params, cancel)
+    }
+}
+
+/// The preview a call shows while it waits for its lane's gate.
+pub const QUEUED_PREVIEW: &str = "queued: waiting for a sequential tool call on this lane";
+
+/// A first-come-first-served readers-writer gate (`LaneGate`): parallel calls share it, an exclusive call holds it
+/// alone, and a waiting exclusive call keeps later calls from overtaking it. Tickets are granted in [`LaneGate::pump`];
+/// the caller holds the lock that guards the gate and waits on its condition variable.
+#[derive(Default, Debug)]
+pub struct LaneGate {
+    queue: std::collections::VecDeque<(u64, bool)>,
+    granted: std::collections::HashSet<u64>,
+    shared: usize,
+    exclusive: bool,
+}
+
+impl LaneGate {
+    /// Queues `ticket`; true when it is granted at once.
+    pub fn enqueue(&mut self, ticket: u64, exclusive: bool) -> bool {
+        self.queue.push_back((ticket, exclusive));
+        self.pump();
+        self.granted.contains(&ticket)
+    }
+
+    pub fn is_granted(&self, ticket: u64) -> bool {
+        self.granted.contains(&ticket)
+    }
+
+    /// A queued ticket gives up (its call was cancelled); later tickets may now run.
+    pub fn withdraw(&mut self, ticket: u64) {
+        self.queue.retain(|(t, _)| *t != ticket);
+        self.pump();
+    }
+
+    /// A granted ticket's call ended.
+    pub fn release(&mut self, ticket: u64, exclusive: bool) {
+        if !self.granted.remove(&ticket) {
+            return;
+        }
+        if exclusive {
+            self.exclusive = false;
+        } else {
+            self.shared = self.shared.saturating_sub(1);
+        }
+        self.pump();
+    }
+
+    fn pump(&mut self) {
+        while let Some(&(ticket, exclusive)) = self.queue.front() {
+            if self.exclusive || (exclusive && self.shared > 0) {
+                return;
+            }
+            self.queue.pop_front();
+            if exclusive {
+                self.exclusive = true;
+            } else {
+                self.shared += 1;
+            }
+            self.granted.insert(ticket);
+        }
+    }
 }
 
 /// A REPL call's end, as reported to the completion-event dispatcher (`ToolCallEnd`).
@@ -101,6 +183,9 @@ struct State {
     records: Vec<Value>,
     live: HashMap<String, Live>,
     outcomes: HashMap<String, Outcome>,
+    /// Per-lane gates that run "sequential" tools alone.
+    gates: HashMap<String, LaneGate>,
+    next_ticket: u64,
 }
 
 struct Inner {
@@ -253,6 +338,12 @@ impl ToolCalls {
         let runner = self.runner()?;
         let id = format!("call-{}", random_hex(4));
         let cancel = Signal::new();
+        let exclusive = runner
+            .tools()
+            .iter()
+            .find(|t| t.name == name)
+            .is_some_and(|t| t.execution_mode.as_deref() == Some("sequential"));
+        let ticket;
         {
             let mut state = lock(&self.inner.state);
             if state.closed {
@@ -263,7 +354,7 @@ impl ToolCalls {
                     "At most {TOOL_CALL_MAX_ACTIVE} extension tool calls can run at once"
                 ));
             }
-            let record = json!({
+            let mut record = json!({
                 "id": id,
                 "lane": lane,
                 "rootId": root,
@@ -275,6 +366,17 @@ impl ToolCalls {
                 "startedAt": self.now(),
                 "endedAt": null,
             });
+            // The gate is taken in start order: a call queued behind a sequential one says so.
+            state.next_ticket += 1;
+            ticket = state.next_ticket;
+            if !state
+                .gates
+                .entry(lane.to_string())
+                .or_default()
+                .enqueue(ticket, exclusive)
+            {
+                record["preview"] = QUEUED_PREVIEW.into();
+            }
             state.live.insert(
                 id.clone(),
                 Live {
@@ -287,12 +389,70 @@ impl ToolCalls {
             self.prune(&mut state);
             self.persist(&state);
         }
-        let (calls, call_id, name) = (self.clone(), id.clone(), name.to_string());
+        let (calls, call_id, name, lane) = (self.clone(), id.clone(), name.to_string(), lane.to_string());
         std::thread::spawn(move || {
-            let result = runner.execute(&name, &format!("repl-{call_id}"), &params, &cancel);
+            let result = match calls.acquire(&lane, &call_id, ticket, &cancel) {
+                Ok(()) => {
+                    let (updates, update_id) = (calls.clone(), call_id.clone());
+                    let on_update = move |partial: &Value| updates.progress(&update_id, partial);
+                    let result =
+                        runner.execute_with_updates(&name, &format!("repl-{call_id}"), &params, &cancel, &on_update);
+                    let mut state = lock(&calls.inner.state);
+                    if let Some(gate) = state.gates.get_mut(&lane) {
+                        gate.release(ticket, exclusive);
+                    }
+                    calls.inner.changed.notify_all();
+                    result
+                }
+                Err(error) => Err(error),
+            };
             calls.finish(&call_id, result);
         });
         Ok(id)
+    }
+
+    /// Waits for the lane's gate; a call cancelled while queued never starts.
+    fn acquire(&self, lane: &str, id: &str, ticket: u64, cancel: &Signal) -> Result<(), String> {
+        let mut state = lock(&self.inner.state);
+        loop {
+            let granted = state.gates.get(lane).is_some_and(|g| g.is_granted(ticket));
+            if granted {
+                if let Some(record) = state.records.iter_mut().find(|r| id_of(r) == id)
+                    && record["preview"].as_str().is_some_and(|p| p.starts_with("queued:"))
+                {
+                    record.as_object_mut().map(|r| r.shift_remove("preview"));
+                }
+                return Ok(());
+            }
+            if cancel.is_aborted() {
+                if let Some(gate) = state.gates.get_mut(lane) {
+                    gate.withdraw(ticket);
+                }
+                self.inner.changed.notify_all();
+                return Err(cancel.reason().unwrap_or_else(|| "tool call cancelled".into()));
+            }
+            state = self
+                .inner
+                .changed
+                .wait_timeout(state, Duration::from_millis(50))
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .0;
+        }
+    }
+
+    /// `onUpdate(partial)`: a running call's latest progress text is its preview.
+    fn progress(&self, id: &str, partial: &Value) {
+        let text = result_text(partial);
+        if text.is_empty() {
+            return;
+        }
+        let mut state = lock(&self.inner.state);
+        if !state.live.contains_key(id) {
+            return;
+        }
+        if let Some(record) = state.records.iter_mut().find(|r| id_of(r) == id) {
+            record["preview"] = preview(&Value::from(text), PREVIEW_CHARS).into();
+        }
     }
 
     fn finish(&self, id: &str, result: Result<Value, String>) {
@@ -421,6 +581,7 @@ impl ToolCalls {
         } else {
             "tool call cancelled"
         });
+        self.inner.changed.notify_all();
         while state.live.contains_key(id) {
             state = self
                 .inner

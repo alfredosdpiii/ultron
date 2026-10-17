@@ -187,7 +187,8 @@ fn session_core_extension_requests_without_a_session_or_client() {
     assert_eq!(
         context,
         json!({"cwd": "/w", "mode": "print", "hasUI": false, "model": null, "thinkingLevel": "medium", "isIdle": true,
-            "projectTrusted": true, "hasPendingMessages": false, "contextUsage": null, "systemPrompt": null})
+            "projectTrusted": true, "hasPendingMessages": false, "contextUsage": null, "systemPrompt": null,
+            "scopedModels": [], "systemPromptOptions": {"cwd": "/w"}})
     );
     assert_eq!(
         session_core::extension_host::content_to_text(

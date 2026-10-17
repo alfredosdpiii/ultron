@@ -420,8 +420,13 @@ pub struct App {
     /// Ctrl+Z asked to suspend (`app.suspend`): the run loop gives the terminal back and stops the process.
     suspend_request: bool,
     suspend_hook: Option<SuspendHook>,
-    /// Success statuses of copies waiting for the clipboard's answer, oldest first.
-    pending_copies: std::collections::VecDeque<String>,
+    /// Success statuses of copies waiting for the clipboard's answer, oldest first; `None` is a fullscreen
+    /// selection copy, which answers with a flash.
+    pending_copies: std::collections::VecDeque<Option<String>>,
+    /// The fullscreen transcript viewport (`TuiAltScreen`): scroll position, selection, scrollbar, flashes.
+    viewport: tui::fullscreen::FullscreenViewport,
+    /// The mouse tracking the alternate screen turns on (`None`: none, as in tests that paint frames).
+    mouse_tracking: Option<&'static str>,
     /// Where a pasted clipboard image is saved (`tmpdir()`).
     temp_dir: std::path::PathBuf,
     /// Extension statuses (`setStatus`) on the footer's status line.
@@ -753,6 +758,14 @@ impl App {
             suspend_request: false,
             suspend_hook: None,
             pending_copies: std::collections::VecDeque::new(),
+            viewport: {
+                let mut viewport = tui::fullscreen::FullscreenViewport::default();
+                // The frames keep the OSC 133 marks the TUI always painted (the qol_parity byte guard); TS strips
+                // them, which no terminal shows differently.
+                viewport.keep_zone_marks = true;
+                viewport
+            },
+            mouse_tracking: None,
             temp_dir: std::env::temp_dir(),
             extension_statuses: Vec::new(),
             widgets: std::collections::BTreeMap::new(),
@@ -1061,16 +1074,19 @@ impl App {
             .unwrap_or_default();
         for reply in replies {
             match reply {
-                ClipboardReply::Copied(result) => {
-                    let done = self.pending_copies.pop_front().unwrap_or_default();
-                    match result {
-                        Ok(osc52) => {
-                            self.terminal_writes.extend(osc52);
-                            self.show_status(&done);
-                        }
-                        Err(error) => self.show_status(&format!("Error: {error}")),
+                ClipboardReply::Copied(result) => match (self.pending_copies.pop_front().flatten(), result) {
+                    (Some(done), Ok(osc52)) => {
+                        self.terminal_writes.extend(osc52);
+                        self.show_status(&done);
                     }
-                }
+                    (Some(_), Err(error)) => self.show_status(&format!("Error: {error}")),
+                    // `copySelection`: "Copied!", or the clipboard's error, as a flash.
+                    (None, Ok(osc52)) => {
+                        self.terminal_writes.extend(osc52);
+                        self.viewport.copied(Ok(()), Instant::now());
+                    }
+                    (None, Err(error)) => self.viewport.copied(Err(error), Instant::now()),
+                },
                 ClipboardReply::Image(data) if self.qol.attachments => {
                     let placeholder = self.attachments.add_image(data, "image/png", None);
                     self.editor.insert_text_at_cursor(&format!("{placeholder} "));
@@ -1128,13 +1144,81 @@ impl App {
     fn copy_to_clipboard(&mut self, text: &str, done: &str) {
         match &self.clipboard {
             Some(clipboard) => {
-                self.pending_copies.push_back(done.to_string());
+                self.pending_copies.push_back(Some(done.to_string()));
                 clipboard.copy_checked(text);
             }
             None => {
                 self.terminal_writes
                     .push(format!("\x1b]52;c;{}\x07", base64(text.as_bytes())));
                 self.show_status(done);
+            }
+        }
+    }
+
+    /// Copy a finished fullscreen selection (`copySelection` of tui-renderer.ts: `copyToClipboard`, then a flash):
+    /// through the clipboard service (its tools come from the injected PATH), else OSC 52.
+    fn copy_selection(&mut self, text: &str) {
+        match &self.clipboard {
+            Some(clipboard) => {
+                self.pending_copies.push_back(None);
+                clipboard.copy_checked(text);
+            }
+            None => {
+                self.terminal_writes
+                    .push(format!("\x1b]52;c;{}\x07", base64(text.as_bytes())));
+                self.viewport.copied(Ok(()), Instant::now());
+            }
+        }
+    }
+
+    /// The mouse tracking the alternate screen turns on ([`tui::fullscreen::mouse_tracking`] of the terminal's
+    /// environment); the product sets it, frames painted in tests leave the mouse alone.
+    pub fn set_mouse_tracking(&mut self, mouse: Option<&'static str>) {
+        self.mouse_tracking = mouse;
+    }
+
+    pub fn mouse_tracking(&self) -> Option<&'static str> {
+        self.mouse_tracking
+    }
+
+    /// The fullscreen transcript viewport.
+    pub fn viewport(&self) -> &tui::fullscreen::FullscreenViewport {
+        &self.viewport
+    }
+
+    /// The alternate screen was entered again: the viewport forgets its gestures and layout.
+    pub fn reset_viewport(&mut self) {
+        self.viewport.reset();
+    }
+
+    /// The fullscreen viewport's timers (scrollbar hide, flashes, a held drag's auto-scroll) due by `now`; true
+    /// when the frame changed.
+    pub fn poll_viewport(&mut self, now: Instant) -> bool {
+        self.viewport.poll(now)
+    }
+
+    /// When the fullscreen viewport next has a timer due.
+    pub fn viewport_deadline(&self) -> Option<Instant> {
+        self.viewport.deadline()
+    }
+
+    /// `handleViewportInput` in fullscreen: focus reports are the viewport's; while a full-frame overlay shows it
+    /// gets the keys and the mouse (`shouldDeferViewportInputToOverlay`; the search and the pickers read SGR
+    /// reports, the others ignore them); otherwise the viewport takes the mouse and its scroll keys. True when the
+    /// input was taken.
+    fn fullscreen_input(&mut self, data: &str) -> bool {
+        if self.qol.viewport_split {
+            return false;
+        }
+        if self.overlay.is_some() && !tui::fullscreen::is_focus_report(data) {
+            return false;
+        }
+        match self.viewport.handle_input(data, &self.keys, Instant::now()) {
+            tui::fullscreen::ViewportInput::Pass => false,
+            tui::fullscreen::ViewportInput::Consumed => true,
+            tui::fullscreen::ViewportInput::Copy(text) => {
+                self.copy_selection(&text);
+                true
             }
         }
     }
@@ -1764,6 +1848,7 @@ impl App {
                 }
             }
             LaneEvent::Navigated(result) => {
+                self.chat.set_navigating(false);
                 let summarized = self.summarizing_branch.take();
                 match result {
                     // An extension's `session_before_tree` cancelled it (interactive-mode.ts).
@@ -2110,6 +2195,10 @@ impl App {
     }
 
     fn handle_key(&mut self, data: &str) {
+        // `TuiAltScreen`'s input listener runs before the focused component.
+        if self.fullscreen_input(data) {
+            return;
+        }
         // `handleInput` while `#busy`: only Ctrl+C, and Ctrl+D on an empty editor, are read.
         if self.recovering {
             if self.keys.matches(data, "app.clear") {
@@ -3636,7 +3725,7 @@ impl App {
 
     /// `changeSetting` (client-tui-settings.ts): save, apply the live ones here, report the outcome.
     fn setting_changed(&mut self, key: &str, value: Value) {
-        const UNUSED_BY_ULTRON: [&str; 18] = [
+        const UNUSED_BY_ULTRON: [&str; 17] = [
             "terminal.showImages",
             "terminal.imageWidthCells",
             "images.autoResize",
@@ -3649,7 +3738,6 @@ impl App {
             "quietStartup",
             "outputPad",
             "terminal.showTerminalProgress",
-            "tuiMode",
             "fullscreenExitOutput",
             "fullscreenScrollbar",
             "fullscreenCopyOnSelect",
@@ -3676,8 +3764,9 @@ impl App {
             _ => self.apply_local_setting(key, &value),
         }
         if key == "tuiMode" {
+            // The Rust TUI reads tuiMode when it starts (fullscreen, or the scrollback split).
             self.show_status(&format!(
-                "Saved tuiMode: {} for Pi. Ultron's native TUI always runs fullscreen.",
+                "Saved tuiMode: {}. It takes effect when Ultron restarts.",
                 value.as_str().unwrap_or("")
             ));
         } else if matches!(key, "defaultThinkingLevel" | "defaultProjectTrust") {
@@ -4096,6 +4185,8 @@ impl App {
         } else {
             "Navigating…"
         });
+        // The lane's navigation operation shows its indicator until the session answers.
+        self.chat.set_navigating(true);
         // The session resolves the selection (AgentSession `navigateTree`) and answers the editor's text.
         self.client.navigate(Some(entry_id), summarize, instructions);
     }
@@ -4870,8 +4961,15 @@ impl App {
         self.rows = height;
         self.cols = width;
         if let Some(frame) = self.overlay_frame(width, height) {
+            self.viewport.hide_layout();
             return frame;
         }
+        let frame = self.render_columns(width, height);
+        self.viewport.finish_frame(frame, width, height)
+    }
+
+    /// The chat column and the RLM pane beside it.
+    fn render_columns(&mut self, width: usize, height: usize) -> Vec<String> {
         let (main_width, side_width) =
             tui::split_view::split_widths(width, self.rlm_pane_shown(), rlm_pane_width(width));
         let main = self.render_main(main_width, height);
@@ -4935,7 +5033,36 @@ impl App {
         ];
         let sizes = tui::screen::allocate_stack_sizes(&root, &[document.len(), dock_height], Some(height));
         let dock_lines = stack_lines(dock, &dock_entries, &[], sizes[1]);
-        stack_lines(vec![document, dock_lines], &root, &[true, false], height)
+        self.style_viewport();
+        let mut lines = self.viewport.layout(
+            document,
+            tui::scroll_view::Rect {
+                x: 0,
+                y: 0,
+                width,
+                height: sizes[0],
+            },
+        );
+        lines.extend(dock_lines);
+        lines
+    }
+
+    /// The transcript scrollbar's theme colors and the jump-to-end label (tui-renderer.ts `scrollToEndIndicator`).
+    fn style_viewport(&mut self) {
+        let (track, thumb) = (Rc::clone(&self.theme), Rc::clone(&self.theme));
+        self.viewport.view.track_style = Box::new(move |t| fg(&track, "scrollbarTrack", t));
+        self.viewport.view.thumb_style = Box::new(move |t| fg(&thumb, "scrollbarThumb", t));
+        let shortcut = key_display_text(&self.keys, "tui.altScreen.bottom");
+        let label = if shortcut.is_empty() {
+            " ↓ Jump to latest message ".to_string()
+        } else {
+            format!(" ↓ Jump to latest message · {shortcut} ")
+        };
+        self.viewport.indicator = Some(
+            self.theme
+                .bg("selectedBg", &fg(&self.theme, "text", &label))
+                .unwrap_or(label),
+        );
     }
 
     /// What stays on the main screen after exit: the layout rendered without a height, where the transcript gets its

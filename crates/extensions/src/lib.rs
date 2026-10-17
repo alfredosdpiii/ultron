@@ -24,8 +24,8 @@ pub mod ui;
 
 pub use manifest::{Diagnostic, Discovery, Manifest, discover, discover_with_settings, parse_manifest};
 pub use process::{
-    EVENTS, ExtensionHost, ExtensionProcess, FlagSpec, FunctionSpec, HostApi, NoHost, PROTOCOL_VERSION, ProviderSpec,
-    Registrations, SessionInfo,
+    DELIVERED_EVENTS, EVENTS, ExtensionHost, ExtensionProcess, FlagSpec, FunctionSpec, HostApi, NoHost,
+    PROTOCOL_VERSION, ProviderSpec, Registrations, SessionInfo, UpdateFn,
 };
 pub use router::{Cancelled, Endpoint, ExtensionError, ResolvedCommand, Router};
 pub use rpc::{CancelToken, Peer, RpcError};

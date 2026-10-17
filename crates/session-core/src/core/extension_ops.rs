@@ -47,6 +47,9 @@ impl Core {
         self.runtime
             .extension_api
             .bind_actor(self.tx.clone(), self.session.clone(), &self.lane.stack);
+        self.runtime
+            .extension_api
+            .bind_models(self.env.clone(), self.flags.clone());
         // A handler's failure reaches the clients as `extension_error` (rpc-mode.ts `onError`).
         let errors = self.tx.clone();
         host.router().on_error(move |error| {
@@ -159,7 +162,7 @@ impl Core {
         }
         let cwd = self.env.cwd.display().to_string();
         let options = json!({
-            "selectedTools": ["rlm"], "toolSnippets": {}, "toolGuidelines": {}, "promptGuidelines": [],
+            "selectedTools": api.active_tools(), "toolSnippets": {}, "toolGuidelines": {}, "promptGuidelines": [],
             "appendSystemPrompt": "", "sections": {}, "cwd": cwd, "contextFiles": [], "skills": [],
         });
         let render = |options: &Value| -> String {

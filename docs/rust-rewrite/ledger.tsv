@@ -2825,6 +2825,51 @@ W5R-12	mcp	injected env ignores process env proxies	mcp_proxy_injected_environme
 W5R-13	mcp	session gateway uses the session env's proxy	session_core_mcp_gateway_reaches_http_servers_through_the_session_proxy
 W5R-14	cli	ultron mcp list/login go through the run's HTTP_PROXY	cli_mcp_proxy_list_and_login_go_through_the_run_proxy
 W5R-15	cli	ALL_PROXY is not used (undici semantics); list/login go direct	cli_mcp_proxy_all_proxy_is_not_an_undici_variable
+W6E-01	extensions	handshake advertises only the 19 delivered events; other known subscriptions load and never fire; unknown names fail	extensions_handshake_advertises_only_delivered_events
+W6E-02	extensions	registerTool label/executionMode/promptGuidelines registered; invalid executionMode fails the load	extensions_function_metadata_is_registered
+W6E-03	extensions	onUpdate: functions/update for the toolCallId reaches the call in flight, in order, before the result	extensions_function_updates_reach_the_call_in_flight
+W6E-04	extensions	ui/setTheme without UI answers noOpUIContext's {success:false,error:"UI not available"}	extensions_set_theme_without_ui_answers_ui_not_available
+W6E-05	kernel-apis	sequential tool waits for the lane's calls, runs alone, later calls wait; other lanes unaffected; queued preview	kernel_apis_sequential_tool_waits_for_lane_calls_and_runs_alone
+W6E-06	kernel-apis	a call cancelled while queued never starts and does not block the queue	kernel_apis_call_cancelled_while_queued_never_starts
+W6E-07	kernel-apis	onUpdate progress text becomes the running call's preview; the result replaces it	kernel_apis_tool_progress_becomes_the_running_preview
+W6E-08	session-core	ExtensionTools keep label/executionMode and forward toolCallId and progress	session_core_extension_tools_keep_metadata_and_progress
+W6E-09	session-core	with a client attached, working message/visible, hidden-thinking label, tools-expanded and theme are the worker's headless context; setTheme refused with the worker text	session_core_extension_ui_rest_is_the_worker_headless_context
+W6E-10	session-core	getActiveTools/setActiveTools keep rlm pinned; systemPromptOptions {cwd}; registry needs an open session	session_core_extension_active_tools_keep_the_repl
+W6E-11	cli	in a session: modelRegistry, scopedModels, sessionManager getters, setActiveTools into selectedTools with model tools still [rlm], promptGuidelines, REPL tool label	cli_extension_context_model_registry_session_manager_and_active_tools
+W6D-01	cli/daemon-tests	a test client built by Home::command never waits on the launcher's open stdin; the four gate-hung tests pass under a never-EOF stdin pipe	cli_daemon_test_clients_ignore_the_launchers_open_stdin
+W6D-02	cli/daemon-tests	inner half of W6D-01: a print client spawned without setting stdin, in a run whose stdin is a pipe, reaches the provider and finishes	cli_daemon_print_client_spawned_under_an_open_stdin_reaches_the_provider
+W6D-03	cli/print	a print client with an open stdin pipe blocks in pipe_read before any request (hang report shows fd0=pipe and wchan), then sends "piped text\n\nhello" once the pipe closes	cli_daemon_print_client_reads_an_open_stdin_to_its_end_before_its_first_request
+W6S-01	tui fullscreen	PageUp/PageDown (4-row overlap), half page, line, Home/End scroll the transcript like TS	tui_fullscreen_page_half_page_line_top_bottom_keys_match_ts
+W6S-02	tui fullscreen	Ctrl(+Shift)+Up/Down jump between OSC 133 zone starts	tui_fullscreen_previous_next_prompt_jumps_match_ts
+W6S-03	tui fullscreen	wheel scrolling: wheelScrollLines, Alt x5, horizontal ignored, X10 reports	tui_fullscreen_wheel_scrolling_matches_ts
+W6S-04	tui fullscreen	follow-end on growth, scrolled-away view keeps position	tui_fullscreen_follow_end_on_growth_matches_ts
+W6S-05	tui fullscreen	auto scrollbar: hover reveal, track jump, thumb drag, hide	tui_fullscreen_scrollbar_hover_jump_and_drag_match_ts
+W6S-06	tui fullscreen	jump-to-end indicator centered on the last transcript row, click follows end, resize	tui_fullscreen_jump_to_end_indicator_matches_ts
+W6S-07	tui fullscreen	drag selection in the transcript and the dock copies on release	tui_fullscreen_drag_selection_copies_on_release_like_ts
+W6S-08	tui fullscreen	double-click word (paths/kebab kept whole), triple-click line, word/line drags	tui_fullscreen_word_and_line_clicks_match_ts
+W6S-09	tui fullscreen	drag held at the viewport edge auto-scrolls and extends the selection	tui_fullscreen_edge_drag_auto_scrolls_like_ts
+W6S-10	tui fullscreen	copyOnSelect off keeps the highlight, no copy	tui_fullscreen_copy_on_select_off_keeps_the_selection_like_ts
+W6S-11	tui fullscreen	copy failure flashes the clipboard error	tui_fullscreen_copy_failure_flashes_the_error_like_ts
+W6S-12	tui fullscreen	no clipboard: OSC 52 and "Copied!"	tui_fullscreen_copy_without_clipboard_writes_osc52_like_ts
+W6S-13	tui fullscreen	focus loss clears a held selection, keeps a finished one	tui_fullscreen_focus_loss_clears_a_held_selection_like_ts
+W6S-14	tui fullscreen	short transcript does not scroll; Home then growth follows end	tui_fullscreen_short_transcript_does_not_scroll_like_ts
+W6S-15	tui fullscreen	transient scrollbar hides when content fits	tui_fullscreen_scrollbar_hides_when_the_content_fits_like_ts
+W6S-16	tui fullscreen	mouse tracking enter/exit sequences, multiplexer detection	tui_fullscreen_mouse_tracking_sequences_match_ts
+W6S-17	interactive fullscreen	scroll keys before the editor; Home/End are the viewport's	interactive_fullscreen_page_keys_scroll_the_transcript_before_the_editor
+W6S-18	interactive fullscreen	Ctrl+Up/Down land on message zones	interactive_fullscreen_prompt_jumps_land_on_user_messages
+W6S-19	interactive fullscreen	jump label shows while scrolled, click returns to end	interactive_fullscreen_jump_indicator_shows_while_scrolled_up_and_returns_to_the_end
+W6S-20	interactive fullscreen	copy-on-select through the clipboard service, Copied! flash expires	interactive_fullscreen_drag_selection_copies_through_the_clipboard_service_and_flashes
+W6S-21	interactive fullscreen	clipboard error flashes 5 s	interactive_fullscreen_copy_failure_flashes_the_clipboard_error
+W6S-22	interactive fullscreen	no clipboard service: OSC 52	interactive_fullscreen_copy_without_a_clipboard_writes_osc52
+W6S-23	interactive fullscreen	overlays take the mouse, focus reports stay with the viewport	interactive_fullscreen_overlays_take_the_mouse_and_focus_reports_stay_with_the_viewport
+W6S-24	interactive run loop	alt screen captures and releases the mouse	interactive_fullscreen_paint_loop_captures_and_releases_the_mouse
+W6S-25	interactive settings	tuiMode status says it applies on restart; selector shows configured mode	interactive_tui_mode_change_says_when_it_applies
+W6S-26	interactive tree	"Navigating... (escape to cancel)" spinner until Navigated	interactive_tree_navigation_shows_the_navigating_indicator_until_answered
+W6S-27	interactive split	split mode keeps OSC 133 marks in scrollback; Ctrl+Up/Home not taken	interactive_split_mode_keeps_prompt_marks_in_scrollback_for_terminal_jumps
+W6S-28	cli tmux	PageUp/End scroll in a real terminal	cli_fullscreen_page_up_and_end_scroll_the_transcript
+W6S-29	cli tmux	wheel scroll and label click	cli_fullscreen_wheel_scrolls_and_the_label_click_follows_the_end
+W6S-30	cli tmux	Ctrl+Up jumps to a message	cli_fullscreen_ctrl_up_jumps_to_the_previous_message
+W6S-31	cli tmux	drag copies (OSC 52 to the tmux buffer) with flash	cli_fullscreen_drag_selection_copies_with_a_flash
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

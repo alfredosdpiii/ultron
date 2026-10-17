@@ -6,6 +6,7 @@
 
 use crate::extension_tools::ExtensionTools;
 use kernel::Signal;
+use kernel_apis::tool_calls::ToolUpdate;
 use kernel_apis::{ToolInfo, ToolRunner};
 use mcp::gateway::{Gateway, MCP_GATEWAY_TOOL};
 use serde_json::{Map, Value};
@@ -42,6 +43,7 @@ impl ToolRunner for SessionTools {
                 label: Some(tool.label),
                 description: tool.description,
                 parameters: tool.parameters,
+                execution_mode: None,
             })
             .into_iter()
             .collect();
@@ -55,6 +57,17 @@ impl ToolRunner for SessionTools {
         call_id: &str,
         params: &Map<String, Value>,
         cancel: &Signal,
+    ) -> Result<Value, String> {
+        self.execute_with_updates(name, call_id, params, cancel, &|_: &Value| {})
+    }
+
+    fn execute_with_updates(
+        &self,
+        name: &str,
+        call_id: &str,
+        params: &Map<String, Value>,
+        cancel: &Signal,
+        on_update: ToolUpdate<'_>,
     ) -> Result<Value, String> {
         // `prepareToolArguments`: validated and coerced against the tool's schema, as the harness does for a model's
         // call; a failure fails the call with TypeBox's message.
@@ -87,7 +100,7 @@ impl ToolRunner for SessionTools {
             return result;
         }
         match &self.extensions {
-            Some(extensions) => extensions.execute(name, call_id, params, cancel),
+            Some(extensions) => extensions.execute_with_updates(name, call_id, params, cancel, on_update),
             None => Err(format!("Unknown extension tool \"{name}\"")),
         }
     }

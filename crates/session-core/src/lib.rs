@@ -23,6 +23,8 @@ pub mod extension_commands;
 pub mod extension_file_hooks;
 pub mod extension_host;
 pub mod extension_providers;
+pub mod extension_registry;
+pub mod extension_session;
 pub mod extension_tools;
 pub mod frame_models;
 pub mod frames;
