@@ -184,6 +184,15 @@ impl crate::oauth::signin::SignInPrompt for Prompt<'_> {
     }
 }
 
+/// The `/mcp login` prompt's hint (`unreachableCallbackHint(browserReach())`), from the session's injected
+/// environment: whether the browser may not reach the loopback callback (SSH, a container).
+pub fn sign_in_hint(env: &ConnectionEnv) -> String {
+    let var = |key: &str| env.var.as_ref().and_then(|lookup| lookup(key));
+    crate::oauth::signin::unreachable_callback_hint(crate::oauth::signin::browser_reach(&var, &|path| {
+        Path::new(path).exists()
+    }))
+}
+
 /// `openBrowser`'s launcher for `platform` (Node's `process.platform`): `open` on macOS, `rundll32
 /// url.dll,FileProtocolHandler` on Windows (never `cmd /c start`, which would re-parse the URL), else `xdg-open`.
 pub fn browser_command(platform: &str, target: &str) -> (String, Vec<String>) {
@@ -1183,10 +1192,7 @@ impl Gateway {
             name,
             ui,
             open_url: self.options.open_url.clone(),
-            hint: crate::oauth::signin::unreachable_callback_hint(crate::oauth::signin::browser_reach(
-                &|key| std::env::var(key).ok(),
-                &|path| Path::new(path).exists(),
-            )),
+            hint: sign_in_hint(&self.options.env),
         };
         match crate::oauth::signin::sign_in(
             &url,

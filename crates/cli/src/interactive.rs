@@ -54,7 +54,8 @@ enum Command {
     ForkMessages,
     Fork(String),
     Clone,
-    Export(Option<String>),
+    /// `/export [path]` in the named theme.
+    Export(Option<String>, Option<String>),
     Usage,
     /// `/goal <args>`: the session goal's command; its reply text is shown as a notice.
     Goal(String),
@@ -84,7 +85,7 @@ enum Command {
     /// Run the extension shortcut bound to the key (`shortcuts/run`).
     RunShortcut(String, Vec<(String, Vec<String>)>),
     /// `/share`; the flag is set when the user cancels the gist upload.
-    Share(Arc<std::sync::atomic::AtomicBool>),
+    Share(Arc<std::sync::atomic::AtomicBool>, Option<String>),
     /// `/bug`: the summary written by the session's model.
     BugSummary(Option<String>),
     AbortBugSummary,
@@ -273,8 +274,8 @@ impl LaneClient for DaemonLane {
     fn clone_session(&self) {
         self.send(Command::Clone);
     }
-    fn export(&self, path: Option<&str>) {
-        self.send(Command::Export(path.map(str::to_string)));
+    fn export(&self, path: Option<&str>, theme: Option<&str>) {
+        self.send(Command::Export(path.map(str::to_string), theme.map(str::to_string)));
     }
     fn usage_report(&self) {
         self.send(Command::Usage);
@@ -373,9 +374,9 @@ impl LaneClient for DaemonLane {
     fn refresh_catalog(&self) {
         self.send(Command::RefreshCatalog);
     }
-    fn share(&self) {
+    fn share(&self, theme: Option<&str>) {
         self.share_cancel.store(false, std::sync::atomic::Ordering::SeqCst);
-        self.send(Command::Share(self.share_cancel.clone()));
+        self.send(Command::Share(self.share_cancel.clone(), theme.map(str::to_string)));
     }
     fn cancel_share(&self) {
         self.share_cancel.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -997,10 +998,12 @@ fn link_thread(
                     Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
                 }
             }
-            Command::Export(path) => send(LaneEvent::Status(match export_session(&link, path.as_deref()) {
-                Ok(path) => format!("Session exported to: {path}"),
-                Err(error) => format!("Error: Failed to export session: {error}"),
-            })),
+            Command::Export(path, theme) => send(LaneEvent::Status(
+                match export_session(&link, path.as_deref(), theme.as_deref(), &catalog_env) {
+                    Ok(path) => format!("Session exported to: {path}"),
+                    Err(error) => format!("Error: Failed to export session: {error}"),
+                },
+            )),
             Command::Inspect(title, request, payload) => {
                 send(LaneEvent::Status(match link.op(&Op::Inspect { request, payload }) {
                     Ok(value) => interactive::inspection::format_inspection(&title, &value.unwrap_or(Value::Null)),
@@ -1229,7 +1232,7 @@ fn link_thread(
                     let _ = ui.send(UiEvent::Lane(LaneEvent::Changelog(tokens)));
                 });
             }
-            Command::Share(cancel) => share_session(&link, &send, &cancel),
+            Command::Share(cancel, theme) => share_session(&link, &send, &cancel, theme.as_deref(), &catalog_env),
             Command::BugSummary(hint) => {
                 let op = Op::BugSummary { hint };
                 let started = start_call(&link, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]));
@@ -1633,7 +1636,13 @@ fn save_setting(settings: &mut config::settings::SettingsManager, key: &str, val
 
 /// Pi's `/share`: the session as HTML in a secret gist (`gh gist create --public=false`), then the viewer and gist
 /// URLs.
-fn share_session(link: &Link, send: &dyn Fn(LaneEvent), cancel: &std::sync::atomic::AtomicBool) {
+fn share_session(
+    link: &Link,
+    send: &dyn Fn(LaneEvent),
+    cancel: &std::sync::atomic::AtomicBool,
+    theme: Option<&str>,
+    env: &Env,
+) {
     let status = |text: String| send(LaneEvent::Status(text));
     let auth = std::process::Command::new("gh")
         .args(["auth", "status"])
@@ -1654,7 +1663,7 @@ fn share_session(link: &Link, send: &dyn Fn(LaneEvent), cancel: &std::sync::atom
     }
     let file = dir.join("session.html");
     let result = (|| {
-        export_session(link, Some(&file.display().to_string()))
+        export_session(link, Some(&file.display().to_string()), theme, env)
             .map_err(|e| format!("Error: Failed to export session: {e}"))?;
         // The "Creating gist..." loader shows while gh runs; Esc on it kills this gh and reports nothing more.
         send(LaneEvent::ShareLoader(true));
@@ -1683,8 +1692,7 @@ fn share_session(link: &Link, send: &dyn Fn(LaneEvent), cancel: &std::sync::atom
         let Some(gist_id) = gist_id else {
             return Err("Error: Failed to parse gist ID from gh output".into());
         };
-        let base = std::env::var("PI_SHARE_VIEWER_URL").unwrap_or_else(|_| "https://pi.dev/session/".into());
-        let preview = format!("{base}#{gist_id}");
+        let preview = crate::export_html::share_viewer_url(&|k| (env.var)(k), &gist_id);
         Ok(Some(format!(
             "Share URL: {}\nGist: {}",
             tui::image::hyperlink(&preview, &preview),
@@ -1998,7 +2006,7 @@ fn fork_to(link: &mut Link, fork_path: Value) -> Result<(), String> {
 
 /// Pi's `/export` (`exportSession`): HTML through the exporter, or the Pi-format JSONL, from the session's entries
 /// as Pi entries; returns the path written.
-fn export_session(link: &Link, output: Option<&str>) -> Result<String, String> {
+fn export_session(link: &Link, output: Option<&str>, theme: Option<&str>, env: &Env) -> Result<String, String> {
     let read = link.op(&Op::Entries { since: None })?.unwrap_or_default();
     let described = link.op(&Op::Describe)?.unwrap_or_default();
     let session_id = link.session_id();
@@ -2029,7 +2037,7 @@ fn export_session(link: &Link, output: Option<&str>) -> Result<String, String> {
         return Ok(path.display().to_string());
     }
     let data = json!({"header": header, "entries": entries, "leafId": read["leafId"]});
-    let html = crate::export_html::generate_html(&data, None);
+    let html = crate::export_html::export_page(&data, theme, env)?;
     let path = config::paths::normalize(
         &cwd.join(output.map_or_else(|| format!("ultron-session-{stem}.html"), str::to_string)),
     );
@@ -2329,6 +2337,15 @@ fn run_tui(
     }));
     app.set_hide_thinking(hide_thinking);
     app.set_enabled_models(enabled_models);
+    // Inline tool images: Kitty on the alternate screen (TypeScript's alternate screen turns iTerm2 images off; the
+    // Rust-only split viewport writes scrollback and draws none).
+    let split = app.qol().viewport_split;
+    let wezterm = (env.var)("WEZTERM_PANE").is_some_and(|v| !v.is_empty())
+        || (env.var)("TERM_PROGRAM").is_some_and(|v| v.eq_ignore_ascii_case("wezterm"));
+    app.set_image_protocol(
+        caps.images.filter(|p| *p == tui::image::ImageProtocol::Kitty && !split),
+        wezterm,
+    );
     // The theme setting (custom themes from `<agent dir>/themes`, automatic light/dark pairs) and the presentation
     // settings the TUI applies to itself.
     let mut registry = tui::theme::registry::ThemeRegistry::new(

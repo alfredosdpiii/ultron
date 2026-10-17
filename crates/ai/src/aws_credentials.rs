@@ -2,13 +2,17 @@
 //! `defaultProvider` and its sub-providers), without the SDK: environment keys, the shared `config`/`credentials`
 //! files as `@smithy/core/config` parses them, profile static keys, assume role (source profile or credential
 //! source), web identity (env and profile), `credential_process`, SSO (sso-session with token refresh, and legacy),
-//! container credentials (`fromHttp`, `fromContainerMetadata`) and EC2 instance metadata (IMDSv2 with the v1
-//! fallback). Each link fails with the SDK's message; a failure that does not allow the next link ends the chain, as
-//! upstream.
+//! `aws login` sessions (`login_session`: the cached token and its DPoP-signed Signin refresh), container credentials
+//! (`fromHttp`, `fromContainerMetadata`) and EC2 instance metadata (IMDSv2 with the v1 fallback). Each link fails
+//! with the SDK's message; a failure that does not allow the next link ends the chain, as upstream.
 //!
 //! Settings the SDK reads from `process.env` are read through `provider_env_value` (the provider env, then the
 //! process env), so a stored credential's env or a test can scope them. Every request goes through the provider's
 //! `Transport`.
+
+mod login;
+
+pub use login::{parse_sec1_pem, signin_endpoint};
 
 use crate::aws::{AwsCredentials, SignableRequest, escape_uri, sign_request};
 use crate::env::{ProviderEnv, provider_env_value};
@@ -406,10 +410,8 @@ fn resolve_profile_data<'a>(
         if is_sso_profile(data) {
             return from_sso(input, name).await;
         }
-        if has(data, "login_session") {
-            return Err(CredentialError::stop(format!(
-                "Profile {name} uses login_session, which the Rust port does not support; run aws configure export-credentials or use another credential source."
-            )));
+        if let Some(section) = data.filter(|s| has(Some(s), "login_session")) {
+            return login::from_login(input, section).await;
         }
         Err(CredentialError::next(format!(
             "Could not resolve credentials using profile: [{name}] in configuration/credentials file(s)."

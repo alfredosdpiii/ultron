@@ -1,0 +1,1136 @@
+{
+ "imageId": 2147483648,
+ "cases": [
+  {
+   "name": "rlm-png",
+   "tool": "rlm",
+   "args": {
+    "code": "show()"
+   },
+   "content": [
+    {
+     "type": "text",
+     "text": "plot"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC",
+     "mimeType": "image/png"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "show()",
+    "lines": [
+     "show()"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show()                             \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mplot\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show()                                                                     \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mplot\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show()                             \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mplot\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show()                                                                     \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mplot\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": []
+  },
+  {
+   "name": "rlm-two-images",
+   "tool": "rlm",
+   "args": {
+    "code": "show(2)"
+   },
+   "content": [
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC",
+     "mimeType": "image/png"
+    },
+    {
+     "type": "text",
+     "text": "two"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC",
+     "mimeType": "image/png"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "show(2)",
+    "lines": [
+     "show(\u001b[38;2;181;206;168m2\u001b[39m)"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show(\u001b[38;2;181;206;168m2\u001b[39m)                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mtwo\u001b[39m                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show(\u001b[38;2;181;206;168m2\u001b[39m)                                                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mtwo\u001b[39m                                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show(\u001b[38;2;181;206;168m2\u001b[39m)                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mtwo\u001b[39m                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m show(\u001b[38;2;181;206;168m2\u001b[39m)                                                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mtwo\u001b[39m                                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": []
+  },
+  {
+   "name": "rlm-image-only",
+   "tool": "rlm",
+   "args": {
+    "code": "img"
+   },
+   "content": [
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC",
+     "mimeType": "image/png"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "img",
+    "lines": [
+     "img"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m img                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m img                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m img                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m img                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": []
+  },
+  {
+   "name": "view-png",
+   "tool": "view",
+   "args": {
+    "path": "a.png"
+   },
+   "content": [
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC",
+     "mimeType": "image/png"
+    },
+    {
+     "type": "text",
+     "text": "with image"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": null,
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.png\"                      \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m with image                             \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.png\"                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m with image                                                                     \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.png\"                      \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m with image                             \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.png\"                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m with image                                                                     \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": []
+  },
+  {
+   "name": "rlm-image-without-data",
+   "tool": "rlm",
+   "args": {
+    "code": "x"
+   },
+   "content": [
+    {
+     "type": "text",
+     "text": "meta"
+    },
+    {
+     "type": "image",
+     "data": "",
+     "mimeType": "image/png"
+    },
+    {
+     "type": "image",
+     "data": "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "x",
+    "lines": [
+     "x"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m x                                  \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mmeta\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m x                                                                          \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mmeta\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m x                                  \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mmeta\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m x                                                                          \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mmeta\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "converted": []
+  },
+  {
+   "name": "rlm-jpeg",
+   "tool": "rlm",
+   "args": {
+    "code": "jpg"
+   },
+   "content": [
+    {
+     "type": "text",
+     "text": "photo"
+    },
+    {
+     "type": "image",
+     "data": "/9j/4AAQSkZJRgABAgAAAQABAAD/wAARCAAEAAYDAREAAhEBAxEB/9sAQwABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/9sAQwEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8c/8Ago1/wWO/4KM6F8W9DuLX9oTe9t4C0XT0/wCLW/Bux/dHx58W9Lz5mjfD7S54/wBx4TsD5EEsNl+8+ym1OnaT4ZsdB/pHJ/o2fR8+j74Scc8S8I+Fv1zG8MeNdfw6wMP+IqePfh/z5PX48+kx4SSrf2l4H+LPhPn+Wf8AGP8A0O/DrEf6u8PZxkvAk/7S/wBU63CNXwy8H/oscB/R8/Xf2yv7OL6G2bfSr8O6OI8IOWNb6O3C+Ll/xnXiRivfXG/G2OtyZlxdjqU/3vEGLXtatOpiVye2VdYzH53ic1//2Q==",
+     "mimeType": "image/jpeg"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "jpg",
+    "lines": [
+     "jpg"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m jpg                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mphoto\u001b[39m                                  \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m jpg                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mphoto\u001b[39m                                                                          \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m jpg                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mphoto\u001b[39m                                  \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAYUlEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8248AkojhBBWhUOUmESCCABIJKDSInUoHUsDuQqWRiApM4A0iw+EeksB0HW9gJOAAAAABJRU5ErkJggg==\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m jpg                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mphoto\u001b[39m                                                                          \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAYUlEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8248AkojhBBWhUOUmESCCABIJKDSInUoHUsDuQqWRiApM4A0iw+EeksB0HW9gJOAAAAABJRU5ErkJggg==\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": [
+    "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAYUlEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8248AkojhBBWhUOUmESCCABIJKDSInUoHUsDuQqWRiApM4A0iw+EeksB0HW9gJOAAAAABJRU5ErkJggg=="
+   ]
+  },
+  {
+   "name": "rlm-jpeg-rotated",
+   "tool": "rlm",
+   "args": {
+    "code": "rot"
+   },
+   "content": [
+    {
+     "type": "image",
+     "data": "/9j/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAAAAAD/4AAQSkZJRgABAgAAAQABAAD/wAARCAAEAAYDAREAAhEBAxEB/9sAQwABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/9sAQwEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8c/8Ago1/wWO/4KM6F8W9DuLX9oTe9t4C0XT0/wCLW/Bux/dHx58W9Lz5mjfD7S54/wBx4TsD5EEsNl+8+ym1OnaT4ZsdB/pHJ/o2fR8+j74Scc8S8I+Fv1zG8MeNdfw6wMP+IqePfh/z5PX48+kx4SSrf2l4H+LPhPn+Wf8AGP8A0O/DrEf6u8PZxkvAk/7S/wBU63CNXwy8H/oscB/R8/Xf2yv7OL6G2bfSr8O6OI8IOWNb6O3C+Ll/xnXiRivfXG/G2OtyZlxdjqU/3vEGLXtatOpiVye2VdYzH53ic1//2Q==",
+     "mimeType": "image/jpeg"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "rot",
+    "lines": [
+     "rot"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m rot                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m rot                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m rot                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=26,r=19,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAQAAAAGCAYAAADkOT91AAAAYklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8maSJgSqwgIFBOmCAwNZWIQCSJEGBFw1MBkgqJ3YESKFQIkAEByT8Cq9EZCw0yJDgAAAAASUVORK5CYII=\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m rot                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=40,r=30,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAQAAAAGCAYAAADkOT91AAAAYklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8maSJgSqwgIFBOmCAwNZWIQCSJEGBFw1MBkgqJ3YESKFQIkAEByT8Cq9EZCw0yJDgAAAAASUVORK5CYII=\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": [
+    "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAGCAYAAADkOT91AAAAYklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a8maSJgSqwgIFBOmCAwNZWIQCSJEGBFw1MBkgqJ3YESKFQIkAEByT8Cq9EZCw0yJDgAAAAASUVORK5CYII="
+   ]
+  },
+  {
+   "name": "view-webp",
+   "tool": "view",
+   "args": {
+    "path": "a.webp"
+   },
+   "content": [
+    {
+     "type": "image",
+     "data": "UklGRqQAAABXRUJQVlA4TJgAAAAvBcAAEM1VICICHsgmAAAAAIAdAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAMADkQAAAAAAOP8GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHsgmwAAAAAA598AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoEcOggIdBEKv3+v3+gQCAQ==",
+     "mimeType": "image/webp"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": null,
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.webp\"                     \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.webp\"                                                             \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                   \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.webp\"                     \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                      \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=38,r=13,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mview\u001b[22m\u001b[39m                                                                           \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m {                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m   \"path\": \"a.webp\"                                                             \u001b[49m",
+     "\u001b[48;2;40;50;40m }                                                                              \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "",
+     "\u001b_Ga=T,f=100,q=2,C=1,c=60,r=20,i=2147483648;iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC\u001b\\",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "converted": [
+    "iVBORw0KGgoAAAANSUhEUgAAAAYAAAAECAYAAACtBE5DAAAAWklEQVR4Ae3AA6AkWZbG8f937o3IzKdyS2Oubdu2bdu2bdu2bWmMnpZKr54yMyLu+Xa3anqmhztr1a/aGAwIYUCAqWBAgAEBBkRFAgwIMCDAVDAgwIAAA+IfAXp6Dw9Y18DwAAAAAElFTkSuQmCC"
+   ]
+  },
+  {
+   "name": "rlm-undecodable",
+   "tool": "rlm",
+   "args": {
+    "code": "bad"
+   },
+   "content": [
+    {
+     "type": "text",
+     "text": "bad"
+    },
+    {
+     "type": "image",
+     "data": "bm90IGFuIGltYWdl",
+     "mimeType": "image/jpeg"
+    }
+   ],
+   "widths": [
+    40,
+    80
+   ],
+   "hl": {
+    "input": "bad",
+    "lines": [
+     "bad"
+    ]
+   },
+   "before": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m bad                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mbad\u001b[39m                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m bad                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mbad\u001b[39m                                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "after": [
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m bad                                \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                 \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mbad\u001b[39m                                    \u001b[49m",
+     "\u001b[48;2;40;50;40m                                        \u001b[49m"
+    ],
+    [
+     "",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;212;212;212m\u001b[1mrlm\u001b[22m\u001b[39m\u001b[38;2;128;128;128m python · 1 line\u001b[39m                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;102;102;102m1 │\u001b[39m bad                                                                        \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128moutput\u001b[39m                                                                         \u001b[49m",
+     "\u001b[48;2;40;50;40m \u001b[38;2;128;128;128mbad\u001b[39m                                                                            \u001b[49m",
+     "\u001b[48;2;40;50;40m                                                                                \u001b[49m"
+    ]
+   ],
+   "converted": [
+    null
+   ]
+  }
+ ]
+}

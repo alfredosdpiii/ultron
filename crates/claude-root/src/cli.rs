@@ -4,7 +4,7 @@ use crate::guide::{Audience, GuideOptions, ResourceFlags};
 use crate::{Ctx, UsageError};
 use session_core::RunEnv;
 use std::io::{IsTerminal, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub const CLAUDE_COMMANDS: [&str; 5] = ["claude", "mcp", "hook", "watch", "guide"];
 
@@ -80,16 +80,16 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
     let var = &*ctx.env.var;
     let hints = crate::guide::hints_enabled(var("ULTRON_HINTS").as_deref());
     let dir = cwd.unwrap_or_else(|| ctx.env.cwd.display().to_string());
-    let agent_dir = ctx.env.agent_dir();
     let bundled = ctx.bundled_skills();
     let resources;
     let options = if audience == Audience::Ultron {
         GuideOptions::default()
     } else {
-        let mut dirs = ctx.resource_dirs(&agent_dir, bundled.as_deref());
-        let cwd_path = Path::new(&dir);
-        dirs.cwd = cwd_path;
-        resources = crate::guide::load_prompt_resources(&dirs, flags);
+        let env = RunEnv {
+            cwd: PathBuf::from(&dir),
+            ..ctx.env.clone()
+        };
+        resources = crate::guide::load_prompt_resources(&env, bundled.as_deref(), flags);
         GuideOptions {
             cwd: Some(dir.clone()),
             platform: Some(crate::guide::platform().into()),

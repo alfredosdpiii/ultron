@@ -12,6 +12,8 @@
 //! keeps the counters in memory and the next change tries again; a stored document in a format this build does not
 //! know is left as it is.
 
+mod external_root;
+
 use crate::durable_store::{SharedSession, lock as lock_session};
 use regex::Regex;
 use serde_json::{Map, Value, json};

@@ -32,6 +32,8 @@ const STDERR_TAIL_CHARS: usize = 2_000;
 pub type SecretSink = Arc<dyn Fn(&[String]) + Send + Sync>;
 /// The current token of a `/login` provider, for servers with `auth.provider`.
 pub type ProviderToken = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+/// The session's environment variables (the injected run environment, never this process's own).
+pub type EnvLookup = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
 /// Builds the transport of a server in place of the default stdio and HTTP ones (`createTransport`).
 pub type TransportFactory = Arc<dyn Fn(&ServerEntry) -> Result<Arc<dyn Transport>, Error> + Send + Sync>;
@@ -56,6 +58,9 @@ pub struct ConnectionEnv {
     /// The proxies HTTP servers and their OAuth requests are reached through (`Some`: the run's environment, with
     /// undici's semantics; `None`: reqwest's own lookup of this process's environment).
     pub proxy: Option<ai::net::ProxyEnv>,
+    /// The session's environment, for what the sign-in reads from it (`browserReach`: SSH, container, callback
+    /// host). `None`: an empty environment.
+    pub var: Option<EnvLookup>,
 }
 
 /// HTTP servers authenticate with OAuth unless the config supplies an `Authorization` header or `auth`.

@@ -12,6 +12,7 @@ use agent::AgentTool;
 use ai::{AbortSignal, UserContent};
 use serde_json::{Value, json};
 use session_core::lane::Lane;
+use session_core::session_stats::SessionStats;
 use std::sync::{Arc, Mutex, PoisonError};
 
 /// At most this many events are kept waiting; older ones are dropped with a count.
@@ -45,6 +46,9 @@ pub struct ExternalRoot {
     runner: CellRunner,
     /// Loki's short policy note, the context a session starts with.
     loki_context: Option<String>,
+    /// The session's counters: Claude Code's turns leave no run in the session, so their number and open time are
+    /// counted here (`externalTurnStarted`/`externalTurnEnded`).
+    stats: Option<Arc<SessionStats>>,
 }
 
 impl ExternalRoot {
@@ -59,11 +63,19 @@ impl ExternalRoot {
             events,
             runner,
             loki_context,
+            stats: None,
         }
+    }
+
+    /// This root with its turns counted in `stats`.
+    pub fn with_stats(mut self, stats: Arc<SessionStats>) -> ExternalRoot {
+        self.stats = Some(stats);
+        self
     }
 
     /// Over a session's root lane: events from its runtime events, cells through its `rlm` tool.
     pub fn over_lane(lane: Arc<Lane>, loki_context: Option<String>) -> ExternalRoot {
+        let stats = lane.stack.stats.clone();
         let events_lane = lane.clone();
         let events: EventSource = Arc::new(move || {
             // An aborted signal: take what waits now, never wait for running work.
@@ -109,7 +121,7 @@ impl ExternalRoot {
                 .filter_map(|part| serde_json::to_value(part).ok())
                 .collect())
         });
-        ExternalRoot::new(events, runner, loki_context)
+        ExternalRoot::new(events, runner, loki_context).with_stats(stats)
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
@@ -169,15 +181,26 @@ impl ExternalRoot {
         state.turns += 1;
         let turn = format!("{}-{}", self.prefix, state.turns);
         state.turn = Some(turn.clone());
+        if let Some(stats) = &self.stats {
+            stats.external_turn_started(&turn);
+        }
         turn
     }
 
-    /// A user turn starts (UserPromptSubmit): open a root turn and return the events that arrived since the last
-    /// cell as context for the prompt.
+    fn close_turn(&self, state: &mut State) {
+        if let Some(turn) = state.turn.take()
+            && let Some(stats) = &self.stats
+        {
+            stats.external_turn_ended(&turn);
+        }
+    }
+
+    /// A user turn starts (UserPromptSubmit): end the turn still open, open a root turn and return the events that
+    /// arrived since the last cell as context for the prompt.
     pub fn begin_turn(&self) -> Option<String> {
         {
             let mut state = self.lock();
-            state.turn = None;
+            self.close_turn(&mut state);
             self.open_turn(&mut state);
         }
         self.take_events()
@@ -186,7 +209,8 @@ impl ExternalRoot {
 
     /// The turn ended (Stop).
     pub fn end_turn(&self) {
-        self.lock().turn = None;
+        let mut state = self.lock();
+        self.close_turn(&mut state);
     }
 
     /// Run one cell in the root kernel: the rlm tool's own result, with waiting events first.

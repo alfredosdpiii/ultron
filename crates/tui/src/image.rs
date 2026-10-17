@@ -5,6 +5,7 @@
 use crate::components::Component;
 use crate::select::StyleFn;
 use crate::utils::truncate_to_width;
+use std::sync::{LazyLock, Mutex};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImageProtocol {
@@ -358,7 +359,18 @@ pub fn render_image(
 ) -> Option<RenderedImage> {
     let (columns, rows) = calculate_image_cell_size(image, opts.max_width.unwrap_or(80), opts.max_height, cell);
     let sequence = match caps.images? {
-        ImageProtocol::Kitty => encode_kitty(b64, Some(columns), Some(rows), opts.image_id, opts.move_cursor),
+        ImageProtocol::Kitty => {
+            if let Some(image_id) = opts.image_id {
+                register_kitty_image_metadata(KittyImageMetadata {
+                    image_id,
+                    columns,
+                    rows,
+                    width_px: image.width_px,
+                    height_px: image.height_px,
+                });
+            }
+            encode_kitty(b64, Some(columns), Some(rows), opts.image_id, opts.move_cursor)
+        }
         ImageProtocol::Iterm2 => encode_iterm2(b64, Some(&columns.to_string()), Some("auto"), None, true, true),
     };
     Some(RenderedImage {
@@ -502,4 +514,171 @@ impl Component for Image {
             }
         }
     }
+}
+
+/// `allocateImageId`: a random Kitty image id in `[1, 0xfffffffe]` (random so separate renderers never collide).
+pub fn allocate_image_id() -> u32 {
+    use std::hash::{BuildHasher, Hasher};
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u128(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos()),
+    );
+    (hasher.finish() % 0xffff_fffe) as u32 + 1
+}
+
+/// `KittyImageMetadata`: what a placed Kitty image covers, for cropping and placement-only redraws.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KittyImageMetadata {
+    pub image_id: u32,
+    pub columns: u32,
+    pub rows: u32,
+    pub width_px: u32,
+    pub height_px: u32,
+}
+
+/// `KittyImagePlacement`: a placement-only command for a transmitted image line.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KittyImagePlacement {
+    pub image_id: u32,
+    pub transmission_generation: u64,
+    pub transmission_bytes: usize,
+    pub estimated_decoded_bytes: u64,
+    pub sequence: String,
+    pub replacement_line: String,
+}
+
+/// The process registry of transmitted images (TypeScript's module map): newest last, at most 1000.
+struct Registry {
+    images: Vec<(KittyImageMetadata, u64)>,
+    generation: u64,
+}
+
+static KITTY_IMAGES: LazyLock<Mutex<Registry>> = LazyLock::new(|| {
+    Mutex::new(Registry {
+        images: Vec::new(),
+        generation: 0,
+    })
+});
+
+fn registry() -> std::sync::MutexGuard<'static, Registry> {
+    KITTY_IMAGES.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// `registerKittyImageMetadata`: each registration is a new transmission generation.
+pub fn register_kitty_image_metadata(metadata: KittyImageMetadata) {
+    let mut registry = registry();
+    registry.generation += 1;
+    let generation = registry.generation;
+    registry.images.retain(|(m, _)| m.image_id != metadata.image_id);
+    registry.images.push((metadata, generation));
+    if registry.images.len() > 1000 {
+        registry.images.remove(0);
+    }
+}
+
+const KITTY_PREFIX: &str = "\x1b_G";
+
+/// `/\x1b_G([^;]*);/`: where the first Kitty command starts, its controls, and where its payload starts.
+fn kitty_command(line: &str) -> Option<(usize, &str, usize)> {
+    let at = line.find(KITTY_PREFIX)?;
+    let controls_start = at + KITTY_PREFIX.len();
+    let end = controls_start + line[controls_start..].find(';')?;
+    Some((at, &line[controls_start..end], end + 1))
+}
+
+fn has_control(controls: &str, key: &str, value: &str) -> bool {
+    controls.split(',').any(|c| c.split_once('=') == Some((key, value)))
+}
+
+fn registered(line: &str) -> Option<(KittyImageMetadata, u64)> {
+    let (_, controls, _) = kitty_command(line)?;
+    let id = controls.split(',').find_map(|c| {
+        let digits = c.strip_prefix("i=")?;
+        (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then(|| digits.parse::<u64>().ok())?
+    })?;
+    registry()
+        .images
+        .iter()
+        .find(|(m, _)| u64::from(m.image_id) == id)
+        .copied()
+}
+
+/// `getKittyImageMetadata`: the registered image a line transmits.
+pub fn kitty_image_metadata(line: &str) -> Option<KittyImageMetadata> {
+    registered(line).map(|(m, _)| m)
+}
+
+/// Controls a placement keeps (`KITTY_PLACEMENT_CONTROL_KEYS`).
+const PLACEMENT_KEYS: [&str; 17] = [
+    "i", "p", "x", "y", "w", "h", "X", "Y", "c", "r", "C", "U", "z", "P", "Q", "H", "V",
+];
+
+/// `getKittyImagePlacement`: the line with its transmission (every chunk) replaced by a placement of the image
+/// already uploaded.
+pub fn kitty_image_placement(line: &str) -> Option<KittyImagePlacement> {
+    let (at, first_controls, _) = kitty_command(line)?;
+    let (metadata, generation) = registered(line)?;
+    let mut command_start = at;
+    let mut controls = first_controls.to_string();
+    let transmission_end = loop {
+        let terminator =
+            command_start + KITTY_PREFIX.len() + line[command_start + KITTY_PREFIX.len()..].find("\x1b\\")?;
+        let end = terminator + 2;
+        if !has_control(&controls, "m", "1") {
+            break end;
+        }
+        command_start = end;
+        if !line[command_start..].starts_with(KITTY_PREFIX) {
+            return None;
+        }
+        let from = command_start + KITTY_PREFIX.len();
+        let controls_end = from + line[from..].find(';')?;
+        controls = line[from..controls_end].to_string();
+    };
+    let kept: Vec<&str> = first_controls
+        .split(',')
+        .filter(|c| PLACEMENT_KEYS.contains(&c.split('=').next().unwrap_or("")))
+        .collect();
+    let sequence = format!("\x1b_Ga=p,q=2,{}\x1b\\", kept.join(","));
+    Some(KittyImagePlacement {
+        image_id: metadata.image_id,
+        transmission_generation: generation,
+        transmission_bytes: transmission_end - at,
+        estimated_decoded_bytes: u64::from(metadata.width_px) * u64::from(metadata.height_px) * 4,
+        replacement_line: format!("{}{sequence}{}", &line[..at], &line[transmission_end..]),
+        sequence,
+    })
+}
+
+/// `cropKittyImageLine`: draw only `visible_rows` of the image, starting `hidden_rows` into it (source rows in
+/// pixels, `y`/`h`, and the cell rows `r`).
+pub fn crop_kitty_image_line(line: &str, hidden_rows: i64, visible_rows: i64) -> String {
+    let (Some(metadata), Some((at, controls, payload))) = (kitty_image_metadata(line), kitty_command(line)) else {
+        return line.to_string();
+    };
+    let rows = i64::from(metadata.rows);
+    if hidden_rows < 0 || hidden_rows >= rows || visible_rows <= 0 {
+        return line.to_string();
+    }
+    let cropped = visible_rows.min(rows - hidden_rows);
+    if hidden_rows == 0 && cropped == rows {
+        return line.to_string();
+    }
+    let height = i64::from(metadata.height_px);
+    let source_y = (height * hidden_rows).div_euclid(rows);
+    let source_end = (height * (hidden_rows + cropped) + rows - 1).div_euclid(rows);
+    let source_height = (height.min(source_end) - source_y).max(1);
+    let mut kept: Vec<String> = controls
+        .split(',')
+        .filter(|c| !["y=", "h=", "r="].iter().any(|p| c.starts_with(p)))
+        .map(str::to_string)
+        .collect();
+    kept.extend([
+        format!("y={source_y}"),
+        format!("h={source_height}"),
+        format!("r={cropped}"),
+    ]);
+    format!("{}\x1b_G{};{}", &line[..at], kept.join(","), &line[payload..])
 }

@@ -39,15 +39,6 @@ impl Ctx {
         guide::bundled_skills_enabled((self.env.var)("ULTRON_BUNDLED_SKILLS").as_deref())
             .then(|| config::paths::normalize(&self.env.docs.join("../skills")))
     }
-
-    pub fn resource_dirs<'a>(&'a self, agent_dir: &'a Path, bundled: Option<&'a Path>) -> guide::ResourceDirs<'a> {
-        guide::ResourceDirs {
-            cwd: &self.env.cwd,
-            agent_dir,
-            home: &self.env.home,
-            bundled_skills: bundled,
-        }
-    }
 }
 
 /// `n` random bytes as lowercase hex.

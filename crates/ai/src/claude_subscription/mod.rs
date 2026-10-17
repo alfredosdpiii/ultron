@@ -30,6 +30,7 @@ pub mod limit;
 pub mod process;
 pub mod rewrite;
 pub mod setup;
+pub mod usage;
 
 use crate::options::{SimpleStreamOptions, now_ms};
 use crate::transcript::{current_tools, system_message_text, transform_messages};
@@ -555,6 +556,7 @@ async fn run_with(
     };
     emitter.emit(|partial| AssistantMessageEvent::Start { partial });
     let signal = options.base.signal.clone();
+    let mut rate_limits = None;
     let result = match (prepared, setup) {
         (Err(error), _) | (_, Err(error)) => Err(error),
         (Ok(_), Ok(_)) if signal.as_ref().is_some_and(crate::http::AbortSignal::aborted) => Err(ClaudeError::Cancelled),
@@ -569,7 +571,7 @@ async fn run_with(
                 };
                 let _ = done.send(process::run(&config, env, &prepared, &worker, &mut forward));
             });
-            loop {
+            let result = loop {
                 tokio::select! {
                     biased;
                     Some(delta) = received.recv() => emitter.delta(delta),
@@ -581,13 +583,22 @@ async fn run_with(
                     }
                     () = crate::http::cancelled(signal.as_ref()) => handle.cancel(),
                 }
-            }
+            };
+            rate_limits = handle
+                .rate_limit_event()
+                .as_ref()
+                .and_then(usage::rate_limits_from_event);
+            result
         }
     };
+    let usage = rate_limits.map(|limits| usage::usage_diagnostic(&limits, now_ms()));
     match result {
         Ok(response) => {
             emitter.finish(&response);
             complete(&mut emitter.output, &response);
+            if let Some(usage) = usage {
+                emitter.output.diagnostics.get_or_insert_with(Vec::new).push(usage);
+            }
             if emitter.output.stop_reason == StopReason::Error {
                 let reason = StopReason::Error;
                 emitter.emit(|error| AssistantMessageEvent::Error { reason, error });
@@ -619,6 +630,7 @@ async fn run_with(
                 details.insert("resets_at".into(), resets_at.map_or(Value::Null, Value::from));
             }
             let mut diagnostics = vec![diagnostic(ERROR_DIAGNOSTIC, Some(details), Some(message.clone()))];
+            diagnostics.extend(usage);
             if error.status() == Some(429) {
                 diagnostics.push(diagnostic(
                     crate::claude_code_cli::USAGE_LIMIT_DIAGNOSTIC,

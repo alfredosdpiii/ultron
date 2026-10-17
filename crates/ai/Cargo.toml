@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 config = { path = "../config" }
+protocol = { path = "../protocol" }
 model-scope = { path = "../model-scope" }
 crc32fast = "=1.5.2"
 getrandom = "=0.4.3"

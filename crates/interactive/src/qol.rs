@@ -320,6 +320,12 @@ pub fn install_services(app: &mut App, path_var: Option<String>) {
     app.set_clipboard(tui::clipboard::ClipboardService::spawn(
         tui::clipboard::SystemClipboard::with_env(path_var.clone(), std::env::vars().collect()),
     ));
+    // Pi's footer branch: read and watched on its own thread (`git` from `path_var` only).
+    app.set_footer_branch(crate::footer_data::FooterBranch::spawn(
+        PathBuf::from(app.cwd()),
+        path_var.clone(),
+        || {},
+    ));
     if qol.status_line {
         let cwd = PathBuf::from(app.cwd());
         let watcher = if qol.status_pr {

@@ -94,6 +94,11 @@ impl ThemeController {
         Some(self.apply_name(&name, false).0)
     }
 
+    /// The name of the theme applied last (`theme.name`): the theme document's own name, `dark` after a fallback.
+    pub fn active_theme_name(&self) -> Option<String> {
+        self.registry.current().and_then(|t| t.name.clone())
+    }
+
     /// `getTerminalTheme`.
     pub fn terminal_theme(&self) -> &'static str {
         match self.terminal {

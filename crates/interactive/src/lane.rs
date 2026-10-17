@@ -471,9 +471,10 @@ pub trait LaneClient {
     }
     /// Copy the session at its current position and switch to the copy.
     fn clone_session(&self) {}
-    /// Export the session (`/export [path]`: HTML, or the Pi JSONL for a `.jsonl` path).
-    fn export(&self, path: Option<&str>) {
-        let _ = path;
+    /// Export the session (`/export [path]`: HTML, or the Pi JSONL for a `.jsonl` path); the page uses `theme`, the
+    /// name of the TUI's active theme (`generateHtml(..., theme.name)`).
+    fn export(&self, path: Option<&str>, theme: Option<&str>) {
+        let _ = (path, theme);
     }
     /// The session report (`/usage`), as a [`LaneEvent::Notice`].
     fn usage_report(&self) {}
@@ -565,8 +566,10 @@ pub trait LaneClient {
         let _ = (name, prefix);
     }
     /// `/share`: export the session and upload it as a secret gist with `gh`; statuses answer, and
-    /// [`LaneEvent::ShareLoader`] while the gist is created.
-    fn share(&self) {}
+    /// [`LaneEvent::ShareLoader`] while the gist is created. The page uses `theme`, as `/export` does.
+    fn share(&self, theme: Option<&str>) {
+        let _ = theme;
+    }
     /// Esc on the share loader: stop the gist upload; nothing more is reported about it.
     fn cancel_share(&self) {}
     /// `/bug`: the host an upload goes to (`new URL(getRadiusGatewayUrl()).host`) and whether the session is offline

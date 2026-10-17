@@ -191,6 +191,7 @@ impl Config {
                 provider_token: Some(self.provider_token.clone()),
                 // The worker's proxies, with undici's semantics (TS: the worker's `configureHttpDispatcher`).
                 proxy: Some(ai::net::ProxyEnv::from_lookup(&*self.var)),
+                var: Some(self.var.clone()),
                 ..mcp::connection::ConnectionEnv::default()
             },
             // The session's PATH finds the launcher (never the process's).

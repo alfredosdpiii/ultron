@@ -144,6 +144,21 @@ impl ai::Transport for RetryingTransport {
             }
         })
     }
+
+    /// The socket is not retried: the Codex transport keeps its own WebSocket retries and SSE fallback.
+    fn websocket_available(&self) -> bool {
+        self.inner.websocket_available()
+    }
+
+    fn websocket(
+        &self,
+        url: String,
+        headers: std::collections::BTreeMap<String, String>,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Box<dyn ai::websocket::WebSocketConnection>, String>> + Send + '_>,
+    > {
+        self.inner.websocket(url, headers)
+    }
 }
 
 pub struct EngineOptions {

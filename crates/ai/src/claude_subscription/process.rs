@@ -355,6 +355,8 @@ pub struct Handle {
     cancelled: AtomicBool,
     child: Mutex<Option<Child>>,
     admission: Mutex<Option<AbortHandle>>,
+    /// The request's last `rate_limit_event` (the footer's subscription usage).
+    rate_limit_event: Mutex<Option<Value>>,
 }
 
 impl Handle {
@@ -388,6 +390,14 @@ impl Handle {
         {
             let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
         }
+    }
+
+    /// The request's last `rate_limit_event`, whether the call succeeded or not.
+    pub fn rate_limit_event(&self) -> Option<Value> {
+        self.rate_limit_event
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 
     /// The exit code once native exited; `None` while it runs.
@@ -691,6 +701,10 @@ pub fn run(
             Some("rate_limit_event") => {
                 if let Some(info) = event.get("rate_limit_info").filter(|i| i.is_object()) {
                     signals.event = Some(info.clone());
+                    *handle
+                        .rate_limit_event
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(event.clone());
                 }
             }
             Some("assistant") => {

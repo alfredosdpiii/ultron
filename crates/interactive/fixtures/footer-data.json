@@ -1,0 +1,687 @@
+{
+ "width": 100,
+ "cases": [
+  {
+   "name": "branch",
+   "files": {
+    "repo/.git/HEAD": "ref: refs/heads/feature/x\n",
+    "repo/sub/.keep": ""
+   },
+   "cwd": "repo/sub",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    },
+    {
+     "provider": "openai",
+     "id": "gpt-5",
+     "name": "GPT-5",
+     "reasoning": true,
+     "contextWindow": 400000
+    }
+   ],
+   "sessionName": "demo",
+   "messages": [
+    {
+     "role": "user",
+     "content": "hi",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "claude-sonnet-4-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    }
+   ],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/repo/sub (feature/x) • demo\u001b[39m",
+    "\u001b[38;2;102;102;102m↑1.2k ↓340 $0.012 0.8%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                            (anthropic) claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "worktree",
+   "files": {
+    "repo/.git/HEAD": "ref: refs/heads/main\n",
+    "repo/.git/worktrees/wt/HEAD": "ref: refs/heads/topic\n",
+    "repo/.git/worktrees/wt/commondir": "../..\n",
+    "wt/.git": "gitdir: ../repo/.git/worktrees/wt\n"
+   },
+   "cwd": "wt",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/wt (topic)\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "detached",
+   "files": {
+    "repo/.git/HEAD": "0123456789abcdef0123456789abcdef01234567\n"
+   },
+   "cwd": "repo",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/repo (detached)\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "reftable",
+   "files": {
+    "repo/.git/HEAD": "ref: refs/heads/.invalid\n",
+    "repo/.git/reftable/tables.list": "",
+    "bin/git": "#!/bin/sh\nprintf '%s\\n' 'reftable-main'\nexit 0\n"
+   },
+   "path": "bin",
+   "cwd": "repo",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/repo (reftable-main)\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "reftable-git-fails",
+   "files": {
+    "repo/.git/HEAD": "ref: refs/heads/.invalid\n",
+    "bin/git": "#!/bin/sh\nexit 1\n"
+   },
+   "path": "bin",
+   "cwd": "repo",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/repo (detached)\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "gitdir-without-head",
+   "files": {
+    "repo/.git": "gitdir: ./missing\n"
+   },
+   "cwd": "repo",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/repo\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "no-repo",
+   "files": {
+    "plain/.keep": ""
+   },
+   "cwd": "plain",
+   "model": {
+    "provider": "anthropic",
+    "id": "claude-sonnet-4-5",
+    "name": "Claude Sonnet 4.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/plain\u001b[39m",
+    "\u001b[38;2;102;102;102m0.0%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m                                                          claude-sonnet-4-5 • medium\u001b[39m"
+   ]
+  },
+  {
+   "name": "claude-code-usage",
+   "files": {
+    "plain/.keep": ""
+   },
+   "cwd": "plain",
+   "model": {
+    "provider": "claude-code",
+    "id": "claude-opus-5-5",
+    "name": "Claude Opus 5.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "claude-code",
+     "id": "claude-opus-5-5",
+     "name": "Claude Opus 5.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    },
+    {
+     "provider": "anthropic",
+     "id": "claude-sonnet-4-5",
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [
+    {
+     "role": "user",
+     "content": "hi",
+     "timestamp": 1
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "status": "allowed",
+        "windows": {
+         "five_hour": {
+          "utilization": 0.09
+         },
+         "seven_day": {
+          "utilization": 0.615,
+          "resetsAt": 1
+         },
+         "seven_day_opus": {
+          "utilization": 0.2
+         },
+         "weekly_extra_x": {
+          "utilization": 0.005
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "path": null,
+   "usageText": "Claude Code 5h 9% · 7d 62% · 7d opus 20% · weekly extra x 1%",
+   "lines": [
+    "\u001b[38;2;102;102;102m~/plain\u001b[39m",
+    "\u001b[38;2;102;102;102m↑1.2k ↓340 $0.012 (sub) 0.8%/200k\u001b[39m\u001b[38;2;102;102;102m                             claude-opus-5-5 (Claude Code) • medium\u001b[39m",
+    "Claude Code 5h 9% · 7d 62% · 7d opus 20% · weekly extra x 1%"
+   ]
+  },
+  {
+   "name": "claude-code-limit-reached",
+   "files": {
+    "plain/.keep": ""
+   },
+   "cwd": "plain",
+   "model": {
+    "provider": "claude-code",
+    "id": "claude-opus-5-5",
+    "name": "Claude Opus 5.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "claude-code",
+     "id": "claude-opus-5-5",
+     "name": "Claude Opus 5.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "status": "rejected",
+        "windows": {
+         "five_hour": {
+          "utilization": 1
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "path": null,
+   "usageText": "Claude Code 5h 100% (limit reached)",
+   "lines": [
+    "\u001b[38;2;102;102;102m~/plain\u001b[39m",
+    "\u001b[38;2;102;102;102m↑1.2k ↓340 $0.012 (sub) 0.8%/200k\u001b[39m\u001b[38;2;102;102;102m                             claude-opus-5-5 (Claude Code) • medium\u001b[39m",
+    "Claude Code 5h 100% (limit reached)"
+   ]
+  },
+  {
+   "name": "claude-code-falls-back-to-an-earlier-report",
+   "files": {
+    "plain/.keep": ""
+   },
+   "cwd": "plain",
+   "model": {
+    "provider": "claude-code",
+    "id": "claude-opus-5-5",
+    "name": "Claude Opus 5.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "claude-code",
+     "id": "claude-opus-5-5",
+     "name": "Claude Opus 5.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "windows": {
+         "five_hour": {
+          "utilization": 0.3
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "anthropic",
+     "model": "claude-sonnet-4-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "windows": {
+         "five_hour": {
+          "utilization": 0.9
+         }
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "path": null,
+   "usageText": "Claude Code 5h 30%",
+   "lines": [
+    "\u001b[38;2;102;102;102m~/plain\u001b[39m",
+    "\u001b[38;2;102;102;102m↑3.6k ↓1.0k $0.037 (sub) 0.8%/200k\u001b[39m\u001b[38;2;102;102;102m                            claude-opus-5-5 (Claude Code) • medium\u001b[39m",
+    "Claude Code 5h 30%"
+   ]
+  },
+  {
+   "name": "claude-code-no-numbers",
+   "files": {
+    "plain/.keep": ""
+   },
+   "cwd": "plain",
+   "model": {
+    "provider": "claude-code",
+    "id": "claude-opus-5-5",
+    "name": "Claude Opus 5.5",
+    "reasoning": true,
+    "contextWindow": 200000
+   },
+   "models": [
+    {
+     "provider": "claude-code",
+     "id": "claude-opus-5-5",
+     "name": "Claude Opus 5.5",
+     "reasoning": true,
+     "contextWindow": 200000
+    }
+   ],
+   "messages": [
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "windows": {
+         "five_hour": {
+          "utilization": 0.3
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "ok"
+      }
+     ],
+     "api": "anthropic-messages",
+     "provider": "claude-code",
+     "model": "claude-opus-5-5",
+     "usage": {
+      "input": 1200,
+      "output": 340,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 1540,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0.0123
+      }
+     },
+     "stopReason": "stop",
+     "timestamp": 2,
+     "diagnostics": [
+      {
+       "type": "claude_code_usage",
+       "timestamp": 0,
+       "details": {
+        "windows": {
+         "five_hour": {}
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "path": null,
+   "usageText": null,
+   "lines": [
+    "\u001b[38;2;102;102;102m~/plain\u001b[39m",
+    "\u001b[38;2;102;102;102m↑2.4k ↓680 $0.025 (sub) 0.8%/200k\u001b[39m\u001b[38;2;102;102;102m                             claude-opus-5-5 (Claude Code) • medium\u001b[39m"
+   ]
+  }
+ ]
+}

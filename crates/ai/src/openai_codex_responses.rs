@@ -1,10 +1,15 @@
 //! OpenAI Codex (ChatGPT backend) Responses provider (`api/openai-codex-responses.ts`): the request body, headers and
-//! account id from the ChatGPT JWT, the SSE transport with its own retry policy and friendly usage-limit errors, the
-//! Codex event mapping (`response.done` and friends), and Codex service-tier pricing.
-//!
-//! This runtime has no WebSocket transport: `auto`/`websocket`/`websocket-cached` behave as upstream does in a runtime
-//! without `WebSocket` (a `provider_transport_failure` diagnostic, the session marked for SSE fallback, then SSE).
-//! The SSE body is sent uncompressed, as upstream does where `node:zlib` has no zstd.
+//! account id from the ChatGPT JWT, the WebSocket transport ([`websocket`]: `auto`/`websocket`/`websocket-cached`,
+//! with its session socket cache, continuation deltas, retries and the fall back to SSE), the SSE transport with its
+//! own retry policy and friendly usage-limit errors, the Codex event mapping (`response.done` and friends), and
+//! Codex service-tier pricing. The SSE body is sent uncompressed, as upstream does where `node:zlib` has no zstd.
+
+mod websocket;
+
+pub use websocket::{
+    OpenAICodexWebSocketDebugStats, advance_openai_codex_websocket_clock, close_openai_codex_websocket_sessions,
+    get_openai_codex_websocket_debug_stats, reset_openai_codex_websocket_debug_stats,
+};
 
 use crate::constrained::grammar_tool_input_properties;
 use crate::http::{
@@ -27,10 +32,8 @@ use crate::types::{
     EventSink, Mapped, Model, StopReason, TranscriptContext,
 };
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Map, Value, json};
-use std::collections::{HashMap, HashSet};
-use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 const DEFAULT_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api";
@@ -45,7 +48,6 @@ const CODEX_RESPONSE_STATUSES: &[&str] = &[
     "queued",
     "in_progress",
 ];
-const NO_WEBSOCKET: &str = "WebSocket transport is not available in this runtime";
 
 /// `OpenAICodexResponsesOptions`.
 #[derive(Clone, Default, Deserialize)]
@@ -60,90 +62,6 @@ pub struct OpenAICodexResponsesOptions {
     pub service_tier: Option<String>,
     pub text_verbosity: Option<String>,
     pub tool_choice: Option<String>,
-}
-
-// ------------------------------------------------------------------------------------------- WebSocket fallback state
-
-/// `OpenAICodexWebSocketDebugStats`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenAICodexWebSocketDebugStats {
-    pub requests: u64,
-    pub connections_created: u64,
-    pub connections_reused: u64,
-    pub cached_context_requests: u64,
-    pub store_true_requests: u64,
-    pub full_context_requests: u64,
-    pub delta_requests: u64,
-    pub last_input_items: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_delta_input_items: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_previous_response_id: Option<String>,
-    pub websocket_failures: u64,
-    pub sse_fallbacks: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub websocket_fallback_active: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_web_socket_error: Option<String>,
-}
-
-#[derive(Default)]
-struct WebSocketState {
-    stats: HashMap<String, OpenAICodexWebSocketDebugStats>,
-    sse_fallback_sessions: HashSet<String>,
-}
-
-static WEBSOCKET_STATE: LazyLock<Mutex<WebSocketState>> = LazyLock::new(Mutex::default);
-
-fn websocket_state() -> std::sync::MutexGuard<'static, WebSocketState> {
-    WEBSOCKET_STATE
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-pub fn get_openai_codex_websocket_debug_stats(session_id: &str) -> Option<OpenAICodexWebSocketDebugStats> {
-    websocket_state().stats.get(session_id).cloned()
-}
-
-pub fn reset_openai_codex_websocket_debug_stats(session_id: Option<&str>) {
-    let mut state = websocket_state();
-    match session_id {
-        Some(id) => {
-            state.stats.remove(id);
-            state.sse_fallback_sessions.remove(id);
-        }
-        None => {
-            state.stats.clear();
-            state.sse_fallback_sessions.clear();
-        }
-    }
-}
-
-/// `closeOpenAICodexWebSocketSessions`: there are no cached sockets in this runtime.
-pub fn close_openai_codex_websocket_sessions(_session_id: Option<&str>) {}
-
-fn is_websocket_sse_fallback_active(session_id: Option<&str>) -> bool {
-    session_id.is_some_and(|id| websocket_state().sse_fallback_sessions.contains(id))
-}
-
-fn record_websocket_sse_fallback(session_id: Option<&str>) {
-    let Some(id) = session_id else { return };
-    let mut state = websocket_state();
-    let active = state.sse_fallback_sessions.contains(id);
-    let stats = state.stats.entry(id.to_string()).or_default();
-    stats.sse_fallbacks += 1;
-    stats.websocket_fallback_active = Some(active);
-}
-
-fn record_websocket_failure(session_id: Option<&str>, message: &str) {
-    let Some(id) = session_id else { return };
-    let mut state = websocket_state();
-    state.sse_fallback_sessions.insert(id.to_string());
-    let stats = state.stats.entry(id.to_string()).or_default();
-    stats.websocket_failures += 1;
-    stats.last_web_socket_error = Some(message.to_string());
-    stats.websocket_fallback_active = Some(true);
 }
 
 // ---------------------------------------------------------------------------------------------- request building
@@ -278,13 +196,8 @@ fn build_request_body(
     Ok(body)
 }
 
-fn sse_headers(
-    model: &Model,
-    options: &StreamOptions,
-    account_id: &str,
-    token: &str,
-    session_id: Option<&str>,
-) -> HeaderBuilder {
+/// `buildBaseCodexHeaders`.
+fn base_headers(model: &Model, options: &StreamOptions, account_id: &str, token: &str) -> HeaderBuilder {
     let mut headers = HeaderBuilder::default();
     headers.extend_set(model.headers.iter().flatten());
     headers.extend(options.headers.iter().flatten());
@@ -292,7 +205,38 @@ fn sse_headers(
         .set("Authorization", format!("Bearer {token}"))
         .set("chatgpt-account-id", account_id)
         .set("originator", "pi")
-        .set("User-Agent", pi_user_agent())
+        .set("User-Agent", pi_user_agent());
+    headers
+}
+
+/// `buildWebSocketHeaders`: the base headers with the WebSocket beta, and `request_id` as the session and request id.
+fn websocket_headers(
+    model: &Model,
+    options: &StreamOptions,
+    account_id: &str,
+    token: &str,
+    request_id: &str,
+) -> HeaderBuilder {
+    let mut headers = base_headers(model, options, account_id, token);
+    for name in ["accept", "content-type", "openai-beta"] {
+        headers.remove(name);
+    }
+    headers
+        .set("OpenAI-Beta", websocket::OPENAI_BETA_RESPONSES_WEBSOCKETS)
+        .set("x-client-request-id", request_id)
+        .set("session-id", request_id);
+    headers
+}
+
+fn sse_headers(
+    model: &Model,
+    options: &StreamOptions,
+    account_id: &str,
+    token: &str,
+    session_id: Option<&str>,
+) -> HeaderBuilder {
+    let mut headers = base_headers(model, options, account_id, token);
+    headers
         .set("OpenAI-Beta", "responses=experimental")
         .set("accept", "text/event-stream")
         .set("content-type", "application/json");
@@ -336,14 +280,53 @@ enum CodexError {
     Plain(String),
     /// `RetryDelayExceededError`: never retried.
     RetryDelay(String),
-    /// `CodexApiError`/`CodexProtocolError`.
-    Api(String),
+    /// `CodexApiError`: an `error` or `response.failed` event, with its code.
+    Api {
+        message: String,
+        code: Option<String>,
+    },
+    /// `CodexProtocolError`: an event that is not JSON.
+    Protocol(String),
+    /// `WebSocketCloseError`: the socket closed before the response completed.
+    Closed {
+        message: String,
+        code: u16,
+    },
 }
 
 impl CodexError {
     fn message(&self) -> &str {
         match self {
-            CodexError::Plain(m) | CodexError::RetryDelay(m) | CodexError::Api(m) => m,
+            CodexError::Plain(m) | CodexError::RetryDelay(m) | CodexError::Protocol(m) => m,
+            CodexError::Api { message, .. } | CodexError::Closed { message, .. } => message,
+        }
+    }
+
+    /// `isCodexNonTransportError`.
+    fn is_non_transport(&self) -> bool {
+        matches!(self, CodexError::Api { .. } | CodexError::Protocol(_))
+    }
+
+    fn api_code(&self) -> Option<&str> {
+        match self {
+            CodexError::Api { code, .. } => code.as_deref(),
+            _ => None,
+        }
+    }
+
+    /// `extractDiagnosticError`.
+    fn diagnostic(&self) -> DiagnosticErrorInfo {
+        let (name, code) = match self {
+            CodexError::Plain(_) | CodexError::RetryDelay(_) => ("Error", None),
+            CodexError::Api { code, .. } => ("CodexApiError", code.as_ref().map(|c| json!(c))),
+            CodexError::Protocol(_) => ("CodexProtocolError", None),
+            CodexError::Closed { code, .. } => ("WebSocketCloseError", Some(json!(code))),
+        };
+        DiagnosticErrorInfo {
+            name: Some(name.into()),
+            message: self.message().to_string(),
+            stack: None,
+            code,
         }
     }
 }
@@ -535,7 +518,10 @@ impl CodexSse {
             let data = lines.join("\n");
             let data = js_trim(&data);
             if !data.is_empty() && data != "[DONE]" {
-                let value = parse_json(data).map_err(|e| CodexError::Api(format!("Invalid Codex SSE JSON: {e}")))?;
+                let value = parse_json(data).map_err(|e| {
+                    let message = crate::jsutil::json_parse_error(data).unwrap_or_else(|| e.to_string());
+                    CodexError::Protocol(format!("Invalid Codex SSE JSON: {message}"))
+                })?;
                 out.push(value);
             }
         }
@@ -556,9 +542,12 @@ fn map_codex_event(event: Value, output: &mut AssistantMessage) -> Result<Option
             let message = field(&event, "message").or_else(|| nested.and_then(|n| field(n, "message")));
             let text = message
                 .filter(|m| !m.is_empty())
-                .or(code.filter(|c| !c.is_empty()))
+                .or(code.clone().filter(|c| !c.is_empty()))
                 .unwrap_or_else(|| stringify(&event));
-            Err(CodexError::Api(format!("Codex error: {text}")))
+            Err(CodexError::Api {
+                message: format!("Codex error: {text}"),
+                code,
+            })
         }
         "response.failed" => {
             let message = event
@@ -566,7 +555,13 @@ fn map_codex_event(event: Value, output: &mut AssistantMessage) -> Result<Option
                 .and_then(Value::as_str)
                 .filter(|m| !m.is_empty())
                 .unwrap_or("Codex response failed");
-            Err(CodexError::Api(message.to_string()))
+            Err(CodexError::Api {
+                message: message.to_string(),
+                code: event
+                    .pointer("/response/error/code")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+            })
         }
         "response.done" | "response.completed" | "response.incomplete" => {
             let mut event = event;
@@ -703,41 +698,100 @@ async fn drive(
     if let Some(next) = base.on_payload.as_ref().and_then(|hook| hook(&body, model)) {
         body = next;
     }
+    let websocket_request_id = codex_session_id
+        .clone()
+        .filter(|id| !id.is_empty())
+        .unwrap_or_else(websocket::uuid_v7);
     let headers = sse_headers(model, base, &account_id, &api_key, codex_session_id.as_deref()).build();
+    let ws_headers = websocket_headers(model, base, &account_id, &api_key, &websocket_request_id).build();
     let body_json = serde_json::to_string(&body).unwrap_or_default();
     let http_timeout_ms = normalize_timeout_ms(base.timeout_ms.map(|t| t as f64)).map_err(CodexError::Plain)?;
-    normalize_timeout_ms(base.websocket_connect_timeout_ms).map_err(CodexError::Plain)?;
-    let configured = base.transport.as_deref().unwrap_or("auto");
-    let websocket_disabled = configured != "sse" && is_websocket_sse_fallback_active(cache_session_id);
+    let connect_timeout_ms = normalize_timeout_ms(base.websocket_connect_timeout_ms).map_err(CodexError::Plain)?;
+    let configured = base.transport.as_deref().filter(|t| !t.is_empty()).unwrap_or("auto");
+    let mut start_emitted = false;
+    let websocket_disabled = configured != "sse" && websocket::is_websocket_sse_fallback_active(cache_session_id);
     if websocket_disabled {
-        record_websocket_sse_fallback(cache_session_id);
+        websocket::record_websocket_sse_fallback(cache_session_id);
     }
     if configured != "sse" && !websocket_disabled {
-        if is_aborted(signal) {
-            return Err(CodexError::Plain(NO_WEBSOCKET.into()));
-        }
-        let mut details = Map::new();
-        details.insert("configuredTransport".into(), json!(configured));
-        details.insert("fallbackTransport".into(), json!("sse"));
-        details.insert("eventsEmitted".into(), json!(false));
-        details.insert("phase".into(), json!("before_message_stream_start"));
-        details.insert("requestBytes".into(), json!(body_json.len()));
-        run.output
-            .diagnostics
-            .get_or_insert_with(Vec::new)
-            .push(AssistantMessageDiagnostic {
-                kind: "provider_transport_failure".into(),
-                timestamp: now_ms(),
-                error: Some(DiagnosticErrorInfo {
-                    name: Some("Error".into()),
-                    message: NO_WEBSOCKET.into(),
-                    stack: None,
-                    code: None,
+        let url = websocket::resolve_codex_websocket_url(&model.base_url);
+        let request = websocket::Request {
+            url: &url,
+            body: &body,
+            headers: &ws_headers,
+            model,
+            grammar: &grammar,
+            service_tier: options.service_tier.as_deref(),
+            idle_timeout_ms: http_timeout_ms,
+            connect_timeout_ms,
+            cache_session_id,
+            account_id: &account_id,
+            // The continuation is used only where the caller asked for `auto` or `websocket-cached` (upstream reads
+            // `options.transport`, not its default).
+            transport_kind: base.transport.as_deref().unwrap_or_default(),
+            signal,
+        };
+        let mut retried_connection_limit = false;
+        let mut retried_missing_continuation = false;
+        loop {
+            let mut started = false;
+            let attempt =
+                websocket::process_websocket_stream(run, transport, &request, &mut started, &mut start_emitted).await;
+            let error = match attempt {
+                Ok(()) => {
+                    if is_aborted(signal) {
+                        return Err(aborted_error());
+                    }
+                    return assert_successful(&run.output);
+                }
+                Err(error) => error,
+            };
+            let aborted = is_aborted(signal);
+            let connection_limit_before_start =
+                !started && error.api_code() == Some(websocket::WEBSOCKET_CONNECTION_LIMIT_REACHED_CODE);
+            let previous_response_not_found = error.api_code() == Some(websocket::PREVIOUS_RESPONSE_NOT_FOUND_CODE);
+            if !aborted && previous_response_not_found && !retried_missing_continuation {
+                retried_missing_continuation = true;
+                continue;
+            }
+            if !aborted && connection_limit_before_start && !retried_connection_limit {
+                retried_connection_limit = true;
+                continue;
+            }
+            if aborted || (error.is_non_transport() && !connection_limit_before_start) {
+                return Err(error);
+            }
+            let mut details = Map::new();
+            details.insert("configuredTransport".into(), json!(configured));
+            if !started {
+                details.insert("fallbackTransport".into(), json!("sse"));
+            }
+            details.insert("eventsEmitted".into(), json!(started));
+            details.insert(
+                "phase".into(),
+                json!(if started {
+                    "after_message_stream_start"
+                } else {
+                    "before_message_stream_start"
                 }),
-                details: Some(details),
-            });
-        record_websocket_failure(cache_session_id, NO_WEBSOCKET);
-        record_websocket_sse_fallback(cache_session_id);
+            );
+            details.insert("requestBytes".into(), json!(body_json.len()));
+            run.output
+                .diagnostics
+                .get_or_insert_with(Vec::new)
+                .push(AssistantMessageDiagnostic {
+                    kind: "provider_transport_failure".into(),
+                    timestamp: now_ms(),
+                    error: Some(error.diagnostic()),
+                    details: Some(details),
+                });
+            websocket::record_websocket_failure(cache_session_id, error.message());
+            if started {
+                return Err(error);
+            }
+            websocket::record_websocket_sse_fallback(cache_session_id);
+            break;
+        }
     }
     let request = HttpRequest {
         method: "POST".into(),
@@ -746,7 +800,9 @@ async fn drive(
         body: body_json,
     };
     let mut response = send_with_codex_retry(transport, &request, base, http_timeout_ms, signal).await?;
-    run.emit(|partial| AssistantMessageEvent::Start { partial });
+    if !start_emitted {
+        run.emit(|partial| AssistantMessageEvent::Start { partial });
+    }
     process_stream(
         run,
         &mut response,
@@ -759,10 +815,15 @@ async fn drive(
     if is_aborted(signal) {
         return Err(aborted_error());
     }
-    match run.output.stop_reason {
+    assert_successful(&run.output)
+}
+
+/// `assertSuccessfulOutput`.
+fn assert_successful(output: &AssistantMessage) -> Result<(), CodexError> {
+    match output.stop_reason {
         StopReason::Pending => Err(CodexError::Plain("Codex stream ended without a stop reason".into())),
         StopReason::Error | StopReason::Aborted => Err(CodexError::Plain(
-            run.output
+            output
                 .error_message
                 .clone()
                 .filter(|m| !m.is_empty())

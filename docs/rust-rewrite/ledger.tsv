@@ -2870,6 +2870,62 @@ W6S-28	cli tmux	PageUp/End scroll in a real terminal	cli_fullscreen_page_up_and_
 W6S-29	cli tmux	wheel scroll and label click	cli_fullscreen_wheel_scrolls_and_the_label_click_follows_the_end
 W6S-30	cli tmux	Ctrl+Up jumps to a message	cli_fullscreen_ctrl_up_jumps_to_the_previous_message
 W6S-31	cli tmux	drag copies (OSC 52 to the tmux buffer) with flash	cli_fullscreen_drag_selection_copies_with_a_flash
+W6T-01	tui	Kitty crop of an image scrolled above the viewport	tui_kitty_images_crop_an_image_whose_first_line_is_above_the_viewport
+W6T-02	tui	Kitty crop at the bottom of the visible rows	tui_kitty_images_crop_at_a_scroll_views_lower_boundary
+W6T-03	tui	recently off-screen image placed again, not re-sent	tui_kitty_images_retain_recently_offscreen_images_for_placement_only_reuse
+W6T-04	tui	off-screen image cache count limit evicts the oldest	tui_kitty_images_evict_the_least_recently_visible_image_when_the_cache_is_full
+W6T-05	tui	off-screen image cache memory limit	tui_kitty_images_evict_offscreen_images_past_the_decoded_memory_quota
+W6T-06	tui	moved image redrawn as a placement	tui_kitty_images_moved_images_are_placed_not_transmitted
+W6T-07	tui	full redraw and exit clear images; image rows written as-is	tui_kitty_images_full_redraws_and_exit_clear_images
+W6T-08	tui	WezTerm rows cleared before images are drawn	tui_kitty_images_wezterm_clears_rows_before_drawing_images
+W6T-09	tui	stale iTerm2 images cleared when they leave the viewport	tui_kitty_images_clear_stale_iterm2_images_when_they_leave_the_viewport
+W6T-10	tui	Kitty placement and crop controls	tui_kitty_images_placement_and_crop_controls
+W6T-11	tui	renderImage cursor movement, registration, id range	tui_kitty_images_render_image_cursor_movement_and_registration
+W6T-12	interactive	tool images inline on Kitty incl. PNG conversion (TS fixture)	interactive_tool_images_draw_inline_on_kitty_like_ts
+W6T-13	interactive	text names the image without inline images; stable ids	interactive_tool_images_without_protocol_name_the_image
+W6T-14	interactive	cell size answer parsing	interactive_tool_images_cell_size_answer_like_consume_cell_size_response
+W6T-15	interactive	show-images toggle only with images; cell size applied	interactive_tool_images_app_offers_the_toggle_and_reads_the_cell_size
+W6T-16	interactive	footer branch, (sub), Claude Code usage vs TS NativeFooter	interactive_footer_data_branch_sub_and_usage_match_the_ts_native_footer
+W6T-17	interactive	findGitPaths worktree/commondir	interactive_footer_data_git_paths_like_find_git_paths
+W6T-18	interactive	footer branch follows a checkout	interactive_footer_data_branch_follows_a_checkout
+W6T-19	interactive	claude-subscription read as Claude Code in the footer	interactive_footer_data_claude_subscription_reads_as_claude_code
+W6T-20	interactive	/export passes the active theme name	interactive_commands_export_names_the_active_theme
+W6T-21	ai	rateLimitsFromEvent / usageDiagnostic (TS fixture)	ai_claude_subscription_usage_reads_rate_limit_events_like_the_ts_root_runner
+W6T-22	ai	usage diagnostic on successful and failed calls	ai_claude_subscription_usage_diagnostic_rides_on_the_call_that_saw_the_event
+W6T-23	cli	themed export page equals TS generateHtml	cli_export_theme_pages_match_typescript_generate_html
+W6T-24	cli	export page finds registered and custom themes	cli_export_theme_export_page_finds_registered_and_custom_themes
+W6T-25	cli	empty PI_SHARE_VIEWER_URL falls back	cli_export_theme_share_viewer_url_falls_back_on_empty_like_ts
+W6P-01	ai/codex-ws	WebSocket transport (cache, deltas, retries, timeouts, close codes, fallback, diagnostics, stats) matches TS over a real socket	ai_codex_websocket_replays_recorded_typescript_scenarios
+W6P-02	ai/codex-ws	idle cached socket closes with 1000 idle_timeout after 5 min	ai_codex_websocket_idle_socket_closes_after_five_minutes
+W6P-03	ai/codex-ws	reuse restarts the idle timer	ai_codex_websocket_use_restarts_the_idle_timer
+W6P-04	ai/codex-ws	closeOpenAICodexWebSocketSessions closes idle sockets of one session	ai_codex_websocket_closing_sessions_closes_idle_sockets
+W6P-05	ai/aws-login	valid cached login token used	ai_bedrock_credentials_login_valid_token
+W6P-06	ai/aws-login	refresh with DPoP, cache rewritten	ai_bedrock_credentials_login_refresh_writes_the_cache
+W6P-07	ai/aws-login	refresh within the 5-minute threshold	ai_bedrock_credentials_login_refresh_within_five_minutes
+W6P-08	ai/aws-login	server error retried	ai_bedrock_credentials_login_refresh_retries_a_server_error
+W6P-09	ai/aws-login	default 900 s lifetime	ai_bedrock_credentials_login_refresh_default_lifetime
+W6P-10	ai/aws-login	TOKEN_EXPIRED message	ai_bedrock_credentials_login_refresh_token_expired
+W6P-11	ai/aws-login	USER_CREDENTIALS_CHANGED message	ai_bedrock_credentials_login_refresh_credentials_changed
+W6P-12	ai/aws-login	INSUFFICIENT_PERMISSIONS message	ai_bedrock_credentials_login_refresh_insufficient_permissions
+W6P-13	ai/aws-login	other AccessDenied message	ai_bedrock_credentials_login_refresh_denied_other
+W6P-14	ai/aws-login	failed refresh keeps valid token	ai_bedrock_credentials_login_refresh_failure_keeps_a_valid_token
+W6P-15	ai/aws-login	failed refresh of expired token moves to next link	ai_bedrock_credentials_login_refresh_failure_expired_token_moves_on
+W6P-16	ai/aws-login	refresh response missing fields (expired)	ai_bedrock_credentials_login_refresh_response_missing_fields
+W6P-17	ai/aws-login	refresh response missing fields (valid)	ai_bedrock_credentials_login_refresh_response_missing_fields_valid_token
+W6P-18	ai/aws-login	missing token file message	ai_bedrock_credentials_login_missing_token_file
+W6P-19	ai/aws-login	token validation missing fields	ai_bedrock_credentials_login_token_missing_fields
+W6P-20	ai/aws-login	AWS_LOGIN_CACHE_DIRECTORY	ai_bedrock_credentials_login_cache_directory_env
+W6P-21	ai/aws-login	static keys win over login_session	ai_bedrock_credentials_login_static_keys_win
+W6P-22	ai/aws-login	AWS_PROFILE login profile	ai_bedrock_credentials_login_default_profile
+W6P-23	ai/aws-login	Signin endpoint per partition matches SDK rules	ai_bedrock_credentials_signin_endpoints_match_the_sdk_rules
+W6P-24	ai/aws-login	SEC1 DPoP key parse equals Node's PEM	ai_bedrock_credentials_dpop_key_is_nodes_sec1_pem
+W6P-25	cli/claude-root	guide/print-config skills via session resource resolver match TS loader	cli_claude_root_resources_match_the_session_resource_loader
+W6P-26	cli/claude-root	ultron mcp stores stats root external, cells and turns	cli_claude_root_mcp_counts_cells_and_turns_as_an_external_root
+W6P-27	claude-root	external turns counted with open time	claude_root_external_turns_are_counted_with_their_open_time
+W6P-28	claude-root	no counters: cells unchanged	claude_root_without_counters_runs_cells_as_before
+W6P-29	claude-root	resumed session takes external root	claude_root_resumed_session_is_now_driven_by_claude_code
+W6P-30	mcp	login hint from injected env only	mcp_sign_in_hint_reads_the_injected_environment
+W6P-31	review	RetryingTransport passes the WebSocket capability and socket through (Codex review frames)	review_retrying_transport_passes_the_websocket_through
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

@@ -45,6 +45,22 @@ pub trait Transport: Send + Sync {
         let _ = (cert, key);
         Err("this HTTP transport cannot present a TLS client certificate".into())
     }
+
+    /// Whether [`Transport::websocket`] opens sockets (the runtime has `WebSocket`); without, a provider that
+    /// prefers WebSockets falls back as upstream does in a runtime without one.
+    fn websocket_available(&self) -> bool {
+        false
+    }
+
+    /// `new WebSocket(url, { headers })`, resolved once it is open: the socket, or why it could not open.
+    fn websocket(
+        &self,
+        url: String,
+        headers: HeaderMap,
+    ) -> BoxFuture<'_, Result<Box<dyn crate::websocket::WebSocketConnection>, String>> {
+        let _ = (url, headers);
+        Box::pin(async { Err(crate::websocket::NO_WEBSOCKET.to_string()) })
+    }
 }
 
 /// Request cancellation shared between the caller and the provider (`AbortSignal`).
@@ -415,6 +431,12 @@ impl HeaderBuilder {
         self
     }
 
+    /// `headers.delete(name)`.
+    pub fn remove(&mut self, name: &str) -> &mut Self {
+        self.0.push((name.to_string(), None));
+        self
+    }
+
     pub fn extend<'a, I>(&mut self, headers: I) -> &mut Self
     where
         I: IntoIterator<Item = (&'a String, &'a Option<String>)>,
@@ -596,6 +618,26 @@ impl Transport for ReqwestTransport {
             idle: self.idle,
             config: self.config.clone(),
         }))
+    }
+
+    fn websocket_available(&self) -> bool {
+        true
+    }
+
+    /// An HTTP/1.1 upgrade through this transport's proxies (a caller's own client: no proxy).
+    fn websocket(
+        &self,
+        url: String,
+        headers: HeaderMap,
+    ) -> BoxFuture<'_, Result<Box<dyn crate::websocket::WebSocketConnection>, String>> {
+        Box::pin(async move {
+            let builder = match &self.config {
+                Some(config) => config.builder()?,
+                None => reqwest::Client::builder().no_proxy(),
+            };
+            let client = builder.http1_only().build().map_err(|e| e.to_string())?;
+            crate::websocket::connect(&client, &url, &headers).await
+        })
     }
 
     fn send(&self, request: HttpRequest) -> BoxFuture<'_, Result<HttpResponse, String>> {

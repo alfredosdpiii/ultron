@@ -3,7 +3,10 @@
 //! writes its files into a temp HOME, serves the recorded canned responses from one loopback HTTP server (SSO, SSO
 //! OIDC, STS, container and instance metadata endpoints are pointed at it, and Bedrock itself is the model's base
 //! URL), and compares the credential requests, the credentials the Bedrock request was signed with, files after the
-//! run, and the final message with what the SDK did.
+//! run, and the final message with what the SDK did. `aws login` scenarios also check each DPoP proof: decoded as the
+//! generator records it, and its ES256 signature valid for the header's key. Requests the SDK's credential cache sends
+//! after the result (`lateRequests`: a background refresh of credentials about to expire) are not part of a call and
+//! are not ported.
 
 use ai::aws::encode_message;
 use ai::aws_credentials::{parse_ini, sha1_hex};
@@ -18,9 +21,10 @@ use std::sync::{Arc, LazyLock, Mutex};
 static FIXTURE: LazyLock<Value> =
     LazyLock::new(|| serde_json::from_str(include_str!("../fixtures/bedrock-credentials.json")).unwrap());
 
-const RECORDED_HEADERS: [&str; 5] = [
+const RECORDED_HEADERS: [&str; 6] = [
     "authorization",
     "content-type",
+    "dpop",
     "x-amz-sso_bearer_token",
     "x-aws-ec2-metadata-token",
     "x-aws-ec2-metadata-token-ttl-seconds",
@@ -152,6 +156,10 @@ fn serve(stream: &mut TcpStream, recorded: &Mutex<Recorded>, routes: &Value) {
     let mut recorded_headers = Map::new();
     for name in RECORDED_HEADERS {
         if let Some(value) = headers.get(name) {
+            if name == "dpop" {
+                recorded_headers.insert(name.into(), decode_dpop(value));
+                continue;
+            }
             let value = if name == "authorization" && value.starts_with("AWS4-HMAC-SHA256") {
                 let credential = value.split("Credential=").nth(1).unwrap_or_default();
                 let credential = credential.split(',').next().unwrap_or_default();
@@ -209,6 +217,78 @@ fn serve(stream: &mut TcpStream, recorded: &Mutex<Recorded>, routes: &Value) {
     reply(stream, status, &content_type, &extra, body.as_bytes());
 }
 
+/// The DPoP key's SEC1 PEM, built from the recorded scalar and point (`DER: version 1, the scalar, prime256v1, the
+/// point`), as Node exports it.
+fn dpop_pem() -> String {
+    let dpop = &FIXTURE["dpop"];
+    let hex = dpop["d"].as_str().unwrap();
+    let d: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect();
+    let point = |key: &str| ai::jsutil::atob(&dpop[key].as_str().unwrap().replace('-', "+").replace('_', "/")).unwrap();
+    let mut der = vec![0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20];
+    der.extend(&d);
+    der.extend([0xa0, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+    der.extend([0xa1, 0x44, 0x03, 0x42, 0x00, 0x04]);
+    der.extend(point("x"));
+    der.extend(point("y"));
+    let body = ai::jsutil::btoa(&der);
+    let lines: Vec<&str> = body
+        .as_bytes()
+        .chunks(64)
+        .map(|c| std::str::from_utf8(c).unwrap())
+        .collect();
+    format!(
+        "-----BEGIN EC PRIVATE KEY-----\n{}\n-----END EC PRIVATE KEY-----\n",
+        lines.join("\n")
+    )
+}
+
+/// The PEM as it sits inside a JSON string.
+fn dpop_pem_json() -> String {
+    let quoted = serde_json::to_string(&dpop_pem()).unwrap();
+    quoted[1..quoted.len() - 1].to_string()
+}
+
+fn base64url_decode(text: &str) -> Vec<u8> {
+    ai::jsutil::atob(&text.replace('-', "+").replace('_', "/")).unwrap()
+}
+
+/// A DPoP proof as the generator records it (jti and iat as placeholders), after checking its signature with the
+/// header's key.
+fn decode_dpop(value: &str) -> Value {
+    let parts: Vec<&str> = value.split('.').collect();
+    assert_eq!(parts.len(), 3, "a DPoP JWT");
+    let header: Value = serde_json::from_slice(&base64url_decode(parts[0])).unwrap();
+    let mut payload: Value = serde_json::from_slice(&base64url_decode(parts[1])).unwrap();
+    let signature = base64url_decode(parts[2]);
+    let mut point = vec![0x04];
+    point.extend(base64url_decode(header["jwk"]["x"].as_str().unwrap()));
+    point.extend(base64url_decode(header["jwk"]["y"].as_str().unwrap()));
+    ring::signature::UnparsedPublicKey::new(&ring::signature::ECDSA_P256_SHA256_FIXED, &point)
+        .verify(format!("{}.{}", parts[0], parts[1]).as_bytes(), &signature)
+        .expect("the DPoP proof is signed by its key");
+    let jti = payload["jti"].as_str().unwrap_or_default();
+    let v4 = jti.len() == 36
+        && jti.chars().enumerate().all(|(i, c)| match i {
+            8 | 13 | 18 | 23 => c == '-',
+            14 => c == '4',
+            19 => "89ab".contains(c),
+            _ => c.is_ascii_hexdigit() && !c.is_ascii_uppercase(),
+        });
+    if v4 {
+        payload["jti"] = json!("<uuid>");
+    }
+    if payload["iat"]
+        .as_i64()
+        .is_some_and(|iat| (iat * 1000 - now_ms()).abs() < 600_000)
+    {
+        payload["iat"] = json!("<iat>");
+    }
+    json!({"header": header, "payload": payload, "signatureBytes": signature.len()})
+}
+
 fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -223,7 +303,10 @@ fn iso(ms: i64) -> String {
 
 /// `<home>`, `<port>` and `<now+N>` in a scenario value.
 fn expand(text: &str, home: &str, port: u16) -> String {
-    let mut out = text.replace("<home>", home).replace("<port>", &port.to_string());
+    let mut out = text
+        .replace("<dpop-pem>", &dpop_pem_json())
+        .replace("<home>", home)
+        .replace("<port>", &port.to_string());
     while let Some(start) = out.find("<now+") {
         let end = start + out[start..].find('>').unwrap();
         let seconds: i64 = out[start + 5..end].parse().unwrap();
@@ -234,7 +317,10 @@ fn expand(text: &str, home: &str, port: u16) -> String {
 
 /// The generator's normalization: paths, the port, timestamped session names and run-time ISO dates.
 fn normalize(text: &str, home: &str, port: u16) -> String {
-    let mut out = text.replace(home, "<home>").replace(&port.to_string(), "<port>");
+    let mut out = text
+        .replace(&dpop_pem_json(), "<dpop-pem>")
+        .replace(home, "<home>")
+        .replace(&port.to_string(), "<port>");
     for prefix in ["aws-sdk-js-session-", "aws-sdk-js-"] {
         let mut result = String::new();
         let mut rest = out.as_str();
@@ -363,6 +449,9 @@ fn replay(scenario: &Value) {
         .map(|r| {
             let mut r = r.clone();
             r["body"] = json!(normalize(r["body"].as_str().unwrap(), &home, port));
+            if let Some(htu) = r["headers"]["dpop"]["payload"]["htu"].as_str() {
+                r["headers"]["dpop"]["payload"]["htu"] = json!(normalize(htu, &home, port));
+            }
             r
         })
         .collect();
@@ -381,6 +470,18 @@ fn replay(scenario: &Value) {
             .ok()
             .map_or(Value::Null, |text| json!(normalize(&text, &home, port)));
         assert_eq!(&actual, expected, "{name}: {path} after the run");
+    }
+    for (path, minutes) in scenario
+        .get("afterLifetime")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+    {
+        let text = std::fs::read_to_string(home_dir.path().join(path)).unwrap();
+        let token: Value = serde_json::from_str(&text).unwrap();
+        let expires = ai::model_refresh::parse_iso_ms(token["accessToken"]["expiresAt"].as_str().unwrap()).unwrap();
+        let lifetime = ((expires - now_ms()) as f64 / 60_000.0).round() as i64;
+        assert_eq!(json!(lifetime), *minutes, "{name}: {path} lifetime in minutes");
     }
     let error = message
         .get("errorMessage")
@@ -432,7 +533,7 @@ fn ai_bedrock_credentials_fixture_covers_every_scenario() {
         .iter()
         .map(|s| s["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names.len(), 37);
+    assert_eq!(names.len(), 55);
 }
 
 macro_rules! replays {
@@ -484,6 +585,77 @@ replays! {
     (ai_bedrock_credentials_container_host_not_allowed, "container-host-not-allowed"),
     (ai_bedrock_credentials_profile_skips_env_keys, "profile-skips-env-keys-then-nothing"),
     (ai_bedrock_credentials_ini_subsections_and_comments, "ini-subsections-and-comments"),
+    (ai_bedrock_credentials_login_valid_token, "login-valid-token"),
+    (ai_bedrock_credentials_login_refresh_writes_the_cache, "login-refresh"),
+    (ai_bedrock_credentials_login_refresh_within_five_minutes, "login-refresh-within-five-minutes"),
+    (ai_bedrock_credentials_login_refresh_retries_a_server_error, "login-refresh-retries-server-error"),
+    (ai_bedrock_credentials_login_refresh_default_lifetime, "login-refresh-default-lifetime"),
+    (ai_bedrock_credentials_login_refresh_token_expired, "login-refresh-token-expired"),
+    (ai_bedrock_credentials_login_refresh_credentials_changed, "login-refresh-credentials-changed"),
+    (ai_bedrock_credentials_login_refresh_insufficient_permissions, "login-refresh-insufficient-permissions"),
+    (ai_bedrock_credentials_login_refresh_denied_other, "login-refresh-denied-other"),
+    (ai_bedrock_credentials_login_refresh_failure_keeps_a_valid_token, "login-refresh-fails-keeps-valid-token"),
+    (ai_bedrock_credentials_login_refresh_failure_expired_token_moves_on, "login-refresh-fails-expired-token"),
+    (ai_bedrock_credentials_login_refresh_response_missing_fields, "login-refresh-response-missing-fields"),
+    (ai_bedrock_credentials_login_refresh_response_missing_fields_valid_token, "login-refresh-response-missing-fields-valid-token"),
+    (ai_bedrock_credentials_login_missing_token_file, "login-missing-token-file"),
+    (ai_bedrock_credentials_login_token_missing_fields, "login-token-missing-fields"),
+    (ai_bedrock_credentials_login_cache_directory_env, "login-cache-directory-env"),
+    (ai_bedrock_credentials_login_static_keys_win, "login-static-keys-win"),
+    (ai_bedrock_credentials_login_default_profile, "login-default-profile"),
+}
+
+/// The Signin endpoint of each partition, as the SDK client's endpoint rules resolve it (recorded).
+#[test]
+fn ai_bedrock_credentials_signin_endpoints_match_the_sdk_rules() {
+    for (region, url) in FIXTURE["signinEndpoints"].as_object().unwrap() {
+        assert_eq!(
+            format!("{}/", ai::aws_credentials::signin_endpoint(region)),
+            url.as_str().unwrap(),
+            "{region}"
+        );
+    }
+}
+
+/// The PEM the replay writes is the one Node exported for the generator's key, and it parses to that key.
+#[test]
+fn ai_bedrock_credentials_dpop_key_is_nodes_sec1_pem() {
+    use sha2::Digest;
+    let pem = dpop_pem();
+    let digest: String = sha2::Sha256::digest(pem.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    assert_eq!(digest, FIXTURE["dpop"]["pemSha256"].as_str().unwrap());
+    let (scalar, point) = ai::aws_credentials::parse_sec1_pem(&pem).unwrap();
+    assert_eq!(scalar, (1u8..=32).collect::<Vec<_>>());
+    assert_eq!(point.len(), 65);
+    assert_eq!(point[0], 4);
+    assert!(
+        ai::aws_credentials::parse_sec1_pem("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n").is_err()
+    );
+    // Without the public key, or on another curve.
+    let mut no_public = vec![0x30, 0x31, 0x02, 0x01, 0x01, 0x04, 0x20];
+    no_public.extend(1u8..=32);
+    no_public.extend([0xa0, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07]);
+    let wrap = |der: &[u8]| {
+        format!(
+            "-----BEGIN EC PRIVATE KEY-----\n{}\n-----END EC PRIVATE KEY-----\n",
+            ai::jsutil::btoa(der)
+        )
+    };
+    assert_eq!(
+        ai::aws_credentials::parse_sec1_pem(&wrap(&no_public)).unwrap_err(),
+        "The DPoP key has no public key"
+    );
+    let mut other_curve = no_public.clone();
+    let last = other_curve.len() - 1;
+    other_curve[last] = 0x08;
+    assert!(
+        ai::aws_credentials::parse_sec1_pem(&wrap(&other_curve))
+            .unwrap_err()
+            .contains("P-256")
+    );
 }
 
 // ------------------------------------------------------------------------------------- ported literal expectations

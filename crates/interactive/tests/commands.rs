@@ -87,8 +87,8 @@ impl LaneClient for Recorder {
     fn clone_session(&self) {
         self.push("clone".into());
     }
-    fn export(&self, path: Option<&str>) {
-        self.push(format!("export {path:?}"));
+    fn export(&self, path: Option<&str>, theme: Option<&str>) {
+        self.push(format!("export {path:?} {theme:?}"));
     }
     fn usage_report(&self) {
         self.push("usage".into());
@@ -692,10 +692,56 @@ fn interactive_commands_export_clone_usage_reach_the_lane() {
     submit(&mut app, "/usage");
     assert_eq!(
         calls(&c),
-        ["export Some(\"a b.html\")", "export None", "clone", "usage"]
+        [
+            "export Some(\"a b.html\") Some(\"dark\")",
+            "export None Some(\"dark\")",
+            "clone",
+            "usage"
+        ]
     );
     app.apply(LaneEvent::Notice("Report line".into()));
     assert!(screen(&mut app).contains(" Report line"));
+}
+
+/// `/export` names the theme drawn now (`generateHtml(..., theme.name)`): a custom theme's own name, the new theme
+/// after a `/settings` change, and `dark` after a theme that failed to load.
+#[test]
+fn interactive_commands_export_names_the_active_theme() {
+    let dir = std::env::temp_dir().join(format!("commands-export-theme-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let paper = include_str!("../../tui/src/theme/light.json").replace("\"name\": \"light\"", "\"name\": \"paper\"");
+    std::fs::write(dir.join("paper.json"), paper).unwrap();
+    let controller = |setting: &str| {
+        let registry =
+            tui::theme::registry::ThemeRegistry::new(std::path::PathBuf::new(), dir.clone(), ColorMode::Truecolor);
+        interactive::theme_setup::ThemeController::new(registry, Some(setting.to_string()), None)
+    };
+    let (mut failed, f) = app();
+    let (mut custom, p) = app();
+    custom.set_theme_controller(controller("paper"));
+    submit(&mut custom, "/export");
+    let (mut app, c) = app();
+    app.set_theme_controller(controller("dark"));
+    submit(&mut app, "/export");
+    // `/settings` → Theme → light.
+    app.apply(settings_event());
+    typed(&mut app, "theme");
+    app.handle_input("\r");
+    app.handle_input("\x1b[B");
+    app.handle_input("\r");
+    app.handle_input("\x1b");
+    assert!(!screen(&mut app).contains("Type to search"));
+    submit(&mut app, "/export x.html");
+    failed.set_theme_controller(controller("missing"));
+    submit(&mut failed, "/export");
+    let _ = std::fs::remove_dir_all(&dir);
+    let exports = |c: &Rc<Calls>| -> Vec<String> { calls(c).into_iter().filter(|x| x.starts_with("export")).collect() };
+    assert_eq!(exports(&p), ["export None Some(\"paper\")"]);
+    assert_eq!(
+        exports(&c),
+        ["export None Some(\"dark\")", "export Some(\"x.html\") Some(\"light\")"]
+    );
+    assert_eq!(exports(&f), ["export None Some(\"dark\")"]);
 }
 
 #[test]

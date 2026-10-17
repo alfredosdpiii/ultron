@@ -77,7 +77,7 @@ impl LaneClient for Recorder {
     fn save_setting(&self, key: &str, value: Value) {
         self.log(format!("setting {key}={value}"));
     }
-    fn share(&self) {
+    fn share(&self, _theme: Option<&str>) {
         self.log("share".into());
     }
     fn cancel_share(&self) {

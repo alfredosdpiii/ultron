@@ -6,6 +6,7 @@ use resources::context_files::ContextFile;
 use resources::runtime_guide::{EventDelivery, RuntimeGuideOptions, rlm_runtime_prompt};
 use resources::skills::Skill;
 use resources::system_prompt::{BuildOptions, build_system_prompt_sections};
+use session_core::RunEnv;
 use std::path::Path;
 
 /// The tool as Claude Code names it: server `ultron`, tool `rlm`.
@@ -34,15 +35,6 @@ pub struct ResourceFlags {
     pub no_skills: bool,
 }
 
-/// Where resources are read from.
-pub struct ResourceDirs<'a> {
-    pub cwd: &'a Path,
-    pub agent_dir: &'a Path,
-    pub home: &'a Path,
-    /// The bundled skills directory (`<package>/skills`), unless `ULTRON_BUNDLED_SKILLS` turns it off.
-    pub bundled_skills: Option<&'a Path>,
-}
-
 /// Whether `ULTRON_BUNDLED_SKILLS` leaves the bundled skills on.
 pub fn bundled_skills_enabled(value: Option<&str>) -> bool {
     !matches!(
@@ -53,43 +45,31 @@ pub fn bundled_skills_enabled(value: Option<&str>) -> bool {
 
 /// `workerProjectTrusted`: nothing to trust, else the stored decision, else `defaultProjectTrust` is not "never".
 pub fn project_trusted(cwd: &Path, agent_dir: &Path, home: &Path) -> bool {
-    if !config::trust::has_trust_requiring_project_resources(cwd, home) {
-        return true;
-    }
-    if let Ok(Some(decision)) = config::trust::ProjectTrustStore::new(agent_dir).get(cwd) {
-        return decision;
-    }
-    config::settings::SettingsManager::create(cwd, agent_dir, false).default_project_trust() != "never"
+    session_core::extension_commands::worker_project_trusted(cwd, agent_dir, home)
 }
 
-/// `loadClaudePromptResources`: what native Ultron would load in `cwd` (a distrusted project loads no project
-/// skills).
-pub fn load_prompt_resources(dirs: &ResourceDirs, flags: ResourceFlags) -> PromptResources {
+/// `loadClaudePromptResources`: what native Ultron would load in `env`'s directory, with the session worker's
+/// resource loader (crate session-core `session_resources`: the settings' `skills` entries and packages, the
+/// auto-discovered `.pi/skills`, `.agents/skills` up to the git root, `<agentDir>/skills` and `~/.agents/skills`,
+/// then the bundled skills in `bundled`, the first skill of a name kept), settings and project trust (a distrusted
+/// project contributes no settings and no project skills). `bundled` is the bundled skills directory, unless
+/// `ULTRON_BUNDLED_SKILLS` turned it off.
+pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: ResourceFlags) -> PromptResources {
     if flags.no_context_files && flags.no_skills {
         return PromptResources::default();
     }
-    let cwd = dirs.cwd.display().to_string();
-    let agent_dir = dirs.agent_dir.display().to_string();
-    let trusted = project_trusted(dirs.cwd, dirs.agent_dir, dirs.home);
-    let settings = config::settings::SettingsManager::create(dirs.cwd, dirs.agent_dir, trusted);
-    let mut skills = Vec::new();
-    if !flags.no_skills {
-        skills = resources::skills::load_skills(&resources::skills::LoadSkillsOptions {
-            cwd: &cwd,
-            agent_dir: &agent_dir,
-            skill_paths: &[],
-            include_defaults: true,
-        })
-        .skills;
-        if !trusted {
-            skills.retain(|s| s.source != "project");
-        }
-        // The resource loader resolves project resources before the user's (package-manager order).
-        skills.sort_by_key(|s| s.source != "project");
-        if let Some(bundled) = dirs.bundled_skills {
-            skills.extend(resources::skills::load_skills_from_dir(&bundled.display().to_string(), "bundled").skills);
-        }
-    }
+    let cwd = env.cwd.display().to_string();
+    let agent_dir_path = env.agent_dir();
+    let agent_dir = agent_dir_path.display().to_string();
+    let trusted = project_trusted(&env.cwd, &agent_dir_path, &env.home);
+    let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir_path, trusted);
+    let skills = if flags.no_skills {
+        Vec::new()
+    } else {
+        let resources = session_core::session_resources::resolve_default(env);
+        let bundled = bundled.map(|dir| dir.display().to_string());
+        session_core::session_resources::skills(&cwd, &agent_dir, &resources, false, bundled.as_deref())
+    };
     let context_files = if flags.no_context_files {
         Vec::new()
     } else {

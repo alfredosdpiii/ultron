@@ -591,6 +591,8 @@ pub struct ToolRenderState {
     pub execution_started: bool,
     pub args_complete: bool,
     pub show_images: bool,
+    /// Images are drawn inline (the terminal draws them and `show_images`): the text output names none.
+    pub inline_images: bool,
 }
 
 /// A renderer returns `None` where the TS renderer throws; the component then uses its fallback.
@@ -604,7 +606,25 @@ pub struct ToolRenderers {
     pub result: Option<ResultRenderer>,
 }
 
-/// `ToolExecutionComponent` on a terminal without inline images: images render as their text fallback.
+/// One image a tool result draws inline: its (PNG on Kitty) data and its Kitty image id.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineImage {
+    pub data: String,
+    pub mime: String,
+    pub image_id: Option<u32>,
+}
+
+/// How tool images are drawn: the terminal's protocol, `terminal.imageWidthCells`, the cell size, and the images.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineImages {
+    pub protocol: tui::image::ImageProtocol,
+    pub width_cells: u32,
+    pub cell: tui::image::Dimensions,
+    pub images: Vec<InlineImage>,
+}
+
+/// `ToolExecutionComponent`: the call and result, then each image of the result drawn inline after a blank line
+/// (`inline`), or named in the text output when the terminal cannot draw it or `show_images` is off.
 pub struct ToolExecution {
     pub theme: Rc<Theme>,
     pub tool_name: String,
@@ -618,6 +638,8 @@ pub struct ToolExecution {
     pub renderers: Option<ToolRenderers>,
     /// Formatted `app.tools.expand` key text.
     pub expand_key: String,
+    /// The images drawn inline; `None` on a terminal without image support.
+    pub inline: Option<InlineImages>,
 }
 
 /// `stripAnsi` + `sanitizeBinaryOutput` + drop `\r`.
@@ -633,6 +655,12 @@ fn clean_output(text: &str) -> String {
 
 /// `getTextOutput` (render-utils.ts) on a terminal without image support.
 pub fn tool_text_output(result: Option<&ToolResultView>) -> String {
+    tool_text_output_with(result, false)
+}
+
+/// `getTextOutput(result, showImages)`: the text blocks, then a line naming each image unless images are drawn
+/// inline (`getCapabilities().images && showImages`).
+pub fn tool_text_output_with(result: Option<&ToolResultView>, inline_images: bool) -> String {
     let Some(result) = result else {
         return String::new();
     };
@@ -660,7 +688,7 @@ pub fn tool_text_output(result: Option<&ToolResultView>) -> String {
             ToolContent::Text(_) => None,
         })
         .collect();
-    if !images.is_empty() {
+    if !images.is_empty() && !inline_images {
         let ind = images.join("\n");
         out = if out.is_empty() { ind } else { format!("{out}\n{ind}") };
     }
@@ -678,7 +706,35 @@ impl ToolExecution {
             execution_started: self.execution_started,
             args_complete: self.args_complete,
             show_images: self.show_images,
+            inline_images: self.inline_images(),
         }
+    }
+
+    fn inline_images(&self) -> bool {
+        self.show_images && self.inline.is_some()
+    }
+
+    /// The result's images as `Image` components, each after a blank line.
+    fn image_lines(&self, width: usize) -> Vec<String> {
+        let Some(inline) = self.inline.as_ref().filter(|_| self.show_images) else {
+            return Vec::new();
+        };
+        let caps = tui::image::Capabilities {
+            images: Some(inline.protocol),
+            true_color: true,
+            hyperlinks: false,
+        };
+        let mut lines = Vec::new();
+        for image in &inline.images {
+            let mut component =
+                tui::image::Image::new(&image.data, &image.mime, fg_fn(&self.theme, "toolOutput"), caps);
+            component.max_width_cells = Some(inline.width_cells);
+            component.cell = inline.cell;
+            component.image_id = image.image_id;
+            lines.push(String::new());
+            lines.extend(component.render(width));
+        }
+        lines
     }
 
     fn bg(&self) -> StyleFn {
@@ -697,7 +753,7 @@ impl ToolExecution {
     }
 
     fn result_fallback(&self) -> Option<Box<dyn Component>> {
-        let output = tool_text_output(self.result.as_ref());
+        let output = tool_text_output_with(self.result.as_ref(), self.inline_images());
         if output.is_empty() {
             return None;
         }
@@ -730,7 +786,7 @@ impl ToolExecution {
         if let Ok(args) = serde_json::to_string_pretty(&self.args) {
             text.push_str(&format!("\n\n{args}"));
         }
-        let output = tool_text_output(self.result.as_ref());
+        let output = tool_text_output_with(self.result.as_ref(), self.inline_images());
         if !output.is_empty() {
             text.push_str(&format!("\n{output}"));
         }
@@ -740,9 +796,11 @@ impl ToolExecution {
 
 impl Component for ToolExecution {
     fn render(&mut self, width: usize) -> Vec<String> {
+        let images = self.image_lines(width);
         let Some(r) = &self.renderers else {
             let mut lines = vec![String::new()];
             lines.extend(Text::new(&self.format_generic(), 1, 1, Some(self.bg())).render(width));
+            lines.extend(images);
             return lines;
         };
         let state = self.state();
@@ -761,11 +819,12 @@ impl Component for ToolExecution {
         }
         if r.self_shell {
             let content = Container { children }.render(width);
-            if content.is_empty() {
+            if content.is_empty() && images.is_empty() {
                 return content;
             }
             let mut lines = vec![String::new()];
             lines.extend(content);
+            lines.extend(images);
             return lines;
         }
         let mut lines = vec![String::new()];
@@ -778,6 +837,7 @@ impl Component for ToolExecution {
             }
             .render(width),
         );
+        lines.extend(images);
         lines
     }
 }

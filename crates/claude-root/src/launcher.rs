@@ -326,7 +326,8 @@ pub fn run(
     let socket = socket_path_for(&launch_id(), &crate::control::control_dir(var)?);
     let bundled = ctx.bundled_skills();
     let resources = crate::guide::load_prompt_resources(
-        &ctx.resource_dirs(&agent_dir, bundled.as_deref()),
+        &ctx.env,
+        bundled.as_deref(),
         ResourceFlags {
             no_context_files: parsed.no_context_files,
             no_skills: parsed.no_skills,

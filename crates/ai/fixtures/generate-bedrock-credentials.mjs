@@ -1,17 +1,21 @@
 // Generates crates/ai/fixtures/bedrock-credentials.json from this worktree's TypeScript Bedrock provider
 // (`packages/ai/src/api/bedrock-converse-stream.ts`) and the AWS SDK default credential chain it relies on: SSO
 // (sso-session with token refresh, and legacy), credential_process, web identity (env and profile), assume role with
-// a source profile, container credentials and IMDSv2/v1. Every AWS endpoint is one loopback HTTP server (the SDK's
+// a source profile, container credentials, IMDSv2/v1, and `aws login` sessions (login_session: the cached token, its
+// DPoP-signed Signin `CreateOAuth2Token` refresh, written back to the cache). Every AWS endpoint is one loopback HTTP server (the SDK's
 // endpoint overrides AWS_ENDPOINT_URL_SSO/_SSO_OIDC/_STS, AWS_EC2_METADATA_SERVICE_ENDPOINT,
-// AWS_CONTAINER_CREDENTIALS_FULL_URI, and the model's base URL for Bedrock itself); offline-guard.mjs refuses anything
+// AWS_CONTAINER_CREDENTIALS_FULL_URI, AWS_ENDPOINT_URL_SIGNIN, and the model's base URL for Bedrock itself);
+// offline-guard.mjs refuses anything
 // else. Each scenario writes files into a temp HOME, sets the process env the SDK reads, and records the credential
 // requests (method, path, query, chosen headers, body), the Bedrock request's signing key and session token, files
 // after the run, and the final message. Paths are recorded as <home>, the port as <port>; `<now+N>` in a file is the
-// ISO time N seconds from now, written at run time.
+// ISO time N seconds from now, written at run time; `<dpop-pem>` is the DPoP key's SEC1 PEM (JSON-escaped), derived
+// at run time from the fixed scalar DPOP_D so no private key is stored. A DPoP header is recorded decoded, its jti
+// (a UUID) and iat (now) as placeholders, its signature by length.
 // Usage: node crates/ai/fixtures/generate-bedrock-credentials.mjs
 import { assertOffline } from "../../cli/fixtures/offline-guard.mjs";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createECDH, createHash, createPrivateKey } from "node:crypto";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -39,7 +43,30 @@ const converse = Buffer.concat([
 	event("metadata", { usage: { inputTokens: 5, outputTokens: 1, totalTokens: 6 }, metrics: { latencyMs: 3 } }),
 ]);
 
-const RECORDED_HEADERS = ["authorization", "content-type", "x-amz-sso_bearer_token", "x-aws-ec2-metadata-token", "x-aws-ec2-metadata-token-ttl-seconds"];
+const RECORDED_HEADERS = ["authorization", "content-type", "dpop", "x-amz-sso_bearer_token", "x-aws-ec2-metadata-token", "x-aws-ec2-metadata-token-ttl-seconds"];
+
+// The DPoP key of the `aws login` scenarios: a fixed scalar (not a secret), its public point, and the SEC1 PEM Node
+// exports for it (only its sha256 is recorded).
+const DPOP_D = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+const dpopEcdh = createECDH("prime256v1");
+dpopEcdh.setPrivateKey(Buffer.from(DPOP_D, "hex"));
+const dpopPoint = dpopEcdh.getPublicKey();
+const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
+const DPOP_PEM = createPrivateKey({
+	key: { kty: "EC", crv: "P-256", d: b64url(Buffer.from(DPOP_D, "hex")), x: b64url(dpopPoint.subarray(1, 33)), y: b64url(dpopPoint.subarray(33)) },
+	format: "jwk",
+}).export({ format: "pem", type: "sec1" });
+const DPOP_PEM_JSON = JSON.stringify(DPOP_PEM).slice(1, -1);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+function decodeDpop(value) {
+	const [h, p, sig] = value.split(".");
+	const header = JSON.parse(Buffer.from(h, "base64url").toString("utf8"));
+	const payload = JSON.parse(Buffer.from(p, "base64url").toString("utf8"));
+	if (UUID.test(payload.jti)) payload.jti = "<uuid>";
+	if (Math.abs(payload.iat * 1000 - Date.now()) < 600_000) payload.iat = "<iat>";
+	if (typeof payload.htu === "string") payload.htu = normalize(payload.htu);
+	return { header, payload, signatureBytes: Buffer.from(sig, "base64url").length };
+}
 
 let current = null;
 const server = createServer((req, res) => {
@@ -62,6 +89,10 @@ const server = createServer((req, res) => {
 		for (const name of RECORDED_HEADERS) {
 			const value = req.headers[name];
 			if (value === undefined) continue;
+			if (name === "dpop") {
+				headers[name] = decodeDpop(value);
+				continue;
+			}
 			headers[name] = name === "authorization" && value.startsWith("AWS4-HMAC-SHA256") ? `AWS4-HMAC-SHA256 Credential=${/Credential=([^,]+),/.exec(value)?.[1].replace(/\/\d{8}\//, "/<date>/")}` : value;
 		}
 		const query = [...url.searchParams.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -85,6 +116,7 @@ const origin = `http://127.0.0.1:${port}`;
 let home = "";
 const normalize = (text) =>
 	text
+		.replaceAll(DPOP_PEM_JSON, "<dpop-pem>")
 		.replaceAll(home, "<home>")
 		.replaceAll(String(port), "<port>")
 		.replace(/aws-sdk-js-session-\d+/g, "aws-sdk-js-session-<now>")
@@ -92,6 +124,7 @@ const normalize = (text) =>
 		.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z/g, (iso) => (iso.startsWith("20") && iso < "2090" && iso > "2010" ? "<iso>" : iso));
 const expand = (text) =>
 	text
+		.replaceAll("<dpop-pem>", DPOP_PEM_JSON)
 		.replaceAll("<home>", home)
 		.replaceAll("<port>", String(port))
 		.replace(/<now\+(-?\d+)>/g, (_, s) => new Date(Date.now() + Number(s) * 1000).toISOString());
@@ -136,11 +169,26 @@ async function run(scenario) {
 	} catch (e) {
 		result = { thrown: e.message };
 	}
+	// The SDK's credential cache refreshes credentials that expire within five minutes in the background (a login
+	// token kept after a failed refresh): such a request arrives after the result. Wait until the server is quiet so
+	// it is counted here (as `lateRequests`), never recorded as the next scenario's.
+	const atResult = current.requests.length;
+	for (let seen = -1; seen !== current.requests.length; ) {
+		seen = current.requests.length;
+		await new Promise((resolve) => setTimeout(resolve, 300));
+	}
+	const late = current.requests.splice(atResult);
 	for (const name of Object.keys(processEnv)) delete process.env[name];
 	const after = {};
+	// A login token's lifetime after the run, in whole minutes from now (its `expiresAt` is normalized away).
+	const afterLifetime = {};
 	for (const path of scenario.after ?? []) {
 		const full = join(home, path);
 		after[path] = existsSync(full) ? normalize(readFileSync(full, "utf8")) : null;
+		if (path.includes("/login/")) {
+			const expiresAt = existsSync(full) ? JSON.parse(readFileSync(full, "utf8")).accessToken?.expiresAt : undefined;
+			if (expiresAt) afterLifetime[path] = Math.round((Date.parse(expiresAt) - Date.now()) / 60000);
+		}
 	}
 	const record = {
 		name: scenario.name,
@@ -155,6 +203,8 @@ async function run(scenario) {
 		stopReason: result.stopReason ?? null,
 		errorMessage: result.errorMessage ? normalize(result.errorMessage) : null,
 		diagnostics: result.diagnostics ? result.diagnostics.map(({ timestamp, ...rest }) => rest) : null,
+		...(late.length > 0 ? { lateRequests: late.length } : {}),
+		...(Object.keys(afterLifetime).length > 0 ? { afterLifetime } : {}),
 	};
 	rmSync(home, { recursive: true, force: true });
 	return record;
@@ -179,6 +229,32 @@ const ssoEnv = { AWS_ENDPOINT_URL_SSO: "http://127.0.0.1:<port>", AWS_ENDPOINT_U
 const stsEnv = { AWS_ENDPOINT_URL_STS: "http://127.0.0.1:<port>" };
 const procJson = (fields) => `#!/bin/sh\necho run >> "<home>/runs"\necho '${JSON.stringify(fields)}'\n`;
 const imdsCreds = { status: 200, body: { Code: "Success", AccessKeyId: "ASIAIMDS", SecretAccessKey: "imds-secret", Token: "imds-session", Expiration: "2099-01-01T00:00:00Z" } };
+
+const sha256 = (text) => createHash("sha256").update(text).digest("hex");
+const LOGIN_SESSION = "arn:aws:iam::123456789012:user/dev";
+const loginConfig = (extra = "") => `[profile login]\nlogin_session = ${LOGIN_SESSION}\n${extra}`;
+const loginCache = `.aws/login/cache/${sha256(LOGIN_SESSION)}.json`;
+const loginToken = (expiresAt, extra = {}, access = {}) =>
+	JSON.stringify({
+		accessToken: { accessKeyId: "ASIALOGIN", secretAccessKey: "login-secret", sessionToken: "login-session", accountId: "123456789012", expiresAt, ...access },
+		tokenType: "aws_sigv4",
+		clientId: "arn:aws:signin:::devtools/same-device",
+		refreshToken: "login-rt-1",
+		idToken: "login-id-token",
+		dpopKey: "<dpop-pem>",
+		...extra,
+	});
+const signinEnv = { AWS_ENDPOINT_URL_SIGNIN: "http://127.0.0.1:<port>" };
+// `CreateOAuth2Token`'s output is the response body itself (`tokenOutput` is the HTTP payload).
+const signinOk = (output = {}) => ({
+	status: 200,
+	body: { accessToken: { accessKeyId: "ASIANEW", secretAccessKey: "new-secret", sessionToken: "new-session" }, tokenType: "aws_sigv4", expiresIn: 1800, refreshToken: "login-rt-2", ...output },
+});
+const signinDenied = (error) => ({
+	status: 400,
+	headers: { "content-type": "application/json", "x-amzn-errortype": "AccessDeniedException" },
+	body: { error, message: `denied: ${error}` },
+});
 
 const scenarios = [
 	{
@@ -445,6 +521,131 @@ const scenarios = [
 			".aws/config": `[profile x] ; trailing comment\ns3 =\n  max_concurrent_requests = 20\naws_access_key_id = AKIDINI # comment\naws_secret_access_key = ini#secret\n[profile other]\naws_access_key_id = AKIDOTHER\n`,
 		},
 	},
+	{
+		name: "login-valid-token",
+		options: { profile: "login" },
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("2099-01-01T00:00:00Z") },
+	},
+	{
+		name: "login-refresh",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig("region = eu-west-1\n"), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [signinOk()] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-within-five-minutes",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+240>") },
+		routes: { "POST /v1/token": [signinOk()] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-retries-server-error",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [{ status: 500, headers: { "content-type": "application/json", "x-amzn-errortype": "InternalServerException" }, body: { error: "server_error", message: "try again" } }, signinOk()] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-default-lifetime",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+-60>") },
+		routes: { "POST /v1/token": [signinOk({ expiresIn: undefined })] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-token-expired",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [signinDenied("TOKEN_EXPIRED")] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-credentials-changed",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [signinDenied("USER_CREDENTIALS_CHANGED")] },
+	},
+	{
+		name: "login-refresh-insufficient-permissions",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [signinDenied("INSUFFICIENT_PERMISSIONS")] },
+	},
+	{
+		name: "login-refresh-denied-other",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [signinDenied("SOMETHING_ELSE")] },
+	},
+	{
+		name: "login-refresh-fails-keeps-valid-token",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [{ status: 400, headers: { "content-type": "application/json", "x-amzn-errortype": "ValidationException" }, body: { error: "invalid_request", message: "bad request" } }] },
+		after: [loginCache],
+	},
+	{
+		name: "login-refresh-fails-expired-token",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+-60>") },
+		routes: { "POST /v1/token": [{ status: 400, headers: { "content-type": "application/json", "x-amzn-errortype": "ValidationException" }, body: { error: "invalid_request", message: "bad request" } }] },
+	},
+	{
+		name: "login-refresh-response-missing-fields",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+-60>") },
+		routes: { "POST /v1/token": [{ status: 200, body: { accessToken: { accessKeyId: "ASIANEW", secretAccessKey: "new-secret" }, expiresIn: 900, refreshToken: "login-rt-2" } }] },
+	},
+	{
+		name: "login-refresh-response-missing-fields-valid-token",
+		options: { profile: "login" },
+		processEnv: signinEnv,
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("<now+60>") },
+		routes: { "POST /v1/token": [{ status: 200, body: { accessToken: { accessKeyId: "ASIANEW", secretAccessKey: "new-secret", sessionToken: "s" }, expiresIn: 900 } }] },
+	},
+	{
+		name: "login-missing-token-file",
+		options: { profile: "login" },
+		files: { ".aws/config": loginConfig() },
+	},
+	{
+		name: "login-token-missing-fields",
+		options: { profile: "login" },
+		files: { ".aws/config": loginConfig(), [loginCache]: loginToken("2099-01-01T00:00:00Z", { clientId: "", dpopKey: undefined }, { accountId: undefined }) },
+	},
+	{
+		name: "login-cache-directory-env",
+		options: { profile: "login" },
+		processEnv: { AWS_LOGIN_CACHE_DIRECTORY: "<home>/logins" },
+		files: { ".aws/config": loginConfig(), [`logins/${sha256(LOGIN_SESSION)}.json`]: loginToken("2099-01-01T00:00:00Z", {}, { accessKeyId: "ASIALOGINDIR" }) },
+	},
+	{
+		name: "login-static-keys-win",
+		options: { profile: "login" },
+		files: {
+			".aws/config": loginConfig(),
+			".aws/credentials": `[login]\naws_access_key_id = AKIDSTATIC\naws_secret_access_key = static-secret\n`,
+			[loginCache]: loginToken("2099-01-01T00:00:00Z"),
+		},
+	},
+	{
+		name: "login-default-profile",
+		processEnv: { AWS_PROFILE: "login" },
+		files: { ".aws/config": loginConfig("region = us-west-2\n"), [loginCache]: loginToken("2099-01-01T00:00:00Z") },
+	},
 ];
 
 const results = [];
@@ -452,5 +653,18 @@ for (const scenario of scenarios) results.push(await run(scenario));
 server.close();
 assertOffline();
 const out = join(here, "bedrock-credentials.json");
-writeFileSync(out, `${JSON.stringify({ generator: "crates/ai/fixtures/generate-bedrock-credentials.mjs", scenarios: results }, null, "\t")}\n`);
+// The Signin endpoint of each region without an override (the client's own endpoint rules), and the DPoP key.
+const { SigninClient } = await import("@aws-sdk/nested-clients/signin");
+const signinEndpoints = {};
+for (const region of ["us-east-1", "eu-west-1", "ap-southeast-2", "cn-north-1", "us-gov-west-1", "us-iso-east-1", "eusc-de-east-1"]) {
+	const client = new SigninClient({ region, credentials: { accessKeyId: "", secretAccessKey: "" } });
+	try {
+		signinEndpoints[region] = client.config.endpointProvider({ Region: region, UseFIPS: false, UseDualStack: false }).url.toString();
+	} catch (e) {
+		signinEndpoints[region] = { error: e.message };
+	}
+	client.destroy();
+}
+const dpop = { d: DPOP_D, x: b64url(dpopPoint.subarray(1, 33)), y: b64url(dpopPoint.subarray(33)), pemSha256: sha256(DPOP_PEM) };
+writeFileSync(out, `${JSON.stringify({ generator: "crates/ai/fixtures/generate-bedrock-credentials.mjs", scenarios: results, signinEndpoints, dpop }, null, "\t")}\n`);
 console.log(`wrote ${results.length} scenarios to ${out}`);

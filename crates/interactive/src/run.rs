@@ -253,11 +253,7 @@ pub fn paint_loop(
             if !release.is_empty() {
                 out(&release)?;
             }
-            out(if split {
-                "\x1b[?2004l\x1b[?25h\r\n"
-            } else {
-                "\x1b[?2004l\x1b[?25h\x1b[?1049l"
-            })?;
+            out(leave_bytes(app, split))?;
             let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
             if raw {
                 let _ = crossterm::terminal::disable_raw_mode();
@@ -279,11 +275,7 @@ pub fn paint_loop(
             if !release.is_empty() {
                 out(&release)?;
             }
-            out(if split {
-                "\x1b[?2004l\x1b[?25h\r\n"
-            } else {
-                "\x1b[?2004l\x1b[?25h\x1b[?1049l"
-            })?;
+            out(leave_bytes(app, split))?;
             let raw = crossterm::terminal::is_raw_mode_enabled().unwrap_or(false);
             if raw {
                 let _ = crossterm::terminal::disable_raw_mode();
@@ -331,6 +323,8 @@ pub fn paint_loop(
                     out(&write)?;
                 }
                 screen.show_hardware_cursor = app.show_hardware_cursor;
+                screen.image_protocol = app.image_protocol;
+                screen.wezterm = app.wezterm;
                 viewport.show_hardware_cursor = app.show_hardware_cursor;
                 viewport.clear_on_shrink = app.clear_on_shrink;
                 if split {
@@ -398,6 +392,16 @@ pub fn paint_loop(
         out(&release)?;
     }
     out(&screen.exit(&document, width))
+}
+
+/// What leaving the TUI for a while (Ctrl+G, Ctrl+Z) writes: bracketed paste and the hidden cursor off, and on the
+/// alternate screen its Kitty images deleted (`beforeTerminalStop`) before it is left.
+fn leave_bytes(app: &App, split: bool) -> &'static str {
+    match (split, app.image_protocol) {
+        (true, _) => "\x1b[?2004l\x1b[?25h\r\n",
+        (false, Some(tui::image::ImageProtocol::Kitty)) => "\x1b_Ga=d,d=A,q=2\x1b\\\x1b[?2004l\x1b[?25h\x1b[?1049l",
+        (false, _) => "\x1b[?2004l\x1b[?25h\x1b[?1049l",
+    }
 }
 
 fn handle(app: &mut App, event: UiEvent) {

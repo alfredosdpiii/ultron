@@ -11,7 +11,7 @@ use tui::theme::Theme;
 use tui::utils::{js_trim_end, truncate_to_width, visible_width, wrap_text_with_ansi};
 
 use crate::components::{
-    ToolRenderState, ToolRenderers, ToolResultView, bold, fg, key_hint, tool_text_output, truncate_to_visual_lines,
+    ToolRenderState, ToolRenderers, ToolResultView, bold, fg, key_hint, tool_text_output_with, truncate_to_visual_lines,
 };
 
 /// Code lines shown while collapsed.
@@ -144,7 +144,7 @@ fn render_result(
     state: &ToolRenderState,
     expand_key: &str,
 ) -> Box<dyn Component> {
-    let output = js_trim_end(&tool_text_output(Some(result))).to_string();
+    let output = js_trim_end(&tool_text_output_with(Some(result), state.inline_images)).to_string();
     let mut children: Vec<Box<dyn Component>> = Vec::new();
     if output.is_empty() {
         if state.is_partial {

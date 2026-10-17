@@ -326,6 +326,9 @@ pub struct App {
     clipboard: Option<ClipboardService>,
     git: Option<Box<dyn GitSource>>,
     git_snapshot: GitSnapshot,
+    /// The footer's git branch (`FooterDataProvider.getGitBranch`), read off the paint path.
+    footer_branch: Option<crate::footer_data::FooterBranch>,
+    footer_git_branch: Option<String>,
     notify: Option<NotifyFn>,
     /// Terminal bytes from service threads (notifications), moved into `terminal_writes` by `poll_services`.
     side_writes: Arc<Mutex<Vec<String>>>,
@@ -412,6 +415,10 @@ pub struct App {
     pub show_hardware_cursor: bool,
     /// `terminal.clearOnShrink`: the split-viewport painter repaints a shrunk viewport whole.
     pub clear_on_shrink: bool,
+    /// The terminal's image protocol on the alternate screen (`TuiAltScreen.imageProtocol`) and whether it is
+    /// WezTerm; the painter places and clears images with them.
+    pub image_protocol: Option<tui::image::ImageProtocol>,
+    pub wezterm: bool,
     /// `doubleEscapeAction`: `tree`, `fork` or `none`.
     double_escape_action: String,
     last_escape: Option<Instant>,
@@ -705,6 +712,8 @@ impl App {
             clipboard: None,
             git: None,
             git_snapshot: GitSnapshot::default(),
+            footer_branch: None,
+            footer_git_branch: None,
             notify: None,
             side_writes: Arc::default(),
             committed: Vec::new(),
@@ -751,6 +760,8 @@ impl App {
             theme_controller: None,
             scheme_notifications: false,
             show_hardware_cursor: false,
+            image_protocol: None,
+            wezterm: false,
             clear_on_shrink: false,
             double_escape_action: "tree".into(),
             last_escape: None,
@@ -959,6 +970,14 @@ impl App {
 
     /// Draw with `theme` from now on (`refreshTheme`): every view shares the app's theme; the highlighters and the
     /// transcript's rendered rows are rebuilt and the terminal repainted.
+    /// `theme.name`: the name of the theme drawn now (the controller's, else the startup theme's).
+    fn active_theme_name(&self) -> Option<String> {
+        match &self.theme_controller {
+            Some(controller) => controller.active_theme_name(),
+            None => self.theme.name.clone(),
+        }
+    }
+
     fn adopt_theme(&mut self, theme: &Theme) {
         self.theme.adopt(theme);
         let mut style = self.chat.style();
@@ -1038,6 +1057,11 @@ impl App {
         self.git = Some(source);
     }
 
+    /// Where the footer's git branch comes from (started with the services).
+    pub fn set_footer_branch(&mut self, branch: crate::footer_data::FooterBranch) {
+        self.footer_branch = Some(branch);
+    }
+
     /// Where turn-end notifications go (with `qol.notifications`).
     pub fn set_notify_sink(&mut self, sink: NotifyFn) {
         self.notify = Some(sink);
@@ -1109,6 +1133,18 @@ impl App {
                 ClipboardReply::Error(_) => {}
             }
             self.update_editor_border();
+            changed = true;
+        }
+        if self.chat.poll_images() {
+            changed = true;
+        }
+        if let Some(branch) = self
+            .footer_branch
+            .as_ref()
+            .map(crate::footer_data::FooterBranch::branch)
+            && branch != self.footer_git_branch
+        {
+            self.footer_git_branch = branch;
             changed = true;
         }
         if let Some(git) = &self.git {
@@ -1772,7 +1808,7 @@ impl App {
                     session: (!self.model.id.is_empty()).then(|| self.model.clone()),
                     themes,
                     terminal_theme,
-                    supports_images: false,
+                    supports_images: self.image_protocol.is_some(),
                     follow_up_key: key_display_text(&self.keys, "app.message.followUp"),
                     cycle_thinking_key: key_display_text(&self.keys, "app.thinking.cycle"),
                 };
@@ -2177,7 +2213,33 @@ impl App {
 
     // ---- input ----
 
+    /// The terminal draws tool images inline with `protocol` (Kitty; TypeScript's alternate screen turns iTerm2
+    /// images off): tool results draw their images, and the terminal is asked for its cell size (`CSI 16 t`,
+    /// `queryCellSize`), whose answer arrives as input.
+    pub fn set_image_protocol(&mut self, protocol: Option<tui::image::ImageProtocol>, wezterm: bool) {
+        self.image_protocol = protocol;
+        self.wezterm = wezterm;
+        let mut images = self.chat.image_settings();
+        images.protocol = protocol;
+        self.chat.set_image_settings(images);
+        if protocol.is_some() {
+            self.terminal_writes.push("\x1b[16t".into());
+        }
+    }
+
     pub fn handle_input(&mut self, data: &str) {
+        // `consumeCellSizeResponse`: `CSI 6 ; height ; width t`; a usable size re-renders the images with it.
+        if let Some((height, width)) = parse_cell_size_response(data) {
+            if height > 0 && width > 0 {
+                let mut images = self.chat.image_settings();
+                images.cell = tui::image::Dimensions {
+                    width_px: width,
+                    height_px: height,
+                };
+                self.chat.set_image_settings(images);
+            }
+            return;
+        }
         // `consumeTerminalColorSchemeReport`: a scheme report is the terminal's, never a key.
         if let Some(scheme) = crate::theme_setup::parse_color_scheme_report(data) {
             if let Some(theme) = self
@@ -2713,14 +2775,16 @@ impl App {
             "logout" => self.client.credentials(),
             "login" => self.client.login_providers(args),
             "changelog" => self.client.changelog(),
-            "share" => self.client.share(),
+            "share" => self.client.share(self.active_theme_name().as_deref()),
             "clone" => {
                 if self.operation.is_some() {
                     self.client.abort();
                 }
                 self.client.clone_session();
             }
-            "export" => self.client.export(path_argument(args).as_deref()),
+            "export" => self
+                .client
+                .export(path_argument(args).as_deref(), self.active_theme_name().as_deref()),
             "usage" => self.client.usage_report(),
             "goal" => self.client.goal(args),
             // With the overlays, `/agents` opens the agent hub (the inspection text is the worker's, not ported).
@@ -4749,6 +4813,8 @@ impl App {
         let mut v = FooterView {
             cwd: self.cwd.clone(),
             home: self.home.clone(),
+            git_branch: self.footer_git_branch.clone(),
+            using_subscription: crate::footer_data::using_subscription(&self.model.provider),
             session_name: self.session_name.clone(),
             thinking_level: self.thinking_level.clone(),
             auto_compact: self.auto_compact,
@@ -4761,6 +4827,12 @@ impl App {
             ..FooterView::default()
         };
         v.statuses = self.extension_statuses.clone();
+        // `setExtensionStatus(CLAUDE_USAGE_STATUS, claudeCodeUsageText(transcript))`: no usage removes the key.
+        use crate::footer_data::{CLAUDE_USAGE_STATUS, claude_code_usage_text};
+        v.statuses.retain(|(k, _)| k != CLAUDE_USAGE_STATUS);
+        if let Some(text) = claude_code_usage_text(&self.transcript) {
+            v.statuses.push((CLAUDE_USAGE_STATUS.into(), text));
+        }
         let mut providers: Vec<&str> = self.models.iter().map(|m| m.provider.as_str()).collect();
         providers.sort_unstable();
         providers.dedup();
@@ -5108,4 +5180,12 @@ pub fn path_argument(args: &str) -> Option<String> {
         Some(space) => text[..space].to_string(),
         None => text.to_string(),
     })
+}
+
+/// `/^\x1b\[6;(\d+);(\d+)t$/`: the terminal's cell size answer as (height, width) in pixels.
+pub fn parse_cell_size_response(data: &str) -> Option<(u32, u32)> {
+    let body = data.strip_prefix("\x1b[6;")?.strip_suffix('t')?;
+    let (height, width) = body.split_once(';')?;
+    let digits = |s: &str| (!s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())).then(|| s.parse::<u32>().ok())?;
+    Some((digits(height)?, digits(width)?))
 }

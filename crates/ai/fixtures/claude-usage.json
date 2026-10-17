@@ -1,0 +1,257 @@
+{
+ "cases": [
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": "allowed",
+     "unifiedWindows": {
+      "five_hour": {
+       "utilization": 0.09,
+       "resetsAt": 1790700600
+      },
+      "seven_day": {
+       "utilization": 0.62
+      }
+     }
+    }
+   },
+   "limits": {
+    "status": "allowed",
+    "windows": {
+     "five_hour": {
+      "utilization": 0.09,
+      "resetsAt": 1790700600
+     },
+     "seven_day": {
+      "utilization": 0.62
+     }
+    }
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "status": "allowed",
+     "windows": {
+      "five_hour": {
+       "utilization": 0.09,
+       "resetsAt": 1790700600
+      },
+      "seven_day": {
+       "utilization": 0.62
+      }
+     }
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": "rejected",
+     "rateLimitType": "five_hour",
+     "utilization": 1,
+     "resetsAt": 1790700600
+    }
+   },
+   "limits": {
+    "status": "rejected",
+    "windows": {
+     "five_hour": {
+      "utilization": 1,
+      "resetsAt": 1790700600
+     }
+    }
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "status": "rejected",
+     "windows": {
+      "five_hour": {
+       "utilization": 1,
+       "resetsAt": 1790700600
+      }
+     }
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": "allowed_warning",
+     "rateLimitType": "seven_day_opus",
+     "utilization": 0.8,
+     "unifiedWindows": {
+      "five_hour": {
+       "utilization": 0.5
+      }
+     }
+    }
+   },
+   "limits": {
+    "status": "allowed_warning",
+    "windows": {
+     "five_hour": {
+      "utilization": 0.5
+     },
+     "seven_day_opus": {
+      "utilization": 0.8
+     }
+    }
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "status": "allowed_warning",
+     "windows": {
+      "five_hour": {
+       "utilization": 0.5
+      },
+      "seven_day_opus": {
+       "utilization": 0.8
+      }
+     }
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "rateLimitType": "five_hour",
+     "utilization": 0.4,
+     "unifiedWindows": {
+      "five_hour": {
+       "utilization": 0.1
+      }
+     }
+    }
+   },
+   "limits": {
+    "windows": {
+     "five_hour": {
+      "utilization": 0.1
+     }
+    }
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "windows": {
+      "five_hour": {
+       "utilization": 0.1
+      }
+     }
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": 3,
+     "unifiedWindows": {
+      "a": {
+       "utilization": -1,
+       "resetsAt": "x"
+      },
+      "b": null,
+      "c": [
+       1
+      ],
+      "d": {
+       "utilization": 2
+      }
+     }
+    }
+   },
+   "limits": {
+    "windows": {
+     "a": {},
+     "d": {
+      "utilization": 2
+     }
+    }
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "windows": {
+      "a": {},
+      "d": {
+       "utilization": 2
+      }
+     }
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "unifiedWindows": [
+      {
+       "utilization": 0.3
+      }
+     ]
+    }
+   },
+   "limits": {
+    "windows": {}
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "windows": {}
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": {}
+   },
+   "limits": {
+    "windows": {}
+   },
+   "diagnostic": {
+    "type": "claude_code_usage",
+    "timestamp": 0,
+    "details": {
+     "windows": {}
+    }
+   }
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": []
+   },
+   "limits": null,
+   "diagnostic": null
+  },
+  {
+   "event": {
+    "type": "rate_limit_event",
+    "rate_limit_info": null
+   },
+   "limits": null,
+   "diagnostic": null
+  },
+  {
+   "event": {
+    "type": "rate_limit_event"
+   },
+   "limits": null,
+   "diagnostic": null
+  }
+ ]
+}

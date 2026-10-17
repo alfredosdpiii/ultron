@@ -10,8 +10,8 @@ use tui::select::Loader;
 use tui::theme::Theme;
 
 use crate::components::{
-    AssistantBlock, AssistantMessage, AssistantView, BashExecution, ToolContent, ToolExecution, ToolResultView,
-    UserMessage, fg,
+    AssistantBlock, AssistantMessage, AssistantView, BashExecution, InlineImage, InlineImages, ToolContent,
+    ToolExecution, ToolResultView, UserMessage, fg,
 };
 use crate::lane::{QueueKind, Queued};
 use crate::rlm_cell::{Highlighter, rlm_renderers};
@@ -85,6 +85,30 @@ struct Tool {
     partial: bool,
     started: bool,
     args_complete: bool,
+    /// The Kitty image id of each image of the result, by position (allocated on first draw, kept after).
+    image_ids: Vec<u32>,
+}
+
+/// How tool images are drawn (`getCapabilities().images`, `terminal.showImages`, `terminal.imageWidthCells`, the
+/// terminal's cell size).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ImageSettings {
+    /// `None`: the terminal cannot draw images here (they are named in the text instead).
+    pub protocol: Option<tui::image::ImageProtocol>,
+    pub show: bool,
+    pub width_cells: u32,
+    pub cell: tui::image::Dimensions,
+}
+
+impl Default for ImageSettings {
+    fn default() -> Self {
+        ImageSettings {
+            protocol: None,
+            show: true,
+            width_cells: 60,
+            cell: tui::image::DEFAULT_CELL,
+        }
+    }
 }
 
 enum Kind {
@@ -135,6 +159,9 @@ pub struct ChatView {
     pub hide_thinking: bool,
     /// Formatted `tui.select.cancel` key (the running `!` command's hint).
     pub cancel_key: String,
+    images: ImageSettings,
+    /// Non-PNG images converted for Kitty, started on first need.
+    converter: Option<crate::image_convert::PngConverter>,
 }
 
 impl ChatView {
@@ -150,7 +177,93 @@ impl ChatView {
             tools_expanded: false,
             hide_thinking: false,
             cancel_key: "escape".into(),
+            images: ImageSettings::default(),
+            converter: None,
         }
+    }
+
+    /// How tool images are drawn from now on (every tool renders again).
+    pub fn set_image_settings(&mut self, images: ImageSettings) {
+        if self.images == images {
+            return;
+        }
+        self.images = images;
+        self.invalidate_tools();
+    }
+
+    pub fn image_settings(&self) -> ImageSettings {
+        self.images
+    }
+
+    fn invalidate_tools(&mut self) {
+        for item in &mut self.items {
+            if matches!(item.kind, Kind::Tool(_)) {
+                item.cache = None;
+            }
+        }
+    }
+
+    /// A Kitty conversion finished: the tools render again (`updateDisplay` after `convertToPng`).
+    pub fn poll_images(&mut self) -> bool {
+        let ready = self
+            .converter
+            .as_ref()
+            .is_some_and(crate::image_convert::PngConverter::take_ready);
+        if ready {
+            self.invalidate_tools();
+        }
+        ready
+    }
+
+    /// The images tool item `i` draws inline (`updateDisplay`'s image loop): each image with data and a MIME type,
+    /// on Kitty as PNG (converted, else left out until it is).
+    fn inline_images(&mut self, i: usize) -> Option<InlineImages> {
+        let settings = self.images;
+        let protocol = settings.protocol?;
+        let Kind::Tool(tool) = &mut self.items[i].kind else {
+            return None;
+        };
+        let blocks: Vec<(String, String)> = tool
+            .result
+            .iter()
+            .flat_map(|r| &r.content)
+            .filter_map(|c| match c {
+                ToolContent::Image { data, mime_type } => Some((data.clone(), mime_type.clone().unwrap_or_default())),
+                ToolContent::Text(_) => None,
+            })
+            .collect();
+        while tool.image_ids.len() < blocks.len() {
+            tool.image_ids.push(tui::image::allocate_image_id());
+        }
+        let ids = tool.image_ids.clone();
+        let mut images = Vec::new();
+        for ((data, mime), id) in blocks.into_iter().zip(ids) {
+            if data.is_empty() || mime.is_empty() {
+                continue;
+            }
+            let (data, mime) = if protocol == tui::image::ImageProtocol::Kitty && mime != "image/png" {
+                let converter = self
+                    .converter
+                    .get_or_insert_with(crate::image_convert::PngConverter::new);
+                match converter.get(&data, &mime) {
+                    Some(Some(png)) => (png, "image/png".to_string()),
+                    _ => continue,
+                }
+            } else {
+                (data, mime)
+            };
+            images.push(InlineImage {
+                data,
+                mime,
+                image_id: (protocol == tui::image::ImageProtocol::Kitty).then_some(id),
+            });
+        }
+        Some(InlineImages {
+            protocol,
+            width_cells: settings.width_cells,
+            cell: settings.cell,
+            images,
+        })
     }
 
     /// A copy of the rendering context (for overlays that replay the transcript).
@@ -348,6 +461,7 @@ impl ChatView {
             partial: true,
             started: false,
             args_complete: false,
+            image_ids: Vec::new(),
         }))
     }
 
@@ -617,6 +731,8 @@ impl ChatView {
     }
 
     fn render_item(&mut self, i: usize, width: usize) -> Vec<String> {
+        let inline = self.inline_images(i);
+        let show_images = self.images.show;
         let theme = Rc::clone(&self.style.theme);
         let expanded = self.tools_expanded;
         let hide_thinking = self.hide_thinking;
@@ -649,11 +765,12 @@ impl ChatView {
                     result: t.result.clone(),
                     is_partial: t.partial,
                     expanded,
-                    show_images: false,
+                    show_images,
                     execution_started: t.started,
                     args_complete: t.args_complete,
                     renderers,
                     expand_key: style.expand_key.clone(),
+                    inline,
                 }
                 .render(width)
             }

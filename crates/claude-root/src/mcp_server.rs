@@ -301,19 +301,19 @@ fn open_runtime(
         .map(PathBuf::from)
         .unwrap_or_else(|| agent_dir.join("experimental").join("sessions"));
     let repo = SessionRepo::new(&session_root, session_journal::SystemClock::shared());
-    let mut opened: Option<(Metadata, Option<SessionLock>)> = None;
+    let mut opened: Option<(Metadata, Option<SessionLock>, session_journal::Session)> = None;
     if !args.child
         && let Some(id) = claude_session_id
         && let Some(metadata) = remembered_session(&agent_dir, id).as_ref().and_then(metadata_from_json)
         && metadata.cwd == cwd
-        && repo.open(&metadata).is_ok()
+        && let Ok(session) = repo.open(&metadata)
     {
         // Another server (a second client resuming the same Claude Code session) holds it: start a fresh one.
         if let Some(lock) = lock_session(&metadata.path) {
-            opened = Some((metadata, Some(lock)));
+            opened = Some((metadata, Some(lock), session));
         }
     }
-    let (metadata, lock) = match opened {
+    let (metadata, lock, session) = match opened {
         Some(found) => found,
         None => {
             let mut session = repo.create(&cwd, None, None)?;
@@ -332,7 +332,7 @@ fn open_runtime(
                 .map_err(|e| e.to_string())?;
             }
             let lock = lock_session(&metadata.path);
-            (metadata, lock)
+            (metadata, lock, session)
         }
     };
     let model = frame_model(&resolved.frame_model, env)?;
@@ -349,6 +349,14 @@ fn open_runtime(
         .as_deref()
         .and_then(|root| loki::config::load_config(root).ok())
         .and_then(|config| loki::injected_context(&config, Some("ultron")).ok());
+    // The runtime counters (`/usage`, `ultron usage`) are the session value `ultron.module/stats` of a session whose
+    // root is Claude Code (counting continues from a resumed one).
+    lane.stack.stats.set_root("external");
+    lane.stack
+        .stats
+        .attach(Arc::new(session_core::session_stats::SessionStore(Arc::new(
+            Mutex::new(session),
+        ))));
     let root = ExternalRoot::over_lane(lane.clone(), loki_context);
     Ok(Opened {
         lane,
@@ -886,9 +894,8 @@ fn claude_subagents(server: &Arc<Server>, claude: String) -> Result<SubagentHost
         env: server.env.clone(),
     };
     let bundled = ctx.bundled_skills();
-    let agent_dir = server.env.agent_dir();
     // Subagents get the context files and skills native Ultron loads here, read once.
-    let resources = crate::guide::load_prompt_resources(&ctx.resource_dirs(&agent_dir, bundled.as_deref()), flags);
+    let resources = crate::guide::load_prompt_resources(&ctx.env, bundled.as_deref(), flags);
     let server = server.clone();
     Ok(SubagentHost {
         store: Box::new(delegation::task_store::MemoryStore::default()),

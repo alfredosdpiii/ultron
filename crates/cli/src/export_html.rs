@@ -100,8 +100,49 @@ pub fn generate_html(session_data: &Value, colorfgbg: Option<&str>) -> String {
         TerminalTheme::Dark => "dark",
     };
     let json = builtin_theme_json(name).expect("built-in theme parses");
-    let colors = tui::theme::resolved_css_colors(&json, name).expect("built-in theme resolves");
-    let export = tui::theme::theme_export_colors(&json);
+    page(session_data, &json, name).expect("built-in theme resolves")
+}
+
+/// Where `loadThemeJson` finds a theme by name besides the built-ins: the registered themes (name, source file) and
+/// `<agent dir>/themes` (`getCustomThemesDir()`).
+pub struct ThemeSources<'a> {
+    pub registered: &'a [(String, Option<String>)],
+    pub custom_dir: &'a Path,
+}
+
+/// `loadThemeJson(name)`: a built-in, else a registered theme's file, else `<custom dir>/<name>.json`.
+pub fn load_export_theme_json(name: &str, sources: &ThemeSources<'_>) -> Result<tui::theme::ThemeJson, String> {
+    if let Some(json) = tui::theme::builtin_theme_json(name) {
+        return Ok(json);
+    }
+    if let Some((_, source)) = sources.registered.iter().find(|(n, _)| n == name) {
+        let Some(path) = source else {
+            return Err(format!("Theme \"{name}\" does not have a source path for export"));
+        };
+        let content = std::fs::read_to_string(path).map_err(|e| format!("Failed to read theme {path}: {e}"))?;
+        return tui::theme::parse_theme_json_content(path, &content);
+    }
+    tui::theme::load_theme_json(name, sources.custom_dir)
+}
+
+/// `generateHtml(sessionData, themeName)`: the page in the named theme (`theme.name` of the TUI's active theme);
+/// without a name, the default theme. A theme that cannot be loaded fails the export with its error.
+pub fn generate_html_themed(
+    session_data: &Value,
+    theme_name: Option<&str>,
+    colorfgbg: Option<&str>,
+    sources: &ThemeSources<'_>,
+) -> Result<String, String> {
+    let Some(name) = theme_name else {
+        return Ok(generate_html(session_data, colorfgbg));
+    };
+    let json = load_export_theme_json(name, sources)?;
+    page(session_data, &json, name)
+}
+
+fn page(session_data: &Value, json: &tui::theme::ThemeJson, name: &str) -> Result<String, String> {
+    let colors = tui::theme::resolved_css_colors(json, name)?;
+    let export = tui::theme::theme_export_colors(json);
     let user_bg = colors
         .iter()
         .find(|(k, _)| k == "userMessageBg")
@@ -125,7 +166,42 @@ pub fn generate_html(session_data: &Value, colorfgbg: Option<&str>) -> String {
     let html = replace_first(&html, "{{JS}}", TEMPLATE_JS);
     let html = replace_first(&html, "{{SESSION_DATA}}", &data);
     let html = replace_first(&html, "{{MARKED_JS}}", MARKED_JS);
-    replace_first(&html, "{{HIGHLIGHT_JS}}", HIGHLIGHT_JS)
+    Ok(replace_first(&html, "{{HIGHLIGHT_JS}}", HIGHLIGHT_JS))
+}
+
+/// The `/export` page in the TUI's theme: the built-ins, the themes packages and settings register (by their files),
+/// and `<agent dir>/themes`, as `loadThemeJson` finds them.
+pub fn export_page(data: &Value, theme: Option<&str>, env: &crate::Env) -> Result<String, String> {
+    let registered: Vec<(String, Option<String>)> = match theme {
+        Some(name) if tui::theme::builtin_theme_json(name).is_none() => {
+            crate::packages::themes::load(env, tui::theme::ColorMode::Truecolor)
+                .themes
+                .into_iter()
+                .filter_map(|t| Some((t.name?, t.source_path)))
+                .collect()
+        }
+        _ => Vec::new(),
+    };
+    let custom_dir = env.agent_dir().join("themes");
+    generate_html_themed(
+        data,
+        theme,
+        (env.var)("COLORFGBG").as_deref(),
+        &ThemeSources {
+            registered: &registered,
+            custom_dir: &custom_dir,
+        },
+    )
+}
+
+const DEFAULT_SHARE_VIEWER_URL: &str = "https://pi.dev/session/";
+
+/// `getShareViewerUrl(gistId)`: `PI_SHARE_VIEWER_URL` (unset or empty: the default viewer) then `#<gist id>`.
+pub fn share_viewer_url(var: &dyn Fn(&str) -> Option<String>, gist_id: &str) -> String {
+    let base = var("PI_SHARE_VIEWER_URL")
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| DEFAULT_SHARE_VIEWER_URL.into());
+    format!("{base}#{gist_id}")
 }
 
 /// `isNativeSessionFile`: the first line parses as an object with `kind: "header"`.

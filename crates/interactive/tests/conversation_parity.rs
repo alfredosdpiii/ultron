@@ -290,6 +290,7 @@ fn interactive_tool_execution_matches_ts() {
             args_complete: false,
             renderers: renderers(c["def"].as_str().unwrap()),
             expand_key: expand_key(),
+            inline: None,
         })
     });
 }
@@ -451,6 +452,7 @@ fn interactive_rlm_cell_matches_ts() {
                     args_complete: case["complete"].as_bool().unwrap_or(false),
                     renderers: Some(interactive::rlm_cell::rlm_renderers(theme, highlight, &expand_key())),
                     expand_key: expand_key(),
+                    inline: None,
                 };
                 assert_eq!(t.render(*w), strings(want), "rlm[{ci}] theme {ti} width {w}");
             }

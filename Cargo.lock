@@ -72,6 +72,7 @@ dependencies = [
  "getrandom 0.4.3",
  "indexmap",
  "model-scope",
+ "protocol",
  "rcgen",
  "reqwest",
  "ring",
@@ -1294,8 +1295,10 @@ dependencies = [
 name = "interactive"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "crossterm",
  "fancy-regex 0.19.2",
+ "image",
  "model-scope",
  "rustix",
  "serde_json",

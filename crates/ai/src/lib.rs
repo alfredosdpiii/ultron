@@ -52,6 +52,7 @@ pub mod pi_messages;
 pub mod sse;
 pub mod transcript;
 pub mod types;
+pub mod websocket;
 
 pub use http::{AbortSignal, Body, HttpRequest, HttpResponse, ReqwestTransport, Transport};
 pub use options::{SimpleStreamOptions, StreamOptions, ThinkingBudgets};
