@@ -49,6 +49,8 @@ pub fn refresh_catalogs(
         .provider_ids()
         .into_iter()
         .filter(|p| builtin.contains(&p.as_str()) || registry.radius_gateway(p).is_some())
+        // `claude-code` has no catalog to refresh (its models are the CLI's), though its requests always resolve.
+        .filter(|p| p != ai::claude_code::PROVIDER)
         .collect();
     let now = || lane::now_ms();
     let work = async {

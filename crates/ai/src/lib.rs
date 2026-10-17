@@ -12,6 +12,7 @@ pub mod aws;
 pub mod aws_credentials;
 pub mod azure_openai_responses;
 pub mod bedrock;
+pub mod claude_code;
 pub mod claude_code_cli;
 pub mod claude_subscription;
 pub mod cloudflare;

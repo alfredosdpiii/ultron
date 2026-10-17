@@ -276,11 +276,11 @@ fn ai_message_and_event_serde_shapes_match_typescript_json() {
 #[test]
 fn ai_builtin_catalog_round_trips_every_model() {
     let raw: Value = serde_json::from_str(include_str!("../data/models.json")).unwrap();
+    // The generated catalog's providers, then the always registered `claude-code` (not in the generated data).
     let providers: Vec<&str> = builtin_providers().collect();
-    assert_eq!(
-        providers,
-        raw.as_object().unwrap().keys().map(String::as_str).collect::<Vec<_>>()
-    );
+    let mut expected: Vec<&str> = raw.as_object().unwrap().keys().map(String::as_str).collect();
+    expected.push("claude-code");
+    assert_eq!(providers, expected);
     let mut count = 0;
     for (provider, models) in raw.as_object().unwrap() {
         let ids: Vec<&str> = builtin_models(provider).map(|m| m.id.as_str()).collect();

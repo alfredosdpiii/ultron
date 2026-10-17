@@ -76,7 +76,8 @@ fn entry_models(entry: &Value) -> &[Value] {
 /// `remoteModels` filtered to the provider: a stored pi.dev overlay counts only when its `lastModified` is newer
 /// than the bundled data.
 pub fn remote_overlay(provider: &str, entry: Option<&Value>, generated_at: Option<i64>) -> Vec<Model> {
-    let Some(entry) = entry else {
+    // `claude-code` is not wrapped in `withRemoteCatalog`: its models are the CLI's, never pi.dev's.
+    let Some(entry) = entry.filter(|_| provider != crate::claude_code::PROVIDER) else {
         return Vec::new();
     };
     if let Some(generated) = generated_at {
@@ -256,6 +257,10 @@ pub async fn refresh_remote_catalog(
     now: &(dyn Fn() -> i64 + Sync),
     transport: &dyn Transport,
 ) -> CatalogRefresh {
+    // `claude-code` has no remote catalog to refresh (`ModelRuntime.create` leaves it unwrapped).
+    if provider == crate::claude_code::PROVIDER {
+        return CatalogRefresh::default();
+    }
     let number = |key: &str| stored.and_then(|s| s.get(key)).and_then(Value::as_f64);
     if !force
         && let (Some(checked), Some(_)) = (number("checkedAt"), number("lastModified"))

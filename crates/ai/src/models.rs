@@ -10,14 +10,27 @@ type Catalog = IndexMap<String, IndexMap<String, Model>>;
 static CATALOG: LazyLock<Catalog> =
     LazyLock::new(|| serde_json::from_str(include_str!("../data/models.json")).expect("built-in model catalog parses"));
 
-/// Built-in providers in catalog order.
+/// The models of a built-in provider: the generated catalog's, or the `claude-code` provider's own
+/// ([`crate::claude_code::MODELS`], not in the generated catalog).
+fn provider_models(provider: &str) -> Option<&'static IndexMap<String, Model>> {
+    if provider == crate::claude_code::PROVIDER {
+        return Some(&crate::claude_code::MODELS);
+    }
+    CATALOG.get(provider)
+}
+
+/// Built-in providers in catalog order, then `claude-code` (`builtinProviders`: last, so an automatic model
+/// fallback never lands on a provider without tool calling).
 pub fn builtin_providers() -> impl Iterator<Item = &'static str> {
-    CATALOG.keys().map(String::as_str)
+    CATALOG
+        .keys()
+        .map(String::as_str)
+        .chain(std::iter::once(crate::claude_code::PROVIDER))
 }
 
 /// Built-in models of `provider` in catalog order; empty for an unknown provider.
 pub fn builtin_models(provider: &str) -> impl Iterator<Item = &'static Model> {
-    CATALOG.get(provider).into_iter().flat_map(IndexMap::values)
+    provider_models(provider).into_iter().flat_map(IndexMap::values)
 }
 
 /// A built-in model; `claude-subscription/<id>` resolves through that provider's pinned route table (any valid
@@ -26,7 +39,7 @@ pub fn builtin_model(provider: &str, id: &str) -> Option<&'static Model> {
     if provider == crate::claude_subscription::PROVIDER {
         return crate::claude_subscription::catalog::interned(id);
     }
-    CATALOG.get(provider)?.get(id)
+    provider_models(provider)?.get(id)
 }
 
 /// Fill `usage.cost` from the model's rates: the highest tier whose threshold the total input exceeds applies to the

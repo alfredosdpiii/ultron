@@ -1,0 +1,5715 @@
+{
+	"catalogModels": [
+		{
+			"id": "claude-opus-5-5",
+			"name": "Claude Opus 5.5 (Claude Code CLI)",
+			"api": "claude-code-cli",
+			"provider": "claude-code",
+			"baseUrl": "claude-code://cli",
+			"reasoning": true,
+			"thinkingLevelMap": {
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "max"
+			},
+			"input": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		},
+		{
+			"id": "claude-haiku-5-5",
+			"name": "Claude Haiku 5.5 (Claude Code CLI)",
+			"api": "claude-code-cli",
+			"provider": "claude-code",
+			"baseUrl": "claude-code://cli",
+			"reasoning": true,
+			"thinkingLevelMap": {
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "max"
+			},
+			"input": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		},
+		{
+			"id": "opus",
+			"name": "Claude Opus (Claude Code CLI)",
+			"api": "claude-code-cli",
+			"provider": "claude-code",
+			"baseUrl": "claude-code://cli",
+			"reasoning": true,
+			"thinkingLevelMap": {
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "max"
+			},
+			"input": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		},
+		{
+			"id": "sonnet",
+			"name": "Claude Sonnet (Claude Code CLI)",
+			"api": "claude-code-cli",
+			"provider": "claude-code",
+			"baseUrl": "claude-code://cli",
+			"reasoning": true,
+			"thinkingLevelMap": {
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "max"
+			},
+			"input": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		},
+		{
+			"id": "haiku",
+			"name": "Claude Haiku (Claude Code CLI)",
+			"api": "claude-code-cli",
+			"provider": "claude-code",
+			"baseUrl": "claude-code://cli",
+			"reasoning": true,
+			"thinkingLevelMap": {
+				"minimal": "low",
+				"low": "low",
+				"medium": "medium",
+				"high": "high",
+				"xhigh": "xhigh",
+				"max": "max"
+			},
+			"input": [
+				"text",
+				"image"
+			],
+			"cost": {
+				"input": 0,
+				"output": 0,
+				"cacheRead": 0,
+				"cacheWrite": 0
+			},
+			"contextWindow": 200000,
+			"maxTokens": 32000
+		}
+	],
+	"providerOrder": [
+		"amazon-bedrock",
+		"ant-ling",
+		"anthropic",
+		"azure-openai-responses",
+		"baseten",
+		"cerebras",
+		"cloudflare-ai-gateway",
+		"cloudflare-workers-ai",
+		"deepseek",
+		"fireworks",
+		"github-copilot",
+		"google",
+		"google-vertex",
+		"groq",
+		"huggingface",
+		"kimi-coding",
+		"meta",
+		"minimax",
+		"minimax-cn",
+		"mistral",
+		"moonshotai",
+		"moonshotai-cn",
+		"nvidia",
+		"openai",
+		"openai-codex",
+		"opencode",
+		"opencode-go",
+		"openrouter",
+		"qwen-token-plan",
+		"qwen-token-plan-cn",
+		"qwen-token-plan-individual",
+		"radius",
+		"together",
+		"vercel-ai-gateway",
+		"xai",
+		"xiaomi",
+		"xiaomi-token-plan-ams",
+		"xiaomi-token-plan-cn",
+		"xiaomi-token-plan-sgp",
+		"zai",
+		"zai-coding-cn",
+		"claude-code"
+	],
+	"cases": [
+		{
+			"name": "no cli",
+			"env": {
+				"PATH": "/usr/bin:/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [],
+			"configured": false,
+			"subscription": false,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": null
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": null,
+					"thinking": null,
+					"warning": null,
+					"error": "Model \"claude-haiku-5-5\" is ambiguous across providers: anthropic/claude-haiku-5-5, claude-code/claude-haiku-5-5, opencode-go/claude-haiku-5-5, opencode/claude-haiku-5-5. No matching provider is authenticated. Use --provider or provider/model."
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/*\""
+					]
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/haiku:high\"",
+						"No models match pattern \"claude-code/opus\""
+					]
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+					"stderr": ""
+				},
+				{
+					"search": null,
+					"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "cli on PATH",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				},
+				{
+					"search": "haiku",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \n",
+					"stderr": ""
+				},
+				{
+					"search": null,
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "non-executable cli on PATH",
+			"env": {
+				"PATH": "<root>/plain:/usr/bin:/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "claude.cmd on PATH",
+			"env": {
+				"PATH": "<root>/cmd:/usr/bin:/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "PATH entry with trailing slash",
+			"env": {
+				"PATH": "<root>/empty:<root>/bin/"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "windows-style PATH",
+			"env": {
+				"PATH": "<root>/empty;<root>/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "bin env names the cli",
+			"env": {
+				"PATH": "/usr/bin:/bin",
+				"ULTRON_CLAUDE_CODE_BIN": "<root>/bin/claude"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "bin env with spaces",
+			"env": {
+				"PATH": "/usr/bin:/bin",
+				"ULTRON_CLAUDE_CODE_BIN": "  <root>/bin/claude  "
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "bin env tilde path",
+			"env": {
+				"PATH": "/usr/bin:/bin",
+				"ULTRON_CLAUDE_CODE_BIN": "~/.local/bin/claude"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "bin env missing wins over PATH",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin",
+				"ULTRON_CLAUDE_CODE_BIN": "<root>/missing/claude"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [],
+			"configured": false,
+			"subscription": false,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": null
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": null,
+					"thinking": null,
+					"warning": null,
+					"error": "Model \"claude-haiku-5-5\" is ambiguous across providers: anthropic/claude-haiku-5-5, claude-code/claude-haiku-5-5, opencode-go/claude-haiku-5-5, opencode/claude-haiku-5-5. No matching provider is authenticated. Use --provider or provider/model."
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/*\""
+					]
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/haiku:high\"",
+						"No models match pattern \"claude-code/opus\""
+					]
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "blank bin env falls back to PATH",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin",
+				"ULTRON_CLAUDE_CODE_BIN": "   "
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "no PATH",
+			"env": {},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [],
+			"configured": false,
+			"subscription": false,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": null
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": null,
+					"thinking": null,
+					"warning": null,
+					"error": "Model \"claude-haiku-5-5\" is ambiguous across providers: anthropic/claude-haiku-5-5, claude-code/claude-haiku-5-5, opencode-go/claude-haiku-5-5, opencode/claude-haiku-5-5. No matching provider is authenticated. Use --provider or provider/model."
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/*\""
+					]
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"claude-code/haiku:high\"",
+						"No models match pattern \"claude-code/opus\""
+					]
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  <docs>/providers.md\n  <docs>/models.md\n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "another provider has a key",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin",
+				"ANTHROPIC_API_KEY": "dummy-not-a-key"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"anthropic/claude-fable-5",
+				"anthropic/claude-fable-5-1",
+				"anthropic/claude-haiku-4-5",
+				"anthropic/claude-haiku-4-5-20251001",
+				"anthropic/claude-haiku-5-5",
+				"anthropic/claude-opus-4-5",
+				"anthropic/claude-opus-4-5-20251101",
+				"anthropic/claude-opus-4-6",
+				"anthropic/claude-opus-4-7",
+				"anthropic/claude-opus-4-8",
+				"anthropic/claude-opus-5",
+				"anthropic/claude-opus-5-5",
+				"anthropic/claude-sonnet-4-5",
+				"anthropic/claude-sonnet-4-5-20250929",
+				"anthropic/claude-sonnet-4-6",
+				"anthropic/claude-sonnet-5",
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": null,
+					"thinking": null,
+					"warning": null,
+					"error": "Model \"claude-haiku-5-5\" is ambiguous across providers: anthropic/claude-haiku-5-5, claude-code/claude-haiku-5-5, opencode-go/claude-haiku-5-5, opencode/claude-haiku-5-5. More than one matching provider is authenticated. Use --provider or provider/model."
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [
+						{
+							"model": "anthropic/claude-haiku-4-5",
+							"thinking": null
+						},
+						{
+							"model": "anthropic/claude-haiku-4-5-20251001",
+							"thinking": null
+						},
+						{
+							"model": "anthropic/claude-haiku-5-5",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [
+						{
+							"model": "anthropic/claude-haiku-5-5",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": "anthropic/claude-opus-4-8",
+					"thinking": "medium"
+				},
+				{
+					"settings": {
+						"defaultProvider": "claude-code",
+						"defaultModelId": "claude-haiku-5-5"
+					},
+					"model": "claude-code/claude-haiku-5-5",
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "haiku-5-5",
+					"stdout": "provider     model                      context  max-out  thinking  images\nanthropic    claude-haiku-4-5-20251001  200K     64K      yes       yes   \nanthropic    claude-haiku-5-5           1M       128K     yes       yes   \nclaude-code  claude-haiku-5-5           200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "only claude-code available",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin"
+			},
+			"models": null,
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": false,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				},
+				{
+					"settings": {
+						"defaultProvider": "claude-code",
+						"defaultModelId": "haiku"
+					},
+					"model": "claude-code/haiku",
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "models.json overrides",
+			"env": {
+				"PATH": "<root>/bin:/usr/bin:/bin"
+			},
+			"models": {
+				"providers": {
+					"claude-code": {
+						"modelOverrides": {
+							"haiku": {
+								"name": "Haiku (fast)",
+								"contextWindow": 100000,
+								"maxTokens": 8000
+							},
+							"nosuch": {
+								"name": "x"
+							}
+						},
+						"models": [
+							{
+								"id": "claude-sonnet-5-5",
+								"name": "Sonnet 5.5 via CLI",
+								"contextWindow": 1000000,
+								"maxTokens": 64000,
+								"reasoning": true,
+								"input": [
+									"text"
+								]
+							}
+						]
+					}
+				}
+			},
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Haiku (fast)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 100000,
+					"maxTokens": 8000
+				},
+				{
+					"id": "claude-sonnet-5-5",
+					"name": "Sonnet 5.5 via CLI",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 1000000,
+					"maxTokens": 64000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku",
+				"claude-code/claude-sonnet-5-5"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": true,
+					"status": {
+						"type": "api_key",
+						"source": "Claude Code CLI (its own login)"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-sonnet-5-5",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model              context  max-out  thinking  images\nclaude-code  claude-haiku-5-5   200K     32K      yes       yes   \nclaude-code  claude-opus-5-5    200K     32K      yes       yes   \nclaude-code  claude-sonnet-5-5  1M       64K      yes       no    \nclaude-code  haiku              100K     8K       yes       yes   \nclaude-code  opus               200K     32K      yes       yes   \nclaude-code  sonnet             200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		},
+		{
+			"name": "models.json key for claude-code",
+			"env": {
+				"PATH": "/usr/bin:/bin",
+				"CC_FIXTURE_KEY": "set"
+			},
+			"models": {
+				"providers": {
+					"claude-code": {
+						"apiKey": "$CC_FIXTURE_KEY"
+					}
+				}
+			},
+			"error": null,
+			"providerModels": [
+				{
+					"id": "claude-opus-5-5",
+					"name": "Claude Opus 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "claude-haiku-5-5",
+					"name": "Claude Haiku 5.5 (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "opus",
+					"name": "Claude Opus (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "sonnet",
+					"name": "Claude Sonnet (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				},
+				{
+					"id": "haiku",
+					"name": "Claude Haiku (Claude Code CLI)",
+					"api": "claude-code-cli",
+					"provider": "claude-code",
+					"baseUrl": "claude-code://cli",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"minimal": "low",
+						"low": "low",
+						"medium": "medium",
+						"high": "high",
+						"xhigh": "xhigh",
+						"max": "max"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 200000,
+					"maxTokens": 32000
+				}
+			],
+			"available": [
+				"claude-code/claude-opus-5-5",
+				"claude-code/claude-haiku-5-5",
+				"claude-code/opus",
+				"claude-code/sonnet",
+				"claude-code/haiku"
+			],
+			"configured": true,
+			"subscription": true,
+			"auth": {
+				"apiKey": null,
+				"headers": null
+			},
+			"login": [
+				{
+					"name": "Claude Code (CLI)",
+					"authType": "api_key",
+					"method": "Claude Code CLI",
+					"canLogin": true,
+					"status": {
+						"type": "api_key",
+						"source": "CC_FIXTURE_KEY"
+					}
+				}
+			],
+			"resolve": [
+				{
+					"provider": null,
+					"model": "claude-code/claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/claude-opus-5-5",
+					"result": "claude-code/claude-opus-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/sonnet:high",
+					"result": "claude-code/sonnet",
+					"thinking": "high",
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-code/nosuch",
+					"result": "claude-code/nosuch",
+					"thinking": null,
+					"warning": "Model \"nosuch\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "sonnet",
+					"result": "claude-code/sonnet",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": null,
+					"model": "claude-haiku-5-5",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": null,
+					"warning": null,
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "opus",
+					"result": "claude-code/opus",
+					"thinking": null,
+					"warning": "Model \"opus\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-code/haiku",
+					"result": "claude-code/haiku",
+					"thinking": null,
+					"warning": "Model \"haiku\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				},
+				{
+					"provider": "claude-code",
+					"model": "claude-haiku-5-5:low",
+					"result": "claude-code/claude-haiku-5-5",
+					"thinking": "low",
+					"warning": "Model \"claude-haiku-5-5\" not found for provider \"claude-code\". Using custom model id.",
+					"error": null
+				}
+			],
+			"scoped": [
+				{
+					"patterns": [
+						"claude-code/*"
+					],
+					"models": [
+						{
+							"model": "claude-code/claude-opus-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/claude-haiku-5-5",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/sonnet",
+							"thinking": null
+						},
+						{
+							"model": "claude-code/haiku",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				},
+				{
+					"patterns": [
+						"*haiku*"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"*haiku*\""
+					]
+				},
+				{
+					"patterns": [
+						"haiku"
+					],
+					"models": [],
+					"diagnostics": [
+						"No models match pattern \"haiku\""
+					]
+				},
+				{
+					"patterns": [
+						"claude-code/haiku:high",
+						"claude-code/opus"
+					],
+					"models": [
+						{
+							"model": "claude-code/haiku",
+							"thinking": "high"
+						},
+						{
+							"model": "claude-code/opus",
+							"thinking": null
+						}
+					],
+					"diagnostics": []
+				}
+			],
+			"initial": [
+				{
+					"settings": {},
+					"model": null,
+					"thinking": "medium"
+				}
+			],
+			"list": [
+				{
+					"search": "claude-code",
+					"stdout": "provider     model             context  max-out  thinking  images\nclaude-code  claude-haiku-5-5  200K     32K      yes       yes   \nclaude-code  claude-opus-5-5   200K     32K      yes       yes   \nclaude-code  haiku             200K     32K      yes       yes   \nclaude-code  opus              200K     32K      yes       yes   \nclaude-code  sonnet            200K     32K      yes       yes   \n",
+					"stderr": ""
+				}
+			]
+		}
+	]
+}

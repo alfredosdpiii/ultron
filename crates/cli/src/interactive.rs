@@ -1782,6 +1782,9 @@ pub fn login_options(env: &Env, auth: &std::path::Path) -> Vec<interactive::sele
     for p in provider_logins() {
         let status = match stored.get(&p.id) {
             Some(kind) => Some((kind.clone(), Some("stored credential".to_string()))),
+            // The Claude Code CLI's own login: configured when its CLI is present.
+            None if p.id == ai::claude_code::PROVIDER => ai::claude_code::configured(&source)
+                .then(|| ("api_key".to_string(), Some(ai::claude_code::AUTH_SOURCE.to_string()))),
             None => ai::env::find_env_keys_in(&p.id, &source)
                 .filter(|keys| !keys.is_empty())
                 .map(|keys| ("api_key".to_string(), Some(keys.join(", ")))),

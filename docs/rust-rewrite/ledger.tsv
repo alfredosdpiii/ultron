@@ -2926,6 +2926,19 @@ W6P-28	claude-root	no counters: cells unchanged	claude_root_without_counters_run
 W6P-29	claude-root	resumed session takes external root	claude_root_resumed_session_is_now_driven_by_claude_code
 W6P-30	mcp	login hint from injected env only	mcp_sign_in_hint_reads_the_injected_environment
 W6P-31	review	RetryingTransport passes the WebSocket capability and socket through (Codex review frames)	review_retrying_transport_passes_the_websocket_through
+W7C-01	ai	claude-code built-in models equal TS CLAUDE_CODE_MODELS	ai_claude_code_models_match_typescript
+W7C-02	ai	claude-code registered after every catalog provider	ai_claude_code_provider_is_registered_last_like_typescript
+W7C-03	ai	availability by CLI presence, models.json overrides, requests always resolve	ai_claude_code_availability_matches_typescript
+W7C-04	ai	findCli path rules (trailing slash, ';' PATH, claude.cmd, trimmed/tilde/missing bin env)	ai_claude_code_find_cli_reports_the_path_typescript_checks
+W7C-05	ai	resolveCliModel with claude-code models	ai_claude_code_resolution_matches_typescript
+W7C-06	ai	resolveModelScope and findInitialModel with claude-code models	ai_claude_code_scopes_and_initial_model_match_typescript
+W7C-07	ai	no remote catalog overlay or refresh for claude-code	ai_claude_code_has_no_remote_catalog
+W7C-08	cli	ultron --list-models output with claude-code	cli_claude_code_list_models_matches_typescript
+W7C-09	cli	/login Claude Code row status	cli_claude_code_login_status_matches_typescript
+W7C-10	cli	--model/--provider claude-code resolve for sessions, with request auth	cli_claude_code_model_flags_resolve_for_sessions_like_typescript
+W7C-11	cli	autoreview fixture repository identical	cli_autoreview_claude_code_fixture_repository_matches
+W7C-12	cli	autoreview picks claude-code/claude-haiku-5-5 and runs frames on the CLI	cli_autoreview_claude_code_recommended_model_runs_on_the_cli
+W7C-13	cli	autoreview explicit claude-code finder/verifier models	cli_autoreview_claude_code_explicit_models_run_on_the_cli
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

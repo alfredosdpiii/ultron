@@ -576,3 +576,7 @@ ts	phase	decision	why	evidence	result
 2026-10-17T04:05:03Z	wave33	login refresh retries 5xx/429 immediately (3 attempts), no jitter delay	wire requests equal; delay unobservable	ai_bedrock_credentials_login_refresh_retries_a_server_error	ported
 2026-10-17T04:05:03Z	wave33	ConnectionEnv.var injected; None = empty env for the /mcp login hint	never read process env for SSH/container hint	mcp_sign_in_hint_reads_the_injected_environment	ported
 2026-10-17T04:05:03Z	wave33	review RetryingTransport forwards websocket_available/websocket without retrying the socket	the Codex transport keeps its own WebSocket retries and SSE fallback	review_retrying_transport_passes_the_websocket_through	adopted
+2026-10-17T04:24:15Z	port	claude-code registered as a built-in provider in ai::models (last)	TS builtinProviders registers it always; Rust autoreview crash-looped on "Model claude-code/claude-haiku-5-5 not found"	W7C-01..W7C-13	done
+2026-10-17T04:24:15Z	divergence	claude-code requests carry the placeholder key "<claude-code-cli>"	TS getAuth resolves with no key, but Rust preflight requires a key; the CLI transport never reads it	cli_claude_code_model_flags_resolve_for_sessions_like_typescript	done
+2026-10-17T04:24:15Z	port	claude-code availability in ModelRegistry::auth_configured (CLI present)	matches claudeCodeCliAuth().check	ai_claude_code_availability_matches_typescript	done
+2026-10-17T04:24:15Z	port	session-core refresh skips claude-code	TS claude-code has no refreshModels	cli_update_models_without_credentials_refreshes_nothing_and_succeeds	done

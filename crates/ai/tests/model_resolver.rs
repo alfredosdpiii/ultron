@@ -31,9 +31,11 @@ fn lists(fixture: &Value) -> HashMap<String, Vec<Model>> {
     lists
 }
 
-/// Every built-in model, providers in catalog order.
+/// Every built-in model, providers in catalog order, without the `claude-code` provider's (the fixture's catalog
+/// leaves them out; tests/claude_code_provider.rs covers resolution with them).
 fn catalog() -> Vec<Model> {
     ai::models::builtin_providers()
+        .filter(|p| *p != ai::claude_code::PROVIDER)
         .flat_map(ai::models::builtin_models)
         .cloned()
         .collect()

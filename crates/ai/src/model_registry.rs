@@ -471,13 +471,22 @@ impl ModelRegistry {
     }
 
     /// `checkAuth` without stored credentials: a configured key counts when it is a command or every variable it
-    /// names is set; otherwise `inherited` (the built-in provider's own check).
+    /// names is set; otherwise `inherited` (the built-in provider's own check). The `claude-code` provider's own
+    /// check is whether its CLI is present (`claudeCodeCliAuth().check`), whatever `inherited` says: its requests
+    /// resolve with or without the CLI.
     pub fn auth_configured(&self, provider: &str, lookup: Lookup<'_>, inherited: bool) -> bool {
         match self.raw_key(provider) {
             Some(raw) if is_command(raw) => true,
             Some(raw) => env_names(raw)
                 .iter()
                 .all(|name| lookup(name).is_some_and(|v| !v.trim().is_empty())),
+            None if provider == crate::claude_code::PROVIDER => {
+                crate::claude_code::configured(&crate::env::EnvSource {
+                    lookup,
+                    exists: &|path: &Path| path.exists(),
+                    home: lookup("HOME").map(std::path::PathBuf::from),
+                })
+            }
             None => inherited,
         }
     }
