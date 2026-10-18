@@ -120,6 +120,18 @@ const commands = [
 	// Parse failures.
 	"echo 'unterminated > a.c",
 	"echo x > a.c \\",
+	// Targets follow a literal cd/pushd; a ( ) subshell restores the directory; popd, bare cd and cd - are unknown.
+	"cd /tmp && echo x > Cargo.toml",
+	"(cd /tmp; echo x > a.rs)",
+	"(cd /tmp && echo 1 > a.rs); echo 2 > b.c",
+	"cd $WORK && echo x > a.c",
+	"cd; echo x > a.c",
+	"cd - && echo x > a.c",
+	"popd && echo x > a.c",
+	"cd src && echo x > x.c",
+	"pushd src && cp ../a.txt b.c",
+	"cd -P -- src; tee t.c",
+	"echo x > a.c; cd /tmp",
 ];
 
 const cases = [

@@ -229,7 +229,7 @@ const cases = [
 	{ name: "managed-inside-repo", runs: [["init", "--managed-dir", "<ROOT>/managed", "--dir", "<ROOT>"]] },
 	{
 		name: "managed-release-mismatch",
-		managedFiles: { "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41/loki.py": "tampered\n" },
+		managedFiles: { "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b/loki.py": "tampered\n" },
 		runs: [["init", "--managed-dir", "<MANAGED>", "--dir", "<ROOT>"]],
 	},
 	{
@@ -318,6 +318,6 @@ rmSync(scratch, { recursive: true, force: true });
 assertOffline();
 writeFileSync(
 	join(here, "init-corpus.json"),
-	`${JSON.stringify({ engine: "loki.py 0.1.4 (f5ecc8e)", cases: results }, null, "\t")}\n`,
+	`${JSON.stringify({ engine: "loki.py 0.1.4 (8adfc66)", cases: results }, null, "\t")}\n`,
 );
 console.log(`init-corpus.json: ${results.length} cases`);

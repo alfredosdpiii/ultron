@@ -555,7 +555,39 @@ fn join_name(directory: &str, source: &str) -> String {
 
 static PERL_INPLACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-[a-zA-Z]*i\S*$").expect("static pattern"));
 
-fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>, base: &Path) {
+/// `os.path.join(directory, path)`: an absolute `path` replaces `directory`.
+fn os_path_join(directory: &str, path: &str) -> String {
+    if path.starts_with('/') || directory.is_empty() {
+        path.to_string()
+    } else if directory.ends_with('/') {
+        format!("{directory}{path}")
+    } else {
+        format!("{directory}/{path}")
+    }
+}
+
+/// Where the parsed command currently runs: the directory a literal `cd`/`pushd` moved to, relative to the command's
+/// cwd ("$CD" when the shell decides it, so the targets are skipped like `$VAR` ones), and the ones `(` saved.
+#[derive(Default)]
+struct Moves {
+    moved: String,
+    scopes: Vec<String>,
+    placed: usize,
+}
+
+impl Moves {
+    /// Join the targets found since the last call to the directory the command moved to.
+    fn place(&mut self, targets: &mut [(String, String)]) {
+        if !self.moved.is_empty() {
+            for (target, _) in &mut targets[self.placed..] {
+                *target = os_path_join(&self.moved, target);
+            }
+        }
+        self.placed = targets.len();
+    }
+}
+
+fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>, base: &Path, moves: &mut Moves) {
     while words
         .first()
         .is_some_and(|w| (w.contains('=') && !w.starts_with('-')) || COMMAND_PREFIXES.contains(&w.as_str()))
@@ -566,6 +598,19 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>,
         return;
     }
     let (name, args) = (file_name(&words[0]).to_string(), &words[1..]);
+    if matches!(name.as_str(), "cd" | "pushd" | "popd") {
+        let changes: Vec<&String> = args
+            .iter()
+            .filter(|a| !matches!(a.as_str(), "-L" | "-P" | "-e" | "-@" | "--"))
+            .collect();
+        moves.moved = if name != "popd" && changes.len() == 1 && changes[0] != "-" {
+            os_path_join(&moves.moved, changes[0])
+        } else {
+            "$CD".into()
+        };
+        words.clear();
+        return;
+    }
     let plain: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
     let mut add = |target: String, how: &str| targets.push((target, how.to_string()));
     match name.as_str() {
@@ -620,6 +665,7 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>,
             .for_each(|t| add(t.into(), "dd")),
         _ => {}
     }
+    moves.place(targets);
     words.clear();
 }
 
@@ -628,6 +674,7 @@ fn command_targets(words: &mut Vec<String>, targets: &mut Vec<(String, String)>,
 pub fn shell_write_targets(command: &str, base: &Path) -> Option<Vec<(String, String)>> {
     let tokens = shlex_punctuated(&strip_heredocs(command), false).ok()?;
     let (mut targets, mut words) = (Vec::new(), Vec::new());
+    let mut moves = Moves::default();
     let mut index = 0;
     while index < tokens.len() {
         let token = tokens[index].as_str();
@@ -636,12 +683,22 @@ pub fn shell_write_targets(command: &str, base: &Path) -> Option<Vec<(String, St
         if redirect {
             if let Some(next) = tokens.get(index + 1) {
                 targets.push((next.clone(), "redirect".to_string()));
+                moves.place(&mut targets);
             }
             index += 2;
             continue;
         }
         if punctuation_only(token) {
-            command_targets(&mut words, &mut targets, base);
+            command_targets(&mut words, &mut targets, base, &mut moves);
+            for char in token.chars() {
+                if char == '(' {
+                    moves.scopes.push(moves.moved.clone());
+                } else if char == ')'
+                    && let Some(saved) = moves.scopes.pop()
+                {
+                    moves.moved = saved;
+                }
+            }
             index += 1;
             continue;
         }
@@ -655,7 +712,7 @@ pub fn shell_write_targets(command: &str, base: &Path) -> Option<Vec<(String, St
         words.push(token.to_string());
         index += 1;
     }
-    command_targets(&mut words, &mut targets, base);
+    command_targets(&mut words, &mut targets, base, &mut moves);
     targets.retain(|(t, _)| {
         !WRITE_SINKS.contains(&t.as_str()) && !t.starts_with("/dev/fd/") && !t.starts_with("/proc/self/fd/")
     });
@@ -847,6 +904,37 @@ mod tests {
         ];
         assert_eq!(found, expected.map(|(t, h)| (t.to_string(), h.to_string())));
         assert_eq!(shell_write_targets("echo 'x > a.py", Path::new("/nonexistent")), None);
+    }
+
+    /// loki.py test_targets_follow_cd: targets follow a literal `cd`/`pushd`; a `( … )` subshell restores the
+    /// directory; bare `cd`, `cd -` and `popd` leave it unknown ("$CD", skipped like `$VAR` targets).
+    #[test]
+    fn loki_shell_write_targets_follow_cd() {
+        let cases: [(&str, &[(&str, &str)]); 11] = [
+            ("cd src && echo x > a.py", &[("src/a.py", "redirect")]),
+            ("cd /srv/x; printf a > Cargo.toml", &[("/srv/x/Cargo.toml", "redirect")]),
+            (
+                "(cd /srv && echo 1 > a.rs); echo 2 > b.py",
+                &[("/srv/a.rs", "redirect"), ("b.py", "redirect")],
+            ),
+            ("cd src; cp a.py b.py", &[("src/b.py", "cp")]),
+            ("echo x > a.py; cd /srv", &[("a.py", "redirect")]),
+            ("cd -- lib && mv -t dst a.py", &[("lib/dst/a.py", "mv")]),
+            ("cd $DIR && echo x > a.py", &[("$DIR/a.py", "redirect")]),
+            ("cd; echo x > a.py", &[("$CD/a.py", "redirect")]),
+            ("cd - && echo x > a.py", &[("$CD/a.py", "redirect")]),
+            ("pushd a && popd && echo x > b.py", &[("$CD/b.py", "redirect")]),
+            ("cd a && cd /b && cd c; tee t.py", &[("/b/c/t.py", "tee")]),
+        ];
+        for (command, expected) in cases {
+            let expected: Vec<(String, String)> =
+                expected.iter().map(|(t, h)| (t.to_string(), h.to_string())).collect();
+            assert_eq!(
+                shell_write_targets(command, Path::new("/nonexistent")).unwrap(),
+                expected,
+                "{command}"
+            );
+        }
     }
 
     #[test]

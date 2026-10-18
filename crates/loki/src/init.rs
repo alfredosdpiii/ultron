@@ -3,7 +3,7 @@
 //! configuration, Ruff/golangci-lint/Credo configuration and the CI workflow, all under the target repository.
 //!
 //! The templates, shims and the vendored anti-slop Oxlint plugin are those of the pinned engine's upstream commit
-//! (alfredosdpiii/loki f5ecc8e, `init-assets/`), compiled in: the Rust engine has no template directory on disk, so
+//! (alfredosdpiii/loki 8adfc66, `init-assets/`), compiled in: the Rust engine has no template directory on disk, so
 //! the "reconcile with" notices name the template by its path in the engine source (`templates/<name>`).
 
 use crate::py;
@@ -433,6 +433,17 @@ fn is_shell_guard_entry(entry: &Value) -> bool {
         })
 }
 
+/// `missing_engine_guard`: shell prefix for an owned hook that passes with a note on a branch without Loki, that is a
+/// checkout whose HEAD has no `.loki/loki.py` while another ref does. An engine deleted from the working tree that
+/// HEAD still tracks, or one never committed anywhere, still fails closed.
+pub fn missing_engine_guard(root: &str) -> String {
+    format!(
+        "R={root}; [ -f \"$R/.loki/loki.py\" ] || git -C \"$R\" cat-file -e HEAD:.loki/loki.py 2>/dev/null || \
+         [ -z \"$(git -C \"$R\" rev-list -1 --all -- .loki/loki.py 2>/dev/null)\" ] || \
+         {{ printf '%s\\n' 'loki: .loki/loki.py is not on this branch; Loki did not check this' >&2; exit 0; }}; "
+    )
+}
+
 /// `install_shell_guard`: a `shell` pre-tool hook for Claude Code (Bash) and Factory (Execute), replacing an earlier
 /// one, and the shell registration in the Pi/OMP shims.
 pub fn install_shell_guard(root: &Path) -> Result<(), InitError> {
@@ -442,7 +453,8 @@ pub fn install_shell_guard(root: &Path) -> Result<(), InitError> {
         let path = root.join(relative);
         let mut document = read_json_object(&path)?;
         let command = format!(
-            "{} {} --root {} shell --harness {harness} || {{ printf '%s\\n' 'loki: shell guard failed' >&2; exit 2; }}",
+            "{}{} {} --root {} shell --harness {harness} || {{ printf '%s\\n' 'loki: shell guard failed' >&2; exit 2; }}",
+            missing_engine_guard(&quote(&root.to_string_lossy())),
             quote(&python),
             quote(&root.join(".loki/loki.py").to_string_lossy()),
             quote(&root.to_string_lossy()),

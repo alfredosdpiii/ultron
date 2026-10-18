@@ -123,6 +123,96 @@ pub struct Snapshot {
 /// Takes a [`Snapshot`] of a directory.
 pub type Snapshotter = Arc<dyn Fn(&Path) -> Result<Snapshot, String> + Send + Sync>;
 
+/// How long an after-cell check waits for work outside the cells still running (Loki's setup commit: 30 s for
+/// the commit and its hooks, then a picture of the repository).
+pub const OUTSIDE_WAIT: Duration = Duration::from_secs(60);
+
+/// Files the session's own work changed outside the cells: Loki's setup commit, whose pre-commit hooks may rewrite
+/// files (a formatter rewrote `.loki/loki.json`, which the next after-cell check then reported as that cell's
+/// `protected file`). An after-cell check waits for such work and leaves out the files it changed, unless the cell
+/// changed them again.
+#[derive(Clone, Default)]
+pub struct OutsideChanges {
+    state: Arc<(Mutex<OutsideState>, Condvar)>,
+}
+
+#[derive(Default)]
+struct OutsideState {
+    running: usize,
+    /// Absolute path -> its signature once the work finished (None: the work deleted it).
+    after: HashMap<PathBuf, Option<String>>,
+}
+
+/// Work outside the cells that has begun ([`OutsideChanges::begin`]); dropping it without [`Self::record`] ends it
+/// with nothing recorded.
+pub struct OutsideWork {
+    changes: OutsideChanges,
+}
+
+impl OutsideChanges {
+    /// Work outside the cells begins now: after-cell checks wait for it from this moment.
+    pub fn begin(&self) -> OutsideWork {
+        lock(&self.state.0).running += 1;
+        OutsideWork { changes: self.clone() }
+    }
+
+    /// Wait (at most `limit`) for the work that has begun to end.
+    fn wait(&self, limit: Duration) {
+        let (state, ended) = &*self.state;
+        let mut state = lock(state);
+        let end = std::time::Instant::now() + limit;
+        while state.running > 0 {
+            let left = end.saturating_duration_since(std::time::Instant::now());
+            if left.is_zero() {
+                return;
+            }
+            state = ended
+                .wait_timeout(state, left)
+                .unwrap_or_else(PoisonError::into_inner)
+                .0;
+        }
+    }
+
+    /// Whether `path` (absolute) with `signature` (None: missing) is as the work outside the cells left it.
+    fn explains(&self, path: &Path, signature: Option<&String>) -> bool {
+        lock(&self.state.0)
+            .after
+            .get(path)
+            .is_some_and(|left| left.as_ref() == signature)
+    }
+}
+
+impl OutsideWork {
+    /// Run `work`, recording what it changed between pictures of `root` taken by `snapshot` before and after it.
+    /// Picture only what the work changes (Loki's setup: `.loki/`): a cell's own write elsewhere in that time
+    /// would otherwise be taken for the work's and go unchecked.
+    pub fn record<R>(self, root: &Path, snapshot: &Snapshotter, work: impl FnOnce() -> R) -> R {
+        let before = snapshot(root);
+        let result = work();
+        if let (Ok(before), Ok(after)) = (before, snapshot(root)) {
+            let (added, modified, deleted, _) = diff_snapshots(&before, &after);
+            let mut state = lock(&self.changes.state.0);
+            for relative in added.iter().chain(&modified) {
+                let signature = after.entries.get(relative).cloned();
+                state.after.insert(resolve_lexical(&after.root, relative), signature);
+            }
+            for relative in &deleted {
+                state.after.insert(resolve_lexical(&after.root, relative), None);
+            }
+        }
+        result
+    }
+}
+
+impl Drop for OutsideWork {
+    fn drop(&mut self) {
+        let (state, ended) = &*self.changes.state;
+        let mut state = lock(state);
+        state.running = state.running.saturating_sub(1);
+        ended.notify_all();
+    }
+}
+
 pub const DEFAULT_AFTER_CELL_TIMEOUT: Duration = Duration::from_secs(120);
 /// `DEFAULT_BEFORE_WRITE_TIMEOUT_MS`.
 pub const DEFAULT_BEFORE_WRITE_TIMEOUT: Duration = Duration::from_millis(5_000);
@@ -313,6 +403,8 @@ struct Inner {
     pending: Mutex<HashMap<String, Vec<String>>>,
     /// The last snapshot of the directory (taken before the first watched cell, then after each).
     baseline: Mutex<Option<Snapshot>>,
+    /// Files changed outside the cells, left out of their changes ([`FileHooks::ignore_outside`]).
+    outside: Mutex<Option<OutsideChanges>>,
     /// After-cell checks queued or running, and the worker that runs them one at a time.
     queued: Mutex<usize>,
     idle: Condvar,
@@ -371,6 +463,7 @@ impl FileHooks {
                 checked: Mutex::new(HashMap::new()),
                 pending: Mutex::new(HashMap::new()),
                 baseline: Mutex::new(None),
+                outside: Mutex::new(None),
                 queued: Mutex::new(0),
                 idle: Condvar::new(),
                 worker: Mutex::new(None),
@@ -396,6 +489,12 @@ impl FileHooks {
             guard: Arc::from(guard),
             stats: Arc::new(Mutex::new(stats)),
         });
+    }
+
+    /// Files `changes` records as changed outside the cells are not a cell's changes (unless it changed them
+    /// again), and an after-cell check waits for that work to end first.
+    pub fn ignore_outside(&self, changes: OutsideChanges) {
+        *lock(&self.inner.outside) = Some(changes);
     }
 
     /// Every guard outcome goes to `on_record` (ULTRON_LOKI_LOG).
@@ -692,6 +791,10 @@ impl Inner {
     /// `#afterCell`: diff against the previous picture, then ask every watching guard (each within its time limit).
     fn after_cell(&self, lane: &str) {
         let before = lock(&self.baseline).clone();
+        let outside = lock(&self.outside).clone();
+        if let Some(outside) = &outside {
+            outside.wait(OUTSIDE_WAIT);
+        }
         let after = self.picture();
         if let Some(after) = &after {
             *lock(&self.baseline) = Some(after.clone());
@@ -702,7 +805,15 @@ impl Inner {
         if before.root != after.root {
             return;
         }
-        let (added, modified, deleted, complete) = diff_snapshots(&before, &after);
+        let (mut added, mut modified, mut deleted, complete) = diff_snapshots(&before, &after);
+        if let Some(outside) = &outside {
+            let theirs = |relative: &String| {
+                outside.explains(&resolve_lexical(&after.root, relative), after.entries.get(relative))
+            };
+            added.retain(|relative| !theirs(relative));
+            modified.retain(|relative| !theirs(relative));
+            deleted.retain(|relative| !theirs(relative));
+        }
         if added.is_empty() && modified.is_empty() && deleted.is_empty() {
             return;
         }

@@ -59,6 +59,14 @@ re!(
 re!(SQL_CALL, r"\.\s*(?:query|execute|raw|unsafe|prepare)\s*\(");
 re!(SQL_WORD, r"(?i)\b(?:select|insert|update|delete)\b");
 re!(SQL_CONCAT, r#"['"`]\s*\+|\+\s*['"`]"#);
+// Text just before an interpolation that puts it where SQL expects a table or column name (SQL_IDENTIFIER_POSITION).
+re!(
+    SQL_IDENTIFIER_POSITION,
+    r#"(?i)(?:\b(?:from|into|update|join|table|exists)|\b(?:order|group)\s+by|["`\[.])\s*$"#
+);
+const SQL_IDENTIFIER: &str = "SQL injection: table or column name interpolated into the query; placeholders cannot bind identifiers, so map it to a fixed set of known names before building the query";
+const SQL_QUERY: &str =
+    "SQL injection: query text built by concatenation or interpolation; use parameterized placeholders";
 re!(
     COMPARE,
     r"([\w$.]+(?:\([^()]*\))?|`[^`]*`)\s*(?:===?|!==?)\s*([\w$.]+(?:\([^()]*\))?|`[^`]*`)"
@@ -290,12 +298,13 @@ pub fn javascript_rules(text: &Text) -> Vec<Finding> {
         let Some(&first) = arguments.first() else { continue };
         let argument = sl(text, first);
         if SQL_WORD.is_match(argument) && (argument.contains("${") || SQL_CONCAT.is_match(argument)) {
-            findings.push((
-                "loki/sql-injection",
-                "SQL injection: query text built by concatenation or interpolation; use parameterized placeholders"
-                    .into(),
-                found.start(),
-            ));
+            let identifier = argument.contains("${")
+                && !argument.contains('+')
+                && argument
+                    .match_indices("${")
+                    .all(|(at, _)| SQL_IDENTIFIER_POSITION.is_match(&argument[..at]));
+            let message = if identifier { SQL_IDENTIFIER } else { SQL_QUERY };
+            findings.push(("loki/sql-injection", message.into(), found.start()));
         }
     }
     for found in COMPARE.iter(&masked) {
@@ -662,5 +671,31 @@ mod tests {
         .map(|p| nested_quantifier(p))
         .collect();
         assert_eq!(got, [true, false, false, true, true, true, false]);
+    }
+
+    /// loki.py test_sql_identifier_interpolation_gets_identifier_advice: an interpolation only where a table or
+    /// column name goes gets the allowlist advice; any value position or `+` keeps the placeholder advice.
+    #[test]
+    fn loki_js_sql_identifier_interpolation_gets_identifier_advice() {
+        let message = |source: &str| {
+            let found = javascript_rules(&Text::new(source));
+            let rules: Vec<&str> = found.iter().map(|f| f.0).collect();
+            assert_eq!(rules, ["loki/sql-injection"], "{source}");
+            found[0].1.clone()
+        };
+        for source in [
+            "db.prepare(`SELECT * FROM ${name} ORDER BY 1`)",
+            "db.query(`SELECT * FROM \"${table}\" ORDER BY ${column}`)",
+            "db.query(`INSERT INTO s.${table} (a) VALUES (?)`, [a])",
+        ] {
+            assert_eq!(message(source), SQL_IDENTIFIER, "{source}");
+        }
+        for source in [
+            "db.query(`SELECT * FROM ${table} WHERE id = ${id}`)",
+            "db.query(`SELECT * FROM t WHERE name = '${name}'`)",
+            "db.query('SELECT * FROM ' + table)",
+        ] {
+            assert_eq!(message(source), SQL_QUERY, "{source}");
+        }
     }
 }

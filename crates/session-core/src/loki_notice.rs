@@ -78,6 +78,10 @@ impl LokiNotice {
             loki::auto_setup::Setup::Commit(root) => {
                 let notice = LokiNotice::pending();
                 let committing = notice.clone();
+                // The commit's hooks may rewrite what it commits (a formatter on .loki/loki.json): that is not a
+                // change of the cell running beside it. After-cell checks wait for the commit from now. Only .loki/
+                // is pictured, so what the cell writes elsewhere meanwhile stays the cell's.
+                let outside = config.outside_changes.begin();
                 std::thread::spawn(move || {
                     let context = loki::auto_setup::SetupContext {
                         cwd: &cwd,
@@ -85,7 +89,11 @@ impl LokiNotice {
                         var: &lookup,
                         settings: &settings,
                     };
-                    committing.settle(Some(loki::auto_setup::commit_notice(&context, &root)));
+                    let snapshot = crate::compose::workspace_snapshotter();
+                    let text = outside.record(&root.join(".loki"), &snapshot, || {
+                        loki::auto_setup::commit_notice(&context, &root)
+                    });
+                    committing.settle(Some(text));
                 });
                 notice
             }

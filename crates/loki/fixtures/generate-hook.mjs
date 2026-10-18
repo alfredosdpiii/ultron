@@ -430,6 +430,8 @@ const cases = [
 	js("html-expression", "el.innerHTML = cond ? a : b, other = 1;\nel.innerHTML = (\n  `<p>`\n);\nel.innerHTML = '' + x;\nnode.insertAdjacentHTML('afterend');\n"),
 	js("regex-division", "const r = a / b / c;\nconst q = x.split(/(\\s+)*/);\nreturn /[a-z]+(?:,[a-z]+)*/;\nconst k = /(?:a|b)+c+/;\n"),
 	js("sql-more", "pool.raw(\"UPDATE t SET a = '\" + v + \"'\");\nknex.prepare('INSERT INTO t VALUES (?)');\nq.unsafe(`delete from t where id=${id}`);\n"),
+	js("sql-identifier", "db.prepare(`SELECT * FROM ${name} ORDER BY 1`);\ndb.query(`SELECT * FROM \"${table}\" ORDER BY ${column}`);\ndb.query(`INSERT INTO s.${table} (a) VALUES (?)`, [a]);\n"),
+	js("sql-identifier-mixed", "db.query(`SELECT * FROM ${table} WHERE id = ${id}`);\ndb.query(`SELECT * FROM t WHERE name = '${name}'`);\ndb.query('SELECT * FROM ' + table);\n"),
 	js("comments-and-strings", "// el.innerHTML = x;\nconst s = \"eval(code)\";\n/* setInterval(f) */\nconst t = `${eval(code)}`;\n"),
 	js("crlf", "el.innerHTML = a;\r\nel.innerHTML = b;\r\n"),
 	ts("generics", "export function merge<T>(a: T, b: Partial<T>): T {\n  for (const key in b) {\n    merge(a as any, b as any);\n    (a as any)[key] = (b as any)[key];\n  }\n  return a;\n}\n"),
