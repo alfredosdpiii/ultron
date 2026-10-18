@@ -98,7 +98,19 @@ pub fn classify_loki_text(stderr: &str, failed: bool) -> LokiReport {
 }
 
 /// `findingKey`: a finding's file and its identity without the line number, which moves as the file is edited.
+/// The engine's own `loki: ...` lines name no file at their start (`loki` is no path): a protected-file line is
+/// followed by the file it names, others cannot be followed. Keyed by `loki`, they stayed "still open in loki"
+/// for the rest of the session, since no check ever clears a file named `loki`.
 fn finding_key(line: &str) -> (String, String) {
+    if let Some(rest) = line.strip_prefix("loki: ") {
+        return match rest.strip_prefix("protected file: ") {
+            Some(named) => {
+                let path = named.split(" (set ").next().unwrap_or(named).to_string();
+                (path, line.to_string())
+            }
+            None => (String::new(), line.to_string()),
+        };
+    }
     match FINDING_PATH.captures(line).ok().flatten() {
         Some(found) => {
             let path = found[1].to_string();
@@ -497,5 +509,27 @@ impl FileWriteGuard for LokiGuard {
             return Ok(Verdict::Allow(None));
         }
         Ok(self.refused(&stderr, status, "would refuse this command (advise-only mode)"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Issue #5: `loki: protected file: X` was keyed by the file `loki`, which no check clears, so it stayed
+    /// "still open in loki" all session. It is followed by the file it names; other `loki:` lines by nothing.
+    #[test]
+    fn host_loki_engine_lines_are_keyed_by_the_file_they_name() {
+        let protected = "loki: protected file: .loki/loki.json (set LOKI_ALLOW_PROTECTED=1 to override)";
+        assert_eq!(
+            finding_key(protected),
+            (".loki/loki.json".to_string(), protected.to_string())
+        );
+        let other = "loki: unsupported changed file type: a";
+        assert_eq!(finding_key(other), (String::new(), other.to_string()));
+        assert_eq!(
+            finding_key("src/a.py:3: loki/x: y"),
+            ("src/a.py".to_string(), "src/a.py: loki/x: y".to_string())
+        );
     }
 }

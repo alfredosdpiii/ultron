@@ -132,7 +132,11 @@ pub fn hook_violations(
     if messages.is_empty() {
         let targets: Vec<PathBuf> = paths.iter().map(|p| crate::abspath(root, p)).collect();
         messages.extend(crate::hook::write_guardrail_violations(
-            &targets, root, config, deadline,
+            &targets,
+            root,
+            config,
+            deadline,
+            Some(&mut *warnings),
         )?);
         let typescript = targets.iter().any(|t| {
             let name = t

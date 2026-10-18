@@ -290,7 +290,7 @@ fn check_candidate(
             .map_err(|e| os(&e, None))?;
     }
     let targets: Vec<PathBuf> = plan.desired.iter().map(|(name, _)| workspace.join(name)).collect();
-    let mut findings = hook::write_guardrail_violations(&targets, &workspace, config, deadline)?;
+    let mut findings = hook::write_guardrail_violations(&targets, &workspace, config, deadline, None)?;
     let mut warnings = Vec::new();
     let typescript = plan.desired.iter().any(|(name, _)| {
         let file = name.rsplit('/').next().unwrap_or(name);

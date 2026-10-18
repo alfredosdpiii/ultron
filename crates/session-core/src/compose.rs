@@ -126,6 +126,21 @@ pub struct Config {
     /// An extension registers its own `mcp` tool, so the built-in gateway is left out (`preferNativeMcp`'s
     /// `replaced`): no servers, no `/mcp`.
     pub mcp_replaced: bool,
+    /// Files Loki's own setup commit changed (crate::loki_notice): not the changes of the cell it ran beside.
+    pub outside_changes: host::file_hooks::OutsideChanges,
+}
+
+/// After-cell checks picture the directory between cells (workspace-snapshot.ts).
+pub fn workspace_snapshotter() -> host::file_hooks::Snapshotter {
+    std::sync::Arc::new(|dir: &Path| {
+        let picture =
+            delegation::workspace::snapshot_workspace(dir, delegation::workspace::DEFAULT_MAX_SNAPSHOT_ENTRIES, true);
+        Ok(host::file_hooks::Snapshot {
+            root: picture.root,
+            entries: picture.entries,
+            complete: picture.complete,
+        })
+    })
 }
 
 impl Config {
@@ -165,6 +180,7 @@ impl Config {
             project_trusted: manager.is_project_trusted(),
             mcp_enabled: true,
             mcp_replaced: false,
+            outside_changes: host::file_hooks::OutsideChanges::default(),
             provider_token: {
                 let env = env.clone();
                 Arc::new(move |provider: &str| crate::lane::api_key(&crate::ModelFlags::default(), &env, provider))
@@ -266,20 +282,8 @@ impl Config {
     /// In `cwd` (a worktree subagent's own), Loki checks that tree. Every guard outcome goes to `ULTRON_LOKI_LOG`, then
     /// to `record` (the session's counters).
     fn file_hooks_in(&self, cwd: &Path, record: Option<OnRecord>) -> FileHooks {
-        // After-cell checks picture the directory between cells (workspace-snapshot.ts).
-        let snapshot: host::file_hooks::Snapshotter = std::sync::Arc::new(|dir: &Path| {
-            let picture = delegation::workspace::snapshot_workspace(
-                dir,
-                delegation::workspace::DEFAULT_MAX_SNAPSHOT_ENTRIES,
-                true,
-            );
-            Ok(host::file_hooks::Snapshot {
-                root: picture.root,
-                entries: picture.entries,
-                complete: picture.complete,
-            })
-        });
-        let mut hooks = FileHooks::with_snapshots(cwd, snapshot);
+        let mut hooks = FileHooks::with_snapshots(cwd, workspace_snapshotter());
+        hooks.ignore_outside(self.outside_changes.clone());
         match (
             crate::guard_log::loki_log((self.var)("ULTRON_LOKI_LOG").as_deref()),
             record,

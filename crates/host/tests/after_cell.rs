@@ -5,7 +5,9 @@
 //! catching a secret a shell write introduced.
 
 use host::Guard;
-use host::file_hooks::{AfterCellReport, AfterOutcome, CellChanges, FileHooks, FileWriteGuard, Snapshot, Snapshotter};
+use host::file_hooks::{
+    AfterCellReport, AfterOutcome, CellChanges, FileHooks, FileWriteGuard, OutsideChanges, Snapshot, Snapshotter,
+};
 use host::loki_guard::{LokiGuard, LokiMode, LokiReport, classify_loki_text, parse_loki_report};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -112,6 +114,63 @@ fn host_after_cell_changes_reach_the_guards_and_findings_come_with_the_next_cell
     assert_eq!(last.files, vec![root.join("app.py")]);
     assert_eq!(last.deleted, vec![root.join("notes.txt")]);
     assert!(last.checked.is_empty() && last.complete);
+}
+
+/// Issue #5: Loki's own setup commit ran beside the first cell, and its pre-commit hook rewrote `.loki/loki.json`;
+/// the after-cell check then reported that file as the cell's change (`protected file: .loki/loki.json`). Work
+/// outside the cells is waited for and what it changed is not the cell's, unless the cell changes it again.
+#[test]
+fn host_after_cell_leaves_out_files_changed_by_work_outside_the_cells() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    std::fs::create_dir_all(root.join(".loki")).unwrap();
+    std::fs::write(root.join(".loki/loki.json"), "{}").unwrap();
+    std::fs::write(root.join(".loki/stale.txt"), "x").unwrap();
+    let reports = Arc::new(Mutex::new(Vec::new()));
+    let mut hooks = FileHooks::with_snapshots(&root, snapshotter());
+    hooks.add(Box::new(Watch(reports.clone(), root.clone())));
+    let outside = OutsideChanges::default();
+    hooks.ignore_outside(outside.clone());
+    // The setup commit begins before the first cell and ends while it runs (the check waits for it).
+    let work = outside.begin();
+    hooks.cell_started("main");
+    let (started, start) = std::sync::mpsc::channel();
+    // It pictures only what it commits (.loki/), so the cell's own writes meanwhile stay the cell's.
+    let commit = {
+        let root = root.clone();
+        std::thread::spawn(move || {
+            work.record(&root.join(".loki"), &snapshotter(), || {
+                started.send(()).unwrap();
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                std::fs::write(root.join(".loki/loki.json"), "{\n}\n").unwrap();
+                std::fs::remove_file(root.join(".loki/stale.txt")).unwrap();
+            })
+        })
+    };
+    start.recv().unwrap();
+    std::fs::write(root.join("cell.txt"), "the cell's\n").unwrap();
+    hooks.cell_ended("main");
+    hooks.settled();
+    commit.join().unwrap();
+    {
+        let reports = reports.lock().unwrap();
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].files, vec![root.join("cell.txt")]);
+        assert!(reports[0].deleted.is_empty(), "{:?}", reports[0].deleted);
+    }
+    // Nothing changed since: nothing to check. A cell that changes the file again is reported.
+    hooks.cell_started("main");
+    hooks.cell_ended("main");
+    hooks.settled();
+    assert_eq!(reports.lock().unwrap().len(), 1);
+    hooks.cell_started("main");
+    std::fs::write(root.join(".loki/loki.json"), "{\"protected\": []}\n").unwrap();
+    hooks.cell_ended("main");
+    hooks.settled();
+    assert_eq!(
+        reports.lock().unwrap().last().unwrap().files,
+        vec![root.join(".loki/loki.json")]
+    );
 }
 
 /// A guard that cannot check, and one that gives up.

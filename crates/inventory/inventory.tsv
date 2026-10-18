@@ -2594,9 +2594,9 @@ INV-coding-agent-env-HTTP_PROXY	coding-agent	env	HTTP_PROXY	packages/coding-agen
 INV-coding-agent-env-LLAMA_API_KEY	coding-agent	env	LLAMA_API_KEY	packages/coding-agent/src/extensions/llama/provider.ts:141
 INV-coding-agent-env-LLAMA_BASE_URL	coding-agent	env	LLAMA_BASE_URL	packages/coding-agent/src/extensions/llama/provider.ts:30
 INV-coding-agent-env-LOKI_ALLOW_PROTECTED	coding-agent	env	LOKI_ALLOW_PROTECTED	packages/coding-agent/src/ultron/loki-engine/loki.py:414
-INV-coding-agent-env-LOKI_DAEMON	coding-agent	env	LOKI_DAEMON	packages/coding-agent/src/ultron/loki-engine/loki.py:8308
+INV-coding-agent-env-LOKI_DAEMON	coding-agent	env	LOKI_DAEMON	packages/coding-agent/src/ultron/loki-engine/loki.py:8439
 INV-coding-agent-env-LOKI_PYTHON	coding-agent	env	LOKI_PYTHON	packages/coding-agent/src/ultron/loki-engine/loki.py:767
-INV-coding-agent-env-LOKI_STRICT	coding-agent	env	LOKI_STRICT	packages/coding-agent/src/ultron/loki-engine/loki.py:6370
+INV-coding-agent-env-LOKI_STRICT	coding-agent	env	LOKI_STRICT	packages/coding-agent/src/ultron/loki-engine/loki.py:6453
 INV-coding-agent-env-PATH	coding-agent	env	PATH	packages/coding-agent/src/ultron/rlm/autoreview_tests.py:203
 INV-coding-agent-env-PI_CLEAR_ON_SHRINK	coding-agent	env	PI_CLEAR_ON_SHRINK	packages/coding-agent/src/core/settings-manager.ts:1812
 INV-coding-agent-env-PI_CODING_AGENT	coding-agent	env	PI_CODING_AGENT	packages/coding-agent/src/cli/setup.ts:6

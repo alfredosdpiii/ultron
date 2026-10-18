@@ -3530,7 +3530,7 @@
 				"stderr": "",
 				"tree": {
 					"proj/.loki/loki.json": "644 a397f86c9287ad96505a2e31ecaf898afdc0f3c8b0f83b3a9e6ef13d12507f88",
-					"proj/.loki/loki.py": "644 8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41"
+					"proj/.loki/loki.py": "644 e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b"
 				}
 			}
 		},
@@ -3577,7 +3577,7 @@
 				"stderr": "",
 				"tree": {
 					"proj/.loki/loki.json": "644 ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
-					"proj/.loki/loki.py": "644 8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41"
+					"proj/.loki/loki.py": "644 e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b"
 				}
 			}
 		},
@@ -3703,6 +3703,50 @@
 				"status": 2,
 				"stdout": "",
 				"stderr": "src/sql-more.js:1: loki/sql-injection: SQL injection: query text built by concatenation or interpolation; use parameterized placeholders\nsrc/sql-more.js:3: loki/sql-injection: SQL injection: query text built by concatenation or interpolation; use parameterized placeholders\nNOT CHECKED pre-write content: missing oxlint for content preview; built-in fallback rules applied\n"
+			}
+		},
+		{
+			"name": "js-sql-identifier",
+			"args": [
+				"protect",
+				"--file",
+				"src/sql-identifier.js",
+				"--preview",
+				"ultron"
+			],
+			"stdin": {
+				"tool_name": "write",
+				"tool_input": {
+					"path": "x",
+					"content": "db.prepare(`SELECT * FROM ${name} ORDER BY 1`);\ndb.query(`SELECT * FROM \"${table}\" ORDER BY ${column}`);\ndb.query(`INSERT INTO s.${table} (a) VALUES (?)`, [a]);\n"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "src/sql-identifier.js:1: loki/sql-injection: SQL injection: table or column name interpolated into the query; placeholders cannot bind identifiers, so map it to a fixed set of known names before building the query\nsrc/sql-identifier.js:2: loki/sql-injection: SQL injection: table or column name interpolated into the query; placeholders cannot bind identifiers, so map it to a fixed set of known names before building the query\nsrc/sql-identifier.js:3: loki/sql-injection: SQL injection: table or column name interpolated into the query; placeholders cannot bind identifiers, so map it to a fixed set of known names before building the query\nNOT CHECKED pre-write content: missing oxlint for content preview; built-in fallback rules applied\n"
+			}
+		},
+		{
+			"name": "js-sql-identifier-mixed",
+			"args": [
+				"protect",
+				"--file",
+				"src/sql-identifier-mixed.js",
+				"--preview",
+				"ultron"
+			],
+			"stdin": {
+				"tool_name": "write",
+				"tool_input": {
+					"path": "x",
+					"content": "db.query(`SELECT * FROM ${table} WHERE id = ${id}`);\ndb.query(`SELECT * FROM t WHERE name = '${name}'`);\ndb.query('SELECT * FROM ' + table);\n"
+				}
+			},
+			"expected": {
+				"status": 2,
+				"stdout": "",
+				"stderr": "src/sql-identifier-mixed.js:1: loki/sql-injection: SQL injection: query text built by concatenation or interpolation; use parameterized placeholders\nsrc/sql-identifier-mixed.js:2: loki/sql-injection: SQL injection: query text built by concatenation or interpolation; use parameterized placeholders\nsrc/sql-identifier-mixed.js:3: loki/sql-injection: SQL injection: query text built by concatenation or interpolation; use parameterized placeholders\nNOT CHECKED pre-write content: missing oxlint for content preview; built-in fallback rules applied\n"
 			}
 		},
 		{
@@ -5220,7 +5264,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [],
@@ -5270,7 +5314,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5317,7 +5361,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5374,7 +5418,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5436,7 +5480,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5497,7 +5541,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5554,7 +5598,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5608,7 +5652,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5656,7 +5700,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5704,7 +5748,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5759,7 +5803,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5822,7 +5866,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5879,7 +5923,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -5936,7 +5980,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [],
@@ -5988,7 +6032,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6041,7 +6085,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6088,7 +6132,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6145,7 +6189,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6193,7 +6237,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6259,7 +6303,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [],
@@ -6287,7 +6331,7 @@
 						],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [],
@@ -6328,7 +6372,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6365,7 +6409,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6399,7 +6443,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6445,7 +6489,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6491,7 +6535,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6544,7 +6588,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6590,7 +6634,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6636,7 +6680,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6682,7 +6726,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -6728,7 +6772,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [],
@@ -6759,7 +6803,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [
@@ -8244,7 +8288,7 @@
 						"targets": [],
 						"duration_ms": 0,
 						"scope": "delivered event only",
-						"engine_sha256": "8915df1dfd76b7074a110c4b5317f4018fc8c3d4044cd121837cebdea340fd41",
+						"engine_sha256": "e5c62e282c776c92c076942011e3154b9c890560cacf323704e3d822b4dc3b6b",
 						"resolution": "inspect diagnostic; protected changes need independent review",
 						"schema_version": 2,
 						"findings": [

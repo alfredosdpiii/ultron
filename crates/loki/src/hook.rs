@@ -349,24 +349,47 @@ pub fn lockfile_violations(root: &Path, changes: &[FileChange]) -> Vec<String> {
 }
 
 /// `write_guardrail_violations`: protected, test-integrity, lockfile and dependency policy.
+/// A snapshot of every change too large to take (`SnapshotTooLarge`) narrows to the written files, with a
+/// `NOT CHECKED repository changes` note in `warnings`, so the per-file checks still run.
 pub fn write_guardrail_violations(
     paths: &[PathBuf],
     root: &Path,
     config: &Config,
     deadline: Deadline,
+    mut warnings: Option<&mut Vec<String>>,
 ) -> Result<Vec<String>, CheckError> {
-    let checked = || -> Result<Vec<String>, CheckError> {
-        let (base, changes) = git::git_changes(root, None, deadline)?;
+    let mut checked = || -> Result<Vec<String>, CheckError> {
+        let resolved = resolve(root);
+        let touched: HashSet<String> = paths
+            .iter()
+            .filter_map(|p| p.strip_prefix(&resolved).ok().map(|r| r.to_string_lossy().into_owned()))
+            .collect();
+        let (base, changes) = match git::git_changes(root, None, deadline) {
+            Err(error) if git::snapshot_too_large(&error) => {
+                let mut note = format!(
+                    "NOT CHECKED repository changes: {}; protected-file, test and lockfile checks covered only the files this write changed",
+                    error.message()
+                );
+                let narrowed = match git::git_changes_only(root, None, deadline, Some(&touched)) {
+                    Err(written) if git::snapshot_too_large(&written) => {
+                        note = format!("NOT CHECKED repository changes: {}", written.message());
+                        (None, Vec::new())
+                    }
+                    other => other?,
+                };
+                if let Some(warnings) = warnings.as_deref_mut() {
+                    warnings.push(note);
+                }
+                narrowed
+            }
+            other => other?,
+        };
         let policy = git::base_policy(root, base.as_deref(), deadline)?;
         let protected = git::protected_change_violations(&changes, &policy.unwrap_or_default())?;
         if !protected.is_empty() {
             return Ok(protected);
         }
-        let root = resolve(root);
-        let touched: HashSet<String> = paths
-            .iter()
-            .filter_map(|p| p.strip_prefix(&root).ok().map(|r| r.to_string_lossy().into_owned()))
-            .collect();
+        let root = resolved;
         let selected: Vec<&FileChange> = changes.iter().filter(|c| touched.contains(&c.path)).collect();
         let mut violations = test_integrity_violations(&selected)?;
         violations.extend(lockfile_violations(&root, &changes));
@@ -1076,6 +1099,62 @@ fn cargo_project(path: &Path, root: &Path) -> Option<PathBuf> {
     None
 }
 
+/// `cargo_edition`: the crate's Rust edition from Cargo.toml, following `edition.workspace = true` up to the
+/// workspace's `[workspace.package]`.
+fn cargo_edition(krate: Option<&Path>, root: &Path) -> Option<String> {
+    let root = resolve(root);
+    let mut directory = resolve(krate?);
+    let mut inherit = false;
+    while directory.starts_with(&root) {
+        let data: toml::Table = std::fs::read_to_string(directory.join("Cargo.toml"))
+            .ok()
+            .and_then(|text| toml::from_str(&text).ok())
+            .unwrap_or_default();
+        let table = if inherit {
+            data.get("workspace").and_then(|w| w.get("package"))
+        } else {
+            data.get("package")
+        };
+        match table.and_then(|t| t.as_table()).and_then(|t| t.get("edition")) {
+            Some(toml::Value::String(edition)) => return Some(edition.clone()),
+            Some(toml::Value::Table(edition)) if edition.get("workspace") == Some(&toml::Value::Boolean(true)) => {
+                inherit = true;
+            }
+            _ => {}
+        }
+        if directory == root {
+            break;
+        }
+        directory = directory.parent()?.to_path_buf();
+    }
+    None
+}
+
+/// The rustfmt command for `path`: with the crate's edition, which rustfmt does not read from Cargo.toml itself.
+fn rustfmt_command(path: &Path, krate: Option<&Path>, root: &Path) -> Vec<String> {
+    let mut command = vec!["rustfmt".to_string()];
+    if let Some(edition) = cargo_edition(krate, root) {
+        command.extend(["--edition".to_string(), edition]);
+    }
+    command.push(path.to_string_lossy().into_owned());
+    command
+}
+
+/// Why clippy failed without diagnostics, from its stderr.
+fn clippy_failure(stderr: &str, code: i64) -> String {
+    let stderr = py::strip(stderr);
+    if stderr.contains("--offline was specified") || stderr.contains("no matching package named") {
+        return "cargo clippy needs dependencies that are not downloaded yet; run `cargo fetch` once to check this crate"
+            .into();
+    }
+    if stderr.contains("either src/lib.rs, src/main.rs, a [lib] section") {
+        return "the crate has no library or binary target yet".into();
+    }
+    let lines = py::splitlines(stderr, false);
+    let reason = lines.last().map_or_else(|| format!("exit {code}"), |l| l.to_string());
+    format!("cargo clippy failed: {reason}")
+}
+
 type Diagnostic = ((String, String, String, String), i64);
 
 fn clippy_diagnostics(krate: &Path, target: &Path, deadline: Deadline) -> Result<Vec<Diagnostic>, CheckError> {
@@ -1144,12 +1223,10 @@ fn clippy_diagnostics(krate: &Path, target: &Path, deadline: Deadline) -> Result
         ));
     }
     if result.code != 0 && found.is_empty() {
-        let stderr = proc::text(&result.stderr);
-        let lines = py::splitlines(py::strip(&stderr), false);
-        let reason = lines
-            .last()
-            .map_or_else(|| format!("exit {}", result.code), |l| l.to_string());
-        return Err(invalid(format!("cargo clippy failed: {reason}")));
+        return Err(invalid(clippy_failure(
+            &proc::text(&result.stderr),
+            i64::from(result.code),
+        )));
     }
     Ok(found)
 }
@@ -1399,13 +1476,13 @@ pub fn check_file(
             optional("golangci-lint", lint, strict, &mut violations, warnings)?;
         }
     } else if language == "rust" {
+        let krate = cargo_project(path, root);
         violations.extend(run_command(
-            &["rustfmt".into(), path.to_string_lossy().into_owned()],
+            &rustfmt_command(path, krate.as_deref(), root),
             root,
             "rustfmt",
             deadline,
         ));
-        let krate = cargo_project(path, root);
         let key = ("rust".to_string(), krate.unwrap_or_else(|| root.to_path_buf()));
         if !batch.checked.contains(&key) {
             optional(
@@ -1449,4 +1526,132 @@ pub fn check_file(
     }
     violations.truncate(MAX_VIOLATIONS);
     Ok(violations)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn write(root: &Path, relative: &str, content: &[u8]) -> PathBuf {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, content).unwrap();
+        path
+    }
+
+    fn git(root: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .stdout(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(status.success(), "git {args:?}");
+    }
+
+    /// loki.py test_rust_formatter_uses_the_crate_edition: `edition.workspace = true` reads the workspace's
+    /// `[workspace.package].edition`; a crate's own edition wins; no Cargo.toml, no flag.
+    #[test]
+    fn loki_rustfmt_gets_the_crate_edition() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        write(&root, "Cargo.toml", b"[workspace.package]\nedition = \"2024\"\n");
+        write(
+            &root,
+            "crates/a/Cargo.toml",
+            b"[package]\nname = \"a\"\nedition.workspace = true\n",
+        );
+        let path = write(&root, "crates/a/src/lib.rs", b"pub fn f() {}\n");
+        let krate = cargo_project(&path, &root);
+        assert_eq!(krate.as_deref(), Some(root.join("crates/a").as_path()));
+        let shown = path.to_string_lossy().into_owned();
+        assert_eq!(
+            rustfmt_command(&path, krate.as_deref(), &root),
+            ["rustfmt", "--edition", "2024", &shown]
+        );
+        write(
+            &root,
+            "crates/a/Cargo.toml",
+            b"[package]\nname = \"a\"\nedition = \"2021\"\n",
+        );
+        assert_eq!(cargo_edition(krate.as_deref(), &root).as_deref(), Some("2021"));
+        write(&root, "crates/a/Cargo.toml", b"[package]\nname = \"a\"\n");
+        assert_eq!(cargo_edition(krate.as_deref(), &root), None);
+        assert_eq!(rustfmt_command(&path, None, &root), ["rustfmt", &shown]);
+    }
+
+    /// loki.py clippy_diagnostics: missing offline dependencies and a crate without targets get plain reasons.
+    #[test]
+    fn loki_clippy_failure_reasons() {
+        assert_eq!(
+            clippy_failure(
+                "error: failed to get `serde` as a dependency\nCaused by: attempting to make an HTTP request, but --offline was specified\n",
+                101
+            ),
+            "cargo clippy needs dependencies that are not downloaded yet; run `cargo fetch` once to check this crate"
+        );
+        assert_eq!(
+            clippy_failure("error: no matching package named `serde` found\n", 101),
+            "cargo clippy needs dependencies that are not downloaded yet; run `cargo fetch` once to check this crate"
+        );
+        assert_eq!(
+            clippy_failure(
+                "error: failed to parse manifest\nCaused by: no targets specified in the manifest\n  either src/lib.rs, src/main.rs, a [lib] section, or [[bin]] section must be present\n",
+                101
+            ),
+            "the crate has no library or binary target yet"
+        );
+        assert_eq!(
+            clippy_failure("warning: x\nerror: boom\n", 101),
+            "cargo clippy failed: error: boom"
+        );
+        assert_eq!(clippy_failure("", 101), "cargo clippy failed: exit 101");
+    }
+
+    /// loki.py test_oversized_snapshot_checks_the_written_files: a snapshot of every change too large to take
+    /// narrows to the written files with a NOT CHECKED note, so the per-file checks still run; a written file too
+    /// large itself leaves only the note. `git_changes` (what `scan` uses) still fails.
+    #[test]
+    fn loki_oversized_snapshot_checks_the_written_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().canonicalize().unwrap();
+        git(&root, &["init", "-q"]);
+        let test = write(&root, "tests/test_a.py", b"def test_a():\n    assert value\n");
+        git(&root, &["add", "."]);
+        git(&root, &["commit", "-q", "-m", "base"]);
+        write(&root, "tests/test_a.py", b"def test_a():\n    pass\n");
+        let big = write(&root, "big.bin", &vec![b'x'; git::SNAPSHOT_LIMIT + 1]);
+        let error = git::git_changes(&root, None, Deadline::none()).unwrap_err();
+        assert_eq!(error.message(), "git: snapshot content exceeds 64 MiB");
+        let config = Config::default();
+        let mut warnings = Vec::new();
+        let findings =
+            write_guardrail_violations(&[test], &root, &config, Deadline::none(), Some(&mut warnings)).unwrap();
+        assert_eq!(findings, ["tests/test_a.py: assertion removed"]);
+        assert_eq!(
+            warnings,
+            [
+                "NOT CHECKED repository changes: git: snapshot content exceeds 64 MiB; protected-file, test and lockfile checks covered only the files this write changed"
+            ]
+        );
+        let mut warnings = Vec::new();
+        let findings =
+            write_guardrail_violations(&[big], &root, &config, Deadline::none(), Some(&mut warnings)).unwrap();
+        assert!(findings.is_empty(), "{findings:?}");
+        assert_eq!(
+            warnings,
+            ["NOT CHECKED repository changes: git: snapshot content exceeds 64 MiB"]
+        );
+    }
 }

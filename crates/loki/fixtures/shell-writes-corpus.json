@@ -728,6 +728,94 @@
 			}
 		},
 		{
+			"name": "command-90",
+			"command": "cd /tmp && echo x > Cargo.toml",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-91",
+			"command": "(cd /tmp; echo x > a.rs)",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-92",
+			"command": "(cd /tmp && echo 1 > a.rs); echo 2 > b.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into b.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-93",
+			"command": "cd $WORK && echo x > a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-94",
+			"command": "cd; echo x > a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-95",
+			"command": "cd - && echo x > a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-96",
+			"command": "popd && echo x > a.c",
+			"expected": {
+				"status": 0,
+				"stderr": ""
+			}
+		},
+		{
+			"name": "command-97",
+			"command": "cd src && echo x > x.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into src/x.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-98",
+			"command": "pushd src && cp ../a.txt b.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `cp` into src/b.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-99",
+			"command": "cd -P -- src; tee t.c",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `tee` into src/t.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
+			"name": "command-100",
+			"command": "echo x > a.c; cd /tmp",
+			"expected": {
+				"status": 2,
+				"stderr": "loki: `redirect` into a.c would skip Loki's write check; write source and configuration files with the file edit tools (Ultron: edit()/write())\n"
+			}
+		},
+		{
 			"name": "cwd-subdir",
 			"command": "echo x > here.c",
 			"cwd": "src",

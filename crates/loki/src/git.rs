@@ -4,13 +4,22 @@
 use crate::config::{self, Config};
 use crate::proc::{self, Deadline, RunError};
 use crate::{CheckError, path_matches, py, resolve};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 pub const SNAPSHOT_LIMIT: usize = 64 * 1024 * 1024;
 
 fn invalid(message: impl Into<String>) -> CheckError {
     CheckError::Value(message.into())
+}
+
+const TOO_MANY_OBJECTS: &str = "git: snapshot exceeds 100000 base objects";
+const BASE_TOO_LARGE: &str = "git: snapshot base content exceeds 64 MiB";
+const CONTENT_TOO_LARGE: &str = "git: snapshot content exceeds 64 MiB";
+
+/// loki.py's `SnapshotTooLarge` (a `ValueError`): the working tree's changes are too big to snapshot in one check.
+pub fn snapshot_too_large(error: &CheckError) -> bool {
+    matches!(error, CheckError::Value(m) if [TOO_MANY_OBJECTS, BASE_TOO_LARGE, CONTENT_TOO_LARGE].contains(&m.as_str()))
 }
 
 /// One changed path: committed and candidate bytes and modes.
@@ -85,7 +94,7 @@ pub fn git_blobs(root: &Path, oids: &[String], deadline: Deadline) -> Result<Has
         return Ok(HashMap::new());
     }
     if unique.len() > 100_000 {
-        return Err(invalid("git: snapshot exceeds 100000 base objects"));
+        return Err(invalid(TOO_MANY_OBJECTS));
     }
     let request: Vec<u8> = unique.iter().flat_map(|o| format!("{o}\n").into_bytes()).collect();
     let metadata = git_output(root, &["cat-file", "--batch-check"], deadline, Some(&request))?;
@@ -104,7 +113,7 @@ pub fn git_blobs(root: &Path, oids: &[String], deadline: Deadline) -> Result<Has
             .parse::<usize>()
             .unwrap_or(usize::MAX);
         if total > SNAPSHOT_LIMIT {
-            return Err(invalid("git: snapshot base content exceeds 64 MiB"));
+            return Err(invalid(BASE_TOO_LARGE));
         }
     }
     let data = git_output(root, &["cat-file", "--batch"], deadline, Some(&request))?;
@@ -194,7 +203,7 @@ pub fn candidate_content(
         let link = std::fs::read_link(&path).map_err(|e| invalid(py::os_error(&e, None)))?;
         let content = link.as_os_str().as_encoded_bytes().to_vec();
         if content.len() > remaining {
-            return Err(invalid("git: snapshot content exceeds 64 MiB"));
+            return Err(invalid(CONTENT_TOO_LARGE));
         }
         return Ok((Some(content), Some("120000".into())));
     }
@@ -202,7 +211,7 @@ pub fn candidate_content(
         return Err(invalid(format!("loki: unsupported changed file type: {name}")));
     }
     if meta.len() as usize > remaining {
-        return Err(invalid("git: snapshot content exceeds 64 MiB"));
+        return Err(invalid(CONTENT_TOO_LARGE));
     }
     let content = match std::fs::read(&path) {
         Ok(content) => content,
@@ -210,7 +219,7 @@ pub fn candidate_content(
         Err(e) => return Err(invalid(py::os_error(&e, None))),
     };
     if content.len() > remaining {
-        return Err(invalid("git: snapshot content exceeds 64 MiB"));
+        return Err(invalid(CONTENT_TOO_LARGE));
     }
     let mode = if meta.permissions().mode() & 0o100 != 0 {
         "100755"
@@ -255,6 +264,16 @@ pub fn git_changes(
     root: &Path,
     base: Option<&str>,
     deadline: Deadline,
+) -> Result<(Option<String>, Vec<FileChange>), CheckError> {
+    git_changes_only(root, base, deadline, None)
+}
+
+/// `git_changes(..., only=...)`: the changes against base, limited to `only` (repository-relative paths) when given.
+pub fn git_changes_only(
+    root: &Path,
+    base: Option<&str>,
+    deadline: Deadline,
+    only: Option<&HashSet<String>>,
 ) -> Result<(Option<String>, Vec<FileChange>), CheckError> {
     let root = resolve(root);
     let top = git_output(&root, &["rev-parse", "--show-toplevel"], deadline, None)?;
@@ -369,7 +388,10 @@ pub fn git_changes(
             None,
         )?
     };
-    let changed: BTreeSet<String> = lines_z(&names_raw).into_iter().collect();
+    let changed: BTreeSet<String> = lines_z(&names_raw)
+        .into_iter()
+        .filter(|name| only.is_none_or(|only| only.contains(name)))
+        .collect();
     let oids: Vec<String> = changed
         .iter()
         .filter_map(|name| entries.get(name).filter(|e| e.1 == "blob").map(|e| e.2.clone()))
