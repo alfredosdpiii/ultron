@@ -5,8 +5,8 @@
 //! URL), and compares the credential requests, the credentials the Bedrock request was signed with, files after the
 //! run, and the final message with what the SDK did. `aws login` scenarios also check each DPoP proof: decoded as the
 //! generator records it, and its ES256 signature valid for the header's key. Requests the SDK's credential cache sends
-//! after the result (`lateRequests`: a background refresh of credentials about to expire) are not part of a call and
-//! are not ported.
+//! after the result (`lateRequests`: the background refresh of credentials that expire within five minutes) are
+//! awaited and must repeat a request of the call.
 
 use ai::aws::encode_message;
 use ai::aws_credentials::{parse_ini, sha1_hex};
@@ -108,14 +108,14 @@ impl FakeAws {
                 let Ok(mut stream) = stream else { break };
                 let recorded = shared.clone();
                 let routes = routes.clone();
-                std::thread::spawn(move || serve(&mut stream, &recorded, &routes));
+                std::thread::spawn(move || serve(&mut stream, &recorded, &routes, port));
             }
         });
         FakeAws { port, recorded }
     }
 }
 
-fn serve(stream: &mut TcpStream, recorded: &Mutex<Recorded>, routes: &Value) {
+fn serve(stream: &mut TcpStream, recorded: &Mutex<Recorded>, routes: &Value, port: u16) {
     let Some((method, target, headers, body)) = read_request(stream) else {
         return;
     };
@@ -209,10 +209,12 @@ fn serve(stream: &mut TcpStream, recorded: &Mutex<Recorded>, routes: &Value) {
             extra.push((name.clone(), value.as_str().unwrap().to_string()));
         }
     }
+    // `<now+N>` in a canned body is expanded when it is served, as the generator does (no body holds `<home>`).
     let body = match &canned["body"] {
         Value::String(text) => text.clone(),
         other => other.to_string(),
     };
+    let body = expand(&body, "<home>", port);
     let status = canned.get("status").and_then(Value::as_u64).unwrap_or(200) as u16;
     reply(stream, status, &content_type, &extra, body.as_bytes());
 }
@@ -442,6 +444,18 @@ fn replay(scenario: &Value) {
     let message = runtime.block_on(bedrock::stream(&model, &context, &options, &transport, &mut sink));
     let message = serde_json::to_value(&message).unwrap();
 
+    // The background refresh's requests: awaited (a hang guard, never a pass condition), each a repeat of one of
+    // the call's own requests.
+    let in_call = scenario["requests"].as_array().unwrap().len();
+    let late = scenario["lateRequests"].as_u64().unwrap_or(0) as usize;
+    let guard = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    while server.recorded.lock().unwrap().requests.len() < in_call + late {
+        assert!(
+            std::time::Instant::now() < guard,
+            "{name}: waiting for {late} late request(s)"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     let recorded = server.recorded.lock().unwrap();
     let requests: Vec<Value> = recorded
         .requests
@@ -455,11 +469,18 @@ fn replay(scenario: &Value) {
             r
         })
         .collect();
+    let (requests, late_requests) = requests.split_at(in_call.min(requests.len()));
     assert_eq!(
-        Value::Array(requests),
+        Value::Array(requests.to_vec()),
         scenario["requests"],
         "{name}: credential requests"
     );
+    for request in late_requests {
+        assert!(
+            requests.contains(request),
+            "{name}: a late request repeats one of the call's: {request}"
+        );
+    }
     assert_eq!(
         recorded.bedrock.clone().unwrap_or(Value::Null),
         scenario["bedrock"],
@@ -533,7 +554,7 @@ fn ai_bedrock_credentials_fixture_covers_every_scenario() {
         .iter()
         .map(|s| s["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names.len(), 55);
+    assert_eq!(names.len(), 57);
 }
 
 macro_rules! replays {
@@ -581,6 +602,8 @@ replays! {
     (ai_bedrock_credentials_imds_token_400, "imds-token-400"),
     (ai_bedrock_credentials_imds_invalid_credentials, "imds-invalid-credentials"),
     (ai_bedrock_credentials_container_full_uri, "container-full-uri"),
+    (ai_bedrock_credentials_container_expiring_soon_refreshes_in_background, "container-expiring-soon-refreshes-in-background"),
+    (ai_bedrock_credentials_container_expired_is_looked_up_again, "container-expired-is-looked-up-again"),
     (ai_bedrock_credentials_container_token_file, "container-token-file"),
     (ai_bedrock_credentials_container_host_not_allowed, "container-host-not-allowed"),
     (ai_bedrock_credentials_profile_skips_env_keys, "profile-skips-env-keys-then-nothing"),
@@ -698,4 +721,20 @@ fn ai_bedrock_credentials_sha1_names_the_sso_cache() {
     assert_eq!(sha1_hex(b"corp"), "ee0bfd2552fbd840c02cc48b6e823320543c450f");
     assert_eq!(sha1_hex(b""), "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     assert_eq!(sha1_hex(&[b'a'; 1000]), "291e9a6c66994949b57ba5e650361e98fc36b1ba");
+}
+
+/// `memoizeChain`'s second lookup (the signer's): `expiration.getTime() < Date.now()` drops the cache, and
+/// `credentialsTreatedAsExpired` (`expiration - now < 300000`) refreshes in the background.
+#[test]
+fn ai_bedrock_credentials_second_lookup_follows_the_sdk_cache() {
+    use bedrock::{SecondLookup, second_lookup};
+    let now = 1_000_000_000;
+    assert_eq!(second_lookup(None, now), SecondLookup::Cached);
+    assert_eq!(second_lookup(Some(now + 300_000), now), SecondLookup::Cached);
+    assert_eq!(
+        second_lookup(Some(now + 299_999), now),
+        SecondLookup::RefreshInBackground
+    );
+    assert_eq!(second_lookup(Some(now), now), SecondLookup::RefreshInBackground);
+    assert_eq!(second_lookup(Some(now - 1), now), SecondLookup::LookUpAgain);
 }

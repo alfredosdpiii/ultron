@@ -123,6 +123,9 @@ pub struct Config {
     pub provider_token: mcp::connection::ProviderToken,
     /// MCP servers are read (not with `--no-extensions`).
     pub mcp_enabled: bool,
+    /// An extension registers its own `mcp` tool, so the built-in gateway is left out (`preferNativeMcp`'s
+    /// `replaced`): no servers, no `/mcp`.
+    pub mcp_replaced: bool,
 }
 
 impl Config {
@@ -161,6 +164,7 @@ impl Config {
             masker: Arc::default(),
             project_trusted: manager.is_project_trusted(),
             mcp_enabled: true,
+            mcp_replaced: false,
             provider_token: {
                 let env = env.clone();
                 Arc::new(move |provider: &str| crate::lane::api_key(&crate::ModelFlags::default(), &env, provider))
@@ -513,22 +517,6 @@ impl Runtime {
             services.no_extensions,
             &services.resources,
         );
-        let mut diagnostics: Vec<String> = services.resources.diagnostics.clone();
-        // `preferNativeMcp`: next to the built-in MCP gateway, pi-mcp-adapter is left out with a notice.
-        let is_adapter = |d: &extensions::manifest::Diagnostic| crate::mcp_coexistence::is_mcp_adapter(&d.path);
-        let mcp_adapter_skipped = config.mcp_enabled
-            && (!services.resources.mcp_adapters.is_empty() || discovery.diagnostics.iter().any(is_adapter));
-        if mcp_adapter_skipped {
-            discovery.diagnostics.retain(|d| !is_adapter(d));
-        } else {
-            diagnostics.extend(services.resources.mcp_adapters.iter().cloned());
-        }
-        diagnostics.extend(
-            discovery
-                .diagnostics
-                .iter()
-                .map(|d| format!("{}: {}", d.path.display(), d.message)),
-        );
         let extension_api = Arc::new(crate::extension_host::SessionHost::new(
             env.cwd.clone(),
             config.agent_dir.clone(),
@@ -549,6 +537,33 @@ impl Runtime {
             let manifests = crate::guard_log::with_loki_builtin(discovery.manifests, config.loki);
             Arc::new(ExtensionHost::load(manifests, session, extension_api.clone()))
         });
+        // `preferNativeMcp`: an extension that registers its own `mcp` tool replaces the built-in gateway (the
+        // user chose it); otherwise, next to the gateway, pi-mcp-adapter is left out with a notice.
+        let mcp_replaced = config.mcp_enabled
+            && extensions.as_ref().is_some_and(|host| {
+                host.functions()
+                    .iter()
+                    .any(|(_, function)| function.name == mcp::gateway::MCP_GATEWAY_TOOL)
+            });
+        if mcp_replaced {
+            config.mcp_enabled = false;
+            config.mcp_replaced = true;
+        }
+        let mut diagnostics: Vec<String> = services.resources.diagnostics.clone();
+        let is_adapter = |d: &extensions::manifest::Diagnostic| crate::mcp_coexistence::is_mcp_adapter(&d.path);
+        let mcp_adapter_skipped = config.mcp_enabled
+            && (!services.resources.mcp_adapters.is_empty() || discovery.diagnostics.iter().any(is_adapter));
+        if mcp_adapter_skipped {
+            discovery.diagnostics.retain(|d| !is_adapter(d));
+        } else {
+            diagnostics.extend(services.resources.mcp_adapters.iter().cloned());
+        }
+        diagnostics.extend(
+            discovery
+                .diagnostics
+                .iter()
+                .map(|d| format!("{}: {}", d.path.display(), d.message)),
+        );
         let mut extension_errors = discovery.diagnostics.clone();
         if let Some(host) = &extensions {
             diagnostics.extend(
@@ -620,6 +635,11 @@ impl Runtime {
         subagents: Option<SubagentHost>,
     ) -> Result<Arc<Stack>, String> {
         let mut subagents = subagents;
+        // Without a subagent host, children run as in-memory agent loops, steerable by the agent hub and measured
+        // for their context reminder (crate::memory_children).
+        let memory_children = subagents
+            .is_none()
+            .then(|| Arc::new(crate::memory_children::MemoryChildren::default()));
         let config = self.config.clone();
         // Shell jobs are durable: their journal is in the session's module directory, and opening the host recovers
         // the jobs a dead worker left (from their processes).
@@ -803,11 +823,15 @@ impl Runtime {
             let runner_stack = me.clone();
             let (store, inner, agent_stores) = match subagents.take() {
                 Some(host) => (Some(host.store), (host.runner)(me.clone()), host.agents),
-                None => (
-                    None,
-                    agent_runner(Arc::new(move |run: &ChildRun| child_agent(&runner_stack, &child, run))),
-                    None,
-                ),
+                None => {
+                    let factory: delegation::child::ChildAgentFactory =
+                        Arc::new(move |run: &ChildRun| child_agent(&runner_stack, &child, run));
+                    let runner = match &memory_children {
+                        Some(children) => children.runner(factory),
+                        None => agent_runner(factory),
+                    };
+                    (None, runner, None)
+                }
             };
             let goal_slot: Arc<std::sync::OnceLock<Arc<GoalDriver>>> = Arc::new(std::sync::OnceLock::new());
             // Bounded-inference frames: traces as session values (in memory without a session), run as
@@ -988,6 +1012,12 @@ impl Runtime {
             }
         });
         built?;
+        if let Some(children) = memory_children {
+            children.attach_reminders(stack.context_reminders.clone());
+            let _ = stack
+                .lane_steer
+                .set(Arc::new(move |lane: &str, message: &str| children.steer(lane, message)));
+        }
         stack.lanes.open(crate::lane::MAIN)?;
         let work = DurableWork::open(
             DurableWorkOptions::new(Arc::new(stack.agents.clone()))
@@ -1437,13 +1467,17 @@ impl Stack {
             })
             .collect();
         let bundled = self.config.bundled_skills();
-        let commands = crate::commands::list_commands_with(
+        let mut commands = crate::commands::list_commands_with(
             &self.config.cwd.display().to_string(),
             &self.config.agent_dir.display().to_string(),
             bundled.as_deref(),
             &extensions,
             &self.services.resources,
         );
+        if self.config.mcp_replaced {
+            // The built-in `/mcp` goes with the gateway it belongs to.
+            commands.retain(|c| !(c["name"] == "mcp" && c["sourceInfo"]["path"] == "<inline:mcp>"));
+        }
         crate::session_flags::filter_commands(commands, &self.services.session)
     }
 

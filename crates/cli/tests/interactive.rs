@@ -682,7 +682,7 @@ fn cli_interactive_slash_name_wins_over_late_title() {
     // The title arrives after the user's name and is dropped.
     mock.wait_title_request();
     mock.release_title();
-    std::thread::sleep(Duration::from_millis(500));
+    naming_recorded(tui.root());
     tui.send_text("/name");
     tui.send_keys(&["Enter"]);
     let screen = tui.wait("Session name: My session");
@@ -741,6 +741,19 @@ fn cli_interactive_name_flag_names_session() {
     tui.send_keys(&["Enter"]);
     tui.wait("<exited>");
     assert_eq!(stored_names(tui.root()), ["Release prep"]);
+}
+
+/// Wait until the naming response was recorded (`record_naming` commits its usage row, then applies or drops the
+/// title in the same step), hang guard 120 s: the late title has been handled, whichever way.
+fn naming_recorded(root: &Path) {
+    let deadline = Instant::now() + Duration::from_secs(120);
+    while !session_files(&root.join("agent/experimental/sessions"))
+        .iter()
+        .any(|f| std::fs::read_to_string(f).is_ok_and(|t| t.contains("\"source\":\"session-naming\"")))
+    {
+        assert!(Instant::now() < deadline, "the naming response was never recorded");
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 /// Names stored in the session files under the agent dir (each `pi.session.name` value the format-4 journals set),
@@ -850,12 +863,17 @@ fn cli_interactive_resume_lists_this_directory_with_names() {
     });
     let listed: Vec<&str> = screen.lines().filter(|l| l.starts_with("  ")).collect();
     assert_eq!(listed.len(), 2, "{screen}");
-    assert!(
-        listed[0].starts_with("  1. <ID>") && !listed[0].contains("Named"),
-        "{screen}"
-    );
-    assert_eq!(listed[1], "  2. <ID>  Named one", "{screen}");
-    tui.send_text("2");
+    // Listed newest file first (`listNativeSessions`, session_journal_lists_sessions_newest_modified_first): which
+    // file was written last depends on whether the resumed session's kernel started (its module start writes the
+    // skills catalog) before `/quit`, so the rows are found by content, not position.
+    let named = listed
+        .iter()
+        .position(|l| l.ends_with("<ID>  Named one"))
+        .unwrap_or_else(|| panic!("no named row: {screen}"));
+    let other = listed[1 - named];
+    assert_eq!(listed[named], format!("  {}. <ID>  Named one", named + 1), "{screen}");
+    assert_eq!(other, format!("  {}. <ID>", 2 - named), "{screen}");
+    tui.send_text(&(named + 1).to_string());
     tui.send_keys(&["Enter"]);
     let screen = tui.wait_for("the picked session", |s| {
         s.contains("One.") && s.contains("alpha prompt") && footer_cwd_line(s) == "~/cwd • Named one"

@@ -40,7 +40,7 @@ use crate::lane::{
     AutoreviewRequest, BashResult, LaneClient, LaneEvent, ModelInfo, PromptImage, QueueKind, Queued, SessionListing,
 };
 use crate::model_hub::{ModelHub, ModelHubEvent};
-use crate::qol::{GitSource, NotifyFn, QolSettings, code_highlighter, rlm_highlighter};
+use crate::qol::{GitSource, NotifyFn, QolSettings, code_highlighter};
 use crate::rlm_cell::Highlighter;
 use crate::selectors::{SelectorAction, UserMessageSelector};
 use crate::session_selector::{SessionAction, SessionSelector};
@@ -468,6 +468,9 @@ pub struct App {
     subscription_warning_shown: bool,
     session_file: Option<String>,
     session_name: Option<String>,
+    /// `/name <name>` sent and not yet confirmed: client-tui-commands.ts awaits `control.setName` before it shows the
+    /// name and "Session name set", so the notice waits for the worker's `session_name` event with that name.
+    pending_name: Option<String>,
     transcript: Vec<Value>,
     last_ctrl_c: Option<Instant>,
     /// The app asked to exit.
@@ -823,11 +826,8 @@ impl App {
         let keys = options.keys;
         let style = ChatStyle {
             theme: Rc::clone(&theme),
-            highlight: if qol.highlight {
-                rlm_highlighter(&theme)
-            } else {
-                options.highlight
-            },
+            // `rlm` cells always use TS's highlighter (highlight.js Python); QoL highlighting covers code blocks.
+            highlight: options.highlight,
             code_highlight: qol.highlight.then(|| code_highlighter(&theme)),
             expand_key: key_text(&keys, "app.tools.expand", false),
             dequeue_key: key_display_text(&keys, "app.message.dequeue"),
@@ -866,6 +866,7 @@ impl App {
             subscription_warning_shown: false,
             session_file: None,
             session_name: None,
+            pending_name: None,
             transcript: Vec::new(),
             last_ctrl_c: None,
             exit: false,
@@ -1190,7 +1191,6 @@ impl App {
         self.theme.adopt(theme);
         let mut style = self.chat.style();
         if self.qol.highlight {
-            style.highlight = rlm_highlighter(&self.theme);
             style.code_highlight = Some(code_highlighter(&self.theme));
         }
         self.chat.set_style(style);
@@ -1876,6 +1876,8 @@ impl App {
                 self.session_id = Some(opened.session_id);
                 self.session_file = opened.session_file;
                 self.session_name = opened.name;
+                // A `/name` still unconfirmed named the session this one replaced.
+                self.pending_name = None;
                 self.operation = None;
                 // A resumed session's own prompts join this project's history by time.
                 let prompts: Vec<TimedPrompt> = self
@@ -1949,8 +1951,12 @@ impl App {
                 self.status = error.map(|e| format!("Operation failed: {e}")).unwrap_or_default();
             }
             LaneEvent::Name(name) => {
+                let confirmed = name.is_some() && self.pending_name == name;
                 self.session_name = name;
                 self.update_title();
+                if let Some(name) = confirmed.then(|| self.pending_name.take()).flatten() {
+                    self.notice(&fg(&self.theme, "dim", &format!("Session name set: {name}")));
+                }
             }
             LaneEvent::Model(model) => {
                 self.model = model;
@@ -2932,9 +2938,7 @@ impl App {
                     return;
                 }
                 self.client.set_name(name);
-                self.session_name = Some(name.to_string());
-                self.update_title();
-                self.notice(&fg(&self.theme, "dim", &format!("Session name set: {name}")));
+                self.pending_name = Some(name.to_string());
             }
             "session" => {
                 let Some(id) = self.session_id.clone() else {

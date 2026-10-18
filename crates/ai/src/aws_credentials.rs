@@ -76,6 +76,23 @@ pub struct ChainInput<'a> {
     /// The calling client's region: STS uses it unless the profile names its own.
     pub region: &'a str,
     pub now_ms: i64,
+    /// Set by the chain: the returned credentials' `expiration`.
+    pub expiration: Expiration,
+}
+
+/// The `expiration` (ms since the epoch) of the credentials a link returned, as the SDK's `credentials.expiration`;
+/// `None` when the link reports none (static keys) or the date is invalid (a `NaN` time never counts as expiring).
+#[derive(Debug, Default)]
+pub struct Expiration(Mutex<Option<i64>>);
+
+impl Expiration {
+    pub fn get(&self) -> Option<i64> {
+        *self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn set(&self, ms: Option<i64>) {
+        *self.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = ms;
+    }
 }
 
 impl ChainInput<'_> {
@@ -95,6 +112,7 @@ impl ChainInput<'_> {
 
 /// `defaultProvider(init)()`.
 pub async fn default_credentials(input: &ChainInput<'_>) -> Result<AwsCredentials> {
+    input.expiration.set(None);
     let links: [Link; 5] = [Link::Env, Link::Ini, Link::Process, Link::TokenFile, Link::Remote];
     for link in links {
         let attempt = match link {
@@ -132,11 +150,18 @@ fn from_env_link(input: &ChainInput<'_>) -> Result<AwsCredentials> {
 /// `fromEnv`.
 fn from_env(input: &ChainInput<'_>) -> Result<AwsCredentials> {
     match (input.var("AWS_ACCESS_KEY_ID"), input.var("AWS_SECRET_ACCESS_KEY")) {
-        (Some(access_key_id), Some(secret_access_key)) => Ok(AwsCredentials {
-            access_key_id,
-            secret_access_key,
-            session_token: input.var("AWS_SESSION_TOKEN"),
-        }),
+        (Some(access_key_id), Some(secret_access_key)) => {
+            // `...(expiry && { expiration: new Date(expiry) })`.
+            let expiry = input.var("AWS_CREDENTIAL_EXPIRATION").filter(|e| !e.is_empty());
+            input
+                .expiration
+                .set(expiry.as_deref().and_then(crate::model_refresh::parse_iso_ms));
+            Ok(AwsCredentials {
+                access_key_id,
+                secret_access_key,
+                session_token: input.var("AWS_SESSION_TOKEN"),
+            })
+        }
         _ => Err(CredentialError::next(
             "Unable to find environment variable credentials.",
         )),
@@ -672,11 +697,18 @@ async fn sts_call(
         xml_tag(&credentials, "AccessKeyId").filter(|s| !s.is_empty()),
         xml_tag(&credentials, "SecretAccessKey").filter(|s| !s.is_empty()),
     ) {
-        (Some(access_key_id), Some(secret_access_key)) => Ok(AwsCredentials {
-            access_key_id,
-            secret_access_key,
-            session_token: xml_tag(&credentials, "SessionToken"),
-        }),
+        (Some(access_key_id), Some(secret_access_key)) => {
+            input.expiration.set(
+                xml_tag(&credentials, "Expiration")
+                    .as_deref()
+                    .and_then(crate::model_refresh::parse_iso_ms),
+            );
+            Ok(AwsCredentials {
+                access_key_id,
+                secret_access_key,
+                session_token: xml_tag(&credentials, "SessionToken"),
+            })
+        }
         _ => Err(CredentialError::plain(
             "Error",
             format!("Invalid response from STS.{label} call with role {role_arn}"),
@@ -805,6 +837,12 @@ async fn from_process(input: &ChainInput<'_>, profile: &str) -> Result<AwsCreden
             "Profile {profile} credential_process returned expired credentials."
         )));
     }
+    // `...(data.Expiration && { expiration: new Date(data.Expiration) })`.
+    input.expiration.set(
+        data.get("Expiration")
+            .filter(|e| !e.is_null() && *e != "" && *e != false && *e != 0)
+            .and_then(parse_js_date),
+    );
     Ok(AwsCredentials {
         access_key_id,
         secret_access_key,
@@ -940,12 +978,15 @@ async fn from_sso(input: &ChainInput<'_>, name: &str) -> Result<AwsCredentials> 
             Some(Value::String(access_key_id)),
             Some(Value::String(secret_access_key)),
             Some(Value::String(token)),
-            Some(_),
-        ) => Ok(AwsCredentials {
-            access_key_id,
-            secret_access_key,
-            session_token: Some(token),
-        }),
+            Some(expiration),
+        ) => {
+            input.expiration.set(parse_js_date(&expiration));
+            Ok(AwsCredentials {
+                access_key_id,
+                secret_access_key,
+                session_token: Some(token),
+            })
+        }
         _ => Err(CredentialError::stop("SSO returns an invalid temporary credential.")),
     }
 }
@@ -1100,15 +1141,31 @@ fn parse_js_date(value: &Value) -> Option<i64> {
 
 const METADATA_TIMEOUT: Duration = Duration::from_millis(1000);
 
-fn is_imds_credentials(value: &Value) -> Option<AwsCredentials> {
+/// `isImdsCredentials` and `fromImdsCredentials` (`expiration: new Date(Expiration)`). With `static_stability`
+/// (instance metadata), credentials that already expired are extended 5 to 10 minutes (`staticStabilityProvider`),
+/// so they are not refreshed during this call.
+fn is_imds_credentials(input: &ChainInput<'_>, value: &Value, static_stability: bool) -> Option<AwsCredentials> {
     let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::to_string);
-    text("Expiration")?;
-    Some(AwsCredentials {
+    let expiration = text("Expiration")?;
+    let credentials = AwsCredentials {
         access_key_id: text("AccessKeyId")?,
         secret_access_key: text("SecretAccessKey")?,
         session_token: Some(text("Token")?),
-    })
+    };
+    let ms = crate::model_refresh::parse_iso_ms(&expiration);
+    input
+        .expiration
+        .set(if static_stability && ms.is_some_and(|ms| ms < input.now_ms) {
+            Some(input.now_ms + STATIC_STABILITY_EXTENSION_MS)
+        } else {
+            ms
+        });
+    Some(credentials)
 }
+
+/// The shortest static-stability extension (`STATIC_STABILITY_REFRESH_INTERVAL_SECONDS`; the SDK adds up to five
+/// minutes of jitter).
+const STATIC_STABILITY_EXTENSION_MS: i64 = 300_000;
 
 /// `remoteProvider`: container credentials when a container URI is set, else instance metadata unless disabled.
 async fn remote_provider(input: &ChainInput<'_>) -> Result<AwsCredentials> {
@@ -1214,7 +1271,7 @@ async fn from_http(input: &ChainInput<'_>, url: &reqwest::Url) -> Result<AwsCred
         .await
         {
             Ok(reply) if reply.status == 200 => {
-                return is_imds_credentials(&json_body(&reply.body)).ok_or_else(|| {
+                return is_imds_credentials(input, &json_body(&reply.body), false).ok_or_else(|| {
                     CredentialError::next(
                         "HTTP credential provider response not of the required format, an object matching: { AccessKeyId: string, SecretAccessKey: string, Token: string, Expiration: string(rfc3339) }",
                     )
@@ -1262,7 +1319,7 @@ async fn from_container_metadata(input: &ChainInput<'_>) -> Result<AwsCredential
         headers.insert("authorization".into(), token);
     }
     let body = metadata_get(input, "GET", url, headers).await?;
-    is_imds_credentials(&json_body(&body))
+    is_imds_credentials(input, &json_body(&body), false)
         .ok_or_else(|| CredentialError::next("Invalid response received from instance metadata service."))
 }
 
@@ -1365,7 +1422,7 @@ async fn from_instance_metadata(input: &ChainInput<'_>) -> Result<AwsCredentials
     }
     let role = metadata_get(input, "GET", format!("{base}{IMDS_PATH}"), headers.clone()).await?;
     let body = metadata_get(input, "GET", format!("{base}{IMDS_PATH}{}", role.trim()), headers).await?;
-    is_imds_credentials(&json_body(&body))
+    is_imds_credentials(input, &json_body(&body), true)
         .ok_or_else(|| CredentialError::next("Invalid response received from instance metadata service."))
 }
 

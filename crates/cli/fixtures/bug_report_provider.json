@@ -1,0 +1,2909 @@
+[
+	{
+		"name": "every-builtin-unconfigured",
+		"model": {
+			"provider": "--every-builtin",
+			"id": ""
+		},
+		"models": null,
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"amazon-bedrock": {
+				"model": "amazon.nova-2-lite-v1:0",
+				"provider": {
+					"id": "amazon-bedrock",
+					"name": "Amazon Bedrock",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"ant-ling": {
+				"model": "Ling-2.6-1T",
+				"provider": {
+					"id": "ant-ling",
+					"name": "Ant Ling",
+					"baseUrl": "https://api.ant-ling.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"anthropic": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "anthropic",
+					"name": "Anthropic",
+					"baseUrl": "https://api.anthropic.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"azure-openai-responses": {
+				"model": "gpt-4",
+				"provider": {
+					"id": "azure-openai-responses",
+					"name": "Azure OpenAI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"baseten": {
+				"model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+				"provider": {
+					"id": "baseten",
+					"name": "Baseten",
+					"baseUrl": "https://inference.baseten.co/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cerebras": {
+				"model": "gpt-oss-120b",
+				"provider": {
+					"id": "cerebras",
+					"name": "Cerebras",
+					"baseUrl": "https://api.cerebras.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cloudflare-ai-gateway": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "cloudflare-ai-gateway",
+					"name": "Cloudflare AI Gateway",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cloudflare-workers-ai": {
+				"model": "@cf/deepseek-ai/deepseek-v4-flash-0731",
+				"provider": {
+					"id": "cloudflare-workers-ai",
+					"name": "Cloudflare Workers AI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"deepseek": {
+				"model": "deepseek-flash",
+				"provider": {
+					"id": "deepseek",
+					"name": "DeepSeek",
+					"baseUrl": "https://api.deepseek.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"fireworks": {
+				"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
+				"provider": {
+					"id": "fireworks",
+					"name": "Fireworks",
+					"baseUrl": "https://api.fireworks.ai/inference",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"github-copilot": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "github-copilot",
+					"name": "GitHub Copilot",
+					"baseUrl": "https://api.individual.githubcopilot.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"google": {
+				"model": "deep-research-max-preview-04-2026",
+				"provider": {
+					"id": "google",
+					"name": "Google",
+					"baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"google-vertex": {
+				"model": "gemini-2.5-flash",
+				"provider": {
+					"id": "google-vertex",
+					"name": "Google Vertex AI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"groq": {
+				"model": "llama-3.1-8b-instant",
+				"provider": {
+					"id": "groq",
+					"name": "Groq",
+					"baseUrl": "https://api.groq.com/openai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"huggingface": {
+				"model": "MiniMaxAI/MiniMax-M2",
+				"provider": {
+					"id": "huggingface",
+					"name": "Hugging Face",
+					"baseUrl": "https://router.huggingface.co/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"kimi-coding": {
+				"model": "k3",
+				"provider": {
+					"id": "kimi-coding",
+					"name": "Kimi For Coding",
+					"baseUrl": "https://api.kimi.com/coding",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"meta": {
+				"model": "muse-spark-1.1",
+				"provider": {
+					"id": "meta",
+					"name": "Meta",
+					"baseUrl": "https://api.meta.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"minimax": {
+				"model": "MiniMax-M2.7",
+				"provider": {
+					"id": "minimax",
+					"name": "MiniMax",
+					"baseUrl": "https://api.minimax.io/anthropic",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"minimax-cn": {
+				"model": "MiniMax-M2.7",
+				"provider": {
+					"id": "minimax-cn",
+					"name": "MiniMax CN",
+					"baseUrl": "https://api.minimaxi.com/anthropic",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"mistral": {
+				"model": "codestral-latest",
+				"provider": {
+					"id": "mistral",
+					"name": "Mistral",
+					"baseUrl": "https://api.mistral.ai",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"moonshotai": {
+				"model": "kimi-k2.6",
+				"provider": {
+					"id": "moonshotai",
+					"name": "Moonshot AI",
+					"baseUrl": "https://api.moonshot.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"moonshotai-cn": {
+				"model": "kimi-k2.6",
+				"provider": {
+					"id": "moonshotai-cn",
+					"name": "Moonshot AI CN",
+					"baseUrl": "https://api.moonshot.cn/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"nvidia": {
+				"model": "google/gemma-3-12b-it",
+				"provider": {
+					"id": "nvidia",
+					"name": "NVIDIA",
+					"baseUrl": "https://integrate.api.nvidia.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openai": {
+				"model": "gpt-4",
+				"provider": {
+					"id": "openai",
+					"name": "OpenAI",
+					"baseUrl": "https://api.openai.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openai-codex": {
+				"model": "gpt-5.3-codex-spark",
+				"provider": {
+					"id": "openai-codex",
+					"name": "OpenAI Codex",
+					"baseUrl": "https://chatgpt.com/backend-api",
+					"headerNames": [],
+					"authTypes": [
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"opencode": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "opencode",
+					"name": "OpenCode Zen",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"opencode-go": {
+				"model": "claude-haiku-5-5",
+				"provider": {
+					"id": "opencode-go",
+					"name": "OpenCode Go",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openrouter": {
+				"model": "anthropic/claude-3-haiku",
+				"provider": {
+					"id": "openrouter",
+					"name": "OpenRouter",
+					"baseUrl": "https://openrouter.ai/api/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan": {
+				"model": "MiniMax-M2.5",
+				"provider": {
+					"id": "qwen-token-plan",
+					"name": "Qwen Token Plan",
+					"baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan-cn": {
+				"model": "MiniMax-M2.5",
+				"provider": {
+					"id": "qwen-token-plan-cn",
+					"name": "Qwen Token Plan CN",
+					"baseUrl": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan-individual": {
+				"model": "deepseek-v4-flash-0731",
+				"provider": {
+					"id": "qwen-token-plan-individual",
+					"name": "Qwen Token Plan Individual",
+					"baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"radius": {
+				"model": "balanced",
+				"provider": {
+					"id": "radius",
+					"name": "Radius",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"together": {
+				"model": "MiniMaxAI/MiniMax-M2.7",
+				"provider": {
+					"id": "together",
+					"name": "Together",
+					"baseUrl": "https://api.together.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"vercel-ai-gateway": {
+				"model": "alibaba/qwen-3-14b",
+				"provider": {
+					"id": "vercel-ai-gateway",
+					"name": "Vercel AI Gateway",
+					"baseUrl": "https://ai-gateway.vercel.sh",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xai": {
+				"model": "grok-4.3",
+				"provider": {
+					"id": "xai",
+					"name": "xAI",
+					"baseUrl": "https://api.x.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi",
+					"name": "Xiaomi",
+					"baseUrl": "https://api.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-ams": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-ams",
+					"name": "Xiaomi Token Plan AMS",
+					"baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-cn": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-cn",
+					"name": "Xiaomi Token Plan CN",
+					"baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-sgp": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-sgp",
+					"name": "Xiaomi Token Plan SGP",
+					"baseUrl": "https://token-plan-sgp.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"zai": {
+				"model": "glm-4.7",
+				"provider": {
+					"id": "zai",
+					"name": "Z.AI",
+					"baseUrl": "https://api.z.ai/api/coding/paas/v4",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"zai-coding-cn": {
+				"model": "glm-4.6v",
+				"provider": {
+					"id": "zai-coding-cn",
+					"name": "Z.AI Coding CN",
+					"baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"claude-code": {
+				"model": "claude-opus-5-5",
+				"provider": {
+					"id": "claude-code",
+					"name": "Claude Code (CLI)",
+					"baseUrl": "claude-code://cli",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			}
+		}
+	},
+	{
+		"name": "every-builtin-env-keys",
+		"model": {
+			"provider": "--every-builtin",
+			"id": ""
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"COPILOT_GITHUB_TOKEN": "k",
+			"ANTHROPIC_API_KEY": "k",
+			"ANT_LING_API_KEY": "k",
+			"QWEN_TOKEN_PLAN_API_KEY": "k",
+			"QWEN_TOKEN_PLAN_CN_API_KEY": "k",
+			"OPENAI_API_KEY": "k",
+			"AZURE_OPENAI_API_KEY": "k",
+			"NVIDIA_API_KEY": "k",
+			"DEEPSEEK_API_KEY": "k",
+			"GEMINI_API_KEY": "k",
+			"GOOGLE_CLOUD_API_KEY": "k",
+			"GROQ_API_KEY": "k",
+			"CEREBRAS_API_KEY": "k",
+			"XAI_API_KEY": "k",
+			"RADIUS_API_KEY": "k",
+			"OPENROUTER_API_KEY": "k",
+			"AI_GATEWAY_API_KEY": "k",
+			"ZAI_API_KEY": "k",
+			"ZAI_CODING_CN_API_KEY": "k",
+			"MISTRAL_API_KEY": "k",
+			"MINIMAX_API_KEY": "k",
+			"MINIMAX_CN_API_KEY": "k",
+			"MOONSHOT_API_KEY": "k",
+			"HF_TOKEN": "k",
+			"FIREWORKS_API_KEY": "k",
+			"TOGETHER_API_KEY": "k",
+			"BASETEN_API_KEY": "k",
+			"OPENCODE_API_KEY": "k",
+			"KIMI_API_KEY": "k",
+			"META_API_KEY": "k",
+			"CLOUDFLARE_API_KEY": "k",
+			"XIAOMI_API_KEY": "k",
+			"XIAOMI_TOKEN_PLAN_CN_API_KEY": "k",
+			"XIAOMI_TOKEN_PLAN_AMS_API_KEY": "k",
+			"XIAOMI_TOKEN_PLAN_SGP_API_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"amazon-bedrock": {
+				"model": "amazon.nova-2-lite-v1:0",
+				"provider": {
+					"id": "amazon-bedrock",
+					"name": "Amazon Bedrock",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"ant-ling": {
+				"model": "Ling-2.6-1T",
+				"provider": {
+					"id": "ant-ling",
+					"name": "Ant Ling",
+					"baseUrl": "https://api.ant-ling.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "ANT_LING_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"anthropic": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "anthropic",
+					"name": "Anthropic",
+					"baseUrl": "https://api.anthropic.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "ANTHROPIC_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"azure-openai-responses": {
+				"model": "gpt-4",
+				"provider": {
+					"id": "azure-openai-responses",
+					"name": "Azure OpenAI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "AZURE_OPENAI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"baseten": {
+				"model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+				"provider": {
+					"id": "baseten",
+					"name": "Baseten",
+					"baseUrl": "https://inference.baseten.co/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "BASETEN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cerebras": {
+				"model": "gpt-oss-120b",
+				"provider": {
+					"id": "cerebras",
+					"name": "Cerebras",
+					"baseUrl": "https://api.cerebras.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "CEREBRAS_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cloudflare-ai-gateway": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "cloudflare-ai-gateway",
+					"name": "Cloudflare AI Gateway",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"cloudflare-workers-ai": {
+				"model": "@cf/deepseek-ai/deepseek-v4-flash-0731",
+				"provider": {
+					"id": "cloudflare-workers-ai",
+					"name": "Cloudflare Workers AI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"deepseek": {
+				"model": "deepseek-flash",
+				"provider": {
+					"id": "deepseek",
+					"name": "DeepSeek",
+					"baseUrl": "https://api.deepseek.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "DEEPSEEK_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"fireworks": {
+				"model": "accounts/fireworks/models/deepseek-v4-flash-0731",
+				"provider": {
+					"id": "fireworks",
+					"name": "Fireworks",
+					"baseUrl": "https://api.fireworks.ai/inference",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "FIREWORKS_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"github-copilot": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "github-copilot",
+					"name": "GitHub Copilot",
+					"baseUrl": "https://api.individual.githubcopilot.com",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "COPILOT_GITHUB_TOKEN"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"google": {
+				"model": "deep-research-max-preview-04-2026",
+				"provider": {
+					"id": "google",
+					"name": "Google",
+					"baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "GEMINI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"google-vertex": {
+				"model": "gemini-2.5-flash",
+				"provider": {
+					"id": "google-vertex",
+					"name": "Google Vertex AI",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "GOOGLE_CLOUD_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"groq": {
+				"model": "llama-3.1-8b-instant",
+				"provider": {
+					"id": "groq",
+					"name": "Groq",
+					"baseUrl": "https://api.groq.com/openai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "GROQ_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"huggingface": {
+				"model": "MiniMaxAI/MiniMax-M2",
+				"provider": {
+					"id": "huggingface",
+					"name": "Hugging Face",
+					"baseUrl": "https://router.huggingface.co/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "HF_TOKEN"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"kimi-coding": {
+				"model": "k3",
+				"provider": {
+					"id": "kimi-coding",
+					"name": "Kimi For Coding",
+					"baseUrl": "https://api.kimi.com/coding",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "KIMI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"meta": {
+				"model": "muse-spark-1.1",
+				"provider": {
+					"id": "meta",
+					"name": "Meta",
+					"baseUrl": "https://api.meta.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "META_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"minimax": {
+				"model": "MiniMax-M2.7",
+				"provider": {
+					"id": "minimax",
+					"name": "MiniMax",
+					"baseUrl": "https://api.minimax.io/anthropic",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "MINIMAX_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"minimax-cn": {
+				"model": "MiniMax-M2.7",
+				"provider": {
+					"id": "minimax-cn",
+					"name": "MiniMax CN",
+					"baseUrl": "https://api.minimaxi.com/anthropic",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "MINIMAX_CN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"mistral": {
+				"model": "codestral-latest",
+				"provider": {
+					"id": "mistral",
+					"name": "Mistral",
+					"baseUrl": "https://api.mistral.ai",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "MISTRAL_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"moonshotai": {
+				"model": "kimi-k2.6",
+				"provider": {
+					"id": "moonshotai",
+					"name": "Moonshot AI",
+					"baseUrl": "https://api.moonshot.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "MOONSHOT_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"moonshotai-cn": {
+				"model": "kimi-k2.6",
+				"provider": {
+					"id": "moonshotai-cn",
+					"name": "Moonshot AI CN",
+					"baseUrl": "https://api.moonshot.cn/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "MOONSHOT_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"nvidia": {
+				"model": "google/gemma-3-12b-it",
+				"provider": {
+					"id": "nvidia",
+					"name": "NVIDIA",
+					"baseUrl": "https://integrate.api.nvidia.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "NVIDIA_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openai": {
+				"model": "gpt-4",
+				"provider": {
+					"id": "openai",
+					"name": "OpenAI",
+					"baseUrl": "https://api.openai.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "OPENAI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openai-codex": {
+				"model": "gpt-5.3-codex-spark",
+				"provider": {
+					"id": "openai-codex",
+					"name": "OpenAI Codex",
+					"baseUrl": "https://chatgpt.com/backend-api",
+					"headerNames": [],
+					"authTypes": [
+						"oauth"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"opencode": {
+				"model": "claude-fable-5",
+				"provider": {
+					"id": "opencode",
+					"name": "OpenCode Zen",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "OPENCODE_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"opencode-go": {
+				"model": "claude-haiku-5-5",
+				"provider": {
+					"id": "opencode-go",
+					"name": "OpenCode Go",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "OPENCODE_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"openrouter": {
+				"model": "anthropic/claude-3-haiku",
+				"provider": {
+					"id": "openrouter",
+					"name": "OpenRouter",
+					"baseUrl": "https://openrouter.ai/api/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "OPENROUTER_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan": {
+				"model": "MiniMax-M2.5",
+				"provider": {
+					"id": "qwen-token-plan",
+					"name": "Qwen Token Plan",
+					"baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "QWEN_TOKEN_PLAN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan-cn": {
+				"model": "MiniMax-M2.5",
+				"provider": {
+					"id": "qwen-token-plan-cn",
+					"name": "Qwen Token Plan CN",
+					"baseUrl": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "QWEN_TOKEN_PLAN_CN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"qwen-token-plan-individual": {
+				"model": "deepseek-v4-flash-0731",
+				"provider": {
+					"id": "qwen-token-plan-individual",
+					"name": "Qwen Token Plan Individual",
+					"baseUrl": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "QWEN_TOKEN_PLAN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"radius": {
+				"model": "balanced",
+				"provider": {
+					"id": "radius",
+					"name": "Radius",
+					"baseUrl": null,
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "RADIUS_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"together": {
+				"model": "MiniMaxAI/MiniMax-M2.7",
+				"provider": {
+					"id": "together",
+					"name": "Together",
+					"baseUrl": "https://api.together.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "TOGETHER_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"vercel-ai-gateway": {
+				"model": "alibaba/qwen-3-14b",
+				"provider": {
+					"id": "vercel-ai-gateway",
+					"name": "Vercel AI Gateway",
+					"baseUrl": "https://ai-gateway.vercel.sh",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "AI_GATEWAY_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xai": {
+				"model": "grok-4.3",
+				"provider": {
+					"id": "xai",
+					"name": "xAI",
+					"baseUrl": "https://api.x.ai/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "XAI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi",
+					"name": "Xiaomi",
+					"baseUrl": "https://api.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "XIAOMI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-ams": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-ams",
+					"name": "Xiaomi Token Plan AMS",
+					"baseUrl": "https://token-plan-ams.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "XIAOMI_TOKEN_PLAN_AMS_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-cn": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-cn",
+					"name": "Xiaomi Token Plan CN",
+					"baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "XIAOMI_TOKEN_PLAN_CN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"xiaomi-token-plan-sgp": {
+				"model": "mimo-v2.5",
+				"provider": {
+					"id": "xiaomi-token-plan-sgp",
+					"name": "Xiaomi Token Plan SGP",
+					"baseUrl": "https://token-plan-sgp.xiaomimimo.com/v1",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "XIAOMI_TOKEN_PLAN_SGP_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"zai": {
+				"model": "glm-4.7",
+				"provider": {
+					"id": "zai",
+					"name": "Z.AI",
+					"baseUrl": "https://api.z.ai/api/coding/paas/v4",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "ZAI_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"zai-coding-cn": {
+				"model": "glm-4.6v",
+				"provider": {
+					"id": "zai-coding-cn",
+					"name": "Z.AI Coding CN",
+					"baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "environment",
+						"label": "ZAI_CODING_CN_API_KEY"
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			},
+			"claude-code": {
+				"model": "claude-opus-5-5",
+				"provider": {
+					"id": "claude-code",
+					"name": "Claude Code (CLI)",
+					"baseUrl": "claude-code://cli",
+					"headerNames": [],
+					"authTypes": [
+						"api_key"
+					],
+					"authStatus": {
+						"configured": false
+					},
+					"usingOAuth": false,
+					"registeredByExtension": false
+				}
+			}
+		}
+	},
+	{
+		"name": "anthropic-every-env-var",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"ANTHROPIC_API_KEY": "k",
+			"ANTHROPIC_OAUTH_TOKEN": "t",
+			"ANTHROPIC_AUTH_TOKEN": "a"
+		},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ANTHROPIC_AUTH_TOKEN"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-access-keys",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_ACCESS_KEY_ID": "id",
+			"AWS_SECRET_ACCESS_KEY": "s"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "AWS access keys"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-profile",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_PROFILE": "p"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "AWS_PROFILE"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-bearer",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_BEARER_TOKEN_BEDROCK": "b"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "AWS_BEARER_TOKEN_BEDROCK"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-api-key",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_CLOUD_API_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "GOOGLE_CLOUD_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-bearer-over-profile",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_BEARER_TOKEN_BEDROCK": "b",
+			"AWS_PROFILE": "p",
+			"AWS_ACCESS_KEY_ID": "id",
+			"AWS_SECRET_ACCESS_KEY": "s"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "AWS_BEARER_TOKEN_BEDROCK"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-key-id-alone",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_ACCESS_KEY_ID": "id"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-ecs-relative",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": "/x"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ECS task role"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-ecs-full",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_CONTAINER_CREDENTIALS_FULL_URI": "http://127.0.0.1:9/x"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ECS task role"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-web-identity",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_WEB_IDENTITY_TOKEN_FILE": "/x"
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "web identity token"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-stored-key",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": {
+			"amazon-bedrock": {
+				"type": "api_key",
+				"key": "k"
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "bedrock-empty-profile",
+		"model": {
+			"provider": "amazon-bedrock",
+			"id": "amazon.nova-2-lite-v1:0"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"AWS_PROFILE": ""
+		},
+		"files": {},
+		"provider": {
+			"id": "amazon-bedrock",
+			"name": "Amazon Bedrock",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-adc",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_APPLICATION_CREDENTIALS": "${TMP}/adc.json",
+			"GOOGLE_CLOUD_PROJECT": "p",
+			"GOOGLE_CLOUD_LOCATION": "l"
+		},
+		"files": {
+			"adc.json": "{}"
+		},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "gcloud application default credentials"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-adc-gcloud-project",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_APPLICATION_CREDENTIALS": "${TMP}/adc.json",
+			"GCLOUD_PROJECT": "p",
+			"GOOGLE_CLOUD_LOCATION": "l"
+		},
+		"files": {
+			"adc.json": "{}"
+		},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "gcloud application default credentials"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-adc-default-path",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_CLOUD_PROJECT": "p",
+			"GOOGLE_CLOUD_LOCATION": "l"
+		},
+		"files": {
+			".config/gcloud/application_default_credentials.json": "{}"
+		},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "gcloud application default credentials"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-adc-missing-file",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_APPLICATION_CREDENTIALS": "${TMP}/none.json",
+			"GOOGLE_CLOUD_PROJECT": "p",
+			"GOOGLE_CLOUD_LOCATION": "l"
+		},
+		"files": {},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "vertex-adc-no-location",
+		"model": {
+			"provider": "google-vertex",
+			"id": "gemini-2.5-flash"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"GOOGLE_APPLICATION_CREDENTIALS": "${TMP}/adc.json",
+			"GOOGLE_CLOUD_PROJECT": "p"
+		},
+		"files": {
+			"adc.json": "{}"
+		},
+		"provider": {
+			"id": "google-vertex",
+			"name": "Google Vertex AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "cloudflare-workers-key-and-account",
+		"model": {
+			"provider": "cloudflare-workers-ai",
+			"id": "@cf/deepseek-ai/deepseek-v4-flash-0731"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"CLOUDFLARE_API_KEY": "k",
+			"CLOUDFLARE_ACCOUNT_ID": "a"
+		},
+		"files": {},
+		"provider": {
+			"id": "cloudflare-workers-ai",
+			"name": "Cloudflare Workers AI",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "CLOUDFLARE_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "cloudflare-gateway-no-gateway-id",
+		"model": {
+			"provider": "cloudflare-ai-gateway",
+			"id": "claude-fable-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"CLOUDFLARE_API_KEY": "k",
+			"CLOUDFLARE_ACCOUNT_ID": "a"
+		},
+		"files": {},
+		"provider": {
+			"id": "cloudflare-ai-gateway",
+			"name": "Cloudflare AI Gateway",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "cloudflare-gateway-complete",
+		"model": {
+			"provider": "cloudflare-ai-gateway",
+			"id": "claude-fable-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"CLOUDFLARE_API_KEY": "k",
+			"CLOUDFLARE_ACCOUNT_ID": "a",
+			"CLOUDFLARE_GATEWAY_ID": "g"
+		},
+		"files": {},
+		"provider": {
+			"id": "cloudflare-ai-gateway",
+			"name": "Cloudflare AI Gateway",
+			"baseUrl": null,
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "CLOUDFLARE_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "claude-code-cli-present",
+		"model": {
+			"provider": "claude-code",
+			"id": "claude-opus-5-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"ULTRON_CLAUDE_CODE_BIN": "${TMP}/claude"
+		},
+		"files": {
+			"claude": ""
+		},
+		"provider": {
+			"id": "claude-code",
+			"name": "Claude Code (CLI)",
+			"baseUrl": "claude-code://cli",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "Claude Code CLI (its own login)"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "openai-empty-key",
+		"model": {
+			"provider": "openai",
+			"id": "gpt-5.4"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"OPENAI_API_KEY": ""
+		},
+		"files": {},
+		"provider": {
+			"id": "openai",
+			"name": "OpenAI",
+			"baseUrl": "https://api.openai.com/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "copilot-stored-oauth",
+		"model": {
+			"provider": "github-copilot",
+			"id": "claude-fable-5"
+		},
+		"models": null,
+		"auth": {
+			"github-copilot": {
+				"type": "oauth",
+				"access": "access-token",
+				"refresh": "refresh-token",
+				"expires": 4102444800000
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "github-copilot",
+			"name": "GitHub Copilot",
+			"baseUrl": "https://api.individual.githubcopilot.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": true,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-env-key",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"ANTHROPIC_API_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ANTHROPIC_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-oauth-env-token",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"ANTHROPIC_OAUTH_TOKEN": "t"
+		},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ANTHROPIC_OAUTH_TOKEN"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-stored-key",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "api_key",
+				"key": "stored"
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-stored-oauth",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": {
+			"anthropic": {
+				"type": "oauth",
+				"access": "access-token",
+				"refresh": "refresh-token",
+				"expires": 4102444800000
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": true,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-unconfigured",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://api.anthropic.com",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "openai-env-key",
+		"model": {
+			"provider": "openai",
+			"id": "gpt-5.4"
+		},
+		"models": null,
+		"auth": null,
+		"env": {
+			"OPENAI_API_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"id": "openai",
+			"name": "OpenAI",
+			"baseUrl": "https://api.openai.com/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "OPENAI_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "openrouter-unconfigured",
+		"model": {
+			"provider": "openrouter",
+			"id": "anthropic/claude-sonnet-4.5"
+		},
+		"models": null,
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "openrouter",
+			"name": "OpenRouter",
+			"baseUrl": "https://openrouter.ai/api/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "xai-stored-oauth",
+		"model": {
+			"provider": "xai",
+			"id": "grok-4.3"
+		},
+		"models": null,
+		"auth": {
+			"xai": {
+				"type": "oauth",
+				"access": "access-token",
+				"refresh": "refresh-token",
+				"expires": 4102444800000
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "xai",
+			"name": "xAI",
+			"baseUrl": "https://api.x.ai/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": true,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "anthropic-models-json-override",
+		"model": {
+			"provider": "anthropic",
+			"id": "claude-sonnet-4-5"
+		},
+		"models": {
+			"providers": {
+				"anthropic": {
+					"baseUrl": "https://user:pass@proxy.example.test/v1?api_key=abc&region=eu",
+					"headers": {
+						"X-Team": "core",
+						"x-api-key": "secret"
+					}
+				}
+			}
+		},
+		"auth": null,
+		"env": {
+			"ANTHROPIC_API_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"id": "anthropic",
+			"name": "Anthropic",
+			"baseUrl": "https://proxy.example.test/v1?api_key=%3Credacted%3E&region=eu",
+			"headerNames": [],
+			"authTypes": [
+				"api_key",
+				"oauth"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "ANTHROPIC_API_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-env-template-set",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "$LOCAL_KEY",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {
+			"LOCAL_KEY": "k"
+		},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "LOCAL_KEY"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-env-template-unset",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "$LOCAL_KEY",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-literal-key",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "literal",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "models_json_key"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-command-key",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "!printf k",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "models_json_command"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-two-vars-one-set",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "${KEY_A}-${KEY_B}",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {
+			"KEY_A": "a"
+		},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-two-vars-both-set",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "${KEY_A}-${KEY_B}",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {
+			"KEY_A": "a",
+			"KEY_B": "b"
+		},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "environment",
+				"label": "KEY_A, KEY_B"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-unnamed-no-key",
+		"model": {
+			"provider": "bare",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"bare": {
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": null,
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "bare",
+			"name": "bare",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": false
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	},
+	{
+		"name": "custom-literal-key-stored-key",
+		"model": {
+			"provider": "local",
+			"id": "m"
+		},
+		"models": {
+			"providers": {
+				"local": {
+					"name": "Local Proxy",
+					"baseUrl": "http://127.0.0.1:9/v1",
+					"api": "openai-completions",
+					"apiKey": "literal",
+					"headers": {
+						"X-Trace": "on",
+						"Authorization": "Bearer h"
+					},
+					"models": [
+						{
+							"id": "m"
+						}
+					]
+				}
+			}
+		},
+		"auth": {
+			"local": {
+				"type": "api_key",
+				"key": "s"
+			}
+		},
+		"env": {},
+		"files": {},
+		"provider": {
+			"id": "local",
+			"name": "Local Proxy",
+			"baseUrl": "http://127.0.0.1:9/v1",
+			"headerNames": [],
+			"authTypes": [
+				"api_key"
+			],
+			"authStatus": {
+				"configured": true,
+				"source": "stored"
+			},
+			"usingOAuth": false,
+			"registeredByExtension": false
+		}
+	}
+]

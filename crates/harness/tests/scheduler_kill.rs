@@ -30,13 +30,16 @@ fn open_storage(backend: &str, path: &Path) -> Box<dyn Storage + Send> {
     }
 }
 
+/// Append one line with a single write: task threads log concurrently, and `writeln!` on a `File` issues the text
+/// and its newline as separate writes, so two appenders interleaved ("hold:abandonhold:owner", then two newlines)
+/// and the child never saw both effects (it waited forever; the parent's guard then failed the test).
 fn append(path: &Path, line: &str) {
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .unwrap();
-    writeln!(file, "{line}").unwrap();
+    file.write_all(format!("{line}\n").as_bytes()).unwrap();
     file.sync_all().unwrap();
 }
 
@@ -321,12 +324,30 @@ fn child_main(backend: &str, dir: &Path) {
     ];
     // No deadline of its own: the parent bounds the whole child and kills it (a 10 s `eventually` here panicked
     // under a loaded `cargo test --workspace` before the effects ran, and the child exited early).
+    let stage = dir.join("stage.log");
+    append(&stage, "resumed");
     until(|| {
         let seen = lines(&effects);
         expected.iter().all(|line| seen.iter().any(|each| each == line))
     });
+    append(&stage, "effects");
     let id = |key: &str| TaskId(ids[key].as_u64().unwrap());
-    until(|| harness.get_task(id("owner2")).unwrap().unwrap().state.status() == TaskStatus::Completing);
+    let dumped = std::cell::Cell::new(false);
+    let started = Instant::now();
+    until(|| {
+        // Diagnostics only (the parent owns the deadline): what every task looks like when this takes long.
+        if !dumped.get() && started.elapsed() > Duration::from_secs(30) {
+            dumped.set(true);
+            for key in ["safe", "unsafe", "abandon", "owner", "inner", "owner2", "inner2"] {
+                append(
+                    &stage,
+                    &format!("{key}: {}", js(&harness.get_task(id(key)).unwrap().unwrap())),
+                );
+            }
+        }
+        harness.get_task(id("owner2")).unwrap().unwrap().state.status() == TaskStatus::Completing
+    });
+    append(&stage, "completing");
     let owner = id("owner");
     *freeze_after.lock().unwrap() = Some(owner);
     harness
@@ -381,7 +402,15 @@ fn kill_and_recover(backend: &str) {
     while !(dir.path().join("ready").exists() && dir.path().join("acked.log").exists()) {
         if Instant::now() >= deadline {
             let _ = child.kill();
-            panic!("child never reached the kill point; its stderr:\n{}", stderr());
+            let seen = |name: &str| dir.path().join(name).exists();
+            panic!(
+                "child never reached the kill point (stages: {:?}, ready: {}, acked: {}, effects: {:?}); its stderr:\n{}",
+                lines(&dir.path().join("stage.log")),
+                seen("ready"),
+                seen("acked.log"),
+                lines(&dir.path().join("effects.log")),
+                stderr()
+            );
         }
         if let Some(status) = child.try_wait().unwrap() {
             panic!("child exited early ({status}); its stderr:\n{}", stderr());

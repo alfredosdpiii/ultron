@@ -421,8 +421,8 @@ fn interactive_chalk_styles_match_chalk() {
     assert_eq!(inverse("x"), "\x1b[7mx\x1b[27m");
 }
 
-/// The rlm cell renderer inside `ToolExecution`. The highlighter replays the TS `highlightCode` output recorded for
-/// that case and theme, after checking it is asked to highlight the same text.
+/// The rlm cell renderer inside `ToolExecution`, with the product's highlighter (the highlight.js port): it is asked
+/// to highlight the text TS highlights, and answers TS's `highlightCode` lines recorded for that case and theme.
 #[test]
 fn interactive_rlm_cell_matches_ts() {
     let f = fixture();
@@ -435,9 +435,12 @@ fn interactive_rlm_cell_matches_ts() {
             for (w, want) in ws.iter().zip(per_width.as_array().unwrap()) {
                 total += 1;
                 let hl = hl.clone();
+                let product = interactive::rlm::highlight::rlm_highlighter(theme);
                 let highlight: interactive::rlm_cell::Highlighter = Rc::new(move |code: &str| {
                     assert_eq!(code, s(&hl["input"]), "rlm[{ci}] highlighter input");
-                    strings(&hl["lines"])
+                    let lines = product(code);
+                    assert_eq!(lines, strings(&hl["lines"]), "rlm[{ci}] highlighted lines");
+                    lines
                 });
                 let result = tool_result(&case["result"]);
                 let mut t = ToolExecution {

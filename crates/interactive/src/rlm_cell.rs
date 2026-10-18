@@ -1,7 +1,7 @@
 //! Transcript rendering of an `rlm` cell (packages/coding-agent/src/experimental/rlm-tool-renderer.ts): the cell's
 //! Python with a line-number gutter and its output. Collapsed, the code shows its first lines and the output its last
 //! visual lines, each with an expand-key hint; expanded, both are shown in full. Syntax highlighting is injected
-//! (`highlightCode(code, "python")` in TS); the highlighter itself is not part of this crate.
+//! (`highlightCode(code, "python")` in TS); the product's is [`crate::rlm::highlight::rlm_highlighter`].
 
 use std::rc::Rc;
 

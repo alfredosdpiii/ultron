@@ -904,28 +904,87 @@ fn env_credentials(env: Option<&crate::env::ProviderEnv>) -> Option<AwsCredentia
     })
 }
 
-/// The SDK default chain for the client's profile and region.
+/// Credentials that expire within this long count as expired (`credentialsTreatedAsExpired`).
+const TREATED_AS_EXPIRED_MS: i64 = 300_000;
+
+/// What the client's second credential lookup does with the first lookup's credentials (`memoizeChain`): the
+/// auth scheme resolves the identity, then the signer asks the same memoized chain again.
+#[derive(Debug, PartialEq, Eq)]
+pub enum SecondLookup {
+    /// No expiration, or more than five minutes left: the cached credentials sign.
+    Cached,
+    /// Expiring within five minutes: they sign, and the chain runs again in the background (`passiveLock`).
+    RefreshInBackground,
+    /// Already expired: the cache is dropped and the chain runs again; its credentials sign.
+    LookUpAgain,
+}
+
+/// [`SecondLookup`] for credentials expiring at `expiration` (ms), looked up again at `now`.
+pub fn second_lookup(expiration: Option<i64>, now: i64) -> SecondLookup {
+    match expiration {
+        Some(at) if at < now => SecondLookup::LookUpAgain,
+        Some(at) if at - now < TREATED_AS_EXPIRED_MS => SecondLookup::RefreshInBackground,
+        _ => SecondLookup::Cached,
+    }
+}
+
+async fn run_chain(
+    region: &str,
+    profile: Option<&str>,
+    env: Option<&crate::env::ProviderEnv>,
+    transport: &dyn Transport,
+) -> Result<(AwsCredentials, Option<i64>), CredentialError> {
+    let input = ChainInput {
+        env,
+        transport,
+        profile,
+        region,
+        now_ms: now_ms(),
+        expiration: Default::default(),
+    };
+    let credentials = default_credentials(&input).await?;
+    Ok((credentials, input.expiration.get()))
+}
+
+/// The SDK default chain for the client's profile and region, memoized for the call as the client's
+/// `defaultProvider` is (see [`SecondLookup`]). The background refresh runs on its own thread over a detached copy
+/// of the transport and its outcome is dropped with the client, as the SDK's is; a transport that cannot detach
+/// skips it.
 async fn chain_credentials(
     target: &Target,
     profile: Option<&str>,
     options: &BedrockOptions,
     transport: &dyn Transport,
 ) -> Result<AwsCredentials, BedrockError> {
-    let input = ChainInput {
-        env: options.base.env.as_ref(),
-        transport,
-        profile,
-        region: &target.region,
-        now_ms: now_ms(),
+    let error = |error: CredentialError| BedrockError {
+        name: error.name,
+        message: error.message,
+        status: error.status,
+        ..Default::default()
     };
-    default_credentials(&input)
+    let env = options.base.env.as_ref();
+    let (credentials, expiration) = run_chain(&target.region, profile, env, transport)
         .await
-        .map_err(|error: CredentialError| BedrockError {
-            name: error.name,
-            message: error.message,
-            status: error.status,
-            ..Default::default()
-        })
+        .map_err(error)?;
+    match second_lookup(expiration, now_ms()) {
+        SecondLookup::Cached => Ok(credentials),
+        SecondLookup::LookUpAgain => Ok(run_chain(&target.region, profile, env, transport)
+            .await
+            .map_err(error)?
+            .0),
+        SecondLookup::RefreshInBackground => {
+            if let Some(detached) = transport.detached() {
+                let (region, profile, env) = (target.region.clone(), profile.map(str::to_string), env.cloned());
+                std::thread::spawn(move || {
+                    let Ok(runtime) = tokio::runtime::Builder::new_current_thread().enable_all().build() else {
+                        return;
+                    };
+                    let _ = runtime.block_on(run_chain(&region, profile.as_deref(), env.as_ref(), &*detached));
+                });
+            }
+            Ok(credentials)
+        }
+    }
 }
 
 fn is_reserved_header(name: &str) -> bool {

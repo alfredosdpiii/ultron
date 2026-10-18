@@ -36,7 +36,6 @@ use tui::theme::Theme;
 use crate::app::App;
 use crate::components::fg;
 use crate::lane::ModelInfo;
-use crate::rlm_cell::Highlighter;
 
 /// The environment variable that turns every Rust-only addition off.
 pub const PARITY_ENV: &str = "ULTRON_TUI_PARITY";
@@ -225,12 +224,6 @@ impl QolSettings {
 
 /// A fenced code block highlighter: `(code, language)` to one styled string per line.
 pub type CodeHighlight = Rc<dyn Fn(&str, Option<&str>) -> Vec<String>>;
-
-/// The `rlm` cell highlighter: Python through syntect with the theme's syntax colors.
-pub fn rlm_highlighter(theme: &Theme) -> Highlighter {
-    let colors = HighlightColors::from_theme(theme);
-    Rc::new(move |code: &str| highlight_lines(code, Some("python"), &colors))
-}
 
 /// Fenced code blocks: known languages through syntect, others in `mdCodeBlock` as before.
 pub fn code_highlighter(theme: &Rc<Theme>) -> CodeHighlight {

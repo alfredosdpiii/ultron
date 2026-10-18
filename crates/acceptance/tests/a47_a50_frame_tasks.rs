@@ -455,7 +455,11 @@ fn acceptance_a49_host_a_provider_failure_refunds_its_tranche_cache_reads_are_di
     let status = s.usage.status(None).unwrap();
     assert_eq!(status["activeReservations"], 0);
     assert_eq!(status["usage"]["modelCalls"], 2);
-    assert_eq!(s.frame_states(), ["failed", "completed"]);
+    // Both frames start together, so `agents.status` lists them in either order (admitted in the same millisecond);
+    // which one failed is checked per frame above.
+    let mut states = s.frame_states();
+    states.sort();
+    assert_eq!(states, ["completed", "failed"]);
 }
 
 #[test]

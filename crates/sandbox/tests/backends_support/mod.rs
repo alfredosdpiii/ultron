@@ -5,7 +5,9 @@
 //! `ULTRON_SANDBOX_TEST_REQUIRE` (comma-separated, e.g. `bwrap,unshare,docker`): its absence then fails the test
 //! instead of skipping.
 //!
-//! Docker runs on an image that is already on this machine, never pulled: `ULTRON_SANDBOX_TEST_IMAGE`, else the first
+//! Docker is opt-in (`ULTRON_SANDBOX_TEST_DOCKER=1`, or `docker` in `ULTRON_SANDBOX_TEST_REQUIRE`): it is the user's
+//! own daemon, so no default run touches it (2026-10-18: a stuck daemon hung the gates). It runs on an image that is
+//! already on this machine, never pulled: `ULTRON_SANDBOX_TEST_IMAGE`, else the first
 //! of [`DOCKER_CANDIDATES`] present locally (each has bash, coreutils and util-linux).
 
 #![allow(dead_code)]
@@ -78,6 +80,12 @@ pub fn machine_runs(mechanism: &str, image: Option<&str>) -> Result<(), String> 
 pub fn machine_backends() -> Vec<&'static str> {
     let mut out = Vec::new();
     for name in ["bwrap", "unshare", "docker"] {
+        // Docker is the user's own daemon (its containers, its load): tests use it only when asked
+        // (`ULTRON_SANDBOX_TEST_DOCKER=1`, or `docker` in `ULTRON_SANDBOX_TEST_REQUIRE`), never by default.
+        if name == "docker" && !docker_opted_in() {
+            skip_quietly(name, "not opted in (set ULTRON_SANDBOX_TEST_DOCKER=1)");
+            continue;
+        }
         let image = if name == "docker" {
             match docker_image() {
                 Ok(image) => Some(image),
@@ -135,6 +143,10 @@ pub fn docker_image() -> Result<String, String> {
     static IMAGE: OnceLock<Result<String, String>> = OnceLock::new();
     IMAGE
         .get_or_init(|| {
+            // Not even `docker images` runs unless the run asked for Docker.
+            if !docker_opted_in() {
+                return Err("Docker not opted in (set ULTRON_SANDBOX_TEST_DOCKER=1)".into());
+            }
             if let Ok(image) = std::env::var("ULTRON_SANDBOX_TEST_IMAGE")
                 && !image.is_empty()
             {
@@ -149,4 +161,19 @@ pub fn docker_image() -> Result<String, String> {
             local_image(DOCKER_CANDIDATES).map_err(|reason| format!("{reason}; ULTRON_SANDBOX_TEST_IMAGE is not set"))
         })
         .clone()
+}
+
+/// Whether the run asked for the Docker backend: `ULTRON_SANDBOX_TEST_DOCKER=1` or `docker` in
+/// `ULTRON_SANDBOX_TEST_REQUIRE`.
+pub fn docker_opted_in() -> bool {
+    std::env::var("ULTRON_SANDBOX_TEST_DOCKER").is_ok_and(|v| v == "1")
+        || std::env::var("ULTRON_SANDBOX_TEST_REQUIRE")
+            .unwrap_or_default()
+            .split(',')
+            .any(|m| m.trim() == "docker")
+}
+
+/// Print that `mechanism` is skipped (never a failure: it was not asked for).
+fn skip_quietly(mechanism: &str, reason: &str) {
+    println!("SKIPPED {mechanism}: {reason}");
 }

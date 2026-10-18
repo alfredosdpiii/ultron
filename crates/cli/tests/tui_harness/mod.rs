@@ -46,6 +46,8 @@ pub fn text_reply(text: &str) -> Reply {
 pub struct Gate {
     released: Mutex<usize>,
     cv: Condvar,
+    /// Replies that reached their hold point.
+    held: AtomicUsize,
 }
 
 /// The scripted SSE server. Requests whose body asks for a session title (the naming call) get `title` (after
@@ -132,6 +134,7 @@ impl Mock {
                     if reply.hold_after.is_some() {
                         let mut released = gate.released.lock().unwrap();
                         let ticket = *released;
+                        gate.held.fetch_add(1, Ordering::SeqCst);
                         while *released == ticket {
                             released = gate.cv.wait(released).unwrap();
                         }
@@ -160,6 +163,20 @@ impl Mock {
         let deadline = Instant::now() + Duration::from_secs(120);
         while self.title_requests.load(Ordering::SeqCst) == 0 {
             assert!(Instant::now() < deadline, "no naming request");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    /// Wait until `n` held replies reached their hold point (hang guard 120 s): a [`Mock::release`] only frees the
+    /// replies already holding, so a test that needs several released calls this first.
+    pub fn wait_held(&self, n: usize) {
+        let deadline = Instant::now() + Duration::from_secs(120);
+        while self.gate.held.load(Ordering::SeqCst) < n {
+            assert!(
+                Instant::now() < deadline,
+                "only {} replies held",
+                self.gate.held.load(Ordering::SeqCst)
+            );
             std::thread::sleep(Duration::from_millis(10));
         }
     }

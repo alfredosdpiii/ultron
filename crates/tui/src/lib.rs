@@ -15,6 +15,7 @@ pub mod editor;
 pub mod fullscreen;
 pub mod fuzzy;
 pub mod highlight;
+pub mod hljs;
 pub mod image;
 pub mod input;
 pub mod keybindings;

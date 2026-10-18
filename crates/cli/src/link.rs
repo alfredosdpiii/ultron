@@ -598,6 +598,14 @@ impl Link {
         let options = server_options(parsed, env, mode)?;
         let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
         crate::print_mode::trace_startup(env, "cli.server-started");
+        // rpc-native.ts's milestones: the client runtime opens after the server started, its services are ready once
+        // connected, then the session is selected and attached.
+        let rpc_trace = |label: &str| {
+            if mode == "rpc" {
+                crate::print_mode::trace_startup(env, label);
+            }
+        };
+        rpc_trace("rpc.open");
         let connection = match Connection::connect(&server.endpoint_path, &server.server_id) {
             Ok(connection) => connection,
             Err(error) => {
@@ -606,6 +614,7 @@ impl Link {
             }
         };
         let mut link = Link::new(Some(server), connection, Origin::Foreground(Box::new(options)), events);
+        rpc_trace("rpc.services-ready");
         let name = parsed.name.as_deref();
         let selected = match target {
             Target::Open(metadata) => {
@@ -633,11 +642,15 @@ impl Link {
             }
             Target::Ephemeral => link.create(json!({})),
         };
-        let attached = selected.and_then(|id| link.attach(&id));
+        let attached = selected.and_then(|id| {
+            rpc_trace("rpc.session-selected");
+            link.attach(&id)
+        });
         if let Err(error) = attached {
             link.close(false);
             return Err(error);
         }
+        rpc_trace("rpc.attached");
         link.supervise();
         Ok(link)
     }

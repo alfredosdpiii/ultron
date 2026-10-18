@@ -376,6 +376,24 @@ fn interactive_ctrl_c_clears_then_exits_and_ctrl_d_exits_when_empty() {
     assert!(app.exit);
 }
 
+/// A `/name` the worker had not confirmed when another session opened named the session it left: a later name event
+/// of the same text is not its confirmation.
+#[test]
+fn interactive_name_notice_is_not_carried_across_a_session_switch() {
+    let (mut app, c) = app();
+    typed(&mut app, "/name Old work");
+    app.handle_input("\r");
+    assert_eq!(calls(&c), ["name Old work"]);
+    app.apply(LaneEvent::Opened(SessionOpened {
+        session_id: "other".into(),
+        session_file: None,
+        name: None,
+        messages: Vec::new(),
+    }));
+    app.apply(LaneEvent::Name(Some("Old work".into())));
+    assert!(!screen(&mut app).contains("Session name set"));
+}
+
 #[test]
 fn interactive_slash_commands() {
     let (mut app, c) = app();
@@ -385,6 +403,13 @@ fn interactive_slash_commands() {
     typed(&mut app, "/name  Big refactor ");
     app.handle_input("\r");
     assert_eq!(calls(&c), ["name Big refactor"]);
+    // Nothing is shown until the worker confirms the name (client-tui-commands.ts awaits `setName`).
+    let s = screen(&mut app);
+    assert!(!s.contains("Session name set") && !s.contains("• Big refactor"), "{s}");
+    // Another name (an automatic title landing first) is not the confirmation.
+    app.apply(LaneEvent::Name(Some("Auto title".into())));
+    assert!(!screen(&mut app).contains("Session name set"));
+    app.apply(LaneEvent::Name(Some("Big refactor".into())));
     let s = screen(&mut app);
     assert!(s.contains(" Session name set: Big refactor"), "{s}");
     assert!(s.contains("/p • Big refactor"), "{s}");

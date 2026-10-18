@@ -276,6 +276,8 @@ fn lock_session(path: &Path) -> Option<SessionLock> {
 pub struct Opened {
     pub lane: Arc<Lane>,
     pub root: ExternalRoot,
+    /// The root lane's events on their way to `root` (the dispatcher's coalescing window).
+    pub sink: Arc<crate::root_sink::RootSink>,
     pub session_id: String,
     /// The session file (`usage.report` reads it).
     pub session_path: PathBuf,
@@ -389,12 +391,14 @@ fn open_runtime(
     // What the session actor wires for its own root lane: `ctx.*`, the budget line, shell jobs' roots and the
     // completion events of root work (into the root's inbox).
     let host = Arc::new(crate::external_lane::LaneRootHost::new(lane.stack.clone()));
-    let inbox: Arc<Mutex<Vec<String>>> = Arc::default();
-    crate::external_lane::wire(&lane, session, &host, inbox.clone());
-    let root = ExternalRoot::over_lane(lane.clone(), loki_context, inbox, host, &*env.var).with_loki_setup(loki_notice);
+    let sink = Arc::new(crate::root_sink::RootSink::system());
+    crate::external_lane::wire(&lane, session, &host, sink.clone());
+    let root =
+        ExternalRoot::over_lane(lane.clone(), loki_context, sink.clone(), host, &*env.var).with_loki_setup(loki_notice);
     Ok(Opened {
         lane,
         root,
+        sink,
         session_path: metadata.path.clone(),
         session_id: metadata.id,
         model: format!("{}/{}", model.provider, model.id),
@@ -569,7 +573,7 @@ impl Server {
                 match inspect.as_str() {
                     // The worker answers these itself (session-worker.ts `inspect`).
                     "rlm.pool" => Ok(stack.pool_stats()),
-                    "async.pending" => Ok(crate::external_lane::async_pending(stack)),
+                    "async.pending" => Ok(crate::external_lane::async_pending(stack, &opened.sink)),
                     "usage.report" => {
                         let report = SESSION_REPORT.get().ok_or("the session report is not available")?;
                         // The counters still in memory go to the session file first.

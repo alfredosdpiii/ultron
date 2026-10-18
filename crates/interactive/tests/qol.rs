@@ -559,7 +559,7 @@ fn rlm_transcript() -> Vec<Value> {
 }
 
 #[test]
-fn interactive_qol_highlight_styles_rlm_cells_and_fenced_code() {
+fn interactive_qol_highlight_styles_fenced_code_and_leaves_rlm_cells_to_the_cell_highlighter() {
     let keyword = theme().fg_ansi("syntaxKeyword").unwrap();
     let render = |qol: QolSettings| {
         let (mut app, _) = fresh(qol);
@@ -583,18 +583,20 @@ fn interactive_qol_highlight_styles_rlm_cells_and_fenced_code() {
             .unwrap()
             .clone()
     };
-    for needle in ["shown(x)", "cell(y)"] {
-        assert!(
-            line(&on, needle).contains(&format!("{keyword}def")),
-            "{needle}: {:?}",
-            line(&on, needle)
-        );
-        assert!(
-            !line(&off, needle).contains(&keyword),
-            "{needle}: {:?}",
-            line(&off, needle)
-        );
-    }
+    // Fenced code blocks: QoL highlighting adds syntax colors.
+    assert!(
+        line(&on, "shown(x)").contains(&format!("{keyword}def")),
+        "{:?}",
+        line(&on, "shown(x)")
+    );
+    assert!(
+        !line(&off, "shown(x)").contains(&keyword),
+        "{:?}",
+        line(&off, "shown(x)")
+    );
+    // `rlm` cells always use the app's own cell highlighter (the product's is TS's highlight.js port), so QoL
+    // highlighting does not change them.
+    assert_eq!(line(&on, "cell(y)"), line(&off, "cell(y)"));
     // Same text either way: highlighting only adds styling.
     assert_eq!(plain(&on), plain(&off));
 }
@@ -827,7 +829,9 @@ fn interactive_qol_writer_thread_delivers_the_frames_in_order() {
     // A hang guard: the writer thread flushes as soon as it runs, however loaded the machine.
     assert!(tty.flush_sync(Duration::from_secs(120)));
     let threaded = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();
-    assert_eq!(threaded, direct);
+    // With the writer's backlog check the app may paint one more frame that only moves the cursor (when the check
+    // sees the writer busy); such empty frames change nothing on screen, so they are left out of the comparison.
+    assert_eq!(without_empty_frames(&threaded), without_empty_frames(&direct));
     // The split paints on the main screen: no alternate screen, transcript rows above the dock, cursor shown at exit.
     assert!(!direct.contains("\x1b[?1049h"));
     assert!(strip_terminal_sequences(&direct).contains("hello there"));
@@ -967,4 +971,41 @@ fn interactive_qol_at_completion_paints_while_fd_runs_off_the_ui_thread() {
         "the picker was never painted"
     );
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// `output` without synchronized-update frames that hold only control sequences (no visible change).
+fn without_empty_frames(output: &str) -> String {
+    let (begin, end) = ("\x1b[?2026h", "\x1b[?2026l");
+    let mut out = String::new();
+    let mut rest = output;
+    while let Some(start) = rest.find(begin) {
+        let Some(len) = rest[start..].find(end) else { break };
+        let frame = &rest[start..start + len + end.len()];
+        out.push_str(&rest[..start]);
+        if !only_control_sequences(frame) {
+            out.push_str(frame);
+        }
+        rest = &rest[start + len + end.len()..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Whether `frame` is nothing but CSI sequences (cursor moves, mode switches).
+fn only_control_sequences(frame: &str) -> bool {
+    let mut chars = frame.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' || chars.next() != Some('[') {
+            return false;
+        }
+        // Parameters and intermediates, then one final byte in @..~.
+        loop {
+            match chars.next() {
+                Some(b) if ('@'..='~').contains(&b) => break,
+                Some(_) => {}
+                None => return false,
+            }
+        }
+    }
+    true
 }

@@ -138,8 +138,8 @@ impl ContextBranches for ExternalBranches {
 }
 
 /// Wire an external root's lane: `ctx.*` over `session`, the budget line, shell jobs' roots, and the ends of the
-/// root's shell jobs and detached tool calls into `inbox` (unless `ULTRON_ASYNC_EVENTS` turned events off).
-pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, inbox: Arc<Mutex<Vec<String>>>) {
+/// root's shell jobs and detached tool calls published into `sink` (unless `ULTRON_ASYNC_EVENTS` turned events off).
+pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, sink: Arc<crate::root_sink::RootSink>) {
     let stack = &lane.stack;
     let context = Arc::new(kernel_apis::ContextControl::new(Arc::new(ExternalBranches { session })));
     let _ = stack.context.set(context);
@@ -164,13 +164,13 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, inbox: Arc
     if !stack.events.enabled() {
         return;
     }
-    let jobs = inbox.clone();
+    let jobs = sink.clone();
     stack.host.on_job_end(Arc::new(move |end: host::JobEnd| {
         if end.record.lane != MAIN {
             return;
         }
         let Some(event) = end.event() else { return };
-        lock(&jobs).push(runtime_event_text(&[RuntimeEvent {
+        jobs.publish(runtime_event_text(&[RuntimeEvent {
             kind: event["kind"].as_str().unwrap_or("job_done").into(),
             id: end.record.id.clone(),
             status: end.record.status.clone(),
@@ -180,7 +180,7 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, inbox: Arc
             root_id: end.record.root_id.clone(),
         }]));
     }));
-    let tools = inbox;
+    let tools = sink;
     stack
         .tool_calls()
         .on_end(Arc::new(move |end: kernel_apis::ToolCallEnd| {
@@ -190,7 +190,7 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, inbox: Arc
             let Some((id, status, summary, fetch)) = kernel_apis::tool_calls::tool_event(&end) else {
                 return;
             };
-            lock(&tools).push(runtime_event_text(&[RuntimeEvent {
+            tools.publish(runtime_event_text(&[RuntimeEvent {
                 kind: "tool_done".into(),
                 id,
                 status,
@@ -202,9 +202,10 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, inbox: Arc
         }));
 }
 
-/// `async.pending` of a session whose root is driven from outside: root-owned work still running. The root lane
-/// never runs and its events go straight to the root's inbox, so `running` and `events` are 0.
-pub fn async_pending(stack: &Stack) -> Value {
+/// `async.pending` of a session whose root is driven from outside: root-owned work still running, and its ends
+/// still in the coalescing window (`events`, delivered to the root's inbox once it closes). The root lane never
+/// runs, so `running` is 0.
+pub fn async_pending(stack: &Stack, sink: &crate::root_sink::RootSink) -> Value {
     if !stack.events.enabled() {
         return json!({"pending": false, "jobs": 0, "tasks": 0, "events": 0});
     }
@@ -212,12 +213,13 @@ pub fn async_pending(stack: &Stack) -> Value {
     let jobs = stack.host.running(MAIN, &none) as u64;
     let tools = stack.tool_calls().running(MAIN, &none) as u64;
     let tasks = pending_root_notifications(stack);
+    let events = sink.pending() as u64;
     json!({
-        "pending": jobs + tools + tasks > 0,
+        "pending": jobs + tools + tasks + events > 0,
         "jobs": jobs,
         "tools": tools,
         "tasks": tasks,
-        "events": 0,
+        "events": events,
         "running": 0,
     })
 }

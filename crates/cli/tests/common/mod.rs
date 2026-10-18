@@ -421,6 +421,17 @@ pub fn assert_private_home(home: &std::path::Path) {
 /// is a subagent's and gets the next `child` reply; every other request gets the next `parent` reply. Requests are
 /// recorded in arrival order as `{method, url, body, child}`.
 pub fn routed_server(parent: Vec<String>, child_marker: &str, child: Vec<String>) -> (u16, Arc<Mutex<Vec<Value>>>) {
+    routed_server_held(parent, child_marker, child, 0)
+}
+
+/// [`routed_server`] whose subagent replies are held until `parent_requests` parent requests have arrived: a child
+/// then cannot finish before the parent reached that point, however the processes are scheduled.
+pub fn routed_server_held(
+    parent: Vec<String>,
+    child_marker: &str,
+    child: Vec<String>,
+    parent_requests: usize,
+) -> (u16, Arc<Mutex<Vec<Value>>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let seen = Arc::new(Mutex::new(Vec::new()));
@@ -428,8 +439,10 @@ pub fn routed_server(parent: Vec<String>, child_marker: &str, child: Vec<String>
     let marker = child_marker.to_string();
     std::thread::spawn(move || {
         let (mut next_parent, mut next_child) = (0, 0);
+        // Child replies not yet sent (a parent request reaching the count releases them).
+        let mut held: Vec<(std::net::TcpStream, String)> = Vec::new();
         for stream in listener.incoming() {
-            let Ok(mut stream) = stream else { return };
+            let Ok(stream) = stream else { return };
             let mut reader = BufReader::new(stream.try_clone().unwrap());
             let mut line = String::new();
             if reader.read_line(&mut line).is_err() {
@@ -469,12 +482,24 @@ pub fn routed_server(parent: Vec<String>, child_marker: &str, child: Vec<String>
             }
             .unwrap_or_else(|| anthropic_text("(no more replies)"));
             shared.lock().unwrap().push(json!({"body": body, "child": is_child}));
-            let head = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
-                reply.len()
-            );
-            let _ = stream.write_all(head.as_bytes());
-            let _ = stream.write_all(reply.as_bytes());
+            // A parent's reply goes out at once, after any child reply its arrival releases.
+            let mut out = Vec::new();
+            if next_parent >= parent_requests {
+                out.append(&mut held);
+            }
+            if is_child && next_parent < parent_requests {
+                held.push((stream, reply));
+            } else {
+                out.push((stream, reply));
+            }
+            for (mut stream, reply) in out {
+                let head = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                    reply.len()
+                );
+                let _ = stream.write_all(head.as_bytes());
+                let _ = stream.write_all(reply.as_bytes());
+            }
         }
     });
     (port, seen)

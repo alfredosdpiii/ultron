@@ -22,6 +22,8 @@ pub struct Request {
     pub include_session: bool,
     /// The model's summary, when the user asked for one.
     pub summary: Option<String>,
+    /// The command line gave `--api-key` (the session's requests use it, whatever the provider).
+    pub runtime_key: bool,
 }
 
 /// `getRadiusGatewayUrl()`.
@@ -159,22 +161,185 @@ fn session_jsonl(
     format!("{}\n", text.join("\n"))
 }
 
-/// The model's provider as `describeProvider` reads it: the catalog's name, and whether a credential is stored.
-fn provider_info(env: &Env, provider: &str) -> telemetry::bug_report::ProviderInfo {
-    let oauth = session_core::stored_auth::oauth_access(env, provider, None)
-        .ok()
-        .flatten()
-        .is_some();
-    let key = matches!(
-        session_core::stored_auth::stored_key(env, provider),
-        Ok(session_core::stored_auth::Stored::Owns(Some(_)))
-    );
-    let configured = oauth || key || session_core::lane::env_api_key(env, provider).is_some();
+/// The built-in providers' own `baseUrl` (each provider factory's in packages/ai/src/providers/*.ts); a provider
+/// whose models carry their own (Bedrock, Vertex, Azure, Cloudflare, OpenCode, Radius) has none.
+const BUILTIN_BASE_URLS: &[(&str, &str)] = &[
+    ("ant-ling", "https://api.ant-ling.com/v1"),
+    ("anthropic", "https://api.anthropic.com"),
+    ("baseten", "https://inference.baseten.co/v1"),
+    ("cerebras", "https://api.cerebras.ai/v1"),
+    ("claude-code", "claude-code://cli"),
+    ("deepseek", "https://api.deepseek.com"),
+    ("fireworks", "https://api.fireworks.ai/inference"),
+    ("github-copilot", "https://api.individual.githubcopilot.com"),
+    ("google", "https://generativelanguage.googleapis.com/v1beta"),
+    ("groq", "https://api.groq.com/openai/v1"),
+    ("huggingface", "https://router.huggingface.co/v1"),
+    ("kimi-coding", "https://api.kimi.com/coding"),
+    ("meta", "https://api.meta.ai/v1"),
+    ("minimax", "https://api.minimax.io/anthropic"),
+    ("minimax-cn", "https://api.minimaxi.com/anthropic"),
+    ("mistral", "https://api.mistral.ai"),
+    ("moonshotai", "https://api.moonshot.ai/v1"),
+    ("moonshotai-cn", "https://api.moonshot.cn/v1"),
+    ("nvidia", "https://integrate.api.nvidia.com/v1"),
+    ("openai", "https://api.openai.com/v1"),
+    ("openai-codex", "https://chatgpt.com/backend-api"),
+    ("openrouter", "https://openrouter.ai/api/v1"),
+    (
+        "qwen-token-plan",
+        "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    ),
+    (
+        "qwen-token-plan-cn",
+        "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    ),
+    (
+        "qwen-token-plan-individual",
+        "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    ),
+    ("together", "https://api.together.ai/v1"),
+    ("vercel-ai-gateway", "https://ai-gateway.vercel.sh"),
+    ("xai", "https://api.x.ai/v1"),
+    ("xiaomi", "https://api.xiaomimimo.com/v1"),
+    ("xiaomi-token-plan-ams", "https://token-plan-ams.xiaomimimo.com/v1"),
+    ("xiaomi-token-plan-cn", "https://token-plan-cn.xiaomimimo.com/v1"),
+    ("xiaomi-token-plan-sgp", "https://token-plan-sgp.xiaomimimo.com/v1"),
+    ("zai", "https://api.z.ai/api/coding/paas/v4"),
+    ("zai-coding-cn", "https://open.bigmodel.cn/api/coding/paas/v4"),
+];
+
+/// `ctx.env(name)`: a set, non-empty variable.
+fn env_value(env: &Env, name: &str) -> Option<String> {
+    (env.var)(name).filter(|value| !value.is_empty())
+}
+
+/// The `source` of the provider's ambient credential (`provider.auth.apiKey.check`/`resolve` without a stored
+/// credential): the first variable that supplies a key, or the provider's own ambient sources (AWS, gcloud
+/// application default credentials, Cloudflare's account, the Claude Code CLI).
+fn environment_source(env: &Env, provider: &str) -> Option<String> {
+    let has = |name: &str| env_value(env, name).is_some();
+    let lookup = |name: &str| env_value(env, name);
+    let source = ai::env::EnvSource {
+        lookup: &lookup,
+        exists: &|p: &Path| p.exists(),
+        home: Some(env.home.clone()),
+    };
+    match provider {
+        "amazon-bedrock" => [
+            ("AWS_BEARER_TOKEN_BEDROCK", "AWS_BEARER_TOKEN_BEDROCK"),
+            ("AWS_PROFILE", "AWS_PROFILE"),
+        ]
+        .iter()
+        .find(|(name, _)| has(name))
+        .map(|(_, label)| label.to_string())
+        .or_else(|| (has("AWS_ACCESS_KEY_ID") && has("AWS_SECRET_ACCESS_KEY")).then(|| "AWS access keys".into()))
+        .or_else(|| {
+            (has("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") || has("AWS_CONTAINER_CREDENTIALS_FULL_URI"))
+                .then(|| "ECS task role".into())
+        })
+        .or_else(|| has("AWS_WEB_IDENTITY_TOKEN_FILE").then(|| "web identity token".into())),
+        "google-vertex" => {
+            if has("GOOGLE_CLOUD_API_KEY") {
+                return Some("GOOGLE_CLOUD_API_KEY".into());
+            }
+            let adc = env_value(env, "GOOGLE_APPLICATION_CREDENTIALS").map_or_else(
+                || env.home.join(".config/gcloud/application_default_credentials.json"),
+                PathBuf::from,
+            );
+            let project = has("GOOGLE_CLOUD_PROJECT") || has("GCLOUD_PROJECT");
+            (adc.exists() && project && has("GOOGLE_CLOUD_LOCATION"))
+                .then(|| "gcloud application default credentials".into())
+        }
+        "cloudflare-workers-ai" | "cloudflare-ai-gateway" => {
+            let gateway = provider == "cloudflare-workers-ai" || has("CLOUDFLARE_GATEWAY_ID");
+            (has("CLOUDFLARE_API_KEY") && has("CLOUDFLARE_ACCOUNT_ID") && gateway).then(|| "CLOUDFLARE_API_KEY".into())
+        }
+        ai::claude_code::PROVIDER => {
+            ai::claude_code::configured(&source).then(|| ai::claude_code::AUTH_SOURCE.to_string())
+        }
+        _ => ai::env::find_env_keys_in(provider, &source).and_then(|keys| keys.first().map(|key| key.to_string())),
+    }
+}
+
+/// `configuredRequestAuthStatus` of a models.json `apiKey`: a `!command`, the variables a template names (all set,
+/// else not configured), or the key itself.
+fn configured_key_status(env: &Env, key: &str) -> Value {
+    if ai::model_registry::is_command(key) {
+        return json!({"configured": true, "source": "models_json_command"});
+    }
+    let names = ai::model_registry::env_names(key);
+    if names.is_empty() {
+        return json!({"configured": true, "source": "models_json_key"});
+    }
+    if names.iter().all(|name| env_value(env, name).is_some()) {
+        json!({"configured": true, "source": "environment", "label": names.join(", ")})
+    } else {
+        json!({"configured": false})
+    }
+}
+
+/// The model's provider as `describeProvider` reads it from the session's `ModelRuntime`: the provider definition
+/// (a built-in's name, `baseUrl` and sign-in methods, overlaid by models.json; a models.json provider signs in with
+/// a key), `getProviderAuthStatus` (the command line's `--api-key`, a stored credential, the models.json key, the
+/// environment), whether the stored credential is an OAuth login, and whether only an extension declares it.
+/// Header names stay empty: the composed provider carries no headers of its own (recorded from TypeScript).
+pub fn provider_info(
+    env: &Env,
+    provider: &str,
+    runtime_key: bool,
+    registered_by_extension: bool,
+) -> telemetry::bug_report::ProviderInfo {
+    let registry = session_core::lane::registry(env);
+    let config = registry.config().provider(provider);
+    let logins = interactive::selectors::provider_logins();
+    let login = logins.iter().find(|p| p.id == provider).or_else(|| {
+        registry
+            .radius_gateway(provider)
+            .and_then(|_| logins.iter().find(|p| p.id == "radius"))
+    });
+    let text = |key: &str| config.and_then(|c| c.get(key)).and_then(Value::as_str);
+    let name = text("name")
+        .map(str::to_string)
+        .or_else(|| login.filter(|l| l.id == provider).map(|l| l.name.clone()))
+        .unwrap_or_else(|| provider.to_string());
+    let base_url = text("baseUrl").or_else(|| {
+        BUILTIN_BASE_URLS
+            .iter()
+            .find(|(id, _)| *id == provider)
+            .map(|(_, url)| *url)
+    });
+    let auth = match login {
+        Some(login) => json!({"apiKey": login.api_key.is_some(), "oauth": login.oauth.is_some()}),
+        None => json!({"apiKey": true}),
+    };
+    let mut definition = json!({"id": provider, "name": name, "auth": auth});
+    if let Some(url) = base_url {
+        definition["baseUrl"] = json!(url);
+    }
+    let stored = config::auth::AuthStorage::create(config::paths::AgentPaths::new(env.agent_dir()).auth())
+        .list()
+        .unwrap_or_default()
+        .into_iter()
+        .find(|(id, _)| id == provider)
+        .map(|(_, kind)| kind);
+    let auth_status = if runtime_key {
+        json!({"configured": true, "source": "runtime"})
+    } else if stored.is_some() {
+        json!({"configured": true, "source": "stored"})
+    } else if let Some(key) = text("apiKey") {
+        configured_key_status(env, key)
+    } else {
+        environment_source(env, provider).map_or_else(
+            || json!({"configured": false}),
+            |label| json!({"configured": true, "source": "environment", "label": label}),
+        )
+    };
     telemetry::bug_report::ProviderInfo {
-        provider: json!({"id": provider, "name": interactive::selectors::provider_name(provider)}),
-        auth_status: json!({"configured": configured}),
-        using_oauth: oauth,
-        registered_by_extension: false,
+        provider: definition,
+        auth_status,
+        using_oauth: stored.is_some_and(|kind| kind == "oauth"),
+        registered_by_extension,
     }
 }
 
@@ -190,9 +355,13 @@ pub fn build_bundle(link: &Link, env: &Env, request: &Request) -> Result<BugRepo
     let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir, trusted);
     let (loaded, errors) = extensions(env, &agent_dir, &settings);
     let model = described.get("model").filter(|m| m.is_object());
-    let provider = model
-        .and_then(|m| m["provider"].as_str())
-        .map(|p| provider_info(env, p));
+    let provider = model.and_then(|m| m["provider"].as_str()).map(|p| {
+        // A provider neither built in nor in models.json reaches the session only through an extension.
+        let registry = session_core::lane::registry(env);
+        let declared = interactive::selectors::provider_logins().iter().any(|l| l.id == p)
+            || registry.config().provider(p).is_some();
+        provider_info(env, p, request.runtime_key, !declared)
+    });
     let vars: BTreeMap<String, String> = std::env::vars().collect();
     let host = host();
     let id = uuid_v7(now);
@@ -416,14 +585,16 @@ fn export_and_record(
 pub struct Reporter {
     last: Arc<Mutex<Option<BugReportBundle>>>,
     pub cancel: Arc<AtomicBool>,
+    runtime_key: bool,
 }
 
 impl Reporter {
-    /// A reporter whose uploads stop when `cancel` is set.
-    pub fn new(cancel: Arc<AtomicBool>) -> Self {
+    /// A reporter whose uploads stop when `cancel` is set; `runtime_key` when the command line gave `--api-key`.
+    pub fn new(cancel: Arc<AtomicBool>, runtime_key: bool) -> Self {
         Reporter {
             last: Arc::default(),
             cancel,
+            runtime_key,
         }
     }
 
@@ -445,6 +616,7 @@ impl Reporter {
                 hint: request.hint.clone(),
                 include_session: request.include_session,
                 summary: request.summary.clone(),
+                runtime_key: self.runtime_key,
             },
         );
         let bundle = match built {

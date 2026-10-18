@@ -38,6 +38,7 @@ pub mod lane;
 pub mod lane_reuse;
 pub mod loki_notice;
 pub mod mcp_coexistence;
+pub mod memory_children;
 pub mod migration;
 pub mod model_refresh;
 pub mod naming;

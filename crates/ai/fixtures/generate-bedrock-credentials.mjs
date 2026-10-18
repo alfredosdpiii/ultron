@@ -106,7 +106,8 @@ const server = createServer((req, res) => {
 			return;
 		}
 		res.writeHead(canned.status ?? 200, canned.headers ?? { "content-type": "application/json" });
-		res.end(typeof canned.body === "string" ? canned.body : JSON.stringify(canned.body));
+		// `<now+N>` (and the other placeholders) in a canned body are expanded when it is served.
+		res.end(expand(typeof canned.body === "string" ? canned.body : JSON.stringify(canned.body)));
 	});
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -503,6 +504,30 @@ const scenarios = [
 		processEnv: { AWS_CONTAINER_CREDENTIALS_FULL_URI: "http://127.0.0.1:<port>/creds", AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE: "<home>/ctr-token" },
 		files: { "ctr-token": "file-token" },
 		routes: { "GET /creds": [{ status: 200, body: { AccessKeyId: "ASIACTR", SecretAccessKey: "ctr-secret", Token: "ctr-session", Expiration: "2099-01-01T00:00:00Z" } }] },
+	},
+	{
+		// Credentials that expire within five minutes sign the request, and the client's credential cache runs the
+		// chain again in the background (memoizeChain's passiveLock): one late request.
+		name: "container-expiring-soon-refreshes-in-background",
+		processEnv: { AWS_CONTAINER_CREDENTIALS_FULL_URI: "http://127.0.0.1:<port>/creds" },
+		routes: {
+			"GET /creds": [
+				{ status: 200, body: { AccessKeyId: "ASIASOON", SecretAccessKey: "soon-secret", Token: "soon-session", Expiration: "<now+60>" } },
+				{ status: 200, body: { AccessKeyId: "ASIALATE", SecretAccessKey: "late-secret", Token: "late-session", Expiration: "<now+60>" } },
+			],
+		},
+	},
+	{
+		// Credentials that already expired are dropped by the cache: the signer's lookup runs the chain again and
+		// signs with the second answer.
+		name: "container-expired-is-looked-up-again",
+		processEnv: { AWS_CONTAINER_CREDENTIALS_FULL_URI: "http://127.0.0.1:<port>/creds" },
+		routes: {
+			"GET /creds": [
+				{ status: 200, body: { AccessKeyId: "ASIAOLD", SecretAccessKey: "old-secret", Token: "old-session", Expiration: "<now+-60>" } },
+				{ status: 200, body: { AccessKeyId: "ASIAAGAIN", SecretAccessKey: "again-secret", Token: "again-session", Expiration: "2099-01-01T00:00:00Z" } },
+			],
+		},
 	},
 	{
 		name: "container-host-not-allowed",

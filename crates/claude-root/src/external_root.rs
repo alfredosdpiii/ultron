@@ -142,46 +142,33 @@ impl ExternalRoot {
         self
     }
 
-    /// Over a session's root lane: events from its runtime events and `extra` (shell-job and tool-call ends),
+    /// Over a session's root lane: events through `sink` (the dispatcher's coalescing: shell-job and tool-call ends
+    /// published into it by crate::external_lane::wire, and the lane's runtime events, forwarded as they arrive),
     /// cells through its `rlm` tool, turns through `host`, nudges as the environment sets them.
     pub fn over_lane(
         lane: Arc<Lane>,
         loki_context: Option<String>,
-        extra: Arc<Mutex<Vec<String>>>,
+        sink: Arc<crate::root_sink::RootSink>,
         host: Arc<dyn RootHost>,
         var: &dyn Fn(&str) -> Option<String>,
     ) -> ExternalRoot {
         let stats = lane.stack.stats.clone();
-        let events_lane = lane.clone();
-        let events: EventSource = Arc::new(move || {
-            // An aborted signal: take what waits now, never wait for running work.
-            let now = AbortSignal::new();
-            now.abort();
-            let mut lines: Vec<String> = events_lane
-                .events
-                .next_message(&now)
-                .into_iter()
-                .filter_map(|message| match message {
-                    ai::Message::User(user) => match user.content {
-                        ai::UserMessageContent::Blocks(blocks) => Some(
-                            blocks
-                                .into_iter()
-                                .filter_map(|b| match b {
-                                    UserContent::Text(t) => Some(t.text),
-                                    UserContent::Image(_) => None,
-                                })
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                        ),
-                        ai::UserMessageContent::Text(text) => Some(text),
-                    },
-                    _ => None,
-                })
-                .flat_map(|text| text.lines().map(str::to_string).collect::<Vec<_>>())
-                .collect();
-            lines.append(&mut extra.lock().unwrap_or_else(PoisonError::into_inner));
-            lines
+        // Subagents', typed tasks' and detached cells' ends, forwarded until the root or its lane goes away (the
+        // native session forwards them to its dispatcher the same way).
+        let (forward_lane, forward_sink) = (Arc::downgrade(&lane), Arc::downgrade(&sink));
+        std::thread::spawn(move || {
+            loop {
+                let (Some(lane), Some(sink)) = (forward_lane.upgrade(), forward_sink.upgrade()) else {
+                    return;
+                };
+                for line in lane_event_lines(&lane) {
+                    sink.publish(line);
+                }
+                drop((lane, sink));
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
         });
+        let events: EventSource = Arc::new(move || sink.take());
         let runner: CellRunner = Arc::new(move |code: &str, signal: &AbortSignal| {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -385,4 +372,31 @@ impl ExternalRoot {
             is_error,
         }
     }
+}
+
+/// The `<runtime_event>` lines of the root lane's runtime events that have arrived (never waiting for running work).
+fn lane_event_lines(lane: &Lane) -> Vec<String> {
+    let now = AbortSignal::new();
+    now.abort();
+    lane.events
+        .next_message(&now)
+        .into_iter()
+        .filter_map(|message| match message {
+            ai::Message::User(user) => match user.content {
+                ai::UserMessageContent::Blocks(blocks) => Some(
+                    blocks
+                        .into_iter()
+                        .filter_map(|b| match b {
+                            UserContent::Text(t) => Some(t.text),
+                            UserContent::Image(_) => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                ai::UserMessageContent::Text(text) => Some(text),
+            },
+            _ => None,
+        })
+        .flat_map(|text| text.lines().map(str::to_string).collect::<Vec<_>>())
+        .collect()
 }

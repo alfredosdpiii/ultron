@@ -2354,7 +2354,7 @@ fn run_tui(
         let settings_path = (env.cwd.clone(), env.agent_dir());
         let signalled = signalled.clone();
         let catalog_env = env.clone();
-        let reporter = crate::bug_report::Reporter::new(bug_cancel.clone());
+        let reporter = crate::bug_report::Reporter::new(bug_cancel.clone(), parsed.api_key.is_some());
         std::thread::spawn(move || {
             link_thread(
                 link,
@@ -2394,6 +2394,9 @@ fn run_tui(
         .and_then(Value::as_array)
         .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
         .unwrap_or_default();
+    // `rlm` cells as the TS client highlights them (highlight.js's Python grammar, theme.ts `highlightCode`); the
+    // syntect highlighter of the QoL settings replaces it when that is on.
+    let highlight = interactive::rlm::highlight::rlm_highlighter(&theme);
     let options = AppOptions {
         theme,
         keys: keys(),
@@ -2411,7 +2414,7 @@ fn run_tui(
             &env.cwd.display().to_string(),
         ),
         fd_path,
-        highlight: Rc::new(|code: &str| code.split('\n').map(str::to_string).collect()),
+        highlight,
         qol,
     };
     let mut app = App::new(options, Box::new(client));

@@ -301,6 +301,25 @@ fn command_for(case: &Value, session_id: Option<String>) -> client::runtime::Cli
     }
 }
 
+/// Every server log (`server-<id>.log`, where an "Internal server error" answer records its cause) under `dir`.
+fn server_logs(dir: &Path) -> String {
+    let mut text = String::new();
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if path.is_dir() {
+            text.push_str(&server_logs(&path));
+        } else if name.starts_with("server-") && name.ends_with(".log") {
+            text.push_str(&format!(
+                "{}:\n{}\n",
+                path.display(),
+                std::fs::read_to_string(&path).unwrap_or_default()
+            ));
+        }
+    }
+    text
+}
+
 #[test]
 fn cli_daemon_traffic_matches_typescript() {
     let fixture: Value = serde_json::from_str(include_str!("../../daemon/fixtures/traffic.json")).unwrap();
@@ -323,7 +342,9 @@ fn cli_daemon_traffic_matches_typescript() {
                 prompt: case["setup"]["prompt"].as_str().map(str::to_string),
                 ..Default::default()
             };
-            match client::runtime::run_client(&setup, &server.route()).unwrap() {
+            match client::runtime::run_client(&setup, &server.route())
+                .unwrap_or_else(|e| panic!("{name} setup: {e:?}\nserver logs:\n{}", server_logs(&home.root)))
+            {
                 client::runtime::ClientResult::Prompted { session_id: id, .. } => session_id = Some(id),
                 other => panic!("{name} setup: {other:?}"),
             }
@@ -335,7 +356,8 @@ fn cli_daemon_traffic_matches_typescript() {
             server_id: server.server_id.clone(),
             path: proxy_path,
         };
-        let result = client::runtime::run_client(&command_for(case, session_id), &route).unwrap();
+        let result = client::runtime::run_client(&command_for(case, session_id), &route)
+            .unwrap_or_else(|e| panic!("{name}: {e:?}\nserver logs:\n{}", server_logs(&home.root)));
         wait_drained(&pumps);
         let mut got = frames.lock().unwrap().clone();
         got.push(("result".into(), result.to_json()));

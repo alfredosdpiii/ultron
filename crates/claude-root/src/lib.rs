@@ -17,6 +17,7 @@ pub mod hooks;
 pub mod launcher;
 pub mod mcp_protocol;
 pub mod mcp_server;
+pub mod root_sink;
 pub mod self_cmd;
 pub mod settings;
 pub mod watch;

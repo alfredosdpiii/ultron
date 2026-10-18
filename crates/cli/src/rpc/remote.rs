@@ -547,13 +547,10 @@ pub fn run(
     input: Box<dyn std::io::Read + Send>,
     output: Box<dyn std::io::Write + Send>,
 ) -> Result<i32, String> {
-    let trace = (env.var)(client::startup_trace::TRACE_ENV);
-    client::startup_trace::trace_startup(trace.as_deref(), "rpc.open");
     let (tx, rx) = std::sync::mpsc::channel();
+    // The link traces rpc-native.ts's `rpc.open` .. `rpc.attached` milestones as it starts the server, selects the
+    // session and attaches.
     let mut session = Remote::open(parsed, env, target, tx.clone())?;
-    // The link opens the server's services, selects the session and attaches in one step: rpc-native.ts's
-    // `rpc.services-ready` and `rpc.session-selected` milestones fall inside it.
-    client::startup_trace::trace_startup(trace.as_deref(), "rpc.attached");
     // A signal ends RPC mode as the end of its input does (the session detaches, the server closes), then exits
     // with the signal's code.
     let signalled = Arc::new(std::sync::atomic::AtomicI32::new(0));

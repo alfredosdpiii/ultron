@@ -5,6 +5,7 @@
 
 pub mod focus;
 pub mod graph;
+pub mod highlight;
 pub mod pane;
 pub mod visualizer;
 

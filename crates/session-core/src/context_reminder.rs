@@ -174,6 +174,15 @@ impl ContextReminders {
         };
     }
 
+    /// `lane`'s own context meter (an in-memory subagent's loop, crate::memory_children), its limit unchanged;
+    /// `None` returns it to the session's meter.
+    pub fn set_lane_meter(&self, lane: &str, meter: Option<LaneMeter>) {
+        match meter {
+            Some(meter) => lock(&self.lane_meters).insert(lane.to_string(), meter),
+            None => lock(&self.lane_meters).remove(lane),
+        };
+    }
+
     /// An inference frame's lane (crate::frames): its own meter (the frame conversation's estimate) and its limit,
     /// the frame model's window (frames never compact). `None` ends both (the frame ended).
     pub fn set_frame_lane(&self, lane: &str, frame: Option<(Limit, LaneMeter)>) {

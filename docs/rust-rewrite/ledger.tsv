@@ -1300,7 +1300,7 @@ QOL-01	interactive	interactive qol autocomplete chain offers commands files emoj
 QOL-02	interactive	interactive qol clipboard paste image then text fallback	interactive_qol_clipboard_paste_image_then_text_fallback
 QOL-03	interactive	interactive qol dock keeps three editor rows in a short terminal	interactive_qol_dock_keeps_three_editor_rows_in_a_short_terminal
 QOL-04	interactive	interactive qol fullscreen mode keeps the alternate screen	interactive_qol_fullscreen_mode_keeps_the_alternate_screen
-QOL-05	interactive	interactive qol highlight styles rlm cells and fenced code	interactive_qol_highlight_styles_rlm_cells_and_fenced_code
+QOL-05	interactive	QoL highlighting styles fenced code blocks; rlm cells keep the cell highlighter (TS highlight.js port) either way	interactive_qol_highlight_styles_fenced_code_and_leaves_rlm_cells_to_the_cell_highlighter
 QOL-06	interactive	interactive qol pasted image path becomes an attachment sent with the prompt	interactive_qol_pasted_image_path_becomes_an_attachment_sent_with_the_prompt
 QOL-07	interactive	interactive qol render gate writes nothing while the writer is backlogged	interactive_qol_render_gate_writes_nothing_while_the_writer_is_backlogged
 QOL-08	interactive	interactive qol service writes reach the terminal queue	interactive_qol_service_writes_reach_the_terminal_queue
@@ -3097,6 +3097,33 @@ W12D-01	cli	autoreview doctor runs autoreview_tests.py doctor [image] with the k
 W12D-02	cli	autoreview doctor --repo lists bound environments from autoreview_tests.py environments <checkout> (60 s)	cli_autoreview_doctor_repo_lists_bound_environments_from_the_script
 W12D-03	extensions	session_before_* veto through a real extension process	extensions_process_events_veto
 W12D-04	telemetry	clear_crash_log on a directory is a no-op; a missing crash log reads empty	telemetry_clear_crash_log_is_best_effort
+W13C-01	cli/rpc	ULTRON_STARTUP_TRACE in RPC mode: CLI-process milestones in TS order (cli.native, cli.list-sessions, server.*, cli.server-started, rpc.open, rpc.services-ready, rpc.session-selected, server.spawn-worker, rpc.attached) from Link::open	cli_rpc_startup_trace_appends_milestones_as_json_lines
+W13C-02	cli/tui	the TUI opens its session through the same link and traces no rpc.* milestones	cli_rpc_startup_trace_milestones_are_not_traced_by_the_tui
+W13C-03	cli/bug	/bug report.json provider section (name, baseUrl, authTypes, authStatus sources/labels, usingOAuth) matches TS describeProvider over ModelRuntime for every built-in and models.json case	cli_bug_report_provider_section_matches_typescript
+W13C-04	cli/bug	--api-key reports authStatus "runtime" ahead of stored; a provider only an extension declares is registeredByExtension	cli_bug_report_provider_runtime_key_and_extension_provider
+W13C-05	cli/bug	product path: /bug in the TUI of `ultron --api-key` exports a report whose provider section is the session model's provider (models.json baseUrl override, runtime key)	cli_bug_report_provider_section_of_the_tui_report
+W13E-01	tui/hljs	JS regex sources keep JavaScript semantics (ASCII \w \b, JS \s, . and multi-line ^ $, literal braces)	hljs_js_regex_has_javascript_semantics
+W13E-02	interactive/rlm	rlm cells highlighted by the highlight.js port: tokens equal hljs HTML and lines equal TS highlightCode, 401 cells x 2 themes	interactive_rlm_highlight_matches_highlightjs_and_ts_highlight_code
+W13E-03	interactive/rlm	highlightCode for an unknown language: mdCodeBlock per line; py alias	interactive_rlm_highlight_unknown_language_uses_md_code_block
+W13E-04	interactive/rlm	ToolExecution rlm cell with the product highlighter matches TS	interactive_rlm_cell_matches_ts
+W13E-05	session-core/frames	frame traces and rlm.frames index survive a resume	session_core_frame_traces_survive_a_resume
+W13E-06	session-core/frames	a tree fork copies frame traces	session_core_frame_traces_are_copied_by_a_tree_fork
+W13E-07	session-core/frames	a branch fork starts without frame traces	session_core_frame_traces_are_not_copied_by_a_branch_fork
+W13E-08	ai/bedrock	credentials expiring within 5 min sign and are refreshed in the background (one late request)	ai_bedrock_credentials_container_expiring_soon_refreshes_in_background
+W13E-09	ai/bedrock	expired credentials are looked up again and the second set signs	ai_bedrock_credentials_container_expired_is_looked_up_again
+W13E-10	ai/bedrock	second-lookup thresholds of the SDK cache	ai_bedrock_credentials_second_lookup_follows_the_sdk_cache
+W13E-11	ai/bedrock	login refresh failure keeps the token; its background refresh repeats the call's request	ai_bedrock_credentials_login_refresh_failure_keeps_a_valid_token
+W13E-12	claude-root	root sink window is 500 ms	claude_root_sink_window_is_the_dispatchers_500_ms
+W13E-13	claude-root	external-root events delivered when the first event's window closes (pending until then)	claude_root_sink_delivers_a_batch_when_its_first_events_window_closes
+W13E-14	claude-root	an event after a closed window opens the next batch	claude_root_sink_an_event_after_the_window_opens_the_next_batch
+W13E-15	claude-root	ultron-mode children of the Claude root are steered by the agent hub	claude_root_ultron_children_are_steered_by_the_agent_hub
+W13E-16	claude-root	ultron-mode children of the Claude root get the context-pressure reminder	claude_root_ultron_children_get_the_context_reminder
+W13E-17	session-core/mcp	an extension's mcp tool replaces the built-in gateway (no servers, guide, /mcp, adapter notice)	session_core_an_extensions_mcp_tool_replaces_the_builtin_gateway
+W13E-18	session-core/mcp	without such an extension the gateway, its guide, /mcp and the adapter notice stay	session_core_without_an_mcp_extension_the_builtin_gateway_stays
+W13F-1	session-journal	directory session listing is newest file mtime first, then newest createdAt, this cwd only (listNativeSessions)	session_journal_lists_sessions_newest_modified_first
+W13F-2	interactive	/name shows the name and "Session name set" only after the worker's session_name event confirms it (TS awaits setName); another name event is not the confirmation	interactive_slash_commands
+W13F-3	interactive	an unconfirmed /name is dropped when another session opens	interactive_name_notice_is_not_carried_across_a_session_switch
+W13F-4	cli	/name before the late model title wins deterministically: stored names are [first prompt, user name]	cli_interactive_slash_name_wins_over_late_title
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

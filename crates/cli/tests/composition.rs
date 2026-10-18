@@ -6,8 +6,8 @@
 mod common;
 
 use common::{
-    Naming, Sandbox, anthropic_text, anthropic_tool, assert_private_home, mock_server, routed_server, session_files,
-    tool_result_text,
+    Naming, Sandbox, anthropic_text, anthropic_tool, assert_private_home, mock_server, routed_server,
+    routed_server_held, session_files, tool_result_text,
 };
 use kernel::Signal;
 use kernel_apis::MemoryBackend;
@@ -212,7 +212,7 @@ fn cli_composition_cell_calls_an_extension_function_never_a_tool() {
 fn cli_composition_delegation_child_done_continues_the_run() {
     // Host collect mode: the cell that spawns never waits; the parent ends its turn, the host waits for the child,
     // and the child's end continues the run as a child_done runtime event; collecting then returns its result.
-    let (port, seen) = routed_server(
+    let (port, seen) = routed_server_held(
         vec![
             anthropic_tool(
                 "toolu_s",
@@ -227,6 +227,9 @@ fn cli_composition_delegation_child_done_continues_the_run() {
         ],
         "say hi",
         vec![anthropic_text("hi from the child")],
+        // The child answers only once the spawning cell is over (its result is the parent's second request): a
+        // child that finished before the cell's `collect` would make that collect return instead of refusing.
+        2,
     );
     let sandbox = sandbox(port);
     let output = run(&sandbox, &["-p", "--model", MODEL, "delegate"]);

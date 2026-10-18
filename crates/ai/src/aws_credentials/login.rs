@@ -100,8 +100,9 @@ fn expiry(token: &Map<String, Value>) -> Option<i64> {
         .and_then(parse_js_date)
 }
 
-/// `toCredentials`.
-fn credentials(token: &Map<String, Value>) -> AwsCredentials {
+/// `toCredentials` (`expiration: new Date(token.expiresAt)`).
+fn credentials(input: &super::ChainInput<'_>, token: &Map<String, Value>) -> AwsCredentials {
+    input.expiration.set(expiry(token));
     let field = |key: &str| {
         token
             .get("accessToken")
@@ -124,7 +125,7 @@ pub(super) async fn from_login(input: &super::ChainInput<'_>, profile: &super::S
     // `expiryTime - now <= REFRESH_THRESHOLD` (an unparsable date is NaN: never refreshed).
     match expiry(&token) {
         Some(at) if at - input.now_ms <= REFRESH_THRESHOLD_MS => refresh(input, profile, &path, token).await,
-        _ => Ok(credentials(&token)),
+        _ => Ok(credentials(input, &token)),
     }
 }
 
@@ -141,7 +142,7 @@ async fn refresh(
     let token_valid = expiry(&token).is_some_and(|at| at > now);
     let fresh = if disk_expired && token_valid { token } else { disk };
     if expiry(&fresh).is_some_and(|at| at - now > REFRESH_THRESHOLD_MS) {
-        return Ok(credentials(&fresh));
+        return Ok(credentials(input, &fresh));
     }
     match create_token(input, profile, path, &fresh).await {
         Ok(credentials) => Ok(credentials),
@@ -157,7 +158,7 @@ async fn refresh(
         Err(Failure::Other(text)) => {
             // The SDK logs a warning and keeps the token until it expires.
             if expiry(&fresh).is_some_and(|at| at > now) {
-                return Ok(credentials(&fresh));
+                return Ok(credentials(input, &fresh));
             }
             Err(CredentialError::next(format!(
                 "Failed to refresh token: {text}. Please re-authenticate using aws login"
@@ -275,7 +276,7 @@ async fn create_token(
     let text = serde_json::to_string_pretty(&Value::Object(updated.clone())).unwrap_or_default();
     std::fs::write(path, text)
         .map_err(|e| Failure::Other(thrown("Error", &fs_error(&e, &path.display().to_string()))))?;
-    Ok(credentials(&updated))
+    Ok(credentials(input, &updated))
 }
 
 /// `generateDpop`: an ES256 `dpop+jwt` over the request (`htm`, `htu`, `iat`, a random `jti`), signed with the

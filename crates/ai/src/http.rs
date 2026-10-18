@@ -71,6 +71,12 @@ pub trait Transport: Send + Sync {
         Err("this HTTP transport cannot present a TLS client certificate".into())
     }
 
+    /// A copy of this transport that owns its connections, for work that outlives the call on another thread and
+    /// runtime (the AWS SDK's background credential refresh); `None` when it cannot, and that work is skipped.
+    fn detached(&self) -> Option<Arc<dyn Transport>> {
+        None
+    }
+
     /// This transport speaking HTTP/1.1 only (the SDK's `NodeHttpHandler` in place of its HTTP/2 handler); `None`
     /// when it cannot, and requests keep this transport.
     fn http1_only(&self) -> Option<Arc<dyn Transport>> {
@@ -723,6 +729,21 @@ impl Transport for ReqwestTransport {
             .map_err(|e| e.to_string())?;
         Ok(Arc::new(ReqwestTransport {
             client,
+            timeout: self.timeout,
+            idle: self.idle,
+            config: self.config.clone(),
+        }))
+    }
+
+    /// A new client (its own connection pool, so it works on another runtime) built as this one was; a caller's own
+    /// client is rebuilt without a proxy, as [`Transport::websocket`] does.
+    fn detached(&self) -> Option<Arc<dyn Transport>> {
+        let builder = match &self.config {
+            Some(config) => config.builder().ok()?,
+            None => reqwest::Client::builder().no_proxy(),
+        };
+        Some(Arc::new(ReqwestTransport {
+            client: builder.build().ok()?,
             timeout: self.timeout,
             idle: self.idle,
             config: self.config.clone(),

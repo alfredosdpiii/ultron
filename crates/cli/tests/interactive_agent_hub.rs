@@ -62,6 +62,9 @@ fn cli_interactive_agent_hub_steers_a_running_subagent() {
     tui.send_keys(&["Escape"]);
     tui.wait("Steered \"");
 
+    // Both held answers are holding before the release (a release frees only the replies already held: under load
+    // the child's first request could arrive after it and hold forever).
+    mock.wait_held(2);
     mock.release();
     // Reopening the transcript reads it again: the envelope, then the steered answer.
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
