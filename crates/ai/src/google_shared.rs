@@ -452,12 +452,3 @@ pub fn map_stop_reason(reason: &str) -> Result<StopReason, String> {
         other => Err(format!("Unhandled stop reason: {other}")),
     }
 }
-
-/// `mapStopReasonString` for raw API responses.
-pub fn map_stop_reason_string(reason: &str) -> StopReason {
-    match reason {
-        "STOP" => StopReason::Stop,
-        "MAX_TOKENS" => StopReason::Length,
-        _ => StopReason::Error,
-    }
-}

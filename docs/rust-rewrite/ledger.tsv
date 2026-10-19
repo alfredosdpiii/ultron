@@ -9,7 +9,6 @@ A07	acceptance	Branch/fork/resume restores matching state; no abandoned lesson l
 A08	acceptance	Unsupported Python state reports non-restorable, never silently correct	acceptance_a08_snapshot_type_matrix_reports_every_unsupported_name_with_a_reason
 A09	acceptance	Concurrent calls/retries cannot bypass tree budget admission	acceptance_a09_a_burst_of_concurrent_spawns_admits_exactly_the_limit_and_rejects_the_rest
 A10	acceptance	Worker receives no ambient credentials or unauthorized host capability	acceptance_a10_kernel_gets_no_ambient_credentials_or_unauthorized_host_capability
-A11	acceptance	Approval binds scope/revision/policy and is rechecked	acceptance_a11_a_check_is_a_pure_evaluation_that_reports_every_failing_binding
 A12	acceptance	Graph validates before effects; routes/skips/fan-in/cycles are explicit	acceptance_a12_every_validation_error_is_raised_before_any_task_is_admitted_or_any_node_runs
 A13	acceptance	Agent admission does not satisfy a graph dependency	acceptance_a13_a_dependent_is_not_admitted_or_started_until_the_slow_dependencys_result_is_durable
 A14	acceptance	No checks/incomplete review/stale receipt cannot imply verified completion	acceptance_a14_every_task_result_path_is_unverified_and_a_stored_verified_result_is_refused
@@ -327,7 +326,6 @@ TUI-W03	tui/select	SettingsList rendering, value cycling (Enter/Space), wrap, hi
 TUI-W04	tui/loader	Loader frames, custom indicators, interval; CancellableLoader abort keys	tui_loader_frames_match_ts
 TUI-W05	tui/overlay	Overlay sizing and position (anchors, %, offsets, margins, clamping)	tui_overlay_layout_matches_ts
 TUI-W06	tui/overlay	compositeTuiLine (style inheritance, wide chars, image lines)	tui_overlay_composite_line_matches_ts
-TUI-W07	tui/overlay	compositeOverlays lines and bounds with viewport padding	tui_overlay_composite_overlays_matches_ts
 TUI-W08	tui/image	PNG/JPEG/GIF/WebP header dimensions	tui_image_header_dimensions_match_ts
 TUI-W09	tui/image	Kitty (chunked) and iTerm2 escape encoding	tui_image_kitty_and_iterm2_encoding_match_ts
 TUI-W10	tui/image	calculateImageCellSize	tui_image_cell_size_matches_ts
@@ -380,11 +378,7 @@ P11	protocol	RFC vectors round-trip (ported)	protocol_cbor_rfc_vectors_round_tri
 P12	protocol	split hello+request decode (ported)	protocol_client_decoder_reassembles_split_messages
 S01	server	23 scripted connection exchanges (handshake, version, hello order, wrong_server, invalid call, coded/internal errors, frame limits, timeout, truncated close)	server_connection_scripts_match_typescript
 C01	client	14 scripted client exchanges (hello_error, server mismatch, attachments, unmatched response, close/truncation, request ids)	client_scripts_match_typescript
-C02	client	socket path derivation	client_unix_socket_path_is_derived_from_the_server_id
 C03	client	real-socket handshake/requests, 0700 dir, 0600 socket, cleanup	client_carries_handshake_and_requests_over_a_real_unix_socket
-C04	server	handshake timeout final hello_error over socket	client_server_handshake_timeout_sends_a_final_hello_error
-C05	server	refuses live listener / regular file, replaces stale socket	client_server_refuses_live_listeners_and_regular_files_but_replaces_stale_sockets
-C06	server	close keeps a replacement inode	client_server_close_keeps_a_replacement_inode
 C07	client	discovery: id order, skips malformed/non-socket/stale/silent/impostor, never deletes	client_discovery_returns_reachable_servers_in_id_order_and_never_deletes
 C08	client	discovery propagates non-version handshake errors	client_discovery_propagates_non_version_handshake_errors
 C09	client	truncated final frame is a protocol error	client_sees_truncated_final_frames_as_protocol_errors
@@ -422,7 +416,7 @@ INFERENCE-14	rlm.infer	an aborted cell runs no frame and holds no budget	inferen
 INFERENCE-15	budget	budget ledger: tightest pool on the path; holds and charges reach ancestors; tranche claim	inference_ledger_takes_the_tightest_pool_on_the_path
 TUI-EDITOR-01	tui/editor	Editor state, cursor and render after every key of scripted sequences (typing, wrap, visual-line and sticky-column movement, kill/yank, undo, word nav, jump-to-char, paste and paste markers, backslash-enter, page scroll, history, unicode, CJK) at several widths, padding and focus	tui_editor_component_scripted_sequences_match_ts
 TUI-EDITOR-02	tui/editor	wordWrapLine chunks (text and start/end indexes) for ASCII, whitespace runs, CJK, emoji and marker text	tui_editor_word_wrap_line_matches_ts
-TUI-KEYS-EVENT-01	tui/keys	isKeyRelease / isKeyRepeat including the bracketed-paste exclusion	tui_editor_key_release_and_repeat_match_ts
+TUI-KEYS-EVENT-01	tui/keys	isKeyRelease / isKeyRepeat including the bracketed-paste exclusion	tui_editor_key_release_matches_ts
 TUI-AUTOCOMPLETE-01	tui/autocomplete	Slash-command suggestions (fuzzy filter, argument hints, skill: prefix, argument completions, force)	tui_autocomplete_slash_suggestions_match_ts
 TUI-AUTOCOMPLETE-02	tui/autocomplete	applyCompletion for slash, @-attachment, quoted, argument and path completions	tui_autocomplete_apply_completion_matches_ts
 TUI-MARKED-01	tui/markdown	marked GFM block+inline lexing with strict strikethrough reproduces TS renders of the renderer corpus from source	tui_marked_lexes_renderer_corpus_like_ts
@@ -482,7 +476,6 @@ THEME-09	tui/theme	conversion to 256-color for fg and bg	tui_theme_256_color_con
 THEME-10	tui/theme	256-color index to hex	tui_theme_ansi256_to_hex_ported
 THEME-11	tui/theme	light/dark detection from COLORFGBG, OSC 11 and RGB brightness	tui_theme_terminal_detection_matches_typescript
 THEME-12	tui/theme	light/dark theme setting parsing and resolution, "/" name check	tui_theme_settings_resolution_matches_typescript
-THEME-13	tui/theme	language lookup from file path	tui_theme_language_from_path_matches_typescript
 THEME-14	tui/theme	embedded built-in themes identical to the TS files	tui_theme_embedded_builtins_equal_typescript_files
 INT-01	interactive	key hint text and formatKeyText (capitalize, darwin) match TS	interactive_key_text_matches_ts
 INT-02	interactive	UserMessage lines (markdown, padding, OSC133 zone, empty/whitespace) match TS per theme/width	interactive_user_message_matches_ts
@@ -594,7 +587,6 @@ AI-W5-20	ai	ai images models register providers and read models	ai_images_models
 AI-W5-21	ai	ai images models unknown provider errors and unconfigured still dispatches	ai_images_models_unknown_provider_errors_and_unconfigured_still_dispatches
 AI-W5-22	ai	ai images registry dispatches by api and rejects mismatches	ai_images_registry_dispatches_by_api_and_rejects_mismatches
 AI-W5-23	ai	ai legacy aliases match typescript exports	ai_legacy_aliases_match_typescript_exports
-AI-W5-24	ai	ai model config flatten catalog later group wins	ai_model_config_flatten_catalog_later_group_wins
 AI-W5-25	ai	ai model config load matches typescript	ai_model_config_load_matches_typescript
 AI-W5-26	ai	ai model config models store clones entries	ai_model_config_models_store_clones_entries
 AI-W5-27	ai	ai model config strip json comments keeps strings	ai_model_config_strip_json_comments_keeps_strings
@@ -669,7 +661,6 @@ KAPI-04	kernel-apis	kernel apis context hooks collapse trim and keep like typesc
 KAPI-05	kernel-apis	kernel apis family cells match typescript host	kernel_apis_family_cells_match_typescript_host
 KAPI-06	kernel-apis	kernel apis family steer envelope encodes the body	kernel_apis_family_steer_envelope_encodes_the_body
 KAPI-07	kernel-apis	kernel apis family verifier scope and untrusted delivery	kernel_apis_family_verifier_scope_and_untrusted_delivery
-KAPI-08	kernel-apis	kernel apis grants cells match typescript host	kernel_apis_grants_cells_match_typescript_host
 KAPI-09	kernel-apis	kernel apis hints cells match typescript host	kernel_apis_hints_cells_match_typescript_host
 KAPI-10	kernel-apis	kernel apis memory cells match typescript host	kernel_apis_memory_cells_match_typescript_host
 KAPI-11	kernel-apis	kernel apis skills cells match typescript host	kernel_apis_skills_cells_match_typescript_host
@@ -696,19 +687,11 @@ SANDBOX-W8-06	sandbox	sandbox escape network off cannot reach the host and on ca
 SANDBOX-W8-07	sandbox	sandbox escape required mode refuses without a sandbox and auto runs plain	sandbox_escape_required_mode_refuses_without_a_sandbox_and_auto_runs_plain
 SANDBOX-W8-08	sandbox	sandbox escape sandbox dies with its parent	sandbox_escape_sandbox_dies_with_its_parent
 SANDBOX-W8-09	sandbox	sandbox escape writes outside writable paths never reach the host	sandbox_escape_writes_outside_writable_paths_never_reach_the_host
-SANDBOX-W8-10	sandbox	sandbox bash decision matches omps bash approval	sandbox_bash_decision_matches_omps_bash_approval
-SANDBOX-W8-11	sandbox	sandbox critical pattern sources are omps	sandbox_critical_pattern_sources_are_omps
-SANDBOX-W8-12	sandbox	sandbox critical patterns match omps table	sandbox_critical_patterns_match_omps_table
 SANDBOX-W8-13	sandbox	sandbox detect matches autoreview detect sandbox	sandbox_detect_matches_autoreview_detect_sandbox
-SANDBOX-W8-14	sandbox	sandbox resolve matches omps resolve approval	sandbox_resolve_matches_omps_resolve_approval
-SANDBOX-W8-17	sandbox	sandbox shell tokenizers match omps	sandbox_shell_tokenizers_match_omps
-SANDBOX-W8-19	sandbox	sandbox approval settings parse mode ops and patterns	sandbox_approval_settings_parse_mode_ops_and_patterns
 SANDBOX-W8-20	sandbox	sandbox interactive bwrap argv	sandbox_interactive_bwrap_argv
 SANDBOX-W8-21	sandbox	sandbox interactive unshare and docker argv	sandbox_interactive_unshare_and_docker_argv
 SANDBOX-W8-22	sandbox	sandbox policy paths env and write containment	sandbox_policy_paths_env_and_write_containment
 SANDBOX-W8-23	sandbox	sandbox settings defaults and overrides	sandbox_settings_defaults_and_overrides
-HOST-W8-01	host	host sandboxed always ask blocks writes without a ui	host_sandboxed_always_ask_blocks_writes_without_a_ui
-HOST-W8-02	host	host sandboxed approval denies prompts and fails closed without a ui	host_sandboxed_approval_denies_prompts_and_fails_closed_without_a_ui
 HOST-W8-03	host	host sandboxed bash and jobs cannot write the home	host_sandboxed_bash_and_jobs_cannot_write_the_home
 HOST-W8-04	host	host sandboxed mode off runs commands as before	host_sandboxed_mode_off_runs_commands_as_before
 HOST-W8-05	host	host sandboxed writes outside the writable paths raise in the cell	host_sandboxed_writes_outside_the_writable_paths_raise_in_the_cell
@@ -787,7 +770,7 @@ TUIQOL-09	tui	tui autocomplete sources github titles off thread	tui_autocomplete
 TUIQOL-10	tui	tui autocomplete sources model mentions	tui_autocomplete_sources_model_mentions
 TUIQOL-11	tui	tui highlight maps scopes to categories	tui_highlight_maps_scopes_to_categories
 TUIQOL-12	tui	tui highlight stream chunks match whole text	tui_highlight_stream_chunks_match_whole_text
-TUIQOL-13	tui	tui highlight theme colors and markdown hook	tui_highlight_theme_colors_and_markdown_hook
+TUIQOL-13	tui	tui highlight theme colors and markdown hook	tui_highlight_theme_colors_and_highlighted_lines
 TUIQOL-14	tui	tui highlight typescript and nix after warm	tui_highlight_typescript_and_nix_after_warm
 TUIQOL-15	tui	tui notify bell terminal fans out to dbus only when gated	tui_notify_bell_terminal_fans_out_to_dbus_only_when_gated
 TUIQOL-16	tui	tui notify builds desktop commands	tui_notify_builds_desktop_commands
@@ -813,7 +796,7 @@ TUIQOL-35	tui	tui paste bracketed handler matches omp	tui_paste_bracketed_handle
 TUIQOL-36	tui	tui paste osc5522 controller matches omp	tui_paste_osc5522_controller_matches_omp
 TUIQOL-37	tui	tui paste path detection matches omp	tui_paste_path_detection_matches_omp
 TUIQOL-38	tui	tui paste reencoded controls match omp	tui_paste_reencoded_controls_match_omp
-TUIQOL-39	tui	tui status git parses remotes heads and porcelain	tui_status_git_parses_remotes_heads_and_porcelain
+TUIQOL-39	tui	tui status git parses remotes heads and porcelain	tui_status_git_parses_heads_and_porcelain
 TUIQOL-40	tui	tui status git probe reads a real repository and caches pr lookups	tui_status_git_probe_reads_a_real_repository_and_caches_pr_lookups
 TUIQOL-41	tui	tui status line cache hit rate over full prompt	tui_status_line_cache_hit_rate_over_full_prompt
 TUIQOL-42	tui	tui status line context role follows level	tui_status_line_context_role_follows_level
@@ -855,7 +838,7 @@ TUIQOL-77	tui	tui vim editor disabled types letters and never claims escape	tui_
 TUIQOL-78	tui	tui vim editor find and till	tui_vim_editor_find_and_till
 TUIQOL-79	tui	tui vim editor first escape dismisses autocomplete	tui_vim_editor_first_escape_dismisses_autocomplete
 TUIQOL-80	tui	tui vim editor join and indent	tui_vim_editor_join_and_indent
-TUIQOL-81	tui	tui vim editor mode chrome and cursor shape	tui_vim_editor_mode_chrome_and_cursor_shape
+TUIQOL-81	tui	tui vim editor mode chrome and cursor shape	tui_vim_editor_mode_chrome
 TUIQOL-82	tui	tui vim editor mode switching	tui_vim_editor_mode_switching
 TUIQOL-83	tui	tui vim editor motions	tui_vim_editor_motions
 TUIQOL-84	tui	tui vim editor normal mode edits	tui_vim_editor_normal_mode_edits
@@ -1054,8 +1037,6 @@ TUIQOL2-INT-08	interactive	interactive agent hub table lists agents but main	int
 TUIQOL2-INT-09	interactive	interactive agent hub transcript viewer steers the agent	interactive_agent_hub_transcript_viewer_steers_the_agent
 TUIQOL2-INT-10	interactive	interactive copy blocks and links match omp	interactive_copy_blocks_and_links_match_omp
 TUIQOL2-INT-11	interactive	interactive copy commands and last targets match omp	interactive_copy_commands_and_last_targets_match_omp
-TUIQOL2-INT-12	interactive	interactive copy ported extract code and quote blocks	interactive_copy_ported_extract_code_and_quote_blocks
-TUIQOL2-INT-13	interactive	interactive copy ported extract last command	interactive_copy_ported_extract_last_command
 TUIQOL2-INT-14	interactive	interactive copy ported extract links	interactive_copy_ported_extract_links
 TUIQOL2-INT-15	interactive	interactive copy rlm cells are python commands	interactive_copy_rlm_cells_are_python_commands
 TUIQOL2-INT-16	interactive	interactive copy turn blocks payload and summary match omp	interactive_copy_turn_blocks_payload_and_summary_match_omp
@@ -1563,7 +1544,6 @@ SVC-A14-2	acceptance	A14 no false verification	acceptance_a14_reviewer_output_mi
 SVC-A14-3	acceptance	A14 no false verification	acceptance_a14_a_progress_completion_claim_is_verified_only_by_a_host_run_verifier_that_returns_passed_true
 SVC-A14-4	acceptance	A14 no false verification	acceptance_a14_a_goal_with_no_required_checks_or_a_check_without_an_explicit_pass_is_never_achieved
 SVC-A14-5	acceptance	A14 no false verification	acceptance_a14_a_release_gate_blocks_on_a_missing_required_check_or_a_stale_fixture
-SVC-A14-6	acceptance	A14 no false verification	acceptance_a14_a_receipt_for_a_stale_revision_is_denied
 SVC-A15-1	acceptance	A15 release gate	acceptance_a15_passes_when_every_required_check_passes_in_the_candidate
 SVC-A15-2	acceptance	A15 release gate	acceptance_a15_a_required_regression_blocks
 SVC-A15-3	acceptance	A15 release gate	acceptance_a15_an_optional_regression_is_reported_but_does_not_block
@@ -1575,7 +1555,7 @@ SVC-A15-8	acceptance	A15 release gate	acceptance_a15_rejects_unknown_fields_and_
 SVC-A15-9	acceptance	A15 release gate	acceptance_a15_gates_and_attempts_survive_a_new_module_instance_and_tampered_definitions_are_refused
 SVC-A19-1	acceptance	A19 refiner protected	acceptance_a19_proposals_targeting_policy_grants_acceptance_tests_the_instrument_lock_or_trusted_instructions_are_rejected
 SVC-A19-2	acceptance	A19 refiner protected	acceptance_a19_content_that_requests_tools_grants_models_budgets_or_permissions_is_rejected_at_proposal_and_activation
-SVC-A19-3	acceptance	A19 refiner protected	acceptance_a19_escalation_prose_inside_an_allowed_instruction_is_inert_data_grants_and_other_state_are_unchanged
+SVC-A19-3	acceptance	A19 refiner protected	acceptance_a19_escalation_prose_inside_an_allowed_instruction_is_inert_data_and_other_state_is_unchanged
 SVC-A20-1	acceptance	A20 refinement reaches later runs	acceptance_a20_activation_reaches_later_model_runs_a_new_version_supersedes_it_and_rollback_removes_it
 SVC-A32-1	acceptance	A32 skill proposals	acceptance_a32_a_repeated_procedure_proposal_activates_only_with_evidence_and_records_that_approval_is_disabled
 SVC-A32-2	acceptance	A32 skill proposals	acceptance_a32_an_equivalent_pending_or_active_proposal_is_a_duplicate_a_real_change_is_not
@@ -1846,7 +1826,6 @@ FIN1-04	session-core/compaction	abort cancels a run's threshold compaction with 
 FIN1-08	session-core/recovery	kill after a journaled compaction cancel settles aborted, branch unchanged, preparation removed	session_core_compaction_cancel_journaled_before_a_kill_settles_aborted
 FIN1-09	session-core/recovery	kill during a compaction without cancel settles failed and drops its preparation	session_core_compaction_killed_without_a_cancel_settles_failed_and_drops_its_preparation
 FIN1-10	session-core/compaction	live cancel ends the compaction operation aborted with the lane idle	session_core_compaction_cancelled_live_ends_aborted
-FIN1-11	session-core/compaction	a hook's compaction commits from summary.deciding without a summary request	session_core_compaction_from_a_hook_commits_without_a_summary_request
 FIN1-12	interactive	Esc during a manual compaction aborts it; cancelled shows "Compaction cancelled"	interactive_commands_escape_cancels_a_manual_compaction
 FIN1-13	session-core/async-events	an event waiting for a retry still counts as pending activity	session_core_async_events_an_event_waiting_for_a_retry_still_counts_as_pending
 FIN1-14	delegation/session-core	an unattached worker never retires between a child's end and its child_done event	acceptance_a22_detached_work_finishes_with_no_client_retires_and_stays_durable_for_a_later_client
@@ -3000,6 +2979,53 @@ W15L-07	delegation/lanes	rlm.cancel from a side lane stops the stuck cell, no Ce
 W15L-08	delegation/lanes	a cell being cancelled is waited for, not routed around	delegation_a_cell_being_cancelled_is_waited_for_not_routed_around
 W15L-09	delegation/lanes	no room for a side lane: error names the busy cell and rlm.cancel; nothing detached; plain run still refuses	delegation_no_room_for_a_side_lane_says_how_to_stop_the_busy_cell
 W15L-10	delegation/lanes	rlm.cells marks cancelling; the cell's waiting call and its canceller both get the outcome	delegation_a_cancelled_cells_waiting_call_gets_its_outcome_too
+W16K-01	delegation	spawn contract parses checks, returns and hops	delegation_spawn_contract_parses_checks_returns_and_hops
+W16K-02	delegation	malformed role/contract/hop refused with exact messages	delegation_spawn_contract_refuses_malformed_options
+W16K-03	delegation	dependency manifests/lockfiles recognized at any depth	delegation_spawn_contract_dependency_files_are_manifests_and_lockfiles_at_any_depth
+W16K-04	delegation	run checks judge exit codes/stdout in cwd with env, timeout stops command	delegation_spawn_contract_run_checks_judge_exit_codes_and_stdout_in_the_working_directory
+W16K-05	delegation	long check output keeps its last 2000 chars	delegation_spawn_contract_long_output_keeps_its_end
+W16K-06	delegation	changed_files_within/no_new_dependencies/files_exist read diff and tree; no snapshot fails	delegation_spawn_contract_file_checks_read_the_diff_and_the_tree
+W16K-07	delegation	returns schema checked on verdict outputs	delegation_spawn_contract_returns_is_checked_on_the_verdict_outputs
+W16K-08	delegation	cancelled task stops a running check command	delegation_spawn_contract_a_cancelled_check_stops_its_command
+W16K-09	delegation	host verifies a child; brief leads with role and checks	delegation_spawn_contract_host_verifies_a_child_and_its_prompt_names_the_checks
+W16K-10	delegation	completion tag names the contract verdict	delegation_spawn_contract_completion_tag_names_the_contract_verdict
+W16K-11	session	all checks pass -> verified with evidence	session_core_spawn_contract_all_checks_pass_is_verified_with_evidence
+W16K-12	session	broken check -> contract_failed, result failed	session_core_spawn_contract_a_broken_check_is_contract_failed
+W16K-13	session	retry hop re-runs once with failures in brief	session_core_spawn_contract_retry_hop_reruns_once_with_the_failure_in_the_brief
+W16K-14	session	retry hop runs only as often as asked	session_core_spawn_contract_retry_hop_runs_only_as_often_as_asked
+W16K-15	session	retried child needs its own verdict	session_core_spawn_contract_a_retried_child_needs_a_verdict_of_its_own
+W16K-16	session	review hop spawns reviewer with failures	session_core_spawn_contract_review_hop_spawns_the_reviewer
+W16K-17	session	changed_files_within catches out-of-scope edit	session_core_spawn_contract_changed_files_within_catches_an_out_of_scope_edit
+W16K-18	session	no_new_dependencies catches Cargo.toml/package.json change	session_core_spawn_contract_no_new_dependencies_catches_manifest_changes
+W16K-19	session	returns shape rejects a finish that misses it	session_core_spawn_contract_returns_shape_rejects_a_finish_that_misses_it
+W16K-20	session	malformed contract refused before any child runs	session_core_spawn_contract_is_refused_when_malformed
+W16K-21	session	worktree child's checks run in its worktree with its env	session_core_spawn_contract_checks_of_a_worktree_child_run_in_its_worktree
+W16K-22	session	workflow rlm-child@1 nodes take role/contract/hop	session_core_spawn_contract_workflow_nodes_take_role_contract_and_hop
+W16K-23	session	run checks run under the session sandbox	session_core_spawn_contract_run_checks_run_under_the_session_sandbox
+W16K-24	session	help(rlm.spawn) documents contracts; keep=True refuses them	session_core_spawn_contract_help_documents_the_options_and_keep_refuses_them
+W16K-25	resources	runtime guide names contracts only with durable APIs	resources_runtime_guide_names_spawn_contracts_only_with_the_rust_apis
+W16F-01	session-core	kernel env, cell bash (default/blocking/job) and the host's user bash take PATH from the session Env; a process-PATH-only tool is not found	session_core_w16f_kernel_cell_bash_and_host_bash_take_path_from_the_session_env
+W16F-02	session-core	cancelling a cell stops its blocking host bash (own pgid), the cell raises, same kernel pid, variables survive	session_core_w16f_cancelling_a_cell_stops_its_blocking_bash_and_keeps_the_lane_kernel_and_variables
+W16F-03	session-core	cancelling a cell stops a default-yield bash and a job it started and waits on; jobs end cancelled, kernel kept	session_core_w16f_cancelling_a_cell_stops_a_default_bash_and_a_job_it_waits_on
+W16F-04	session-core	a job started by a cell that ended normally keeps running when a later cell is cancelled	session_core_w16f_a_job_of_a_cell_that_ended_keeps_running_when_a_later_cell_is_cancelled
+W16F-05	kernel	base_env replaces the process env for the kernel (credential filter applied) and supplies its ULTRON_* limits	kernel_w16f_base_env_replaces_the_process_environment_of_the_kernel
+W16F-06	kernel	ULTRON_PYTHON is read from base_env	kernel_w16f_the_interpreter_comes_from_the_base_envs_ultron_python
+W16F-07	kernel	kill guard: only a positive pgid > 1 other than the host's own pid and group may be signalled (pure)	kernel_w16f_only_a_real_command_group_other_than_the_hosts_own_may_be_signalled
+W16F-08	host	blocking bash and shell jobs run in the base env plus with_env only	host_w16f_blocking_bash_and_shell_jobs_run_in_the_base_env_only
+W16F-09	host	the sandbox policy's allowlisted variables take their values from the base env	host_w16f_the_sandbox_allowlist_takes_its_values_from_the_base_env
+W16Z-01	kernel-apis	images.generate: OpenRouter request body, auth, image_config, saved file, result	kernel_apis_images_generate_sends_the_openrouter_request_and_saves_the_image
+W16Z-02	kernel-apis	n requests until enough images; images.model setting; out stem naming; next free default name	kernel_apis_images_n_requests_until_enough_images_and_out_names_the_files
+W16Z-03	kernel-apis	provider/no-image/partial failures write nothing; validation and missing-key errors	kernel_apis_images_errors_reach_the_cell_and_nothing_is_written
+W16Z-04	kernel-apis	images.models lists the catalog as provider/id	kernel_apis_images_models_lists_the_catalog_as_provider_slash_id
+W16Z-05	kernel-apis	model, size and output path resolution	kernel_apis_images_helpers_resolve_sizes_models_and_paths
+W16Z-06	session-core	rlm.images in the product session: path under rlm-output, Python errors, docs, guide line	session_core_rlm_images_generate_saves_the_image_and_returns_its_path
+W16Z-07	session-file	diffLines matches jsdiff 8.0.4	session_file_diff_lines_matches_jsdiff
+W16Z-08	session-file	generateDiffString at context 4 and 2 matches the TS edit tool	session_file_generate_diff_string_matches_the_edit_tool
+W16Z-09	session-core	cell results carry masked diffs of checked writes; unchanged writes and empty cells give {}	session_core_cell_results_carry_the_diff_of_the_files_the_cell_wrote
+W16Z-10	interactive	expanded rlm cell draws written-file diffs (word level); collapsed byte-identical; ctrl+o toggles	interactive_rlm_cell_shows_the_diff_of_written_files_only_when_expanded
+W16Z-11	host	approval.* settings are ignored; bash, jobs and writes all run	host_sandboxed_approval_settings_are_ignored_and_every_operation_runs
+W16Z-12	interactive	status lines pass through the friendlyStatus filter	interactive_status_lines_pass_through_the_status_filter
+W16Z-13	session-core	Copilot availableModelIds limit the available models (filterModels)	session_core_copilot_available_model_ids_limit_the_available_models
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

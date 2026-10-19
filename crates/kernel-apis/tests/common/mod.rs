@@ -63,7 +63,7 @@ pub fn tree(dir: &Path) -> Value {
     Value::Object(files)
 }
 
-/// The fixture host's other module: `test.clock` advances the grants clock.
+/// The fixture host's other module: `test.clock` advances the fixture clock.
 pub fn inner(clock: Arc<AtomicI64>) -> Arc<dyn HostHandler> {
     Arc::new(move |kind: &str, payload: Map<String, Value>, _: &Signal| {
         if kind == "test.clock" {

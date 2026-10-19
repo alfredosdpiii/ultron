@@ -77,28 +77,6 @@ pub fn extract_blocks(text: &str) -> Vec<MessageBlock> {
     blocks
 }
 
-/// `(lang, code)` of each fenced block.
-pub fn extract_code_blocks(text: &str) -> Vec<(String, String)> {
-    extract_blocks(text)
-        .into_iter()
-        .filter_map(|b| match b {
-            MessageBlock::Code { lang, code } => Some((lang, code)),
-            MessageBlock::Quote { .. } => None,
-        })
-        .collect()
-}
-
-/// The text of each quote run.
-pub fn extract_quote_blocks(text: &str) -> Vec<String> {
-    extract_blocks(text)
-        .into_iter()
-        .filter_map(|b| match b {
-            MessageBlock::Quote { text } => Some(text),
-            MessageBlock::Code { .. } => None,
-        })
-        .collect()
-}
-
 /// A hyperlink the renderer draws: its flattened label (the href when empty) and target.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LinkTarget {
@@ -253,54 +231,6 @@ fn tool_calls(message: &Value) -> impl Iterator<Item = &Value> {
         .into_iter()
         .flatten()
         .filter(|b| b["type"] == "toolCall")
-}
-
-/// `assistantText`: concatenated text blocks of an assistant message, verbatim; `None` when blank.
-pub fn assistant_text(message: &Value) -> Option<String> {
-    if message["role"] != "assistant" {
-        return None;
-    }
-    let text: String = message["content"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|b| b["type"] == "text")
-        .filter_map(|b| b["text"].as_str())
-        .collect();
-    (!text.trim().is_empty()).then_some(text)
-}
-
-/// `extractLastCommand`: the newest bash/eval/rlm command.
-pub fn extract_last_command(messages: &[Value]) -> Option<LastCommand> {
-    messages
-        .iter()
-        .rev()
-        .filter(|m| m["role"] == "assistant")
-        .find_map(|m| {
-            let calls: Vec<&Value> = tool_calls(m).collect();
-            calls
-                .iter()
-                .rev()
-                .find_map(|c| command_from_tool_call(c["name"].as_str().unwrap_or(""), &c["arguments"]))
-        })
-}
-
-/// `extractLastLink`: the last link of the newest assistant message that has one.
-pub fn extract_last_link(messages: &[Value]) -> Option<LinkTarget> {
-    messages
-        .iter()
-        .rev()
-        .filter_map(assistant_text)
-        .find_map(|text| extract_links(&text).pop())
-}
-
-/// `extractLastCodeBlock`.
-pub fn extract_last_code_block(messages: &[Value]) -> Option<(String, String)> {
-    messages
-        .iter()
-        .rev()
-        .filter_map(assistant_text)
-        .find_map(|text| extract_code_blocks(&text).pop())
 }
 
 pub const SEP_DOT: &str = " · ";
@@ -528,40 +458,6 @@ pub fn first_line(source: &str) -> String {
         .find(|l| !l.trim().is_empty())
         .map(collapse_whitespace)
         .unwrap_or_default()
-}
-
-/// `turnSummary`: one-line label of the turn an entry opens.
-pub fn turn_summary(entry: &TranscriptEntry) -> String {
-    let message = &entry.message;
-    match message["role"].as_str() {
-        Some("user") => collapse_whitespace(&text_blocks(&message["content"], " ")),
-        Some("assistant") => {
-            let prose: String = text_blocks(&message["content"], "");
-            let tools: Vec<&str> = tool_calls(message).filter_map(|c| c["name"].as_str()).collect();
-            let line = first_line(&prose);
-            if !line.is_empty() {
-                line
-            } else if !tools.is_empty() {
-                tools.join(", ")
-            } else {
-                "thinking".into()
-            }
-        }
-        Some("toolResult") => format!("{} result", message["toolName"].as_str().unwrap_or("")),
-        Some("bashExecution") => format!("$ {}", first_line(message["command"].as_str().unwrap_or(""))),
-        Some("pythonExecution") => first_line(message["code"].as_str().unwrap_or("")),
-        Some("compactionSummary") => "Compaction summary".into(),
-        Some("branchSummary") => "Branch summary".into(),
-        Some("custom") | Some("hookMessage") => {
-            let line = first_line(&text_blocks(&message["content"], " "));
-            if line.is_empty() {
-                message["customType"].as_str().unwrap_or("").to_string()
-            } else {
-                line
-            }
-        }
-        _ => entry.id.clone(),
-    }
 }
 
 /// A user message with prompt text (`userMessageHasText`): a turn rewind can re-edit.

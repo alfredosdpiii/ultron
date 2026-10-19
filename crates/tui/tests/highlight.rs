@@ -88,8 +88,7 @@ fn tui_highlight_typescript_and_nix_after_warm() {
     warm();
     assert!(warmed());
     eprintln!("warm took {:?}", start.elapsed());
-    assert!(supported_languages().contains(&"TypeScript".to_string()));
-    assert!(supported_languages().contains(&"Nix".to_string()));
+    assert!(supports_language("ts") && supports_language("nix"));
 
     let code = "function icons(): Record<\"close\" | \"hunk\", string> {\n\treturn {};\n}\nfunction chip(label: string): string {\n\tconst text = ` ${label} `;\n\treturn text;\n}\nconst zzz = 1;\n";
     let out = highlight_code(code, Some("ts"), &colors());
@@ -121,13 +120,13 @@ fn tui_highlight_typescript_and_nix_after_warm() {
 }
 
 #[test]
-fn tui_highlight_theme_colors_and_markdown_hook() {
+fn tui_highlight_theme_colors_and_highlighted_lines() {
     let json = tui::theme::builtin_theme_json("dark").unwrap();
     let theme = tui::theme::create_theme(&json, tui::theme::ColorMode::Truecolor, None).unwrap();
     let c = HighlightColors::from_theme(&theme);
     assert_eq!(c.keyword, theme.fg_ansi("syntaxKeyword").unwrap());
     assert_eq!(c.inserted, theme.fg_ansi("toolDiffAdded").ok());
-    let hook = markdown_highlighter(colors());
-    assert_eq!(hook("x = 1\ny", Some("python")).len(), 2);
-    assert!(hook("x = 1\ny", Some("python"))[0].contains("<n>1\x1b[39m"));
+    let lines = highlight_lines("x = 1\ny", Some("python"), &colors());
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0].contains("<n>1\x1b[39m"));
 }

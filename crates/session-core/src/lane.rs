@@ -547,14 +547,29 @@ pub fn available_models(env: &Env) -> Vec<Model> {
         .flat_map(|p| {
             let oauth = stored_oauth(env, &p);
             let registry = &registry;
-            registry
-                .models(&p)
+            provider_models(env, registry, &p)
                 .into_iter()
                 .map(move |m| prepare(registry, m, env, oauth))
         })
         .collect();
     models.extend(subscription_models(env, &registry, &models));
     models
+}
+
+/// A configured provider's models as `getAvailable` lists them: `provider.filterModels(models, credential)`, which
+/// only GitHub Copilot has (an OAuth credential's `availableModelIds`).
+fn provider_models(env: &Env, registry: &ModelRegistry, provider: &str) -> Vec<Model> {
+    let models = registry.models(provider);
+    if provider != "github-copilot" {
+        return models;
+    }
+    let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
+    let credential =
+        config::auth::read_stored_credential(&auth, provider).and_then(|c| ai::auth::Credential::from_json(&c));
+    ai::auth::copilot_filter_models(&models, |m| m.id.as_str(), credential.as_ref())
+        .into_iter()
+        .cloned()
+        .collect()
 }
 
 /// The Claude subscription's pinned models, when Claude Code is installed. Its catalog takes any id, so the registry
@@ -1119,7 +1134,13 @@ impl Rlm {
             };
             Ok(AgentToolResult {
                 content: crate::view_images::cell_content(images.as_ref(), text),
-                details: json!({}),
+                details: self.host.as_ref().map_or_else(
+                    || json!({}),
+                    |host| {
+                        let mask = |text: &str| self.masker.mask_counted(text, self.mask_secrets.as_deref()).0;
+                        crate::cell_file_changes::details(host, &self.lane, &mask)
+                    },
+                ),
                 usage: None,
                 terminate: None,
             })

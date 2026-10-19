@@ -797,20 +797,3 @@ impl ModelsStore for InMemoryModelsStore {
         }
     }
 }
-
-/// `flattenModelCatalog`: merges per-API model groups into one id-keyed catalog (`Object.assign`: a later group's
-/// model replaces an earlier one with the same id in its original position).
-pub fn flatten_model_catalog(groups: &Map<String, Value>) -> Map<String, Value> {
-    let mut flat = Map::new();
-    for group in groups.values() {
-        if let Some(models) = group.as_object() {
-            for (id, model) in models {
-                flat.insert(id.clone(), model.clone());
-            }
-        }
-    }
-    match js_order(Value::Object(flat)) {
-        Value::Object(map) => map,
-        _ => Map::new(),
-    }
-}

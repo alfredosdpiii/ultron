@@ -1,9 +1,8 @@
-//! Replays `fixtures/model-config.json` (recorded from the TypeScript `ModelConfig.load`, `InMemoryModelsStore` and
-//! `flattenModelCatalog` by `fixtures/generate-model-config.mjs`).
+//! Replays `fixtures/model-config.json` (recorded from the TypeScript `ModelConfig.load` and `InMemoryModelsStore` by
+//! `fixtures/generate-model-config.mjs`; its `flattenModelCatalog` case has no Rust port: the catalog is generated flat).
 
 use ai::model_config::{
-    InMemoryModelsStore, ModelConfig, ModelsStore, ModelsStoreEntry, flatten_model_catalog, models_json_warning,
-    strip_json_comments,
+    InMemoryModelsStore, ModelConfig, ModelsStore, ModelsStoreEntry, models_json_warning, strip_json_comments,
 };
 use serde_json::{Value, json};
 use std::fs;
@@ -100,16 +99,6 @@ fn ai_model_config_models_store_clones_entries() {
     store.delete("p");
     assert_eq!(store.read("p"), None);
     assert!(recorded["afterDelete"].is_null());
-}
-
-#[test]
-fn ai_model_config_flatten_catalog_later_group_wins() {
-    let recorded = fixture()["catalog"].clone();
-    let flat = flatten_model_catalog(recorded["groups"].as_object().unwrap());
-    assert_eq!(
-        serde_json::to_string(&flat).unwrap(),
-        serde_json::to_string(&recorded["flat"]).unwrap()
-    );
 }
 
 #[test]

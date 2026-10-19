@@ -625,16 +625,6 @@ impl Gateway {
         }
     }
 
-    /// The enabled servers' names, in configuration order.
-    pub fn server_names(&self) -> Vec<String> {
-        lock(&self.state)
-            .servers
-            .iter()
-            .filter(|s| s.entry.enabled())
-            .map(|s| s.entry.name.clone())
-            .collect()
-    }
-
     /// Run the gateway with the tool's params. `Err` only when `cancel` stopped the call.
     pub fn execute(&self, params: &Map<String, Value>, cancel: Option<&CancelToken>) -> Result<Value, String> {
         match self.gateway(params, cancel) {

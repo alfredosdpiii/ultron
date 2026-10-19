@@ -90,9 +90,15 @@ fn session_core_navigation_journal_admits_a_summarized_navigation_at_deciding() 
 fn session_core_navigation_journal_commits_the_summary_under_the_target() {
     let dir = tempfile::tempdir().unwrap();
     let (mut session, target, tip) = session(dir.path());
-    let mut op = CompactionOp::begin_navigation(&mut session, Some(&target), &preparation(), None, None).unwrap();
+    let mut op = CompactionOp::begin_navigation(
+        &mut session,
+        Some(&target),
+        &preparation(),
+        Some("names"),
+        Some("checkpoint"),
+    )
+    .unwrap();
     let operation = op.operation_id().to_string();
-    op.override_navigation(Some("names"), Some("checkpoint"));
     op.request(&mut session, session_core::compaction_op::SummaryRetry::default())
         .unwrap();
     let state = session.value(OP_STATE, &operation).unwrap();

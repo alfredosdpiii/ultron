@@ -1,5 +1,5 @@
 // Generates crates/kernel-apis/fixtures/<area>.json: Python cells calling the thin kernel APIs (skills_api.py,
-// memory_api.py, grants_api.py, hints_api.py, ...) through the real runtime.py and the TypeScript kernel supervisor
+// memory_api.py, hints_api.py, ...) through the real runtime.py and the TypeScript kernel supervisor
 // (kernel.ts), served by the TS host (NativeRlmHost with the area's host module or worker services). Each scenario runs
 // its cells in one kernel against one fresh host and records every cell's outcome, then the host's durable state
 // (module documents, the code-skills directory). Random ids, timestamps, durations and temp paths are normalized.
@@ -22,7 +22,6 @@ const { memoryStore, memoryDefinitionStore } = await load("test/ultron-host-fixt
 const { createSkillModule } = await load("src/ultron/skills.ts");
 const { CodeSkills } = await load("src/ultron/code-skills.ts");
 const { createWorkerServices } = await load("src/ultron/worker-services.ts");
-const { createGrantModule } = await load("src/ultron/grants.ts");
 const { CellHints } = await load("src/ultron/rlm/hints.ts");
 
 export const FIXED_NOW = 1_760_000_000_000;
@@ -386,60 +385,7 @@ const memoryScenarios = [
 ];
 
 // ---------------------------------------------------------------------------------------------------------------
-// grants and hints: host modules over the session's module store.
-
-
-function grantsHost() {
-	const store = createMemoryModuleStore();
-	let clock = FIXED_NOW;
-	const module = createGrantModule({ store, now: () => clock });
-	return {
-		modules: [module, { prefixes: ["test.clock"], handle: async (request) => ((clock += request.payload.ms), clock) }],
-		state: async () => (await store.read()) ?? null,
-	};
-}
-
-const grantsScenarios = [
-	[
-		"issue, list, check, revoke",
-		[
-			show("await grants.list()"),
-			show('await grants.issue("repo:/work/ultron", "abc123", "deploy-policy@1", "deploy", 60000)'),
-			"import json as _json\ng = (await grants.list())['grants'][0]\nprint(_json.dumps(await grants.check(g['id'], 'repo:/work/ultron', 'abc123', 'deploy-policy@1', 'deploy'), sort_keys=True))\nprint(_json.dumps(await grants.check(g['id'], 'task:other', 'def', 'deploy-policy@2', 'push'), sort_keys=True))",
-			"import json as _json\nawait rlm.host_request('test.clock', {'ms': 60000})\ng = (await grants.list())['grants'][0]\nprint(_json.dumps(await grants.check(g['id'], 'repo:/work/ultron', 'abc123', 'deploy-policy@1', 'deploy'), sort_keys=True))",
-			"import json as _json\ng = await grants.issue('task:t1', 'sha256:ff', 'p.x@v1', 'merge.pr', 1000)\nprint(_json.dumps(await grants.revoke(g['id']), sort_keys=True))\nawait rlm.host_request('test.clock', {'ms': 5})\nprint(_json.dumps(await grants.revoke(g['id']), sort_keys=True))\nprint(_json.dumps(await grants.check(g['id'], 'task:t1', 'sha256:ff', 'p.x@v1', 'merge.pr'), sort_keys=True))",
-			`import json as _json\n${[
-				"grants.issue('', 'r', 'p@1', 'a', 1)",
-				"grants.issue('Repo:x', 'r', 'p@1', 'a', 1)",
-				"grants.issue('a' * 33 + ':x', 'r', 'p@1', 'a', 1)",
-				"grants.issue('repo: x', 'r', 'p@1', 'a', 1)",
-				"grants.issue('repo:' + 'x' * 1024, 'r', 'p@1', 'a', 1)",
-				"grants.issue('repo:' + 'x' * 1025, 'r', 'p@1', 'a', 1)",
-				"grants.issue('repo:x', 'r', 'p@1', 'a', 0)",
-				"grants.issue('repo:x', 'r', 'p@1', 'a', 1.5)",
-				"grants.issue('repo:x', 'r', 'p@1', 'a', 30 * 24 * 3600 * 1000 + 1)",
-				"grants.issue('repo:x', 'r', 'p@1', 'a', True)",
-				"grants.issue('repo:x', 'r' * 257, 'p@1', 'a', 1)",
-				"grants.issue('repo:x', 'r r', 'p@1', 'a', 1)",
-				"grants.issue('repo:x', 'r', 'p', 'a', 1)",
-				"grants.issue('repo:x', 'r', 'P@1', 'a', 1)",
-				"grants.issue('repo:x', 'r', 'p@1', 'a b', 1)",
-				"grants.issue('repo:x', 'r', 'p@1', 'A', 1)",
-				"grants.revoke('nope')",
-				"grants.revoke('')",
-				"grants.revoke(' ')",
-				"grants.check('nope', 'repo:x', 'r', 'p@1', 'a')",
-				"grants.check('nope', 'repo:x', 'r', 'p', 'a')",
-				"rlm.host_request('grants.list', {'x': 1})",
-				"rlm.host_request('grants.issue', {'scope': 'repo:x', 'revision': 'r', 'policy': 'p@1', 'action': 'a', 'ttl_ms': 5, 'owner': 'me'})",
-				"rlm.host_request('grants.nope', {})",
-			]
-				.map(attempt)
-				.join("\n")}`,
-			show("await grants.list()"),
-		],
-	],
-];
+// hints: a host module over the session's module store.
 
 function hintsHost() {
 	const store = createMemoryModuleStore();
@@ -468,7 +414,6 @@ const hintsScenarios = [
 const areas = {
 	skills: [skillsHost, skillsScenarios],
 	memory: [memoryHost, memoryScenarios],
-	grants: [grantsHost, grantsScenarios],
 	hints: [hintsHost, hintsScenarios],
 };
 

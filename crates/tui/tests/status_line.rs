@@ -468,38 +468,7 @@ fn tui_status_line_theme_style_colors_segments() {
 }
 
 #[test]
-fn tui_status_git_parses_remotes_heads_and_porcelain() {
-    assert_eq!(
-        parse_github_repo("https://github.com/can1357/oh-my-pi.git").as_deref(),
-        Some("can1357/oh-my-pi")
-    );
-    assert_eq!(
-        parse_github_repo("https://github.com/can1357/oh-my-pi").as_deref(),
-        Some("can1357/oh-my-pi")
-    );
-    assert_eq!(
-        parse_github_repo("git@github.com:loftiskg/oh-my-pi.git").as_deref(),
-        Some("loftiskg/oh-my-pi")
-    );
-    assert_eq!(
-        parse_github_repo("ssh://git@github.com/user/repo.git").as_deref(),
-        Some("user/repo")
-    );
-    assert_eq!(parse_github_repo("https://gitlab.com/user/repo.git"), None);
-    assert_eq!(parse_github_repo("https://github.corp.com/org/repo.git"), None);
-    assert_eq!(
-        parse_github_repo("https://github.com/org/my.repo.name.git").as_deref(),
-        Some("org/my.repo.name")
-    );
-    assert_eq!(
-        parse_github_repo("https://github.com/org/my.repo").as_deref(),
-        Some("org/my.repo")
-    );
-    assert_eq!(parse_default_branch("origin/main"), "main");
-    assert_eq!(parse_default_branch("upstream/main"), "main");
-    assert_eq!(parse_default_branch("main"), "main");
-    assert_eq!(parse_default_branch(""), "");
-
+fn tui_status_git_parses_heads_and_porcelain() {
     let ctx = |b: &str, r: &str| PrCacheContext {
         branch: b.into(),
         repo_id: Some(r.into()),

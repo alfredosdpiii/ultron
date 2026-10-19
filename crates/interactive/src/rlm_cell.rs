@@ -1,6 +1,7 @@
 //! Transcript rendering of an `rlm` cell (packages/coding-agent/src/experimental/rlm-tool-renderer.ts): the cell's
 //! Python with a line-number gutter and its output. Collapsed, the code shows its first lines and the output its last
-//! visual lines, each with an expand-key hint; expanded, both are shown in full. Syntax highlighting is injected
+//! visual lines, each with an expand-key hint; expanded, both are shown in full, then the diff of every file the cell
+//! wrote (`details.fileChanges`, Rust-only; collapsed, nothing of it is drawn). Syntax highlighting is injected
 //! (`highlightCode(code, "python")` in TS); the product's is [`crate::rlm::highlight::rlm_highlighter`].
 
 use std::rc::Rc;
@@ -11,7 +12,8 @@ use tui::theme::Theme;
 use tui::utils::{js_trim_end, truncate_to_width, visible_width, wrap_text_with_ansi};
 
 use crate::components::{
-    ToolRenderState, ToolRenderers, ToolResultView, bold, fg, key_hint, tool_text_output_with, truncate_to_visual_lines,
+    FileChange, ToolRenderState, ToolRenderers, ToolResultView, bold, fg, key_hint, render_diff, tool_text_output_with,
+    truncate_to_visual_lines,
 };
 
 /// Code lines shown while collapsed.
@@ -138,6 +140,39 @@ impl Component for OutputPreview {
     }
 }
 
+/// The files a cell wrote, each with its diff (word-level for a single changed line, `renderDiff`). Shown only
+/// expanded: the collapsed cell stays as TypeScript draws it.
+pub fn file_changes_text(theme: &Theme, changes: &[FileChange]) -> Option<String> {
+    if changes.is_empty() {
+        return None;
+    }
+    let n = changes.len();
+    let mut lines = vec![
+        String::new(),
+        fg(theme, "muted", &format!("{n} file{} changed", plural(n))),
+    ];
+    for change in changes {
+        let created = if change.created {
+            fg(theme, "muted", " (new)")
+        } else {
+            String::new()
+        };
+        lines.push(format!("{}{created}", fg(theme, "accent", &change.path)));
+        match &change.diff {
+            Some(diff) => lines.push(render_diff(theme, diff)),
+            None => lines.push(fg(theme, "muted", "(too large or not text to show)")),
+        }
+        if change.omitted > 0 {
+            lines.push(fg(
+                theme,
+                "muted",
+                &format!("... ({} more diff line{})", change.omitted, plural(change.omitted)),
+            ));
+        }
+    }
+    Some(lines.join("\n"))
+}
+
 fn render_result(
     result: &ToolResultView,
     theme: &Rc<Theme>,
@@ -146,6 +181,10 @@ fn render_result(
 ) -> Box<dyn Component> {
     let output = js_trim_end(&tool_text_output_with(Some(result), state.inline_images)).to_string();
     let mut children: Vec<Box<dyn Component>> = Vec::new();
+    let changes = state
+        .expanded
+        .then(|| file_changes_text(theme, &result.file_changes))
+        .flatten();
     if output.is_empty() {
         if state.is_partial {
             children.push(Box::new(Text::new(
@@ -154,6 +193,9 @@ fn render_result(
                 0,
                 None,
             )));
+        }
+        if let Some(changes) = changes {
+            children.push(Box::new(Text::new(&changes, 0, 0, None)));
         }
         return Box::new(Container { children });
     }
@@ -176,6 +218,9 @@ fn render_result(
             .collect::<Vec<_>>()
             .join("\n");
         children.push(Box::new(Text::new(&format!("\n{label}\n{styled}"), 0, 0, None)));
+        if let Some(changes) = changes {
+            children.push(Box::new(Text::new(&changes, 0, 0, None)));
+        }
     } else {
         children.push(Box::new(OutputPreview {
             theme: Rc::clone(theme),

@@ -206,11 +206,6 @@ pub fn supports_language(lang: &str) -> bool {
     find_alias(lang).is_some() || find_syntax(syntax_set(), lang).is_some()
 }
 
-/// Names of the grammars currently loaded.
-pub fn supported_languages() -> Vec<String> {
-    syntax_set().syntaxes().iter().map(|s| s.name.clone()).collect()
-}
-
 struct Matchers {
     by_index: Vec<(usize, Vec<Scope>)>,
 }
@@ -350,11 +345,6 @@ pub fn highlight_lines(code: &str, lang: Option<&str>, colors: &HighlightColors)
         .split('\n')
         .map(str::to_string)
         .collect()
-}
-
-/// The markdown code-block hook (`MarkdownTheme::highlight_code`).
-pub fn markdown_highlighter(colors: HighlightColors) -> crate::markdown::HighlightFn {
-    Box::new(move |code: &str, lang: Option<&str>| highlight_lines(code, lang, &colors))
 }
 
 /// Incremental highlighter for streamed code: chunks of whole lines give the same output as one call.

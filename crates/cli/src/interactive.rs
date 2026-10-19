@@ -2297,6 +2297,8 @@ fn run_tui(
         qol,
     };
     let mut app = App::new(options, Box::new(client));
+    // client-tui.ts `#showStatus`: a status line reporting a lost server or worker says so clearly.
+    app.set_status_filter(daemon::lost::friendly_status);
     // A signal leaves the TUI as closing its input does (the terminal is restored, the link closes), then the
     // process exits with the signal's code.
     let (code, end) = (signalled.clone(), std::sync::Mutex::new(ui_tx.clone()));

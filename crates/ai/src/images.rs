@@ -742,10 +742,3 @@ pub fn openrouter_images_provider(lookup: EnvLookup) -> ImagesProvider {
         Arc::new(OpenRouterImages),
     )
 }
-
-/// `builtinImagesModels`.
-pub fn builtin_images_models(lookup: EnvLookup) -> ImagesModels {
-    let mut models = ImagesModels::new();
-    models.set_provider(openrouter_images_provider(lookup));
-    models
-}

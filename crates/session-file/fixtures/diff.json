@@ -1,0 +1,604 @@
+{
+	"cases": [
+		{
+			"old": "",
+			"new": "",
+			"lines": [],
+			"context4": {
+				"diff": ""
+			},
+			"context2": {
+				"diff": ""
+			}
+		},
+		{
+			"old": "",
+			"new": "new file\nsecond line\n",
+			"lines": [
+				{
+					"value": "new file\nsecond line\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "+1 new file\n+2 second line",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "+1 new file\n+2 second line",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "only line",
+			"new": "",
+			"lines": [
+				{
+					"value": "only line",
+					"added": false,
+					"removed": true
+				}
+			],
+			"context4": {
+				"diff": "-1 only line",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "-1 only line",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "a\nb\nc\n",
+			"new": "a\nb\nc\n",
+			"lines": [
+				{
+					"value": "a\nb\nc\n",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": ""
+			},
+			"context2": {
+				"diff": ""
+			}
+		},
+		{
+			"old": "a\nb\nc",
+			"new": "a\nB\nc",
+			"lines": [
+				{
+					"value": "a\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "b\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "B\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "c",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": " 1 a\n-2 b\n+2 B\n 3 c",
+				"firstChangedLine": 2
+			},
+			"context2": {
+				"diff": " 1 a\n-2 b\n+2 B\n 3 c",
+				"firstChangedLine": 2
+			}
+		},
+		{
+			"old": "a\nb\nc\n",
+			"new": "a\nb\nc",
+			"lines": [
+				{
+					"value": "a\nb\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "c\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "c",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": " 1 a\n 2 b\n-3 c\n+3 c",
+				"firstChangedLine": 3
+			},
+			"context2": {
+				"diff": " 1 a\n 2 b\n-3 c\n+3 c",
+				"firstChangedLine": 3
+			}
+		},
+		{
+			"old": "a\r\nb\r\n",
+			"new": "a\r\nc\r\n",
+			"lines": [
+				{
+					"value": "a\r\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "b\r\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "c\r\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": " 1 a\r\n-2 b\r\n+2 c\r",
+				"firstChangedLine": 2
+			},
+			"context2": {
+				"diff": " 1 a\r\n-2 b\r\n+2 c\r",
+				"firstChangedLine": 2
+			}
+		},
+		{
+			"old": "\n\n\n",
+			"new": "\n\nx\n",
+			"lines": [
+				{
+					"value": "\n\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "x\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": " 1 \n 2 \n-3 \n+3 x",
+				"firstChangedLine": 3
+			},
+			"context2": {
+				"diff": " 1 \n 2 \n-3 \n+3 x",
+				"firstChangedLine": 3
+			}
+		},
+		{
+			"old": "const x = 1;\nconst y = 2;\n",
+			"new": "const x = 10;\nconst y = 2;\n",
+			"lines": [
+				{
+					"value": "const x = 1;\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "const x = 10;\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "const y = 2;\n",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "-1 const x = 1;\n+1 const x = 10;\n 2 const y = 2;",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "-1 const x = 1;\n+1 const x = 10;\n 2 const y = 2;",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "\tindented\tline\n",
+			"new": "\tindented\tLINE\n",
+			"lines": [
+				{
+					"value": "\tindented\tline\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "\tindented\tLINE\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "-1 \tindented\tline\n+1 \tindented\tLINE",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "-1 \tindented\tline\n+1 \tindented\tLINE",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"new": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline fifteen\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"lines": [
+				{
+					"value": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 15\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "line fifteen\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "    ...\n 11 line 11\n 12 line 12\n 13 line 13\n 14 line 14\n-15 line 15\n+15 line fifteen\n 16 line 16\n 17 line 17\n 18 line 18\n 19 line 19\n    ...",
+				"firstChangedLine": 15
+			},
+			"context2": {
+				"diff": "    ...\n 13 line 13\n 14 line 14\n-15 line 15\n+15 line fifteen\n 16 line 16\n 17 line 17\n    ...",
+				"firstChangedLine": 15
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"new": "line 1\nline 2\nthree\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\ntwenty-seven\nline 28\nline 29\nline 30",
+			"lines": [
+				{
+					"value": "line 1\nline 2\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 3\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "three\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 27\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "twenty-seven\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 28\nline 29\nline 30",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "  1 line 1\n  2 line 2\n- 3 line 3\n+ 3 three\n  4 line 4\n  5 line 5\n  6 line 6\n  7 line 7\n    ...\n 23 line 23\n 24 line 24\n 25 line 25\n 26 line 26\n-27 line 27\n+27 twenty-seven\n 28 line 28\n 29 line 29\n 30 line 30",
+				"firstChangedLine": 3
+			},
+			"context2": {
+				"diff": "  1 line 1\n  2 line 2\n- 3 line 3\n+ 3 three\n  4 line 4\n  5 line 5\n    ...\n 25 line 25\n 26 line 26\n-27 line 27\n+27 twenty-seven\n 28 line 28\n 29 line 29\n    ...",
+				"firstChangedLine": 3
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"new": "line 1\nline 2\nline 3\nline 4\nfive\nline 6\nline 7\neight\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"lines": [
+				{
+					"value": "line 1\nline 2\nline 3\nline 4\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 5\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "five\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 6\nline 7\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 8\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "eight\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "  1 line 1\n  2 line 2\n  3 line 3\n  4 line 4\n- 5 line 5\n+ 5 five\n  6 line 6\n  7 line 7\n- 8 line 8\n+ 8 eight\n  9 line 9\n 10 line 10\n 11 line 11\n 12 line 12\n    ...",
+				"firstChangedLine": 5
+			},
+			"context2": {
+				"diff": "    ...\n  3 line 3\n  4 line 4\n- 5 line 5\n+ 5 five\n  6 line 6\n  7 line 7\n- 8 line 8\n+ 8 eight\n  9 line 9\n 10 line 10\n    ...",
+				"firstChangedLine": 5
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"new": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32",
+			"lines": [
+				{
+					"value": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 30",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "line 30\nline 31\nline 32",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "    ...\n 26 line 26\n 27 line 27\n 28 line 28\n 29 line 29\n-30 line 30\n+30 line 30\n+31 line 31\n+32 line 32",
+				"firstChangedLine": 30
+			},
+			"context2": {
+				"diff": "    ...\n 28 line 28\n 29 line 29\n-30 line 30\n+30 line 30\n+31 line 31\n+32 line 32",
+				"firstChangedLine": 30
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"new": "line 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+			"lines": [
+				{
+					"value": "line 1\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "line 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "- 1 line 1\n  2 line 2\n  3 line 3\n  4 line 4\n  5 line 5\n    ...",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "- 1 line 1\n  2 line 2\n  3 line 3\n    ...",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nline 60\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nline 100\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120",
+			"new": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\nsixty\nline 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\nhundred\nline 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120",
+			"lines": [
+				{
+					"value": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15\nline 16\nline 17\nline 18\nline 19\nline 20\nline 21\nline 22\nline 23\nline 24\nline 25\nline 26\nline 27\nline 28\nline 29\nline 30\nline 31\nline 32\nline 33\nline 34\nline 35\nline 36\nline 37\nline 38\nline 39\nline 40\nline 41\nline 42\nline 43\nline 44\nline 45\nline 46\nline 47\nline 48\nline 49\nline 50\nline 51\nline 52\nline 53\nline 54\nline 55\nline 56\nline 57\nline 58\nline 59\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 60\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "sixty\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 61\nline 62\nline 63\nline 64\nline 65\nline 66\nline 67\nline 68\nline 69\nline 70\nline 71\nline 72\nline 73\nline 74\nline 75\nline 76\nline 77\nline 78\nline 79\nline 80\nline 81\nline 82\nline 83\nline 84\nline 85\nline 86\nline 87\nline 88\nline 89\nline 90\nline 91\nline 92\nline 93\nline 94\nline 95\nline 96\nline 97\nline 98\nline 99\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "line 100\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "hundred\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "line 101\nline 102\nline 103\nline 104\nline 105\nline 106\nline 107\nline 108\nline 109\nline 110\nline 111\nline 112\nline 113\nline 114\nline 115\nline 116\nline 117\nline 118\nline 119\nline 120",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "     ...\n  56 line 56\n  57 line 57\n  58 line 58\n  59 line 59\n- 60 line 60\n+ 60 sixty\n  61 line 61\n  62 line 62\n  63 line 63\n  64 line 64\n     ...\n  96 line 96\n  97 line 97\n  98 line 98\n  99 line 99\n-100 line 100\n+100 hundred\n 101 line 101\n 102 line 102\n 103 line 103\n 104 line 104\n     ...",
+				"firstChangedLine": 60
+			},
+			"context2": {
+				"diff": "     ...\n  58 line 58\n  59 line 59\n- 60 line 60\n+ 60 sixty\n  61 line 61\n  62 line 62\n     ...\n  98 line 98\n  99 line 99\n-100 line 100\n+100 hundred\n 101 line 101\n 102 line 102\n     ...",
+				"firstChangedLine": 60
+			}
+		},
+		{
+			"old": "fn main() {\n    println!(\"hi\");\n}\n",
+			"new": "fn main() {\n    let name = \"x\";\n    println!(\"hi {name}\");\n}\n",
+			"lines": [
+				{
+					"value": "fn main() {\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "    println!(\"hi\");\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "    let name = \"x\";\n    println!(\"hi {name}\");\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "}\n",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": " 1 fn main() {\n-2     println!(\"hi\");\n+2     let name = \"x\";\n+3     println!(\"hi {name}\");\n 3 }",
+				"firstChangedLine": 2
+			},
+			"context2": {
+				"diff": " 1 fn main() {\n-2     println!(\"hi\");\n+2     let name = \"x\";\n+3     println!(\"hi {name}\");\n 3 }",
+				"firstChangedLine": 2
+			}
+		},
+		{
+			"old": "alpha beta gamma\ndelta\n",
+			"new": "delta\nalpha beta gamma\n",
+			"lines": [
+				{
+					"value": "alpha beta gamma\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "delta\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "alpha beta gamma\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "-1 alpha beta gamma\n 2 delta\n+2 alpha beta gamma",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "-1 alpha beta gamma\n 2 delta\n+2 alpha beta gamma",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "héllo wörld\n日本語\n",
+			"new": "héllo welt\n日本語\nemoji 🎉\n",
+			"lines": [
+				{
+					"value": "héllo wörld\n",
+					"added": false,
+					"removed": true
+				},
+				{
+					"value": "héllo welt\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "日本語\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "emoji 🎉\n",
+					"added": true,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "-1 héllo wörld\n+1 héllo welt\n 2 日本語\n+3 emoji 🎉",
+				"firstChangedLine": 1
+			},
+			"context2": {
+				"diff": "-1 héllo wörld\n+1 héllo welt\n 2 日本語\n+3 emoji 🎉",
+				"firstChangedLine": 1
+			}
+		},
+		{
+			"old": "x\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\nx\n",
+			"new": "x\nx\nx\nx\nx\nx\ny\nx\nx\nx\nx\nx\nx\n",
+			"lines": [
+				{
+					"value": "x\nx\nx\nx\nx\nx\n",
+					"added": false,
+					"removed": false
+				},
+				{
+					"value": "y\n",
+					"added": true,
+					"removed": false
+				},
+				{
+					"value": "x\nx\nx\nx\nx\nx\n",
+					"added": false,
+					"removed": false
+				}
+			],
+			"context4": {
+				"diff": "    ...\n  3 x\n  4 x\n  5 x\n  6 x\n+ 7 y\n  7 x\n  8 x\n  9 x\n 10 x\n    ...",
+				"firstChangedLine": 7
+			},
+			"context2": {
+				"diff": "    ...\n  5 x\n  6 x\n+ 7 y\n  7 x\n  8 x\n    ...",
+				"firstChangedLine": 7
+			}
+		}
+	]
+}

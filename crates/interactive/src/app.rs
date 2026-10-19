@@ -449,6 +449,9 @@ pub struct App {
     model: ModelInfo,
     thinking_level: String,
     status: String,
+    /// What a status line's text passes through first (`friendlyStatus`: a lost server's error made clear); set by
+    /// the composition root, which knows the server.
+    status_filter: Option<fn(&str) -> String>,
     /// The running operation's id.
     operation: Option<String>,
     /// A compaction is running (its indicator says Esc cancels it).
@@ -817,6 +820,7 @@ impl App {
             model: options.model,
             thinking_level: options.thinking_level,
             status: "Starting Session…".into(),
+            status_filter: None,
             operation: None,
             compacting: false,
             retrying: false,
@@ -2337,8 +2341,15 @@ impl App {
         }
     }
 
+    /// What every status line shown through `showStatus` passes through first (client-tui.ts `friendlyStatus`).
+    pub fn set_status_filter(&mut self, filter: fn(&str) -> String) {
+        self.status_filter = Some(filter);
+    }
+
     /// `showStatus`: short text in the status line; more than three lines go to the transcript.
     fn show_status(&mut self, text: &str) {
+        let filtered = self.status_filter.map(|filter| filter(text));
+        let text = filtered.as_deref().unwrap_or(text);
         if text.split('\n').count() > 3 {
             self.chat.append_notice_text(text);
             self.status.clear();

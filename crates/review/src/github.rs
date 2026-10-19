@@ -46,10 +46,6 @@ impl Error {
             Error::StaleHead(message) | Error::DaemonRunning(message) | Error::Other(message) => message,
         }
     }
-
-    pub fn is_rate_limit(&self) -> bool {
-        matches!(self, Error::RateLimit { .. })
-    }
 }
 
 impl std::fmt::Display for Error {

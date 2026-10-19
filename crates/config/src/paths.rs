@@ -116,14 +116,8 @@ impl AgentPaths {
     pub fn settings(&self) -> PathBuf {
         self.join("settings.json")
     }
-    pub fn tools_dir(&self) -> PathBuf {
-        self.join("tools")
-    }
     pub fn bin_dir(&self) -> PathBuf {
         self.join("bin")
-    }
-    pub fn prompts_dir(&self) -> PathBuf {
-        self.join("prompts")
     }
     pub fn sessions_dir(&self) -> PathBuf {
         self.join("sessions")

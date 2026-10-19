@@ -485,7 +485,7 @@ fn review_github_a_rate_limit_while_reviewing_is_not_a_failed_attempt() {
         "secondary rate limit",
     );
     let error = review_pull(&context.deps, &context.requested(), ReviewOptions::default()).expect_err("rate limit");
-    assert!(error.is_rate_limit(), "{error:?}");
+    assert!(matches!(error, review::github::Error::RateLimit { .. }), "{error:?}");
     assert!(context.pull_state().attempts.is_empty());
 }
 

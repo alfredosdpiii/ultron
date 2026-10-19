@@ -9,9 +9,7 @@ use resources::runtime_guide::{
     EventDelivery, ExtensionToolSummary, RuntimeGuideOptions, rlm_runtime_prompt, rlm_tool_guidelines,
 };
 use resources::skills::{LoadSkillsOptions, Skill, apply_always_skills, load_skills, load_skills_from_dir};
-use resources::system_prompt::{
-    BuildOptions, DocPaths, build_system_prompt, build_system_prompt_sections, diff_system_prompt_sections,
-};
+use resources::system_prompt::{BuildOptions, DocPaths, build_system_prompt, build_system_prompt_sections};
 use serde_json::{Value, json};
 use std::fs;
 use std::path::Path;
@@ -265,30 +263,6 @@ fn resources_system_prompts_match_typescript() {
         checked += 1;
     }
     assert_eq!(checked, 15);
-
-    // diffSystemPromptSections between the defaults and an rlm-only prompt with an addendum.
-    let mut a = BuildOptions::new(&format!("{root}/proj"));
-    a.skills = loaded.iter().chain(&bundled).cloned().collect();
-    a.context_files = context;
-    a.doc_paths = doc_paths;
-    a.bundled_skills_dir = Some(bundled_dir());
-    let b = BuildOptions {
-        selected_tools: vec!["rlm".to_string()],
-        append_system_prompt: "Now appended.".to_string(),
-        ..a.clone()
-    };
-    let (sa, sb) = (
-        build_system_prompt_sections(&a).unwrap(),
-        build_system_prompt_sections(&b).unwrap(),
-    );
-    let patch = diff_system_prompt_sections(&sa, &sb).unwrap();
-    let patch: serde_json::Map<String, Value> = patch
-        .into_iter()
-        .map(|(k, v)| (k, v.map_or(Value::Null, |t| json!(scrub(&t, &root)))))
-        .collect();
-    assert_eq!(Value::Object(patch), fx["diffs"][0]["patch"]);
-    assert_eq!(diff_system_prompt_sections(&sa, &sa), None);
-    assert!(fx["diffs"][1]["patch"].is_null());
 }
 
 #[test]
@@ -457,6 +431,7 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
         "board",
         "notes",
         "help(swarm)",
+        "rlm.images.generate",
     ] {
         assert!(swarm.contains(needle), "{needle}");
     }
@@ -468,6 +443,13 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
     let typed_end =
         typed + swarm[typed..].find("(`await memory.get(id)`).").unwrap() + "(`await memory.get(id)`).".len();
     assert!(swarm[typed..typed_end].contains("path_globs"));
-    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[typed_end..]);
+    // The images line follows the memory line.
+    let images = typed_end + swarm[typed_end..].find("\n- `await rlm.images.generate(").unwrap();
+    let images_end = images + swarm[images..].find("(`help(rlm.images)`).").unwrap() + "(`help(rlm.images)`).".len();
+    assert_eq!(
+        images, typed_end,
+        "the images line directly follows the typed-memory sentence"
+    );
+    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[images_end..]);
     assert_eq!(without, plain);
 }

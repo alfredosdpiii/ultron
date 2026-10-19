@@ -48,15 +48,6 @@ fn tui_autocomplete_sources_emoji_matches_omp() {
             );
         }
     }
-    for case in f["inline"].as_array().unwrap() {
-        let input = case["input"].as_str().unwrap();
-        let got = emoji_inline_replace(input).map(|(n, s)| json!({"replaceLen": n, "insert": s}));
-        assert_eq!(got.unwrap_or(Value::Null), case["result"], "{input:?}");
-    }
-    for case in f["expand"].as_array().unwrap() {
-        let input = case["input"].as_str().unwrap();
-        assert_eq!(expand_emoticons(input), case["output"].as_str().unwrap(), "{input:?}");
-    }
 }
 
 #[test]

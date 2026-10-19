@@ -522,6 +522,9 @@ struct Node {
     brief: Option<Value>,
     /// `worktree=True` or `"auto"`: an `rlm-child@1` node that runs as a subagent in its own worktree.
     worktree: Option<Value>,
+    /// `role`, `contract`, `hop` of an `rlm-child@1` node: it runs as a subagent whose contract the subagent host
+    /// checks (as `rlm.spawn(role=, contract=, hop=)`; see [`crate::spawn_contract`]).
+    spawn_contract: Option<Map<String, Value>>,
     /// The lane that ran `workflows.run` (a worktree node is that lane's subagent).
     lane: String,
 }
@@ -530,7 +533,9 @@ struct Node {
 /// (`workflowTask` + `newWorktree` of native-host.ts). The subagent host owns worktrees: their creation, setup,
 /// commit at the end, `rlm.merge` and cleanup, so a worktree node is a subagent of the workflow's caller there.
 pub trait WorktreeChildren: Send + Sync {
-    /// Admit the node's child for `lane` (`rlm.spawn(prompt, name=, model=, timeout_ms=, worktree=)`); its id.
+    /// Admit the node's child for `lane` (`rlm.spawn(prompt, name=, model=, timeout_ms=, worktree=, **extra)`, `extra`
+    /// holding the node's `role`, `contract`, `hop`); its id.
+    #[allow(clippy::too_many_arguments)]
     fn spawn(
         &self,
         lane: &str,
@@ -539,6 +544,7 @@ pub trait WorktreeChildren: Send + Sync {
         model: Option<&str>,
         timeout_ms: u64,
         worktree: &Value,
+        extra: &Map<String, Value>,
     ) -> Result<String, String>;
     /// Wait for the child's terminal result (`{status, value?, error?, verdict?, worktree?}`); once `cell` is
     /// aborted the child is cancelled and its cancelled result returned.
@@ -2048,10 +2054,42 @@ impl Agents {
                     "revise",
                     "worktree",
                     "brief",
+                    "role",
+                    "contract",
+                    "hop",
                 ],
             )?;
             let id = nonempty_string(node.get("id"), "Workflow node ID")?;
             let definition = definition_key(node.get("definition"))?;
+            let spawn_contract: Map<String, Value> = crate::spawn_contract::SPAWN_KEYS
+                .iter()
+                .filter_map(|key| {
+                    node.get(*key)
+                        .filter(|v| !v.is_null())
+                        .map(|v| (key.to_string(), v.clone()))
+                })
+                .collect();
+            let spawn_contract = match spawn_contract.is_empty() {
+                true => None,
+                false => {
+                    if definition != "rlm-child@1" {
+                        return Err(format!(
+                            "Workflow node {id}: role, contract and hop apply only to rlm-child@1 nodes (subagents)"
+                        ));
+                    }
+                    if node.contains_key("revise") {
+                        return Err(format!("Workflow node {id}: a revised node cannot have a contract hop"));
+                    }
+                    if self.inner.worktree_children.get().is_none() {
+                        return Err(format!(
+                            "Workflow node {id}: contracts are not available in this host; spawn the subagent with rlm.spawn(contract=...)"
+                        ));
+                    }
+                    crate::spawn_contract::SpawnContract::parse(&spawn_contract)
+                        .map_err(|error| format!("Workflow node {id}: {error}"))?;
+                    Some(spawn_contract)
+                }
+            };
             let worktree = match node.get("worktree") {
                 None | Some(Value::Null) | Some(Value::Bool(false)) => None,
                 Some(mode @ Value::Bool(true)) => Some(mode.clone()),
@@ -2189,6 +2227,7 @@ impl Agents {
             nodes.push(Node {
                 brief,
                 worktree,
+                spawn_contract,
                 lane: String::new(),
                 key: key.or_else(|| workflow_key.as_ref().map(|k| format!("{k}:{id}"))),
                 id,
@@ -2357,8 +2396,14 @@ impl Agents {
                 }
             },
         };
-        if let (Some(mode), Some(children)) = (&node.worktree, self.inner.worktree_children.get()) {
-            // A worktree node branches from the caller's tree as it is when the node starts.
+        let subagent = match (&node.worktree, &node.spawn_contract) {
+            (Some(mode), _) => Some(mode.clone()),
+            (None, Some(_)) => Some(Value::Bool(false)),
+            (None, None) => None,
+        };
+        if let (Some(mode), Some(children)) = (&subagent, self.inner.worktree_children.get()) {
+            // A worktree node branches from the caller's tree as it is when the node starts; a node with a contract
+            // runs as a subagent so that the subagent host checks it.
             let base = input["prompt"].as_str().unwrap_or_default().to_string();
             let prompt = match &brief {
                 Some(brief) => brief.prompt(&base),
@@ -2371,6 +2416,7 @@ impl Agents {
                 node.model.as_deref(),
                 node.timeout_ms,
                 mode,
+                node.spawn_contract.as_ref().unwrap_or(&Map::new()),
             );
             signal_admitted();
             let result = match spawned {

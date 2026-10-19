@@ -601,6 +601,118 @@ fn interactive_qol_highlight_styles_fenced_code_and_leaves_rlm_cells_to_the_cell
     assert_eq!(plain(&on), plain(&off));
 }
 
+/// The files an rlm cell wrote (`details.fileChanges`, Rust-only) are drawn under the expanded cell, word-level for a
+/// single changed line; collapsed, the cell is drawn exactly as without them (TypeScript has no such view).
+#[test]
+fn interactive_rlm_cell_shows_the_diff_of_written_files_only_when_expanded() {
+    let transcript = |details: Value| {
+        vec![
+            json!({"role": "assistant", "stopReason": "toolUse", "content": [
+                {"type": "toolCall", "id": "c1", "name": "rlm", "arguments": {"code": "await edit('src/app.py', 'return 1', 'return 2')"}}
+            ]}),
+            json!({"role": "toolResult", "toolCallId": "c1", "toolName": "rlm", "isError": false,
+                "content": [{"type": "text", "text": "Edited src/app.py"}], "details": details}),
+        ]
+    };
+    let changes = json!({"fileChanges": [
+        {"path": "src/app.py", "created": false, "diff": " 1 def f():\n-2     return 1\n+2     return 2\n 3 "},
+        {"path": "notes/new.txt", "created": true, "diff": "+1 first", "omitted": 3},
+        {"path": "data.bin", "created": false, "diff": null},
+    ]});
+    let open = |details: Value| {
+        let (mut app, _) = fresh(QolSettings::parity());
+        app.apply(LaneEvent::Opened(SessionOpened {
+            session_id: "s3".into(),
+            session_file: None,
+            name: None,
+            messages: transcript(details),
+        }));
+        app
+    };
+    let (mut with, mut without) = (open(changes), open(json!({})));
+    let collapsed = with.render(100, 60);
+    assert_eq!(
+        collapsed,
+        without.render(100, 60),
+        "collapsed: byte-identical to a cell without changes"
+    );
+    assert!(!plain(&collapsed).contains("file"), "{}", plain(&collapsed));
+    // The tool-expand key (ctrl+o) shows them.
+    with.handle_input("\x0f");
+    without.handle_input("\x0f");
+    let expanded = with.render(100, 60);
+    let text = plain(&expanded);
+    for needle in [
+        "3 files changed",
+        "src/app.py",
+        "-2     return 1",
+        "+2     return 2",
+        "notes/new.txt (new)",
+        "+1 first",
+        "... (3 more diff lines)",
+        "data.bin",
+        "(too large or not text to show)",
+    ] {
+        assert!(text.contains(needle), "{needle} in {text}");
+    }
+    // Word level: only the changed word is inverse on each side of a single changed line.
+    let removed = expanded
+        .iter()
+        .find(|l| strip_terminal_sequences(l).contains("-2     return 1"))
+        .unwrap();
+    assert!(removed.contains("\x1b[7m1"), "{removed:?}");
+    assert!(!removed.contains("\x1b[7mreturn"), "{removed:?}");
+    // A cell without output: collapsed it draws no list either; expanded it draws only the list.
+    let silent = |expand: bool| {
+        let (mut app, _) = fresh(QolSettings::parity());
+        let mut messages = transcript(json!({"fileChanges": [{"path": "quiet.txt", "created": true, "diff": "+1 q"}]}));
+        messages[1]["content"] = json!([]);
+        app.apply(LaneEvent::Opened(SessionOpened {
+            session_id: "s4".into(),
+            session_file: None,
+            name: None,
+            messages,
+        }));
+        if expand {
+            app.handle_input("\x0f");
+        }
+        plain(&app.render(100, 60))
+    };
+    assert!(!silent(false).contains("quiet.txt"), "{}", silent(false));
+    let shown = silent(true);
+    for needle in ["1 file changed", "quiet.txt (new)", "+1 q"] {
+        assert!(shown.contains(needle), "{needle} in {shown}");
+    }
+    // Without changes the expanded cell has no section; toggling back hides it again.
+    assert!(!plain(&without.render(100, 60)).contains("files changed"));
+    with.handle_input("\x0f");
+    let again = plain(&with.render(100, 60));
+    assert!(
+        !again.contains("files changed") && again.contains("Edited src/app.py"),
+        "{again}"
+    );
+}
+
+/// Status lines pass through the composition root's filter (client-tui.ts `#showStatus` -> `friendlyStatus`; the CLI
+/// sets `daemon::lost::friendly_status`), the lane's errors included.
+#[test]
+fn interactive_status_lines_pass_through_the_status_filter() {
+    fn marked(text: &str) -> String {
+        format!("{text} [filtered]")
+    }
+    let (mut app, _) = fresh(QolSettings::parity());
+    app.apply(LaneEvent::Error("first".into()));
+    assert!(screen(&mut app).contains("Error: first"), "unfiltered by default");
+    assert!(!screen(&mut app).contains("[filtered]"));
+    app.set_status_filter(marked);
+    app.apply(LaneEvent::Error("Session worker s-1 disconnected unexpectedly".into()));
+    assert!(
+        screen(&mut app).contains("Error: Session worker s-1 disconnected unexpectedly [filtered]"),
+        "{}",
+        screen(&mut app)
+    );
+}
+
 // ---- autocomplete ----
 
 #[test]

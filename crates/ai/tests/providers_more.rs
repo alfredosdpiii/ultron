@@ -368,14 +368,6 @@ fn ai_google_shared_model_predicates_match_typescript() {
             "requiresToolCallId({id})"
         );
     }
-    for case in units["stopReasonString"].as_array().unwrap() {
-        let reason = case["reason"].as_str().unwrap();
-        assert_eq!(
-            serde_json::to_value(google_shared::map_stop_reason_string(reason)).unwrap(),
-            case["output"],
-            "mapStopReasonString({reason})"
-        );
-    }
 }
 
 #[test]

@@ -1,10 +1,9 @@
-//! Overlay layout and compositing: ports of `resolveOverlayLayout`, `compositeOverlays` and `compositeTuiLine`
+//! Overlay layout and line compositing: ports of `resolveOverlayLayout` and `compositeTuiLine`
 //! (packages/tui/src/tui.ts) and `extractSegments` (packages/tui/src/utils.ts). Focus and the overlay stack stay
 //! with the owner: it passes visible overlays in focus order (lowest first).
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::components::Component;
 use crate::renderer::is_image_line;
 use crate::utils::{AnsiCodeTracker, ansi_len, grapheme_width, slice_with_width, visible_width};
 
@@ -215,57 +214,4 @@ pub fn composite_line(
     } else {
         slice_with_width(&result, 0, total_width, true).0
     }
-}
-
-/// Rendered overlay rectangle: row, col, width, height.
-pub type Bounds = (i64, i64, i64, i64);
-
-/// Renders each visible overlay (focus order, lowest first) and composites it into `lines`, padded to the terminal
-/// height. Returns the lines and each overlay's (row, col, width, height) bounds.
-pub fn composite_overlays(
-    lines: &[String],
-    overlays: &mut [(&mut dyn Component, &OverlayOptions)],
-    term_w: usize,
-    term_h: usize,
-) -> (Vec<String>, Vec<Bounds>) {
-    let mut result = lines.to_vec();
-    if overlays.is_empty() {
-        return (result, Vec::new());
-    }
-    let (tw, th) = (term_w as i64, term_h as i64);
-    let mut rendered = Vec::new();
-    let mut min_lines = result.len() as i64;
-    for (component, opt) in overlays.iter_mut() {
-        let first = resolve_overlay_layout(opt, 0, tw, th);
-        let mut ol = component.render(first.width.max(0) as usize);
-        if let Some(m) = first.max_height {
-            ol.truncate(m.max(0) as usize);
-        }
-        let l = resolve_overlay_layout(opt, ol.len() as i64, tw, th);
-        min_lines = min_lines.max(l.row + ol.len() as i64);
-        rendered.push((ol, l.row, l.col, first.width));
-    }
-    let working = (result.len() as i64).max(th).max(min_lines);
-    result.resize(working as usize, String::new());
-    let viewport_start = (working - th).max(0);
-    let bounds = rendered
-        .iter()
-        .map(|(ol, row, col, w)| (*row, *col, *w, ol.len() as i64))
-        .collect();
-    for (ol, row, col, w) in &rendered {
-        let w = (*w).max(0) as usize;
-        for (i, line) in ol.iter().enumerate() {
-            let idx = viewport_start + row + i as i64;
-            if idx >= 0 && (idx as usize) < result.len() {
-                let line = if visible_width(line) > w {
-                    slice_with_width(line, 0, w, true).0
-                } else {
-                    line.clone()
-                };
-                let idx = idx as usize;
-                result[idx] = composite_line(&result[idx], &line, (*col).max(0) as usize, w, term_w);
-            }
-        }
-    }
-    (result, bounds)
 }

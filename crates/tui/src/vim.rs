@@ -28,15 +28,6 @@ impl VimMode {
             Self::Replace => "replace",
         }
     }
-
-    /// DECSCUSR cursor shape: steady block in Normal/Visual, bar in Insert, underline in Replace.
-    pub fn cursor_shape(self) -> &'static str {
-        match self {
-            Self::Insert => "\x1b[6 q",
-            Self::Replace => "\x1b[4 q",
-            Self::Normal | Self::Visual | Self::VisualLine => "\x1b[2 q",
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

@@ -2,9 +2,23 @@
 //! with the session's model check installed an unknown model is refused too, instead of the child silently running
 //! on the root's model; a known model reaches the child run.
 
-use delegation::host::{ChildRunner, CollectMode, Delegation, DelegationOptions, builtin_model_check};
+use delegation::host::{ChildRunner, CollectMode, Delegation, DelegationOptions, ModelCheck};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+
+/// A model check that accepts only the built-in model catalog (the session's own check also reads models.json).
+fn builtin_model_check() -> ModelCheck {
+    Arc::new(|spec: &str| {
+        let known = spec
+            .split_once('/')
+            .is_some_and(|(provider, id)| ai::models::builtin_model(provider, id).is_some());
+        if known {
+            Ok(())
+        } else {
+            Err(format!("model must be provider/model naming a known model, not {spec}"))
+        }
+    })
+}
 
 fn host() -> (Delegation, Arc<Mutex<Vec<Option<String>>>>) {
     let models: Arc<Mutex<Vec<Option<String>>>> = Arc::default();

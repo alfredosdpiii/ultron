@@ -2,7 +2,7 @@
 //! packages/tui/src/components/editor.ts by fixtures/generate-editor-component.mjs.
 
 use serde_json::Value;
-use tui::editor::{Editor, is_key_release, is_key_repeat, word_wrap_line};
+use tui::editor::{Editor, is_key_release, word_wrap_line};
 use tui::keybindings::{KeybindingsManager, tui_keybindings};
 use tui::keys::KeyContext;
 
@@ -111,7 +111,7 @@ fn tui_editor_word_wrap_line_matches_ts() {
 }
 
 #[test]
-fn tui_editor_key_release_and_repeat_match_ts() {
+fn tui_editor_key_release_matches_ts() {
     let fx = fixture();
     for c in fx["events"].as_array().expect("events") {
         let data = c["data"].as_str().expect("data");
@@ -119,11 +119,6 @@ fn tui_editor_key_release_and_repeat_match_ts() {
             is_key_release(data),
             c["release"].as_bool().expect("release"),
             "isKeyRelease({data:?})"
-        );
-        assert_eq!(
-            is_key_repeat(data),
-            c["repeat"].as_bool().expect("repeat"),
-            "isKeyRepeat({data:?})"
         );
     }
 }

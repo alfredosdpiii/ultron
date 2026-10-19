@@ -33,8 +33,8 @@ pub struct RuntimeGuideOptions {
     pub mcp_servers: Vec<String>,
     pub native_extension_tools: Vec<String>,
     /// The host serves the Rust session runtime's APIs that TS lacks: the durable many-agent APIs (`keep=True`
-    /// children, `rlm.ask`, `swarm`, `board`, `notes`) and typed memory records with file pointers. The TS host and
-    /// the Claude root do not. Off keeps the guide equal to TS.
+    /// children, `rlm.ask`, `swarm`, `board`, `notes`), typed memory records with file pointers and `rlm.images`. The
+    /// TS host and the Claude root do not. Off keeps the guide equal to TS.
     pub durable_apis: bool,
 }
 
@@ -94,7 +94,8 @@ If you are a subagent, do the brief yourself (spawn only if given depth), then `
 Typed agents, graphs, jobs: `help(agents)`, `help(workflows)`, `help(background)`."#;
 
 const TYPED_MEMORY: &str = r#" A fact tied to files can be typed: `memory.propose(text, evidence, type="pitfall", situation="...", path_globs=["src/**"])`; a `[memory] <id> <type>: <situation>` line on a result points at one matching a file you changed (`await memory.get(id)`)."#;
-const SWARM_PROMPT: &str = r#"Persistent agents: `h = await rlm.spawn(brief, name=..., keep=True)` stays alive after its answer (its context, files and kernel survive restarts); `await rlm.ask(h, question)` asks it a follow-up, so your context grows only by the question and the answer: ask the child that already read something instead of re-reading it. `await swarm.route(question)` ranks the agents holding matching context; `swarm.send(name, text)` and `swarm.inbox()` message agents; `board` (tasks with exclusive claims) and `notes` are the session's shared durable records. `help(swarm)`."#;
+const IMAGES_PROMPT: &str = r#"- `await rlm.images.generate(prompt, size="16:9")` makes an image and saves it to a file: `{"paths": [...], "model": ...}` (`help(rlm.images)`)."#;
+const SWARM_PROMPT: &str = r#"Persistent agents: `h = await rlm.spawn(brief, name=..., keep=True)` stays alive after its answer (its context, files and kernel survive restarts); `await rlm.ask(h, question)` asks it a follow-up, so your context grows only by the question and the answer: ask the child that already read something instead of re-reading it. `await swarm.route(question)` ranks the agents holding matching context; `swarm.send(name, text)` and `swarm.inbox()` message agents; `board` (tasks with exclusive claims) and `notes` are the session's shared durable records. Contracts: `rlm.spawn(brief, name=..., contract={"checks": [{"run": "cargo test -q"}, {"changed_files_within": ["src/**"]}]}, hop={"retry": 1})` makes the host run the checks itself when the child ends, and its result's `check["contract"]["verdict"]` is "verified" or "contract_failed" (`help(rlm.spawn)`). `help(swarm)`."#;
 
 /// Guideline bullets for the `rlm` tool, depending on whether native file tools are active too.
 pub fn rlm_tool_guidelines(active_tools: &[&str]) -> Vec<String> {
@@ -245,7 +246,7 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
         parts.push(delegation_prompt(delivery));
     }
     if options.durable_apis {
-        parts.push(format!("{context}\n{MEMORY}{TYPED_MEMORY}"));
+        parts.push(format!("{context}\n{MEMORY}{TYPED_MEMORY}\n{IMAGES_PROMPT}"));
     } else {
         parts.push(format!("{context}\n{MEMORY}"));
     }

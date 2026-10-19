@@ -365,29 +365,6 @@ pub fn extract_image_paste_paths_from_text(text: &str) -> Option<Vec<String>> {
     whole_text_attachment_path(text).map(|p| vec![p])
 }
 
-/// The single previewable path `text` names, if that is all it is.
-pub fn extract_image_path_from_text(text: &str) -> Option<String> {
-    match extract_paste_paths_from_text(text) {
-        Some(paths) if paths.len() == 1 && is_previewable_path(&paths[0]) => paths.into_iter().next(),
-        Some(_) => None,
-        None => whole_text_attachment_path(text),
-    }
-}
-
-fn bracketed_payload(data: &str) -> Option<&str> {
-    let rest = data.strip_prefix(PASTE_START)?;
-    let end = rest.find(PASTE_END)?;
-    (end + PASTE_END.len() == rest.len()).then(|| &rest[..end])
-}
-
-pub fn extract_bracketed_paste_paths(data: &str) -> Option<Vec<String>> {
-    extract_paste_paths_from_text(bracketed_payload(data)?)
-}
-
-pub fn extract_bracketed_image_paste_paths(data: &str) -> Option<Vec<String>> {
-    extract_image_paste_paths_from_text(bracketed_payload(data)?)
-}
-
 // ---- OSC 5522 enhanced (typed) paste ----
 
 const OSC5522: &str = "\x1b]5522;";

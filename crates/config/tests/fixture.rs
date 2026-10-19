@@ -308,10 +308,15 @@ fn config_paths_match_typescript() {
         let s = |p: PathBuf| p.to_string_lossy().into_owned();
         let got = json!({
             "env": case["env"], "agentDir": s(dir.clone()), "auth": s(p.auth()), "settings": s(p.settings()),
-            "models": s(p.models()), "themes": s(p.custom_themes_dir()), "tools": s(p.tools_dir()), "bin": s(p.bin_dir()),
-            "prompts": s(p.prompts_dir()), "sessions": s(p.sessions_dir()), "debugLog": s(p.debug_log()),
+            "models": s(p.models()), "themes": s(p.custom_themes_dir()), "bin": s(p.bin_dir()),
+            "sessions": s(p.sessions_dir()), "debugLog": s(p.debug_log()),
         });
-        assert_eq!(root.rel(got), *case, "agent dir for {:?}", case["env"]);
+        // `getToolsDir` / `getPromptsDir` have no Rust port: no product path reads them.
+        let mut expected = case.clone();
+        for key in ["tools", "prompts"] {
+            expected.as_object_mut().unwrap().remove(key);
+        }
+        assert_eq!(root.rel(got), expected, "agent dir for {:?}", case["env"]);
     }
 }
 

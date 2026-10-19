@@ -1,14 +1,13 @@
 //! A sandboxed Host serving the real runtime.py through crates/kernel: cells' shell commands (blocking bash and
-//! shell jobs) run isolated, writes outside the writable paths are blocked, and approval decisions reach the cell as
-//! exceptions. Isolation cases are skipped (with the reason printed) when neither bwrap nor unshare works here.
+//! shell jobs) run isolated, writes outside the writable paths are blocked, and nothing asks for approval. Isolation
+//! cases are skipped (with the reason printed) when neither bwrap nor unshare works here.
 
 use host::{AllowAll, Host};
 use kernel::{Kernel, KernelOptions};
 use sandbox::launcher::{Launcher, Mechanism, Policy};
-use sandbox::{ApprovalRequest, Approver};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 fn runtime() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/coding-agent/src/ultron/rlm/runtime.py")
@@ -51,10 +50,10 @@ fn isolation_available() -> bool {
 }
 
 /// Runs `cells` with a Host made sandboxed by `settings`; returns (stdout, result, error) per cell.
-fn run(tree: &Tree, settings: Value, approver: Option<Arc<dyn Approver>>, cells: &[&str]) -> Vec<Value> {
+fn run(tree: &Tree, settings: Value, cells: &[&str]) -> Vec<Value> {
     let jobs = tree.project.join(".jobs");
-    let host = Host::new(&tree.project, &jobs, &tree.project, Box::new(AllowAll))
-        .sandboxed(&settings, &tree.home, None, approver);
+    let host =
+        Host::new(&tree.project, &jobs, &tree.project, Box::new(AllowAll)).sandboxed(&settings, &tree.home, None);
     let mut options = KernelOptions::new(&tree.project, runtime());
     options.env.push(("ULTRON_RLM_SPILL_DIR".into(), String::new()));
     options.env.push(("ULTRON_FILE_HOOKS".into(), "1".into()));
@@ -87,7 +86,6 @@ fn host_sandboxed_bash_and_jobs_cannot_write_the_home() {
     let results = run(
         &tree,
         json!({ "sandbox": { "mode": "required", "network": false } }),
-        None,
         &[
             "r = await bash('echo in > in.txt; echo out > ../out.txt; cat ../.ssh/id_test; cat in.txt'); print(r.output)",
             "j = await bash('sleep 0.3; echo job > job.txt; echo x > ../job-out.txt', yield_after=0); print((await j.result(wait=30)).status)",
@@ -116,7 +114,6 @@ fn host_sandboxed_mode_off_runs_commands_as_before() {
     let results = run(
         &tree,
         json!({ "sandbox": { "mode": "off" } }),
-        None,
         &[
             "await bash('echo out > ../out.txt')",
             "await write('../outside.txt', 'x')",
@@ -134,7 +131,6 @@ fn host_sandboxed_writes_outside_the_writable_paths_raise_in_the_cell() {
     let results = run(
         &tree,
         json!({ "sandbox": { "mode": "auto" } }),
-        None,
         &[
             "await write('inside.txt', 'ok')",
             "await write('../outside.txt', 'x')",
@@ -158,87 +154,35 @@ fn host_sandboxed_writes_outside_the_writable_paths_raise_in_the_cell() {
     );
 }
 
-struct Recorder {
-    answer: bool,
-    seen: Mutex<Vec<ApprovalRequest>>,
-}
-impl Approver for Recorder {
-    fn approve(&self, request: &ApprovalRequest) -> bool {
-        self.seen.lock().unwrap().push(request.clone());
-        self.answer
-    }
-}
-
+/// There are no approvals (user decision, wave 40): `approval.*` settings that once denied or prompted bash and writes
+/// are ignored, and every operation runs.
 #[test]
-fn host_sandboxed_approval_denies_prompts_and_fails_closed_without_a_ui() {
+fn host_sandboxed_approval_settings_are_ignored_and_every_operation_runs() {
     let tree = tree();
     let settings = json!({
         "sandbox": { "mode": "off" },
         "approval": {
-            "mode": "write",
-            "ops": { "bash": "allow" },
-            "bash": { "patterns": [{ "match": "git push*", "approval": "deny" }] },
+            "mode": "always-ask",
+            "ops": { "bash": "deny", "write": "deny" },
+            "bash": { "patterns": [{ "match": "echo blocked*", "approval": "deny" }] },
         },
-    });
-    let cells = [
-        "print((await bash('echo plain')).output.strip())",
-        "await bash('git push origin main')",
-        "await bash('true || rm -rf /nonexistent-ultron-path')",
-        "await bash('true || rm -rf /nonexistent-ultron-path', yield_after=1)",
-    ];
-    let results = run(&tree, settings.clone(), None, &cells);
-    assert_eq!(results[0]["stdout"], "plain\n", "{results:?}");
-    assert!(error(&results[1]).contains("bash command was not run: Operation \"bash\" is blocked by policy.\nReason: Blocked by bash pattern: git push*"), "{results:?}");
-    for result in &results[2..] {
-        assert!(
-            error(result).contains("bash command was not run: Operation \"bash\" requires approval (Critical pattern detected) but no interactive UI is available"),
-            "{results:?}"
-        );
-    }
-
-    let refuse = Arc::new(Recorder {
-        answer: false,
-        seen: Mutex::new(Vec::new()),
-    });
-    let results = run(&tree, settings.clone(), Some(refuse.clone()), &cells[2..3]);
-    assert!(
-        error(&results[0]).contains("Operation \"bash\" was not approved"),
-        "{results:?}"
-    );
-    let seen = refuse.seen.lock().unwrap();
-    assert_eq!(seen.len(), 1);
-    assert_eq!(
-        seen[0].prompt,
-        "Allow host operation: bash\nReason: Critical pattern detected\nCommand: true || rm -rf /nonexistent-ultron-path"
-    );
-
-    let allow = Arc::new(Recorder {
-        answer: true,
-        seen: Mutex::new(Vec::new()),
     });
     let results = run(
         &tree,
         settings,
-        Some(allow.clone()),
-        &["print((await bash('true || rm -rf /nonexistent-ultron-path; echo ran')).output)"],
+        &[
+            "print((await bash('echo blocked')).output.strip())",
+            "print((await bash('true || rm -rf /nonexistent-ultron-path; echo ran')).output.strip())",
+            "j = await bash('echo job > job.txt', yield_after=0); print((await j.result(wait=30)).status)",
+            "await write('a.txt', 'x')",
+        ],
     );
-    assert_eq!(results[0]["stdout"], "ran\n\n", "{results:?}");
-    assert_eq!(allow.seen.lock().unwrap().len(), 1);
-}
-
-/// approval.mode always-ask prompts for writes (tier write); with no UI the write raises and nothing is written.
-#[test]
-fn host_sandboxed_always_ask_blocks_writes_without_a_ui() {
-    let tree = tree();
-    let results = run(
-        &tree,
-        json!({ "sandbox": { "mode": "off" }, "approval": { "mode": "always-ask" } }),
-        None,
-        &["await write('a.txt', 'x')"],
-    );
-    assert!(
-        error(&results[0]).contains("Operation \"write\" requires approval but no interactive UI is available"),
-        "{results:?}"
-    );
-    assert!(!tree.project.join("a.txt").exists());
+    let stdout: Vec<&str> = results
+        .iter()
+        .map(|r| r["stdout"].as_str().unwrap_or_default())
+        .collect();
+    assert_eq!(stdout, ["blocked\n", "ran\n", "completed\n", ""], "{results:?}");
+    assert!(results.iter().all(|r| error(r).is_empty()), "{results:?}");
+    assert_eq!(std::fs::read_to_string(tree.project.join("a.txt")).unwrap(), "x");
+    assert_eq!(std::fs::read_to_string(tree.project.join("job.txt")).unwrap(), "job\n");
 }

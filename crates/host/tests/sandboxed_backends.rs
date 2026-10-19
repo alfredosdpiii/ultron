@@ -62,7 +62,7 @@ fn host(tree: &Tree, mechanism: Mechanism, network: bool) -> Host {
         &tree.project,
         Box::new(AllowAll),
     )
-    .sandboxed_with_mechanism(&settings(network), &tree.home, None, None, Some(mechanism));
+    .sandboxed_with_mechanism(&settings(network), &tree.home, None, Some(mechanism));
     assert_eq!(host.launcher().unwrap().mechanism(), Some(mechanism));
     host
 }

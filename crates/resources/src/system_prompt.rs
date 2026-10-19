@@ -222,22 +222,3 @@ pub fn build_system_prompt(options: &BuildOptions, force: Option<&str>) -> Resul
         .collect::<Vec<_>>()
         .join("\n\n"))
 }
-
-/// `diffSystemPromptSections`: changed or new sections as `Some`, removed ones as `None`; `None` when equal.
-pub fn diff_system_prompt_sections(
-    previous: &[(String, String)],
-    current: &Sections,
-) -> Option<Vec<(String, Option<String>)>> {
-    let mut patch: Vec<(String, Option<String>)> = Vec::new();
-    for (name, text) in current {
-        if lookup(previous, name) != Some(text) {
-            patch.push((name.clone(), Some(text.clone())));
-        }
-    }
-    for (name, _) in previous {
-        if lookup(current, name).is_none() {
-            patch.push((name.clone(), None));
-        }
-    }
-    (!patch.is_empty()).then_some(patch)
-}

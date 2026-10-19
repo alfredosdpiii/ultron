@@ -242,9 +242,13 @@ pub fn verdict_tag(result: &Value) -> Option<String> {
     };
     let check = &result["check"];
     let list = |key: &str| check[key].as_array().cloned().unwrap_or_default();
+    // A spawn contract's verdict (Rust only: `rlm.spawn(contract=...)`), e.g. "contract contract_failed".
+    let contract = check["contract"]["verdict"]
+        .as_str()
+        .map_or(String::new(), |verdict| format!("contract {verdict}"));
     if result["verdict"].is_object() {
         let unobserved = list("unobserved");
-        let mut extra = vec![unmerged];
+        let mut extra = vec![unmerged, contract];
         if !unobserved.is_empty() {
             let first: Vec<&str> = unobserved.iter().take(3).filter_map(Value::as_str).collect();
             extra.push(format!("declared but unchanged: {}", first.join(", ")));
@@ -271,11 +275,11 @@ pub fn verdict_tag(result: &Value) -> Option<String> {
         } else {
             ""
         };
-        let tail = if unmerged.is_empty() {
-            String::new()
-        } else {
-            format!("; {unmerged}")
-        };
+        let tail: String = [unmerged, contract]
+            .iter()
+            .filter(|e| !e.is_empty())
+            .map(|e| format!("; {e}"))
+            .collect();
         return Some(format!("[unverified{rejected}{tail}]"));
     }
     None

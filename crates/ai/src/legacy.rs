@@ -55,8 +55,3 @@ pub const LEGACY_API_ALIASES: [LegacyApiAlias; 16] = [
     alias("streamOpenAIResponses", "openai-responses", false, true),
     alias("streamSimpleOpenAIResponses", "openai-responses", true, true),
 ];
-
-/// The alias with this upstream export name.
-pub fn legacy_api_alias(name: &str) -> Option<&'static LegacyApiAlias> {
-    LEGACY_API_ALIASES.iter().find(|a| a.name == name)
-}

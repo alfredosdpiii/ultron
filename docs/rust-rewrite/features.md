@@ -162,3 +162,90 @@ A cell that hangs (a `git push` waiting forever) used to hold its REPL lane, and
   Esc in the native TUI, stops the shell jobs and REPL calls of the turn (`cancel_root`), and the call answers
   `Abort requested`; the lane is free for the next call.
 - Same routing on the native root lane (it is the `rlm` tool's, crates/session-core `Rlm`).
+
+## Host-checked delegation contracts (wave 40, w16-contracts; decision row 210, first half)
+
+`rlm.spawn(brief, name=..., role=..., contract={...}, hop=...)` (and the same `role` / `contract` / `hop` fields on
+`rlm-child@1` workflow nodes, which then run as subagents of the subagent host) gives a child a contract that the
+HOST verifies itself when the child ends. Nothing is trusted from the child, and there is no approval or gate.
+
+- `role`: a `Role: ...` line ahead of the brief; the brief also names the checks the host will run.
+- `contract={"checks": [...], "returns": <JSON schema>}`, at most 16 checks:
+  `{"run": "<cmd>", "expect": "exit 0" | {"exit": N} | {"stdout_contains": s}, "timeout_ms": N}` (default exit 0,
+  120 s, at most 600 s; `/bin/sh -c` in the child's working directory: its worktree with `worktree=True`, else the
+  session's, with its worktree environment, under the session's shell sandbox with that directory writable);
+  `{"changed_files_within": [globs]}` (every file that changed in its working directory since it started, from the
+  workspace snapshot the verdict check already takes); `{"no_new_dependencies": true}` (no manifest or lockfile
+  changed: Cargo.toml/lock, package.json and npm/yarn/pnpm/bun locks, pyproject/poetry/uv/Pipfile/setup.py/cfg,
+  requirements*.txt, go.mod/sum, Gemfile(.lock), composer.json/lock); `{"files_exist": [relative paths]}`.
+  `returns` is checked on `rlm.finish(outputs=...)`: a mismatch rejects the finish (the child fixes it, as any
+  rejected verdict), and a child that ends without a matching verdict fails it.
+- Result: `check.contract` (under `check`, the free-form field of the task journal's result shape, which TS reads
+  too) = `{"verdict": "verified" | "contract_failed", "checks": [{"check", "ok", "evidence", "exit_code", "stdout",
+  "stderr", ...}], "failed": [...], "attempts", "previous"?, "hop"}`. Command output is kept to its last 2,000
+  characters. A failed contract makes the result `status: "failed"` with `error: "Contract failed: <each failed
+  check>"` (so `rlm.merge` skips it unless `include_failed=True`); the child's own verdict stays beside it. The
+  completion event's tag gains `contract verified` / `contract contract_failed`.
+- `hop`: `"report"` (default); `{"retry": N}` (1..3) re-runs the child (same task, worktree and start snapshot)
+  with `[Contract] Attempt k did not pass the host's contract checks: ...` appended to its brief, on a verdict of
+  its own; `{"review": "brief"}` spawns a sibling reviewer `<name>-review` whose brief is the review brief, the failed
+  checks, the child's summary and declared files; its handle is in `check.contract.hop.review`.
+- Not kept across a worker restart: a child reattached by the durable runtime ends with its ordinary verdict check.
+- Python: `swarm_api.py` (Rust-served additions) passes the options through and documents them in
+  `help(rlm.spawn)`; the TS host refuses them (`Unknown payload field: role`). The Rust runtime guide names them in
+  the delegation section with the durable APIs on (`ULTRON_GUIDE=ts` keeps the TS text).
+
+## Session environment for kernels and commands; cell cancel stops its shell work (w16-kernelfix)
+
+Two bugs found by w15-lanes, fixed in crates/kernel, crates/host and crates/session-core `compose.rs`.
+
+- A session's kernels and commands start from the session's environment, never the server process's. The stack
+  builds it once per kernel or host (`compose::session_environment`): every variable name this process has plus a
+  fixed list (PATH, HOME, locale, TMPDIR, XDG dirs, Python and `ULTRON_RLM_*` settings), each valued by the session's
+  `var` lookup and dropped when the session has none. `KernelOptions::base_env` replaces `std::env::vars()` for the
+  kernel (before the credential filter) and for its `ULTRON_PYTHON`, limit, output-budget and tree-memory settings;
+  `Host::with_base_env` makes blocking bash and shell jobs `env_clear` to it (then the command's own `with_env`
+  variables), finds bash and the job keeper on its PATH, and gives the sandbox's allowlist its values. A tool only
+  the server's PATH has is not found. In the product the session's lookup is the worker's process environment, so
+  nothing changes there; injected environments (tests, embedders) now reach the children. The sandbox launcher
+  itself (bwrap, unshare, docker) is still found as the sandbox crate's mechanism probe finds it (`launch_env`).
+- Cancelling a cell (`rlm.cancel`, `rlm.cell.cancel`, `Lanes::cancel`) stops its shell work at once. Each cell's shell requests
+  (`bash`, `shell.bash`, `shell.run`, `shell.result`) run under a signal that also aborts on the cell's cancel: a
+  blocking bash's own process group is killed, a waited-on job is cancelled, and every job the cell started is
+  cancelled (`shell.cancel`). The request then fails with "the cell was cancelled; its shell command was stopped",
+  so Python raises and the cell ends within the cancel grace: the kernel is not killed and the lane keeps its
+  variables (no restore from the last checkpoint). Jobs of cells that ended normally keep running.
+- Every host kill of a command goes through `kernel::kill_command_group(pgid)`: only the explicit positive group the
+  host created for that command (`process_group(0)`), never 0, -1, 1, the host's own pid or its own group.
+
+## `rlm.images`, written-file diffs in the TUI, no approvals or grants (wave 40, w16-cleanup)
+
+**`rlm.images`.** `r = await rlm.images.generate(prompt, model=None, size=None, n=1, out=None)` generates images
+through OpenRouter's images API (the port of `api/openrouter-images.ts`, `ai::images`) and returns
+`{"paths": [...], "model": "openrouter/<id>"}`: the host saves every image to a file, so no image bytes reach the cell
+or the model's context (`view_image(path)` shows one). `model` is `provider/id` or a bare catalog id; default: the
+`images.model` setting, else `openrouter/google/gemini-2.5-flash-image`; `await rlm.images.models()` lists the
+catalog. `size` is an aspect ratio (`"16:9"`) or `1K`/`2K`/`4K`, sent as `image_config`; `n` (1-4) makes requests
+until that many images came back; `out` is the file (several images: `<stem>-1.<ext>`, ...) or an existing directory;
+default `<agent dir>/rlm-output/<session id>/images/image-<k>.<ext>` (first unused numbers). The key is resolved as for
+chat requests (auth.json, models.json, `OPENROUTER_API_KEY` of the session environment); `images.baseUrl` replaces
+the provider URL (a proxy). Argument errors are `ValueError` in Python and `images.generate ...` messages from the
+host; provider failures and answers without an image are `RuntimeError: Image generation failed: ...`, and nothing is
+written unless every image arrived. The Python side (`images_api.py`, installed from `swarm_api.install` so
+runtime.py's line numbers stay put) is ignored by the TypeScript host, which answers `images.*` with an error. The
+ultron-rs runtime guide gets one line behind `durable_apis` (`ULTRON_GUIDE=ts` keeps the TS text).
+
+**Diffs of the files a cell wrote.** Writes through the checked `write()`/`edit()` (`files.before_write`) are
+recorded per lane with the text before (read while the write is proposed) and after (`host::cell_writes`, at most 32
+files, 256 KiB per text). When the cell ends, those whose file now holds the proposed text become the result's
+`details.fileChanges`: `[{path, created, diff, omitted?}]`, `diff` in the edit tool's display format
+(`generateDiffString` with 2 lines of context, at most 400 lines; null for a file too large or not text). A cell that
+wrote nothing keeps `details: {}` as in TypeScript. The interactive mode draws the list under the expanded rlm cell
+(`N files changed`, the path, `renderDiff`'s colored lines with word-level inverse for a single changed line); the
+tool-expand key toggles it and the collapsed cell is byte-identical to TypeScript's. Files changed by other means
+(`bash('sed -i ...')`) are not in the list: their text before is unknown when the cell ends.
+
+**No approvals, no grants.** The `approval.*` settings (omp's tiers, `approval.ops`, bash patterns and the critical
+pattern guard), the `Approver` UI hook and `grants.*` (scoped approvals) are gone: every operation the sandbox
+contains runs. `sandbox.*` (bwrap, unshare, docker, write containment) is unchanged. The shared runtime still binds
+`grants` (the TypeScript product serves it); in ultron-rs its calls fail as unserved host requests.

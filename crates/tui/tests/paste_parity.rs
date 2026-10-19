@@ -98,15 +98,13 @@ fn tui_paste_path_detection_matches_omp() {
     let opt = |v: Option<Vec<String>>| v.map_or(Value::Null, |p| json!(p));
     for case in fixture()["paths"].as_array().unwrap() {
         let input = case["input"].as_str().unwrap();
-        let wrapped = format!("{PASTE_START}{input}{PASTE_END}");
         let got = json!({
             "input": input,
             "paths": opt(extract_paste_paths_from_text(input)),
             "imagePaths": opt(extract_image_paste_paths_from_text(input)),
-            "imagePath": extract_image_path_from_text(input),
-            "bracketed": opt(extract_bracketed_paste_paths(&wrapped)),
-            "bracketedImages": opt(extract_bracketed_image_paste_paths(&wrapped)),
         });
-        assert_eq!(&got, case, "{input:?}");
+        // The fixture also records omp's single-path and bracketed-payload helpers, which have no Rust caller.
+        let want = json!({"input": case["input"], "paths": case["paths"], "imagePaths": case["imagePaths"]});
+        assert_eq!(got, want, "{input:?}");
     }
 }

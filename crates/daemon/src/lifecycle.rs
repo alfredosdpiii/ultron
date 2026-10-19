@@ -21,7 +21,6 @@ struct Inner {
     /// The pending initial (or orphan) grace timer, by token.
     initial_timer: Option<u64>,
     next_token: u64,
-    activity: u64,
     retiring: bool,
 }
 
@@ -51,7 +50,6 @@ impl Lifecycle {
                 initialized: false,
                 initial_timer: None,
                 next_token: 0,
-                activity: 0,
                 retiring: false,
             }),
             orphan_grace,
@@ -170,19 +168,6 @@ impl Lifecycle {
         self.lock().holds += 1;
         Hold {
             lifecycle: Some(self.clone()),
-            activity: None,
-        }
-    }
-
-    /// Count detached work as an active operation until the guard drops.
-    pub fn hold_activity(self: &Arc<Self>) -> Hold {
-        let mut inner = self.lock();
-        inner.activity += 1;
-        let key = format!("activity\0{}", inner.activity);
-        inner.active.insert(key.clone());
-        Hold {
-            lifecycle: Some(self.clone()),
-            activity: Some(key),
         }
     }
 
@@ -255,28 +240,22 @@ impl Lifecycle {
         (self.on_retire)();
     }
 
-    fn release(&self, activity: Option<&str>) {
+    fn release(&self) {
         let mut inner = self.lock();
-        match activity {
-            Some(key) => {
-                inner.active.remove(key);
-            }
-            None => inner.holds -= 1,
-        }
+        inner.holds -= 1;
         self.reconcile(inner);
     }
 }
 
-/// A retirement or activity hold, released on drop.
+/// A retirement hold, released on drop.
 pub struct Hold {
     lifecycle: Option<Arc<Lifecycle>>,
-    activity: Option<String>,
 }
 
 impl Drop for Hold {
     fn drop(&mut self) {
         if let Some(lifecycle) = self.lifecycle.take() {
-            lifecycle.release(self.activity.as_deref());
+            lifecycle.release();
         }
     }
 }

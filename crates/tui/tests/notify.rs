@@ -258,19 +258,13 @@ fn tui_notify_multiplexer_sessions_and_classification() {
     );
     assert_eq!(classify(&[("TERM", "screen-256color")]), Some(Multiplexer::Screen));
     assert_eq!(classify(&orca), Some(Multiplexer::Orca));
-    assert!(!is_inside_multiplexer(&Env::from_pairs(&orca)));
     let mut orca_tmux = orca.to_vec();
     orca_tmux.push(("TMUX", "session"));
     assert_eq!(classify(&orca_tmux), Some(Multiplexer::Tmux));
-    assert!(is_inside_multiplexer(&Env::from_pairs(&orca_tmux)));
     let mut orca_term = orca.to_vec();
     orca_term.push(("TERM", "screen-256color"));
     assert_eq!(classify(&orca_term), Some(Multiplexer::Screen));
     assert_eq!(classify(&[("TERM_PROGRAM", "orca")]), None);
-    assert_eq!(
-        multiplexer_sessions(&Env::from_pairs(&[("ZELLIJ", "0"), ("HERDR_ENV", "1")])),
-        vec![Multiplexer::Herdr, Multiplexer::Zellij]
-    );
 }
 
 #[test]

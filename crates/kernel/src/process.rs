@@ -65,8 +65,38 @@ pub(crate) fn descendant_pids(root: i32) -> Vec<i32> {
     result
 }
 
+/// The process group a host may signal for a command it started in a group of its own: `pgid` itself, when it is
+/// a real positive group id (never 0, -1 or another negative value, never init's 1) and neither this process's pid
+/// nor this process's own group. Pure, so the guard is tested without sending any signal.
+pub fn command_group_target(pgid: i32, own_pid: i32, own_group: i32) -> Option<Pid> {
+    if pgid <= 1 || pgid == own_pid || pgid == own_group {
+        return None;
+    }
+    Pid::from_raw(pgid)
+}
+
+/// The process a host may signal: a positive pid other than init and this process (pure, as above).
+pub(crate) fn process_target(pid: i32, own_pid: i32) -> Option<Pid> {
+    if pid <= 1 || pid == own_pid {
+        return None;
+    }
+    Pid::from_raw(pid)
+}
+
+/// SIGKILLs the process group the host created for one command (its leader's `pgid`), through
+/// [`command_group_target`]; whether a signal was sent.
+pub fn kill_command_group(pgid: i32) -> bool {
+    let own_pid = rustix::process::getpid().as_raw_nonzero().get();
+    let own_group = rustix::process::getpgrp().as_raw_nonzero().get();
+    match command_group_target(pgid, own_pid, own_group) {
+        Some(group) => kill_process_group(group, Signal::KILL).is_ok(),
+        None => false,
+    }
+}
+
 fn signal(pid: i32, signal: Signal) {
-    if let Some(pid) = Pid::from_raw(pid) {
+    let own = rustix::process::getpid().as_raw_nonzero().get();
+    if let Some(pid) = process_target(pid, own) {
         let _ = kill_process(pid, signal);
     }
 }
@@ -98,8 +128,8 @@ pub(crate) fn kill_process_tree(root: i32, owns_process_group: bool, root_alive:
             std::thread::sleep(Duration::from_millis(if sweep < 5 { 2 } else { 10 }));
         }
     }
-    if owns_process_group && let Some(group) = Pid::from_raw(root) {
-        let _ = kill_process_group(group, Signal::KILL);
+    if owns_process_group {
+        kill_command_group(root);
     }
     if root_alive {
         signal(root, Signal::KILL);

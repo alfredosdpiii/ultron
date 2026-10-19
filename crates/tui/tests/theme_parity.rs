@@ -6,9 +6,9 @@ use std::path::Path;
 use serde_json::{Value, json};
 use tui::theme::{
     ColorMode, TerminalTheme, Theme, ansi256_to_hex, assert_theme_name_is_valid, builtin_theme_json, create_theme,
-    detect_terminal_background_from_env, detect_terminal_background_theme, is_light_theme, language_from_path,
-    load_theme_from_path, load_theme_json, parse_auto_theme_setting, parse_theme_json_content, resolve_theme_setting,
-    resolved_css_colors, theme_export_colors, theme_for_rgb, validate_theme_json,
+    detect_terminal_background_from_env, detect_terminal_background_theme, is_light_theme, load_theme_from_path,
+    load_theme_json, parse_auto_theme_setting, parse_theme_json_content, resolve_theme_setting, resolved_css_colors,
+    theme_export_colors, theme_for_rgb, validate_theme_json,
 };
 
 fn fixture() -> Value {
@@ -325,14 +325,6 @@ fn tui_theme_settings_resolution_matches_typescript() {
         fx["registerSlash"].as_str()
     );
     assert_eq!(assert_theme_name_is_valid("ab"), Ok(()));
-}
-
-#[test]
-fn tui_theme_language_from_path_matches_typescript() {
-    let fx = fixture();
-    for c in fx["languages"].as_array().expect("cases") {
-        assert_eq!(language_from_path(s(&c["path"])), c["lang"].as_str(), "{}", c["path"]);
-    }
 }
 
 #[test]

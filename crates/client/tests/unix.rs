@@ -1,15 +1,14 @@
-//! Ported from packages/server/test/unix.test.ts, packages/client/test/unix.test.ts and
-//! unix-transport.test.ts: a Rust `UnixServer` and `Client` over real sockets in a private temp server dir.
+//! Ported from packages/client/test/unix.test.ts and unix-transport.test.ts: the `Client` over real sockets in a
+//! private temp server dir, against a test peer that runs the server's `Connection` state machine.
 
 use std::io::{Read, Write};
-use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use client::{Client, ClientError, UnixServerRoute, discover_unix_servers};
 use protocol::{ProtocolError, RpcTarget, ServiceCall, Value};
-use server::{HostError, ServerConfig, ServerServices, UnixServer, unix_socket_path};
+use server::{Connection, HostError, Output, ServerConfig, ServerServices};
 
 const A: &str = "00000000-0000-4000-8000-00000000000a";
 const B: &str = "00000000-0000-4000-8000-00000000000b";
@@ -33,14 +32,56 @@ impl ServerServices for Echo {
     }
 }
 
-fn start(dir: &Path, server_id: &str) -> UnixServer {
-    start_with(dir, server_id, PATIENT)
+fn socket(dir: &Path, server_id: &str) -> PathBuf {
+    dir.join(format!("{server_id}.sock"))
 }
 
-fn start_with(dir: &Path, server_id: &str, handshake: Duration) -> UnixServer {
-    let path = unix_socket_path(server_id, dir).expect("path");
-    let config = ServerConfig::new(server_id, 1 << 24).expect("config");
-    UnixServer::start(&path, config, handshake, || Echo).expect("start")
+/// Serve `listen_as`'s protocol at `path` on a background thread: one `Connection` per accepted stream. The thread
+/// lives until the test process exits, like a server the test never stops.
+fn serve(path: &Path, listen_as: &str) {
+    let listener = UnixListener::bind(path).expect("bind");
+    let config = ServerConfig::new(listen_as, 1 << 24).expect("config");
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(stream) = stream else { return };
+            let connection = Connection::new(config.clone(), Echo);
+            std::thread::spawn(move || drive(stream, connection));
+        }
+    });
+}
+
+fn drive(mut stream: UnixStream, mut connection: Connection<Echo>) {
+    let mut buffer = vec![0u8; 64 * 1024];
+    while !connection.is_closed() {
+        let outputs = match stream.read(&mut buffer) {
+            Ok(0) | Err(_) => {
+                connection.transport_closed();
+                return;
+            }
+            Ok(n) => connection.receive(&buffer[..n]),
+        };
+        for output in outputs {
+            match output {
+                Output::Send(frame) => {
+                    if stream.write_all(&frame).is_err() {
+                        connection.transport_closed();
+                    }
+                }
+                Output::Close(frame) => {
+                    if let Some(frame) = frame {
+                        let _ = stream.write_all(&frame);
+                    }
+                    let _ = stream.shutdown(std::net::Shutdown::Both);
+                }
+            }
+        }
+    }
+}
+
+fn start(dir: &Path, server_id: &str) -> PathBuf {
+    let path = socket(dir, server_id);
+    serve(&path, server_id);
+    path
 }
 
 fn call(service: &str, args: Vec<Value>) -> Value {
@@ -52,29 +93,9 @@ fn call(service: &str, args: Vec<Value>) -> Value {
 }
 
 #[test]
-fn client_unix_socket_path_is_derived_from_the_server_id() {
-    let dir = Path::new("/srv/ultron");
-    assert_eq!(unix_socket_path(A, dir), Ok(dir.join(format!("{A}.sock"))));
-    assert_eq!(
-        unix_socket_path("server-1", dir),
-        Err("Unix serverId must be a canonical lowercase UUIDv4".into())
-    );
-}
-
-#[test]
 fn client_carries_handshake_and_requests_over_a_real_unix_socket() {
     let temp = tempfile::tempdir().expect("temp");
-    let dir = temp.path().join("nested/servers");
-    let server = start(&dir, A);
-    let socket = dir.join(format!("{A}.sock"));
-    assert_eq!(
-        std::fs::metadata(&dir).expect("dir").permissions().mode() & 0o777,
-        0o700
-    );
-    assert_eq!(
-        std::fs::symlink_metadata(&socket).expect("socket").permissions().mode() & 0o777,
-        0o600
-    );
+    let socket = start(temp.path(), A);
 
     let mut client = Client::connect(UnixStream::connect(&socket).expect("connect"), A).expect("handshake");
     let echoed = client.request(
@@ -92,72 +113,6 @@ fn client_carries_handshake_and_requests_over_a_real_unix_socket() {
     assert!(
         matches!(Client::connect(UnixStream::connect(&socket).expect("connect"), B), Err(ClientError::Validation(m)) if m.contains("does not match"))
     );
-    server.close().expect("close");
-    assert!(!socket.exists(), "the server removes its own socket");
-}
-
-#[test]
-fn client_server_handshake_timeout_sends_a_final_hello_error() {
-    let temp = tempfile::tempdir().expect("temp");
-    // The handshake timeout is the input here: the client never says hello.
-    let server = start_with(temp.path(), A, Duration::from_millis(200));
-    let mut stream = UnixStream::connect(server.path()).expect("connect");
-    let mut bytes = Vec::new();
-    stream.read_to_end(&mut bytes).expect("server closes");
-    let mut decoder = protocol::ServerMessageDecoder::default();
-    let messages = decoder.push(&bytes).expect("frames");
-    assert_eq!(
-        messages,
-        vec![protocol::ServerMessage::HelloError {
-            error: ProtocolError::new("invalid_request", "Handshake timeout")
-        }]
-    );
-}
-
-#[test]
-fn client_server_refuses_live_listeners_and_regular_files_but_replaces_stale_sockets() {
-    let temp = tempfile::tempdir().expect("temp");
-    let live = start(temp.path(), A);
-    let path = live.path().to_owned();
-    let config = ServerConfig::new(A, 1 << 24).expect("config");
-    let error = UnixServer::start(&path, config.clone(), Duration::from_secs(1), || Echo)
-        .err()
-        .expect("live");
-    assert_eq!(
-        error.to_string(),
-        format!("Unix listener is already running: {}", path.display())
-    );
-    assert!(path.exists(), "a live listener's socket is never unlinked");
-    drop(live);
-
-    let file = temp.path().join(format!("{B}.sock"));
-    std::fs::write(&file, "keep").expect("file");
-    let config_b = ServerConfig::new(B, 1 << 24).expect("config");
-    let error = UnixServer::start(&file, config_b, Duration::from_secs(1), || Echo)
-        .err()
-        .expect("file");
-    assert_eq!(
-        error.to_string(),
-        format!("Refusing to remove non-socket Unix listener path: {}", file.display())
-    );
-    assert_eq!(std::fs::read_to_string(&file).expect("still there"), "keep");
-
-    drop(UnixListener::bind(&path).expect("stale bind"));
-    assert!(path.exists(), "a dropped listener leaves a stale socket");
-    let server = UnixServer::start(&path, config, PATIENT, || Echo).expect("replaces stale socket");
-    Client::connect(UnixStream::connect(&path).expect("connect"), A).expect("handshake");
-    server.close().expect("close");
-}
-
-#[test]
-fn client_server_close_keeps_a_replacement_inode() {
-    let temp = tempfile::tempdir().expect("temp");
-    let server = start(temp.path(), A);
-    let path = server.path().to_owned();
-    std::fs::remove_file(&path).expect("unlink");
-    std::fs::write(&path, "replacement").expect("replace");
-    server.close().expect("close");
-    assert_eq!(std::fs::read_to_string(&path).expect("kept"), "replacement");
 }
 
 #[test]
@@ -169,15 +124,13 @@ fn client_discovery_returns_reachable_servers_in_id_order_and_never_deletes() {
         vec![]
     );
 
-    let b = start(dir, B);
-    let a = start(dir, A);
+    start(dir, B);
+    start(dir, A);
     std::fs::write(dir.join(format!("{C}.sock")), "not a socket").expect("file");
     std::fs::write(dir.join("readme.txt"), "x").expect("file");
     // A socket named for one server that answers as another is not that server.
-    let impostor = unix_socket_path("00000000-0000-4000-8000-0000000000ee", dir).expect("path");
-    let config = ServerConfig::new(A, 1 << 24).expect("config");
-    let _impostor = UnixServer::start(&impostor, config, PATIENT, || Echo).expect("start");
-    let stale = unix_socket_path("00000000-0000-4000-8000-0000000000ff", dir).expect("path");
+    serve(&socket(dir, "00000000-0000-4000-8000-0000000000ee"), A);
+    let stale = socket(dir, "00000000-0000-4000-8000-0000000000ff");
     drop(UnixListener::bind(&stale).expect("stale"));
 
     let routes = discover_unix_servers(dir, PATIENT).expect("discover");
@@ -187,7 +140,6 @@ fn client_discovery_returns_reachable_servers_in_id_order_and_never_deletes() {
     });
     assert_eq!(routes, expected.to_vec());
     assert!(stale.exists(), "discovery never deletes endpoints");
-    drop((a, b));
 }
 
 #[test]
@@ -195,7 +147,7 @@ fn client_discovery_omits_a_silent_endpoint_after_the_probe_timeout() {
     // Alone in its directory, so the short probe timeout (the input) can only ever drop this endpoint.
     let temp = tempfile::tempdir().expect("temp");
     // Accepts connections (backlog) but never answers: times out.
-    let silent_path = unix_socket_path("00000000-0000-4000-8000-0000000000dd", temp.path()).expect("path");
+    let silent_path = socket(temp.path(), "00000000-0000-4000-8000-0000000000dd");
     let _silent = UnixListener::bind(&silent_path).expect("silent");
     let routes = discover_unix_servers(temp.path(), Duration::from_millis(150)).expect("discover");
     assert_eq!(routes, vec![]);
@@ -235,7 +187,7 @@ fn client_sees_truncated_final_frames_as_protocol_errors() {
 #[test]
 fn client_discovery_propagates_non_version_handshake_errors() {
     let temp = tempfile::tempdir().expect("temp");
-    let path = unix_socket_path(A, temp.path()).expect("path");
+    let path = socket(temp.path(), A);
     let listener = UnixListener::bind(&path).expect("bind");
     let peer = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("accept");

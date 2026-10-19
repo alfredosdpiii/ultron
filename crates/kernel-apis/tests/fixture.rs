@@ -1,5 +1,5 @@
 //! Replays crates/kernel-apis/fixtures/<area>.json, recorded by fixtures/generate.mjs from the TypeScript host
-//! (NativeRlmHost with the skills / grants / hints modules, or the worker services for memory) serving the real
+//! (NativeRlmHost with the skills / hints modules, or the worker services for memory) serving the real
 //! runtime.py through kernel.ts: the same cells run through crates/kernel with `KernelApis` and must print, return
 //! and fail the same, and leave the same durable state (module documents, the code-skills directory, the backend
 //! calls). Ids, timestamps, durations and temp paths are normalized on both sides by the same rules.
@@ -11,12 +11,12 @@ use kernel::Signal;
 use kernel_apis::memory::MemoryBackend;
 use kernel_apis::util::lock;
 use kernel_apis::{
-    CodeSkills, CodeSkillsOptions, DocumentStore, GrantsModule, HintsModule, KernelApis, MemoryApi,
-    MemoryDocumentStore, MemoryService, SkillSource, SkillsModule, worker_gate,
+    CodeSkills, CodeSkillsOptions, DocumentStore, HintsModule, KernelApis, MemoryApi, MemoryDocumentStore,
+    MemoryService, SkillSource, SkillsModule, worker_gate,
 };
 use serde_json::{Map, Value, json};
 use std::path::Path;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::AtomicI64;
 use std::sync::{Arc, Mutex};
 
 /// generate.mjs CATALOG.
@@ -182,18 +182,6 @@ fn memory_host(_: &Path) -> Made {
     }
 }
 
-fn grants_host(_: &Path) -> Made {
-    let store = Arc::new(MemoryDocumentStore::default());
-    let clock = Arc::new(AtomicI64::new(FIXED_NOW));
-    let read = clock.clone();
-    let module = GrantsModule::new(store.clone(), Arc::new(move || read.load(Ordering::SeqCst)), false);
-    Made {
-        handler: KernelApis::new(inner(clock)).with(Arc::new(module)),
-        env: Vec::new(),
-        state: Box::new(move || store.read().unwrap().unwrap_or(Value::Null)),
-    }
-}
-
 fn hints_host(_: &Path) -> Made {
     let store = Arc::new(MemoryDocumentStore::default());
     Made {
@@ -212,11 +200,6 @@ fn kernel_apis_skills_cells_match_typescript_host() {
 #[test]
 fn kernel_apis_memory_cells_match_typescript_host() {
     assert_area("memory", &memory_host);
-}
-
-#[test]
-fn kernel_apis_grants_cells_match_typescript_host() {
-    assert_area("grants", &grants_host);
 }
 
 #[test]

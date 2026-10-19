@@ -6,7 +6,7 @@
 use crate::agents::WorktreeChildren;
 use crate::host::Delegation;
 use kernel::Signal;
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 impl WorktreeChildren for Delegation {
     fn spawn(
@@ -17,8 +17,12 @@ impl WorktreeChildren for Delegation {
         model: Option<&str>,
         timeout_ms: u64,
         worktree: &Value,
+        extra: &Map<String, Value>,
     ) -> Result<String, String> {
         let mut kwargs = json!({ "name": name, "timeout_ms": timeout_ms, "worktree": worktree });
+        for (key, value) in extra {
+            kwargs[key] = value.clone();
+        }
         if let Some(model) = model {
             kwargs["model"] = json!(model);
         }

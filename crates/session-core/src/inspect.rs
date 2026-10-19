@@ -7,9 +7,10 @@
 use kernel::{HostHandler, Signal};
 use serde_json::{Map, Value};
 
-/// Read-only host requests the inspector may issue (`INSPECTION_REQUESTS` of session-control.ts). None of them
+/// Read-only host requests the inspector may issue (`INSPECTION_REQUESTS` of session-control.ts, without
+/// `grants.list`: there is no grant system). None of them
 /// runs a search or starts work.
-pub const INSPECTION_REQUESTS: [&str; 24] = [
+pub const INSPECTION_REQUESTS: [&str; 23] = [
     "agents.status",
     "agents.list",
     "agents.inspect",
@@ -28,7 +29,6 @@ pub const INSPECTION_REQUESTS: [&str; 24] = [
     "instances.get",
     "gates.list",
     "gates.history",
-    "grants.list",
     "rlm.pool",
     "rlm.frames",
     "ctx.state",

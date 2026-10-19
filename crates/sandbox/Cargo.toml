@@ -1,14 +1,13 @@
 [package]
 name = "sandbox"
 version = "0.1.0"
-description = "Process isolation for the host's shell commands (bwrap, unshare, docker), its doctor, write containment, and approval tiers with the bash critical-pattern guard"
+description = "Process isolation for the host's shell commands (bwrap, unshare, docker), its doctor and write containment"
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
 
 [dependencies]
 getrandom = "=0.4.3"
-regex = "=1.13.1"
 rustix = { version = "=1.1.5", features = ["fs", "process", "std"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 

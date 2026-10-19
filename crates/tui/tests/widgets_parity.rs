@@ -5,12 +5,12 @@ use serde_json::Value;
 
 mod support;
 use support::latch::HANG_GUARD;
-use tui::components::{Component, Text};
+use tui::components::Component;
 use tui::image::{
     Capabilities, Dimensions, Image, ImageProtocol, calculate_image_cell_size, detect_capabilities, encode_iterm2,
     encode_kitty, image_dimensions,
 };
-use tui::overlay::{Anchor, OverlayOptions, SizeValue, composite_line, composite_overlays, resolve_overlay_layout};
+use tui::overlay::{Anchor, OverlayOptions, SizeValue, composite_line, resolve_overlay_layout};
 use tui::select::{
     Loader, SelectItem, SelectList, SelectListTheme, SettingItem, SettingsList, SettingsListTheme, StyleFn,
 };
@@ -354,41 +354,6 @@ fn tui_overlay_composite_line_matches_ts() {
     report(failures, cases.len());
 }
 
-#[test]
-fn tui_overlay_composite_overlays_matches_ts() {
-    let f = fixture();
-    let mut failures = Vec::new();
-    for (i, sc) in f["overlays"].as_array().unwrap().iter().enumerate() {
-        let specs = sc["overlays"].as_array().unwrap();
-        let mut texts: Vec<Text> = specs.iter().map(|o| Text::new(s(&o[0]), 1, 0, None)).collect();
-        let opts: Vec<OverlayOptions> = specs.iter().map(|o| overlay_options(&o[1])).collect();
-        let mut pairs: Vec<(&mut dyn Component, &OverlayOptions)> = texts
-            .iter_mut()
-            .zip(&opts)
-            .map(|(t, o)| (t as &mut dyn Component, o))
-            .collect();
-        let (lines, bounds) = composite_overlays(
-            &strings(&sc["base"]),
-            &mut pairs,
-            n(&sc["tw"]) as usize,
-            n(&sc["th"]) as usize,
-        );
-        if lines != strings(&sc["lines"]) {
-            failures.push(format!("scenario {i}: got {lines:?} want {}", sc["lines"]));
-        }
-        let want: Vec<(i64, i64, i64, i64)> = sc["bounds"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|b| (n(&b["row"]), n(&b["col"]), n(&b["width"]), n(&b["height"])))
-            .collect();
-        if bounds != want {
-            failures.push(format!("scenario {i}: bounds {bounds:?} want {want:?}"));
-        }
-    }
-    report(failures, 3);
-}
-
 fn dims(v: &Value) -> Option<Dimensions> {
     (!v.is_null()).then(|| Dimensions {
         width_px: n(&v["widthPx"]) as u32,
@@ -516,13 +481,10 @@ fn tui_terminal_escape_writes_match_ts() {
     for c in f["terminalWrites"].as_array().unwrap() {
         let mut t = tui::terminal::Terminal::new(Vec::new());
         match s(&c[0]) {
-            "moveBy" => t.move_by(n(&c[1])),
+            // The Rust product writes these sequences itself (the title in interactive's `update_title`).
+            "moveBy" | "clearLine" | "clearFromCursor" | "clearScreen" | "setTitle" => continue,
             "hideCursor" => t.hide_cursor(),
             "showCursor" => t.show_cursor(),
-            "clearLine" => t.clear_line(),
-            "clearFromCursor" => t.clear_from_cursor(),
-            "clearScreen" => t.clear_screen(),
-            "setTitle" => t.set_title(s(&c[1])),
             _ => t.write(s(&c[1])),
         }
         .unwrap();

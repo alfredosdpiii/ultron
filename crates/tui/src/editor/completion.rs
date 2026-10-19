@@ -175,20 +175,6 @@ impl Editor {
         self.pending_request.is_some()
     }
 
-    /// Ask the provider again for the text as it is (suggestions that arrived since, such as completions an
-    /// application fetched off the UI thread): updates an open list, or opens one in a slash command's context.
-    pub fn refresh_autocomplete(&mut self) {
-        if self.picker.is_some() {
-            self.update_autocomplete();
-            return;
-        }
-        let before = self.before_cursor().to_string();
-        if self.provider.is_some() && self.is_in_slash_command_context(&before) {
-            self.pending_request = None;
-            self.run_autocomplete_request(false, false);
-        }
-    }
-
     /// Run the debounced request (the TS timer firing).
     pub fn fire_autocomplete_debounce(&mut self) {
         if let Some((force, explicit_tab)) = self.pending_request.take() {

@@ -30,6 +30,39 @@ class _KeepBridge:
         return await self._bridge.request(request_type, payload)
 
 
+class _ContractBridge:
+    """Forwards requests, adding a spawn's `role`, `contract` and `hop` to its options."""
+
+    def __init__(self, bridge: Any, extra: dict[str, Any]) -> None:
+        self._bridge = bridge
+        self._extra = extra
+
+    async def request(self, request_type: str, payload: dict[str, Any] | None = None) -> Any:
+        if request_type == "rlm.spawn":
+            payload = dict(payload or {})
+            payload["kwargs"] = {**payload.get("kwargs", {}), **self._extra}
+        return await self._bridge.request(request_type, payload)
+
+
+_CONTRACT_KEYS = ("role", "contract", "hop")
+
+_CONTRACT_DOC = """
+
+        Host-checked contracts (Rust host): role="reviewer" leads the child's brief; contract={"checks": [...],
+        "returns": schema} lists checks the HOST runs itself when the child ends, in the child's working directory
+        (its worktree with worktree=True) under the session's sandbox, never trusting the child:
+        {"run": "cargo test -q", "expect": "exit 0" | {"exit": N} | {"stdout_contains": "ok"}, "timeout_ms": N}
+        (default exit 0 within 120 s), {"changed_files_within": ["src/**", "tests/*.rs"]},
+        {"no_new_dependencies": True} (no Cargo.toml, Cargo.lock, package.json, lockfile or other manifest
+        changed), {"files_exist": ["docs/x.md"]}; "returns" is a JSON schema rlm.finish(outputs=...) must match.
+        The result's `check["contract"]` is {"verdict": "verified" | "contract_failed", "checks": [{"check", "ok",
+        "evidence", ...}], "failed": [...], "attempts", "hop"}; a failed contract makes the result a failure
+        naming each failed check. hop says what happens then: "report" (default), {"retry": 1} re-runs the child
+        (up to 3 times) with the failures appended to its brief, {"review": "brief"} spawns a reviewer child
+        `<name>-review` with that brief, the result and the failures (its handle in `check["contract"]["hop"]`).
+        rlm-child@1 workflow nodes take the same role, contract and hop fields."""
+
+
 class Swarm:
     """Agents of this session: who holds what, and durable messages between them.
 
@@ -99,13 +132,22 @@ class Notes:
 
 
 def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
-    """Add `rlm.ask`, `rlm.partial` and `spawn(keep=True)` to the `rlm` class, and `swarm`, `board`, `notes`."""
+    """Add `rlm.ask`, `rlm.partial`, `rlm.images` and `spawn(keep=True)` to the `rlm` class, and `swarm`, `board`,
+    `notes`."""
     original_spawn = rlm_class.spawn
 
     async def spawn(self: Any, prompt: str, **kwargs: Any) -> Any:
         keep = kwargs.pop("keep", False)
         if keep not in (True, False):
             raise ValueError("rlm.spawn keep must be True or False")
+        given = {key: kwargs.pop(key, None) for key in _CONTRACT_KEYS}
+        extra = {key: value for key, value in given.items() if value is not None}
+        if extra and keep:
+            raise ValueError("rlm.spawn role, contract and hop apply to children without keep=True")
+        if extra:
+            checked = copy.copy(self)
+            checked._bridge = _ContractBridge(self._bridge, extra)
+            return await original_spawn(checked, prompt, **kwargs)
         if not keep:
             return await original_spawn(self, prompt, **kwargs)
         persistent = copy.copy(self)
@@ -114,7 +156,7 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
 
     spawn.__doc__ = (original_spawn.__doc__ or "") + (
         "\n\n        keep=True keeps the child alive after its first answer (it survives restarts); ask it follow-ups"
-        " with `await rlm.ask(handle, question)`.")
+        " with `await rlm.ask(handle, question)`.") + _CONTRACT_DOC
 
     async def ask(self: Any, child: Any, question: str) -> dict[str, Any]:
         """Ask a persistent child (spawned with keep=True) a follow-up question and wait for its answer:
@@ -135,3 +177,7 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
     namespace["swarm"] = Swarm(bridge)
     namespace["board"] = Board(bridge)
     namespace["notes"] = Notes(bridge)
+    # `rlm.images` is the other Rust-host API; it is installed here so runtime.py's line numbers stay put.
+    from images_api import install as install_images
+
+    install_images(rlm_class)

@@ -54,9 +54,14 @@ pub fn shell_config(
 
 /// [`shell_config`] on this machine: the file system and this process's PATH.
 pub fn system_shell_config(custom: Option<&str>) -> Result<ShellConfig, String> {
+    let path = std::env::var("PATH").ok();
+    shell_config_on_path(custom, path.as_deref())
+}
+
+/// [`shell_config`] on this machine's file system with `bash` looked up on `path` (a session's PATH).
+pub fn shell_config_on_path(custom: Option<&str>, path: Option<&str>) -> Result<ShellConfig, String> {
     let which = |name: &str| {
-        let path = std::env::var_os("PATH")?;
-        std::env::split_paths(&path)
+        std::env::split_paths(path?)
             .map(|dir| dir.join(name))
             .find(|candidate| candidate.is_file())
             .map(|p| p.to_string_lossy().into_owned())

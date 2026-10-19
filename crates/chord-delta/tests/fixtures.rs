@@ -1,12 +1,17 @@
 //! Replays fixtures generated from the pinned upstream Chord source (see fixtures/generate.mjs).
 
 use chord_delta::{
-    Decoder, DeltaError, Encoder, Op, apply, apply_immutable, apply_immutable_batches, error_json, validate_wire_op,
+    Decoder, DeltaError, Encoder, Op, apply, apply_immutable, apply_immutable_batches, validate_wire_op,
 };
 use serde_json::{Value, json};
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!("../fixtures/delta.json")).expect("fixture parses")
+}
+
+/// An error as upstream's fixture records it: `{name, message}`.
+fn error_json(error: &DeltaError) -> Value {
+    json!({ "name": error.name(), "message": error.to_string() })
 }
 
 fn outcome(result: Result<Value, DeltaError>) -> Value {

@@ -10,6 +10,7 @@
 //! newer or older writers survive a load/rewrite unchanged.
 
 mod context;
+pub mod diff;
 mod env;
 mod file;
 pub mod js;

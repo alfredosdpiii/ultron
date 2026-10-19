@@ -13,6 +13,7 @@ pub mod kernel_pool;
 pub mod lanes;
 pub mod reconcile;
 pub mod schema;
+pub mod spawn_contract;
 pub mod task_store;
 pub mod usage;
 pub mod verdict;

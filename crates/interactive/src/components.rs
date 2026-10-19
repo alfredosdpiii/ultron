@@ -613,6 +613,37 @@ pub enum ToolContent {
 pub struct ToolResultView {
     pub content: Vec<ToolContent>,
     pub is_error: bool,
+    /// What an rlm cell wrote (`details.fileChanges`, Rust-only): drawn under the expanded cell.
+    pub file_changes: Vec<FileChange>,
+}
+
+/// One file an rlm cell wrote: `diff` in the edit tool's display format (None: too large or not text), `omitted`
+/// diff lines the session left out.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FileChange {
+    pub path: String,
+    pub created: bool,
+    pub diff: Option<String>,
+    pub omitted: usize,
+}
+
+impl FileChange {
+    /// `details.fileChanges` of a tool result message (nothing for anything malformed).
+    pub fn from_details(details: &Value) -> Vec<FileChange> {
+        details["fileChanges"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|change| {
+                Some(FileChange {
+                    path: change["path"].as_str()?.to_string(),
+                    created: change["created"] == true,
+                    diff: change["diff"].as_str().map(str::to_string),
+                    omitted: change["omitted"].as_u64().unwrap_or(0) as usize,
+                })
+            })
+            .collect()
+    }
 }
 
 /// What a tool renderer sees (`ToolRenderContext` minus the callbacks).

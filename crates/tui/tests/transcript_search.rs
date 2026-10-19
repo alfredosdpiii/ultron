@@ -7,8 +7,8 @@ use tui::components::Component;
 use tui::keybindings::{KeybindingsManager, Platform};
 use tui::qol_keys::native_app_keybindings;
 use tui::transcript_search::{
-    SearchBar, SearchIndex, SearchMatch, SearchOutcome, SearchSegment, SelectionMode, TranscriptSearch,
-    find_search_matches, highlight_row, match_key, select_match,
+    SearchBar, SearchIndex, SearchMatch, SearchOutcome, SearchSegment, SelectionMode, TranscriptSearch, highlight_row,
+    match_key, select_match,
 };
 use tui::viewport::Transcript;
 
@@ -46,7 +46,11 @@ fn tui_transcript_search_matches_like_ts() {
     let cases = f["matches"].as_array().unwrap();
     assert!(cases.len() > 200);
     for case in cases {
-        let got = find_search_matches(&strings(&case["lines"]), case["query"].as_str().unwrap());
+        // `findAltScreenSearchMatches` through the index the search bar uses.
+        let got = SearchIndex::default()
+            .search(&strings(&case["lines"]), case["query"].as_str().unwrap())
+            .0
+            .to_vec();
         let want: Vec<SearchMatch> = case["matches"]
             .as_array()
             .unwrap()

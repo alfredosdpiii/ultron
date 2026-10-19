@@ -10,7 +10,7 @@ use durable::ConversationId;
 use kernel::{ExecutionResult, HostHandler, Kernel, Signal, Status};
 use serde_json::{Map, Value, json};
 
-use super::cell::{CellCall, CellExecutor, CellProgress, CellResult, Replay};
+use super::cell::{CellCall, CellExecutor, CellProgress, CellResult};
 use crate::scheduler::Cancel;
 use crate::scheduler::cancel::lock;
 
@@ -18,8 +18,6 @@ use crate::scheduler::cancel::lock;
 pub type OpenLane = Arc<dyn Fn(ConversationId, &str) -> Result<Arc<Kernel>, String> + Send + Sync>;
 /// The host handler serving one cell's requests (the composition root's stack, delegation operations).
 pub type CellHandlers = Arc<dyn Fn(&CellCall) -> Arc<dyn HostHandler> + Send + Sync>;
-/// Decides whether a recorded cell may run again after a restart.
-pub type ReplayPolicy = Arc<dyn Fn(&CellCall) -> Replay + Send + Sync>;
 
 /// The `rlm` tool declaration: Python code for the persistent REPL, and an optional lane.
 pub fn rlm_tool(description: &str) -> Tool {
@@ -42,7 +40,6 @@ pub struct KernelCells {
     tool: Tool,
     open: OpenLane,
     handlers: Option<CellHandlers>,
-    replay: Option<ReplayPolicy>,
     lanes: Mutex<HashMap<(ConversationId, String), Arc<Kernel>>>,
 }
 
@@ -53,15 +50,8 @@ impl KernelCells {
             tool,
             open,
             handlers,
-            replay: None,
             lanes: Mutex::new(HashMap::new()),
         }
-    }
-
-    /// Mark some recorded cells replay-safe (default: none).
-    pub fn with_replay(mut self, replay: ReplayPolicy) -> KernelCells {
-        self.replay = Some(replay);
-        self
     }
 
     /// A conversation lane's kernel, opening it on first use.
@@ -139,10 +129,6 @@ pub fn cell_text(result: &ExecutionResult) -> String {
 impl CellExecutor for KernelCells {
     fn tool(&self) -> Tool {
         self.tool.clone()
-    }
-
-    fn replay(&self, call: &CellCall) -> Replay {
-        self.replay.as_ref().map_or(Replay::Unsafe, |replay| replay(call))
     }
 
     fn execute(&self, call: &CellCall, progress: &CellProgress, signal: &Cancel) -> Result<CellResult, String> {

@@ -67,36 +67,12 @@ impl<W: Write> Terminal<W> {
         Ok(())
     }
 
-    pub fn move_by(&mut self, lines: i64) -> io::Result<()> {
-        match lines {
-            0 => Ok(()),
-            l if l > 0 => self.write(&format!("\x1b[{l}B")),
-            l => self.write(&format!("\x1b[{}A", -l)),
-        }
-    }
-
     pub fn hide_cursor(&mut self) -> io::Result<()> {
         self.write("\x1b[?25l")
     }
 
     pub fn show_cursor(&mut self) -> io::Result<()> {
         self.write("\x1b[?25h")
-    }
-
-    pub fn clear_line(&mut self) -> io::Result<()> {
-        self.write("\x1b[K")
-    }
-
-    pub fn clear_from_cursor(&mut self) -> io::Result<()> {
-        self.write("\x1b[J")
-    }
-
-    pub fn clear_screen(&mut self) -> io::Result<()> {
-        self.write("\x1b[2J\x1b[H")
-    }
-
-    pub fn set_title(&mut self, title: &str) -> io::Result<()> {
-        self.write(&format!("\x1b]0;{title}\x07"))
     }
 }
 

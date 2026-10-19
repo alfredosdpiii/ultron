@@ -231,14 +231,6 @@ pub fn is_key_release(data: &str) -> bool {
             .any(|p| data.contains(p))
 }
 
-/// TS `isKeyRepeat`: a Kitty flag-2 repeat event (never bracketed paste content).
-pub fn is_key_repeat(data: &str) -> bool {
-    !data.contains("\x1b[200~")
-        && [":2u", ":2~", ":2A", ":2B", ":2C", ":2D", ":2H", ":2F"]
-            .iter()
-            .any(|p| data.contains(p))
-}
-
 fn scroll_border(direction: &str, hidden: usize, width: usize) -> String {
     let label = format!(" {direction} {hidden} more ");
     let label_width = visible_width(&label);

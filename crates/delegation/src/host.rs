@@ -12,6 +12,9 @@
 mod restore;
 pub use restore::ChildWaiter;
 
+use crate::spawn_contract::{
+    CheckPlace, CheckRunner, Hop, SpawnContract, plain_check_runner, retry_note, review_brief,
+};
 use crate::task_store::{MemoryStore, TaskJournal, TaskStore, task_fingerprint};
 use crate::verdict::{MAX_VERDICT_REJECTIONS, validate_verdict};
 use crate::workspace::{
@@ -42,6 +45,7 @@ pub fn spawn_depth_limit(raw: Option<&str>) -> u32 {
 }
 
 /// One subagent run (`NativeExternalChildRun`).
+#[derive(Clone)]
 pub struct ChildRun {
     pub task_id: String,
     /// The `rlm.spawn(name=...)` the child was started with (kept with its task: a revived child is named so again).
@@ -169,6 +173,8 @@ struct Task {
     /// The child's working directory when it started (its verdict check's "before").
     before: Option<WorkspaceSnapshot>,
     merge_status: Option<String>,
+    /// `rlm.spawn(role=, contract=, hop=)`: what the host checks when the child ends (see [`crate::spawn_contract`]).
+    contract: Option<Arc<SpawnContract>>,
 }
 
 struct State {
@@ -209,6 +215,8 @@ struct Inner {
     on_task_end: Mutex<Option<TaskEndObserver>>,
     /// See [`Delegation::set_root_spawn`], [`Delegation::set_root_finish`], [`Delegation::set_child_model`].
     root: Mutex<RootOptions>,
+    /// Runs contract `run` checks (see [`Delegation::set_check_runner`]); none: [`plain_check_runner`].
+    check_runner: Mutex<Option<CheckRunner>>,
 }
 
 /// Where a root that is itself a subagent (an `ultron mcp --child` server) sends its `rlm.finish` verdict
@@ -238,20 +246,6 @@ pub type MergeObserver = Arc<dyn Fn(&str, &str) + Send + Sync>;
 
 /// Checks a well-formed `provider/model` a spawn names; an error refuses the spawn with that message.
 pub type ModelCheck = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
-
-/// A [`ModelCheck`] that accepts only the built-in model catalog.
-pub fn builtin_model_check() -> ModelCheck {
-    Arc::new(|spec: &str| {
-        let known = spec
-            .split_once('/')
-            .is_some_and(|(provider, id)| ai::models::builtin_model(provider, id).is_some());
-        if known {
-            Ok(())
-        } else {
-            Err(format!("model must be provider/model naming a known model, not {spec}"))
-        }
-    })
-}
 
 /// `worktreeChanges`: Git's changes in a worktree minus files unchanged since the child started (its setup command's
 /// output); `None` lets the commit take every change.
@@ -475,9 +469,16 @@ impl Delegation {
                 worktree_setup_source: Mutex::new(None),
                 on_task_end: Mutex::new(None),
                 root: Mutex::new(RootOptions::default()),
+                check_runner: Mutex::new(None),
             }),
         };
         (host, receiver)
+    }
+
+    /// Run contract `run` checks with `runner` (the session's runs them under its sandbox); by default they run
+    /// unsandboxed with `/bin/sh -c`.
+    pub fn set_check_runner(&self, runner: CheckRunner) {
+        *self.inner.check_runner.lock().unwrap_or_else(PoisonError::into_inner) = Some(runner);
     }
 
     /// Refuse spawns whose `model=` fails `check` (by default only the `provider/model` form is checked).
@@ -1107,8 +1108,12 @@ impl Delegation {
                 "worktree",
                 "worktree_setup",
                 "fork",
+                "role",
+                "contract",
+                "hop",
             ],
         )?;
+        let contract = SpawnContract::parse(kwargs)?.map(Arc::new);
         let fork = match kwargs.get("fork") {
             None | Some(Value::Bool(false)) => false,
             Some(Value::Bool(true)) => true,
@@ -1201,12 +1206,17 @@ impl Delegation {
                 }
             },
         };
-        let fingerprint = task_fingerprint(&json!({
+        let mut fingerprinted = json!({
             "definition": CHILD,
             "input": { "prompt": prompt },
             "model": model,
             "timeout_ms": timeout_ms,
-        }));
+        });
+        // A contract is part of what was asked (a spawn without one keeps the TypeScript fingerprint).
+        if let Some(contract) = &contract {
+            fingerprinted["contract"] = contract.describe();
+        }
+        let fingerprint = task_fingerprint(&fingerprinted);
         let signal = Signal::new();
         let (task_id, level) = {
             let mut state = lock(&self.inner.state);
@@ -1251,6 +1261,7 @@ impl Delegation {
                 outside_before: None,
                 before: None,
                 merge_status: None,
+                contract: contract.clone(),
             });
             let level = root.level + state.line(Some(&id)).iter().filter(|a| state.is_child(a)).count() as u32;
             let running = state.journal.transition(&id, "running", None)?;
@@ -1264,6 +1275,11 @@ impl Delegation {
             let state = lock(&self.inner.state);
             let inherited = state.worktree_of(Some(&task_id));
             let note = worktree.as_ref().map(wt::worktree_brief_note);
+            // The role and the checks the host will run lead the brief.
+            let prompt = match &contract {
+                Some(contract) => contract.prompt(&prompt),
+                None => prompt,
+            };
             let prompt = match &fork_at {
                 Some(_) => format!("{}\n\n{prompt}", crate::fork::FORK_BRIEF_NOTE),
                 None => prompt,
@@ -1357,21 +1373,156 @@ impl Delegation {
     fn run_child(&self, run: ChildRun) {
         let id = run.task_id.clone();
         let signal = run.signal.clone();
-        let reply = match self.child_start(&id, &signal) {
-            Ok(()) => (self.inner.runner)(run),
-            Err(error) => Err(error),
+        let contract = lock(&self.inner.state).task(&id).and_then(|t| t.contract.clone());
+        let started = self.child_start(&id, &signal);
+        let mut run = run;
+        let mut attempts: Vec<Value> = Vec::new();
+        let result = loop {
+            let reply = match &started {
+                Ok(()) => (self.inner.runner)(run.clone()),
+                Err(error) => Err(error.clone()),
+            };
+            if signal.is_aborted() {
+                return;
+            }
+            let result = match reply {
+                Ok(text) => self.child_result(&id, &text),
+                Err(error) => Err(error),
+            };
+            let result = result
+                .unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
+            let Some(contract) = contract
+                .as_ref()
+                .filter(|c| c.checks_anything() && result["status"] == "succeeded")
+            else {
+                break result;
+            };
+            let report = self.check_contract(&id, contract, &signal);
+            if signal.is_aborted() {
+                return;
+            }
+            attempts.push(report.clone());
+            let attempt = attempts.len() as u32;
+            match (&contract.hop, report["verdict"] == "verified") {
+                (Hop::Retry(retries), false) if attempt <= *retries => {
+                    // Again, with what failed appended to its brief, on a verdict of its own.
+                    if let Some(task) = lock(&self.inner.state).task_mut(&id) {
+                        task.verdict = None;
+                        task.verdict_rejections = 0;
+                        task.verdict_problems.clear();
+                        task.verdict_invalid = false;
+                    }
+                    run.prompt = format!("{}\n\n{}", run.prompt, retry_note(&report, attempt));
+                    continue;
+                }
+                _ => break self.contract_result(&id, &run, contract, result, &attempts),
+            }
         };
-        if signal.is_aborted() {
-            return;
-        }
-        let result = match reply {
-            Ok(text) => self.child_result(&id, &text),
-            Err(error) => Err(error),
-        };
-        let result =
-            result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
         let result = self.with_limit_reason(&id, result);
         let _ = self.end(&id, result);
+    }
+
+    /// Run a child's contract checks in its working directory (its worktree's, else the shared one), on the files
+    /// as they are now, against the snapshot taken when it started.
+    fn check_contract(&self, id: &str, contract: &SpawnContract, signal: &Signal) -> Value {
+        let (verdict, before, workspace, env) = {
+            let state = lock(&self.inner.state);
+            let Some(task) = state.task(id) else {
+                return json!({ "verdict": "contract_failed", "checks": [], "failed": ["Unknown Ultron task"] });
+            };
+            (
+                task.verdict.clone(),
+                task.before.clone(),
+                state.workspace_of(Some(id), self.inner.workspace.as_deref()),
+                state.worktree_of(Some(id)).map(wt::worktree_env).unwrap_or_default(),
+            )
+        };
+        let diff = match (&before, &workspace) {
+            (Some(before), Some(_)) => diff_snapshots(
+                before,
+                &snapshot_workspace(&before.root, DEFAULT_MAX_SNAPSHOT_ENTRIES, true),
+            )
+            .ok(),
+            _ => None,
+        };
+        let runner = self
+            .inner
+            .check_runner
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+            .unwrap_or_else(plain_check_runner);
+        let place = CheckPlace {
+            cwd: workspace.as_deref(),
+            env: &env,
+            diff: diff.as_ref(),
+            signal,
+        };
+        contract.evaluate(verdict.as_ref(), &place, &runner)
+    }
+
+    /// The child's result with its contract report: verified, or a failure naming the failed checks (after the
+    /// hop: a review hop spawns the reviewer, a sibling of the child, whose handle the report carries).
+    fn contract_result(
+        &self,
+        id: &str,
+        run: &ChildRun,
+        contract: &SpawnContract,
+        mut result: Value,
+        attempts: &[Value],
+    ) -> Value {
+        let Some(last) = attempts.last() else {
+            return result;
+        };
+        let mut report = last.clone();
+        report["attempts"] = json!(attempts.len());
+        if attempts.len() > 1 {
+            report["previous"] = json!(
+                attempts[..attempts.len() - 1]
+                    .iter()
+                    .map(|a| a["failed"].clone())
+                    .collect::<Vec<_>>()
+            );
+        }
+        report["hop"] = contract.hop.describe();
+        let failed = report["verdict"] != "verified";
+        if failed && let Hop::Review(brief) = &contract.hop {
+            let (parent, owner) = {
+                let state = lock(&self.inner.state);
+                let parent = state.task(id).and_then(|t| t.parent_id.clone());
+                let owner = parent
+                    .as_deref()
+                    .and_then(|p| state.task(p).and_then(|t| t.lane_name.clone()))
+                    .unwrap_or_else(|| "main".into());
+                (parent, owner)
+            };
+            let name = format!("{}-review", run.name);
+            let prompt = review_brief(brief, &run.name, id, &result, &report);
+            let payload = json!({ "prompt": prompt, "kwargs": { "name": name } });
+            let payload = payload.as_object().cloned().unwrap_or_default();
+            report["hop"] = match self.spawn(&payload, parent.as_deref(), &owner) {
+                Ok(handle) => json!({ "review": { "rlm_child_id": handle["rlm_child_id"], "name": name } }),
+                Err(error) => json!({ "review": { "error": error } }),
+            };
+        }
+        if failed {
+            let names: Vec<&str> = report["failed"]
+                .as_array()
+                .map(|f| f.iter().filter_map(Value::as_str).collect())
+                .unwrap_or_default();
+            let mut error = format!("Contract failed: {}", names.join("; "));
+            if let Some(reviewer) = report["hop"]["review"]["rlm_child_id"].as_str() {
+                error.push_str(&format!(" (reviewer {reviewer} spawned)"));
+            }
+            result["status"] = json!("failed");
+            result["error"] = json!(error);
+        }
+        // Under `check` (free-form in the task journal's result shape, which TypeScript reads too).
+        if !result["check"].is_object() {
+            result["check"] = json!({});
+        }
+        result["check"]["contract"] = report;
+        result
     }
 
     /// `childStart`: a worktree child's setup command runs, then its working directory is pictured (plus the parent's
@@ -1954,7 +2105,20 @@ impl Delegation {
                 }
             }
         }
-        match validate_verdict(&payload, workspace.as_deref()) {
+        // A contract's `returns` shape is checked here, so the child can fix its outputs like any rejected verdict.
+        let checked = validate_verdict(&payload, workspace.as_deref()).and_then(|verdict| {
+            let problems = task
+                .contract
+                .as_ref()
+                .map(|contract| contract.returns_problems(&verdict["outputs"]))
+                .unwrap_or_default();
+            if problems.is_empty() {
+                Ok(verdict)
+            } else {
+                Err(problems)
+            }
+        });
+        match checked {
             Ok(verdict) => {
                 let status = verdict["status"].clone();
                 task.verdict = Some(verdict);

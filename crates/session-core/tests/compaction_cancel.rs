@@ -1,8 +1,7 @@
 //! A manual compaction's journal when it is cancelled (crate::compaction_op): the cancel request is journaled in the
 //! operation's state (`control: cancel_requested`, harness `requestOperationAbort`) before its terminal transaction,
 //! so a worker killed in between is settled `aborted` on reopen (`drive/reconcile.ts` `publishAbortedTerminal`),
-//! with the branch unchanged and the preparation removed; a live cancel ends the operation `aborted` the same way;
-//! a hook's compaction commits without a summary request.
+//! with the branch unchanged and the preparation removed; a live cancel ends the operation `aborted` the same way.
 
 use serde_json::{Map, Value, json};
 use session_core::compaction_op::{self, CompactionOp};
@@ -130,44 +129,6 @@ fn session_core_compaction_cancelled_live_ends_aborted() {
     assert_eq!(preparations(&session), 0);
     assert_eq!(current_operation(&session), Value::Null);
     assert!(session.state().entries().iter().all(|e| e["type"] != "compaction"));
-}
-
-/// A `session_before_compact` hook's compaction commits from `summary.deciding`: its usage row, then the entry
-/// (`fromHook`) as the new tip, with no `summary.ready` / `summary.effect_pending` state ever written.
-#[test]
-fn session_core_compaction_from_a_hook_commits_without_a_summary_request() {
-    let dir = tempfile::tempdir().unwrap();
-    let (mut session, tip) = session(dir.path());
-    let op = CompactionOp::begin(&mut session, &preparation(&tip), &[], None).unwrap();
-    let operation = current_operation(&session).as_str().unwrap().to_string();
-    let mut entry = Map::new();
-    entry.insert("type".into(), "compaction".into());
-    entry.insert("summary".into(), "From the hook.".into());
-    entry.insert(
-        "retainedTail".into(),
-        json!([{"role": "user", "content": "new", "timestamp": 2}]),
-    );
-    entry.insert("tokensBefore".into(), 1234.into());
-    entry.insert("fromHook".into(), true.into());
-    let usage = json!({"input": 7, "output": 3, "totalTokens": 10});
-    let id = op.complete_from_hook(&mut session, entry, Some(usage.clone())).unwrap();
-    assert_eq!(session.branch_tip("main").flatten().as_deref(), Some(id.as_str()));
-    let committed = session.state().entry(&id).unwrap();
-    assert_eq!(committed["parentId"], tip.as_str());
-    assert_eq!(committed["fromHook"], true);
-    assert_eq!(committed["summary"], "From the hook.");
-    let rows = session.state().usage_rows();
-    assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0]["usage"], usage);
-    let result = session.value(OP_RESULT, &operation).unwrap();
-    assert_eq!((&result["status"], &result["tipId"]), (&json!("completed"), &json!(id)));
-    assert_eq!(preparations(&session), 0);
-    // Reopened from the file: the same, and never a summary request state.
-    let text = std::fs::read_to_string(&session.metadata().path).unwrap();
-    assert!(
-        !text.contains("summary.ready") && !text.contains("summary.effect_pending"),
-        "{text}"
-    );
 }
 
 /// Kill point during the `session_before_compact` hook: `abort` journals the cancel request at

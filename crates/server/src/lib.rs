@@ -5,8 +5,6 @@
 pub mod connection;
 pub mod radius_relay;
 pub mod radius_ws;
-pub mod unix;
 
 pub use connection::{Connection, HostError, Output, ServerConfig, ServerServices};
 pub use protocol::{ServiceCall, parse_service_call};
-pub use unix::{DEFAULT_HANDSHAKE_TIMEOUT, UnixServer, unix_socket_path};

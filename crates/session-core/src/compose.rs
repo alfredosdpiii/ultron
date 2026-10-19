@@ -1,13 +1,13 @@
 //! The composition root of a session's host stack. A cell's host request passes, outermost first:
 //!
-//! 1. [`kernel_apis::KernelApis`]: the kernel-API modules (`skills.*` with code skills, `memory.*`, `grants.*`,
-//!    `hints.*`, and the local services of [`services`]: `refinements.*`, `experiments.*`, `gates.*`), matched by
-//!    prefix;
+//! 1. [`kernel_apis::KernelApis`]: the kernel-API modules (`skills.*` with code skills, `memory.*`,
+//!    `hints.*`, `images.*`, and the local services of [`services`]: `refinements.*`, `experiments.*`, `gates.*`),
+//!    matched by prefix;
 //! 2. [`inference::Inference`]: `rlm.infer`, `rlm.load`, `rlm.frames`;
 //! 3. [`Router`]: subagents (`rlm.spawn`, `rlm.collect`, ... served by [`delegation::host::Delegation`] for the
 //!    calling lane, in host collect mode: a cell never waits); the lane API (`rlm.lanes`, `rlm.lane.*`, `rlm.cells`, `rlm.cell.cancel`, `rlm.recovery`) is answered by the
 //!    session's REPL lanes ([`delegation::lanes::Lanes`]) first;
-//! 4. [`host::Host`], sandboxed ([`host::Host::sandboxed`] with the `sandbox.*` and `approval.*` settings) over the
+//! 4. [`host::Host`], sandboxed ([`host::Host::sandboxed`] with the `sandbox.*` settings) over the
 //!    session's file hooks (Loki): shell, jobs and the before-write check.
 //!
 //! Each lane's kernel runs inside the session's shell sandbox (`KernelOptions::sandbox`), with `ULTRON_FILE_HOOKS=1`
@@ -31,11 +31,9 @@ use host::loki_guard::{LokiGuard, LokiMode, git_root, loki_mode};
 use inference::Inference;
 use kernel::{ContinuityPolicy, HostHandler, Kernel, KernelOptions, Signal};
 use kernel_apis::{
-    CodeSkills, CodeSkillsOptions, DurableWork, DurableWorkOptions, FileDocumentStore, GoalDriver, GrantsModule,
-    HintsModule, KernelApis, MemoryApi, MemoryBackend, MemoryService, SchedulesModule, SkillSource, SkillsModule,
-    TaskGoalJobs,
+    CodeSkills, CodeSkillsOptions, DurableWork, DurableWorkOptions, FileDocumentStore, GoalDriver, HintsModule,
+    KernelApis, MemoryApi, MemoryBackend, MemoryService, SchedulesModule, SkillSource, SkillsModule, TaskGoalJobs,
 };
-use sandbox::Approver;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -66,8 +64,6 @@ pub struct Services {
     /// The memory backend behind `memory.*`; none: the Hindsight server and bank this process resolves
     /// ([`hindsight::Endpoint`]), or memory off ("Hindsight is not configured") when that resolves to off.
     pub memory: Option<Arc<dyn MemoryBackend>>,
-    /// Answers `prompt` approval decisions (none: they fail closed).
-    pub approver: Option<Arc<dyn Approver>>,
     /// Told the session's MCP gateway once its stack opens (the session worker serves `/mcp` with it).
     pub on_mcp: Option<McpListener>,
     /// Where the gateway's notices go when the session starts (configuration errors, an eager server that needs
@@ -89,7 +85,7 @@ pub struct Config {
     pub cwd: PathBuf,
     pub home: PathBuf,
     pub agent_dir: PathBuf,
-    /// The merged settings (`sandbox.*`, `approval.*`, `loki`, ...).
+    /// The merged settings (`sandbox.*`, `loki`, ...).
     pub settings: Value,
     pub loki: LokiMode,
     /// Where Loki's policy is read: the Git work tree containing the cwd, else the cwd (None when Loki is off).
@@ -131,7 +127,66 @@ pub fn workspace_snapshotter() -> host::file_hooks::Snapshotter {
     })
 }
 
+/// Variables a session's commands and kernels receive from the session's environment even when this process has
+/// none of that name (the session's lookup cannot be listed): the shell's essentials and the kernel's own settings.
+const SESSION_ENV_NAMES: &[&str] = &[
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "TERM",
+    "LANG",
+    "LANGUAGE",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TZ",
+    "TMPDIR",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "XDG_STATE_HOME",
+    "XDG_RUNTIME_DIR",
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "VIRTUAL_ENV",
+    "PI_OFFLINE",
+    "PI_SKIP_VERSION_CHECK",
+    "ULTRON_PYTHON",
+    "ULTRON_RLM_ENV_ALLOW",
+    "ULTRON_BASH_YIELD_AFTER",
+    "ULTRON_RLM_MAX_MEMORY_MB",
+    "ULTRON_RLM_MAX_CPU_SECONDS",
+    "ULTRON_RLM_OUTPUT_BYTES",
+    "ULTRON_RLM_MAX_TREE_MEMORY_MB",
+    "ULTRON_RLM_TREE_MEMORY_BACKEND",
+];
+
+/// The environment a session's kernels and commands start from (TS: the worker's `process.env`, which kernel.ts
+/// `kernelEnvironment` filters and `getShellEnv` extends): every name this process has plus [`SESSION_ENV_NAMES`],
+/// each with the value the session's `var` gives it (dropped when it gives none). Values come only from the session's
+/// environment, never from this process's: a session whose PATH differs runs its tools from its own PATH.
+pub fn session_environment(var: &dyn Fn(&str) -> Option<String>) -> Vec<(String, String)> {
+    let mut names: Vec<String> = std::env::vars_os()
+        .filter_map(|(name, _)| name.into_string().ok())
+        .collect();
+    for name in SESSION_ENV_NAMES {
+        if !names.iter().any(|known| known == name) {
+            names.push((*name).to_string());
+        }
+    }
+    names
+        .into_iter()
+        .filter_map(|name| var(&name).map(|value| (name, value)))
+        .collect()
+}
+
 impl Config {
+    /// [`session_environment`] of this session.
+    pub fn child_env(&self) -> Vec<(String, String)> {
+        session_environment(&*self.var)
+    }
+
     /// The kernel environment and output budget a lane reads.
     pub fn from_env(env: &Env) -> Config {
         let agent_dir = env.agent_dir();
@@ -656,8 +711,8 @@ impl Runtime {
             artifacts: Arc::new(kernel_apis::artifacts::ArtifactsModule::new(artifacts)),
             skills: Arc::new(SkillsModule::new(modules("skills"), loader, clock.clone(), Some(code))),
             memory: Arc::new(MemoryApi { service: memory }),
-            grants: Arc::new(GrantsModule::new(modules("grants"), clock, false)),
             hints: Arc::new(HintsModule::new(modules("hints"))),
+            images: Arc::new(crate::session_images::module(&config, session_id)),
             // `tools.*`: the `mcp` gateway called from the REPL, detached after `yield_after`.
             tools: Arc::new(kernel_apis::ToolCalls::new(
                 gateway.tool().is_some().then(|| {
@@ -809,6 +864,8 @@ impl Runtime {
             agents.set_worktree_children(Arc::new(delegation.clone()));
             // A spawn naming a model the session cannot run is refused, never run on the root's model (A04).
             delegation.set_model_check(config.model_check());
+            // Spawn contract `run` checks run under the session's shell sandbox, in the child's working directory.
+            delegation.set_check_runner(crate::contract_checks::check_runner(me.clone()));
             let factory_stack = me.clone();
             let handler_stack = me.clone();
             let lanes = Lanes::new(LanesOptions {
@@ -998,12 +1055,12 @@ impl Runtime {
             Box::new(self.file_hooks_in(cwd, stats, observer)),
         )
         .with_shell_path(shell_path)
-        .sandboxed(
-            &config.settings,
-            &config.home,
-            Some(&tmp_dir),
-            self.services.approver.clone(),
-        ))
+        // The session's environment, never the server's: its PATH finds the shell, the sandbox and the tools.
+        .with_base_env(config.child_env())
+        // Cell results carry the diff of what they wrote (crate::cell_file_changes), except in the TS-compatible
+        // output the TS-recorded replays compare (`ULTRON_GUIDE=ts`).
+        .recording_cell_writes((config.var)("ULTRON_GUIDE").as_deref() != Some("ts"))
+        .sandboxed(&config.settings, &config.home, Some(&tmp_dir)))
     }
 }
 
@@ -1034,8 +1091,8 @@ struct ApiModules {
     artifacts: Arc<kernel_apis::artifacts::ArtifactsModule>,
     skills: Arc<SkillsModule>,
     memory: Arc<MemoryApi>,
-    grants: Arc<GrantsModule>,
     hints: Arc<HintsModule>,
+    images: Arc<kernel_apis::ImagesModule>,
     tools: Arc<kernel_apis::ToolCalls>,
     instances: Arc<kernel_apis::InstancesModule>,
     progress: Arc<kernel_apis::ProgressModule>,
@@ -1180,6 +1237,7 @@ impl Stack {
             lane: lane.to_string(),
             config: self.config.clone(),
             swarm: self.swarm.get().cloned(),
+            cell: cell_signal.clone().map(CellShell::new),
         };
         let inference = Inference::new(
             Arc::new(router),
@@ -1230,8 +1288,8 @@ impl Stack {
             .with(self.apis.artifacts.clone())
             .with(self.apis.skills.clone())
             .with(self.apis.memory.clone())
-            .with(self.apis.grants.clone())
             .with(self.apis.hints.clone())
+            .with(self.apis.images.clone())
             .with(self.apis.tools.clone())
             .with(self.apis.local.clone())
             .with(self.apis.gates.clone())
@@ -1269,6 +1327,8 @@ impl Stack {
         };
         let spill_dir = config.session_dir("rlm-output", &self.session_id).join(lane_dir(lane));
         let mut options = KernelOptions::new(&cwd, &config.runtime_path);
+        // The kernel starts from the session's environment (its PATH, its ULTRON_* settings), never the server's.
+        options.base_env = Some(config.child_env());
         options.env = vec![
             ("ULTRON_CODE_SKILLS_DIR".into(), config.skills_dir.display().to_string()),
             ("ULTRON_RLM_SPILL_DIR".into(), spill_dir.display().to_string()),
@@ -1293,8 +1353,7 @@ impl Stack {
         // host watchdog; ULTRON_RLM_TREE_MEMORY_BACKEND=auto|cgroup opts into a systemd scope where one is available.
         options.tree_memory = Some(kernel::TreeMemoryOptions {
             backend: Some(
-                std::env::var("ULTRON_RLM_TREE_MEMORY_BACKEND")
-                    .ok()
+                (config.var)("ULTRON_RLM_TREE_MEMORY_BACKEND")
                     .filter(|value| !value.trim().is_empty())
                     .unwrap_or_else(|| "watchdog".into()),
             ),
@@ -1713,6 +1772,102 @@ struct Router {
     config: Arc<Config>,
     /// `swarm.*`, `board.*`, `notes.*`, `rlm.ask` and persistent children, once the durable runtime is open.
     swarm: Option<Arc<crate::swarm_ops::SwarmOps>>,
+    /// The cell these requests come from (none outside a cell): cancelling it stops its shell commands.
+    cell: Option<CellShell>,
+}
+
+/// Why a cancelled cell's shell request failed: Python raises it, so the cell ends at once with its kernel (and the
+/// lane's variables) intact.
+pub const CELL_CANCELLED_SHELL: &str = "the cell was cancelled; its shell command was stopped";
+
+/// The shell work of one cell. Cancelling the cell (its wait signal aborts while the kernel still runs it) stops
+/// its blocking `bash` at once and cancels the shell jobs it started; a cell that ends normally leaves its jobs
+/// running (they outlive cells by design). The kernel aborts a cell's request signal before the lanes abort its
+/// wait signal at a normal end, so a wait abort with the request signal live is a cancel.
+#[derive(Clone)]
+struct CellShell {
+    waits: Signal,
+    /// Jobs this cell started, and whether the cancel listener is armed.
+    jobs: Arc<Mutex<(Vec<String>, bool)>>,
+}
+
+impl CellShell {
+    fn new(waits: Signal) -> CellShell {
+        CellShell {
+            waits,
+            jobs: Arc::default(),
+        }
+    }
+
+    /// Whether the cell is being cancelled (as opposed to having ended): `request` is the cell's request signal.
+    fn cancelled(&self, request: &Signal) -> bool {
+        self.waits.is_aborted() && !request.is_aborted()
+    }
+
+    /// Runs one shell request under a signal that aborts with the request or with the cell's cancel; a cancelled
+    /// cell's request fails with [`CELL_CANCELLED_SHELL`]. Jobs it starts are recorded.
+    fn run(
+        &self,
+        host: &Arc<Host>,
+        lane: &str,
+        kind: &str,
+        payload: Map<String, Value>,
+        request: &Signal,
+    ) -> Result<Value, String> {
+        if self.cancelled(request) {
+            return Err(CELL_CANCELLED_SHELL.into());
+        }
+        let combined = Signal::new();
+        let follow = |source: &Signal| {
+            let target = combined.clone();
+            source.on_abort(move |reason| target.abort(reason))
+        };
+        let (from_request, from_cell) = (follow(request), follow(&self.waits));
+        if from_request.is_none() || from_cell.is_none() {
+            combined.abort("the cell ended");
+        }
+        let result = host.handle_lane(lane, kind, payload, &combined);
+        if let Some(id) = from_request {
+            request.forget(id);
+        }
+        if let Some(id) = from_cell {
+            self.waits.forget(id);
+        }
+        if let Ok(value) = &result {
+            let job = match kind {
+                "shell.run" => value["id"].as_str(),
+                _ => value["job"]["id"].as_str(),
+            };
+            if let Some(job) = job.filter(|_| kind != "shell.cancel") {
+                self.track(host, lane, job, request);
+            }
+        }
+        if self.cancelled(request) {
+            return Err(CELL_CANCELLED_SHELL.into());
+        }
+        result
+    }
+
+    /// Records a job this cell started; the first one arms the cancel listener.
+    fn track(&self, host: &Arc<Host>, lane: &str, job: &str, request: &Signal) {
+        let mut jobs = lock(&self.jobs);
+        if !jobs.0.iter().any(|known| known == job) {
+            jobs.0.push(job.to_string());
+        }
+        if jobs.1 {
+            return;
+        }
+        jobs.1 = true;
+        drop(jobs);
+        let stop = {
+            let (host, lane, request, list) = (host.clone(), lane.to_string(), request.clone(), self.jobs.clone());
+            move |_reason: String| stop_cell_jobs(&host, &lane, &request, &list)
+        };
+        if self.waits.on_abort(stop).is_none() {
+            // Already aborted: the listener was dropped, so stop now.
+            stop_cell_jobs(host, lane, request, &self.jobs);
+        }
+    }
 }
 
 impl HostHandler for Router {
@@ -1744,7 +1899,10 @@ impl HostHandler for Router {
             return Err(EXTENSIONS_UNSUPPORTED.into());
         }
         let shell = matches!(kind, "bash" | "shell.bash" | "shell.run" | "shell.result");
-        let result = self.host.handle_lane(&self.lane, kind, payload, signal);
+        let result = match &self.cell {
+            Some(cell) if shell => cell.run(&self.host, &self.lane, kind, payload, signal),
+            _ => self.host.handle_lane(&self.lane, kind, payload, signal),
+        };
         if shell
             && let (Some(progress), Ok(value)) = (&self.progress, &result)
             && let Some(output) = value["output"].as_str().filter(|o| !o.is_empty())
@@ -1762,6 +1920,20 @@ impl HostHandler for Router {
             );
         }
         result
+    }
+}
+
+/// Cancels the shell jobs a cancelled cell started (`shell.cancel`: the host stops each job's own process group).
+/// Nothing when `request` is aborted: the cell ended (or its kernel failed) rather than being cancelled.
+fn stop_cell_jobs(host: &Arc<Host>, lane: &str, request: &Signal, jobs: &Mutex<(Vec<String>, bool)>) {
+    if request.is_aborted() {
+        return;
+    }
+    let ids = std::mem::take(&mut lock(jobs).0);
+    for id in ids {
+        let mut payload = Map::new();
+        payload.insert("id".into(), Value::String(id));
+        let _ = host.handle_lane(lane, "shell.cancel", payload, &Signal::new());
     }
 }
 

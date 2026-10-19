@@ -3,14 +3,14 @@
 //! `verificationFixture` rebuilt on the Rust stack (`services_support`): the typed-agent host with its built-in
 //! reviewer definitions, the deterministic check adapter (echoes `input.verdict`, crashes on `input.fail`) and an
 //! echoing predict adapter, reviewer lanes answering with the JSON text of their request, and the progress,
-//! schedules-and-goals, release-gate and grant modules behind the same request path as a cell's.
+//! schedules-and-goals and release-gate modules behind the same request path as a cell's.
 
 mod agents_support;
 mod services_support;
 
 use agents_support::{Memory, aborted, adapter, definition, input_of};
 use delegation::task_store::TaskStore;
-use kernel_apis::{GrantsModule, MemoryDocumentStore, ProgressModule, SchedulesModule};
+use kernel_apis::{MemoryDocumentStore, ProgressModule, SchedulesModule};
 use serde_json::{Value, json};
 use services::ReleaseGateModule;
 use services_support::{Host, Setup, build, rejects};
@@ -18,10 +18,6 @@ use std::sync::Arc;
 
 const FIXTURE_A: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const FIXTURE_B: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-
-fn rev(c: char) -> String {
-    std::iter::repeat_n(c, 40).collect()
-}
 
 fn verification_host(store: Memory) -> Host {
     let host = build(Setup {
@@ -49,11 +45,6 @@ fn verification_host(store: Memory) -> Host {
             Arc::new(ProgressModule::new(Arc::new(MemoryDocumentStore::default()))),
             Arc::new(SchedulesModule::new(Arc::new(MemoryDocumentStore::default()), None)),
             Arc::new(ReleaseGateModule::new(Arc::new(MemoryDocumentStore::default()), None)),
-            Arc::new(GrantsModule::new(
-                Arc::new(MemoryDocumentStore::default()),
-                kernel_apis::util::system_clock(),
-                false,
-            )),
         ],
         ..Setup::default()
     });
@@ -342,70 +333,5 @@ fn acceptance_a14_a_release_gate_blocks_on_a_missing_required_check_or_a_stale_f
         compare(run("branch", json!({ "unit": "passed" }), FIXTURE_A))["decision"],
         "passed"
     );
-    host.close();
-}
-
-#[test]
-fn acceptance_a14_a_receipt_for_a_stale_revision_is_denied() {
-    let host = verification_host(Memory::default());
-    let grant = host
-        .call(
-            "grants.issue",
-            json!({
-                "scope": "repo:/work", "revision": rev('a'), "policy": "apply-patch@1", "action": "apply",
-                "ttl_ms": 60_000,
-            }),
-        )
-        .unwrap();
-    let check = |revision: String| {
-        host.call(
-            "grants.check",
-            json!({
-                "id": grant["id"], "scope": "repo:/work", "revision": revision, "policy": "apply-patch@1",
-                "action": "apply",
-            }),
-        )
-        .unwrap()
-    };
-    let stale = check(rev('b'));
-    assert_eq!(stale["allowed"], false);
-    assert_eq!(
-        stale["reasons"],
-        json!([format!(
-            "Base changed: grant was approved against {}, request is for {}",
-            rev('a'),
-            rev('b')
-        )])
-    );
-    assert_eq!(check(rev('a'))["allowed"], true);
-    // The pure evaluator agrees: nothing is cached from an earlier allowed check. (TS `checkGrant` over a stored
-    // document: here a module over that document, evaluated at time 1 by the root.)
-    let document = json!({
-        "version": 1,
-        "grants": [{
-            "id": "g", "scope": "repo:/work", "revision": rev('a'), "policy": "apply-patch@1", "action": "apply",
-            "owner_task_id": null, "issued_at": 0, "expires_at": 100, "revoked_at": null, "revoked_by": null,
-        }],
-    });
-    let pure = GrantsModule::new(
-        Arc::new(MemoryDocumentStore::new(Some(document))),
-        Arc::new(|| 1),
-        false,
-    );
-    let evaluate = |revision: String| {
-        pure.handle(
-            "grants.check",
-            json!({ "id": "g", "scope": "repo:/work", "revision": revision, "policy": "apply-patch@1",
-                    "action": "apply" })
-            .as_object()
-            .unwrap(),
-            None,
-            &[],
-        )
-        .unwrap()["allowed"]
-            .clone()
-    };
-    assert_eq!(evaluate(rev('a')), true);
-    assert_eq!(evaluate(rev('b')), false);
     host.close();
 }

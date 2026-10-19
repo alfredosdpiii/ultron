@@ -345,15 +345,6 @@ fn assistant_usage(message: &Value) -> Option<&Value> {
         .filter(|u| js::truthy(Some(u)) && calculate_context_tokens(u) > 0)
 }
 
-/// `getLastAssistantUsage`: usage of the newest valid assistant message entry.
-pub fn last_assistant_usage(entries: &[Value]) -> Option<&Value> {
-    entries
-        .iter()
-        .rev()
-        .filter(|e| entry_type(e) == Some("message"))
-        .find_map(|e| e.get("message").and_then(assistant_usage))
-}
-
 const ESTIMATED_IMAGE_CHARS: usize = 4800;
 
 fn text_and_image_chars(content: Option<&Value>) -> usize {

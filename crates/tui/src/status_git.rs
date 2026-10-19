@@ -13,22 +13,6 @@ use std::thread::{self, JoinHandle};
 
 use crate::status_line::GitCounts;
 
-/// `owner/repo` from a GitHub remote URL (HTTPS, scp-style SSH, ssh://, git://); `None` for other hosts.
-pub fn parse_github_repo(remote_url: &str) -> Option<String> {
-    let idx = remote_url.find("github.com")?;
-    let rest = &remote_url[idx + "github.com".len()..];
-    let rest = rest.strip_prefix(':').or_else(|| rest.strip_prefix('/'))?;
-    let mut parts = rest.splitn(3, '/');
-    let owner = parts.next().filter(|s| !s.is_empty())?;
-    let repo = parts.next().filter(|s| !s.is_empty())?;
-    Some(format!("{owner}/{}", repo.strip_suffix(".git").unwrap_or(repo)))
-}
-
-/// Branch name from a remote HEAD ref (`origin/main` -> `main`).
-pub fn parse_default_branch(r: &str) -> String {
-    r.split_once('/').map_or(r, |(_, b)| b).to_string()
-}
-
 /// Where a cached PR answer applies.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrCacheContext {

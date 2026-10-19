@@ -364,5 +364,7 @@ fn mcp_gateway_given_servers_skip_the_config_files() {
         servers: Some(vec![entry]),
         ..GatewayOptions::default()
     });
-    assert_eq!(gateway.server_names(), ["given"]);
+    // The gateway tool's description names the enabled servers (what the runtime guide shows).
+    let tool = gateway.tool().expect("a gateway with a server registers its tool");
+    assert_eq!(server_names_of(&tool.description), ["given"]);
 }

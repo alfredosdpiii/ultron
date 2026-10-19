@@ -271,13 +271,6 @@ impl CompactionOp {
         Ok(op)
     }
 
-    /// The `session_before_tree` hook changed the summary's instructions or the label: the request and the
-    /// commit use them (written with the next state).
-    pub fn override_navigation(&mut self, custom_instructions: Option<&str>, label: Option<&str>) {
-        self.label = label.map(str::to_string);
-        self.task = self.navigation_task(custom_instructions);
-    }
-
     /// Admit a navigation without a summary: `navigation.ready_to_commit` ([`CompactionOp::commit_navigation`]);
     /// its label goes on `label_entry` (default: the target).
     pub fn begin_direct_navigation(
@@ -531,38 +524,6 @@ impl CompactionOp {
         );
         full.append(&mut entry);
         let mut writes = vec![Write::Entry(full), Write::set(BRANCH_TIP, "main", id.clone().into())];
-        writes.extend(self.terminal(session, "completed", Some(&id), None));
-        session.commit(&writes)?;
-        Ok(id)
-    }
-
-    /// Commit a compaction a `session_before_compact` hook supplied (`entry` without id and parent; `usage`, when
-    /// the hook reported one, becomes a usage row) as the new tip and end the operation, with no summary request
-    /// (structural.ts `publishStructuralOutcome` with `fromHook`).
-    pub fn complete_from_hook(
-        mut self,
-        session: &mut Session,
-        mut entry: Map<String, Value>,
-        usage: Option<Value>,
-    ) -> Result<String, String> {
-        self.result_entry_id = mint(session);
-        let mut writes = Vec::new();
-        if let Some(usage) = usage {
-            let mut row = Map::new();
-            row.insert("id".into(), mint(session).into());
-            row.insert("usage".into(), usage);
-            row.insert("adjustment".into(), false.into());
-            writes.push(Write::Usage(row));
-        }
-        let id = self.result_entry_id.clone();
-        let mut full = Map::new();
-        full.insert("id".into(), id.clone().into());
-        full.insert(
-            "parentId".into(),
-            self.source_tip.clone().map_or(Value::Null, Value::from),
-        );
-        full.append(&mut entry);
-        writes.extend([Write::Entry(full), Write::set(BRANCH_TIP, "main", id.clone().into())]);
         writes.extend(self.terminal(session, "completed", Some(&id), None));
         session.commit(&writes)?;
         Ok(id)

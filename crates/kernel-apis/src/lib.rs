@@ -5,7 +5,7 @@
 //!   code_list, code_history), ported from `ultron/skills.ts` and `ultron/code-skills.ts`;
 //! - `memory.*`: prepare / propose / correct / get / forget / why / list over a Hindsight-shaped backend, ported from
 //!   `ultron/memory.ts` and the dispatch of `ultron/worker-services.ts`;
-//! - `grants.*`: scoped approvals (`ultron/grants.ts`);
+//! - `images.*`: image generation through the OpenRouter images API, saved to files ([`images`]);
 //! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`), and [`cell_hints`], the situational hints a cell's
 //!   result ends with;
 //! - `tools.*`: extension tool calls from the REPL, detached after `yield_after` (`ultron/rlm/extension-tools.ts`);
@@ -23,8 +23,8 @@ pub mod context_control;
 pub mod durable_work;
 pub mod family;
 pub mod goal;
-pub mod grants;
 pub mod hints;
+pub mod images;
 pub mod instances;
 pub mod localtime;
 pub mod memory;
@@ -52,8 +52,8 @@ pub use context_control::{ContextBranches, ContextControl};
 pub use durable_work::{DurableWork, DurableWorkOptions, Recovered};
 pub use family::{FamilyModule, FamilyOptions};
 pub use goal::{GoalDriver, GoalJobs, JobState, TaskGoalJobs};
-pub use grants::GrantsModule;
 pub use hints::HintsModule;
+pub use images::{ImagesConfig, ImagesModule};
 pub use instances::InstancesModule;
 pub use memory::{MemoryApi, MemoryBackend, MemoryError, MemoryService, worker_gate};
 pub use progress::ProgressModule;

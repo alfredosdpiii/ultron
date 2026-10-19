@@ -182,15 +182,6 @@ fn find_matches(corpus: &Corpus, query: &str) -> Vec<SearchMatch> {
     matches
 }
 
-/// `findAltScreenSearchMatches`.
-pub fn find_search_matches(lines: &[String], query: &str) -> Vec<SearchMatch> {
-    let query = normalize_query(query);
-    if query.is_empty() {
-        return Vec::new();
-    }
-    find_matches(&build_corpus(lines), &query)
-}
-
 /// `getAltScreenSearchMatchKey`.
 pub fn match_key(m: &SearchMatch) -> String {
     match (m.segments.first(), m.segments.last()) {

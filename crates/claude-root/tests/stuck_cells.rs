@@ -330,13 +330,10 @@ fn claude_root_mcp_busy_lane_runs_the_next_call_in_a_side_lane_and_rlm_cancel_st
     assert_eq!(noted_cell(&cancelled), cell);
     assert!(cancelled.contains("\n{'cancelled': True, 'status': "), "{cancelled}");
     wait_until("git ends", || ended(git));
-    // Main is free: the next call runs there (its kernel was killed past the cancel grace and restarted from the
-    // lane's checkpoint).
+    // Main is free: the next call runs there, in the same kernel (the cancel stopped the host's bash, so the cell
+    // ended within the grace and its kernel was not killed: no restart, no restore).
     let next = server.cell("print(x, [l['lane'] for l in await rlm.lanes()])");
-    assert!(
-        next.starts_with("1 ['main']\n[RLM kernel restarted after: cancelled from another cell]\n"),
-        "{next}"
-    );
+    assert_eq!(next, "1 ['main']");
     server.close();
 }
 

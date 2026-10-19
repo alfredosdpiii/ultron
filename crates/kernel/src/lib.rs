@@ -29,6 +29,7 @@ pub mod snapshot_store;
 pub mod tree_memory;
 
 pub use continuity::{ContinuityPolicy, ContinuityReport, LostName};
+pub use process::{command_group_target, kill_command_group};
 pub use snapshot::{
     RestoreReport, SnapshotAuthError, SnapshotReport, load_or_create_snapshot_key, process_snapshot_key, sign_snapshot,
     verify_snapshot,
@@ -198,6 +199,17 @@ impl Signal {
         state.reason.is_some()
     }
 
+    /// Runs `listener` once, on abort (on the aborting thread); None (and `listener` is dropped) when already
+    /// aborted. [`Signal::forget`] removes it.
+    pub fn on_abort(&self, listener: impl FnOnce(String) + Send + 'static) -> Option<u64> {
+        self.listen(Box::new(listener))
+    }
+
+    /// Removes a listener [`Signal::on_abort`] added.
+    pub fn forget(&self, id: u64) {
+        self.unlisten(id);
+    }
+
     /// Runs `listener` on abort; None (and `listener` is dropped) when already aborted.
     fn listen(&self, listener: Listener) -> Option<u64> {
         let mut state = lock(&self.inner.0);
@@ -282,6 +294,10 @@ pub struct KernelOptions {
     pub sandbox: Option<Arc<sandbox::Launcher>>,
     /// The whole-tree memory cap (kernel.ts `maxTreeMemoryMb` / `treeMemoryBackend`); None: no tree cap.
     pub tree_memory: Option<TreeMemoryOptions>,
+    /// The environment the kernel starts from (before the credential filter) and where its `ULTRON_*` settings
+    /// (`ULTRON_PYTHON`, limits, output budget, tree memory) are read: a session's own environment, so the kernel
+    /// never sees the server process's PATH or variables. None: this process's environment.
+    pub base_env: Option<Vec<(String, String)>>,
 }
 
 /// How a kernel caps the memory of its whole process tree ([`tree_memory`]).
@@ -322,6 +338,23 @@ impl KernelOptions {
             continuity: None,
             sandbox: None,
             tree_memory: None,
+            base_env: None,
+        }
+    }
+
+    /// `name` in the kernel's base environment ([`KernelOptions::base_env`], else this process's).
+    pub fn var(&self, name: &str) -> Option<String> {
+        match &self.base_env {
+            Some(env) => env.iter().find(|(key, _)| key == name).map(|(_, value)| value.clone()),
+            None => std::env::var(name).ok(),
+        }
+    }
+
+    /// The kernel's base environment ([`KernelOptions::base_env`], else this process's).
+    fn base_environment(&self) -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+        match &self.base_env {
+            Some(env) => env.iter().map(|(key, value)| (key.into(), value.into())).collect(),
+            None => std::env::vars_os().collect(),
         }
     }
 }
@@ -623,7 +656,7 @@ pub struct Kernel {
 
 impl Kernel {
     pub fn new(options: KernelOptions, handler: Arc<dyn HostHandler>) -> Result<Self, KernelError> {
-        let limits = kernel_resource_limits(|name| std::env::var(name).ok(), options.limits)?;
+        let limits = kernel_resource_limits(|name| options.var(name), options.limits)?;
         if options.startup_timeout.is_zero() || options.startup_timeout > Duration::from_millis(2_147_483_647) {
             return Err(KernelError::new(
                 "RLM startupTimeoutMs must be a positive, finite timer duration",
@@ -635,7 +668,7 @@ impl Kernel {
         let snapshot_key = options.snapshot_key.clone().unwrap_or_else(process_snapshot_key);
         let tree_memory_mb = match &options.tree_memory {
             Some(tree) => tree_memory::kernel_tree_memory_limit(
-                std::env::var("ULTRON_RLM_MAX_TREE_MEMORY_MB").ok().as_deref(),
+                options.var("ULTRON_RLM_MAX_TREE_MEMORY_MB").as_deref(),
                 limits.max_memory_mb,
                 tree.max_mb,
             )?,
@@ -1511,7 +1544,7 @@ impl Shared {
         self.options
             .python
             .clone()
-            .unwrap_or_else(|| match std::env::var_os("ULTRON_PYTHON") {
+            .unwrap_or_else(|| match self.options.var("ULTRON_PYTHON") {
                 Some(python) => PathBuf::from(python),
                 None if cfg!(target_os = "linux") && Path::new("/usr/bin/python3").exists() => {
                     "/usr/bin/python3".into()
@@ -1535,7 +1568,7 @@ impl Shared {
                 let requested = tree
                     .backend
                     .clone()
-                    .or_else(|| std::env::var("ULTRON_RLM_TREE_MEMORY_BACKEND").ok());
+                    .or_else(|| options.var("ULTRON_RLM_TREE_MEMORY_BACKEND"));
                 // Under a sandbox the scope would have to wrap the sandbox's launcher: the watchdog caps the tree.
                 tree_memory::tree_memory_backend(self.tree_memory_mb, requested.as_deref(), || {
                     mechanism.is_none() && tree_memory::cgroup_scope_available(tree.launcher.as_os_str())
@@ -1546,7 +1579,7 @@ impl Shared {
         if private_protocol {
             argv.push("--protocol-fds".into());
         }
-        let budget = rlm_output_budget(std::env::var("ULTRON_RLM_OUTPUT_BYTES").ok().as_deref());
+        let budget = rlm_output_budget(options.var("ULTRON_RLM_OUTPUT_BYTES").as_deref());
         let fixed_env: Vec<(String, String)> = vec![
             ("NO_COLOR".into(), "1".into()),
             ("PYTHONDONTWRITEBYTECODE".into(), "1".into()),
@@ -1568,6 +1601,7 @@ impl Shared {
                 snapshot_path: options.snapshot_path.as_deref(),
                 fixed_env,
                 extra_env: &options.env,
+                base_env: options.base_environment(),
             }),
             _ => {
                 let mut command = match (&options.tree_memory, tree_backend) {
@@ -1588,7 +1622,7 @@ impl Shared {
                 command
                     .current_dir(&options.cwd)
                     .env_clear()
-                    .envs(kernel_environment(std::env::vars_os()))
+                    .envs(kernel_environment(options.base_environment()))
                     .envs(fixed_env)
                     .envs(options.env.iter().map(|(name, value)| (name, value)));
                 command

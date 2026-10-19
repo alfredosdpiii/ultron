@@ -14,6 +14,7 @@
 
 pub mod bash_notes;
 pub mod cell;
+pub mod cell_writes;
 pub mod file_hooks;
 pub mod journal;
 pub mod loki_guard;
@@ -101,6 +102,9 @@ pub struct Host {
     /// Extra environment of every command (a worktree subagent's `ULTRON_WORKTREE`, `ULTRON_PARENT_REPO`,
     /// `ULTRON_WORKTREE_BRANCH`, `PWD`), over the inherited one.
     env: Vec<(String, String)>,
+    /// The environment every command starts from (the session's own, [`Host::with_base_env`]); None: this
+    /// process's.
+    base_env: Option<Arc<Vec<(String, String)>>>,
     /// Whether this host owns its jobs table: a host sharing another's ([`Host::sharing_jobs`]) never stops them.
     owns_jobs: bool,
     shared: Arc<Shared>,
@@ -147,6 +151,8 @@ struct Shared {
     released: AtomicBool,
     ends: Mutex<Option<JobEnds>>,
     roots: Mutex<Option<RootOf>>,
+    /// What each lane's running cell wrote through checked writes ([`cell_writes`]).
+    writes: cell_writes::CellWrites,
 }
 
 impl Shared {
@@ -408,10 +414,36 @@ pub fn sandboxed_argv(argv: Vec<String>, env: &[(String, String)]) -> Vec<String
         .collect()
 }
 
+/// Where a command runs: its directory, the base environment (None: this process's) and its own variables.
+#[derive(Clone, Copy)]
+struct CommandEnv<'a> {
+    cwd: &'a Path,
+    base: Option<&'a [(String, String)]>,
+    env: &'a [(String, String)],
+}
+
+/// The PATH entry of `env`.
+fn path_of(env: &[(String, String)]) -> Option<String> {
+    env.iter()
+        .find(|(key, _)| key == "PATH")
+        .map(|(_, value)| value.clone())
+}
+
+/// Gives `process` its environment: an unisolated command gets the base environment (when there is one) and then
+/// `env`. A sandboxed one keeps the launcher's own (the sandbox crate's `launch_env`, as its mechanism probe uses):
+/// inside, the command sees the policy's allowlist, valued from the base environment ([`Host::sandboxed`]), and its
+/// own variables ([`sandboxed_argv`]).
+fn command_env(process: &mut Command, base: Option<&[(String, String)]>, env: &[(String, String)], isolated: bool) {
+    if let (Some(base), false) = (base, isolated) {
+        process.env_clear().envs(base.iter().map(|(key, value)| (key, value)));
+    }
+    process.envs(env.iter().map(|(key, value)| (key, value)));
+}
+
 fn run_shell(
     shell: &shell::ShellConfig,
     command: &str,
-    (cwd, env): (&Path, &[(String, String)]),
+    CommandEnv { cwd, base, env }: CommandEnv<'_>,
     launcher: Option<&sandbox::Launcher>,
     mut on_text: impl FnMut(&str, usize),
     stop: impl Fn() -> bool,
@@ -425,7 +457,8 @@ fn run_shell(
             process
         }
     };
-    process.envs(env.iter().map(|(key, value)| (key, value)));
+    let isolated = launcher.is_some_and(|launcher| launcher.mechanism().is_some());
+    command_env(&mut process, base, env, isolated);
     // A child server's verdict token authenticates only its own `rlm.finish`; commands never see it.
     process.env_remove(PARENT_TOKEN_ENV);
     let (reader, writer) = std::io::pipe().map_err(|error| error.to_string())?;
@@ -439,7 +472,8 @@ fn run_shell(
         .map_err(|error| error.to_string())?;
     // The Command holds the pipe's write ends: drop it so the reader sees EOF when the command exits.
     drop(process);
-    let pid = rustix::process::Pid::from_child(&child);
+    // The command's own group (`process_group(0)`): its pgid is its pid.
+    let group = i32::try_from(child.id()).unwrap_or(0);
     let (sender, chunks) = mpsc::channel::<Vec<u8>>();
     let pump = std::thread::spawn(move || {
         let mut reader = reader;
@@ -460,7 +494,7 @@ fn run_shell(
         }
         if !killed && stop() {
             killed = true;
-            let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+            kernel::kill_command_group(group);
         }
     }
     let _ = pump.join();
@@ -482,7 +516,24 @@ impl Host {
 
     /// A cell on `lane` is starting: the after-cell file hooks take their baseline picture if they have none.
     pub fn cell_started(&self, lane: &str) {
+        self.shared.writes.begin(lane);
         self.guard.cell_started(lane);
+    }
+
+    /// Record what each cell writes through checked writes, for [`Host::take_cell_writes`] (off by default).
+    pub fn recording_cell_writes(self, on: bool) -> Self {
+        self.shared.writes.set_enabled(on);
+        self
+    }
+
+    /// Where commands run and relative paths resolve.
+    pub fn cwd(&self) -> &Path {
+        &self.cwd
+    }
+
+    /// The files `lane`'s cell wrote through checked writes, with their texts (and forget them).
+    pub fn take_cell_writes(&self, lane: &str) -> Vec<cell_writes::CellWrite> {
+        self.shared.writes.take(lane)
     }
 
     /// A cell on `lane` ended: the after-cell file hooks check what it changed, in the background.
@@ -513,6 +564,7 @@ impl Host {
                 released: AtomicBool::new(false),
                 ends: Mutex::new(None),
                 roots: Mutex::new(None),
+                writes: cell_writes::CellWrites::default(),
             }),
             cwd,
             jobs_dir,
@@ -521,8 +573,17 @@ impl Host {
             launcher: None,
             shell_path: None,
             env: Vec::new(),
+            base_env: None,
             owns_jobs: true,
         }
+    }
+
+    /// Every command (blocking bash, shell jobs, the sandbox's allowlisted variables) starts from `env` instead of
+    /// this process's environment, and the shell and the sandbox launcher are found on its PATH: a session's
+    /// commands see the session's environment, never the server's. Call before [`Host::sandboxed`].
+    pub fn with_base_env(mut self, env: Vec<(String, String)>) -> Self {
+        self.base_env = Some(Arc::new(env));
+        self
     }
 
     /// Every command (blocking bash and shell jobs) runs with `env` over the inherited environment, as
@@ -549,7 +610,15 @@ impl Host {
     }
 
     fn shell(&self) -> Result<shell::ShellConfig, String> {
-        shell::system_shell_config(self.shell_path.as_deref())
+        self.shell_named(self.shell_path.as_deref())
+    }
+
+    /// The shell `custom` names, else the default one, with `bash` looked up on the base environment's PATH.
+    fn shell_named(&self, custom: Option<&str>) -> Result<shell::ShellConfig, String> {
+        match &self.base_env {
+            Some(env) => shell::shell_config_on_path(custom, path_of(env).as_deref()),
+            None => shell::system_shell_config(custom),
+        }
     }
 
     /// Makes shell jobs durable: restores the jobs journal from `journal` and journals every start and end from now
@@ -714,7 +783,14 @@ impl Host {
             }
             let results: Vec<Value> = proposed
                 .into_iter()
-                .map(|(path, content)| self.guard.before_write_on(lane, path, content))
+                .map(|(path, content)| {
+                    let result = self.guard.before_write_on(lane, path, content);
+                    if result["blocked"] != true {
+                        let path = file_hooks::resolve_lexical(&self.cwd, path);
+                        self.shared.writes.record(lane, &path, content);
+                    }
+                    result
+                })
                 .collect();
             return Ok(json!({ "results": results }));
         }
@@ -851,7 +927,11 @@ impl Host {
         let exit = run_shell(
             &shell,
             &command,
-            (&self.cwd, &self.env),
+            CommandEnv {
+                cwd: &self.cwd,
+                base: self.base_env.as_deref().map(Vec::as_slice),
+                env: &self.env,
+            },
             self.launcher.as_deref(),
             |text, raw| {
                 // The decoder's flush at the end (no bytes read) is not a chunk of the command's output.
@@ -978,12 +1058,19 @@ impl Host {
         let (runner, shared, cwd, launcher, shell) = (
             job.clone(),
             self.shared.clone(),
-            (self.cwd.clone(), self.env.clone()),
+            (self.cwd.clone(), self.base_env.clone(), self.env.clone()),
             self.launcher.clone(),
-            self.shell(),
+            // The keeper is POSIX shell run by the default shell (/bin/bash, else bash on the session's PATH).
+            self.shell()
+                .and_then(|shell| Ok((shell, self.shell_named(None)?.shell))),
         );
         std::thread::spawn(move || {
-            match shell.and_then(|shell| spawn_keeper(&runner, &shell, (&cwd.0, &cwd.1), launcher.as_deref())) {
+            let env = CommandEnv {
+                cwd: &cwd.0,
+                base: cwd.1.as_deref().map(Vec::as_slice),
+                env: &cwd.2,
+            };
+            match shell.and_then(|(shell, keeper)| spawn_keeper(&runner, (&shell, &keeper), env, launcher.as_deref())) {
                 Ok(child) => {
                     let pid = child.id() as i32;
                     *lock(&runner.process) = Some((pid, process_start(pid)));
@@ -1015,8 +1102,8 @@ const KEEPER: &str = r#""$1" "$2" "$0" 2>&1 </dev/null; printf '%s\n' "$?" >&2"#
 
 fn spawn_keeper(
     job: &Job,
-    shell: &shell::ShellConfig,
-    (cwd, env): (&Path, &[(String, String)]),
+    (shell, keeper): (&shell::ShellConfig, &str),
+    CommandEnv { cwd, base, env }: CommandEnv<'_>,
     launcher: Option<&sandbox::Launcher>,
 ) -> Result<std::process::Child, String> {
     let create = |path: &Path| {
@@ -1030,7 +1117,7 @@ fn spawn_keeper(
     };
     let raw = create(&job.raw_path)?;
     let exit = create(&job.exit_path)?;
-    let mut argv = vec!["bash".to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
+    let mut argv = vec![keeper.to_string(), "-c".into(), KEEPER.into(), job.command.clone()];
     argv.push(shell.shell.clone());
     argv.extend(shell.args.iter().cloned());
     let mut process = match launcher {
@@ -1042,8 +1129,9 @@ fn spawn_keeper(
             process
         }
     };
+    let isolated = launcher.is_some_and(|launcher| launcher.mechanism().is_some());
+    command_env(&mut process, base, env, isolated);
     process
-        .envs(env.iter().map(|(key, value)| (key, value)))
         .env_remove(PARENT_TOKEN_ENV)
         .stdin(Stdio::null())
         .stdout(raw)
@@ -1164,10 +1252,11 @@ fn follow(job: &Arc<Job>, child: Option<std::process::Child>, shared: &Shared) {
             } else if *lock(&job.cancel.0) {
                 stopped = Some(Status::Cancelled);
             }
+            // The keeper's own group (`process_group(0)` in `spawn_keeper`): its pgid is its pid.
             if stopped.is_some()
-                && let Some(pid) = process.and_then(|(pid, _)| rustix::process::Pid::from_raw(pid))
+                && let Some((pid, _)) = process
             {
-                let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+                kernel::kill_command_group(pid);
             }
         }
         let cancel = lock(&job.cancel.0);

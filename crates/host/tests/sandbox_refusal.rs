@@ -67,7 +67,6 @@ fn host_sandbox_refusal_note_under_each_backend() {
             &settings,
             &home,
             None,
-            None,
             Some(mechanism),
         );
         assert_eq!(host.launcher().unwrap().mechanism(), Some(mechanism));

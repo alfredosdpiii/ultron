@@ -152,12 +152,6 @@ impl Service {
         self
     }
 
-    /// A method upstream exposes that is not ported: it fails like a method that throws.
-    pub fn unported(self, name: &str) -> Self {
-        let message = format!("{}.{name} is not available in the Rust build yet", self.id);
-        self.method(name, move |_| Err(ServiceError::internal(message.clone())))
-    }
-
     pub fn state(mut self, name: &str, state: Arc<State>) -> Self {
         self.members.insert(name.into(), Member::State(state));
         self

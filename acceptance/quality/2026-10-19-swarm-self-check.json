@@ -1,0 +1,658 @@
+{
+  "taskSet": "swarm",
+  "frozenAt": "2026-10-19-swarm",
+  "passed": true,
+  "results": [
+    {
+      "task": "follow-ups",
+      "category": "swarm",
+      "ok": true,
+      "durationMs": 585,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 120,
+          "metrics": {
+            "passed": 0,
+            "total": 4,
+            "answers": {
+              "stages": false,
+              "q1": false,
+              "q2": false,
+              "q3": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 143,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": true,
+              "q3": true
+            }
+          }
+        },
+        {
+          "trial": "the expected answers written directly (the hidden check's own fixture)",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 193,
+          "metrics": {
+            "passed": 4,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": true,
+              "q3": true
+            }
+          }
+        },
+        {
+          "trial": "stages: ORDER as written, DISABLED stages included",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 199,
+          "metrics": {
+            "passed": 3,
+            "total": 4,
+            "answers": {
+              "stages": false,
+              "q1": true,
+              "q2": true,
+              "q3": true
+            }
+          }
+        },
+        {
+          "trial": "q1: adjust stages ignored (the naive first rejection)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 203,
+          "metrics": {
+            "passed": 3,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": false,
+              "q2": true,
+              "q3": true
+            }
+          }
+        },
+        {
+          "trial": "q2: the region's LEGACY decoy constant",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 210,
+          "metrics": {
+            "passed": 3,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": false,
+              "q3": true
+            }
+          }
+        },
+        {
+          "trial": "q3: the follow-up 1 answer repeated",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 201,
+          "metrics": {
+            "passed": 3,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": true,
+              "q3": false
+            }
+          }
+        },
+        {
+          "trial": "no answers.json",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 208,
+          "metrics": {
+            "passed": 0,
+            "total": 4,
+            "answers": {
+              "stages": false,
+              "q1": false,
+              "q2": false,
+              "q3": false
+            }
+          }
+        },
+        {
+          "trial": "the investigation only (stages, no follow-up answers)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 200,
+          "metrics": {
+            "passed": 1,
+            "total": 4,
+            "answers": {
+              "stages": true,
+              "q1": false,
+              "q2": false,
+              "q3": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "task": "shared-board",
+      "category": "swarm",
+      "ok": true,
+      "durationMs": 5536,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1171,
+          "metrics": {
+            "passed": 0,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [
+              "T01",
+              "T02",
+              "T03",
+              "T04",
+              "T05",
+              "T06",
+              "T07",
+              "T08",
+              "T09",
+              "T10",
+              "T11",
+              "T12"
+            ],
+            "marks": 0,
+            "tickets": {
+              "T01": false,
+              "T02": false,
+              "T03": false,
+              "T04": false,
+              "T05": false,
+              "T06": false,
+              "T07": false,
+              "T08": false,
+              "T09": false,
+              "T10": false,
+              "T11": false,
+              "T12": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 1186,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [],
+            "marks": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "three concurrent workers claiming tickets atomically (a board)",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 1502,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [],
+            "marks": 12,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "static split of the ten initial tickets: follow-ups missed",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1226,
+          "metrics": {
+            "passed": 10,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [
+              "T11",
+              "T12"
+            ],
+            "marks": 10,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": false,
+              "T12": false
+            }
+          }
+        },
+        {
+          "trial": "T05 done by two workers (marked twice)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1136,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "duplicates": [
+              "T05"
+            ],
+            "unmarked": [],
+            "marks": 13,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "money.py clobbered by a stale whole-file write (T01 and T02 lost)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 1165,
+          "metrics": {
+            "passed": 10,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [],
+            "marks": 12,
+            "tickets": {
+              "T01": false,
+              "T02": false,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        },
+        {
+          "trial": "every change made, nothing marked done",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 2081,
+          "metrics": {
+            "passed": 12,
+            "total": 12,
+            "duplicates": [],
+            "unmarked": [
+              "T01",
+              "T02",
+              "T03",
+              "T04",
+              "T05",
+              "T06",
+              "T07",
+              "T08",
+              "T09",
+              "T10",
+              "T11",
+              "T12"
+            ],
+            "marks": 0,
+            "tickets": {
+              "T01": true,
+              "T02": true,
+              "T03": true,
+              "T04": true,
+              "T05": true,
+              "T06": true,
+              "T07": true,
+              "T08": true,
+              "T09": true,
+              "T10": true,
+              "T11": true,
+              "T12": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "task": "route",
+      "category": "swarm",
+      "ok": true,
+      "durationMs": 583,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 132,
+          "metrics": {
+            "passed": 0,
+            "total": 3,
+            "answers": {
+              "stages": false,
+              "q1": false,
+              "q2": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 135,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": true
+            }
+          }
+        },
+        {
+          "trial": "the expected answers written directly (the hidden check's own fixture)",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 155,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": true
+            }
+          }
+        },
+        {
+          "trial": "stages: ORDER as written in each subsystem, DISABLED stages included",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 147,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "answers": {
+              "stages": false,
+              "q1": true,
+              "q2": true
+            }
+          }
+        },
+        {
+          "trial": "q1: adjust stages ignored (the naive first rejection)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 151,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "answers": {
+              "stages": true,
+              "q1": false,
+              "q2": true
+            }
+          }
+        },
+        {
+          "trial": "q2: the region's LEGACY decoy constant",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 153,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "answers": {
+              "stages": true,
+              "q1": true,
+              "q2": false
+            }
+          }
+        },
+        {
+          "trial": "no answers.json",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 158,
+          "metrics": {
+            "passed": 0,
+            "total": 3,
+            "answers": {
+              "stages": false,
+              "q1": false,
+              "q2": false
+            }
+          }
+        },
+        {
+          "trial": "the investigation only (stages, no follow-up answers)",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 151,
+          "metrics": {
+            "passed": 1,
+            "total": 3,
+            "answers": {
+              "stages": true,
+              "q1": false,
+              "q2": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "task": "contracts",
+      "category": "swarm",
+      "ok": true,
+      "durationMs": 3270,
+      "outcomes": [
+        {
+          "trial": "unsolved",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 615,
+          "metrics": {
+            "passed": 0,
+            "total": 3,
+            "modules": {
+              "durations": false,
+              "ranges": false,
+              "semver": false
+            }
+          }
+        },
+        {
+          "trial": "solved",
+          "expect": "pass",
+          "ok": true,
+          "verifyMs": 1052,
+          "metrics": {
+            "passed": 3,
+            "total": 3,
+            "modules": {
+              "durations": true,
+              "ranges": true,
+              "semver": true
+            }
+          }
+        },
+        {
+          "trial": "every module with its tempting partial fix",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 885,
+          "metrics": {
+            "passed": 0,
+            "total": 3,
+            "modules": {
+              "durations": false,
+              "ranges": false,
+              "semver": false
+            }
+          }
+        },
+        {
+          "trial": "lib/durations.py with its tempting partial fix, the others fixed",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 899,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": false,
+              "ranges": true,
+              "semver": true
+            }
+          }
+        },
+        {
+          "trial": "lib/ranges.py with its tempting partial fix, the others fixed",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 974,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": true,
+              "ranges": false,
+              "semver": true
+            }
+          }
+        },
+        {
+          "trial": "lib/semver.py with its tempting partial fix, the others fixed",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 958,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": true,
+              "ranges": true,
+              "semver": false
+            }
+          }
+        },
+        {
+          "trial": "without lib/durations.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 618,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": false,
+              "ranges": true,
+              "semver": true
+            }
+          }
+        },
+        {
+          "trial": "without lib/ranges.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 489,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": true,
+              "ranges": false,
+              "semver": true
+            }
+          }
+        },
+        {
+          "trial": "without lib/semver.py",
+          "expect": "fail",
+          "ok": true,
+          "verifyMs": 485,
+          "metrics": {
+            "passed": 2,
+            "total": 3,
+            "modules": {
+              "durations": true,
+              "ranges": true,
+              "semver": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

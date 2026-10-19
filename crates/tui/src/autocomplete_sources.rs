@@ -1,7 +1,7 @@
 //! Extra autocomplete sources (ports of omp packages/tui/src/prompt/emoji-autocomplete.ts,
 //! github-ref-autocomplete.ts and model-mention-autocomplete.ts).
 //!
-//! - Emoji: `:name` suggestions, `:name:` and emoticon (`:) `) inline replacement, submit-time emoticon expansion.
+//! - Emoji: `:name` suggestions.
 //!   The shortcode table `data/emojis.json` is omp's (built from gemoji), loaded once on first use.
 //! - GitHub `#123` references: local PR/issue candidates; titles come from a [`RefTitleSource`] whose network
 //!   lookups run on its own thread, so suggestions never wait on `gh`.
@@ -90,12 +90,6 @@ fn has_left_boundary(text: &str, idx: usize) -> bool {
         )
 }
 
-fn lookup_exact(name: &str) -> Option<&'static str> {
-    let bucket = buckets().get(name.get(..1)?)?;
-    let i = bucket.partition_point(|(n, _)| n.as_str() < name);
-    bucket.get(i).filter(|(n, _)| n == name).map(|(_, c)| c.as_str())
-}
-
 /// `:name` suggestions for the text before the cursor (emoticons first, then shortcodes), at most 12.
 pub fn emoji_suggestions(text_before: &str) -> Option<AutocompleteSuggestions> {
     let b = text_before.as_bytes();
@@ -142,68 +136,6 @@ pub fn emoji_suggestions(text_before: &str) -> Option<AutocompleteSuggestions> {
         items,
         prefix: format!(":{name}"),
     })
-}
-
-fn is_terminator(c: u8) -> bool {
-    matches!(c, b' ' | b'\t' | b'\n' | b'\r')
-}
-
-/// Inline replacement as the user types: a closed `:name:`, or an emoticon followed by whitespace.
-/// Returns (bytes to replace before the cursor, text to insert).
-pub fn emoji_inline_replace(text_before: &str) -> Option<(usize, String)> {
-    let b = text_before.as_bytes();
-    if b.last() == Some(&b':') {
-        let close = b.len() - 1;
-        let mut start = close;
-        while start > 0 && is_name_byte(b[start - 1]) {
-            start -= 1;
-        }
-        if start != close && start > 0 && b[start - 1] == b':' && has_left_boundary(text_before, start - 1) {
-            let name = text_before[start..close].to_lowercase();
-            if let Some(ch) = lookup_exact(&name) {
-                return Some((name.len() + 2, ch.to_string()));
-            }
-        }
-    }
-    if b.len() < 2 || !is_terminator(b[b.len() - 1]) {
-        return None;
-    }
-    let term = b[b.len() - 1] as char;
-    let tail = b.len() - 1;
-    EMOTICONS.iter().find_map(|(pattern, ch)| {
-        let start = tail.checked_sub(pattern.len())?;
-        (&b[start..tail] == pattern.as_bytes() && (start == 0 || has_left_boundary(text_before, start)))
-            .then(|| (pattern.len() + 1, format!("{ch}{term}")))
-    })
-}
-
-/// Submit-time: emoticons at token boundaries followed by whitespace or the end become emoji.
-pub fn expand_emoticons(text: &str) -> String {
-    if text.len() < 2 {
-        return text.to_string();
-    }
-    let b = text.as_bytes();
-    let mut out = String::new();
-    let (mut cursor, mut i) = (0, 0);
-    while i < b.len() {
-        if has_left_boundary(text, i)
-            && let Some((pattern, ch)) = EMOTICONS
-                .iter()
-                .find(|(p, _)| b[i..].starts_with(p.as_bytes()) && b.get(i + p.len()).is_none_or(|c| is_terminator(*c)))
-        {
-            out.push_str(&text[cursor..i]);
-            out.push_str(ch);
-            i += pattern.len();
-            cursor = i;
-            continue;
-        }
-        i += text[i..].chars().next().map_or(1, char::len_utf8);
-    }
-    if cursor == 0 {
-        return text.to_string();
-    }
-    out.push_str(&text[cursor..]);
-    out
 }
 
 fn line_before(lines: &[String], line: usize, col: usize) -> &str {

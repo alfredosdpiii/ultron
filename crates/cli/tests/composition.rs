@@ -406,7 +406,6 @@ fn cli_composition_cell_calls_the_memory_api_on_the_injected_backend() {
         mode: "print".into(),
         services: cli::compose::Services {
             memory: Some(bank.clone()),
-            approver: None,
             ..Default::default()
         },
         auto_name: true,

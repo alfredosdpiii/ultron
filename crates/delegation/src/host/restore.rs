@@ -85,6 +85,8 @@ impl Delegation {
                     outside_before: None,
                     before: None,
                     merge_status: None,
+                    // A contract is not kept in the journal: a child reattached after a restart ends unchecked.
+                    contract: None,
                 });
                 if let Some(waiter) = waiter {
                     waiters.push((id, signal, waiter));

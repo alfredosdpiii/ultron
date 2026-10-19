@@ -13,6 +13,7 @@
  *   node scripts/eval-quality.mjs --tasks parallel [--trials 2 --variants pi,ultron]   (prints wall time per run)
  *   node scripts/eval-quality.mjs --tasks parallel --self-check                        (about 4.5 minutes, real sleeps)
  *   node scripts/eval-quality.mjs --tasks delegation --self-check                      (about 8.5 minutes, real sleeps and harness runs)
+ *   node scripts/eval-quality.mjs --tasks swarm --self-check --concurrency 2           (no model; generated codebases, git, done.py)
  *
  * `--tasks` picks the frozen set: default is evals/quality/tasks.mjs, `hard` is tasks-hard.mjs, `judged` is
  * tasks-judged.mjs (open-ended work scored by an LLM judge next to a light deterministic sanity check), `parallel`
@@ -23,7 +24,10 @@
  * sequential agent is unlikely to meet: working on them in parallel pays off; the hidden check reports how many
  * of the six passed as `metrics`; its second task, `six-services-deep`, hides each service's bugs behind a slow
  * staged harness that must be run and rerun, see tasks-delegation-deep.mjs; its third, `twelve-tickets`, is twelve
- * small tickets in one shared project, several in the same files, see tasks-delegation-tickets.mjs).
+ * small tickets in one shared project, several in the same files, see tasks-delegation-tickets.mjs), and `swarm` is
+ * tasks-swarm.mjs (Ultron's durable many-agent APIs, served by the Rust host: persistent children asked follow-ups,
+ * a shared task board with follow-up tickets, routing a question to the child that read a subsystem, and contracts;
+ * multi-prompt tasks, see below).
  * A task with `git: true` (twelve-tickets) starts as a git repository: after the task files are written, live runs
  * (every variant) and every self-check trial run `git init` and commit them once (initGitRepo), before the agent or
  * the reference solution sees them; the hidden files are written afterwards and stay untracked.
@@ -54,6 +58,15 @@
  * the summary reports them per variant next to the deterministic pass rate. `record.passed` stays the deterministic
  * check: the judge never decides a run alone and never feeds the release gate (scripts/gate.mjs).
  *
+ * Swarm metrics in every record of the native driver (pi/ultron variants), from the root's own RPC events (child lanes are
+ * not on that stream): `rootInputTokensByPrompt` (input plus cache-read and cache-write tokens of the root's
+ * assistant messages, one entry per prompt), `swarmCalls` (calls named in the root's rlm code: spawns with
+ * keep=True, rlm.ask, rlm.partial, swarm.register/route/send/inbox, board.add/claim/update/list, notes.*, brief=),
+ * and for a task with `rereadPaths`, `rootRereads`: per prompt after the first, the root tool calls whose arguments
+ * name one of those paths (the root re-reading code a child already holds). The Claude Code variants record
+ * `swarmCalls` and per-prompt input tokens from their stream. A task with `optional: "<feature>"` (the swarm set's
+ * `contracts`) is marked `optional` in its records, and each variant's summary adds `passRateRequired`, the pass
+ * rate without optional tasks, so a summary can leave out a task whose feature has not shipped.
  * Uptake metrics in every record: `toolsByName` (tool calls by tool, from `tool_execution_start` events),
  * `framesSpawned` (rlm.spawn/infer/map frames: tasks whose definition starts with `rlm-`, read from Ultron's
  * `inspect agents.status`; else counted from the rlm tool's code in the events; null when neither is available,
@@ -144,6 +157,7 @@ const TASK_SETS = {
 	parallel: { tasks: "../evals/quality/tasks-parallel.mjs", solutions: "../evals/quality/tasks-parallel-solutions.mjs" },
 	research: { tasks: "../evals/quality/tasks-research.mjs", solutions: "../evals/quality/tasks-research-solutions.mjs" },
 	delegation: { tasks: "../evals/quality/tasks-delegation.mjs", solutions: "../evals/quality/tasks-delegation-solutions.mjs" },
+	swarm: { tasks: "../evals/quality/tasks-swarm.mjs", solutions: "../evals/quality/tasks-swarm-solutions.mjs" },
 };
 
 /** The hidden check's last output line when it is a JSON object (research checks print their metrics there). */
@@ -529,6 +543,49 @@ export function rpcSession({ command, args, cwd, env, log }) {
 	};
 }
 
+/** Durable many-agent API calls named in the root's rlm code (tasks-swarm.mjs measures their uptake). */
+const SWARM_CALLS = {
+	keepSpawn: /\bkeep\s*=\s*True\b/g,
+	ask: /\brlm\.ask\s*\(/g,
+	partial: /\brlm\.partial\s*\(/g,
+	register: /\bswarm\.register\s*\(/g,
+	route: /\bswarm\.route\s*\(/g,
+	send: /\bswarm\.send\s*\(/g,
+	inbox: /\bswarm\.inbox\s*\(/g,
+	boardAdd: /\bboard\.add\s*\(/g,
+	boardClaim: /\bboard\.claim\s*\(/g,
+	boardUpdate: /\bboard\.update\s*\(/g,
+	boardList: /\bboard\.list\s*\(/g,
+	notes: /\bnotes\.(?:read|append|write)\s*\(/g,
+	brief: /\bbrief\s*=/g,
+};
+
+/** Counts of SWARM_CALLS in one piece of rlm code, added into `into` (every key present, zero when unused). */
+export function countSwarmCalls(code, into = Object.fromEntries(Object.keys(SWARM_CALLS).map((name) => [name, 0]))) {
+	for (const [name, pattern] of Object.entries(SWARM_CALLS)) into[name] += String(code ?? "").match(pattern)?.length ?? 0;
+	return into;
+}
+
+/**
+ * One prompt's root events: input tokens of the root's assistant messages (input + cacheRead + cacheWrite), and
+ * the tool calls whose arguments name one of `rereadPaths`.
+ */
+export function promptStats(events, rereadPaths = []) {
+	let inputTokens = 0;
+	let rereads = 0;
+	for (const event of events) {
+		if (event.type === "message_end" && event.message?.role === "assistant") {
+			const usage = event.message.usage ?? {};
+			for (const field of ["input", "cacheRead", "cacheWrite"]) if (typeof usage[field] === "number") inputTokens += usage[field];
+		}
+		if (event.type === "tool_execution_start" && rereadPaths.length) {
+			const args = JSON.stringify(event.args ?? "");
+			if (rereadPaths.some((path) => args.includes(path))) rereads += 1;
+		}
+	}
+	return { inputTokens, rereads };
+}
+
 /** Frames (rlm.spawn / rlm.infer / rlm.map) named in the rlm tool's code, for runs whose host cannot be inspected. */
 const FRAME_CALL = /\brlm\.(?:spawn|infer|map)\s*\(/g;
 
@@ -648,6 +705,7 @@ export function claudeStreamStats(lines) {
 		spawnCalls: 0,
 		results: [],
 		firstRequestInputTokens: null,
+		swarmCalls: countSwarmCalls(""),
 	};
 	const seen = new Set();
 	for (const line of lines) {
@@ -673,12 +731,18 @@ export function claudeStreamStats(lines) {
 					const code = String(part.input?.code ?? "");
 					stats.frameCalls += code.match(FRAME_CALL)?.length ?? 0;
 					stats.spawnCalls += code.match(/\brlm\.spawn\s*\(/g)?.length ?? 0;
+					countSwarmCalls(code, stats.swarmCalls);
 				}
 			}
 		}
 		if (message.type === "result") stats.results.push(message);
 	}
 	const known = (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+	// One result per prompt: the input side of each (input plus cache creation and cache reads).
+	stats.inputTokensByPrompt = stats.results.map(
+		(result) =>
+			known(result.usage?.input_tokens) + known(result.usage?.cache_creation_input_tokens) + known(result.usage?.cache_read_input_tokens),
+	);
 	stats.cost = stats.results.length ? stats.results.reduce((sum, result) => sum + known(result.total_cost_usd), 0) : null;
 	stats.tokens = stats.results.length
 		? stats.results.reduce(
@@ -782,6 +846,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 		...lokiEnv(loki, join(keep, "loki.jsonl")),
 	};
 	const record = { task: task.id, category: task.category, variant, trial, model, passed: false, homeIsolated: true };
+	if (task.optional) record.optional = task.optional;
 	const started = Date.now();
 	const session = rpcSession({
 		command,
@@ -806,17 +871,26 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	record.childrenSpawned = null;
 	record.childDepth = null;
 	record.rootUnseenBytes = null;
+	record.rootInputTokensByPrompt = [];
+	record.swarmCalls = countSwarmCalls("");
+	if (task.rereadPaths) record.rootRereads = [];
 	let frameCallsInCode = 0;
 	try {
 		let toolCalls = 0;
-		for (const prompt of task.prompts) {
+		for (const [index, prompt] of task.prompts.entries()) {
 			const events = await session.turn(prompt, RUN_TIMEOUT_MS);
 			events.push(...(await session.followAsync(Math.max(0, RUN_TIMEOUT_MS - (Date.now() - started)))));
 			toolCalls += events.filter((event) => event.type === "tool_execution_start").length;
+			const promptCounts = promptStats(events, task.rereadPaths);
+			record.rootInputTokensByPrompt.push(promptCounts.inputTokens);
+			if (task.rereadPaths && index > 0) record.rootRereads.push(promptCounts.rereads);
 			for (const event of events) {
 				if (event.type !== "tool_execution_start") continue;
 				record.toolsByName[event.toolName] = (record.toolsByName[event.toolName] ?? 0) + 1;
-				if (event.toolName === "rlm") frameCallsInCode += JSON.stringify(event.args ?? "").match(FRAME_CALL)?.length ?? 0;
+				if (event.toolName === "rlm") {
+					frameCallsInCode += JSON.stringify(event.args ?? "").match(FRAME_CALL)?.length ?? 0;
+					countSwarmCalls(typeof event.args?.code === "string" ? event.args.code : JSON.stringify(event.args ?? ""), record.swarmCalls);
+				}
 			}
 			const failed = events.find(
 				(event) => event.type === "message_end" && event.message?.role === "assistant" && event.message.stopReason === "error",
@@ -906,6 +980,7 @@ async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, com
 		...lokiEnv(loki, join(keep, "loki.jsonl")),
 	};
 	const record = { task: task.id, category: task.category, variant, trial, model, passed: false, homeIsolated: true };
+	if (task.optional) record.optional = task.optional;
 	const started = Date.now();
 	let run;
 	try {
@@ -930,6 +1005,8 @@ async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, com
 			cost: stats.cost,
 			tokens: stats.tokens,
 			firstRequestInputTokens: stats.firstRequestInputTokens,
+			rootInputTokensByPrompt: stats.inputTokensByPrompt,
+			swarmCalls: stats.swarmCalls,
 			turns: stats.results.reduce((sum, result) => sum + (result.num_turns ?? 0), 0),
 		});
 		const failed = stats.results.find((result) => result.is_error);
@@ -977,6 +1054,16 @@ async function runClaudeOne({ task, variant, trial, model, keepDir, keepAll, com
 	return record;
 }
 
+/** `passRateRequired` (optional tasks left out) and the optional tasks, when any measured record is optional. */
+export function requiredPassRate(measured) {
+	if (!measured.some((record) => record.optional)) return {};
+	const required = measured.filter((record) => !record.optional);
+	return {
+		passRateRequired: required.length ? required.filter((record) => record.passed).length / required.length : null,
+		optionalTasks: [...new Set(measured.filter((record) => record.optional).map((record) => `${record.task} (${record.optional})`))],
+	};
+}
+
 function median(values) {
 	if (values.length === 0) return null;
 	const sorted = [...values].sort((a, b) => a - b);
@@ -996,8 +1083,12 @@ export function summarizeUptake(records) {
 			? { runs: values.length, total: values.reduce((a, b) => a + b, 0), median: median(values) }
 			: { runs: 0, total: null, median: null };
 	};
+	const swarmCalls = {};
+	for (const record of records)
+		for (const [name, count] of Object.entries(record.swarmCalls ?? {})) swarmCalls[name] = (swarmCalls[name] ?? 0) + count;
 	return {
 		toolsByName,
+		swarmCalls,
 		rlmRunShare: records.length ? records.filter((record) => (record.toolsByName?.rlm ?? 0) > 0).length / records.length : null,
 		framesSpawned: aggregate("framesSpawned"),
 		childrenSpawned: aggregate("childrenSpawned"),
@@ -1047,7 +1138,9 @@ export function formatRunLine(record) {
 	const judge = record.judge
 		? ` judge ${record.judge.error ? `error (${record.judge.error.slice(0, 80)})` : `${record.judge.total}/${record.judge.max}`}`
 		: "";
-	return `${formatRunTime(record)}  ${children}${parts} tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${judge}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`;
+	const used = Object.entries(record.swarmCalls ?? {}).filter(([, count]) => count > 0);
+	const swarm = used.length ? ` swarm ${JSON.stringify(Object.fromEntries(used))}` : "";
+	return `${formatRunTime(record)}  ${children}${parts} tools ${JSON.stringify(record.toolsByName ?? {})} frames ${record.framesSpawned ?? "n/a"}${swarm}${judge}${record.error ? ` (${record.error.slice(0, 120)})` : ""}`;
 }
 
 /** One line per run for the console: time first, then budget, outcome and tool use. */
@@ -1078,6 +1171,8 @@ export function summarize(records, variants) {
 			runs: own.length,
 			infrastructure: own.length - measured.length,
 			passRate: measured.length ? measured.filter((record) => record.passed).length / measured.length : null,
+			// Without tasks whose feature has not shipped (`optional`); only when the set has any.
+			...requiredPassRate(measured),
 			categories,
 			medianDurationMs: median(measured.map((record) => record.durationMs)),
 			totalCost: costs.length === measured.length && costs.length > 0 ? costs.reduce((a, b) => a + b, 0) : null,

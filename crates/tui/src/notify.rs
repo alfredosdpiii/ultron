@@ -676,11 +676,6 @@ fn is_uuid(s: &str) -> bool {
             .all(|(g, n)| g.len() == n && g.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
-/// Every multiplexer whose session markers are present, in registry order.
-pub fn multiplexer_sessions(env: &Env) -> Vec<Multiplexer> {
-    REGISTRY.into_iter().filter(|m| m.is_inside(env)).collect()
-}
-
 /// The multiplexer hosting this process: session markers, then a `tmux`/`screen` TERM prefix, then outer apps.
 pub fn classify_multiplexer(env: &Env) -> Option<Multiplexer> {
     let term = env.get("TERM").unwrap_or("").to_ascii_lowercase();
@@ -693,11 +688,6 @@ pub fn classify_multiplexer(env: &Env) -> Option<Multiplexer> {
                 .find(|m| m.term_prefix().is_some_and(|p| term.starts_with(p)))
         })
         .or_else(|| REGISTRY.into_iter().find(|m| m.outer_app() && m.is_inside(env)))
-}
-
-/// Whether the classified multiplexer owns the screen grid.
-pub fn is_inside_multiplexer(env: &Env) -> bool {
-    classify_multiplexer(env).is_some_and(Multiplexer::owns_screen_grid)
 }
 
 /// Wrap a control sequence in tmux's DCS passthrough envelope.

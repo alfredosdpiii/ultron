@@ -4,8 +4,8 @@
 use ai::http::{AbortSignal, Body, BoxFuture, HeaderMap, HttpRequest, HttpResponse, Transport};
 use ai::images::{
     AssistantImages, EnvLookup, ImagesApi, ImagesAuth, ImagesAuthOverrides, ImagesAuthResult, ImagesContent,
-    ImagesContext, ImagesModel, ImagesModels, ImagesOptions, ImagesProvider, ImagesStopReason, builtin_images_models,
-    generate_images, image_model, image_models, image_providers, images_api_provider, register_images_api_provider,
+    ImagesContext, ImagesModel, ImagesModels, ImagesOptions, ImagesProvider, ImagesStopReason, generate_images,
+    image_model, image_models, image_providers, images_api_provider, register_images_api_provider,
 };
 use ai::json::normalize_numbers;
 use ai::types::{ImageContent, ModelCost, TextContent};
@@ -14,6 +14,13 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+
+/// TS `builtinImagesModels`: the collection with the OpenRouter provider.
+fn builtin(lookup: EnvLookup) -> ImagesModels {
+    let mut models = ImagesModels::new();
+    models.set_provider(ai::images::openrouter_images_provider(lookup));
+    models
+}
 
 const NOW: i64 = 1_767_225_600_000;
 
@@ -119,7 +126,7 @@ async fn ai_images_generate_matches_typescript() {
         let (result, thrown) = if case["via"] == "collection" {
             let env: HashMap<String, String> = serde_json::from_value(case["env"].clone()).unwrap();
             let lookup: EnvLookup = Arc::new(move |name| env.get(name).cloned());
-            let models = builtin_images_models(lookup);
+            let models = builtin(lookup);
             (
                 Some(models.generate_images(&model, &context, &options, &mock).await),
                 None,
@@ -568,7 +575,7 @@ async fn ai_images_models_refresh_dedupes_in_flight_and_wraps_failures() {
 #[tokio::test]
 async fn ai_images_builtin_models_register_openrouter_with_env_auth() {
     let lookup: EnvLookup = Arc::new(|name| (name == "OPENROUTER_API_KEY").then(|| "or-key".to_string()));
-    let models = builtin_images_models(lookup);
+    let models = builtin(lookup);
     assert_eq!(
         models.providers().iter().map(|p| p.id.clone()).collect::<Vec<_>>(),
         ["openrouter"]

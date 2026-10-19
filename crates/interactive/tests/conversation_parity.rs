@@ -218,6 +218,7 @@ fn tool_result(v: &Value) -> Option<ToolResultView> {
             })
             .collect(),
         is_error: v["isError"].as_bool().unwrap(),
+        file_changes: Vec::new(),
     })
 }
 

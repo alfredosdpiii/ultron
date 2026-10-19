@@ -53,7 +53,7 @@ fn host_in(base: &Path, mechanism: Mechanism) -> Host {
         "image": backends_support::docker_image().ok(),
     } });
     Host::new(&project, project.join(".jobs"), &project, Box::new(AllowAll))
-        .sandboxed_with_mechanism(&settings, &home, None, None, Some(mechanism))
+        .sandboxed_with_mechanism(&settings, &home, None, Some(mechanism))
         .with_journal(Arc::new(FileJobJournal::new(base.join("jobs.json"))))
         .expect("journal")
 }

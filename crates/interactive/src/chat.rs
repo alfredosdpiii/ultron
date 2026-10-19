@@ -74,6 +74,7 @@ fn tool_result_view(message: &Value) -> ToolResultView {
     ToolResultView {
         content,
         is_error: message["isError"] == true,
+        file_changes: crate::components::FileChange::from_details(&message["details"]),
     }
 }
 

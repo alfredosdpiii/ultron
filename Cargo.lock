@@ -1452,6 +1452,8 @@ dependencies = [
 name = "kernel-apis"
 version = "0.1.0"
 dependencies = [
+ "ai",
+ "base64 0.23.1",
  "fancy-regex 0.19.2",
  "getrandom 0.4.3",
  "host",
@@ -1462,6 +1464,7 @@ dependencies = [
  "session-file",
  "sha2",
  "tempfile",
+ "tokio",
  "yaml-rust2",
 ]
 
@@ -2278,7 +2281,6 @@ name = "sandbox"
 version = "0.1.0"
 dependencies = [
  "getrandom 0.4.3",
- "regex",
  "rustix",
  "serde_json",
  "tempfile",

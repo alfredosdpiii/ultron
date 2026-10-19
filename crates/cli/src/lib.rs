@@ -99,7 +99,7 @@ pub fn instance(env: &Env, durable: bool) -> daemon::instance::Instance {
 /// Make the package files under `env.docs`'s parent ready (installed and held in use) for a run that reads them;
 /// `--version`, `--help`, `--export` and the management subcommands never do (`cli::assets`).
 pub fn package_files(env: &Env) -> Result<(), String> {
-    assets::source(&*env.var, &env.home)?.ready().map(|_| ())
+    assets::package_dir(&*env.var, &env.home).map(|_| ())
 }
 
 /// Run the CLI; returns the exit code.

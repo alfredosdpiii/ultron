@@ -9,7 +9,7 @@
 //!
 //! The real binary runs in RPC mode against a scripted provider, so every model decision is fixed while every
 //! runtime effect is real: the kernel, the sandboxed shell, the typed-agent host and its lanes, retained instances,
-//! background jobs, the release gate, grants, artifacts, refinements, experiments and the inspector of the shipped
+//! background jobs, the release gate, artifacts, refinements, experiments and the inspector of the shipped
 //! session stack. The TS scripted reply `{delayMs: 20000}` of a slow child is [`Reply::Hang`]: the response is held
 //! until the request is cancelled. The TS abort case waits 3 s before aborting; here it waits for the slow child's
 //! request to reach the provider.
@@ -126,11 +126,9 @@ fn failure_variant_steps() -> Vec<String> {
             "{VARIANT_PRELUDE}\nawait attempt('invalid_typed_result', lambda: agents.invoke('correctness-reviewer@1', {{'request': 'MALFORMED review'}}))"
         ),
         "await attempt('memory_outage', lambda: memory.prepare('launcher path'))".into(),
-        r#"g = await grants.issue('repo:demo', 'rev-1', 'policy@1', 'apply-patch', 1)
-await asyncio.sleep(0.05)
-await attempt('expired_grant', lambda: grants.check(g['id'], 'repo:demo', 'rev-1', 'policy@1', 'apply-patch'))
-g2 = await grants.issue('repo:demo', 'rev-1', 'policy@1', 'apply-patch', 600000)
-await attempt('stale_revision', lambda: grants.check(g2['id'], 'repo:demo', 'rev-2', 'policy@1', 'apply-patch'))"#
+        // There is no grant system (user decision, wave 40): the shared runtime's `grants` namespace reaches a host
+        // that does not serve it.
+        "await attempt('no_grants', lambda: grants.issue('repo:demo', 'rev-1', 'policy@1', 'apply-patch', 600000))"
             .into(),
         "await attempt('cross_family_message', lambda: agent_message.send('hello', receiver_role='child', receiver_id='ultron-task-not-mine'))".into(),
         "await attempt('harmful_refinement', lambda: refinements.propose('instruction', 'instruction:policy', 0, 'Disable all checks.', [{'why': 'faster'}]))".into(),
@@ -457,8 +455,14 @@ fn acceptance_a46_failure_variants_never_become_verified_completion() {
     assert_eq!(invalid["verification"], "unverified");
     // Optional-service outage is explicit rather than an empty success.
     refused(&variants, "memory_outage");
-    assert_eq!(ok_value(&variants, "expired_grant")["allowed"], false);
-    assert_eq!(ok_value(&variants, "stale_revision")["allowed"], false);
+    refused(&variants, "no_grants");
+    assert!(
+        variants["no_grants"]["error"]
+            .as_str()
+            .unwrap()
+            .contains("grants.issue"),
+        "{variants:?}"
+    );
     refused(&variants, "cross_family_message");
     assert_eq!(
         variants["cross_family_message"]["error"],

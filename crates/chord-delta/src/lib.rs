@@ -16,7 +16,7 @@ mod tracker;
 
 pub use tracker::{Draft, Prepared, Tracker, overlap};
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -637,13 +637,4 @@ impl Decoder {
         }
         Ok(out)
     }
-}
-
-// Shared with the fixture test; not public API.
-#[doc(hidden)]
-pub fn error_json(error: &DeltaError) -> Value {
-    let mut map = Map::new();
-    map.insert("name".to_owned(), Value::from(error.name()));
-    map.insert("message".to_owned(), Value::from(error.to_string()));
-    Value::Object(map)
 }

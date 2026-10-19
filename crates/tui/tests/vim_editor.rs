@@ -379,7 +379,7 @@ fn tui_vim_editor_atomic_placeholders() {
 }
 
 #[test]
-fn tui_vim_editor_mode_chrome_and_cursor_shape() {
+fn tui_vim_editor_mode_chrome() {
     let mut t = T::new("alfa bravo charlie");
     assert_eq!(t.pending(), "");
     t.key("2");
@@ -400,11 +400,6 @@ fn tui_vim_editor_mode_chrome_and_cursor_shape() {
     assert_eq!(ind.mode, VimMode::VisualLine);
     t.key(ESC);
     assert_eq!(sel(&t), 0);
-
-    assert_eq!(VimMode::Normal.cursor_shape(), "\x1b[2 q");
-    assert_eq!(VimMode::Visual.cursor_shape(), "\x1b[2 q");
-    assert_eq!(VimMode::Insert.cursor_shape(), "\x1b[6 q");
-    assert_eq!(VimMode::Replace.cursor_shape(), "\x1b[4 q");
 }
 
 #[test]

@@ -71,13 +71,14 @@ fn daemon_lifecycle_released_server_demand_is_dropped_while_activity_keeps_the_w
     let (lifecycle, count) = create(100, 200);
     lifecycle.set_demand(GENERATION, "attachment-1", true).unwrap();
     lifecycle.operation_started("run", "ultron.background-job.task-1", "operation-1");
-    let task = lifecycle.hold_activity();
+    // Detached work (a shell job, a detached tool call) as the worker reports it (worker.rs `activity`).
+    lifecycle.operation_started("activity", "main", "detached");
     assert!(lifecycle.busy());
     lifecycle.release_server(GENERATION);
     lifecycle.operation_stopped("run", "ultron.background-job.task-1", "operation-1");
     assert!(lifecycle.busy());
     assert_eq!(retired(&count), 0);
-    drop(task);
+    lifecycle.operation_stopped("activity", "main", "detached");
     assert!(!lifecycle.busy());
     assert_eq!(retired(&count), 1);
     assert!(lifecycle.retiring());

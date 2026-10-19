@@ -1,7 +1,5 @@
-//! `sandbox.*` and `approval.*` settings, the interactive policy built from them, and write containment.
+//! `sandbox.*` settings, the interactive policy built from them, and write containment.
 
-use sandbox::Approvals;
-use sandbox::approval::{Mode as ApprovalMode, Policy as Rule};
 use sandbox::launcher::{Entry, Layout, Mechanism, Policy};
 use sandbox::settings::{DEFAULT_HIDDEN, DEFAULT_HOME_WRITABLE, Mode, Settings};
 use serde_json::json;
@@ -27,29 +25,6 @@ fn sandbox_settings_defaults_and_overrides() {
     let invalid = Settings::from_settings(&json!({ "sandbox": { "mode": "sometimes", "network": "no" } }));
     assert_eq!(invalid.mode, Mode::Off);
     assert!(invalid.network);
-}
-
-#[test]
-fn sandbox_approval_settings_parse_mode_ops_and_patterns() {
-    let approvals = Approvals::from_settings(&json!({ "approval": {
-        "mode": "always-ask", "ops": { "bash": "deny" },
-        "bash": { "patterns": [{ "match": "ls *", "approval": "allow" }, { "match": "x" }], "allowCompoundCommands": true }
-    }}));
-    assert_eq!(approvals.mode, ApprovalMode::AlwaysAsk);
-    assert_eq!(approvals.bash_patterns.len(), 1);
-    assert_eq!(approvals.bash_patterns[0].approval, Rule::Allow);
-    assert!(approvals.allow_compound);
-    let error = approvals.check("shell.run", Some("ls")).unwrap_err();
-    assert_eq!(
-        error,
-        "Operation \"bash\" is blocked by user policy.\nTo allow: remove \"approval.ops.bash: deny\" from settings."
-    );
-    assert_eq!(approvals.check("shell.read", None), Ok(()));
-    let defaults = Approvals::from_settings(&json!({}));
-    assert_eq!(defaults.mode, ApprovalMode::Yolo);
-    // yolo ignores the bare critical override (omp), so default behavior is unchanged.
-    assert_eq!(defaults.check("bash", Some("rm -rf /")), Ok(()));
-    assert_eq!(defaults.check("files.before_write", Some("/x")), Ok(()));
 }
 
 fn scratch() -> (tempfile::TempDir, PathBuf, PathBuf) {

@@ -37,10 +37,16 @@ pub(crate) fn mechanism(launcher: &Launcher) -> Result<Option<Mechanism>, Kernel
     }
 }
 
-/// The kernel's environment inside the sandbox: the policy's allowlist and the host's `ULTRON_*` runtime settings,
-/// both through the kernel's credential filter, then `fixed` and `extra` (later entries win).
-fn environment(policy: &Policy, fixed: &[(String, String)], extra: &[(String, String)]) -> Vec<(String, String)> {
-    let runtime_settings = std::env::vars_os()
+/// The kernel's environment inside the sandbox: the policy's allowlist and the base environment's `ULTRON_*` runtime
+/// settings, both through the kernel's credential filter, then `fixed` and `extra` (later entries win).
+fn environment(
+    policy: &Policy,
+    base: Vec<(OsString, OsString)>,
+    fixed: &[(String, String)],
+    extra: &[(String, String)],
+) -> Vec<(String, String)> {
+    let runtime_settings = base
+        .into_iter()
         .filter_map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
         .filter(|(name, _)| name.starts_with("ULTRON_"));
     let filtered = kernel_environment(policy.env.iter().cloned().chain(runtime_settings));
@@ -115,6 +121,8 @@ pub(crate) struct Launch<'a> {
     pub snapshot_path: Option<&'a Path>,
     pub fixed_env: Vec<(String, String)>,
     pub extra_env: &'a [(String, String)],
+    /// The kernel's base environment ([`crate::KernelOptions::base_env`]): its `ULTRON_*` runtime settings pass in.
+    pub base_env: Vec<(OsString, OsString)>,
 }
 
 /// The command starting `argv` (python, runtime.py, flags) under `mechanism` with the session's policy, extended
@@ -122,7 +130,7 @@ pub(crate) struct Launch<'a> {
 /// policy.
 pub(crate) fn command(launch: Launch<'_>) -> Command {
     let mut policy = launch.launcher.policy.clone();
-    policy.env = environment(&policy, &launch.fixed_env, launch.extra_env);
+    policy.env = environment(&policy, launch.base_env, &launch.fixed_env, launch.extra_env);
     let spill = policy
         .env
         .iter()
