@@ -32,7 +32,7 @@ pub fn version_checks_disabled(var: &dyn Fn(&str) -> Option<String>) -> bool {
 pub fn latest_version_url(env: &Env) -> String {
     (env.var)(LATEST_VERSION_URL_VAR)
         .filter(|u| !u.trim().is_empty())
-        .unwrap_or_else(|| crate::package_cli::LATEST_VERSION_URL.to_string())
+        .unwrap_or_else(|| crate::update_cli::LATEST_VERSION_URL.to_string())
 }
 
 /// `checkForNewVersion(current)`: the newer release's version, or None (disabled, failed, not newer). One attempt
@@ -41,8 +41,8 @@ pub fn check_for_new_version(env: &Env, current: &str) -> Option<String> {
     if version_checks_disabled(&*env.var) {
         return None;
     }
-    let latest = crate::package_cli::latest_release(env, &latest_version_url(env), 0).ok()??;
-    crate::package_cli::is_newer(&latest, current).then_some(latest)
+    let latest = crate::update_cli::latest_release(env, &latest_version_url(env), 0).ok()??;
+    crate::update_cli::is_newer(&latest, current).then_some(latest)
 }
 
 /// `getChangelogForDisplay` for a session without messages: reads the package's CHANGELOG.md and the

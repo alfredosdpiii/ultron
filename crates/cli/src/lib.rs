@@ -27,12 +27,11 @@ pub mod mcp_cli;
 pub mod mcp_login;
 pub mod memory_cli;
 pub mod migrate;
-pub mod package_cli;
-pub mod packages;
 pub mod print_mode;
 pub mod radius_relay;
 pub mod rpc;
 pub mod sandbox_cli;
+pub mod semver;
 pub mod session;
 pub mod setup;
 pub mod setup_core;
@@ -41,9 +40,11 @@ pub mod setup_wizard;
 pub mod startup;
 pub mod startup_checks;
 pub mod terminal_settings;
+pub mod themes;
 pub mod tools_manager;
 pub mod trace_cli;
 pub mod tui_login;
+pub mod update_cli;
 pub mod usage;
 
 use args::{Args, DiagnosticKind, ListModels, normalize_session_name, parse_args};
@@ -152,10 +153,10 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     // `applyHttpProxySettings`: the global `httpProxy` setting, for the package commands and every run below.
     let proxied = startup::proxy_env(env);
     let env = &proxied;
-    if let Some(code) = package_cli::run_package(argv, env, out, err) {
+    if let Some(code) = update_cli::run_update(argv, env, out, err) {
         return Ok(code);
     }
-    if let Some(code) = package_cli::run_config(argv, env, out, err) {
+    if let Some(code) = update_cli::run_config(argv, env, out, err) {
         return Ok(code);
     }
     // `ultron claude|mcp|hook|watch|guide` (bare `ultron mcp` is Ultron's own MCP server for Claude Code).
@@ -198,6 +199,9 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if parsed.diagnostics.iter().any(|d| d.kind == DiagnosticKind::Error) {
         return Ok(1);
     }
+    for warning in startup::extension_flag_warnings(&parsed) {
+        writeln!(err, "Warning: {warning}").map_err(io)?;
+    }
     if parsed.version {
         writeln!(out, "{}", version()).map_err(io)?;
         return Ok(0);
@@ -224,12 +228,6 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             ListModels::All => None,
             ListModels::Search(p) => Some(p.as_str()),
         };
-        // The extensions' providers are listed too (TypeScript lists after the extensions load).
-        let _extensions = session_core::extension_providers::load_headless(
-            env,
-            &print_mode::session_flags(&parsed, env)?,
-            parsed.no_extensions,
-        );
         if let Some(warning) = list_models::models_json_warning(env) {
             err.write_all(warning.as_bytes()).map_err(io)?;
         }
@@ -241,6 +239,9 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     }
     // Everything below runs a session (or reads its files): the package files must exist from here on.
     package_files(env)?;
+    if let Some(note) = startup::package_settings_note(env) {
+        writeln!(err, "Note: {note}").map_err(io)?;
+    }
     // The native worker command starts here (main.ts `shouldRunUltronWorker`).
     print_mode::trace_startup(env, "cli.native");
     // `--claude`: the root lane runs on Claude, through the claude-subscription provider (worker-root.ts

@@ -53,8 +53,8 @@ What you get:
   `cancelled`.
 - Saved chats reopen their Ultron session: Ultron advertises `loadSession` and `session/list`, and replays the
   conversation on load.
-- When an Ultron extension asks a yes/no or choice question during a turn, CodeCompanion shows it as a permission
-  prompt. Ultron never asks per tool call.
+- Ultron sends no permission prompts: it never asks per tool call, and it does not support Pi extensions (whose
+  questions were the only ones it relayed).
 
 ## avante.nvim
 
@@ -89,7 +89,7 @@ Notes:
   avante open the files an `rlm` cell edited.
 - Session recovery works: a prompt for a session Ultron no longer has fails with code `-32603` and
   `data.details = "Session not found: <id>"`, which avante answers by opening a new session.
-- avante's permission dialog answers Ultron's extension questions (`confirm`/`select`); there is no per-tool approval.
+- avante's permission dialog never opens: there is no per-tool approval, and Pi extensions are not supported.
 - avante stops the agent with SIGTERM (then SIGKILL). Ultron releases the session; a turn still running finishes in its
   session worker and is there when the session is loaded again.
 

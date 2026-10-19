@@ -622,15 +622,13 @@ impl Core {
             .into_iter()
             .collect();
         messages.extend(lane::to_llm(&history));
-        // `before_agent_start` messages follow the run's prompt (core::extension_ops).
-        let prompt_end = run.first().filter(|m| m["role"] == "user").map(|_| messages.len() + 1);
         messages.extend(lane::to_llm(&run));
         // Old view_image results beyond the image budget leave the request (image-budget.ts).
         crate::view_images::apply_image_budget(&mut messages, self.image_budget());
-        Ok(self.extension_request(messages, prompt_end))
+        Ok(messages)
     }
 
-    /// Whether the root lane's system message (the system prompt with the runtime and extension guides, and the
+    /// Whether the root lane's system message (the system prompt with the runtime guide, and the
     /// `rlm` tool schema) leaves the conversation room under the model's window and compaction settings.
     fn prompt_budget(&self) -> Result<(), String> {
         let Some(system) = self.lane.system_message(&self.runtime.system.current()) else {

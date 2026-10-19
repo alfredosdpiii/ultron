@@ -147,11 +147,39 @@ pub fn tool_flag_warnings(parsed: &Args) -> Vec<String> {
     warnings
 }
 
+/// What a Pi extension flag gets: Pi extensions are not supported by ultron-rs, so the flag is ignored.
+pub fn extension_flag_warning(flag: &str) -> String {
+    format!("Pi extensions are not supported by ultron-rs; ignoring {flag}")
+}
+
+/// One warning per Pi extension flag on the command line (`-e`/`--extension <source>`, `--no-extensions`), in
+/// order: each is parsed (as TypeScript parses it) and ignored.
+pub fn extension_flag_warnings(parsed: &Args) -> Vec<String> {
+    let mut warnings: Vec<String> = parsed
+        .extensions
+        .iter()
+        .flatten()
+        .map(|source| extension_flag_warning(&format!("--extension {source}")))
+        .collect();
+    if parsed.no_extensions {
+        warnings.push(extension_flag_warning("--no-extensions"));
+    }
+    warnings
+}
+
+/// The startup note for the settings `packages` ultron-rs ignores (the worker's settings: the project's only when
+/// it is trusted); none without packages.
+pub fn package_settings_note(env: &Env) -> Option<String> {
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
+    session_core::local_resources::ignored_packages_note(&settings)
+}
+
 /// The warnings for the environment and settings that would give the model native tools in TypeScript
 /// (prompt.ts `rlmToolMode`, extension-tools.ts `extensionToolMode` / `nativeExtensionToolAllowlist`): the Rust
 /// build's model has exactly one tool, `rlm`, so `ULTRON_TOOLS=native`, `ULTRON_EXTENSION_TOOLS=native`,
 /// `ULTRON_NATIVE_EXTENSION_TOOLS` and the `extensionTools` setting (`mode: "native"`, `native: [...]`) are reported
-/// and ignored. The settings are the worker's (its project trust).
+/// and ignored (Pi extensions are not supported by ultron-rs, so there are no extension tools either). The settings
+/// are the worker's (its project trust).
 pub fn tool_env_warnings(env: &Env) -> Vec<String> {
     const ONLY_RLM: &str = "the model's only tool is rlm";
     let mut warnings = Vec::new();
@@ -161,7 +189,7 @@ pub fn tool_env_warnings(env: &Env) -> Vec<String> {
             "ULTRON_TOOLS=native is ignored: {ONLY_RLM}, whose REPL has read, edit, write and bash as Python functions"
         ));
     }
-    let extension_tools = format!("{ONLY_RLM}; extension tools stay in its REPL (tools.call)");
+    let extension_tools = format!("{ONLY_RLM}, and Pi extensions are not supported by ultron-rs");
     if lower("ULTRON_EXTENSION_TOOLS").as_deref() == Some("native") {
         warnings.push(format!("ULTRON_EXTENSION_TOOLS=native is ignored: {extension_tools}"));
     }

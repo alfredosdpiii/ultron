@@ -60,11 +60,9 @@ pub struct WorkerModel {
     pub extension_mode: Option<String>,
     /// Sessions are not named (`--no-session` runs, whose session is removed when they end).
     pub no_naming: bool,
-    /// Pi `--no-extensions`: workers load no extensions and no MCP servers.
-    pub no_extensions: bool,
     /// `--models`: the scoped model patterns a new session's model is chosen from (else `enabledModels`).
     pub models: Option<Vec<String>>,
-    /// `--system-prompt`, `-e`, `--no-skills`, `--no-context-files`.
+    /// `--system-prompt`, `--no-skills`, `--no-context-files`.
     pub session: session_core::session_flags::SessionFlags,
     /// Environment the workers start with on top of this process's: what the CLI set for its run (`--offline`'s
     /// `PI_OFFLINE`, the `httpProxy` setting's `HTTP_PROXY`/`HTTPS_PROXY`), as TypeScript sets `process.env`.
@@ -520,9 +518,6 @@ impl Manager {
         }
         if model.no_naming {
             options["noNaming"] = json!(true);
-        }
-        if model.no_extensions {
-            options["noExtensions"] = json!(true);
         }
         if let Some(models) = &model.models {
             options["models"] = json!(models);

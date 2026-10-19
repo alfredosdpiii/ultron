@@ -143,3 +143,22 @@ unchanged.
   No per-tool approval.
 - Not used: the client's `fs`/`terminal` capabilities (the kernel does its own IO), MCP servers passed in
   `session/new` (the session's MCP gateway reads `mcp.json`; a note goes to stderr), session modes.
+
+## A stuck cell never locks rlm (w15-lanes)
+
+A cell that hangs (a `git push` waiting forever) used to hold its REPL lane, and every later `rlm` call was refused
+"REPL lane main is still running cell-N". Now:
+
+- A busy lane never refuses a call. The cell runs in a side lane of it (`main-side-1`, its own kernel; its host
+  requests are main's: shell jobs, `ctx`, budget, events), and its result starts with one line:
+  `[lane main is still running cell-N (started Ns ago); this ran in lane main-side-1; await rlm.cancel("cell-N") stops it]`.
+  The stuck cell is detached: its own call returns "still running in the background", and its end arrives as a
+  `cell_done` runtime event at the top of a later result. Once main is free, calls go back to it and idle side lanes
+  close. A cell being cancelled is waited for (within the cancel grace) instead of being routed around.
+- `await rlm.cancel(cell_id)` (host request `rlm.cancel`, same as `rlm.cell.cancel`) cancels a running cell of any
+  other lane: its host waits end, and past the grace its kernel is killed with every process it started.
+  `rlm.cells()` marks a cell being cancelled with `cancelling: True`.
+- `ultron mcp`: `notifications/cancelled` (Esc in Claude Code) cancels the call's cell through the same abort path as
+  Esc in the native TUI, stops the shell jobs and REPL calls of the turn (`cancel_root`), and the call answers
+  `Abort requested`; the lane is free for the next call.
+- Same routing on the native root lane (it is the `rlm` tool's, crates/session-core `Rlm`).

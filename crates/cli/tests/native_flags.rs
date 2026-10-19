@@ -1,5 +1,6 @@
-//! Session flags of the native command whose TypeScript behavior has no Rust-observable twin to record: `-e`
-//! extension manifests (TypeScript loads JavaScript extensions, Rust extension processes), `--models` scoping a new
+//! Session flags of the native command whose TypeScript behavior has no Rust-observable twin to record: `-e` and
+//! `--no-extensions` (Pi extensions are not supported by ultron-rs: each flag is warned about and ignored, and so are
+//! the settings `packages`, with one note), `--models` scoping a new
 //! session's model (decisions: scoped models choose it), the tool flags (the model's tool list stays `[rlm]`), the
 //! `httpProxy` setting (HTTP_PROXY for the session's provider requests) and `!command` keys in auth.json.
 
@@ -7,7 +8,6 @@ mod common;
 
 use common::{Naming, Sandbox, anthropic_text, completions_text, mock_server};
 use serde_json::Value;
-use std::path::Path;
 use std::process::Output;
 
 const MODEL: &str = "anthropic/claude-sonnet-4-5";
@@ -25,45 +25,61 @@ fn text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
-fn hello_extension(at: &Path) {
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../extensions/examples/hello");
-    std::fs::create_dir_all(at).unwrap();
-    for file in ["extension.json", "hello.py"] {
-        std::fs::copy(example.join(file), at.join(file)).unwrap();
-    }
-}
-
 fn system_of(request: &Value) -> String {
     request["body"]["system"].to_string()
 }
 
 #[test]
-fn cli_native_extension_flag_loads_a_manifest_also_with_no_extensions() {
-    let greet = "ext.hello.greet(name: string)";
-    let (port, seen) = mock_server(
-        vec![anthropic_text("a"), anthropic_text("b"), anthropic_text("c")],
-        Naming::Fail,
-    );
+fn cli_native_extension_flags_and_settings_packages_are_warned_about_and_ignored() {
+    let (port, seen) = mock_server(vec![anthropic_text("a"), anthropic_text("b")], Naming::Fail);
     let sandbox = Sandbox::new(port);
-    hello_extension(&sandbox.root.join("exts/hello"));
-    // A path relative to the cwd, resolved by the client as native-command.ts does.
-    let output = run(&sandbox, &["-p", "-e", "../exts/hello", "--model", MODEL, "x"], &[]);
-    assert_eq!(text(&output.stdout), "a\n", "{}", text(&output.stderr));
+    let manifest = sandbox.root.join("exts/hello/extension.json");
+    std::fs::create_dir_all(manifest.parent().unwrap()).unwrap();
+    std::fs::write(
+        &manifest,
+        r#"{"name": "hello", "command": "/bin/false", "capabilities": {"functions": [{"name": "greet"}]}}"#,
+    )
+    .unwrap();
     let output = run(
         &sandbox,
-        &["-p", "--no-extensions", "-e", "../exts/hello", "--model", MODEL, "y"],
+        &[
+            "-p",
+            "-e",
+            "../exts/hello",
+            "--no-extensions",
+            "--extension",
+            "npm:pi-tools",
+            "--model",
+            MODEL,
+            "x",
+        ],
         &[],
     );
+    assert_eq!(text(&output.stdout), "a\n", "{}", text(&output.stderr));
+    assert_eq!(
+        text(&output.stderr),
+        "Warning: Pi extensions are not supported by ultron-rs; ignoring --extension ../exts/hello\n\
+         Warning: Pi extensions are not supported by ultron-rs; ignoring --extension npm:pi-tools\n\
+         Warning: Pi extensions are not supported by ultron-rs; ignoring --no-extensions\n"
+    );
+    // The settings `packages` are not installed or resolved: one note says how many are ignored.
+    let settings = sandbox.agent_dir.join("settings.json");
+    let mut json: Value = std::fs::read_to_string(&settings)
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    json["packages"] = serde_json::json!(["npm:pi-tools", "../exts/hello"]);
+    std::fs::write(&settings, json.to_string()).unwrap();
+    let output = run(&sandbox, &["-p", "--model", MODEL, "y"], &[]);
     assert_eq!(text(&output.stdout), "b\n", "{}", text(&output.stderr));
-    // Installed in the profile, it is left out by --no-extensions.
-    hello_extension(&sandbox.agent_dir.join("extensions/hello"));
-    let output = run(&sandbox, &["-p", "--no-extensions", "--model", MODEL, "z"], &[]);
-    assert_eq!(text(&output.stdout), "c\n", "{}", text(&output.stderr));
+    assert_eq!(
+        text(&output.stderr),
+        "Note: Pi packages are not supported by ultron-rs; ignoring 2 packages in settings\n"
+    );
     let requests = seen.lock().unwrap().requests.clone();
-    assert!(system_of(&requests[0]).contains(greet), "{}", system_of(&requests[0]));
-    assert!(system_of(&requests[1]).contains(greet));
-    assert!(!system_of(&requests[2]).contains(greet));
+    assert_eq!(requests.len(), 2);
     for request in &requests {
+        assert!(!system_of(request).contains("ext.hello"), "{}", system_of(request));
         assert!(
             cli::compose::only_rlm(request["body"]["tools"].as_array().unwrap()),
             "{request}"

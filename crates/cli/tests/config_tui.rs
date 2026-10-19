@@ -1,12 +1,10 @@
 //! `ultron config` in a real terminal (tmux): each test replays a scenario of `fixtures/config_tui.json`, recorded
 //! from the TypeScript resource selector by `fixtures/config_tui.mjs`, and compares every screen and the settings
-//! files the run leaves. Also the ported TypeScript test of project override cycling.
+//! files the run leaves (local resources only: Pi packages are not supported by ultron-rs).
 
 mod tui_harness;
 
-use cli::config_selector::{ConfigSelector, WriteScope};
-use cli::packages::manager::{Origin, PathMetadata, ResolvedPaths, ResolvedResource, Scope};
-use serde_json::{Value, json};
+use serde_json::Value;
 use tui_harness::{TempDir, Tui};
 
 fn fixture() -> &'static Value {
@@ -92,63 +90,4 @@ fn cli_config_selector_project_mode_like_ts() {
 #[test]
 fn cli_config_selector_untrusted_local_is_refused_like_ts() {
     replay("untrusted local");
-}
-
-/// package-command-paths.test.ts "cycles project package overrides in config local mode".
-#[test]
-fn cli_config_selector_cycles_project_package_overrides() {
-    let tmp = tempfile::tempdir().unwrap();
-    let (agent, project) = (tmp.path().join("agent"), tmp.path().join("project"));
-    std::fs::create_dir_all(&agent).unwrap();
-    std::fs::create_dir_all(&project).unwrap();
-    std::fs::write(agent.join("settings.json"), r#"{"packages":["npm:pi-tools"]}"#).unwrap();
-    let mut settings = config::settings::SettingsManager::create(&project, &agent, false);
-    settings.set_project_trusted(true);
-    let pkg = tmp.path().join("pkg").display().to_string();
-    let resolved = ResolvedPaths {
-        extensions: vec![ResolvedResource {
-            path: format!("{pkg}/extensions/bar.ts"),
-            enabled: true,
-            metadata: PathMetadata {
-                source: "npm:pi-tools".into(),
-                scope: Scope::User,
-                origin: Origin::Package,
-                base_dir: Some(pkg.clone()),
-            },
-        }],
-        ..Default::default()
-    };
-    let theme = std::rc::Rc::new(
-        tui::theme::create_theme(
-            &tui::theme::builtin_theme_json("dark").unwrap(),
-            tui::theme::ColorMode::Truecolor,
-            None,
-        )
-        .unwrap(),
-    );
-    let mut selector = ConfigSelector::new(
-        &resolved,
-        &resolved,
-        settings,
-        &project.display().to_string(),
-        &agent.display().to_string(),
-        "/home/none",
-        24,
-        WriteScope::Project,
-        true,
-        theme,
-    );
-    let packages = |s: &ConfigSelector| s.settings.project_settings().get("packages").cloned();
-    selector.handle_input(" ");
-    assert_eq!(
-        packages(&selector),
-        Some(json!([{ "source": "npm:pi-tools", "autoload": false, "extensions": ["-extensions/bar.ts"] }]))
-    );
-    selector.handle_input(" ");
-    assert_eq!(
-        packages(&selector),
-        Some(json!([{ "source": "npm:pi-tools", "autoload": false, "extensions": ["+extensions/bar.ts"] }]))
-    );
-    selector.handle_input(" ");
-    assert_eq!(packages(&selector), Some(json!([])));
 }

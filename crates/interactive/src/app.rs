@@ -50,8 +50,8 @@ use crate::tree_selector::{FilterMode, TreeAction, TreeSelector};
 
 /// The error a navigation answers when its branch summary was aborted (session-core `BRANCH_SUMMARY_ABORTED`).
 const BRANCH_SUMMARY_ABORTED: &str = "Branch summarization cancelled";
-/// The error a navigation answers when an extension cancelled it (session-core `NAVIGATION_CANCELLED`).
-const NAVIGATION_CANCELLED: &str = "Navigation cancelled";
+/// What `/extension` answers (session-core `compose::EXTENSIONS_UNSUPPORTED`).
+const EXTENSIONS_UNSUPPORTED: &str = "Pi extensions are not supported by ultron-rs";
 /// The last choice of `/autoreview on`'s account picker.
 const ALL_ACCOUNTS: &str = "All logged-in accounts";
 
@@ -136,10 +136,9 @@ enum Purpose {
     RestoreFiles(String),
     /// "Select authentication method": the options it chooses among (`None`: every provider).
     LoginMethod(Vec<crate::selectors::AuthProvider>, bool),
-    /// An extension's `select` (or, `confirm`, its Yes/No) dialog: the request id.
+    /// A `/mcp` `select` dialog: the request id.
     ExtensionSelect {
         id: String,
-        confirm: bool,
     },
     /// "Switch to it?" after `/import`: the imported session's file, what was imported, and the Pi file it came from.
     SwitchImported {
@@ -206,29 +205,21 @@ enum Panel {
         method: String,
         input: Box<tui::input::Input>,
     },
-    /// An extension's `input` dialog (`#showTextInput`): the request id.
+    /// A `/mcp` `input` dialog (`#showTextInput`): the request id.
     ExtensionInput {
         id: String,
         dialog: Box<crate::extension_dialogs::ExtensionInputDialog>,
     },
-    /// The multi-line editor dialog (`#showTextEditor`): an extension's `editor` request, or the custom branch
-    /// summary instructions.
+    /// The multi-line editor dialog (`#showTextEditor`) for the custom branch summary instructions of navigating to
+    /// this entry.
     TextEditor {
-        purpose: EditorPurpose,
+        entry: String,
         dialog: Box<crate::extension_dialogs::ExtensionEditorDialog>,
     },
     /// `/share`'s "Creating gist..." loader; Esc cancels the upload.
     ShareLoader(Box<crate::extension_dialogs::BorderedLoader>),
     /// `/bug`'s dialogs and loaders.
     BugReport(Box<crate::bug_report::BugFlow>),
-}
-
-/// What the editor dialog's text is for.
-enum EditorPurpose {
-    /// An extension's `editor` request id.
-    Extension(String),
-    /// Custom summarization instructions for navigating to this entry.
-    Instructions(String),
 }
 
 /// The RLM inspections polled besides the subagent listing (`#refreshRlm`).
@@ -468,8 +459,6 @@ pub struct App {
     /// What `/mode` or `/engineering` does once [`LaneEvent::Mode`] reports the settings' mode.
     mode_request: Option<crate::modes::ModeRequest>,
     session_id: Option<String>,
-    /// Package updates found before the first session opened (opening clears the transcript), shown with it.
-    early_package_updates: Vec<String>,
     /// Startup notices that arrived before the first session opened, shown with it.
     early_startup_notices: Vec<crate::lane::StartupNotice>,
     /// `anthropicSubscriptionWarningShown`.
@@ -557,20 +546,12 @@ pub struct App {
     cols: usize,
     /// The RLM panel shows (`app.rlm.toggle`).
     rlm_visible: bool,
-    /// Where `fd` is, for the editor's path completion (kept to rebuild the slash commands).
-    fd_path: Option<std::path::PathBuf>,
-    /// The session's extension commands that are slash commands of their own.
-    extension_commands: Vec<String>,
-    /// The extensions' keyboard shortcuts in force (crate::extension_shortcuts).
-    extension_shortcuts: Vec<crate::extension_shortcuts::ExtensionShortcut>,
-    /// Their argument completions, as they arrive.
-    completions: crate::extension_commands::Completions,
     /// The last subagent listing (`rlm.list_subagents`).
     rlm_agents: Value,
     rlm_clock: crate::rlm::RlmClock,
-    /// Extension dialogs not shown yet: they share the selector, so they are answered in order.
+    /// `/mcp` dialogs not shown yet: they share the selector, so they are answered in order.
     extension_dialogs: std::collections::VecDeque<Value>,
-    /// An extension dialog is open.
+    /// A `/mcp` dialog is open.
     extension_dialog_open: bool,
     /// The editor's keybindings (dialogs with an editor of their own).
     editor_keys: KeybindingsManager,
@@ -611,10 +592,6 @@ pub struct App {
     termux: bool,
     /// Where a pasted clipboard image is saved (`tmpdir()`).
     temp_dir: std::path::PathBuf,
-    /// Extension statuses (`setStatus`) on the footer's status line.
-    extension_statuses: Vec<(String, String)>,
-    /// Extension widgets (`setWidget`): lines, and whether below the editor; by key.
-    widgets: std::collections::BTreeMap<String, (Vec<String>, bool)>,
     /// The RLM pane (`app.rlm.pane`): open beside the chat on wide terminals; focused takes the keys.
     rlm_pane: crate::rlm::pane::RlmPane,
     rlm_pane_open: bool,
@@ -723,25 +700,15 @@ pub fn context_usage(transcript: &[Value], window: u64) -> Option<(u64, f64)> {
     Some((tokens, tokens as f64 / window as f64 * 100.0))
 }
 
-/// The editor's slash commands: the client TUI's, with each extension command after `/extension` (Pi exposes each
-/// extension command as its own slash command; built-ins keep their names) and `/model`'s completions.
-fn slash_commands(
-    models: &[ModelInfo],
-    extension: &[(String, Option<String>)],
-    completions: &crate::extension_commands::Completions,
-    qol: &QolSettings,
-) -> Vec<SlashCommand> {
-    let direct: Vec<String> = crate::extension_commands::direct_extension_commands(extension)
-        .into_iter()
-        .map(|(name, _)| name)
-        .collect();
-    let mut commands: Vec<SlashCommand> = crate::extension_commands::ordered(extension)
-        .into_iter()
-        .map(|(name, description, hint)| SlashCommand {
-            argument_completions: direct.contains(&name).then(|| completions.for_command(&name)),
-            name,
-            description: Some(description),
-            argument_hint: hint,
+/// The editor's slash commands: the client TUI's, and `/model`'s completions.
+fn slash_commands(models: &[ModelInfo], qol: &QolSettings) -> Vec<SlashCommand> {
+    let mut commands: Vec<SlashCommand> = COMMANDS
+        .iter()
+        .map(|c| SlashCommand {
+            name: c.name.to_string(),
+            description: Some(c.description.to_string()),
+            argument_hint: (!c.hint.is_empty()).then(|| c.hint.to_string()),
+            argument_completions: None,
         })
         .collect();
     if qol.overlays {
@@ -795,21 +762,6 @@ fn slash_commands(
 }
 
 impl App {
-    /// The session's extension commands arrived: each becomes a slash command of its own.
-    fn set_extension_commands(&mut self, commands: Vec<(String, Option<String>)>) {
-        self.extension_commands = crate::extension_commands::direct_extension_commands(&commands)
-            .into_iter()
-            .map(|(name, _)| name)
-            .collect();
-        self.editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
-            slash_commands(&self.models, &commands, &self.completions, &self.qol),
-            &self.cwd,
-            self.fd_path.clone(),
-            &self.models,
-            &self.qol,
-        ));
-    }
-
     pub fn new(options: AppOptions, client: Box<dyn LaneClient>) -> Self {
         let theme = options.theme;
         let editor_keys = options.editor_keys.clone();
@@ -822,7 +774,7 @@ impl App {
         );
         editor.set_select_list_theme(select_theme(&theme, "muted", "muted"));
         let qol = options.qol;
-        let commands = slash_commands(&options.models, &[], &Default::default(), &qol);
+        let commands = slash_commands(&options.models, &qol);
         editor.set_autocomplete_provider(crate::qol::autocomplete_provider(
             commands,
             &options.cwd,
@@ -871,7 +823,6 @@ impl App {
             selection: None,
             mode_request: None,
             session_id: None,
-            early_package_updates: Vec::new(),
             early_startup_notices: Vec::new(),
             subscription_warning_shown: false,
             session_file: None,
@@ -926,10 +877,6 @@ impl App {
             recovering: false,
             cols: 80,
             rlm_visible: false,
-            fd_path: options.fd_path,
-            extension_commands: Vec::new(),
-            extension_shortcuts: Vec::new(),
-            completions: Default::default(),
             rlm_agents: Value::Null,
             rlm_clock: crate::rlm::RlmClock::new(),
             clock: Box::new(Instant::now),
@@ -958,8 +905,6 @@ impl App {
             render_debug: None,
             termux: false,
             temp_dir: std::env::temp_dir(),
-            extension_statuses: Vec::new(),
-            widgets: std::collections::BTreeMap::new(),
             rlm_pane: crate::rlm::pane::RlmPane::new(),
             rlm_pane_open: false,
             rlm_pane_focused: false,
@@ -992,18 +937,12 @@ impl App {
     }
 
     /// `KeybindingsManager.setUserBindings`: the app's keys, the editor's and every component built from them
-    /// afterwards resolve `user` (extension shortcut conflicts use these effective bindings).
+    /// afterwards resolve `user`.
     pub fn set_user_keybindings(&mut self, user: tui::keybindings_file::UserBindings) {
         self.keys.set_user_bindings(user.clone());
         self.editor_keys.set_user_bindings(user.clone());
         self.editor.set_user_keybindings(user);
         self.chat.cancel_key = key_text(&self.keys, "tui.select.cancel", false);
-        if self.session_id.is_some() {
-            // The session resolves its extensions' shortcuts again under the new effective bindings.
-            self.extension_shortcuts.clear();
-            self.client
-                .extension_shortcuts(crate::extension_shortcuts::effective_keybindings(&self.keys));
-        }
     }
 
     fn with_cancel_key(mut self) -> Self {
@@ -1779,17 +1718,9 @@ impl App {
     pub fn fire_autocomplete(&mut self) -> bool {
         if self.editor.has_pending_autocomplete() {
             self.editor.fire_autocomplete_debounce();
-            self.ask_completions();
             return true;
         }
         false
-    }
-
-    /// Completions the editor asked for and nothing answered yet are fetched off the UI thread.
-    fn ask_completions(&mut self) {
-        for (name, prefix) in self.completions.take_wanted() {
-            self.client.extension_completions(&name, &prefix);
-        }
     }
 
     fn update_editor_border(&mut self) {
@@ -1856,17 +1787,6 @@ impl App {
         }
     }
 
-    /// The "Package Updates Available" notice, when there are any.
-    fn show_package_updates(&mut self, packages: Vec<String>) {
-        if !packages.is_empty() {
-            self.chat
-                .append_notice(Box::new(crate::package_updates::PackageUpdateNotice {
-                    theme: Rc::clone(&self.theme),
-                    packages,
-                }));
-        }
-    }
-
     // ---- lane events ----
 
     pub fn apply(&mut self, event: LaneEvent) {
@@ -1910,18 +1830,12 @@ impl App {
                     if self.transcript.is_empty() {
                         self.client.startup_changelog();
                     }
-                    let packages = std::mem::take(&mut self.early_package_updates);
-                    self.show_package_updates(packages);
                     for notice in std::mem::take(&mut self.early_startup_notices) {
                         self.show_startup_notice(notice);
                     }
                     self.check_subscription_auth();
                 }
                 self.update_title();
-                // `setupExtensionShortcuts`: the session's extensions under the effective keybindings.
-                self.extension_shortcuts.clear();
-                self.client
-                    .extension_shortcuts(crate::extension_shortcuts::effective_keybindings(&self.keys));
             }
             LaneEvent::Entries(entries) => self.load_entries(&entries),
             LaneEvent::OperationStarted(id) => {
@@ -1981,29 +1895,10 @@ impl App {
                 self.update_editor_border();
             }
             LaneEvent::Notice(text) => self.notice(&text),
-            LaneEvent::ExtensionCommands(commands) => self.set_extension_commands(commands),
-            LaneEvent::ExtensionShortcuts { shortcuts, diagnostics } => {
-                self.extension_shortcuts = shortcuts;
-                if let Some(issues) = crate::extension_shortcuts::issues_block(&self.theme, &diagnostics) {
-                    self.notice(&issues);
-                }
-            }
-            LaneEvent::ExtensionCompletions { name, prefix, items } => {
-                self.completions.answer(&name, &prefix, items);
-                self.editor.refresh_autocomplete();
-                self.ask_completions();
-            }
             LaneEvent::GoalReply(text) => self.notice(&fg(&self.theme, "dim", &text)),
             LaneEvent::BashDone(result) => self.bash_done(result),
             LaneEvent::BugSummary(result) => self.bug_summary_done(result),
             LaneEvent::BugReport(outcome) => self.bug_report_done(outcome),
-            // interactive-mode.ts `handleBashCommand`: the runner already reported the error; nothing ran.
-            LaneEvent::BashFailedClosed => self.bash = None,
-            // `showExtensionError`, without the stack (it does not cross the extension process boundary).
-            LaneEvent::ExtensionError { path, error } => {
-                let text = fg(&self.theme, "error", &format!("Extension \"{path}\" error: {error}"));
-                self.chat.append_text(&text);
-            }
             LaneEvent::CompactionStarted { reason } => {
                 self.compacting = true;
                 self.chat.set_compacting_for(&reason);
@@ -2161,10 +2056,6 @@ impl App {
                 self.models = models;
             }
             LaneEvent::CatalogRefreshed(failed) => self.catalog_refreshed(failed),
-            LaneEvent::PackageUpdates(packages) => match self.session_id {
-                Some(_) => self.show_package_updates(packages),
-                None => self.early_package_updates = packages,
-            },
             LaneEvent::StartupNotice(notice) => match self.session_id {
                 Some(_) => self.show_startup_notice(notice),
                 None => self.early_startup_notices.push(notice),
@@ -2198,8 +2089,6 @@ impl App {
                 self.chat.set_navigating(false);
                 let summarized = self.summarizing_branch.take();
                 match result {
-                    // An extension's `session_before_tree` cancelled it (interactive-mode.ts).
-                    Err(error) if error == NAVIGATION_CANCELLED => self.show_status(NAVIGATION_CANCELLED),
                     // The summary was cancelled: the tree selector again, on the same entry (interactive-mode.ts).
                     Err(error) if error == BRANCH_SUMMARY_ABORTED => {
                         self.show_status(BRANCH_SUMMARY_ABORTED);
@@ -2343,48 +2232,15 @@ impl App {
         }
     }
 
-    /// `#serveExtensionUI`: dialogs open the selector or a text input (one at a time, in order), `notify` shows in
-    /// the status line, `set_editor_text` fills the editor.
+    /// `#serveExtensionUI` for `/mcp` and the MCP gateway: dialogs open the selector or a text input (one at a
+    /// time, in order), `notify` shows in the status line.
     fn extension_ui(&mut self, request: Value) {
         match request["method"].as_str().unwrap_or_default() {
-            "select" | "confirm" | "input" | "editor" => {
+            "select" | "input" => {
                 self.extension_dialogs.push_back(request);
                 self.next_extension_dialog();
             }
             "notify" => self.show_status(request["message"].as_str().unwrap_or_default()),
-            // Pi's footer status line (`FooterDataProvider.setExtensionStatus`): no text removes the key's status.
-            "setStatus" => {
-                let key = request["statusKey"].as_str().unwrap_or_default().to_string();
-                self.extension_statuses.retain(|(k, _)| *k != key);
-                if let Some(text) = request["statusText"].as_str() {
-                    self.extension_statuses.push((key, text.to_string()));
-                }
-            }
-            // `#setWidget`: lines above the editor, or below it (`belowEditor`); no lines removes the widget.
-            "setWidget" => {
-                let key = request["widgetKey"].as_str().unwrap_or_default().to_string();
-                match request["widgetLines"].as_array() {
-                    Some(lines) => {
-                        let lines = lines
-                            .iter()
-                            .map(|l| l.as_str().unwrap_or_default().to_string())
-                            .collect();
-                        let below = request["widgetPlacement"] == "belowEditor";
-                        self.widgets.insert(key, (lines, below));
-                    }
-                    None => {
-                        self.widgets.remove(&key);
-                    }
-                }
-            }
-            "setTitle" => {
-                let title = request["title"].as_str().unwrap_or_default();
-                self.terminal_writes.push(format!("\x1b]0;{title}\x07"));
-            }
-            "set_editor_text" => {
-                self.editor.set_text(request["text"].as_str().unwrap_or_default());
-                self.update_editor_border();
-            }
             _ => {}
         }
     }
@@ -2412,34 +2268,7 @@ impl App {
                         description: None,
                     })
                     .collect();
-                self.open_selection(title, items, None, Purpose::ExtensionSelect { id, confirm: false });
-            }
-            "confirm" => {
-                let title = match request["message"].as_str().filter(|m| !m.is_empty()) {
-                    Some(message) => format!("{title}: {message}"),
-                    None => title.to_string(),
-                };
-                let item = |value: &str, label: &str| SelectItem {
-                    value: value.into(),
-                    label: label.into(),
-                    description: None,
-                };
-                let items = vec![item("yes", "Yes"), item("no", "No")];
-                self.open_selection(&title, items, None, Purpose::ExtensionSelect { id, confirm: true });
-            }
-            "editor" => {
-                let dialog = crate::extension_dialogs::ExtensionEditorDialog::new(
-                    Rc::clone(&self.theme),
-                    self.keys.clone(),
-                    self.editor_keys(),
-                    title,
-                    request["prefill"].as_str(),
-                );
-                self.editor.focused = false;
-                self.panel = Some(Panel::TextEditor {
-                    purpose: EditorPurpose::Extension(id),
-                    dialog: Box::new(dialog),
-                });
+                self.open_selection(title, items, None, Purpose::ExtensionSelect { id });
             }
             _ => {
                 let dialog = crate::extension_dialogs::ExtensionInputDialog::new(
@@ -2471,7 +2300,7 @@ impl App {
         }
     }
 
-    /// Answer the open extension dialog and show the next one.
+    /// Answer the open `/mcp` dialog and show the next one.
     fn answer_extension_dialog(&mut self, id: &str, answer: Value) {
         self.client.extension_ui_respond(id, answer);
         self.extension_dialog_open = false;
@@ -2564,7 +2393,6 @@ impl App {
             return;
         }
         self.handle_key(data);
-        self.ask_completions();
     }
 
     fn handle_key(&mut self, data: &str) {
@@ -2608,15 +2436,6 @@ impl App {
             if self.rlm_pane.handle_input(&self.keys, data, &snapshot, height) == crate::rlm::pane::PaneEvent::Close {
                 self.close_rlm_pane();
             }
-            return;
-        }
-        // custom-editor.ts: extension shortcuts before any built-in binding; the handler runs in the session.
-        if let Some(shortcut) =
-            crate::extension_shortcuts::matching_in(&self.extension_shortcuts, data, self.keys.ctx())
-        {
-            let key = shortcut.key.clone();
-            self.client
-                .extension_shortcut(&key, crate::extension_shortcuts::effective_keybindings(&self.keys));
             return;
         }
         if self.qol.overlays && self.handle_overlay_keys(data) {
@@ -2946,11 +2765,7 @@ impl App {
     fn execute_slash_command(&mut self, name: &str, args: &str) {
         self.editor.set_text("");
         let qol_command = self.qol.overlays && crate::commands::QOL_COMMANDS.iter().any(|c| c.name == name);
-        if !COMMANDS.iter().any(|c| c.name == name)
-            && !qol_command
-            && !crate::commands::PI_COMMANDS.contains(&name)
-            && !self.extension_commands.iter().any(|c| c == name)
-        {
+        if !COMMANDS.iter().any(|c| c.name == name) && !qol_command && !crate::commands::PI_COMMANDS.contains(&name) {
             self.status = format!("Unknown slash command: /{name}");
             return;
         }
@@ -2981,8 +2796,7 @@ impl App {
                 let notice = MarkdownNotice {
                     theme: Rc::clone(&self.theme),
                     title: "Keyboard Shortcuts".into(),
-                    markdown: hotkeys_markdown(&self.keys)
-                        + &crate::extension_shortcuts::hotkeys_section(&self.extension_shortcuts),
+                    markdown: hotkeys_markdown(&self.keys),
                 };
                 self.chat.append_notice(Box::new(notice));
             }
@@ -3061,8 +2875,10 @@ impl App {
                 self.show_status("Reloading plugins…");
                 self.client.reload_plugins();
             }
-            // Extension commands run in the session's worker; their dialogs and notices come back as extension UI.
-            "mcp" => self.client.extension_command("mcp", args.trim()),
+            // `/mcp` runs in the session's worker; its dialogs and notices come back as extension UI.
+            "mcp" => self.client.mcp_command(args.trim()),
+            // TypeScript's `legacyExtensionCommand`: Pi extensions are not supported by ultron-rs.
+            "extension" => self.show_status(&format!("Error: {EXTENSIONS_UNSUPPORTED}")),
             // `reviewCommand` (slash-commands-provider.ts): sent as typed; the worker's agent controller expands it
             // (session_core::review_command), as it does for queued messages.
             "review" => {
@@ -3120,16 +2936,6 @@ impl App {
                     None => {}
                 }
             }
-            // `legacyExtensionCommand` of slash-commands-provider.ts.
-            "extension" => {
-                let (name, rest) = args.split_once(' ').unwrap_or((args, ""));
-                if name.is_empty() {
-                    self.show_status("Error: Usage: /extension <name> [args]");
-                } else {
-                    self.client.extension_command(name, rest);
-                }
-            }
-            name if self.extension_commands.iter().any(|c| c == name) => self.client.extension_command(name, args),
             other => self.show_status(&format!("Error: /{other} is not available in the Rust build yet")),
         }
     }
@@ -3777,19 +3583,13 @@ impl App {
                     DialogOutcome::Cancel => None,
                     _ => return,
                 };
-                let Some(Panel::TextEditor { purpose, .. }) = self.panel.take() else {
+                let Some(Panel::TextEditor { entry, .. }) = self.panel.take() else {
                     return;
                 };
-                match (purpose, submitted) {
-                    (EditorPurpose::Extension(id), Some(value)) => {
-                        self.answer_extension_dialog(&id, serde_json::json!({ "value": value }));
-                    }
-                    (EditorPurpose::Extension(id), None) => {
-                        self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true }));
-                    }
-                    (EditorPurpose::Instructions(entry), Some(text)) => self.navigate(&entry, true, Some(&text)),
+                match submitted {
+                    Some(text) => self.navigate(&entry, true, Some(&text)),
                     // Back to the summary choice.
-                    (EditorPurpose::Instructions(entry), None) => self.ask_summary(entry),
+                    None => self.ask_summary(entry),
                 }
             }
             Some(Panel::BugReport(flow)) => {
@@ -5042,7 +4842,7 @@ impl App {
                             );
                             self.editor.focused = false;
                             self.panel = Some(Panel::TextEditor {
-                                purpose: EditorPurpose::Instructions(entry),
+                                entry,
                                 dialog: Box::new(dialog),
                             });
                         }
@@ -5090,13 +4890,8 @@ impl App {
                             },
                         });
                     }
-                    Purpose::ExtensionSelect { id, confirm } => {
-                        let answer = if confirm {
-                            serde_json::json!({ "confirmed": item.value == "yes" })
-                        } else {
-                            serde_json::json!({ "value": item.value })
-                        };
-                        self.answer_extension_dialog(&id, answer);
+                    Purpose::ExtensionSelect { id } => {
+                        self.answer_extension_dialog(&id, serde_json::json!({ "value": item.value }));
                     }
                 }
             }
@@ -5115,7 +4910,7 @@ impl App {
                     ..
                 }) => self.show_status(&format!("{imported}. Use /resume to open it.")),
                 Some(Selection {
-                    purpose: Purpose::ExtensionSelect { id, .. },
+                    purpose: Purpose::ExtensionSelect { id },
                     ..
                 }) => self.answer_extension_dialog(&id, serde_json::json!({ "cancelled": true })),
                 Some(Selection {
@@ -5206,10 +5001,8 @@ impl App {
             }),
             ..FooterView::default()
         };
-        v.statuses = self.extension_statuses.clone();
         // `setExtensionStatus(CLAUDE_USAGE_STATUS, claudeCodeUsageText(transcript))`: no usage removes the key.
         use crate::footer_data::{CLAUDE_USAGE_STATUS, claude_code_usage_text};
-        v.statuses.retain(|(k, _)| k != CLAUDE_USAGE_STATUS);
         if let Some(text) = claude_code_usage_text(&self.transcript) {
             v.statuses.push((CLAUDE_USAGE_STATUS.into(), text));
         }
@@ -5273,16 +5066,7 @@ impl App {
         if let Some(bash) = self.bash.as_mut() {
             pending.extend(bash.render(width));
         }
-        // Extension widgets above and below the editor, by key (`#setWidget`).
-        let widget_lines = |below: bool| -> Vec<String> {
-            self.widgets
-                .values()
-                .filter(|(_, b)| *b == below)
-                .flat_map(|(lines, _)| Text::new(&lines.join("\n"), 1, 0, None).render(width))
-                .collect()
-        };
-        let (widgets_above, widgets_below) = (widget_lines(false), widget_lines(true));
-        let mut status = widgets_above;
+        let mut status = Vec::new();
         if !self.status.is_empty() {
             status.extend(Text::new(&fg(&self.theme, "dim", &self.status), 1, 0, None).render(width));
         }
@@ -5311,7 +5095,7 @@ impl App {
             }
             _ => None,
         };
-        let mut footer = widgets_below;
+        let mut footer = Vec::new();
         footer.extend(render_footer(&self.theme, &self.footer_view(), width));
         footer.extend(runtime_line);
         let focus_height = self.rows.saturating_sub(footer.len() + 1).max(10);

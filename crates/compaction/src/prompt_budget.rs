@@ -57,7 +57,7 @@ pub fn check_prompt_budget(
         return Ok(());
     }
     let (fixed, reserve) = (size.fixed(), settings.reserve_tokens);
-    let fix = "Shorten the system prompt (AGENTS.md and other context files, --system-prompt or --append-system-prompt, extension guides), lower compaction.reserveTokens, or switch to a model with a larger context window.";
+    let fix = "Shorten the system prompt (AGENTS.md and other context files, --system-prompt or --append-system-prompt), lower compaction.reserveTokens, or switch to a model with a larger context window.";
     let (system, tools) = (size.system, size.tools);
     if settings.enabled {
         let reserved = context_window.saturating_sub(reserve.saturating_mul(2));

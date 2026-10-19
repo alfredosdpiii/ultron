@@ -95,23 +95,3 @@ pub fn loki_setup(config: &crate::compose::Config) {
     }
     append(&target, &format!("{line}\n"));
 }
-
-/// session-worker.ts: when Loki is not off the worker sets `ULTRON_LOKI_BUILTIN=1`, so a project's Loki extension
-/// defers to the built-in integration instead of checking every write twice. Extensions here are processes: each
-/// gets the variable in its environment.
-pub fn with_loki_builtin(
-    manifests: Vec<extensions::manifest::Manifest>,
-    loki: host::loki_guard::LokiMode,
-) -> Vec<extensions::manifest::Manifest> {
-    if loki == host::loki_guard::LokiMode::Off {
-        return manifests;
-    }
-    manifests
-        .into_iter()
-        .map(|mut manifest| {
-            manifest.env.retain(|(name, _)| name != "ULTRON_LOKI_BUILTIN");
-            manifest.env.push(("ULTRON_LOKI_BUILTIN".into(), "1".into()));
-            manifest
-        })
-        .collect()
-}

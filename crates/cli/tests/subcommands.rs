@@ -283,9 +283,11 @@ fn cli_migrate_matches_typescript() {
     assert!(replay_all(|args| args[0] == "migrate") >= 20);
 }
 
+/// `ultron config` as TypeScript runs it. The package commands (`install`, `remove`, `uninstall`, `list`) and
+/// `update`'s package targets are not supported by ultron-rs (crates/cli/tests/self_update.rs).
 #[test]
-fn cli_package_commands_match_typescript() {
-    assert!(replay_all(|args| ["install", "remove", "uninstall", "update", "list", "config"].contains(&args[0])) >= 40);
+fn cli_config_command_matches_typescript() {
+    assert_eq!(replay_all(|args| args[0] == "config"), 4);
 }
 
 #[test]

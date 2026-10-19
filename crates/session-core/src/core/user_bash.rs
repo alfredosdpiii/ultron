@@ -1,48 +1,23 @@
 //! A user's own shell command (RPC `bash`, the TUI's `!`/`!!`) as Pi runs it (rpc-mode.ts `bash`,
-//! interactive-mode.ts `handleBashCommand`, AgentSession `executeBash`/`recordBashResult`):
-//!
-//! 1. the extensions' `user_bash` (`{ command, excludeFromContext, cwd }`): the first `{ result }` replaces the
-//!    command (it is recorded as if it ran, and answered as the extension gave it); a handler that throws or answers
-//!    an invalid result fails the command closed (it does not run, nothing is recorded; the error was reported to the
-//!    error listeners as `extension_error`); `undefined` everywhere runs it;
-//! 2. otherwise the host's blocking bash, each output chunk streamed (`bash_execution_update`).
-//!
-//! The result is recorded as a `bashExecution` message. `{ operations }` (custom execution functions) cannot cross the
-//! extension process boundary and is an invalid result here (crates/extensions PROTOCOL.md).
+//! interactive-mode.ts `handleBashCommand`, AgentSession `executeBash`/`recordBashResult`): the host's blocking
+//! bash, each output chunk streamed (`bash_execution_update`). The result is recorded as a `bashExecution` message.
+//! (Pi extensions' `user_bash` handlers are not supported by ultron-rs.)
 
-use super::BashOutcome;
-use extensions::ExtensionHost;
 use host::Host;
 use kernel::Signal;
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 
-/// The answer member of a command an extension failed closed: `{ "userBashFailed": <error> }`.
-pub const USER_BASH_FAILED: &str = "userBashFailed";
-
-/// Run `command` as a user's command: `user_bash` sees it as typed, then the shell runs it after the
-/// `shellCommandPrefix` setting (`prefix`; output chunks to `on_chunk`).
-#[allow(clippy::too_many_arguments)]
+/// Run `command` as a user's command: the shell runs it after the `shellCommandPrefix` setting (`prefix`; output
+/// chunks to `on_chunk`); its `BashResult`.
 pub(super) fn run(
-    extensions: Option<&ExtensionHost>,
     host: &Host,
     command: &str,
     prefix: Option<&str>,
-    exclude: bool,
-    cwd: &str,
     signal: &Signal,
     on_chunk: &mut dyn FnMut(&str),
-) -> Result<BashOutcome, String> {
-    if let Some(extensions) = extensions.filter(|e| e.router().has_handlers("user_bash")) {
-        let event = json!({"type": "user_bash", "command": command, "excludeFromContext": exclude, "cwd": cwd});
-        match extensions.router().emit_user_bash(&event) {
-            // Already reported to the error listeners; TypeScript does not fall back to running it.
-            Err(error) => return Ok(BashOutcome::FailedClosed(error.error)),
-            Ok(Some(answer)) => return Ok(BashOutcome::Ran(answer["result"].clone())),
-            Ok(None) => {}
-        }
-    }
+) -> Result<Value, String> {
     let result = host.user_bash(&host::shell::prefixed_command(prefix, command), signal, on_chunk)?;
-    Ok(BashOutcome::Ran(pi_result(&result)))
+    Ok(pi_result(&result))
 }
 
 /// The host's bash result as bash-executor.ts's `BashResult` (`exitCode` and `fullOutputPath` only when set).
@@ -87,9 +62,10 @@ pub(super) fn bash_message(command: &str, result: &Value, exclude: bool, timesta
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     /// recordBashResult over a local result (rpc_pi_events.json `m1`): the cancelled command's absent exit code
-    /// stays absent; an extension's `null` exit code and path are kept as given.
+    /// stays absent; a given result's `null` exit code and path are kept as given.
     #[test]
     fn session_core_user_bash_message_keeps_the_result_members_it_was_given() {
         let local = pi_result(

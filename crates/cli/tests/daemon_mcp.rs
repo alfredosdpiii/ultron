@@ -238,10 +238,12 @@ fn guide_names_mcp(args: &[&str]) -> bool {
     system.contains("MCP servers (beta, issues)")
 }
 
+/// `--no-extensions` is ignored (Pi extensions are not supported by ultron-rs), so it no longer leaves the built-in
+/// MCP gateway out.
 #[test]
-fn cli_daemon_no_extensions_leaves_mcp_out() {
+fn cli_daemon_no_extensions_flag_keeps_mcp() {
     assert!(guide_names_mcp(&[]));
-    assert!(!guide_names_mcp(&["--no-extensions"]));
+    assert!(guide_names_mcp(&["--no-extensions"]));
 }
 
 /// RPC mode relays the worker's extension UI as Pi's `extension_ui_request` lines (rpc-native.ts `uiLoop`): the eager

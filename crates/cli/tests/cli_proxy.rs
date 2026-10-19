@@ -81,12 +81,12 @@ fn cli_proxy_setting_carries_the_self_update_version_check() {
     )
     .unwrap();
     let proxied = cli::startup::proxy_env(&env(tmp.path(), &[]));
-    let endpoints = cli::package_cli::Endpoints {
+    let endpoints = cli::update_cli::Endpoints {
         latest_version_url: "http://registry.invalid/ultron-agent/latest".into(),
     };
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let args: Vec<String> = ["update", "--self"].iter().map(|s| s.to_string()).collect();
-    let code = cli::package_cli::run_package_with(&args, &proxied, &mut out, &mut err, &endpoints).unwrap();
+    let code = cli::update_cli::run_update_with(&args, &proxied, &mut out, &mut err, &endpoints).unwrap();
     assert_eq!(
         seen.recv_timeout(HANG_GUARD).unwrap(),
         "GET http://registry.invalid/ultron-agent/latest HTTP/1.1"
@@ -166,11 +166,11 @@ fn cli_proxy_offline_run_sends_nothing() {
         &args,
         &env(tmp.path(), &[("HTTP_PROXY", format!("http://127.0.0.1:{port}"))]),
     );
-    let endpoints = cli::package_cli::Endpoints {
+    let endpoints = cli::update_cli::Endpoints {
         latest_version_url: "http://registry.invalid/ultron-agent/latest".into(),
     };
     let (mut out, mut err) = (Vec::new(), Vec::new());
-    let code = cli::package_cli::run_package_with(&args[..2], &run_env, &mut out, &mut err, &endpoints).unwrap();
+    let code = cli::update_cli::run_update_with(&args[..2], &run_env, &mut out, &mut err, &endpoints).unwrap();
     assert_eq!(code, 1);
     assert!(
         String::from_utf8_lossy(&err).contains("Could not determine latest ultron version."),
@@ -178,42 +178,4 @@ fn cli_proxy_offline_run_sends_nothing() {
         String::from_utf8_lossy(&err)
     );
     assert!(seen.try_recv().is_err(), "an offline run reached the proxy");
-}
-
-/// npm and git, which TypeScript runs with its `process.env`, get the run's proxies: the `httpProxy` setting
-/// becomes their `HTTP_PROXY`/`HTTPS_PROXY`.
-#[test]
-fn cli_proxy_package_installs_pass_the_proxy_to_npm() {
-    use std::os::unix::fs::PermissionsExt;
-    let tmp = layout();
-    let root = tmp.path().canonicalize().unwrap();
-    std::fs::create_dir_all(root.join("bin")).unwrap();
-    let npm = root.join("bin/npm");
-    std::fs::write(
-        &npm,
-        format!(
-            "#!/bin/sh\necho \"$HTTP_PROXY|$HTTPS_PROXY|$NO_PROXY\" >> '{}'\nprefix=$4\nmkdir -p \"$prefix/node_modules/foo\"\necho '{{\"name\":\"foo\",\"version\":\"1.0.0\"}}' > \"$prefix/node_modules/foo/package.json\"\n",
-            root.join("npm.log").display()
-        ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&npm, std::fs::Permissions::from_mode(0o755)).unwrap();
-    std::fs::write(
-        root.join("agent/settings.json"),
-        r#"{"httpProxy": "http://127.0.0.1:9"}"#,
-    )
-    .unwrap();
-    let run_env = cli::startup::proxy_env(&env(
-        &root,
-        &[
-            ("PATH", format!("{}:/usr/bin:/bin", root.join("bin").display())),
-            ("NO_PROXY", "localhost".into()),
-        ],
-    ));
-    let parsed = cli::args::parse_args(&["-e".into(), "npm:foo".into()]);
-    cli::print_mode::session_flags(&parsed, &run_env).unwrap();
-    assert_eq!(
-        std::fs::read_to_string(root.join("npm.log")).unwrap(),
-        "http://127.0.0.1:9|http://127.0.0.1:9|localhost\n"
-    );
 }

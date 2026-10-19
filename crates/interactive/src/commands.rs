@@ -117,6 +117,8 @@ pub const COMMANDS: [CommandSpec; 38] = [
         "<task-id>",
         "Show progress receipts and decisions for a task",
     ),
+    // TypeScript's `/extension <name> [args]`: kept in the list (as the client TUI lists it); Pi extensions are not
+    // supported by ultron-rs, so it says so.
     c("extension", "<name> [args]", "Run a loaded Pi extension command"),
     c(
         "mcp",

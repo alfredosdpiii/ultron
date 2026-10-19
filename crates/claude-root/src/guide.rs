@@ -45,11 +45,11 @@ pub fn bundled_skills_enabled(value: Option<&str>) -> bool {
 
 /// `workerProjectTrusted`: nothing to trust, else the stored decision, else `defaultProjectTrust` is not "never".
 pub fn project_trusted(cwd: &Path, agent_dir: &Path, home: &Path) -> bool {
-    session_core::extension_commands::worker_project_trusted(cwd, agent_dir, home)
+    config::trust::worker_project_trusted(cwd, agent_dir, home)
 }
 
 /// `loadClaudePromptResources`: what native Ultron would load in `env`'s directory, with the session worker's
-/// resource loader (crate session-core `session_resources`: the settings' `skills` entries and packages, the
+/// resource loader (crate session-core `session_resources`: the settings' `skills` entries, the
 /// auto-discovered `.pi/skills`, `.agents/skills` up to the git root, `<agentDir>/skills` and `~/.agents/skills`,
 /// then the bundled skills in `bundled`, the first skill of a name kept), settings and project trust (a distrusted
 /// project contributes no settings and no project skills). `bundled` is the bundled skills directory, unless

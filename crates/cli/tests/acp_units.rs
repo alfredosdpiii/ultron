@@ -1,11 +1,10 @@
 //! `cli::acp::translate` and `cli::acp::changes` with literal inputs and expectations: prompt blocks to the user
-//! message, the RPC event stream to ACP updates, turn ends to stop reasons, replays, extension dialogs to permission
-//! requests and back, and the per-cell file changes.
+//! message, the RPC event stream to ACP updates, turn ends to stop reasons, replays, and the per-cell file changes.
 
 use cli::acp::changes::Tracker;
 use cli::acp::translate::{
-    Action, Dialog, FileChanges, Translator, TurnEnd, dialog_answer, permission_request, replay, tool_call, tool_title,
-    tool_update, turn_end, usage_update, user_message,
+    Action, FileChanges, Translator, TurnEnd, replay, tool_call, tool_title, tool_update, turn_end, usage_update,
+    user_message,
 };
 use serde_json::{Value, json};
 
@@ -320,67 +319,6 @@ fn cli_acp_replay_of_a_conversation() {
     // A cell with no result is reported failed at the end.
     assert_eq!(updates[8]["toolCallId"], "c2");
     assert_eq!(updates[8]["status"], "failed");
-}
-
-#[test]
-fn cli_acp_dialogs_as_permission_requests() {
-    let confirm =
-        json!({"type": "extension_ui_request", "id": "d1", "method": "confirm", "title": "Delete?", "message": "rm x"});
-    let (dialog, params) = permission_request(&confirm, Some("cell-7")).unwrap();
-    assert_eq!(
-        dialog,
-        Dialog {
-            id: "d1".into(),
-            method: "confirm".into(),
-            choices: vec![]
-        }
-    );
-    assert_eq!(
-        params,
-        json!({
-            "toolCall": {"toolCallId": "cell-7", "title": "Delete?", "kind": "other", "status": "pending",
-                "content": [{"type": "content", "content": {"type": "text", "text": "rm x"}}]},
-            "options": [
-                {"optionId": "allow", "name": "Yes", "kind": "allow_once"},
-                {"optionId": "reject", "name": "No", "kind": "reject_once"},
-            ],
-        })
-    );
-    let selected = |id: &str| json!({"outcome": {"outcome": "selected", "optionId": id}});
-    assert_eq!(dialog_answer(&dialog, &selected("allow")), json!({"confirmed": true}));
-    assert_eq!(dialog_answer(&dialog, &selected("reject")), json!({"confirmed": false}));
-    assert_eq!(
-        dialog_answer(&dialog, &json!({"outcome": {"outcome": "cancelled"}})),
-        json!({"cancelled": true})
-    );
-    assert_eq!(dialog_answer(&dialog, &Value::Null), json!({"cancelled": true}));
-
-    let select = json!({"id": "d2", "method": "select", "options": ["red", "blue"]});
-    let (dialog, params) = permission_request(&select, None).unwrap();
-    assert_eq!(params["toolCall"]["toolCallId"], "ultron-ui-d2");
-    assert_eq!(params["toolCall"]["title"], "Ultron asks");
-    assert_eq!(params["toolCall"]["content"], json!([]));
-    assert_eq!(
-        params["options"],
-        json!([
-            {"optionId": "choice-0", "name": "red", "kind": "allow_once"},
-            {"optionId": "choice-1", "name": "blue", "kind": "allow_once"},
-            {"optionId": "reject", "name": "Cancel", "kind": "reject_once"},
-        ])
-    );
-    assert_eq!(dialog_answer(&dialog, &selected("choice-1")), json!({"value": "blue"}));
-    assert_eq!(
-        dialog_answer(&dialog, &selected("choice-5")),
-        json!({"cancelled": true})
-    );
-    assert_eq!(dialog_answer(&dialog, &selected("reject")), json!({"cancelled": true}));
-    for other in ["input", "editor", "notify", "setStatus"] {
-        assert!(
-            permission_request(&json!({"id": "d", "method": other}), None).is_none(),
-            "{other}"
-        );
-    }
-    assert!(permission_request(&json!({"method": "confirm"}), None).is_none());
 }
 
 #[test]

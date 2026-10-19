@@ -174,7 +174,7 @@ fn page(session_data: &Value, json: &tui::theme::ThemeJson, name: &str) -> Resul
 pub fn export_page(data: &Value, theme: Option<&str>, env: &crate::Env) -> Result<String, String> {
     let registered: Vec<(String, Option<String>)> = match theme {
         Some(name) if tui::theme::builtin_theme_json(name).is_none() => {
-            crate::packages::themes::load(env, tui::theme::ColorMode::Truecolor)
+            crate::themes::load(env, tui::theme::ColorMode::Truecolor)
                 .themes
                 .into_iter()
                 .filter_map(|t| Some((t.name?, t.source_path)))

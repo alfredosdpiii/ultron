@@ -231,39 +231,3 @@ fn interactive_theme_exit_turns_the_notifications_off() {
     assert!(on < off);
     assert_eq!(written.matches("\x1b[?2031l").count(), 1);
 }
-
-/// The startup check's answer (`showPackageUpdateNotification` only when packages came back). An answer that comes
-/// before the first session opened is shown once it has (opening clears the transcript).
-#[test]
-fn interactive_package_updates_show_only_when_there_are_any() {
-    let text = |app: &mut App| -> String {
-        app.render(80, 30)
-            .iter()
-            .map(|l| tui::utils::strip_terminal_sequences(l))
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
-    let opened = || {
-        interactive::lane::LaneEvent::Opened(interactive::lane::SessionOpened {
-            session_id: "sess".into(),
-            session_file: None,
-            name: None,
-            messages: Vec::new(),
-        })
-    };
-    let mut late = app(Rc::new(builtin("dark")));
-    late.apply(opened());
-    late.apply(interactive::lane::LaneEvent::PackageUpdates(Vec::new()));
-    assert!(!text(&mut late).contains("Package Updates Available"));
-    late.apply(interactive::lane::LaneEvent::PackageUpdates(vec!["foo".into()]));
-    let screen = text(&mut late);
-    assert!(screen.contains("Package Updates Available"), "{screen}");
-    assert!(screen.contains("- foo"), "{screen}");
-    // Before the session opened: held, then shown with it.
-    let mut early = app(Rc::new(builtin("dark")));
-    early.apply(interactive::lane::LaneEvent::PackageUpdates(vec!["foo".into()]));
-    early.apply(opened());
-    let screen = text(&mut early);
-    assert!(screen.contains("Package Updates Available"), "{screen}");
-    assert!(screen.contains("- foo"), "{screen}");
-}

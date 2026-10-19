@@ -7,8 +7,8 @@
 //! through the provider (Anthropic, OpenAI Codex, GitHub Copilot, xAI, Kimi For Coding, Meta, OpenRouter, Radius)
 //! when they expire within the requested window. `--model` resolves as `resolveCliModel` does: under `--provider`,
 //! or alone across the providers with stored credentials. The `claude-code` provider is configured when its CLI
-//! exists (`claudeCodeCliAuth`, found on the run's PATH without running it). Not ported: extension providers (the
-//! Rust extension protocol registers no model providers).
+//! exists (`claudeCodeCliAuth`, found on the run's PATH without running it). Not ported: extension providers (Pi
+//! extensions are not supported by ultron-rs).
 
 use crate::Env;
 use crate::args::{Args, parse_args};

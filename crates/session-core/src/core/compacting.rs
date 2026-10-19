@@ -1,24 +1,14 @@
-//! A compaction in progress, off the actor's thread: the summary request and the extensions' compaction hooks run
-//! on a worker thread while the actor keeps serving the operations that must not wait for them. `abort` cancels the
+//! A compaction in progress, off the actor's thread: the summary request runs on a worker thread while the actor keeps serving the operations that must not wait for them. `abort` cancels the
 //! compaction at once (manual `/compact`, threshold and overflow compactions alike) and `state` reports
 //! `isCompacting`, as AgentSession does (`abortCompaction`, `isCompacting`); every other input waits for the
 //! compaction, in order, as it did while the actor was blocked. A prompt with no run in progress is refused, as
 //! TypeScript refuses one during a manual compaction; a tree navigation is refused as `navigateTree` refuses it
 //! while `isCompacting`; a `compact` aborts what is in progress first (`compact` awaits `abort()`), then runs. A
-//! tree navigation's branch summary runs the same way (core::navigate).
-//!
-//! The `session_before_compact` hooks get the compaction's `signal`: `abort` cancels their dispatch at once
-//! (`notifications/cancelled` to the extension, its late answer ignored; `extensions::Router::emit_cancellable`).
-//!
-//! Extensions see the compaction as AgentSession shows it to them: `session_before_compact` (`{ preparation,
-//! branchEntries, customInstructions?, reason, willRetry }`) before the summary request, whose `cancel` cancels the
-//! compaction and whose `compaction` replaces the summary (the entry is `fromHook`, no request is made); then
-//! `session_compact` (`{ compactionEntry, fromExtension, reason, willRetry }`) once the entry is committed, or
-//! `session_compact_failed` (`{ reason, errorMessage?, aborted, willRetry, fromExtension }`) when it is not.
+//! tree navigation's branch summary runs the same way (core::navigate). (Pi extensions' compaction hooks,
+//! `session_before_compact` and `session_compact`, are not supported by ultron-rs.)
 
 use super::*;
 use crate::compaction_op::{self, SummaryRetry};
-use extensions::ExtensionHost;
 
 /// The error a cancelled compaction ends with (AgentSession: `Compaction cancelled`).
 pub(super) const CANCELLED: &str = "Compaction cancelled";
@@ -30,16 +20,6 @@ const LANE_BUSY: &str = "Lane \"main\" already has an active operation";
 /// A tree navigation during a compaction or another navigation's summary (AgentSession `navigateTree`).
 pub(super) const NAVIGATE_WHILE_COMPACTING: &str =
     "Wait for the current compaction or tree navigation to finish before navigating the session tree.";
-
-/// What the `session_before_compact` hooks decided.
-pub(super) enum HookDecision {
-    /// No hook, or none that cancelled or supplied a compaction: summarize.
-    Summarize,
-    /// A hook cancelled the compaction.
-    Cancel,
-    /// A hook supplied the compaction (`{ summary, firstKeptEntryId, tokensBefore, usage?, details? }`).
-    Compaction(Value),
-}
 
 /// Sends the actor its wake-up when the work ends, also when it panics.
 struct Wake(Sender<Input>);
@@ -220,37 +200,6 @@ fn wait_until(not_before: i64, signal: &AbortSignal) {
     }
 }
 
-/// JavaScript truthiness of a hook result's member.
-fn truthy(value: Option<&Value>) -> bool {
-    match value {
-        None | Some(Value::Null) | Some(Value::Bool(false)) => false,
-        Some(Value::Number(n)) => n.as_f64().is_some_and(|n| n != 0.0),
-        Some(Value::String(s)) => !s.is_empty(),
-        Some(_) => true,
-    }
-}
-
-/// `CompactionPreparation` as an extension receives it.
-fn preparation_json(preparation: &compaction::CompactionPreparation) -> Value {
-    let ops = &preparation.file_ops;
-    let mut value = json!({
-        "firstKeptEntryId": preparation.first_kept_entry_id,
-        "messagesToSummarize": preparation.messages_to_summarize,
-        "turnPrefixMessages": preparation.turn_prefix_messages,
-        "isSplitTurn": preparation.is_split_turn,
-        "tokensBefore": preparation.tokens_before,
-        "fileOps": {"read": ops.read, "written": ops.written, "edited": ops.edited},
-        "settings": {
-            "enabled": preparation.settings.enabled, "reserveTokens": preparation.settings.reserve_tokens,
-            "keepRecentTokens": preparation.settings.keep_recent_tokens,
-        },
-    });
-    if let Some(summary) = &preparation.previous_summary {
-        value["previousSummary"] = json!(summary);
-    }
-    value
-}
-
 impl Core {
     /// The summary call as this session makes it now.
     pub(super) fn summarizer(&self) -> Summarizer {
@@ -342,18 +291,11 @@ impl Core {
         }
     }
 
-    /// Cancel the compaction or branch summary in progress: its signal, and the hooks' dispatch in flight.
+    /// Cancel the compaction or branch summary in progress.
     fn cancel_compaction(&self) {
         if let Some(signal) = &self.compacting {
             signal.abort();
         }
-        if let Some(hook) = &self.hook {
-            hook.cancel(None);
-        }
-    }
-
-    fn has_hook(&self, event: &str) -> bool {
-        self.extensions_for(event).is_some()
     }
 
     /// The retry policy of a summary attempt (`normalizedRetryPolicy`): settings.json's `retry`, off when this
@@ -488,139 +430,7 @@ impl Core {
         }
     }
 
-    /// The extension host when an extension handles `event`.
-    fn extensions_for(&self, event: &str) -> Option<Arc<ExtensionHost>> {
-        self.runtime
-            .extensions
-            .clone()
-            .filter(|host| host.router().has_handlers(event))
-    }
-
-    /// `session_before_compact` for `preparation` (`reason`: manual, threshold or overflow).
-    pub(super) fn before_compact(
-        &mut self,
-        preparation: &compaction::CompactionPreparation,
-        custom_instructions: Option<&str>,
-        reason: &str,
-        will_retry: bool,
-    ) -> HookDecision {
-        if !self.has_hook("session_before_compact") {
-            return HookDecision::Summarize;
-        }
-        let branch: Vec<Value> = self.pi().branch_entries(None).into_iter().cloned().collect();
-        let mut event = json!({
-            "type": "session_before_compact", "preparation": preparation_json(preparation), "branchEntries": branch,
-            "reason": reason, "willRetry": will_retry,
-        });
-        if let Some(instructions) = custom_instructions {
-            event["customInstructions"] = json!(instructions);
-        }
-        match self.cancellable_hook(event) {
-            // Given up by an abort: the compaction's signal is aborted, so it ends cancelled.
-            Err(extensions::Cancelled(_)) => HookDecision::Cancel,
-            Ok(result) => Self::decision(result),
-        }
-    }
-
-    /// A `session_before_*` event off the actor with the operation's `signal`: `abort` gives the dispatch up
-    /// (`Err`). No handler, or a dispatch that failed, answers `None`.
-    pub(super) fn cancellable_hook(&mut self, event: Value) -> Result<Option<Value>, extensions::Cancelled> {
-        let Some(host) = self.extensions_for(event["type"].as_str().unwrap_or_default()) else {
-            return Ok(None);
-        };
-        let hook = extensions::CancelToken::new();
-        self.hook = Some(hook.clone());
-        let result = self.off_actor(move || host.router().emit_cancellable(&event, &hook));
-        self.hook = None;
-        result.unwrap_or(Ok(None))
-    }
-
-    /// An observe-only event off the actor (`session_compact`, `session_compact_failed`, `session_tree`).
-    pub(super) fn observe_hook(&mut self, event: Value) {
-        if let Some(host) = self.extensions_for(event["type"].as_str().unwrap_or_default()) {
-            let _ = self.off_actor(move || host.router().emit(&event));
-        }
-    }
-
-    /// Run `hooks` with `isCompacting` still true: AgentSession emits `session_compact` (and an automatic
-    /// compaction's `session_compact_failed`) before it clears its abort controller.
-    pub(super) fn still_compacting(&mut self, hooks: impl FnOnce(&mut Self)) {
-        let previous = self.compacting.replace(AbortSignal::new());
-        hooks(self);
-        self.compacting = previous;
-    }
-
-    /// What a `session_before_compact` result decides.
-    fn decision(result: Option<Value>) -> HookDecision {
-        match result {
-            Some(result) if truthy(result.get("cancel")) => HookDecision::Cancel,
-            Some(result) if result["compaction"].is_object() => HookDecision::Compaction(result["compaction"].clone()),
-            _ => HookDecision::Summarize,
-        }
-    }
-
-    /// `session_compact`: the committed compaction entry `id`.
-    pub(super) fn after_compact(&mut self, id: &str, from_extension: bool, reason: &str, will_retry: bool) {
-        if !self.has_hook("session_compact") {
-            return;
-        }
-        let entry = self.pi().entry(id).cloned().unwrap_or(Value::Null);
-        self.observe_hook(json!({
-            "type": "session_compact", "compactionEntry": entry, "fromExtension": from_extension, "reason": reason,
-            "willRetry": will_retry,
-        }));
-    }
-
-    /// `session_compact_failed`: the compaction ended without an entry (`error`: why, unless it was cancelled).
-    pub(super) fn compact_failed(&mut self, reason: &str, error: Option<&str>, from_extension: bool) {
-        let mut event = json!({
-            "type": "session_compact_failed", "reason": reason, "aborted": error.is_none(), "willRetry": false,
-            "fromExtension": from_extension,
-        });
-        if let Some(error) = error {
-            event["errorMessage"] = json!(error);
-        }
-        self.observe_hook(event);
-    }
-
-    /// The compaction entry for a hook's `compaction` (`fromHook`), keeping the branch from its `firstKeptEntryId`
-    /// (the preparation's when it names no entry of the branch); with the usage it reported.
-    pub(super) fn hook_entry(
-        &self,
-        compaction: &Value,
-        prepared: &auto_compact::Prepared,
-    ) -> (Map<String, Value>, Option<Value>) {
-        let retained_tail = compaction["firstKeptEntryId"]
-            .as_str()
-            .and_then(|first| self.retained_tail_from(first))
-            .unwrap_or_else(|| prepared.retained_tail.clone());
-        let mut entry = Map::new();
-        entry.insert("type".into(), "compaction".into());
-        entry.insert(
-            "summary".into(),
-            compaction["summary"].as_str().unwrap_or_default().into(),
-        );
-        entry.insert("retainedTail".into(), Value::Array(retained_tail));
-        entry.insert(
-            "tokensBefore".into(),
-            compaction["tokensBefore"]
-                .as_u64()
-                .unwrap_or(prepared.preparation.tokens_before)
-                .into(),
-        );
-        if let Some(details) = compaction.get("details").filter(|d| !d.is_null()) {
-            entry.insert("details".into(), details.clone());
-        }
-        let usage = compaction.get("usage").filter(|u| u.is_object()).cloned();
-        if let Some(usage) = &usage {
-            entry.insert("usage".into(), usage.clone());
-        }
-        entry.insert("fromHook".into(), true.into());
-        (entry, usage)
-    }
-
-    /// A manual compaction: `compaction_start`, the journaled operation (the hooks, then the summary, both
-    /// cancellable), the entry, `compaction_end`; answers Pi's `CompactionResult` fields of the compaction entry.
+    /// A manual compaction: `compaction_start`, the journaled operation (the summary, cancellable), the entry, `compaction_end`; answers Pi's `CompactionResult` fields of the compaction entry.
     pub(super) fn compact(&mut self, instructions: Option<&str>) -> Result<Value, String> {
         self.idle()?;
         let lane = json!(LANE);
@@ -632,10 +442,10 @@ impl Core {
         let signal = AbortSignal::new();
         self.compacting = Some(signal.clone());
         let outcome = self.compact_now(instructions, &signal);
-        let (id, from_hook) = match outcome {
-            Ok(done) => done,
-            Err((error, from_hook)) => {
-                // AgentSession clears its compaction state before `compaction_end` and `session_compact_failed`.
+        let id = match outcome {
+            Ok(id) => id,
+            Err(error) => {
+                // AgentSession clears its compaction state before `compaction_end`.
                 self.compacting = None;
                 let cancelled = error == CANCELLED;
                 let mut fields = vec![
@@ -648,14 +458,10 @@ impl Core {
                     fields.push(("error", json!({"message": error})));
                 }
                 self.emit(event(fields));
-                let failure = format!("Compaction failed: {error}");
-                self.compact_failed("manual", (!cancelled).then_some(failure.as_str()), from_hook);
                 return Err(error);
             }
         };
         self.announce();
-        // `session_compact` runs while the compaction still counts (`isCompacting`), `compaction_end` after.
-        self.after_compact(&id, from_hook, "manual", false);
         self.compacting = None;
         self.emit(event(vec![
             ("type", json!("compaction_end")),
@@ -677,41 +483,24 @@ impl Core {
         Ok(Value::Object(data))
     }
 
-    /// Summarize the current path (or take a hook's compaction) and commit the native compaction entry (its
-    /// retained tail is the kept messages) through a journaled compaction operation ([`CompactionOp`]); returns
-    /// its id and whether a hook supplied it. Nothing to cut keeps the whole path after an (empty-conversation)
-    /// summary, as the native harness does. A cancelled compaction ends its operation `aborted` with
-    /// [`CANCELLED`]; the error says whether a hook's compaction failed.
-    fn compact_now(
-        &mut self,
-        custom_instructions: Option<&str>,
-        signal: &AbortSignal,
-    ) -> Result<(String, bool), (String, bool)> {
-        let failed = |error: String| (error, false);
-        let prepared = self
-            .prepare_compaction(compaction::CompactionSettings::default())
-            .map_err(failed)?;
+    /// Summarize the current path and commit the native compaction entry (its retained tail is the kept messages)
+    /// through a journaled compaction operation ([`CompactionOp`]); returns its id. Nothing to cut keeps the whole
+    /// path after an (empty-conversation) summary, as the native harness does. A cancelled compaction ends its
+    /// operation `aborted` with [`CANCELLED`].
+    fn compact_now(&mut self, custom_instructions: Option<&str>, signal: &AbortSignal) -> Result<String, String> {
+        let prepared = self.prepare_compaction(compaction::CompactionSettings::default())?;
         let mut op = CompactionOp::begin(
             &mut lock_session(&self.session),
             &prepared.preparation,
             &prepared.retained_tail,
             custom_instructions,
-        )
-        .map_err(failed)?;
-        let decision = self.before_compact(&prepared.preparation, custom_instructions, "manual", false);
-        if signal.aborted() || matches!(decision, HookDecision::Cancel) {
-            op.abort(&mut lock_session(&self.session)).map_err(failed)?;
-            return Err((CANCELLED.into(), false));
-        }
-        if let HookDecision::Compaction(compaction) = decision {
-            let (entry, usage) = self.hook_entry(&compaction, &prepared);
-            let id = op
-                .complete_from_hook(&mut lock_session(&self.session), entry, usage)
-                .map_err(|error| (error, true))?;
-            return Ok((id, true));
+        )?;
+        if signal.aborted() {
+            op.abort(&mut lock_session(&self.session))?;
+            return Err(CANCELLED.into());
         }
         let retry = self.summary_retry();
-        op.request(&mut lock_session(&self.session), retry).map_err(failed)?;
+        op.request(&mut lock_session(&self.session), retry)?;
         let summarizer = self.summarizer();
         let (preparation, instructions, cancel) = (
             prepared.preparation.clone(),
@@ -741,19 +530,18 @@ impl Core {
             &mut journal,
         );
         if signal.aborted() {
-            op.abort(&mut lock_session(&self.session)).map_err(failed)?;
-            return Err((CANCELLED.into(), false));
+            op.abort(&mut lock_session(&self.session))?;
+            return Err(CANCELLED.into());
         }
         let result = match result {
             Ok(result) => result,
             Err(error) => {
-                op.fail(&mut lock_session(&self.session), &error).map_err(failed)?;
-                return Err(failed(error));
+                op.fail(&mut lock_session(&self.session), &error)?;
+                return Err(error);
             }
         };
-        let usage = serde_json::to_value(&result.usage).map_err(|e| failed(e.to_string()))?;
-        op.record_usage(&mut lock_session(&self.session), &usage)
-            .map_err(failed)?;
+        let usage = serde_json::to_value(&result.usage).map_err(|e| e.to_string())?;
+        op.record_usage(&mut lock_session(&self.session), &usage)?;
         let mut entry = Map::new();
         entry.insert("type".into(), "compaction".into());
         entry.insert("summary".into(), result.summary.clone().into());
@@ -765,7 +553,6 @@ impl Core {
         );
         entry.insert("usage".into(), usage);
         entry.insert("fromHook".into(), false.into());
-        let id = op.complete(&mut lock_session(&self.session), entry).map_err(failed)?;
-        Ok((id, false))
+        op.complete(&mut lock_session(&self.session), entry)
     }
 }

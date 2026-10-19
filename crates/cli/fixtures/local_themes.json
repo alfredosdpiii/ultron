@@ -1,0 +1,66 @@
+{
+	"registered": [
+		{
+			"name": "solo",
+			"sourcePath": "<root>/extra/solo.json"
+		},
+		{
+			"name": "abyss",
+			"sourcePath": "<root>/extra/ocean/abyss.json"
+		},
+		{
+			"name": "ocean",
+			"sourcePath": "<root>/extra/ocean/ocean.json"
+		},
+		{
+			"name": "zest",
+			"sourcePath": "<root>/extra/second/zest.json"
+		},
+		{
+			"name": "custom",
+			"sourcePath": "<root>/agent/themes/custom.json"
+		}
+	],
+	"diagnostics": [
+		{
+			"type": "warning",
+			"message": "Failed to parse theme <root>/extra/broken.json: SyntaxError: Expected property name or '}' in JSON at position 2 (line 1 column 3)",
+			"path": "<root>/extra/broken.json"
+		},
+		{
+			"type": "collision",
+			"message": "name \"ocean\" collision",
+			"path": "<root>/extra/second/ocean.json"
+		}
+	],
+	"available": [
+		{
+			"name": "abyss",
+			"path": "<root>/extra/ocean/abyss.json"
+		},
+		{
+			"name": "custom",
+			"path": "<root>/agent/themes/custom.json"
+		},
+		{
+			"name": "dark",
+			"path": "<builtin>/dark.json"
+		},
+		{
+			"name": "light",
+			"path": "<builtin>/light.json"
+		},
+		{
+			"name": "ocean",
+			"path": "<root>/extra/ocean/ocean.json"
+		},
+		{
+			"name": "solo",
+			"path": "<root>/extra/solo.json"
+		},
+		{
+			"name": "zest",
+			"path": "<root>/extra/second/zest.json"
+		}
+	]
+}

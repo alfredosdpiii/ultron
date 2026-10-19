@@ -1,29 +1,28 @@
 //! The resources a session loads, as resource-loader.ts `reload` assembles them for the session worker:
 //!
-//! - the `-e` sources' skills and prompts (`resolveExtensionSources(additionalExtensionPaths, { temporary: true })`,
-//!   resolved by the CLI, which installed them: [`crate::session_flags::SessionFlags`]), which come first and also
-//!   load with `--no-skills`;
-//! - everything `packageManager.resolve()` finds, in its precedence order: the settings `packages` (installed when
-//!   missing), the settings' local `skills`/`prompts` entries (paths, globs and `!`/`+`/`-` patterns, project scope
-//!   first), and the auto-discovered ones (`.pi/skills`, `.pi/prompts`, `.agents/skills` from the cwd up to the git
-//!   root, `<agentDir>/skills`, `<agentDir>/prompts`, `~/.agents/skills`). A project that is not trusted contributes
-//!   no settings, no project resources and no ancestor `.agents/skills`;
+//! - every local resource (crate::local_resources) in its precedence order: the settings' local `skills`/`prompts`
+//!   entries (paths, globs and `!`/`+`/`-` patterns, project scope first), and the auto-discovered ones
+//!   (`.pi/skills`, `.pi/prompts`, `.agents/skills` from the cwd up to the git root, `<agentDir>/skills`,
+//!   `<agentDir>/prompts`, `~/.agents/skills`). A project that is not trusted contributes no settings, no project
+//!   resources and no ancestor `.agents/skills`;
 //! - then the bundled skills (`bundledSkillPaths`), the first skill of a name kept;
 //! - the base system prompt and its addendum: `.pi/SYSTEM.md` / `.pi/APPEND_SYSTEM.md` in a trusted project, else
 //!   `<agentDir>/SYSTEM.md` / `<agentDir>/APPEND_SYSTEM.md` (`discoverSystemPromptFile`).
+//!
+//! Pi packages (the settings `packages`) and the `-e` sources are not supported by ultron-rs: they contribute
+//! nothing (the CLI notes the ignored packages once at startup).
 //!
 //! Every skill and prompt carries its `SourceInfo` as `findSourceInfoForPath` gives it (the resolved resource's
 //! metadata, exact path first, then the first resource directory holding it), else the loader's own.
 
 use crate::RunEnv as Env;
-use crate::packages::manager::{Origin, PackageManager, PackageRoot, PathMetadata, ResolvedPaths};
-use crate::session_flags::SessionFlags;
+use crate::local_resources::{LocalResources, PathMetadata};
 use resources::prompt_templates::PromptTemplate;
 use resources::skills::{LoadSkillsOptions, Skill, load_skills};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-/// Where one resource came from (`PathMetadata` with its path): its source (`cli`, `local`, `auto` or the package
-/// source), scope and origin, and its base directory.
+/// Where one resource came from (`PathMetadata` with its path): its source (`local` or `auto`), scope and origin
+/// (always `top-level`), and its base directory.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ResourceSource {
     pub path: String,
@@ -39,11 +38,7 @@ impl ResourceSource {
             path: path.to_string(),
             source: metadata.source.clone(),
             scope: metadata.scope.name().into(),
-            origin: match metadata.origin {
-                Origin::Package => "package",
-                Origin::TopLevel => "top-level",
-            }
-            .into(),
+            origin: "top-level".into(),
             base_dir: metadata.base_dir.clone(),
         }
     }
@@ -65,28 +60,18 @@ impl ResourceSource {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SessionResources {
-    /// The `-e` sources' skill files and directories (metadata `cli`/`temporary`).
-    pub cli_skills: Vec<String>,
-    pub cli_prompts: Vec<String>,
     /// `resolve()`'s enabled skills in precedence order. They are files already (`mapSkillPath` has nothing to map:
-    /// the package manager lists a skill directory's `SKILL.md`).
+    /// the resolver lists a skill directory's `SKILL.md`).
     pub skill_paths: Vec<String>,
     /// `resolve()`'s enabled prompt templates in precedence order.
     pub prompt_paths: Vec<String>,
-    /// `metadataByPath` in insertion order: every resolved resource (enabled or not), the `-e` skills and prompts;
-    /// the first entry of a path kept.
+    /// `metadataByPath` in insertion order: every resolved resource (enabled or not); the first entry of a path
+    /// kept.
     pub metadata: Vec<ResourceSource>,
     /// The discovered SYSTEM.md's text (`getSystemPrompt`), if any.
     pub system_prompt: Option<String>,
     /// The discovered APPEND_SYSTEM.md's text (`getAppendSystemPrompt`).
     pub append_system_prompt: Vec<String>,
-    /// The settings packages' extension manifest paths (enabled by the package's `extensions` filter).
-    pub package_manifests: Vec<PathBuf>,
-    /// What went wrong resolving the packages (an install that failed).
-    pub diagnostics: Vec<String>,
-    /// The diagnostics of settings packages that are pi-mcp-adapter (crate::mcp_coexistence): left out with a
-    /// notice next to the built-in MCP gateway, reported like the others without it.
-    pub mcp_adapters: Vec<String>,
 }
 
 /// `mergePaths`: each path (resolved against the cwd) once by its canonical path, first place kept.
@@ -104,144 +89,44 @@ fn merge(cwd: &str, paths: impl IntoIterator<Item = String>) -> Vec<String> {
     out
 }
 
-/// The extension manifests a package directory holds, as a `-e` path's are found, then its settings filter's
-/// `extensions` patterns (relative to the package): `[]` turns them all off, `autoload: false` without patterns too.
-/// The diagnostics come back as (others, pi-mcp-adapter's).
-pub fn package_manifests(root: &PackageRoot, cwd: &Path, home: &Path) -> (Vec<PathBuf>, (Vec<String>, Vec<String>)) {
-    let discovery = extensions::manifest::discover_cli_paths(std::slice::from_ref(&root.root), cwd, home);
-    let (adapters, others): (Vec<_>, Vec<_>) = discovery
-        .diagnostics
-        .iter()
-        .partition(|d| crate::mcp_coexistence::is_mcp_adapter(&d.path));
-    let text = |list: Vec<&extensions::manifest::Diagnostic>| -> Vec<String> {
-        list.iter()
-            .map(|d| format!("{}: {}", d.path.display(), d.message))
-            .collect()
-    };
-    let diagnostics = (text(others), text(adapters));
-    let found: Vec<PathBuf> = discovery.manifests.into_iter().map(|m| m.path).collect();
-    let Some(filter) = &root.filter else {
-        return (found, diagnostics);
-    };
-    let patterns: Option<Vec<&str>> = filter
-        .get("extensions")
-        .and_then(serde_json::Value::as_array)
-        .map(|items| items.iter().filter_map(serde_json::Value::as_str).collect());
-    let autoload_off = filter.get("autoload") == Some(&serde_json::Value::Bool(false));
-    let enabled = match patterns {
-        Some(patterns) if patterns.is_empty() => Vec::new(),
-        Some(patterns) => extensions::manifest::apply_patterns(&found, &patterns, Path::new(&root.root)),
-        None if autoload_off => Vec::new(),
-        None => found,
-    };
-    (enabled, diagnostics)
-}
-
-/// The session's resources for `flags` and the settings `manager` holds (with the session's project trust). A
-/// settings package that is missing is installed (unless offline), as TypeScript's `resolve()` does; npm and git
-/// write to stderr. A package that cannot be resolved is reported, and the local and auto-discovered resources
-/// still load.
-pub fn resolve(env: &Env, settings: config::settings::SettingsManager, flags: &SessionFlags) -> SessionResources {
+/// The session's resources for the settings `settings` holds (with the session's project trust).
+pub fn resolve(env: &Env, settings: config::settings::SettingsManager) -> SessionResources {
     let cwd = resources::paths::resolve_path(&env.cwd.display().to_string(), "/", false);
     let agent_dir = env.agent_dir().display().to_string();
     let trusted = settings.is_project_trusted();
     let prompt_files = resources::prompt_files::load_prompt_files(&cwd, &agent_dir, trusted, None, None);
-    let mut out = SessionResources {
-        cli_skills: merge(&cwd, flags.skill_paths.iter().cloned()),
-        cli_prompts: merge(&cwd, flags.prompt_paths.iter().cloned()),
-        system_prompt: prompt_files.system_prompt,
-        append_system_prompt: prompt_files.append_system_prompt,
-        ..SessionResources::default()
-    };
-    let mut manager = PackageManager::new(env, settings);
-    manager.child_stdout_to_stderr = true;
-    let (resolved, roots): (ResolvedPaths, Vec<PackageRoot>) = match manager.resolve_with_roots() {
-        Ok(found) => found,
-        Err(message) => {
-            out.diagnostics.push(message);
-            (manager.resolve_local(), Vec::new())
-        }
-    };
+    let resolved = LocalResources::new(env, settings).resolve();
     let mut metadata: Vec<ResourceSource> = Vec::new();
-    for list in [
-        &resolved.extensions,
-        &resolved.skills,
-        &resolved.prompts,
-        &resolved.themes,
-    ] {
+    for list in [&resolved.skills, &resolved.prompts, &resolved.themes] {
         for r in list {
             if !metadata.iter().any(|m| m.path == r.path) {
                 metadata.push(ResourceSource::of(&r.path, &r.metadata));
             }
         }
     }
-    out.skill_paths = resolved
-        .skills
-        .iter()
-        .filter(|r| r.enabled)
-        .map(|r| r.path.clone())
-        .collect();
-    out.prompt_paths = resolved
-        .prompts
-        .iter()
-        .filter(|r| r.enabled)
-        .map(|r| r.path.clone())
-        .collect();
-    for path in &flags.skill_paths {
-        if !metadata.iter().any(|m| &m.path == path) {
-            metadata.push(ResourceSource {
-                path: path.clone(),
-                source: "cli".into(),
-                scope: "temporary".into(),
-                origin: "top-level".into(),
-                base_dir: None,
-            });
-        }
+    let enabled = |list: &[crate::local_resources::ResolvedResource]| -> Vec<String> {
+        list.iter().filter(|r| r.enabled).map(|r| r.path.clone()).collect()
+    };
+    SessionResources {
+        skill_paths: enabled(&resolved.skills),
+        prompt_paths: enabled(&resolved.prompts),
+        metadata,
+        system_prompt: prompt_files.system_prompt,
+        append_system_prompt: prompt_files.append_system_prompt,
     }
-    // `getEnabledPaths(cliExtensionPaths.prompts)`: an `-e` prompt has its package's metadata (the source as the
-    // worker got it, `temporary`, `package`, the package directory).
-    for path in &flags.prompt_paths {
-        let root = flags.extension_paths.iter().find(|root| {
-            let root = resources::paths::resolve("/", root);
-            path == &root || path.starts_with(&format!("{root}/"))
-        });
-        if let Some(root) = root
-            && !metadata.iter().any(|m| &m.path == path)
-        {
-            metadata.push(ResourceSource {
-                path: path.clone(),
-                source: root.clone(),
-                scope: "temporary".into(),
-                origin: "package".into(),
-                base_dir: Some(root.clone()),
-            });
-        }
-    }
-    out.metadata = metadata;
-    for root in &roots {
-        let (manifests, diagnostics) = package_manifests(root, &env.cwd, &env.home);
-        for manifest in manifests {
-            if !out.package_manifests.contains(&manifest) {
-                out.package_manifests.push(manifest);
-            }
-        }
-        out.diagnostics.extend(diagnostics.0);
-        out.mcp_adapters.extend(diagnostics.1);
-    }
-    out
 }
 
 /// The resources a session in `env`'s directory loads with no flags, its project trust decided as the worker
 /// decides it (`workerProjectTrusted`).
 pub fn resolve_default(env: &Env) -> SessionResources {
     let agent_dir = env.agent_dir();
-    let trusted = crate::extension_commands::worker_project_trusted(&env.cwd, &agent_dir, &env.home);
+    let trusted = config::trust::worker_project_trusted(&env.cwd, &agent_dir, &env.home);
     let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir, trusted);
-    resolve(env, settings, &SessionFlags::default())
+    resolve(env, settings)
 }
 
-/// The skills of a session (`updateSkillsFromPaths`): the `-e` ones first, then (without `--no-skills`) the
-/// resolved ones and the bundled ones in `bundled` (a directory), the first skill of a name kept.
+/// The skills of a session (`updateSkillsFromPaths`): without `--no-skills`, the resolved ones and the bundled ones
+/// in `bundled` (a directory), the first skill of a name kept.
 pub fn skills(
     cwd: &str,
     agent_dir: &str,
@@ -249,19 +134,13 @@ pub fn skills(
     no_skills: bool,
     bundled: Option<&str>,
 ) -> Vec<Skill> {
-    let paths: Vec<String> = if no_skills {
-        merge(cwd, resources.cli_skills.iter().cloned())
-    } else {
-        merge(
-            cwd,
-            resources
-                .cli_skills
-                .iter()
-                .chain(&resources.skill_paths)
-                .cloned()
-                .chain(bundled.map(str::to_string)),
-        )
-    };
+    if no_skills {
+        return Vec::new();
+    }
+    let paths = merge(
+        cwd,
+        resources.skill_paths.iter().cloned().chain(bundled.map(str::to_string)),
+    );
     if paths.is_empty() {
         return Vec::new();
     }
@@ -274,13 +153,9 @@ pub fn skills(
     .skills
 }
 
-/// The prompt templates of a session (`updatePromptsFromPaths`): the `-e` ones, then the resolved ones, the first
-/// of a name kept.
+/// The prompt templates of a session (`updatePromptsFromPaths`): the resolved ones, the first of a name kept.
 pub fn prompts(cwd: &str, agent_dir: &str, resources: &SessionResources) -> Vec<PromptTemplate> {
-    let paths = merge(
-        cwd,
-        resources.cli_prompts.iter().chain(&resources.prompt_paths).cloned(),
-    );
+    let paths = merge(cwd, resources.prompt_paths.iter().cloned());
     let loaded = resources::prompt_templates::load_prompt_templates(cwd, agent_dir, &paths, false);
     let mut out: Vec<PromptTemplate> = Vec::new();
     for template in loaded.templates {

@@ -80,9 +80,8 @@ pub struct WorkerOptions {
     pub mode: String,
     /// `noNaming`: the session is not named.
     pub no_naming: bool,
-    /// `noExtensions` (Pi `--no-extensions`): no extensions, and no MCP servers.
-    pub no_extensions: bool,
-    /// `systemPrompt`, `extensionPaths`, `noSkills`, `noContextFiles`.
+    /// `systemPrompt`, `noSkills`, `noContextFiles` (Pi extensions are not supported: `noExtensions` and
+    /// `extensionPaths` are ignored).
     pub session_flags: session_core::session_flags::SessionFlags,
 }
 
@@ -118,7 +117,6 @@ pub fn parse_options(argument: &str) -> Result<WorkerOptions, String> {
         },
         mode: text("extensionMode").unwrap_or_else(|| "interactive".into()),
         no_naming: options["noNaming"] == true,
-        no_extensions: options["noExtensions"] == true,
         session_flags: session_core::session_flags::SessionFlags::from_worker_options(&options),
     })
 }
@@ -330,7 +328,8 @@ struct Watch {
     shared: Arc<OnceLock<Weak<Shared>>>,
 }
 
-/// The session's extension UI and its MCP gateway (once the session's stack opened it).
+/// The session's dialog bridge (`/mcp`'s dialogs and notices) and its MCP gateway (once the session's stack opened
+/// it).
 struct Extensions {
     ui: Arc<crate::extension_ui::ExtensionUiBridge>,
     mcp: Arc<OnceLock<Arc<mcp::gateway::Gateway>>>,
@@ -418,38 +417,33 @@ fn services(
         })
         .method("steer", move |args| queue(&steer_core, QueueKind::Steer, &args));
     let plugins = Service::new("pi.session-plugins").method("reload", |_| Ok(None));
-    // The extension processes' commands (session_core::extension_commands) and `/mcp`, the built-in MCP extension's
-    // command (extensions/mcp): `/mcp` runs here, its dialogs and notices go to the client through the extension UI.
-    let (list_core, run_core) = (core.clone(), core.clone());
+    // `/mcp`, the built-in MCP gateway's command (TypeScript's inline MCP extension, so on the legacy extension
+    // command service): it runs here, its dialogs and notices go to the client through the dialog bridge. Pi
+    // extensions are not supported by ultron-rs, so it is the only command of the service.
     let (list_mcp, run_mcp, run_ui) = (extensions.mcp.clone(), extensions.mcp.clone(), extensions.ui.clone());
     let legacy = Service::new("pi.legacy-extension-commands")
         .method("list", move |_| {
-            let commands = call_core(&list_core, Op::Commands)?.unwrap_or_default();
-            let listed =
-                session_core::extension_commands::from_listing(commands.as_array().map_or(&[][..], Vec::as_slice));
-            let has_mcp = list_mcp.get().is_some();
-            Ok(Some(
-                listed
-                    .iter()
-                    .filter(|c| has_mcp || c.name != "mcp")
-                    .map(session_core::extension_commands::command_info)
-                    .collect(),
-            ))
+            let listed: Vec<Value> = list_mcp
+                .get()
+                .map(|_| session_core::commands::command_info(&session_core::commands::mcp_command()))
+                .into_iter()
+                .collect();
+            Ok(Some(listed.into()))
         })
         .method("run", move |args| {
             let text = |i: usize| args.get(i).and_then(Value::as_str).map(str::to_string);
             let (Some(name), Some(args)) = (text(0), text(1)) else {
                 return Err(ServiceError::internal("Extension command service is unavailable"));
             };
-            if name == "mcp"
-                && let Some(gateway) = run_mcp.get()
-            {
-                gateway.run_command(&args, &crate::extension_ui::BridgeUi(run_ui.clone()));
-                return Ok(Some(json!({"notifications": []})));
+            match run_mcp.get() {
+                Some(gateway) if name == "mcp" => {
+                    gateway.run_command(&args, &crate::extension_ui::BridgeUi(run_ui.clone()));
+                    Ok(Some(json!({"notifications": []})))
+                }
+                // A command's failure is a plain error of the service, as TypeScript's `runCommand` throws it (it
+                // crosses the wire as an internal error).
+                _ => Err(ServiceError::internal(format!("Unknown extension command: /{name}"))),
             }
-            // A command's failure is a plain error of the service, as TypeScript's `runCommand` throws it (it crosses
-            // the wire as an internal error).
-            session_core::core::call(&run_core, Op::ExtensionCommand { name, args }).map_err(ServiceError::internal)
         });
     let (stuck_core, health_progress) = (core.clone(), watch.progress.clone());
     let (op_core, bash_core, abort_bash_core, name_core, forked_core, tree_core, inspect_core) = (
@@ -506,9 +500,7 @@ fn services(
         .method("listCommands", move |_| {
             let commands = call_core(&commands_core, Op::Commands)?.unwrap_or_default();
             let commands = commands.as_array().map_or(&[][..], Vec::as_slice);
-            Ok(Some(
-                session_core::extension_commands::session_command_infos(commands).into(),
-            ))
+            Ok(Some(session_core::commands::session_command_infos(commands).into()))
         });
     let settings_core = core.clone();
     let control = crate::session_control::members(
@@ -701,7 +693,7 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     // The actor reports no event while it opens; the transcript state starts at its snapshot.
     let lane_slot: Arc<std::sync::OnceLock<Arc<Mutex<Lane>>>> = Arc::new(std::sync::OnceLock::new());
     let sink_lane = lane_slot.clone();
-    // The client this worker is started for serves the extension UI (Pi's `extensionMode` tui or rpc).
+    // The client this worker is started for serves the dialog bridge (Pi's `extensionMode` tui or rpc).
     let ui =
         crate::extension_ui::ExtensionUiBridge::new(matches!(options.mode.as_str(), "interactive" | "tui" | "rpc"));
     let gateway_slot: Arc<OnceLock<Arc<mcp::gateway::Gateway>>> = Arc::new(OnceLock::new());
@@ -719,8 +711,6 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
             mcp_notices: Some(Arc::new(move |message: &str, level: &str| {
                 mcp::gateway::CommandUi::notify(&crate::extension_ui::BridgeUi(notice_ui.clone()), message, level);
             })),
-            no_extensions: options.no_extensions,
-            extension_ui: Some(ui.clone() as Arc<dyn session_core::extension_host::ExtensionUi>),
             session: options.session_flags.clone(),
             ..Services::default()
         },

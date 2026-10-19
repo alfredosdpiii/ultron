@@ -1,8 +1,7 @@
 //! Compaction over RPC as AgentSession runs it: `abort` cancels a running compaction (manual `compact` and an
-//! automatic one inside a run) and `get_state` reports `isCompacting` meanwhile; extensions' `session_before_compact`
-//! cancels a compaction or supplies its summary, and `session_compact` / `session_compact_failed` follow. The Rust
-//! binary runs in RPC mode in a private home against a scripted Anthropic server that can hold a summary request
-//! open until the client drops it; the extension is a real process (`common/fake_compaction_extension.py`).
+//! automatic one inside a run) and `get_state` reports `isCompacting` meanwhile. The Rust binary runs in RPC mode in a
+//! private home against a scripted Anthropic server that can hold a summary request open until the client drops it.
+//! (Pi extensions' compaction and tree hooks are not supported by ultron-rs.)
 //! A `compact` during a run aborts the run first; tree navigation's branch summary (driven on the session actor
 //! directly, RPC has no navigate command) is `isCompacting`, abortable and exclusive with compaction.
 
@@ -149,29 +148,13 @@ struct Fixture {
     _tmp: tempfile::TempDir,
 }
 
-fn python() -> String {
-    std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| "/usr/bin/python3".into())
+/// The binary in RPC mode against [`provider`].
+fn start(replies: Vec<String>, hold: bool) -> Fixture {
+    start_full(replies, Vec::new(), hold, None)
 }
 
-/// The binary in RPC mode against [`provider`]; with `extension`, the fake compaction extension runs in that mode.
-fn start(replies: Vec<String>, hold: bool, extension: Option<&str>) -> Fixture {
-    let modes = extension.map(|mode| [("FAKE_COMPACTION_MODE", mode)]);
-    start_with(replies, hold, modes.as_ref().map(|m| m.as_slice()))
-}
-
-/// [`start`] with the fake extension in the modes `extension` names.
-fn start_with(replies: Vec<String>, hold: bool, extension: Option<&[(&str, &str)]>) -> Fixture {
-    start_full(replies, Vec::new(), hold, extension, None)
-}
-
-/// [`start_with`] whose first summary requests get `summaries`, with `settings` as settings.json.
-fn start_full(
-    replies: Vec<String>,
-    summaries: Vec<String>,
-    hold: bool,
-    extension: Option<&[(&str, &str)]>,
-    settings: Option<Value>,
-) -> Fixture {
+/// [`start`] whose first summary requests get `summaries`, with `settings` as settings.json.
+fn start_full(replies: Vec<String>, summaries: Vec<String>, hold: bool, settings: Option<Value>) -> Fixture {
     let (port, requests, held) = provider_scripted(replies, summaries, "## Goal\nSummary from the model.", hold);
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().canonicalize().unwrap();
@@ -183,9 +166,6 @@ fn start_full(
         json!({"providers": {"anthropic": {"baseUrl": format!("http://127.0.0.1:{port}")}}}).to_string(),
     )
     .unwrap();
-    if let Some(env) = extension {
-        install_extension(&agent_dir, &root, env);
-    }
     if let Some(settings) = settings {
         std::fs::write(agent_dir.join("settings.json"), settings.to_string()).unwrap();
     }
@@ -220,51 +200,6 @@ fn start_full(
     }
 }
 
-/// The fake compaction extension under `agent_dir`, logging to `<root>/hooks.jsonl`, with its modes in `env`.
-fn install_extension(agent_dir: &Path, root: &Path, env: &[(&str, &str)]) {
-    let dir = agent_dir.join("extensions").join("fake-compaction");
-    std::fs::create_dir_all(&dir).unwrap();
-    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/common/fake_compaction_extension.py");
-    let mut vars = json!({"FAKE_COMPACTION_LOG": root.join("hooks.jsonl").to_string_lossy()});
-    for (key, value) in env {
-        vars[*key] = json!(value);
-    }
-    let manifest = json!({
-        "name": "fake-compaction",
-        "command": python(),
-        "args": ["-I", script.to_string_lossy()],
-        "startupTimeoutMs": 120_000,
-        "eventTimeoutMs": 120_000,
-        "env": vars,
-    });
-    std::fs::write(dir.join("extension.json"), manifest.to_string()).unwrap();
-}
-
-/// Lets the extension's held `session_compact` / `session_compact_failed` / `session_tree` answer.
-fn release_hooks(root: &Path) {
-    std::fs::write(root.join("hooks.jsonl.release"), "").unwrap();
-}
-
-/// The extension's log, once it has `count` events (a hang guard, never a pass condition).
-fn wait_hooks_in(root: &Path, count: usize) -> Vec<Value> {
-    let end = std::time::Instant::now() + HANG;
-    loop {
-        let hooks: Vec<Value> = std::fs::read_to_string(root.join("hooks.jsonl"))
-            .unwrap_or_default()
-            .lines()
-            .map(|l| serde_json::from_str(l).unwrap())
-            .collect();
-        if hooks.len() >= count {
-            return hooks;
-        }
-        assert!(
-            std::time::Instant::now() < end,
-            "timed out waiting for {count} hook events: {hooks:?}"
-        );
-        std::thread::sleep(Duration::from_millis(10));
-    }
-}
-
 /// Kills every process started under a root (the client's coordinator and session worker name it) when the test
 /// ends, passed or failed: a worker busy with a held summary would otherwise outlive a failed test.
 struct Reaper(PathBuf);
@@ -289,10 +224,6 @@ impl Drop for Reaper {
 impl Fixture {
     fn held(&self) -> Held {
         self.held.recv_timeout(HANG).expect("the held summary request")
-    }
-
-    fn summaries(&self) -> usize {
-        self.requests.lock().unwrap().iter().filter(|b| is_summary(b)).count()
     }
 
     /// The committed writes of the session's journal, in order.
@@ -341,25 +272,11 @@ impl Fixture {
         (preparations, lane)
     }
 
-    /// The events the extension received, as `type reason` lines, and the events.
-    fn hooks(&self) -> Vec<Value> {
-        std::fs::read_to_string(self.root.join("hooks.jsonl"))
-            .unwrap_or_default()
-            .lines()
-            .map(|l| serde_json::from_str(l).unwrap())
-            .collect()
-    }
-
     /// The response to the command with `id`, sent after the last mark.
     fn response(&mut self, id: &str) -> Value {
         self.client
             .wait_for(&|l| l["type"] == "response" && l["id"] == id, HANG)
             .unwrap()
-    }
-
-    /// Waits until the extension has logged `count` events (a hang guard, never a pass condition).
-    fn wait_hooks(&self, count: usize) -> Vec<Value> {
-        wait_hooks_in(&self.root, count)
     }
 
     /// The journal as a worker killed now leaves it, reopened from a copy and settled (`recovery::settle`): what
@@ -396,20 +313,13 @@ impl Fixture {
     }
 }
 
-fn hook_types(hooks: &[Value]) -> Vec<String> {
-    hooks
-        .iter()
-        .map(|h| format!("{} {}", h["type"].as_str().unwrap(), h["reason"].as_str().unwrap_or("")))
-        .collect()
-}
-
 /// `abort` during a manual `compact` cancels it at once: `get_state` reports `isCompacting` while the summary
 /// request is in flight, the request is dropped, `compact` answers "Compaction cancelled" with `compaction_end`
 /// `aborted`, the operation ends `aborted` with the branch, preparation and lane unchanged, and the session prompts
 /// on. Before, the actor blocked on the summary: `get_state` and `abort` waited for it and `isCompacting` was false.
 #[test]
 fn cli_rpc_compaction_abort_cancels_a_manual_compaction() {
-    let mut f = start(vec![reply(10, "Hello."), reply(10, "After.")], true, None);
+    let mut f = start(vec![reply(10, "Hello."), reply(10, "After.")], true);
     f.client.prompt_and_wait("hello", HANG).unwrap();
     f.client.mark();
     f.client
@@ -461,7 +371,7 @@ fn cli_rpc_compaction_abort_cancels_a_manual_compaction() {
 /// ended `aborted` with no compaction entry and nothing left open; the next prompt runs.
 #[test]
 fn cli_rpc_compaction_abort_cancels_an_automatic_compaction_with_its_run() {
-    let mut f = start(vec![reply(990_000, "Big."), reply(10, "Next.")], true, None);
+    let mut f = start(vec![reply(990_000, "Big."), reply(10, "Next.")], true);
     f.client.mark();
     f.client
         .write_line(&json!({"type": "prompt", "message": "first", "id": "p1"}).to_string())
@@ -499,149 +409,6 @@ fn cli_rpc_compaction_abort_cancels_an_automatic_compaction_with_its_run() {
     assert_eq!(code, Some(0));
 }
 
-/// An extension's `session_before_compact` that cancels a manual compaction: no summary request, `compact`
-/// answers "Compaction cancelled" (`compaction_end` `aborted`), then `session_compact_failed` `aborted`. The
-/// extension saw the preparation, the branch and the custom instructions.
-#[test]
-fn cli_rpc_compaction_extension_cancels_a_manual_compaction() {
-    let mut f = start(vec![reply(10, "Hello.")], false, Some("cancel"));
-    f.client.prompt_and_wait("hello", HANG).unwrap();
-    f.client.mark();
-    let compact = f
-        .client
-        .send(json!({"type": "compact", "customInstructions": "keep names"}))
-        .unwrap();
-    assert_eq!(compact["success"], false, "{compact}");
-    assert_eq!(compact["error"], "Compaction cancelled");
-    let end = f.client.wait_for(&|l| l["type"] == "compaction_end", HANG).unwrap();
-    assert_eq!(end["aborted"], true, "{end}");
-    assert_eq!(f.summaries(), 0);
-    assert!(f.compaction_entries().is_empty());
-    assert_eq!(
-        f.results().last().unwrap(),
-        &("compaction".to_string(), "aborted".to_string())
-    );
-    assert_eq!(f.open_state(), (0, Value::Null));
-    let hooks = f.hooks();
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_compact manual", "session_compact_failed manual"]
-    );
-    let before = &hooks[0];
-    assert_eq!(before["customInstructions"], "keep names");
-    assert_eq!(before["willRetry"], false);
-    let summarized = before["preparation"]["messagesToSummarize"].to_string();
-    let branch = before["branchEntries"].to_string();
-    assert!(branch.contains("hello") && branch.contains("Hello."), "{before}");
-    assert!(before["preparation"]["firstKeptEntryId"].is_string(), "{before}");
-    assert!(summarized.starts_with('['), "{before}");
-    assert_eq!(
-        hooks[1],
-        json!({"type": "session_compact_failed", "reason": "manual", "aborted": true, "willRetry": false, "fromExtension": false})
-    );
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-}
-
-/// An extension that supplies the compaction: no summary request; the entry carries its summary, details and usage
-/// (`fromHook`), `compact` answers with them, its usage is recorded, and `session_compact` reports the entry with
-/// `fromExtension`.
-#[test]
-fn cli_rpc_compaction_extension_supplies_the_summary() {
-    let mut f = start(vec![reply(10, "Hello."), reply(10, "After.")], false, Some("summary"));
-    f.client.prompt_and_wait("hello", HANG).unwrap();
-    let compact = f.client.send(json!({"type": "compact"})).unwrap();
-    assert_eq!(compact["success"], true, "{compact}");
-    assert_eq!(compact["data"]["summary"], "## Goal\nSummary from the extension.");
-    assert_eq!(compact["data"]["details"], json!({"by": "fake-compaction"}));
-    assert_eq!(compact["data"]["usage"]["totalTokens"], 10);
-    assert_eq!(f.summaries(), 0);
-    let entries = f.compaction_entries();
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0]["fromHook"], true);
-    assert_eq!(entries[0]["summary"], "## Goal\nSummary from the extension.");
-    let usage_rows: Vec<Value> = f
-        .writes()
-        .into_iter()
-        .filter(|w| w["kind"] == "usage" && w["usage"]["totalTokens"] == 10 && w["usage"]["input"] == 7)
-        .collect();
-    assert_eq!(usage_rows.len(), 1, "the hook's usage is recorded once");
-    assert_eq!(
-        f.results().last().unwrap(),
-        &("compaction".to_string(), "completed".to_string())
-    );
-    assert_eq!(f.open_state(), (0, Value::Null));
-    let hooks = f.hooks();
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_compact manual", "session_compact manual"]
-    );
-    assert_eq!(hooks[1]["fromExtension"], true);
-    assert_eq!(hooks[1]["compactionEntry"]["fromHook"], true);
-    assert_eq!(
-        hooks[1]["compactionEntry"]["summary"],
-        "## Goal\nSummary from the extension."
-    );
-    // The next request carries the extension's summary.
-    f.client.prompt_and_wait("after", HANG).unwrap();
-    let last = f.requests.lock().unwrap().last().cloned().unwrap();
-    assert!(
-        last["messages"].to_string().contains("Summary from the extension."),
-        "{last}"
-    );
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-}
-
-/// Automatic compactions reach the extension too: a threshold compaction the extension lets through is
-/// summarized by the model and reported with `session_compact` (`threshold`, not `fromExtension`); one it cancels
-/// leaves the run to complete without a compaction (`compaction_end` `aborted`, `session_compact_failed`).
-#[test]
-fn cli_rpc_compaction_extension_sees_and_cancels_automatic_compactions() {
-    let mut f = start(vec![reply(990_000, "Big.")], false, Some("none"));
-    let events = f.client.prompt_and_wait("first", HANG).unwrap();
-    assert!(
-        events
-            .iter()
-            .any(|e| e["type"] == "compaction_end" && e["aborted"] == false)
-    );
-    assert_eq!(f.summaries(), 1);
-    let hooks = f.hooks();
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_compact threshold", "session_compact threshold"]
-    );
-    assert_eq!(hooks[1]["fromExtension"], false);
-    assert_eq!(
-        hooks[1]["compactionEntry"]["summary"],
-        "## Goal\nSummary from the model."
-    );
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-
-    let mut f = start(vec![reply(990_000, "Big.")], false, Some("cancel"));
-    let events = f.client.prompt_and_wait("first", HANG).unwrap();
-    let ends: Vec<&Value> = events.iter().filter(|e| e["type"] == "compaction_end").collect();
-    assert_eq!(
-        ends,
-        [&json!({"type": "compaction_end", "reason": "threshold", "aborted": true, "willRetry": false})]
-    );
-    assert_eq!(f.summaries(), 0);
-    assert!(f.compaction_entries().is_empty());
-    assert_eq!(
-        f.results().last().unwrap(),
-        &("run".to_string(), "completed".to_string())
-    );
-    assert_eq!(f.open_state(), (0, Value::Null));
-    assert_eq!(f.client.get_last_assistant_text().unwrap().as_deref(), Some("Big."));
-    assert_eq!(
-        hook_types(&f.hooks()),
-        ["session_before_compact threshold", "session_compact_failed threshold"]
-    );
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-}
-
 /// Committed `(type, role, stopReason)` of the journal's entries, in order.
 fn entry_kinds(writes: &[Value]) -> Vec<(String, String, String)> {
     writes
@@ -664,7 +431,7 @@ fn entry_kinds(writes: &[Value]) -> Vec<(String, String, String)> {
 /// Rust refused the `compact` with "Agent is already processing".
 #[test]
 fn cli_rpc_compaction_compact_during_a_run_aborts_the_run_first() {
-    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "After.")], false, Some("summary"));
+    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "After.")], false);
     f.client.mark();
     f.client
         .write_line(
@@ -678,7 +445,7 @@ fn cli_rpc_compaction_compact_during_a_run_aborts_the_run_first() {
     assert_eq!(f.held(), Held::Dropped, "the response was aborted");
     let compact = f.response("compact-1");
     assert_eq!(compact["success"], true, "{compact}");
-    assert_eq!(compact["data"]["summary"], "## Goal\nSummary from the extension.");
+    assert_eq!(compact["data"]["summary"], "## Goal\nSummary from the model.");
     let reasons = |kind: &str| -> Vec<Value> { f.events(kind).iter().map(|e| e["reason"].clone()).collect() };
     assert_eq!(reasons("compaction_start"), [json!("manual")]);
     assert_eq!(reasons("compaction_end"), [json!("manual")]);
@@ -703,15 +470,11 @@ fn cli_rpc_compaction_compact_during_a_run_aborts_the_run_first() {
         ]
     );
     assert_eq!(f.open_state(), (0, Value::Null));
-    assert_eq!(
-        hook_types(&f.hooks()),
-        ["session_before_compact manual", "session_compact manual"]
-    );
     f.client.prompt_and_wait("after", HANG).unwrap();
     assert_eq!(f.client.get_last_assistant_text().unwrap().as_deref(), Some("After."));
     let last = f.requests.lock().unwrap().last().cloned().unwrap();
     assert!(
-        last["messages"].to_string().contains("Summary from the extension."),
+        last["messages"].to_string().contains("Summary from the model."),
         "{last}"
     );
     let (_, code) = f.client.finish(HANG);
@@ -723,7 +486,7 @@ fn cli_rpc_compaction_compact_during_a_run_aborts_the_run_first() {
 /// (`interrupted`), the branch at the aborted response; a live `abort` cancels it like any manual compaction.
 #[test]
 fn cli_rpc_compaction_compact_during_a_run_recovers_and_cancels() {
-    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "After.")], true, None);
+    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "After.")], true);
     f.client
         .write_line(&json!({"type": "prompt", "message": "first", "id": "p1"}).to_string())
         .unwrap();
@@ -779,55 +542,6 @@ fn cli_rpc_compaction_compact_during_a_run_recovers_and_cancels() {
     assert_eq!(code, Some(0));
 }
 
-/// TypeScript #8920 (`aborts an in-progress manual compaction and waits until the session is idle`), with the
-/// hook resolving `{cancel: true}` on its signal's abort: `abort` during `session_before_compact` reaches the hook
-/// as `notifications/cancelled` ("Aborted"), `compact` answers "Compaction cancelled", `compaction_end` is
-/// `manual` / `aborted`, `isCompacting` is false and the next prompt runs. Before, the abort waited for the hook.
-#[test]
-fn cli_rpc_compaction_abort_during_a_hook_reaches_it_as_its_signal() {
-    let mut f = start(vec![reply(10, "Hello."), reply(10, "continued")], false, Some("wait"));
-    f.client.prompt_and_wait("hello", HANG).unwrap();
-    f.client.mark();
-    f.client
-        .write_line(&json!({"type": "compact", "id": "compact-1"}).to_string())
-        .unwrap();
-    f.wait_hooks(1);
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], true);
-    assert_eq!(f.client.send(json!({"type": "abort"})).unwrap()["success"], true);
-    let compact = f.response("compact-1");
-    assert_eq!(compact["error"], "Compaction cancelled", "{compact}");
-    let end = f.client.wait_for(&|l| l["type"] == "compaction_end", HANG).unwrap();
-    assert_eq!(
-        (&end["reason"], &end["aborted"]),
-        (&json!("manual"), &json!(true)),
-        "{end}"
-    );
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], false);
-    let hooks = f.wait_hooks(3);
-    assert_eq!(
-        hook_types(&hooks),
-        [
-            "session_before_compact manual",
-            "notifications/cancelled Aborted",
-            "session_compact_failed manual"
-        ]
-    );
-    assert_eq!(hooks[2]["aborted"], true);
-    assert_eq!(f.summaries(), 0);
-    assert_eq!(
-        f.results().last().unwrap(),
-        &("compaction".to_string(), "aborted".to_string())
-    );
-    assert_eq!(f.open_state(), (0, Value::Null));
-    f.client.prompt_and_wait("next prompt", HANG).unwrap();
-    assert_eq!(
-        f.client.get_last_assistant_text().unwrap().as_deref(),
-        Some("continued")
-    );
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-}
-
 /// The session actor itself (what the session worker runs) against [`provider`], for the operations RPC has no
 /// command for (tree navigation is the agent controller's `navigate`): ops go in through `core::call`, its events
 /// are collected.
@@ -842,27 +556,13 @@ struct Actor {
 }
 
 fn actor(replies: Vec<String>, hold: bool) -> Actor {
-    actor_with(replies, hold, None)
+    actor_full(replies, Vec::new(), hold, None)
 }
 
-/// [`actor`] with the fake extension in the modes `extension` names.
-fn actor_with(replies: Vec<String>, hold: bool, extension: Option<&[(&str, &str)]>) -> Actor {
-    actor_full(replies, Vec::new(), hold, extension, None)
-}
-
-/// [`actor_with`] whose first summary requests get `summaries`, with `settings` as settings.json.
-fn actor_full(
-    replies: Vec<String>,
-    summaries: Vec<String>,
-    hold: bool,
-    extension: Option<&[(&str, &str)]>,
-    settings: Option<Value>,
-) -> Actor {
+/// [`actor`] whose first summary requests get `summaries`, with `settings` as settings.json.
+fn actor_full(replies: Vec<String>, summaries: Vec<String>, hold: bool, settings: Option<Value>) -> Actor {
     let (port, requests, held) = provider_scripted(replies, summaries, "## Goal\nSummary from the model.", hold);
     let sandbox = common::Sandbox::new(port);
-    if let Some(env) = extension {
-        install_extension(&sandbox.agent_dir, &sandbox.root, env);
-    }
     if let Some(settings) = settings {
         std::fs::write(sandbox.agent_dir.join("settings.json"), settings.to_string()).unwrap();
     }
@@ -992,14 +692,6 @@ impl Actor {
             .rfind(|w| w["namespace"] == session_journal::run::OP_RESULT && w["key"] == id)
             .map_or(Value::Null, |w| w["value"].clone());
         (states, result)
-    }
-
-    fn hooks(&self) -> Vec<Value> {
-        std::fs::read_to_string(self.root.join("hooks.jsonl"))
-            .unwrap_or_default()
-            .lines()
-            .map(|l| serde_json::from_str(l).unwrap())
-            .collect()
     }
 
     /// The label of tree entry `id`, if any.
@@ -1270,11 +962,7 @@ fn cli_rpc_compaction_navigation_is_journaled_as_an_operation() {
 /// branch summary when there is one, which hangs under the message's parent. Selecting the current tip is a no-op.
 #[test]
 fn cli_rpc_compaction_navigation_resolves_a_selected_user_message() {
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_TREE_MODE", "none")]),
-    );
+    let a = actor(vec![reply(10, "One."), reply(10, "Two.")], false);
     let (first_answer, leaf) = two_exchanges(&a);
     let (entries, _) = a.entries();
     let (first_ask, second_ask) = (
@@ -1300,8 +988,6 @@ fn cli_rpc_compaction_navigation_resolves_a_selected_user_message() {
     assert_eq!(answer, json!({"tipId": null, "editorText": "first ask"}));
     assert_eq!(a.entries().1, Value::Null);
     assert_eq!(a.label(&first_ask), "start");
-    let hooks = a.hooks();
-    assert_eq!(hooks[0]["preparation"]["targetId"], first_ask.as_str());
     let operation = a.events("navigation_start").pop().unwrap()["runId"]
         .as_str()
         .unwrap()
@@ -1336,251 +1022,7 @@ fn cli_rpc_compaction_navigation_resolves_a_selected_user_message() {
     );
     assert_eq!(a.label(summary["id"].as_str().unwrap()), "summary");
     assert_eq!(a.label(&second_ask), Value::Null);
-    assert_eq!(
-        a.hooks()
-            .iter()
-            .rev()
-            .find(|h| h["type"] == "session_before_tree")
-            .unwrap()["preparation"]["targetId"],
-        second_ask.as_str()
-    );
     assert_eq!(a.call(navigate("nope", false)).unwrap_err(), "Entry nope not found");
-}
-
-/// TypeScript #3688 (`clears branch summary state when session_before_tree cancels navigation`): a hook's cancel
-/// answers "Navigation cancelled", `isCompacting` is false again and the leaf is unchanged; a summarized navigation
-/// it cancels ends `declined` without a summary request. The hook saw AgentSession's preparation.
-#[test]
-fn cli_rpc_compaction_tree_hook_cancels_the_navigation() {
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_TREE_MODE", "cancel")]),
-    );
-    let (target, leaf) = two_exchanges(&a);
-    assert_eq!(a.call(navigate(&target, false)).unwrap_err(), "Navigation cancelled");
-    assert!(!a.is_compacting());
-    assert_eq!(a.entries().1, leaf);
-    let hooks = a.hooks();
-    assert_eq!(hook_types(&hooks), ["session_before_tree "]);
-    let preparation = &hooks[0]["preparation"];
-    assert_eq!(
-        (
-            &preparation["targetId"],
-            &preparation["oldLeafId"],
-            &preparation["userWantsSummary"]
-        ),
-        (&json!(target), &leaf, &json!(false))
-    );
-    let summarized: Vec<String> = preparation["entriesToSummarize"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|e| e["type"].as_str().unwrap().to_string())
-        .collect();
-    assert_eq!(summarized, ["message", "message"], "second ask and its answer");
-    assert!(preparation["commonAncestorId"].is_string());
-
-    assert_eq!(a.call(summarizing(&target, None)).unwrap_err(), "Navigation cancelled");
-    let end = a.events("navigation_end").pop().unwrap();
-    assert_eq!(end["status"], "declined");
-    let operation = end["runId"].as_str().unwrap();
-    assert_eq!(a.operation_trace(operation).1["status"], "declined");
-    assert_eq!(a.requests.lock().unwrap().len(), 2, "no summary request");
-    assert_eq!(a.entries().1, leaf);
-}
-
-/// A hook's `summary` replaces the model's (no request; the entry `fromHook` with its details and usage, a usage
-/// row), and `session_tree` reports the new leaf, the old one, the summary entry and `fromExtension`.
-#[test]
-fn cli_rpc_compaction_tree_hook_supplies_the_summary() {
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_TREE_MODE", "summary")]),
-    );
-    let (target, leaf) = two_exchanges(&a);
-    let answer = a.call(summarizing(&target, None)).unwrap().unwrap();
-    assert_eq!(a.requests.lock().unwrap().len(), 2, "no summary request");
-    let (entries, now) = a.entries();
-    let summary = entries.last().unwrap();
-    assert_eq!(now, answer["tipId"]);
-    assert_eq!(
-        (
-            &summary["type"],
-            &summary["summary"],
-            &summary["fromHook"],
-            &summary["details"]
-        ),
-        (
-            &json!("branch_summary"),
-            &json!("Branch summary from the extension."),
-            &json!(true),
-            &json!({"by": "fake-compaction"})
-        )
-    );
-    assert_eq!(summary["usage"]["totalTokens"], 6);
-    let usage_rows = a
-        .writes()
-        .into_iter()
-        .filter(|w| w["kind"] == "usage" && w["usage"]["totalTokens"] == 6)
-        .count();
-    assert_eq!(usage_rows, 1);
-    let hooks = a.hooks();
-    assert_eq!(hook_types(&hooks), ["session_before_tree ", "session_tree "]);
-    let tree = &hooks[1];
-    assert_eq!(
-        (&tree["newLeafId"], &tree["oldLeafId"], &tree["fromExtension"]),
-        (&now, &leaf, &json!(true))
-    );
-    assert_eq!(tree["summaryEntry"]["id"], now);
-}
-
-/// A hook's `customInstructions`, `replaceInstructions` and `label` override the caller's: the summary request is
-/// the custom instructions alone (no default prompt), and the label goes on the summary entry.
-#[test]
-fn cli_rpc_compaction_tree_hook_overrides_instructions_and_label() {
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_TREE_MODE", "override")]),
-    );
-    let (target, _) = two_exchanges(&a);
-    let answer = a.call(summarizing(&target, Some("from the caller"))).unwrap().unwrap();
-    let request = a.requests.lock().unwrap().last().cloned().unwrap();
-    assert!(is_summary(&request), "{request}");
-    let prompt = request["messages"][0]["content"].to_string();
-    assert!(prompt.contains("focus on names"), "{prompt}");
-    assert!(
-        !prompt.contains("Create a structured summary"),
-        "replaced, not appended: {prompt}"
-    );
-    assert_eq!(a.label(answer["tipId"].as_str().unwrap()), "checkpoint");
-    assert_eq!(a.hooks()[0]["preparation"]["label"], "from the caller");
-}
-
-/// `abort` during `session_before_tree` reaches the hook as its signal (`notifications/cancelled`, "Aborted"); the
-/// navigation ends `aborted` with no request and the leaf unchanged; and a prompt during a navigation is refused
-/// with the harness's `LaneBusy` (the navigation is the lane's operation).
-#[test]
-fn cli_rpc_compaction_tree_hook_is_cancelled_by_abort() {
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_TREE_MODE", "wait")]),
-    );
-    let (target, leaf) = two_exchanges(&a);
-    let navigation = a.start(summarizing(&target, None));
-    wait_hooks_in(&a.root, 1);
-    assert!(a.is_compacting());
-    assert_eq!(
-        a.call(session_core::core::Op::PromptAndWait {
-            message: "meanwhile".into(),
-            images: Vec::new(),
-        })
-        .unwrap_err(),
-        "Lane \"main\" already has an active operation"
-    );
-    a.call(session_core::core::Op::Abort).unwrap();
-    assert_eq!(
-        navigation.recv_timeout(HANG).unwrap().unwrap_err(),
-        "Branch summarization cancelled"
-    );
-    assert!(!a.is_compacting());
-    let hooks = wait_hooks_in(&a.root, 2);
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_tree ", "notifications/cancelled Aborted"]
-    );
-    let end = a.events("navigation_end").pop().unwrap();
-    assert_eq!(end["status"], "aborted");
-    assert_eq!(a.operation_trace(end["runId"].as_str().unwrap()).1["status"], "aborted");
-    assert_eq!(a.requests.lock().unwrap().len(), 2, "no summary request");
-    assert_eq!(a.entries().1, leaf);
-}
-
-/// AgentSession keeps `isCompacting` while `session_compact` runs (a manual compaction clears it only after), and
-/// while `session_tree` runs; a manual compaction's `session_compact_failed` runs after it is cleared.
-#[test]
-fn cli_rpc_compaction_is_compacting_while_after_hooks_run() {
-    let mut f = start_with(
-        vec![reply(10, "Hello.")],
-        false,
-        Some(&[("FAKE_COMPACTION_MODE", "none"), ("FAKE_HOLD_AFTER", "1")]),
-    );
-    f.client.prompt_and_wait("hello", HANG).unwrap();
-    f.client.mark();
-    f.client
-        .write_line(&json!({"type": "compact", "id": "compact-1"}).to_string())
-        .unwrap();
-    let hooks = f.wait_hooks(2);
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_compact manual", "session_compact manual"]
-    );
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], true);
-    release_hooks(&f.root);
-    assert_eq!(f.response("compact-1")["success"], true);
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], false);
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-
-    let mut f = start_with(
-        vec![reply(10, "Hello.")],
-        false,
-        Some(&[("FAKE_COMPACTION_MODE", "cancel"), ("FAKE_HOLD_AFTER", "1")]),
-    );
-    f.client.prompt_and_wait("hello", HANG).unwrap();
-    f.client.mark();
-    f.client
-        .write_line(&json!({"type": "compact", "id": "compact-1"}).to_string())
-        .unwrap();
-    let hooks = f.wait_hooks(2);
-    assert_eq!(hooks[1]["type"], "session_compact_failed");
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], false);
-    release_hooks(&f.root);
-    assert_eq!(f.response("compact-1")["error"], "Compaction cancelled");
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
-
-    let a = actor_with(
-        vec![reply(10, "One."), reply(10, "Two.")],
-        false,
-        Some(&[("FAKE_HOLD_AFTER", "1")]),
-    );
-    let (target, _) = two_exchanges(&a);
-    let navigation = a.start(navigate(&target, false));
-    let hooks = wait_hooks_in(&a.root, 2);
-    assert_eq!(hook_types(&hooks), ["session_before_tree ", "session_tree "]);
-    assert!(a.is_compacting());
-    release_hooks(&a.root);
-    navigation.recv_timeout(HANG).unwrap().unwrap();
-    assert!(!a.is_compacting());
-}
-
-/// An automatic compaction's `session_compact_failed` runs while it still counts (AgentSession clears its auto
-/// controller in `finally`): a threshold compaction the extension cancels reports `isCompacting` meanwhile.
-#[test]
-fn cli_rpc_compaction_is_compacting_while_an_automatic_failure_hook_runs() {
-    let mut f = start_with(
-        vec![reply(990_000, "Big.")],
-        false,
-        Some(&[("FAKE_COMPACTION_MODE", "cancel"), ("FAKE_HOLD_AFTER", "1")]),
-    );
-    f.client
-        .write_line(&json!({"type": "prompt", "message": "first", "id": "p1"}).to_string())
-        .unwrap();
-    let hooks = f.wait_hooks(2);
-    assert_eq!(
-        hook_types(&hooks),
-        ["session_before_compact threshold", "session_compact_failed threshold"]
-    );
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], true);
-    release_hooks(&f.root);
-    f.client.wait_for(&|l| l["type"] == "agent_settled", HANG).unwrap();
-    assert_eq!(f.client.get_state().unwrap()["isCompacting"], false);
-    let (_, code) = f.client.finish(HANG);
-    assert_eq!(code, Some(0));
 }
 
 /// The error message the Anthropic provider gives [`overloaded`]'s response (the stream's error event).
@@ -1638,7 +1080,6 @@ fn cli_rpc_compaction_manual_summary_retries_a_transient_error() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 1}})),
     );
     two_exchanges(&a);
@@ -1710,7 +1151,6 @@ fn cli_rpc_compaction_retry_wait_is_recoverable_and_abortable() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 600000}})),
     );
     let (_, leaf) = two_exchanges(&a);
@@ -1752,7 +1192,6 @@ fn cli_rpc_compaction_branch_summary_and_run_compaction_retry() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 1}})),
     );
     let (target, _) = two_exchanges(&a);
@@ -1770,7 +1209,6 @@ fn cli_rpc_compaction_branch_summary_and_run_compaction_retry() {
         vec![reply(990_000, "Big.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 1}})),
     );
     a.prompt("first");
@@ -1821,7 +1259,6 @@ fn cli_rpc_compaction_summary_retry_needs_a_transient_error_and_retries_on() {
             vec![reply(10, "One."), reply(10, "Two.")],
             summaries,
             false,
-            None,
             Some(settings),
         );
         two_exchanges(&a);
@@ -1855,7 +1292,6 @@ fn cli_rpc_compaction_summary_retry_emits_agent_session_events() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         settings.clone(),
     );
     two_exchanges(&a);
@@ -1875,7 +1311,6 @@ fn cli_rpc_compaction_summary_retry_emits_agent_session_events() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         settings.clone(),
     );
     let (target, _) = two_exchanges(&a);
@@ -1885,7 +1320,7 @@ fn cli_rpc_compaction_summary_retry_emits_agent_session_events() {
         json!({"type": "summarization_retry_attempt_start", "lane": "main", "source": "branchSummary"})
     );
 
-    let a = actor_full(vec![reply(990_000, "Big.")], vec![overloaded()], false, None, settings);
+    let a = actor_full(vec![reply(990_000, "Big.")], vec![overloaded()], false, settings);
     a.prompt("first");
     assert_eq!(
         retry_events(&a)[1],
@@ -1896,7 +1331,6 @@ fn cli_rpc_compaction_summary_retry_emits_agent_session_events() {
         vec![reply(10, "One."), reply(10, "Two.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 600000, "maxRetries": 1}})),
     );
     two_exchanges(&a);
@@ -1926,7 +1360,6 @@ fn cli_rpc_compaction_summary_retry_events_on_rpc() {
         vec![reply(10, "Hello.")],
         vec![overloaded()],
         false,
-        None,
         Some(json!({"retry": {"baseDelayMs": 1}})),
     );
     f.client.prompt_and_wait("hello", HANG).unwrap();
@@ -1974,7 +1407,7 @@ fn cli_rpc_compaction_summary_retry_events_on_rpc() {
 /// (`switch_session`, also allowed during a run) finds it still streaming, and an abort there ends it.
 #[test]
 fn cli_rpc_new_session_during_a_run_switches_and_the_old_turn_runs_on() {
-    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "Fresh.")], false, None);
+    let mut f = start(vec![HOLD_MODEL.into(), reply(10, "Fresh.")], false);
     f.client
         .write_line(&json!({"type": "prompt", "message": "first", "id": "p1"}).to_string())
         .unwrap();

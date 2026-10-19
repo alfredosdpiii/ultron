@@ -54,7 +54,7 @@ fn case_env(case: &Value, root: &Path) -> cli::Env {
 }
 
 fn described(env: &cli::Env, provider: &str) -> Value {
-    telemetry::bug_report::describe_provider(&cli::bug_report::provider_info(env, provider, false, false))
+    telemetry::bug_report::describe_provider(&cli::bug_report::provider_info(env, provider, false))
 }
 
 #[test]
@@ -78,21 +78,21 @@ fn cli_bug_report_provider_section_matches_typescript() {
     assert!(compared > 100, "{compared}");
 }
 
-/// `--api-key` is the runtime key (`getProviderAuthStatus` checks it first), and a provider only an extension
-/// declares is `registeredByExtension`.
+/// `--api-key` is the runtime key (`getProviderAuthStatus` checks it first). No provider is `registeredByExtension`
+/// (Pi extensions are not supported by ultron-rs), not even one nothing declares.
 #[test]
-fn cli_bug_report_provider_runtime_key_and_extension_provider() {
+fn cli_bug_report_provider_runtime_key_and_no_extension_provider() {
     let root = tempfile::tempdir().unwrap();
     let case = json!({"env": {"ANTHROPIC_API_KEY": "k"}, "files": {}, "models": null,
         "auth": {"anthropic": {"type": "oauth", "access": "a", "refresh": "r", "expires": 4102444800000_u64}}});
     let env = case_env(&case, root.path());
-    let info = cli::bug_report::provider_info(&env, "anthropic", true, false);
+    let info = cli::bug_report::provider_info(&env, "anthropic", true);
     let section = telemetry::bug_report::describe_provider(&info);
     assert_eq!(section["authStatus"], json!({"configured": true, "source": "runtime"}));
     assert_eq!(section["usingOAuth"], true);
-    let info = cli::bug_report::provider_info(&env, "from-extension", false, true);
+    let info = cli::bug_report::provider_info(&env, "from-extension", false);
     let section = telemetry::bug_report::describe_provider(&info);
-    assert_eq!(section["registeredByExtension"], true);
+    assert_eq!(section["registeredByExtension"], false);
     assert_eq!(section["name"], "from-extension");
     assert_eq!(section["authStatus"], json!({"configured": false}));
 }

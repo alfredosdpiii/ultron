@@ -16,9 +16,6 @@ use std::io::Write;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, PoisonError};
 
-/// The error a session's `fork`/`clone_session` answers when an extension's `session_before_fork` cancelled it.
-pub const FORK_CANCELLED: &str = "Fork cancelled by an extension";
-
 /// The stdout line writer, shared by the command loop and the threads that answer later (bash).
 #[derive(Clone)]
 pub struct Output(Arc<Mutex<Box<dyn Write + Send>>>);
@@ -121,7 +118,7 @@ pub trait RpcSession {
     fn inspect(&mut self, request: &str, payload: Value) -> Result<Value, String>;
     /// Write the session's active branch as an HTML page; returns the path written.
     fn export_html(&mut self, output_path: Option<&str>) -> Result<String, String>;
-    /// Pi's `extension_ui_response`: the answer to an extension dialog of the worker.
+    /// Pi's `extension_ui_response`: the answer to a `/mcp` dialog of the worker.
     fn extension_ui_response(&mut self, _id: &str, _answer: Value) {}
 }
 
@@ -329,19 +326,13 @@ fn run_command<S: RpcSession>(
         }
         "fork" => {
             let entry_id = str_field("entryId").ok_or("fork requires entryId")?;
-            // Pi's session_before_fork: the session's extensions may cancel.
-            match session.fork(entry_id) {
-                Err(error) if error == FORK_CANCELLED => done(Some(json!({"cancelled": true}))),
-                text => done(Some(json!({"text": text?, "cancelled": false}))),
-            }
+            let text = session.fork(entry_id)?;
+            done(Some(json!({"text": text, "cancelled": false})))
         }
-        "clone" => match session.clone_session() {
-            Err(error) if error == FORK_CANCELLED => done(Some(json!({"cancelled": true}))),
-            result => {
-                result?;
-                done(Some(json!({"cancelled": false})))
-            }
-        },
+        "clone" => {
+            session.clone_session()?;
+            done(Some(json!({"cancelled": false})))
+        }
         "get_fork_messages" => done(Some(json!({"messages": session.fork_messages()}))),
         "get_entries" => {
             let (entries, leaf) = session.entries(str_field("since"))?;

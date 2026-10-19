@@ -5,15 +5,13 @@
 //!    prefix;
 //! 2. [`inference::Inference`]: `rlm.infer`, `rlm.load`, `rlm.frames`;
 //! 3. [`Router`]: subagents (`rlm.spawn`, `rlm.collect`, ... served by [`delegation::host::Delegation`] for the
-//!    calling lane, in host collect mode: a cell never waits) and extension functions (`ext.call`, `ext.list`);
-//!    the lane API (`rlm.lanes`, `rlm.lane.*`, `rlm.cells`, `rlm.cell.cancel`, `rlm.recovery`) is answered by the
+//!    calling lane, in host collect mode: a cell never waits); the lane API (`rlm.lanes`, `rlm.lane.*`, `rlm.cells`, `rlm.cell.cancel`, `rlm.recovery`) is answered by the
 //!    session's REPL lanes ([`delegation::lanes::Lanes`]) first;
 //! 4. [`host::Host`], sandboxed ([`host::Host::sandboxed`] with the `sandbox.*` and `approval.*` settings) over the
 //!    session's file hooks (Loki): shell, jobs and the before-write check.
 //!
 //! Each lane's kernel runs inside the session's shell sandbox (`KernelOptions::sandbox`), with `ULTRON_FILE_HOOKS=1`
-//! (its writes ask the host first), the extension functions listed for runtime.py's `ext` (`ULTRON_EXT_FUNCTIONS`),
-//! a per-session spill dir, a signed snapshot under the profile's `rlm-snapshots/<session>/` with the profile
+//! (its writes ask the host first), a per-session spill dir, a signed snapshot under the profile's `rlm-snapshots/<session>/` with the profile
 //! snapshot key, and the continuity policy (checkpoint after each cell, restore on restart). Subagent and detached
 //! cell completions continue the run between turns ([`RuntimeEvents`]). The model sees one tool, `rlm`.
 
@@ -27,7 +25,6 @@ use delegation::child::agent_runner;
 use delegation::host::{ChildRun, ChildRunner, CollectMode, Delegation, DelegationOptions, DetachedEnd, Park};
 use delegation::lanes::{CellEnd, Lanes, LanesOptions};
 use delegation::usage::UsageLedger;
-use extensions::{ExtensionHost, SessionInfo};
 use host::Host;
 use host::file_hooks::{FileHooks, GuardRecord, OnRecord};
 use host::loki_guard::{LokiGuard, LokiMode, git_root, loki_mode};
@@ -57,6 +54,9 @@ const DELEGATION_REQUESTS: [&str; 7] = [
     "rlm.merge",
 ];
 
+/// What a cell's `ext.call` / `ext.list` (runtime.py's Pi extension functions) is answered.
+pub const EXTENSIONS_UNSUPPORTED: &str = "Pi extensions are not supported by ultron-rs";
+
 /// Told the session's MCP gateway when its stack opens.
 pub type McpListener = Arc<dyn Fn(&Arc<mcp::gateway::Gateway>) + Send + Sync>;
 
@@ -73,16 +73,9 @@ pub struct Services {
     /// Where the gateway's notices go when the session starts (configuration errors, an eager server that needs
     /// sign-in): the attached client's UI (`ctx.ui.notify`). None: nowhere, as without a UI in TypeScript.
     pub mcp_notices: Option<mcp::gateway::NoticeSink>,
-    /// Pi `--no-extensions`: no extensions are loaded, and no MCP servers (MCP is user configuration like them).
-    pub no_extensions: bool,
-    /// The client UI extension dialogs and notifications reach (the worker's extension UI bridge); none: headless.
-    pub extension_ui: Option<Arc<dyn crate::extension_host::ExtensionUi>>,
-    /// What an extension's `ctx.shutdown()` does (`host/shutdown`); none: nothing, as in the TypeScript worker.
-    pub on_extension_shutdown: Option<crate::extension_host::ShutdownAction>,
-    /// `--system-prompt`, `-e`, `--no-skills`, `--no-context-files` (crate::session_flags).
+    /// `--system-prompt`, `--no-skills`, `--no-context-files` (crate::session_flags).
     pub session: crate::session_flags::SessionFlags,
-    /// The `-e` sources' and the settings packages' skills, prompts and extension manifests
-    /// (crate::session_resources), resolved by [`Runtime::new`].
+    /// The local skills and prompts (crate::session_resources), resolved by [`Runtime::new`].
     pub resources: Arc<crate::session_resources::SessionResources>,
     /// The session whose values the module stores are (`ultron.module/<name>`, `ultron.local/<key>`, the memory
     /// journal), set by the session actor: resuming restores them and a tree fork copies them (A07). None: files
@@ -90,7 +83,7 @@ pub struct Services {
     pub values: Option<services::SessionValues>,
 }
 
-/// What every lane of this process shares: settings, locations, guards, extensions and the snapshot key. Owned
+/// What every lane of this process shares: settings, locations, guards and the snapshot key. Owned
 /// values only, so subagent lanes can be built on their own threads.
 pub struct Config {
     pub cwd: PathBuf,
@@ -121,11 +114,6 @@ pub struct Config {
     pub project_trusted: bool,
     /// The current key of a `/login` provider, for MCP servers with `auth.provider`.
     pub provider_token: mcp::connection::ProviderToken,
-    /// MCP servers are read (not with `--no-extensions`).
-    pub mcp_enabled: bool,
-    /// An extension registers its own `mcp` tool, so the built-in gateway is left out (`preferNativeMcp`'s
-    /// `replaced`): no servers, no `/mcp`.
-    pub mcp_replaced: bool,
     /// Files Loki's own setup commit changed (crate::loki_notice): not the changes of the cell it ran beside.
     pub outside_changes: host::file_hooks::OutsideChanges,
 }
@@ -178,8 +166,6 @@ impl Config {
             var: env.var.clone(),
             masker: Arc::default(),
             project_trusted: manager.is_project_trusted(),
-            mcp_enabled: true,
-            mcp_replaced: false,
             outside_changes: host::file_hooks::OutsideChanges::default(),
             provider_token: {
                 let env = env.clone();
@@ -202,14 +188,14 @@ impl Config {
         crate::session_resources::bundled_skills(&root.join("skills"), &*self.var)
     }
 
-    /// The session's MCP gateway (extensions/mcp): the servers of `mcp.json`, and of `.pi/mcp.json` in a trusted
+    /// The session's MCP gateway (TypeScript's extensions/mcp, built in): the servers of `mcp.json`, and of `.pi/mcp.json` in a trusted
     /// project, reached from the REPL through the `mcp` tool. Server log messages go to `<agentDir>/mcp.log`.
     pub fn mcp_gateway(&self) -> Arc<mcp::gateway::Gateway> {
         let masker = self.masker.clone();
         mcp::gateway::Gateway::new(mcp::gateway::GatewayOptions {
             agent_dir: self.agent_dir.clone(),
             project_trusted: self.project_trusted,
-            servers: (!self.mcp_enabled).then(Vec::new),
+            servers: None,
             env: mcp::connection::ConnectionEnv {
                 cwd: self.cwd.clone(),
                 home: self.home.clone(),
@@ -365,6 +351,8 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
             .as_ref()
             .map(|t| mcp::gateway::server_names_of(&t.description))
             .unwrap_or_default(),
+        // The REPL's only `tools.*` tool is the gateway (TypeScript lists it among its extension tools): without
+        // `mcp.json` servers there is none, and the guide has no tools section.
         extension_tools: tool
             .into_iter()
             .map(|t| resources::runtime_guide::ExtensionToolSummary {
@@ -378,9 +366,6 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
         ..Default::default()
     }
 }
-
-/// How long an extension may take to answer `commands/complete` (completions are asked as the user types).
-const EXTENSION_COMPLETION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The root system prompt, rendered again only when the settings' [`crate::lane::PromptMode`] changes (engineering
 /// mode, `alwaysSkills`), so the prompt-cache prefix stays stable (session-worker.ts `currentSystemPrompt`). A
@@ -413,7 +398,6 @@ impl SystemPrompt {
         env: &Env,
         config: &Config,
         trusted: bool,
-        extensions: Option<String>,
         guide: resources::runtime_guide::RuntimeGuideOptions,
         flags: &crate::session_flags::SessionFlags,
         extra: Arc<crate::session_resources::SessionResources>,
@@ -434,7 +418,6 @@ impl SystemPrompt {
                 &env,
                 &env.cwd.display().to_string(),
                 loki_root.as_deref(),
-                extensions.as_deref(),
                 &guide,
                 mode,
                 &extra,
@@ -471,18 +454,12 @@ impl SystemPrompt {
     }
 }
 
-/// The process-wide composition: configuration, loaded extensions and injected services.
+/// The process-wide composition: configuration and injected services.
 pub struct Runtime {
     pub config: Arc<Config>,
-    pub extensions: Option<Arc<ExtensionHost>>,
     pub services: Services,
-    /// Problems found loading extensions (reported once, as warnings).
+    /// Problems found building the session (the `alwaysSkills` warnings of the system prompt), reported once.
     pub diagnostics: Vec<String>,
-    /// The extensions that did not load (a manifest that is invalid or missing, a JavaScript extension, a process
-    /// that failed to start): the TUI's `[Extension issues]`.
-    pub extension_errors: Vec<extensions::manifest::Diagnostic>,
-    /// What extension processes ask the session (crate::extension_host), bound to the session actor once it opens.
-    pub extension_api: Arc<crate::extension_host::SessionHost>,
     /// The root lane's system prompt (subagents use it too).
     pub system: SystemPrompt,
     /// Where session-scoped host files (job logs, inference context) live: the cwd's session directory.
@@ -492,98 +469,25 @@ pub struct Runtime {
     /// The Hindsight server and bank every instance shares (`ULTRON_HINDSIGHT_URL`, the global `hindsightUrl`
     /// setting, else localhost:8888; `ULTRON_HINDSIGHT_BANK`, else "ultron"); `None`: memory is off.
     pub hindsight: Option<hindsight::Endpoint>,
-    /// Keeps the extensions' providers in the model registry of this profile (crate::extension_providers).
-    pub extension_providers: Option<crate::extension_providers::Installed>,
-    /// pi-mcp-adapter was left out next to the built-in MCP gateway (crate::mcp_coexistence): the session's start
-    /// says so.
-    pub mcp_adapter_skipped: bool,
 }
 
 impl Runtime {
-    /// Read the settings, start the extensions configured for `cwd` (`mode`: "print", "json" or "rpc") and build
-    /// the root system prompt.
+    /// Read the settings and the local resources for `cwd` (`mode`: "print", "json" or "rpc") and build the root
+    /// system prompt.
     pub fn new(env: &Env, mode: &str, sessions_dir: PathBuf, services: Services) -> Result<Runtime, String> {
         let mut services = services;
-        let mut config = Config::from_env(env);
-        config.mcp_enabled = !services.no_extensions;
-        // The worker's project trust (`workerProjectTrusted`, decided by Config): a trusted project's extensions load too.
+        let config = Config::from_env(env);
+        // The worker's project trust (`workerProjectTrusted`, decided by Config).
         let trusted = config.project_trusted;
         let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted);
-        // resource-loader.ts `reload`: the settings packages (installed when missing) and the `-e` resources.
+        // resource-loader.ts `reload`: the local skills and prompts.
         let resolved = crate::session_resources::resolve(
             env,
             config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted),
-            &services.session,
         );
         services.resources = Arc::new(resolved);
-        let mut discovery = crate::session_flags::extension_discovery_with(
-            env,
-            &config.agent_dir,
-            &manager,
-            &services.session,
-            services.no_extensions,
-            &services.resources,
-        );
-        let extension_api = Arc::new(crate::extension_host::SessionHost::new(
-            env.cwd.clone(),
-            config.agent_dir.clone(),
-            env.home.clone(),
-            mode,
-            trusted,
-            services.extension_ui.clone(),
-            services.on_extension_shutdown.clone(),
-        ));
-        // `--no-extensions`: extensions are not discovered (`-e` ones still load).
-        let extensions = (!discovery.manifests.is_empty()).then(|| {
-            let session = SessionInfo {
-                cwd: env.cwd.display().to_string(),
-                mode: mode.into(),
-                has_ui: extension_api.ui_capable(),
-                flags: Map::new(),
-            };
-            let manifests = crate::guard_log::with_loki_builtin(discovery.manifests, config.loki);
-            Arc::new(ExtensionHost::load(manifests, session, extension_api.clone()))
-        });
-        // `preferNativeMcp`: an extension that registers its own `mcp` tool replaces the built-in gateway (the
-        // user chose it); otherwise, next to the gateway, pi-mcp-adapter is left out with a notice.
-        let mcp_replaced = config.mcp_enabled
-            && extensions.as_ref().is_some_and(|host| {
-                host.functions()
-                    .iter()
-                    .any(|(_, function)| function.name == mcp::gateway::MCP_GATEWAY_TOOL)
-            });
-        if mcp_replaced {
-            config.mcp_enabled = false;
-            config.mcp_replaced = true;
-        }
-        let mut diagnostics: Vec<String> = services.resources.diagnostics.clone();
-        let is_adapter = |d: &extensions::manifest::Diagnostic| crate::mcp_coexistence::is_mcp_adapter(&d.path);
-        let mcp_adapter_skipped = config.mcp_enabled
-            && (!services.resources.mcp_adapters.is_empty() || discovery.diagnostics.iter().any(is_adapter));
-        if mcp_adapter_skipped {
-            discovery.diagnostics.retain(|d| !is_adapter(d));
-        } else {
-            diagnostics.extend(services.resources.mcp_adapters.iter().cloned());
-        }
-        diagnostics.extend(
-            discovery
-                .diagnostics
-                .iter()
-                .map(|d| format!("{}: {}", d.path.display(), d.message)),
-        );
-        let mut extension_errors = discovery.diagnostics.clone();
-        if let Some(host) = &extensions {
-            diagnostics.extend(
-                host.diagnostics
-                    .iter()
-                    .map(|d| format!("{}: {}", d.path.display(), d.message)),
-            );
-            extension_errors.extend(host.diagnostics.iter().cloned());
-        }
+        let mut diagnostics: Vec<String> = Vec::new();
         let hindsight = hindsight::Endpoint::resolve(&|key| (env.var)(key), hindsight::resolve::setting_url(&manager));
-        let guide = extensions
-            .as_ref()
-            .and_then(|host| extensions::kernel_api::guide_section(&host.functions()));
         // The `mcp` gateway lives in the REPL: the runtime guide lists it with its servers (`mcpServerNames`).
         let runtime_guide = mcp_runtime_guide(&config);
         let system = match &services.session.system_prompt {
@@ -593,37 +497,20 @@ impl Runtime {
                 env,
                 &config,
                 trusted,
-                guide,
                 runtime_guide,
                 &services.session,
                 services.resources.clone(),
             )?,
         };
         diagnostics.extend(system.warnings());
-        if let Some(host) = &extensions {
-            extension_api.bind_extensions(host, system.clone());
-        }
-        // `registerProvider`: the declared providers join the model registry; one that does not compose is reported.
-        let extension_providers = extensions.as_ref().map(|host| {
-            let source = crate::extension_providers::from_host(host);
-            let models = ::config::paths::AgentPaths::new(&config.agent_dir).models();
-            let mut registry = ai::model_registry::ModelRegistry::load(&models, &env.home);
-            diagnostics.extend(crate::extension_providers::apply(&mut registry, &source()));
-            crate::extension_providers::install(&config.agent_dir, source)
-        });
         Ok(Runtime {
             config: Arc::new(config),
-            extensions,
             services,
             diagnostics,
-            extension_errors,
-            extension_api,
             system,
             sessions_dir,
             mode: mode.to_string(),
             hindsight,
-            extension_providers,
-            mcp_adapter_skipped,
         })
     }
 
@@ -720,7 +607,7 @@ impl Runtime {
             None => None,
         };
         let skills_config = config.clone();
-        // `--no-skills`: only the `-e` sources' skills are in the catalog.
+        // `--no-skills`: the catalog is empty.
         let no_skills = self.services.session.no_skills;
         let extra = self.services.resources.clone();
         let loader: kernel_apis::SkillLoader = Arc::new(move || Ok(skill_sources(&skills_config, &extra, no_skills)));
@@ -748,11 +635,7 @@ impl Runtime {
         // `session_start` of the MCP extension: eager servers connect in the background; configuration errors were
         // reported with the runtime's diagnostics.
         let gateway = config.mcp_gateway();
-        let mut notices = Vec::new();
-        if self.mcp_adapter_skipped {
-            notices.push((crate::mcp_coexistence::ADAPTER_NOTICE.to_string(), "info".to_string()));
-        }
-        notices.extend(gateway.start(self.services.mcp_notices.clone()));
+        let notices = gateway.start(self.services.mcp_notices.clone());
         if let Some(notify) = &self.services.mcp_notices {
             for (message, level) in notices {
                 notify(&message, &level);
@@ -775,14 +658,11 @@ impl Runtime {
             memory: Arc::new(MemoryApi { service: memory }),
             grants: Arc::new(GrantsModule::new(modules("grants"), clock, false)),
             hints: Arc::new(HintsModule::new(modules("hints"))),
-            // `tools.*`: the `mcp` gateway and the extension processes' functions called from the REPL, detached
-            // after `yield_after`.
+            // `tools.*`: the `mcp` gateway called from the REPL, detached after `yield_after`.
             tools: Arc::new(kernel_apis::ToolCalls::new(
-                (gateway.tool().is_some() || self.extensions.is_some()).then(|| {
-                    Arc::new(crate::session_tools::SessionTools {
-                        extensions: self.extensions.clone().map(crate::extension_tools::ExtensionTools::new),
-                        mcp: Some(gateway.clone()),
-                    }) as Arc<dyn kernel_apis::ToolRunner>
+                gateway.tool().is_some().then(|| {
+                    Arc::new(crate::session_tools::SessionTools { mcp: gateway.clone() })
+                        as Arc<dyn kernel_apis::ToolRunner>
                 }),
                 modules("tool-calls"),
             )),
@@ -817,7 +697,6 @@ impl Runtime {
         ));
         let session_id = session_id.to_string();
         let system = self.system.clone();
-        let extensions = self.extensions.clone();
         let sessions_dir = self.sessions_dir.clone();
         let services = self.services.clone();
         let model = model.clone();
@@ -995,7 +874,6 @@ impl Runtime {
                 mcp: gateway,
                 host,
                 delegation,
-                extensions,
                 apis,
                 model,
                 api_key,
@@ -1043,8 +921,8 @@ impl Runtime {
         Ok(stack)
     }
 
-    /// The file hooks of a host in `cwd`: Loki's (see [`Config::file_hooks_in`]), then extensions'
-    /// `after_cell_changes`.
+    /// The file hooks of a host in `cwd`: Loki's (see [`Config::file_hooks_in`]), with `observer` told each cell's
+    /// changes.
     fn file_hooks_in(
         &self,
         cwd: &Path,
@@ -1062,15 +940,7 @@ impl Runtime {
                 });
             }) as OnRecord
         });
-        let mut hooks = self.config.file_hooks_in(cwd, record);
-        if let Some(extensions) = &self.extensions {
-            hooks.add(Box::new(crate::extension_file_hooks::ExtensionBeforeWrite::new(
-                extensions.clone(),
-            )));
-            hooks.add(Box::new(crate::extension_file_hooks::ExtensionAfterCell::new(
-                extensions.clone(),
-            )));
-        }
+        let hooks = self.config.file_hooks_in(cwd, record);
         if let Some(observer) = observer {
             hooks.observe(observer);
         }
@@ -1192,8 +1062,7 @@ impl HostHandler for Closed {
     }
 }
 
-/// One session's host stack: the sandboxed host, the REPL lanes, the subagent host, the extensions and the
-/// kernel-API modules.
+/// One session's host stack: the sandboxed host, the REPL lanes, the subagent host and the kernel-API modules.
 pub struct Stack {
     config: Arc<Config>,
     /// The session's MCP servers (closed with the session).
@@ -1202,7 +1071,6 @@ pub struct Stack {
     pub delegation: Delegation,
     pub lanes: Lanes,
     pub events: Arc<RuntimeEvents>,
-    extensions: Option<Arc<ExtensionHost>>,
     apis: ApiModules,
     model: Model,
     api_key: Option<String>,
@@ -1307,7 +1175,6 @@ impl Stack {
         };
         let router = Router {
             delegation,
-            extensions: self.extensions.clone(),
             host: self.host_of(lane),
             progress: (lane == crate::lane::MAIN).then(|| self.cell_progress.clone()),
             lane: lane.to_string(),
@@ -1374,12 +1241,6 @@ impl Stack {
                 self.apis.family.clone(),
                 self.delegation.clone(),
                 self.lane_steer.clone(),
-            )) as Arc<dyn kernel_apis::ApiModule>)
-            .with(Arc::new(crate::extension_apis::ExtensionCommandsApi::new(
-                self.extensions.clone(),
-                self.config.cwd.clone(),
-                self.config.agent_dir.clone(),
-                self.config.home.clone(),
             )) as Arc<dyn kernel_apis::ApiModule>);
         let observed: Arc<dyn HostHandler> = if self.cell_hints.enabled() {
             Arc::new(ObservedByHints {
@@ -1398,8 +1259,8 @@ impl Stack {
         })
     }
 
-    /// `lane`'s kernel (not started): in the lane's working directory, inside the shell sandbox, with the
-    /// extension functions listed, its snapshot under the profile and the continuity policy.
+    /// `lane`'s kernel (not started): in the lane's working directory, inside the shell sandbox, with its snapshot
+    /// under the profile and the continuity policy.
     fn kernel(&self, lane: &str) -> Result<Kernel, String> {
         let config = &self.config;
         let (cwd, extra) = match lock(&self.workspaces).get(lane) {
@@ -1417,11 +1278,6 @@ impl Stack {
             ("ULTRON_RLM_STREAM_OUTPUT".into(), "1".into()),
             ("HOME".into(), config.home.display().to_string()),
         ];
-        if let Some(host) = &self.extensions
-            && let Some(listing) = extensions::kernel_api::kernel_env(&host.functions())
-        {
-            options.env.push(listing);
-        }
         options.env.extend(extra);
         let snapshots = config.session_dir("rlm-snapshots", &self.session_id);
         std::fs::DirBuilder::new()
@@ -1491,80 +1347,16 @@ impl Stack {
         .with_context_reminders(self.context_reminders.clone()))
     }
 
-    /// `listCommands`: the extensions' slash commands, `/review`, prompt templates and skills (crate::commands).
+    /// `listCommands`: `/mcp`, `/review`, prompt templates and skills (crate::commands).
     pub fn commands(&self) -> Vec<Value> {
-        let config = &self.config;
-        let trusted = crate::extension_commands::worker_project_trusted(&config.cwd, &config.agent_dir, &config.home);
-        let settings = config::settings::SettingsManager::create(&config.cwd, &config.agent_dir, trusted);
-        let extensions: Vec<crate::commands::ExtensionCommand> = self
-            .extensions
-            .iter()
-            .flat_map(|host| host.router().registered_commands())
-            .map(|command| crate::commands::ExtensionCommand {
-                source_info: crate::extension_commands::source_info(
-                    Path::new(&command.extension_path),
-                    &settings,
-                    &config.cwd,
-                    &config.agent_dir,
-                    &config.home,
-                ),
-                name: command.invocation_name,
-                description: command.description,
-            })
-            .collect();
         let bundled = self.config.bundled_skills();
-        let mut commands = crate::commands::list_commands_with(
+        let commands = crate::commands::list_commands_with(
             &self.config.cwd.display().to_string(),
             &self.config.agent_dir.display().to_string(),
             bundled.as_deref(),
-            &extensions,
             &self.services.resources,
         );
-        if self.config.mcp_replaced {
-            // The built-in `/mcp` goes with the gateway it belongs to.
-            commands.retain(|c| !(c["name"] == "mcp" && c["sourceInfo"]["path"] == "<inline:mcp>"));
-        }
         crate::session_flags::filter_commands(commands, &self.services.session)
-    }
-
-    /// Runs the extension command `/name args` (`LegacyExtensionCommands.run`): `{notifications: []}` once its
-    /// handler returned.
-    pub fn run_extension_command(&self, name: &str, args: &str) -> Result<Value, String> {
-        let host = self
-            .extensions
-            .as_ref()
-            .filter(|host| {
-                host.router()
-                    .registered_commands()
-                    .iter()
-                    .any(|c| c.invocation_name == name)
-            })
-            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
-        host.run_command(name, args, None).map_err(|e| e.to_string())?;
-        Ok(serde_json::json!({"notifications": []}))
-    }
-
-    /// The argument completions of the extension command `/name` for `prefix` (`commands/complete`): its items
-    /// (`{value, label, description?}`), or `null` when it offers none.
-    pub fn complete_extension_command(&self, name: &str, prefix: &str) -> Result<Value, String> {
-        let host = self
-            .extensions
-            .as_ref()
-            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
-        let command = host
-            .router()
-            .registered_commands()
-            .into_iter()
-            .find(|c| c.invocation_name == name)
-            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
-        let process = host
-            .processes()
-            .iter()
-            .find(|p| p.manifest().path.display().to_string() == command.extension_path)
-            .ok_or_else(|| format!("Unknown extension command: /{name}"))?;
-        process
-            .complete_command(&command.name, prefix, EXTENSION_COMPLETION_TIMEOUT)
-            .map_err(|e| e.to_string())
     }
 
     /// The model the session's lanes run on unless told otherwise.
@@ -1584,8 +1376,7 @@ impl Stack {
         if let Some(work) = self.work.get() {
             work.hand_over();
         }
-        // Tool calls run in this worker's extension processes and MCP connections: they end with it (a successor
-        // reads them as interrupted).
+        // Tool calls run in this worker's MCP connections: they end with it (a successor reads them as interrupted).
         self.apis.tools.close();
         self.mcp.close();
         self.lanes.close();
@@ -1829,25 +1620,12 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
         // A worktree subagent works in its worktree: its shell, kernel and prompt name it, not the checkout.
         let host = Runtime {
             config: stack.config.clone(),
-            extensions: None,
             services: stack.services.clone(),
             diagnostics: Vec::new(),
-            extension_errors: Vec::new(),
-            extension_api: Arc::new(crate::extension_host::SessionHost::new(
-                PathBuf::new(),
-                PathBuf::new(),
-                PathBuf::new(),
-                "",
-                false,
-                None,
-                None,
-            )),
             system: SystemPrompt::fixed(""),
             sessions_dir: stack.sessions_dir.clone(),
             mode: String::new(),
             hindsight: None,
-            extension_providers: None,
-            mcp_adapter_skipped: false,
         }
         .host_in(
             Path::new(cwd),
@@ -1922,12 +1700,11 @@ struct ChildDefaults {
     api_key: Option<String>,
 }
 
-/// Routes a cell's requests: subagents to the delegation host (as that lane), extension functions to their
-/// processes, everything else to the host operations. (The lane API — `rlm.lanes`, `rlm.lane.*`, `rlm.cells`,
+/// Routes a cell's requests: subagents to the delegation host (as that lane), everything else to the host
+/// operations. (The lane API — `rlm.lanes`, `rlm.lane.*`, `rlm.cells`,
 /// `rlm.cell.cancel`, `rlm.recovery` — is answered by the lanes before a request gets here.)
 struct Router {
     delegation: Arc<dyn HostHandler>,
-    extensions: Option<Arc<ExtensionHost>>,
     host: Arc<Host>,
     /// The root lane's cell progress (crate::turns): shell output is published as the cell's partial output.
     progress: Option<Arc<Mutex<Option<harness::chat::CellProgress>>>>,
@@ -1962,33 +1739,9 @@ impl HostHandler for Router {
         if DELEGATION_REQUESTS.contains(&kind) || kind.starts_with("rlm.worktrees.") {
             return self.delegation.handle(kind, payload, signal);
         }
+        // runtime.py's `ext` (Pi extension functions): Pi extensions are not supported by ultron-rs.
         if kind == "ext.call" || kind == "ext.list" {
-            let host = self
-                .extensions
-                .as_ref()
-                .ok_or("No extensions are loaded in this session")?;
-            let cancel = extensions::CancelToken::new();
-            let watched = cancel.clone();
-            let ended = signal.clone();
-            // A cell that ends (or is cancelled) cancels its call.
-            let watcher = std::thread::spawn(move || {
-                while !ended.wait(Duration::from_millis(200)) {
-                    if watched.is_cancelled() {
-                        return;
-                    }
-                }
-                watched.cancel(Some("the cell ended"));
-            });
-            let result = extensions::kernel_api::handle(host, kind, &Value::Object(payload), None, Some(&cancel))
-                .unwrap_or_else(|| {
-                    Err(extensions::RpcError::Other(format!(
-                        "Unknown extension request: {kind}"
-                    )))
-                })
-                .map_err(|e| e.to_string());
-            cancel.cancel(None);
-            let _ = watcher.join();
-            return result;
+            return Err(EXTENSIONS_UNSUPPORTED.into());
         }
         let shell = matches!(kind, "bash" | "shell.bash" | "shell.run" | "shell.result");
         let result = self.host.handle_lane(&self.lane, kind, payload, signal);

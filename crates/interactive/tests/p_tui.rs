@@ -342,66 +342,6 @@ fn ui(h: &mut Harness, request: Value) {
 }
 
 #[test]
-fn interactive_p_tui_extension_status_widgets_and_title() {
-    let mut h = harness();
-    ui(
-        &mut h,
-        json!({"method": "setStatus", "statusKey": "ext", "statusText": "indexing 3/9"}),
-    );
-    assert!(h.screen_at(100, 30).contains("indexing 3/9"));
-    ui(&mut h, json!({"method": "setStatus", "statusKey": "ext"}));
-    assert!(!h.screen_at(100, 30).contains("indexing"));
-    ui(
-        &mut h,
-        json!({"method": "setWidget", "widgetKey": "todo", "widgetLines": ["- [ ] ship it"]}),
-    );
-    ui(
-        &mut h,
-        json!({"method": "setWidget", "widgetKey": "zz", "widgetLines": ["below line"], "widgetPlacement": "belowEditor"}),
-    );
-    let s = h.screen_at(100, 30);
-    let lines: Vec<&str> = s.lines().collect();
-    let at = |needle: &str| {
-        lines
-            .iter()
-            .position(|l| l.contains(needle))
-            .unwrap_or_else(|| panic!("{needle}: {s}"))
-    };
-    // Above the editor, and below it above Pi's footer (the cwd line).
-    assert!(at("- [ ] ship it") < at("below line"), "{s}");
-    assert!(at("below line") < at("/p"), "{s}");
-    assert_eq!(lines[at("- [ ] ship it")], " - [ ] ship it");
-    ui(&mut h, json!({"method": "setWidget", "widgetKey": "todo"}));
-    assert!(!h.screen_at(100, 30).contains("ship it"));
-    h.app.terminal_writes.clear();
-    ui(&mut h, json!({"method": "setTitle", "title": "pi - indexing"}));
-    assert_eq!(h.app.terminal_writes, ["\x1b]0;pi - indexing\x07"]);
-}
-
-#[test]
-fn interactive_p_tui_extension_editor_dialog_is_multi_line() {
-    let mut h = harness();
-    ui(
-        &mut h,
-        json!({"method": "editor", "id": "e1", "title": "Edit note", "prefill": "line one"}),
-    );
-    let s = h.screen();
-    assert!(s.contains("Edit note") && s.contains("line one"), "{s}");
-    assert!(
-        s.contains("enter submit  shift+enter/ctrl+j newline  escape/ctrl+c cancel  ctrl+g"),
-        "{s}"
-    );
-    // Shift+Enter adds a line; Enter submits both.
-    h.app.handle_input("\x1b[13;2u");
-    h.typed("two");
-    h.app.handle_input("\r");
-    assert_eq!(h.calls(), ["respond e1 {\"value\":\"line one\\ntwo\"}"]);
-    ui(&mut h, json!({"method": "editor", "id": "e2", "title": "Again"}));
-    h.app.handle_input(ESC);
-    assert_eq!(h.calls().last().unwrap(), "respond e2 {\"cancelled\":true}");
-}
-
-#[test]
 fn interactive_p_tui_extension_input_counts_down_and_cancels() {
     let mut h = harness();
     ui(

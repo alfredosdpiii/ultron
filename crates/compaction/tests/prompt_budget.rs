@@ -19,7 +19,7 @@ fn size(system: u64, tools: u64) -> PromptSize {
     PromptSize { system, tools }
 }
 
-const FIX: &str = "Shorten the system prompt (AGENTS.md and other context files, --system-prompt or --append-system-prompt, extension guides), lower compaction.reserveTokens, or switch to a model with a larger context window.";
+const FIX: &str = "Shorten the system prompt (AGENTS.md and other context files, --system-prompt or --append-system-prompt), lower compaction.reserveTokens, or switch to a model with a larger context window.";
 
 #[test]
 fn compaction_prompt_budget_sizes_use_the_auto_compaction_estimator() {

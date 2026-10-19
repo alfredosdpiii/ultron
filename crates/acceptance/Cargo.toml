@@ -22,7 +22,6 @@ daemon = { path = "../daemon" }
 [dev-dependencies]
 ai = { path = "../ai" }
 delegation = { path = "../delegation" }
-extensions = { path = "../extensions" }
 harness = { path = "../harness" }
 host = { path = "../host" }
 interactive = { path = "../interactive" }

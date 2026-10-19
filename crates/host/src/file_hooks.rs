@@ -59,7 +59,7 @@ pub struct AfterCellReport {
     pub outcome: AfterOutcome,
 }
 
-/// One registered guard (Loki, extensions). `Err` means the guard could not check (the write proceeds unchecked).
+/// One registered guard (Loki). `Err` means the guard could not check (the write proceeds unchecked).
 pub trait FileWriteGuard: Send + Sync {
     /// Shown in notes and statistics ("Loki").
     fn name(&self) -> &str;
@@ -84,7 +84,7 @@ pub trait FileWriteGuard: Send + Sync {
     fn before_write(&self, _path: &Path, _content: &str, _cwd: &Path) -> Result<Verdict, String> {
         Ok(Verdict::Allow(None))
     }
-    /// [`Self::before_write`] for a write of the cell on `lane` (the extension event carries the lane).
+    /// [`Self::before_write`] for a write of the cell on `lane`.
     fn before_write_on(&self, path: &Path, content: &str, cwd: &Path, _lane: &str) -> Result<Verdict, String> {
         self.before_write(path, content, cwd)
     }

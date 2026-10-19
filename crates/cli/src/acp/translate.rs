@@ -1,6 +1,6 @@
 //! The pure half of `ultron acp`: ACP prompt content blocks become one user message, the RPC event stream of
 //! [`crate::rpc`] (Pi's wire events, as `--mode rpc` writes them) becomes ACP `session/update`s, a stored conversation
-//! becomes its replay, and an extension dialog becomes a `session/request_permission`.
+//! becomes its replay.
 //!
 //! Every `rlm` cell is one ACP tool call: `kind: "execute"` (`"edit"` once it changed files), its code as the first
 //! content block and `rawInput.code`, its output as the last content block when it ends. Files a cell changed come as
@@ -266,7 +266,7 @@ pub enum Action {
     },
     /// The run ended (`agent_end`): its messages.
     RunEnded(Vec<Value>),
-    /// An extension dialog or notification of the worker.
+    /// A dialog or notification of the worker (`/mcp`, the MCP gateway).
     ExtensionUi(Value),
 }
 
@@ -406,81 +406,6 @@ pub fn replay(messages: &[Value]) -> Vec<Value> {
         ));
     }
     updates
-}
-
-/// An extension dialog the client can answer as a permission request.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Dialog {
-    /// The worker's dialog id.
-    pub id: String,
-    pub method: String,
-    /// The options a `select` offers (its answer is the chosen text).
-    pub choices: Vec<String>,
-}
-
-/// `extension_ui_request` -> the `session/request_permission` params (without `sessionId`) of a `confirm` or
-/// `select` dialog; `None` for other requests (notifications, text input), answered or shown otherwise.
-pub fn permission_request(request: &Value, tool_call_id: Option<&str>) -> Option<(Dialog, Value)> {
-    let id = request["id"].as_str()?.to_string();
-    let method = request["method"].as_str()?.to_string();
-    let title = request["title"].as_str().unwrap_or("Ultron asks");
-    let (choices, options): (Vec<String>, Vec<Value>) = match method.as_str() {
-        "confirm" => (
-            Vec::new(),
-            vec![
-                json!({"optionId": "allow", "name": "Yes", "kind": "allow_once"}),
-                json!({"optionId": "reject", "name": "No", "kind": "reject_once"}),
-            ],
-        ),
-        "select" => {
-            let choices: Vec<String> = request["options"]
-                .as_array()?
-                .iter()
-                .filter_map(|o| o.as_str().map(str::to_string))
-                .collect();
-            let options = choices
-                .iter()
-                .enumerate()
-                .map(|(i, choice)| json!({"optionId": format!("choice-{i}"), "name": choice, "kind": "allow_once"}))
-                .chain(std::iter::once(
-                    json!({"optionId": "reject", "name": "Cancel", "kind": "reject_once"}),
-                ))
-                .collect();
-            (choices, options)
-        }
-        _ => return None,
-    };
-    let mut content = Vec::new();
-    if let Some(message) = request["message"].as_str().filter(|m| !m.is_empty()) {
-        content.push(text_content(message));
-    }
-    let tool_call_id = tool_call_id.map_or_else(|| format!("ultron-ui-{id}"), str::to_string);
-    let params = json!({
-        "toolCall": {"toolCallId": tool_call_id, "title": title, "kind": "other", "status": "pending", "content": content},
-        "options": options,
-    });
-    Some((Dialog { id, method, choices }, params))
-}
-
-/// The worker's answer to a dialog from the client's `RequestPermissionResponse` (`None`: no valid answer, cancel).
-pub fn dialog_answer(dialog: &Dialog, response: &Value) -> Value {
-    let outcome = &response["outcome"];
-    let selected = (outcome["outcome"] == "selected")
-        .then(|| outcome["optionId"].as_str())
-        .flatten();
-    match (dialog.method.as_str(), selected) {
-        ("confirm", Some("allow")) => json!({"confirmed": true}),
-        ("confirm", Some("reject")) => json!({"confirmed": false}),
-        ("select", Some(option)) => match option
-            .strip_prefix("choice-")
-            .and_then(|i| i.parse::<usize>().ok())
-            .and_then(|i| dialog.choices.get(i))
-        {
-            Some(choice) => json!({"value": choice}),
-            None => json!({"cancelled": true}),
-        },
-        _ => json!({"cancelled": true}),
-    }
 }
 
 /// A diff block for `path` (absolute).

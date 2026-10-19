@@ -1,5 +1,6 @@
-// Records `ultron config` (cli/config-selector.ts, ConfigSelectorComponent) in tmux: the resource list of a local
-// package and the agent dir's auto-discovered resources, toggling resources (global mode writes `+`/`-` patterns,
+// Records `ultron config` (cli/config-selector.ts, ConfigSelectorComponent) in tmux: the resource list of a settings
+// `prompts` entry and the agent dir's auto-discovered resources (local resources only: Pi packages and extensions are
+// not supported by ultron-rs), toggling resources (global mode writes `+`/`-` patterns,
 // project mode cycles inherit/load/unload overrides), filtering by typing, Tab between modes, and Esc. Records every
 // stable screen and the settings files the run leaves. offline-guard.mjs is loaded into the TypeScript process and
 // the generator fails if anything tried to leave loopback. crates/cli/tests/config_tui.rs replays it.
@@ -18,27 +19,26 @@ const ROWS = 30;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const resources = {
-	"agent/extensions/alpha.ts": "",
-	"agent/extensions/tool/index.ts": "",
+	"agent/skills/editor/SKILL.md": "---\nname: editor\ndescription: d\n---\n",
 	"agent/skills/writer/SKILL.md": "---\nname: writer\ndescription: d\n---\n",
+	"agent/prompts/fix.md": "",
 	"agent/prompts/review.md": "",
-	"pkg/extensions/x.ts": "",
-	"pkg/extensions/y.ts": "",
-	"pkg/prompts/pp.md": "",
+	"agent/themes/ocean.json": "{}",
+	"extra/prompts/pp.md": "",
 };
 
 export const scenarios = [
 	{
 		name: "global",
 		args: ["config"],
-		files: { ...resources, "agent/settings.json": JSON.stringify({ packages: ["../pkg"] }) },
+		files: { ...resources, "agent/settings.json": JSON.stringify({ prompts: ["../extra/prompts"] }) },
 		steps: [
 			{ wait: "Global Resources" },
-			{ keys: ["Space"], wait: "[ ] x.ts" },
+			{ keys: ["Space"], wait: "[ ] editor" },
 			{ keys: ["Down", "Down", "Down"], wait: "> " },
-			{ keys: ["Space"], wait: "[ ] alpha.ts" },
-			{ type: "rev", wait: "review.md", gone: "y.ts" },
-			{ keys: ["BSpace", "BSpace", "BSpace", "Up"], wait: "y.ts" },
+			{ keys: ["Space"], wait: "[ ] review.md" },
+			{ type: "pp", wait: "pp.md", gone: "review.md" },
+			{ keys: ["BSpace", "BSpace", "Up"], wait: "review.md" },
 			{ keys: ["Escape"], wait: "<exited>" },
 		],
 		artifacts: ["agent/settings.json", "cwd/.pi/settings.json"],
@@ -48,8 +48,8 @@ export const scenarios = [
 		args: ["config", "-l", "--approve"],
 		files: {
 			...resources,
-			"agent/settings.json": JSON.stringify({ packages: ["../pkg"], extensions: ["-extensions/alpha.ts"] }),
-			"cwd/.pi/extensions/local.ts": "",
+			"agent/settings.json": JSON.stringify({ prompts: ["../extra/prompts"], skills: ["-skills/writer"] }),
+			"cwd/.pi/prompts/local.md": "",
 			"cwd/.pi/settings.json": "{}",
 		},
 		steps: [

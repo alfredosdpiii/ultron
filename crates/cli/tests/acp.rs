@@ -225,10 +225,6 @@ impl Acp {
         assert_eq!(message["jsonrpc"], "2.0", "not JSON-RPC 2.0: {line}");
         let checked = match message["method"].as_str() {
             Some("session/update") => check_def("SessionNotification", &message["params"]),
-            Some("session/request_permission") => {
-                assert!(message["id"].is_string() || message["id"].is_number(), "{message}");
-                check_def("RequestPermissionRequest", &message["params"])
-            }
             Some(other) => Err(format!("unexpected agent method {other}")),
             None => {
                 let id = message["id"].to_string();
@@ -633,108 +629,6 @@ fn cli_acp_load_replays_the_conversation_then_continues() {
     let requests = seen.lock().unwrap().requests.clone();
     let last = requests.last().unwrap()["body"].to_string();
     assert!(last.contains("Do the first thing") && last.contains("First done.") && last.contains("And the second"));
-    assert_eq!(acp.stop(), Some(0));
-}
-
-/// An extension whose `ask` function (`await tools.ask(...)` in a cell) asks `ui/confirm` and returns the answer.
-const ASKER: &str = r#"
-import json, sys, threading
-lock = threading.Lock()
-pending = {}
-counter = [1]
-def send(m):
-    with lock:
-        sys.stdout.write(json.dumps(m) + "\n"); sys.stdout.flush()
-def request(method, params):
-    with lock:
-        rid = counter[0]; counter[0] += 1
-        waiter = {"event": threading.Event(), "response": None}
-        pending[rid] = waiter
-    send({"jsonrpc": "2.0", "id": rid, "method": method, "params": params})
-    waiter["event"].wait()
-    return waiter["response"].get("result")
-def handle(m):
-    rid, method, params = m["id"], m["method"], m.get("params") or {}
-    if method == "initialize":
-        result = {"protocolVersion": "2026-10-10", "extensionInfo": {"name": "asker", "version": "1.0.0"},
-                  "capabilities": {"functions": [{"name": "ask", "description": "Ask the user"}]}}
-    elif method == "functions/call" and params.get("name") == "ask":
-        allowed = request("ui/confirm", {"title": "Run this cell?", "message": "Delete the build directory"})
-        result = {"content": [{"type": "text", "text": "answer=%s" % ("yes" if allowed else "no")}]}
-    else:
-        result = {} if method == "shutdown" else None
-    send({"jsonrpc": "2.0", "id": rid, "result": result})
-for line in sys.stdin:
-    if not line.strip():
-        continue
-    m = json.loads(line)
-    if "method" in m and "id" in m:
-        threading.Thread(target=handle, args=(m,), daemon=True).start()
-    elif "id" in m and m["id"] in pending:
-        waiter = pending.pop(m["id"]); waiter["response"] = m; waiter["event"].set()
-"#;
-
-#[test]
-fn cli_acp_extension_confirm_becomes_a_permission_request() {
-    let (port, seen) = mock_server(
-        vec![
-            anthropic_tool("toolu_ok", "r = await tools.ask(yield_after=None)\nprint(str(r))"),
-            anthropic_text("Ran it."),
-            anthropic_tool("toolu_no", "r = await tools.ask(yield_after=None)\nprint(str(r))"),
-            anthropic_text("Skipped it."),
-        ],
-        Naming::Title("Acp ask".into()),
-    );
-    let sandbox = Sandbox::new(port);
-    let installed = sandbox.agent_dir.join("extensions").join("asker");
-    std::fs::create_dir_all(&installed).unwrap();
-    std::fs::write(installed.join("asker.py"), ASKER).unwrap();
-    let python = std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| "/usr/bin/python3".into());
-    std::fs::write(
-        installed.join("extension.json"),
-        json!({"name": "asker", "command": python, "args": ["asker.py"], "eventTimeoutMs": 120000}).to_string(),
-    )
-    .unwrap();
-    let mut acp = Acp::start(&sandbox, &[]);
-    initialize(&mut acp);
-    let session = new_session(&mut acp, &sandbox.cwd);
-
-    for (option, call, expect) in [("allow", "toolu_ok", "answer=yes"), ("reject", "toolu_no", "answer=no")] {
-        acp.mark();
-        let prompt = acp.send(
-            "session/prompt",
-            json!({"sessionId": session, "prompt": [{"type": "text", "text": "go"}]}),
-        );
-        let asked = acp.wait(&|m| m["method"] == "session/request_permission");
-        let params = &asked["params"];
-        assert_eq!(params["sessionId"], session.as_str());
-        assert_eq!(params["toolCall"]["title"], "Run this cell?");
-        // The question belongs to the running cell's tool call.
-        assert_eq!(params["toolCall"]["toolCallId"], call);
-        assert_eq!(
-            params["toolCall"]["content"][0]["content"]["text"],
-            "Delete the build directory"
-        );
-        assert_eq!(params["toolCall"]["status"], "pending");
-        let kinds: Vec<&str> = params["options"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter_map(|o| o["kind"].as_str())
-            .collect();
-        assert_eq!(kinds, vec!["allow_once", "reject_once"]);
-        let id = asked["id"].clone();
-        acp.write(
-            &json!({"jsonrpc": "2.0", "id": id, "result": {"outcome": {"outcome": "selected", "optionId": option}}}),
-        );
-        assert_eq!(result(&acp.response_to(&prompt))["stopReason"], "end_turn");
-        let requests = seen.lock().unwrap().requests.clone();
-        let output = requests
-            .iter()
-            .find_map(|r| tool_result_text(&r["body"], call))
-            .unwrap();
-        assert!(output.contains(expect), "{output}");
-    }
     assert_eq!(acp.stop(), Some(0));
 }
 

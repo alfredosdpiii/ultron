@@ -178,6 +178,7 @@ fn cli_daemon_session_control_settings_trust_debug_and_models_through_the_worker
         .unwrap();
     assert!(available > 0, "the stored Anthropic key makes models available");
     control("setLabel", json!(["missing-entry", ""])).ok();
+    // Pi extensions (`session_before_fork`) are not supported by ultron-rs: nothing cancels a fork.
     assert_eq!(
         control("beforeFork", json!(["e", "before"])).unwrap(),
         Some(json!({"cancelled": false}))

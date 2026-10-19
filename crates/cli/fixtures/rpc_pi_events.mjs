@@ -1,13 +1,11 @@
 // Records the events Pi's RPC mode (`modes/rpc/rpc-mode.ts`) streams around RPC `bash` and `set_session_name`, which
 // the native RPC command (`experimental/rpc-native.ts`) does not emit: `bash_execution_update` (a local command's
-// output as it streams, under the command's id), `session_info_changed` (after a rename), `extension_error` (an
-// extension handler failed), and the `user_bash` hook's effect (an extension answers the command, or the command
-// fails closed). The child (rpc_pi_events_child.mjs) runs runRpcMode over the test-suite harness (faux provider) with
-// an inline extension equal to crates/extensions/examples/hello for these events.
+// output as it streams, under the command's id) and `session_info_changed` (after a rename). The child
+// (rpc_pi_events_child.mjs) runs runRpcMode over the test-suite harness (faux provider) without extensions (Pi
+// extensions are not supported by ultron-rs).
 //
 // Recorded per step: the responses, the events other than the deltas, and each command's streamed output joined
-// (its chunking is timing). The working directory (the session's: the child's own) and the extension's path are
-// placeholders.
+// (its chunking is timing). The working directory (the session's: the child's own) is a placeholder.
 // Run behind the offline guard, twice, same sha256: node crates/cli/fixtures/rpc_pi_events.mjs
 import "./offline-guard.mjs";
 import { spawn } from "node:child_process";
@@ -19,13 +17,10 @@ const SYSTEM_PATH = "/usr/local/bin:/usr/bin:/bin";
 
 export const steps = [
 	{ command: { id: "b1", type: "bash", command: "printf 'one\\n'; printf 'two\\n' >&2; exit 3" } },
-	{ command: { id: "b2", type: "bash", command: "hello world" } },
-	{ command: { id: "b3", type: "bash", command: "hello quietly", excludeFromContext: true } },
-	{ command: { id: "b4", type: "bash", command: "rm -rf /nowhere" }, wait: ["response", "extension_error"] },
-	{ command: { id: "b5", type: "bash", command: "bad-result" }, wait: ["response", "extension_error"] },
+	{ command: { id: "b3", type: "bash", command: "printf 'quiet\\n'", excludeFromContext: true } },
 	{ command: { type: "bash", command: "printf 'no id\\n'" } },
 	{ command: { id: "n1", type: "set_session_name", name: " Renamed " } },
-	{ command: { id: "n2", type: "set_session_name", name: "boom" }, wait: ["response", "extension_error"] },
+	{ command: { id: "n2", type: "set_session_name", name: "boom" } },
 	{ command: { id: "m1", type: "get_messages" } },
 ];
 
@@ -36,12 +31,11 @@ function stepDone(step, lines) {
 	);
 }
 
-/** The comparison's form: `cwd` and extension paths are placeholders; deltas are joined per command id. */
+/** The comparison's form: `cwd` is a placeholder; deltas are joined per command id. */
 export function canonical(lines, cwd) {
 	const scrub = (value) =>
 		JSON.parse(JSON.stringify(value), (key, v) => {
 			if (key === "timestamp" && typeof v === "number") return 0;
-			if (key === "extensionPath" && typeof v === "string") return "<ext>";
 			return typeof v === "string" ? v.split(cwd).join("<CWD>") : v;
 		});
 	const responses = [];

@@ -875,7 +875,7 @@ pub struct SetupOfferInput<'a> {
     pub stdout_is_tty: bool,
     /// The start runs the TUI: no `-p`, `--mode`, prompt, piped stdin or `@file`.
     pub interactive: bool,
-    /// A model or credential was named on the command line, or extensions were loaded with `-e`.
+    /// A model or credential was named on the command line.
     pub explicit_model: bool,
     pub var: &'a dyn Fn(&str) -> Option<String>,
     /// The user chose "Don't ask again".

@@ -1,8 +1,8 @@
 //! The worker side of the extension UI bridge (`ExtensionUIBridge` of experimental/services/extension-ui-provider.ts):
-//! dialogs (`select`, `confirm`, `input`, `editor`) and notifications of the session's extensions (`/mcp` and the MCP
-//! gateway's notices today) reach whichever client polls `ultron.extension-ui`, in Pi's RPC wire format
-//! (`extension_ui_request`). While a client polls, a dialog waits for its answer; with nobody polling, dialogs
-//! resolve at once with Pi's defaults and notifications are dropped, as in Pi's print mode.
+//! the dialogs (`select`, `input`) and notifications of `/mcp` and the MCP gateway's notices (TypeScript's inline MCP
+//! extension; Pi extensions are not supported by ultron-rs) reach whichever client polls `ultron.extension-ui`, in
+//! Pi's RPC wire format (`extension_ui_request`). While a client polls, a dialog waits for its answer; with nobody
+//! polling, dialogs resolve at once with Pi's defaults and notifications are dropped, as in Pi's print mode.
 
 use serde_json::{Map, Value, json};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
@@ -298,25 +298,5 @@ impl mcp::gateway::CommandUi for BridgeUi {
             &|| cancel.is_cancelled(),
         )?;
         answer.get("value").and_then(Value::as_str).map(String::from)
-    }
-}
-
-/// Third-party extensions' dialogs and notifications (session-core `extension_host`) over the bridge.
-impl session_core::extension_host::ExtensionUi for ExtensionUiBridge {
-    fn serving(&self) -> bool {
-        ExtensionUiBridge::serving(self)
-    }
-
-    fn dialog(
-        &self,
-        request: Map<String, Value>,
-        timeout: Option<Duration>,
-        cancelled: &dyn Fn() -> bool,
-    ) -> Option<Value> {
-        ExtensionUiBridge::dialog(self, request, timeout, cancelled)
-    }
-
-    fn emit(&self, request: Map<String, Value>) {
-        ExtensionUiBridge::emit(self, request)
     }
 }

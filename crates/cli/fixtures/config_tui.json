@@ -8,14 +8,13 @@
     "config"
    ],
    "files": {
-    "agent/extensions/alpha.ts": "",
-    "agent/extensions/tool/index.ts": "",
+    "agent/skills/editor/SKILL.md": "---\nname: editor\ndescription: d\n---\n",
     "agent/skills/writer/SKILL.md": "---\nname: writer\ndescription: d\n---\n",
+    "agent/prompts/fix.md": "",
     "agent/prompts/review.md": "",
-    "pkg/extensions/x.ts": "",
-    "pkg/extensions/y.ts": "",
-    "pkg/prompts/pp.md": "",
-    "agent/settings.json": "{\"packages\":[\"../pkg\"]}"
+    "agent/themes/ocean.json": "{}",
+    "extra/prompts/pp.md": "",
+    "agent/settings.json": "{\"prompts\":[\"../extra/prompts\"]}"
    },
    "steps": [
     {
@@ -25,7 +24,7 @@
      "keys": [
       "Space"
      ],
-     "wait": "[ ] x.ts"
+     "wait": "[ ] editor"
     },
     {
      "keys": [
@@ -39,21 +38,20 @@
      "keys": [
       "Space"
      ],
-     "wait": "[ ] alpha.ts"
+     "wait": "[ ] review.md"
     },
     {
-     "type": "rev",
-     "wait": "review.md",
-     "gone": "y.ts"
+     "type": "pp",
+     "wait": "pp.md",
+     "gone": "review.md"
     },
     {
      "keys": [
       "BSpace",
       "BSpace",
-      "BSpace",
       "Up"
      ],
-     "wait": "y.ts"
+     "wait": "review.md"
     },
     {
      "keys": [
@@ -63,17 +61,17 @@
     }
    ],
    "artifacts": {
-    "agent/settings.json": "{\n  \"packages\": [\n    {\n      \"source\": \"../pkg\",\n      \"extensions\": [\n        \"-extensions/x.ts\"\n      ]\n    }\n  ],\n  \"extensions\": [\n    \"-extensions/alpha.ts\"\n  ]\n}",
+    "agent/settings.json": "{\n  \"prompts\": [\n    \"../extra/prompts\",\n    \"-prompts/review.md\"\n  ],\n  \"skills\": [\n    \"-skills/editor/SKILL.md\"\n  ]\n}",
     "cwd/.pi/settings.json": null
    },
    "captures": [
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n>     [x] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n      [x] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n>     [ ] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n      [x] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n      [ ] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n>     [x] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n      [ ] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n>     [ ] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n> rev\n\n  User (~/agent/)\n    Prompts\n>     [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n>     [ ] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n      [ ] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n>     [ ] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n      [ ] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n<exited>\n\n\n\n\n"
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n>     [x] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n      [x] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n>     [ ] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n      [x] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n      [ ] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n>     [x] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n      [ ] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n>     [ ] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n> pp\n\n  User settings\n    Prompts\n>     [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n>     [ ] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n      [ ] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n>     [ ] editor\n      [x] writer\n    Prompts\n      [x] fix.md\n      [ ] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n<exited>\n\n\n\n\n\n\n"
    ]
   },
   {
@@ -84,15 +82,14 @@
     "--approve"
    ],
    "files": {
-    "agent/extensions/alpha.ts": "",
-    "agent/extensions/tool/index.ts": "",
+    "agent/skills/editor/SKILL.md": "---\nname: editor\ndescription: d\n---\n",
     "agent/skills/writer/SKILL.md": "---\nname: writer\ndescription: d\n---\n",
+    "agent/prompts/fix.md": "",
     "agent/prompts/review.md": "",
-    "pkg/extensions/x.ts": "",
-    "pkg/extensions/y.ts": "",
-    "pkg/prompts/pp.md": "",
-    "agent/settings.json": "{\"packages\":[\"../pkg\"],\"extensions\":[\"-extensions/alpha.ts\"]}",
-    "cwd/.pi/extensions/local.ts": "",
+    "agent/themes/ocean.json": "{}",
+    "extra/prompts/pp.md": "",
+    "agent/settings.json": "{\"prompts\":[\"../extra/prompts\"],\"skills\":[\"-skills/writer\"]}",
+    "cwd/.pi/prompts/local.md": "",
     "cwd/.pi/settings.json": "{}"
    },
    "steps": [
@@ -146,18 +143,18 @@
     }
    ],
    "artifacts": {
-    "agent/settings.json": "{\"packages\":[\"../pkg\"],\"extensions\":[\"-extensions/alpha.ts\"]}",
-    "cwd/.pi/settings.json": "{\n  \"packages\": [\n    {\n      \"source\": \"../../pkg\",\n      \"autoload\": false,\n      \"prompts\": [\n        \"-prompts/pp.md\"\n      ]\n    }\n  ]\n}"
+    "agent/settings.json": "{\"prompts\":[\"../extra/prompts\"],\"skills\":[\"-skills/writer\"]}",
+    "cwd/.pi/settings.json": "{\n  \"skills\": [],\n  \"prompts\": [\n    \"<TMP>/agent/prompts/fix.md\",\n    \"-<TMP>/agent/prompts/fix.md\"\n  ]\n}"
    },
    "captures": [
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [x] x.ts  inherited global\n      [x] y.ts  inherited global\n    Prompts\n      [x] pp.md  inherited global\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [-] x.ts  project unload\n      [x] y.ts  inherited global\n    Prompts\n      [x] pp.md  inherited global\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [+] x.ts  project load\n      [x] y.ts  inherited global\n    Prompts\n      [x] pp.md  inherited global\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [x] x.ts  inherited global\n      [x] y.ts  inherited global\n    Prompts\n      [x] pp.md  inherited global\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n      [x] x.ts  inherited global\n      [x] y.ts  inherited global\n    Prompts\n>     [-] pp.md  project unload\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  ../pkg (user)\n    Extensions\n>     [x] x.ts\n      [x] y.ts\n    Prompts\n      [x] pp.md\n  User (~/agent/)\n    Extensions\n      [ ] alpha.ts\n      [x] tool/index.ts\n    Skills\n      [x] writer\n    Prompts\n      [x] review.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [x] x.ts  inherited global\n      [x] y.ts  inherited global\n    Prompts\n      [-] pp.md  project unload\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n",
-    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  ../pkg (user) · inherited global\n    Extensions\n>     [x] x.ts  inherited global\n      [x] y.ts  inherited global\n    Prompts\n      [-] pp.md  project unload\n  User (~/agent/) · inherited global\n    Extensions\n      [ ] alpha.ts  inherited global\n      [x] tool/index.ts  inherited global\n    Skills\n      [x] writer  inherited global\n    Prompts\n      [x] review.md  inherited global\n  Project (~/cwd/.pi/)\n    Extensions\n      [x] local.ts\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n<exited>\n\n"
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [x] editor  inherited global\n      [ ] writer  inherited global\n    Prompts\n      [x] fix.md  inherited global\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [-] editor  project unload\n      [ ] writer  inherited global\n    Prompts\n      [x] fix.md  inherited global\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [+] editor  project load\n      [ ] writer  inherited global\n    Prompts\n      [x] fix.md  inherited global\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [x] editor  inherited global\n      [ ] writer  inherited global\n    Prompts\n      [x] fix.md  inherited global\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n      [x] editor  inherited global\n      [ ] writer  inherited global\n    Prompts\n>     [-] fix.md  project unload\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nGlobal Resources                                          tab switch mode · space toggle · esc close\n~/.pi/agent/settings.json\n\n>\n\n  User (~/agent/)\n    Skills\n>     [x] editor\n      [ ] writer\n    Prompts\n      [x] fix.md\n      [x] review.md\n    Themes\n      [x] ocean.json\n  User settings\n    Prompts\n      [x] pp.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [x] editor  inherited global\n      [ ] writer  inherited global\n    Prompts\n      [-] fix.md  project unload\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n\n\n\n\n",
+    "\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\nProject Local Resources                        tab switch mode · space cycle inherit/+/- · esc close\n.pi/settings.json · inherited global resources are dimmed\n\n>\n\n  User (~/agent/) · inherited global\n    Skills\n>     [x] editor  inherited global\n      [ ] writer  inherited global\n    Prompts\n      [-] fix.md  project unload\n      [x] review.md  inherited global\n    Themes\n      [x] ocean.json  inherited global\n  User settings · inherited global\n    Prompts\n      [x] pp.md  inherited global\n  Project (~/cwd/.pi/)\n    Prompts\n      [x] local.md\n\n────────────────────────────────────────────────────────────────────────────────────────────────────\n\n<exited>\n\n\n\n"
    ]
   },
   {

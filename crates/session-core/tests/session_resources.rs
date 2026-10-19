@@ -9,7 +9,6 @@
 use resources::system_prompt::{BuildOptions, build_system_prompt};
 use serde_json::{Value, json};
 use session_core::RunEnv;
-use session_core::session_flags::SessionFlags;
 use session_core::session_resources::{self, SessionResources};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -89,13 +88,7 @@ fn resolve(root: &Root, case: &Value) -> SessionResources {
     let env = run_env(&root.root);
     let settings =
         config::settings::SettingsManager::create(&env.cwd, &root.root.join("agent"), case["trusted"] == true);
-    let flags = SessionFlags {
-        no_skills: case["noSkills"] == true,
-        ..SessionFlags::default()
-    };
-    let resolved = session_resources::resolve(&env, settings, &flags);
-    assert!(resolved.diagnostics.is_empty(), "{:?}", resolved.diagnostics);
-    resolved
+    session_resources::resolve(&env, settings)
 }
 
 #[test]
@@ -141,7 +134,7 @@ fn session_core_resources_match_typescript_resource_loader() {
             &case["appendSystemPrompt"],
         );
         // The command list (`get_commands`) carries the same `SourceInfo`s (`resourceSourceInfo`).
-        let commands = session_core::commands::list_commands_with(&cwd, &agent, Some(&bundled), &[], &resources);
+        let commands = session_core::commands::list_commands_with(&cwd, &agent, Some(&bundled), &resources);
         let listed = |prefix: &str, rows: &[Value]| -> (Value, Value) {
             let from_commands: Vec<Value> = commands
                 .iter()
@@ -205,7 +198,6 @@ fn session_core_resources_shape_the_session_system_prompt() {
         let (prompt, warnings) = session_core::lane::system_prompt_with_resources(
             &env,
             &root.cwd(),
-            None,
             None,
             &Default::default(),
             &Default::default(),
@@ -281,21 +273,29 @@ fn session_core_resources_follow_the_stored_trust_decision() {
     );
 }
 
-/// A settings package that cannot be installed (the configured npm command fails) is reported, and the local and
-/// auto-discovered resources still load (TypeScript's reload throws; the Rust worker keeps the session usable).
+/// Pi packages are not supported by ultron-rs: a settings package is neither installed nor resolved (the
+/// configured npm command never runs), the local and auto-discovered resources load as without it, and the startup
+/// note counts the ignored entries of both scopes (the project's only when it is trusted).
 #[test]
-fn session_core_resources_keep_local_ones_when_a_package_fails() {
+fn session_core_resources_ignore_settings_packages_and_keep_local_ones() {
     use std::os::unix::fs::PermissionsExt;
     let case = case("local-entries-with-patterns");
     let root = materialize(&case);
+    let ran = root.root.join("npm-ran");
     let npm = root.root.join("bin/fake-npm");
     std::fs::create_dir_all(npm.parent().unwrap()).unwrap();
-    std::fs::write(&npm, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::write(&npm, format!("#!/bin/sh\ntouch '{}'\nexit 1\n", ran.display())).unwrap();
     std::fs::set_permissions(&npm, std::fs::Permissions::from_mode(0o755)).unwrap();
     let mut settings = case["settings"].clone();
-    settings["packages"] = json!(["npm:fixture-missing-package@1.0.0"]);
+    settings["packages"] = json!(["npm:fixture-missing-package@1.0.0", {"source": "../pkgs/local"}]);
     settings["npmCommand"] = json!([npm.display().to_string()]);
     std::fs::write(root.root.join("agent/settings.json"), settings.to_string()).unwrap();
+    std::fs::create_dir_all(root.root.join("work/.pi")).unwrap();
+    std::fs::write(
+        root.root.join("work/.pi/settings.json"),
+        json!({"packages": ["npm:project-package"]}).to_string(),
+    )
+    .unwrap();
     let vars: Vec<(String, String)> = vec![
         ("HOME".into(), root.root.join("home").display().to_string()),
         ("ULTRON_CODING_AGENT_DIR".into(), root.agent()),
@@ -305,14 +305,18 @@ fn session_core_resources_keep_local_ones_when_a_package_fails() {
         var: Arc::new(move |key| vars.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())),
         ..run_env(&root.root)
     };
-    let manager = config::settings::SettingsManager::create(&env.cwd, &root.root.join("agent"), true);
-    let resources = session_resources::resolve(&env, manager, &SessionFlags::default());
-    assert_eq!(resources.diagnostics.len(), 1, "{:?}", resources.diagnostics);
-    assert!(
-        resources.diagnostics[0].contains("failed with code 1"),
-        "{:?}",
-        resources.diagnostics
+    let trusted = config::settings::SettingsManager::create(&env.cwd, &root.root.join("agent"), true);
+    assert_eq!(
+        session_core::local_resources::ignored_packages_note(&trusted).as_deref(),
+        Some("Pi packages are not supported by ultron-rs; ignoring 3 packages in settings")
     );
+    let untrusted = config::settings::SettingsManager::create(&env.cwd, &root.root.join("agent"), false);
+    assert_eq!(
+        session_core::local_resources::ignored_packages_note(&untrusted).as_deref(),
+        Some("Pi packages are not supported by ultron-rs; ignoring 2 packages in settings")
+    );
+    let resources = session_resources::resolve(&env, trusted);
+    assert!(!ran.exists(), "npm ran for a settings package");
     let skills = session_resources::skills(&root.cwd(), &root.agent(), &resources, false, Some(&root.bundled()));
     let want: Vec<&str> = case["skills"]
         .as_array()
@@ -322,36 +326,6 @@ fn session_core_resources_keep_local_ones_when_a_package_fails() {
         .collect();
     let got: Vec<&str> = skills.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(got, want);
-}
-
-/// A worker given a skill directory in `skillPaths` (`-e` resources are directories too) gives every skill in it the
-/// directory's `cli` metadata (`findSourceInfoForPath`'s parent-directory match).
-#[test]
-fn session_core_resources_skills_under_a_cli_directory_are_cli() {
-    let case = case("untrusted-project-loads-no-project-resources");
-    let root = materialize(&case);
-    let env = run_env(&root.root);
-    let dir = root.root.join("extra/skills").display().to_string();
-    let flags = SessionFlags {
-        skill_paths: vec![dir.clone()],
-        ..SessionFlags::default()
-    };
-    let settings = config::settings::SettingsManager::create(&env.cwd, &root.root.join("agent"), false);
-    let resources = session_resources::resolve(&env, settings, &flags);
-    let skills = session_resources::skills(&root.cwd(), &root.agent(), &resources, false, None);
-    let extra: Vec<Value> = skills
-        .iter()
-        .filter(|s| s.file_path.starts_with(&dir))
-        .map(|s| root.sub(&session_resources::skill_source_info(&resources, s)))
-        .collect();
-    assert_eq!(
-        extra,
-        ["extra-one", "extra-two", "skip-me"]
-            .iter()
-            .map(|name| json!({
-                "path": format!("<TMP>/extra/skills/{name}/SKILL.md"),
-                "source": "cli", "scope": "temporary", "origin": "top-level",
-            }))
-            .collect::<Vec<_>>()
-    );
+    let empty = config::settings::SettingsManager::create(&root.root.join("nowhere"), &root.root.join("nothing"), true);
+    assert_eq!(session_core::local_resources::ignored_packages_note(&empty), None);
 }

@@ -75,12 +75,6 @@ pub enum LaneEvent {
     },
     /// The session was renamed (AgentSession `session_info_changed`).
     SessionInfoChanged(Option<String>),
-    /// An extension handler failed (rpc-mode.ts `extension_error`).
-    ExtensionError {
-        extension_path: Value,
-        event: Value,
-        error: Value,
-    },
 }
 
 impl LaneEvent {
@@ -160,11 +154,6 @@ impl LaneEvent {
                 delta: event["delta"].clone(),
             },
             "session_info_changed" => LaneEvent::SessionInfoChanged(event["name"].as_str().map(str::to_string)),
-            "extension_error" => LaneEvent::ExtensionError {
-                extension_path: event["extensionPath"].clone(),
-                event: event["event"].clone(),
-                error: event["error"].clone(),
-            },
             "retry_end" => LaneEvent::AutoRetryEnd {
                 success: event["success"] == true,
                 attempt: event["attempt"].clone(),
@@ -318,13 +307,6 @@ impl RpcEventTranslator {
                 }
                 vec![event]
             }
-            LaneEvent::ExtensionError {
-                extension_path,
-                event,
-                error,
-            } => vec![
-                json!({"type": "extension_error", "extensionPath": extension_path, "event": event, "error": error}),
-            ],
         }
     }
 

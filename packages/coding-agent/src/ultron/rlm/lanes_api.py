@@ -51,7 +51,7 @@ class CellControl:
 
 
 class LaneMethods:
-    """`rlm.results`, `rlm.lanes`, `rlm.cells` and `rlm.recovery` (see [install])."""
+    """`rlm.results`, `rlm.lanes`, `rlm.cells`, `rlm.cancel` and `rlm.recovery` (see [install])."""
 
     _bridge: Any
 
@@ -75,6 +75,12 @@ class LaneMethods:
         result = await self._bridge.request("rlm.cells", {})
         return result.get("cells", []) if isinstance(result, dict) else []
 
+    async def cancel(self, cell_id: str) -> dict[str, Any]:
+        """Cancel a running cell of any lane but this one (an id from `await rlm.cells()`, or the one a side-lane
+        note names) and wait for its end: `{"cancelled": True, "status": ...}`. Its host work stops first; a cell
+        still running after a grace period has its kernel killed with every process it started."""
+        return await self._bridge.request("rlm.cancel", {"cell": cell_id})
+
     async def recovery(self) -> dict[str, Any] | None:
         """This lane's latest kernel recovery, or None: after the kernel died and restarted, `{"reason",
         "snapshotPath", "restored": [names], "lost": [{"name", "reason"}], "interruptedCell", "unsavedCells",
@@ -84,7 +90,7 @@ class LaneMethods:
 
 def install(namespace_class: type) -> None:
     """Give the `rlm` namespace class these methods (so `help(rlm)` lists them) and `rlm.lane` / `rlm.cell`."""
-    for name in ("results", "lanes", "cells", "recovery"):
+    for name in ("results", "lanes", "cells", "cancel", "recovery"):
         setattr(namespace_class, name, LaneMethods.__dict__[name])
     namespace_class.lane = property(lambda self: LaneControl(self._bridge), doc=LaneControl.__doc__)
     namespace_class.cell = property(lambda self: CellControl(self._bridge), doc=CellControl.__doc__)

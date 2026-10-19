@@ -1,16 +1,14 @@
 //! Replays `fixtures/rpc_pi_events.json` (recorded from Pi's RPC mode, `modes/rpc/rpc-mode.ts`, over the test-suite
-//! harness by `fixtures/rpc_pi_events.mjs`): the Rust `ultron --mode rpc`, with the example extension
-//! crates/extensions/examples/hello installed (the generator's inline extension does the same for these events), gets
-//! the same command steps and must answer them the same way and stream the same Pi events:
+//! harness by `fixtures/rpc_pi_events.mjs`, without extensions): the Rust `ultron --mode rpc` gets the same command
+//! steps and must answer them the same way and stream the same Pi events:
 //!
-//! - `user_bash` reaches the extension before a command runs: `hello ...` is answered by it (recorded as if it ran,
-//!   never run), `rm -rf` and an invalid result fail the command closed (`extension_error`, the response's error);
 //! - `bash_execution_update`: a command's output as it streams, under the command's id (none without one);
-//! - `session_info_changed` after `set_session_name`, and the extension's failure on it as `extension_error`.
+//! - `session_info_changed` after `set_session_name`.
 //!
-//! Only these events are compared: the Rust stream also carries the native RPC events (rpc-native.ts: a recorded
-//! command's `message_*` and `entry_appended`, extension UI requests) that `rpc_mode.rs` compares with the native
-//! command, which Pi's RPC mode does not emit.
+//! A Pi extension in the profile's extensions directory changes nothing (Pi extensions are not supported by
+//! ultron-rs). Only these events are compared: the Rust stream also carries the native RPC events (rpc-native.ts: a
+//! recorded command's `message_*` and `entry_appended`) that `rpc_mode.rs` compares with the native command, which
+//! Pi's RPC mode does not emit.
 
 use cli::rpc::client::{RpcClient, RpcClientOptions};
 use serde_json::{Map, Value, json};
@@ -22,7 +20,7 @@ use std::time::Duration;
 
 const HANG: Duration = Duration::from_secs(120);
 /// The Pi events this fixture covers (everything else in the Rust stream is native RPC, see the module docs).
-const COVERED: [&str; 2] = ["extension_error", "session_info_changed"];
+const COVERED: [&str; 1] = ["session_info_changed"];
 
 fn fixture() -> Value {
     let text =
@@ -30,14 +28,13 @@ fn fixture() -> Value {
     serde_json::from_str(&text).unwrap()
 }
 
-/// The generator's `canonical`: timestamps 0, extension paths `<ext>`, `cwd` `<CWD>`; deltas joined per id.
+/// The generator's `canonical`: timestamps 0, `cwd` `<CWD>`; deltas joined per id.
 fn canonical(lines: &[Value], cwd: &str) -> (Vec<Value>, Vec<Value>, Map<String, Value>) {
     fn scrub(value: &Value, key: &str, cwd: &str) -> Value {
         match value {
             Value::Array(items) => Value::Array(items.iter().map(|v| scrub(v, key, cwd)).collect()),
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), scrub(v, k, cwd))).collect()),
             Value::Number(_) if key == "timestamp" => json!(0),
-            Value::String(_) if key == "extensionPath" => json!("<ext>"),
             Value::String(s) => Value::String(s.replace(cwd, "<CWD>")),
             other => other.clone(),
         }
@@ -78,7 +75,7 @@ fn silent_provider() -> (u16, Arc<AtomicUsize>) {
 }
 
 #[test]
-fn cli_rpc_pi_events_user_bash_bash_updates_session_info_and_extension_errors() {
+fn cli_rpc_pi_events_bash_updates_and_session_info() {
     let case = fixture();
     let (port, connections) = silent_provider();
     let tmp = tempfile::Builder::new()
@@ -90,10 +87,11 @@ fn cli_rpc_pi_events_user_bash_bash_updates_session_info_and_extension_errors() 
     std::fs::create_dir_all(&cwd).unwrap();
     let installed = agent_dir.join("extensions").join("hello");
     std::fs::create_dir_all(&installed).unwrap();
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../extensions/examples/hello");
-    for file in ["extension.json", "hello.py"] {
-        std::fs::copy(example.join(file), installed.join(file)).unwrap();
-    }
+    std::fs::write(
+        installed.join("extension.json"),
+        r#"{"name": "hello", "command": "/bin/false", "capabilities": {"events": ["user_bash", "session_info_changed"]}}"#,
+    )
+    .unwrap();
     std::fs::write(
         agent_dir.join("models.json"),
         json!({"providers": {"anthropic": {"baseUrl": format!("http://127.0.0.1:{port}")}}}).to_string(),

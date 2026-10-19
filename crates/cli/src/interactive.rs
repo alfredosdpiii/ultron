@@ -100,15 +100,8 @@ enum Command {
     Credentials,
     Logout(String, String),
     Changelog,
-    /// `/name args` of an extension command (`LegacyExtensionCommands.run`), `/mcp` included: run on its own
-    /// thread, its dialogs served meanwhile.
-    RunExtension(String, String),
-    /// An extension command's argument completions for a prefix (`commands/complete`).
-    CompleteExtension(String, String),
-    /// The extensions' shortcuts under these effective keybindings (`getShortcuts`).
-    ExtensionShortcuts(Vec<(String, Vec<String>)>),
-    /// Run the extension shortcut bound to the key (`shortcuts/run`).
-    RunShortcut(String, Vec<(String, Vec<String>)>),
+    /// `/mcp args` (`LegacyExtensionCommands.run`): run on its own thread, its dialogs served meanwhile.
+    RunMcp(String),
     /// `/share`; the flag is set when the user cancels the gist upload.
     Share(Arc<std::sync::atomic::AtomicBool>, Option<String>),
     /// `/bug`: the summary written by the session's model.
@@ -141,7 +134,7 @@ enum Command {
     /// Restore the working tree's files to an entry's checkpoint.
     RestoreFiles(String),
     SetLabel(String, Option<String>),
-    /// The answer to an extension dialog.
+    /// The answer to a `/mcp` dialog.
     ExtensionUiRespond(String, Value),
     /// `/trust`: the worker's trust state.
     ReadTrust,
@@ -354,17 +347,8 @@ impl LaneClient for DaemonLane {
             }
         });
     }
-    fn extension_command(&self, name: &str, args: &str) {
-        self.send(Command::RunExtension(name.to_string(), args.to_string()));
-    }
-    fn extension_completions(&self, name: &str, prefix: &str) {
-        self.send(Command::CompleteExtension(name.to_string(), prefix.to_string()));
-    }
-    fn extension_shortcuts(&self, keybindings: Vec<(String, Vec<String>)>) {
-        self.send(Command::ExtensionShortcuts(keybindings));
-    }
-    fn extension_shortcut(&self, key: &str, keybindings: Vec<(String, Vec<String>)>) {
-        self.send(Command::RunShortcut(key.to_string(), keybindings));
+    fn mcp_command(&self, args: &str) {
+        self.send(Command::RunMcp(args.to_string()));
     }
     fn login_providers(&self, query: &str) {
         self.send(Command::LoginProviders(query.to_string()));
@@ -499,8 +483,8 @@ impl LaneClient for DaemonLane {
     }
 }
 
-/// The extension UI the worker raises (`#serveExtensionUI`): polled between the link's commands, without waiting, so
-/// a dialog shows within one tick. A different session starts again from its open dialogs.
+/// The dialogs and notices `/mcp` and the MCP gateway raise in the worker (`#serveExtensionUI`): polled between the
+/// link's commands, without waiting, so a dialog shows within one tick. A different session starts again from its open dialogs.
 #[derive(Default)]
 struct ExtensionUiPoll {
     session: Option<String>,
@@ -697,11 +681,6 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
             .map(|l| LaneEvent::Thinking(l.to_string()))
             .into_iter()
             .collect(),
-        // interactive-mode.ts `showExtensionError` (a handler of the session's extensions failed).
-        Some("extension_error") => vec![LaneEvent::ExtensionError {
-            path: event["extensionPath"].as_str().unwrap_or_default().to_string(),
-            error: event["error"].as_str().unwrap_or_default().to_string(),
-        }],
         Some("run_end") => vec![LaneEvent::OperationEnded {
             // An aborted run is not a failure the TUI reports.
             error: (event["status"] == "failed")
@@ -825,25 +804,9 @@ fn link_thread(
             {
                 send(LaneEvent::Status(format!("Error: {error}")));
             }
-            // The session's extensions may declare providers: their models join the catalog before the session
-            // shows (a key pressed then already cycles over them).
-            let mut models = catalog(&catalog_env);
-            let extras = session_extras(link, &models);
-            if !extras.is_empty() {
-                models.extend(extras);
-                send(LaneEvent::Catalog(models));
-            }
             send(LaneEvent::Opened(session));
             send(LaneEvent::Entries(entries));
             send(LaneEvent::Model(model));
-            // `LegacyExtensionCommands.list`: the session's extension commands become slash commands.
-            if let Ok(Some(commands)) = link.op(&Op::Commands) {
-                let listed =
-                    session_core::extension_commands::from_listing(commands.as_array().map_or(&[][..], Vec::as_slice));
-                send(LaneEvent::ExtensionCommands(
-                    listed.into_iter().map(|c| (c.name, c.description)).collect(),
-                ));
-            }
         }
         Err(error) => send(LaneEvent::Error(error)),
     };
@@ -955,13 +918,7 @@ fn link_thread(
                 std::thread::spawn(move || {
                     let result =
                         started.and_then(|(connection, request)| connection.wait(&request).map_err(|e| e.to_string()));
-                    // An extension's `user_bash` failed it closed: its error is already shown, nothing else is.
-                    let event = match result {
-                        Ok(Some(value)) if value.get(session_core::core::USER_BASH_FAILED).is_some() => {
-                            LaneEvent::BashFailedClosed
-                        }
-                        result => LaneEvent::BashDone(result.map(|value| bash_result(&value.unwrap_or_default()))),
-                    };
+                    let event = LaneEvent::BashDone(result.map(|value| bash_result(&value.unwrap_or_default())));
                     let _ = ui.send(UiEvent::Lane(event));
                 });
             }
@@ -1058,57 +1015,16 @@ fn link_thread(
                     Err(error) => format!("Error: {error}"),
                 }))
             }
-            // A command runs until its handler returns (it may prompt): on its own thread, so the session's other
-            // commands go on meanwhile.
-            Command::CompleteExtension(name, prefix) => {
-                let (ops, ui) = (link.ops(), ui.clone());
-                std::thread::spawn(move || {
-                    let op = Op::ExtensionCompletions {
-                        name: name.clone(),
-                        prefix: prefix.clone(),
-                    };
-                    // A failed request offers nothing, as a command without completions does.
-                    let items = ops.op(&op).ok().flatten().and_then(|items| {
-                        items.as_array().map(|items| {
-                            items
-                                .iter()
-                                .filter_map(|item| {
-                                    let value = item["value"].as_str()?.to_string();
-                                    let label = item["label"].as_str().map_or_else(|| value.clone(), str::to_string);
-                                    Some((value, label, item["description"].as_str().map(str::to_string)))
-                                })
-                                .collect()
-                        })
-                    });
-                    let _ = ui.send(UiEvent::Lane(LaneEvent::ExtensionCompletions { name, prefix, items }));
-                });
-            }
-            Command::ExtensionShortcuts(keybindings) => {
-                let listed = link.op(&Op::ExtensionShortcuts { keybindings }).ok().flatten();
-                send(extension_shortcuts_event(listed.as_ref()));
-            }
-            Command::RunShortcut(key, keybindings) => {
-                // Off the link thread: the handler may prompt, and input goes on meanwhile (interactive-mode.ts runs
-                // it without blocking input).
-                let (ops, ui) = (link.ops(), ui.clone());
-                std::thread::spawn(move || {
-                    if let Err(error) = ops.op(&Op::ExtensionShortcut { key, keybindings }) {
-                        let _ = ui.send(UiEvent::Lane(LaneEvent::Error(format!(
-                            "Shortcut handler error: {error}"
-                        ))));
-                    }
-                });
-            }
-            Command::RunExtension(name, args) => {
-                // Off the link thread: a command may run long, and its dialogs wait on this client, so the link
-                // keeps polling meanwhile. The worker dispatches `/mcp` to the gateway, the rest to their process.
+            Command::RunMcp(args) => {
+                // Off the link thread: `/mcp` may run long, and its dialogs wait on this client, so the link keeps
+                // polling meanwhile. The worker dispatches it to the gateway.
                 let (connection, ui) = (link.connection(), ui.clone());
                 std::thread::spawn(move || {
                     let send = |event| {
                         let _ = ui.send(UiEvent::Lane(event));
                     };
                     let run = connection.session_target().and_then(|target| {
-                        connection.call(target, "pi.legacy-extension-commands", "run", json!([name, args]))
+                        connection.call(target, "pi.legacy-extension-commands", "run", json!(["mcp", args]))
                     });
                     match run {
                         Ok(result) => {
@@ -1396,9 +1312,7 @@ fn link_thread(
                 }
             }
             Command::RefreshCatalog => {
-                // `models.refresh()`: from the network unless offline (`PI_OFFLINE`), on its own thread. The
-                // extensions' providers do not change with it.
-                let extras = session_extras(&link, &catalog(&catalog_env));
+                // `models.refresh()`: from the network unless offline (`PI_OFFLINE`), on its own thread.
                 let (env, ui) = (catalog_env.clone(), ui.clone());
                 std::thread::spawn(move || {
                     let refresh = if (env.var)("PI_OFFLINE").is_none() {
@@ -1419,13 +1333,7 @@ fn link_thread(
                     } else {
                         CatalogRefresh::Done(Vec::new())
                     };
-                    let mut models = catalog(&env);
-                    let extras: Vec<ModelInfo> = extras
-                        .into_iter()
-                        .filter(|e| !models.iter().any(|m| m.provider == e.provider && m.id == e.id))
-                        .collect();
-                    models.extend(extras);
-                    let _ = ui.send(UiEvent::Lane(LaneEvent::Catalog(models)));
+                    let _ = ui.send(UiEvent::Lane(LaneEvent::Catalog(catalog(&env))));
                     let _ = ui.send(UiEvent::Lane(LaneEvent::CatalogRefreshed(refresh)));
                 });
             }
@@ -1460,7 +1368,7 @@ fn link_thread(
                 match config::auth::AuthStorage::create(path).delete(&provider) {
                     Ok(()) => {
                         // The session reads credentials per request; the client's catalog follows the providers.
-                        send(LaneEvent::Catalog(session_catalog(&link, &catalog_env)));
+                        send(LaneEvent::Catalog(catalog(&catalog_env)));
                         send(LaneEvent::Status(done));
                     }
                     Err(error) => send(LaneEvent::Status(format!("Error: Logout failed: {error}"))),
@@ -1831,7 +1739,7 @@ fn credentials_saved(link: &Link, env: &Env, send: &dyn Fn(LaneEvent), action: &
         "{done}. Reloading the Session's credentials…"
     )));
     // The session reads credentials per request; the catalog follows the providers.
-    send(LaneEvent::Catalog(session_catalog(link, env)));
+    send(LaneEvent::Catalog(catalog(env)));
     let model = link.op(&Op::Describe).ok().flatten().map(|d| model_info(&d["model"]));
     let hint = match model {
         None => format!(". Use /model to select one of {name}'s models"),
@@ -1982,58 +1890,12 @@ fn configured_key_status(key: &str, var: &dyn Fn(&str) -> Option<String>) -> Opt
         .then(|| ("api_key".into(), Some(names.join(", "))))
 }
 
-/// [`Op::ExtensionShortcuts`]'s answer as the TUI's event (nothing when the session did not answer).
-pub fn extension_shortcuts_event(listed: Option<&Value>) -> LaneEvent {
-    use interactive::extension_shortcuts::{ExtensionShortcut, ShortcutDiagnostic};
-    let text = |v: &Value| v.as_str().unwrap_or_default().to_string();
-    let items = |key: &str| listed.and_then(|l| l[key].as_array().cloned()).unwrap_or_default();
-    LaneEvent::ExtensionShortcuts {
-        shortcuts: items("shortcuts")
-            .iter()
-            .map(|s| ExtensionShortcut {
-                key: text(&s["key"]),
-                description: s["description"].as_str().map(str::to_string),
-                extension_path: text(&s["extensionPath"]),
-            })
-            .collect(),
-        diagnostics: items("diagnostics")
-            .iter()
-            .map(|d| ShortcutDiagnostic {
-                message: text(&d["message"]),
-                path: text(&d["path"]),
-                error: d["type"] == "error",
-            })
-            .collect(),
-    }
-}
-
 /// The models the providers with credentials make available.
 fn catalog(env: &Env) -> Vec<ModelInfo> {
     session_core::lane::available_models(env)
         .iter()
         .map(catalog_info)
         .collect()
-}
-
-/// The session's available models this process does not list itself: those of the providers its extensions declare
-/// (`registerProvider`), which only the session that runs the extensions knows.
-fn session_extras(link: &Link, local: &[ModelInfo]) -> Vec<ModelInfo> {
-    let Ok(Some(Value::Array(models))) = link.op(&Op::AvailableModels) else {
-        return Vec::new();
-    };
-    models
-        .iter()
-        .map(model_info)
-        .filter(|m| !local.iter().any(|l| l.provider == m.provider && l.id == m.id))
-        .collect()
-}
-
-/// [`catalog`] with the session's extension providers' models after it.
-fn session_catalog(link: &Link, env: &Env) -> Vec<ModelInfo> {
-    let mut models = catalog(env);
-    let extras = session_extras(link, &models);
-    models.extend(extras);
-    models
 }
 
 /// Start a long call of the attached session (one the worker runs on its own thread, so later calls such as
@@ -2076,18 +1938,6 @@ fn bash_result(value: &Value) -> BashResult {
 
 /// `#forkSession`: a new session from this one's `forkPath`, the fork recorded in it, then attached.
 fn fork_to(link: &mut Link, fork_path: Value) -> Result<(), String> {
-    // Pi's session_before_fork, before the fork (the leaf for a clone).
-    let entry_id = match fork_path["entryId"].as_str() {
-        Some(id) => id.to_string(),
-        None => link.op(&Op::Entries { since: None })?.unwrap_or_default()["leafId"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-    };
-    let position = fork_path["position"].as_str().unwrap_or("before").to_string();
-    if link.op(&Op::BeforeFork { entry_id, position })?.unwrap_or_default()["cancelled"] == true {
-        return Err("Fork cancelled by an extension".into());
-    }
     let source = link.session_id();
     let created = link.create(json!({"forkFromSessionId": source, "forkPath": fork_path}))?;
     if let Some(file) = link.session_file(&created)? {
@@ -2190,19 +2040,6 @@ const WORKER_RECOVERY_INTERVAL: std::time::Duration = std::time::Duration::from_
 
 /// How long exit waits for the session's server to stop.
 const SHUTDOWN_WAIT: std::time::Duration = std::time::Duration::from_secs(30);
-
-/// interactive-mode.ts `checkForPackageUpdates`: nothing when `PI_OFFLINE` is set or the check fails, else the
-/// display names of the packages with updates.
-pub fn package_updates(env: &Env) -> Vec<String> {
-    if (env.var)("PI_OFFLINE").is_some_and(|v| !v.is_empty()) {
-        return Vec::new();
-    }
-    let settings = crate::package_cli::settings_manager(env, None, false);
-    crate::packages::manager::PackageManager::new(env, settings)
-        .check_for_available_updates()
-        .map(|updates| updates.into_iter().map(|u| u.display_name).collect())
-        .unwrap_or_default()
-}
 
 /// Run the interactive TUI on `target`'s session until the user exits.
 pub fn run_interactive(parsed: &Args, env: &Env, target: Target) -> Result<i32, String> {
@@ -2483,8 +2320,8 @@ fn run_tui(
         env.agent_dir().join("themes"),
         ColorMode::from_capabilities(&caps),
     );
-    // `setRegisteredThemes(resourceLoader.getThemes().themes)`: the themes packages and settings register.
-    let _ = registry.set_registered_themes(crate::packages::themes::load(env, registry.mode).themes);
+    // `setRegisteredThemes(resourceLoader.getThemes().themes)`: the themes the settings and theme directories register.
+    let _ = registry.set_registered_themes(crate::themes::load(env, registry.mode).themes);
     app.set_theme_controller(interactive::theme_setup::ThemeController::new(
         registry,
         settings.theme(),
@@ -2519,14 +2356,6 @@ fn run_tui(
                 let notice = interactive::lane::StartupNotice::NewVersion(version);
                 let _ = ui.send(UiEvent::Lane(LaneEvent::StartupNotice(notice)));
             }
-        });
-    }
-    // `checkForPackageUpdates`: the configured packages behind their source, checked off the UI thread (npm and
-    // git output captured); the transcript shows them when there are any.
-    {
-        let (env, ui) = (env.clone(), ui_tx.clone());
-        std::thread::spawn(move || {
-            let _ = ui.send(UiEvent::Lane(LaneEvent::PackageUpdates(package_updates(&env))));
         });
     }
     {

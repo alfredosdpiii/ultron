@@ -98,42 +98,6 @@ fn host() -> telemetry::bug_report::Host {
     }
 }
 
-/// The session's extensions as `resourceLoader.getExtensions()` lists them, and the ones that failed to load.
-fn extensions(
-    env: &Env,
-    agent_dir: &Path,
-    settings: &config::settings::SettingsManager,
-) -> (
-    Vec<telemetry::crash_log::Extension>,
-    Vec<telemetry::bug_report::ExtensionError>,
-) {
-    let discovery = extensions::manifest::discover_with_settings(&env.cwd, agent_dir, &env.home, settings);
-    let loaded = discovery
-        .manifests
-        .iter()
-        .filter_map(|manifest| {
-            let info = session_core::extension_commands::source_info(
-                &manifest.path,
-                settings,
-                &env.cwd,
-                agent_dir,
-                &env.home,
-            )?;
-            let path = manifest.path.display().to_string();
-            serde_json::from_value(json!({"path": path, "resolvedPath": path, "sourceInfo": info})).ok()
-        })
-        .collect();
-    let errors = discovery
-        .diagnostics
-        .iter()
-        .map(|d| telemetry::bug_report::ExtensionError {
-            path: d.path.display().to_string(),
-            error: d.message.clone(),
-        })
-        .collect();
-    (loaded, errors)
-}
-
 /// `serializeSessionBranch` with `createShareTrailingEntries`: a session header, the branch's entries chained by
 /// `parentId`, and the `pi.share` entry with the system prompt and tools.
 fn session_jsonl(
@@ -282,14 +246,9 @@ fn configured_key_status(env: &Env, key: &str) -> Value {
 /// The model's provider as `describeProvider` reads it from the session's `ModelRuntime`: the provider definition
 /// (a built-in's name, `baseUrl` and sign-in methods, overlaid by models.json; a models.json provider signs in with
 /// a key), `getProviderAuthStatus` (the command line's `--api-key`, a stored credential, the models.json key, the
-/// environment), whether the stored credential is an OAuth login, and whether only an extension declares it.
+/// environment) and whether the stored credential is an OAuth login.
 /// Header names stay empty: the composed provider carries no headers of its own (recorded from TypeScript).
-pub fn provider_info(
-    env: &Env,
-    provider: &str,
-    runtime_key: bool,
-    registered_by_extension: bool,
-) -> telemetry::bug_report::ProviderInfo {
+pub fn provider_info(env: &Env, provider: &str, runtime_key: bool) -> telemetry::bug_report::ProviderInfo {
     let registry = session_core::lane::registry(env);
     let config = registry.config().provider(provider);
     let logins = interactive::selectors::provider_logins();
@@ -339,7 +298,8 @@ pub fn provider_info(
         provider: definition,
         auth_status,
         using_oauth: stored.is_some_and(|kind| kind == "oauth"),
-        registered_by_extension,
+        // Pi extensions (whose `registerProvider` this is) are not supported by ultron-rs.
+        registered_by_extension: false,
     }
 }
 
@@ -351,17 +311,12 @@ pub fn build_bundle(link: &Link, env: &Env, request: &Request) -> Result<BugRepo
     let session_id = described["sessionId"].as_str().unwrap_or_default().to_string();
     let cwd = env.cwd.display().to_string();
     let agent_dir = env.agent_dir();
-    let trusted = session_core::extension_commands::worker_project_trusted(&env.cwd, &agent_dir, &env.home);
+    let trusted = config::trust::worker_project_trusted(&env.cwd, &agent_dir, &env.home);
     let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir, trusted);
-    let (loaded, errors) = extensions(env, &agent_dir, &settings);
     let model = described.get("model").filter(|m| m.is_object());
-    let provider = model.and_then(|m| m["provider"].as_str()).map(|p| {
-        // A provider neither built in nor in models.json reaches the session only through an extension.
-        let registry = session_core::lane::registry(env);
-        let declared = interactive::selectors::provider_logins().iter().any(|l| l.id == p)
-            || registry.config().provider(p).is_some();
-        provider_info(env, p, request.runtime_key, !declared)
-    });
+    let provider = model
+        .and_then(|m| m["provider"].as_str())
+        .map(|p| provider_info(env, p, request.runtime_key));
     let vars: BTreeMap<String, String> = std::env::vars().collect();
     let host = host();
     let id = uuid_v7(now);
@@ -382,8 +337,9 @@ pub fn build_bundle(link: &Link, env: &Env, request: &Request) -> Result<BugRepo
         model,
         provider: provider.as_ref(),
         thinking_level: &thinking,
-        extensions: &loaded,
-        extension_errors: &errors,
+        // Pi extensions are not supported by ultron-rs: the report lists none.
+        extensions: &[],
+        extension_errors: &[],
         global_settings: &global,
         project_settings: &project,
         host: &host,

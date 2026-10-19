@@ -37,11 +37,11 @@ pub enum Event {
     /// A signal ended RPC mode: release the session (a busy worker keeps its work, detached; nothing is aborted,
     /// as leaving RPC mode is not an abort) and exit with this code.
     Signal(i32),
-    /// An extension dialog or notification of the worker, written as Pi's `extension_ui_request` line.
+    /// A `/mcp` dialog or an MCP notice of the worker, written as Pi's `extension_ui_request` line.
     ExtensionUi(Value),
 }
 
-/// Extension dialogs and notifications from the worker reach this client as Pi's `extension_ui_request` lines
+/// `/mcp` dialogs and MCP notices from the worker reach this client as Pi's `extension_ui_request` lines
 /// (rpc-native.ts `uiLoop`); a different session starts again from its open dialogs.
 fn serve_extension_ui(
     link: crate::link::LinkHandle,
@@ -171,18 +171,6 @@ impl<'a> Remote<'a> {
 
     /// Fork the current session (`forkPath`), record the fork in the new session, and attach to it.
     fn fork_to(&mut self, fork_path: Value) -> Result<(), String> {
-        // Pi's session_before_fork, before the fork (the leaf for a clone).
-        let entry_id = match fork_path["entryId"].as_str() {
-            Some(id) => id.to_string(),
-            None => self.op(Op::Entries { since: None })?.unwrap_or_default()["leafId"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string(),
-        };
-        let position = fork_path["position"].as_str().unwrap_or("before").to_string();
-        if self.op(Op::BeforeFork { entry_id, position })?.unwrap_or_default()["cancelled"] == true {
-            return Err(super::FORK_CANCELLED.into());
-        }
         let source = self.link()?.session_id();
         let created = self
             .link
@@ -407,13 +395,7 @@ impl RpcSession for Remote<'_> {
         let (pending, tx) = (self.bash.clone(), self.tx.clone());
         pending.fetch_add(1, Ordering::SeqCst);
         std::thread::spawn(move || {
-            // An extension's `user_bash` that failed the command closed answers with its error.
-            let result = connection.wait(&request).map_err(|e| e.to_string()).and_then(|data| {
-                match data.as_ref().and_then(|d| d.get(session_core::core::USER_BASH_FAILED)) {
-                    Some(error) => Err(error.as_str().unwrap_or_default().to_string()),
-                    None => Ok(data),
-                }
-            });
+            let result = connection.wait(&request).map_err(|e| e.to_string());
             // The command loop answers it: that thread holds the process's stdout.
             let _ = tx.send(Input::Event(Event::BashDone { reply, result, pending }));
         });

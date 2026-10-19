@@ -1,7 +1,8 @@
-//! `/mcp` in the TUI (client-tui.ts `#serveExtensionUI` and slash-commands-provider.ts `directExtensionCommand`): the
-//! command runs in the session's worker (`pi.legacy-extension-commands.run`); its dialogs arrive as Pi's
-//! `extension_ui_request` and are answered one at a time (`select` in the selector, `confirm` as Yes/No, `input` in a
-//! text prompt, Esc cancels), and `notify` shows in the status line.
+//! `/mcp` in the TUI (client-tui.ts `#serveExtensionUI`): the command runs in the session's worker
+//! (`pi.legacy-extension-commands.run`); its dialogs arrive as Pi's `extension_ui_request` and are answered one at a
+//! time (`select` in the selector, `input` in a text prompt, Esc cancels), and `notify` shows in the status line.
+//! Pi extensions are not supported by ultron-rs: `/extension` says so, and a `confirm` request (only an extension
+//! raised one) opens nothing.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -34,8 +35,8 @@ impl LaneClient for Recorder {
     fn list_sessions(&self) {}
     fn set_name(&self, _: &str) {}
     fn select_model(&self, _: &str, _: &str) {}
-    fn extension_command(&self, name: &str, args: &str) {
-        self.0.0.borrow_mut().push(format!("run {name} [{args}]"));
+    fn mcp_command(&self, args: &str) {
+        self.0.0.borrow_mut().push(format!("run mcp [{args}]"));
     }
     fn extension_ui_respond(&self, id: &str, answer: Value) {
         self.0.0.borrow_mut().push(format!("respond {id} {answer}"));
@@ -124,23 +125,41 @@ fn interactive_mcp_runs_in_the_worker_and_its_dialogs_are_answered_in_order() {
         "title": "MCP servers", "options": ["docs \u{2014} not connected", "web \u{2014} connected"]}),
     ));
     app.apply(request(
-        json!({"type": "extension_ui_request", "id": "d2", "method": "confirm",
-        "title": "Sure?", "message": "really"}),
+        json!({"type": "extension_ui_request", "id": "d2", "method": "select",
+        "title": "web (connected)", "options": ["Disconnect", "Disable"]}),
     ));
     let shown = screen(&mut app);
     assert!(shown.contains("MCP servers"), "{shown}");
     assert!(shown.contains("web \u{2014} connected"), "{shown}");
     app.handle_input("\x1b[B");
     app.handle_input("\r");
-    assert!(screen(&mut app).contains("Sure?: really"));
-    app.handle_input("\r");
+    assert!(screen(&mut app).contains("web (connected)"));
+    app.handle_input("\x1b");
     assert_eq!(
         calls(&recorded)[2..],
         [
             "respond d1 {\"value\":\"web \u{2014} connected\"}".to_string(),
-            "respond d2 {\"confirmed\":true}".to_string(),
+            "respond d2 {\"cancelled\":true}".to_string(),
         ]
     );
+}
+
+/// What only Pi extensions raised (`confirm`, `editor`, `setWidget`, ...) shows nothing and answers nothing, and
+/// `/extension` says Pi extensions are not supported.
+#[test]
+fn interactive_mcp_dialogs_leave_extension_only_requests_alone() {
+    let (mut app, recorded) = app();
+    let before = screen(&mut app);
+    for method in ["confirm", "editor", "setWidget", "setStatus"] {
+        app.apply(request(
+            json!({"type": "extension_ui_request", "id": method, "method": method,
+            "title": "Sure?", "widgetKey": "w", "widgetLines": ["WIDGET"], "statusKey": "s", "statusText": "STATUS"}),
+        ));
+    }
+    assert_eq!(screen(&mut app), before);
+    submit(&mut app, "/extension mcp status");
+    assert!(calls(&recorded).is_empty(), "{:?}", calls(&recorded));
+    assert!(screen(&mut app).contains("Error: Pi extensions are not supported by ultron-rs"));
 }
 
 #[test]
@@ -172,13 +191,4 @@ fn interactive_mcp_input_dialogs_answer_or_cancel_and_notices_show_in_the_status
         ]
     );
     assert!(screen(&mut app).contains("Signed in to \"docs\" (3 tools)."));
-}
-
-#[test]
-fn interactive_extension_command_names_the_command() {
-    let (mut app, recorded) = app();
-    submit(&mut app, "/extension mcp status");
-    submit(&mut app, "/extension");
-    assert_eq!(calls(&recorded), ["run mcp [status]"]);
-    assert!(screen(&mut app).contains("Usage: /extension <name> [args]"));
 }

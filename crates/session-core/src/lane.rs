@@ -219,28 +219,22 @@ pub fn to_llm(messages: &[Value]) -> Vec<Message> {
 }
 
 /// The native worker's system prompt for a lane whose only tool is `rlm`. `loki_root` is where Loki's policy is read
-/// (None: Loki is off, so no policy note); `extensions` is the runtime-guide section listing extension functions.
-pub fn system_prompt(
-    env: &Env,
-    cwd: &str,
-    loki_root: Option<&Path>,
-    extensions: Option<&str>,
-) -> Result<String, String> {
-    system_prompt_with_guide(env, cwd, loki_root, extensions, &Default::default())
+/// (None: Loki is off, so no policy note).
+pub fn system_prompt(env: &Env, cwd: &str, loki_root: Option<&Path>) -> Result<String, String> {
+    system_prompt_with_guide(env, cwd, loki_root, &Default::default())
 }
 
-/// [`system_prompt`] whose runtime guide gets `guide` (the REPL's extension tools and MCP servers), in the mode the
+/// [`system_prompt`] whose runtime guide gets `guide` (the REPL's `mcp` tool and MCP servers), in the mode the
 /// global settings name ([`PromptMode`]).
 pub fn system_prompt_with_guide(
     env: &Env,
     cwd: &str,
     loki_root: Option<&Path>,
-    extensions: Option<&str>,
     guide: &resources::runtime_guide::RuntimeGuideOptions,
 ) -> Result<String, String> {
     let settings = config::settings::SettingsManager::for_worker(Path::new(cwd), &env.agent_dir(), &env.home);
     let mode = PromptMode::from_settings(&settings);
-    system_prompt_in_mode(env, cwd, loki_root, extensions, guide, &mode).map(|(prompt, _)| prompt)
+    system_prompt_in_mode(env, cwd, loki_root, guide, &mode).map(|(prompt, _)| prompt)
 }
 
 /// What the settings change about the system prompt. Engineering mode (the `engineering` setting, `/engineering`,
@@ -277,21 +271,19 @@ pub fn system_prompt_in_mode(
     env: &Env,
     cwd: &str,
     loki_root: Option<&Path>,
-    extensions: Option<&str>,
     guide: &resources::runtime_guide::RuntimeGuideOptions,
     mode: &PromptMode,
 ) -> Result<(String, Vec<String>), String> {
     let resources = crate::session_resources::resolve_default(env);
-    system_prompt_with_resources(env, cwd, loki_root, extensions, guide, mode, &resources)
+    system_prompt_with_resources(env, cwd, loki_root, guide, mode, &resources)
 }
 
-/// [`system_prompt_in_mode`] with the session's resources (crate::session_resources): their skills are listed (the
-/// `-e` ones also with `--no-skills`), and SYSTEM.md / APPEND_SYSTEM.md shape the prompt.
+/// [`system_prompt_in_mode`] with the session's resources (crate::session_resources): their skills are listed
+/// (none with `--no-skills`), and SYSTEM.md / APPEND_SYSTEM.md shape the prompt.
 pub fn system_prompt_with_resources(
     env: &Env,
     cwd: &str,
     loki_root: Option<&Path>,
-    extensions: Option<&str>,
     guide: &resources::runtime_guide::RuntimeGuideOptions,
     mode: &PromptMode,
     extra: &crate::session_resources::SessionResources,
@@ -330,7 +322,6 @@ pub fn system_prompt_with_resources(
         append_system_prompt: extra.append_system_prompt.join("\n\n"),
         sections: [("runtime".to_string(), runtime)]
             .into_iter()
-            .chain(extensions.map(|text| ("extensions".to_string(), text.to_string())))
             .chain(loki_note.map(|note| ("loki".to_string(), note)))
             .collect(),
         engineering: mode.engineering,
@@ -353,11 +344,6 @@ pub fn registry(env: &Env) -> ModelRegistry {
         let store = config::models_store::ModelsStore::new(models.with_file_name("models-store.json"));
         registry.import_legacy_radius(&credentials, &store, now_ms());
     }
-    // The providers the session's extensions declare (crate::extension_providers).
-    crate::extension_providers::apply(
-        &mut registry,
-        &crate::extension_providers::registrations(&paths.agent_dir),
-    );
     registry
 }
 
@@ -961,16 +947,6 @@ impl Rlm {
             spill_dir: Some(&self.spill_dir),
         }
     }
-
-    /// The cell `lane` is running now.
-    fn running_cell(&self) -> Option<String> {
-        self.lanes.list().as_array().and_then(|lanes| {
-            lanes
-                .iter()
-                .find(|l| l["lane"] == self.lane.as_str())
-                .and_then(|l| l["cell"].as_str().map(str::to_string))
-        })
-    }
 }
 
 impl AgentTool for Rlm {
@@ -989,8 +965,35 @@ impl AgentTool for Rlm {
 }
 
 impl Rlm {
-    /// One cell, as its result text (or error message).
+    /// One cell, as its result text (or error message). A cell run in a side lane because this lane is still busy
+    /// (`Lanes::start_routed`) starts its result with the side-lane note.
     async fn run_cell(&self, args: Value, signal: &AbortSignal) -> Result<AgentToolResult, String> {
+        let note = Mutex::new(None);
+        let result = self.run_routed_cell(args, signal, &note).await;
+        let Some(note) = note.lock().unwrap_or_else(std::sync::PoisonError::into_inner).take() else {
+            return result;
+        };
+        match result {
+            Err(text) => Err(format!("{note}\n{text}")),
+            Ok(mut result) => {
+                match result.content.iter_mut().find_map(|part| match part {
+                    UserContent::Text(text) => Some(text),
+                    UserContent::Image(_) => None,
+                }) {
+                    Some(text) => text.text = format!("{note}\n{}", text.text),
+                    None => result.content.insert(0, text_block(note)),
+                }
+                Ok(result)
+            }
+        }
+    }
+
+    async fn run_routed_cell(
+        &self,
+        args: Value,
+        signal: &AbortSignal,
+        note: &Mutex<Option<String>>,
+    ) -> Result<AgentToolResult, String> {
         {
             let code = args["code"].as_str().ok_or("rlm needs a `code` string")?.to_string();
             if let Some(hints) = &self.hints {
@@ -1002,23 +1005,43 @@ impl Rlm {
             if let Some(host) = &self.host {
                 host.cell_started(&self.lane);
             }
+            // A busy lane never refuses the cell: it runs in a side lane (crates/delegation `Lanes::start_routed`).
             let (lanes, lane, source) = (self.lanes.clone(), self.lane.clone(), code.clone());
-            let mut cell = tokio::task::spawn_blocking(move || lanes.run(&lane, &source, CELL_BUDGET));
-            let outcome = match until_aborted(&mut cell, signal).await {
-                Some(done) => done,
-                None => {
-                    if let Some(running) = self.running_cell() {
-                        let _ = self.lanes.cancel(&running, ABORT_REQUESTED);
-                    }
-                    let _ = cell.await;
-                    self.count_cell(&code, true, 0);
-                    let findings = self.end_cell();
-                    self.images.take(&self.lane);
-                    return Err(match findings {
-                        Some(findings) => format!("{ABORT_REQUESTED}\n{findings}"),
-                        None => ABORT_REQUESTED.into(),
-                    });
+            let started = tokio::task::spawn_blocking(move || lanes.start_routed(&lane, &source))
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|started| started);
+            let started = match started {
+                Ok(started) => {
+                    *note.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = started.note.clone();
+                    Ok(started.cell)
                 }
+                Err(error) => Err(error),
+            };
+            let waited = match &started {
+                Ok(id) => {
+                    let (lanes, id) = (self.lanes.clone(), id.clone());
+                    Some(tokio::task::spawn_blocking(move || lanes.wait(&id, CELL_BUDGET)))
+                }
+                Err(_) => None,
+            };
+            let outcome: Result<Result<CellOutcome, String>, String> = match (started, waited) {
+                (Ok(id), Some(mut cell)) => match until_aborted(&mut cell, signal).await {
+                    Some(done) => done.map_err(|e| e.to_string()),
+                    None => {
+                        let _ = self.lanes.cancel(&id, ABORT_REQUESTED);
+                        let _ = cell.await;
+                        self.count_cell(&code, true, 0);
+                        let findings = self.end_cell();
+                        self.images.take(&self.lane);
+                        return Err(match findings {
+                            Some(findings) => format!("{ABORT_REQUESTED}\n{findings}"),
+                            None => ABORT_REQUESTED.into(),
+                        });
+                    }
+                },
+                (Err(error), _) => Ok(Err(error)),
+                (Ok(_), None) => Err("cell vanished".into()),
             };
             // A cell that could not run, or ended without a result, is counted as failed now; one with a result
             // when its text is made (below).

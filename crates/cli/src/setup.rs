@@ -156,7 +156,6 @@ fn interactive_start(parsed: &Args) -> (bool, bool) {
     let explicit = parsed.model.is_some()
         || parsed.provider.is_some()
         || parsed.api_key.is_some()
-        || parsed.extensions.as_ref().is_some_and(|e| !e.is_empty())
         || parsed.models.as_ref().is_some_and(|m| !m.is_empty());
     (interactive, explicit)
 }

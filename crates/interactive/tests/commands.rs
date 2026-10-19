@@ -1111,13 +1111,6 @@ fn interactive_commands_tree_navigates_before_a_user_message() {
     assert!(screen(&mut app).contains("Navigated to selected point"));
     app.apply(LaneEvent::Navigated(Err("boom".into())));
     assert!(screen(&mut app).contains("Error: boom"));
-    // An extension's `session_before_tree` cancelled it: Pi's status, not an error.
-    app.apply(LaneEvent::Navigated(Err("Navigation cancelled".into())));
-    let s = screen(&mut app);
-    assert!(
-        s.contains("Navigation cancelled") && !s.contains("Error: Navigation"),
-        "{s}"
-    );
 }
 
 #[test]

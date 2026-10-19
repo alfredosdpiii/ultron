@@ -121,7 +121,7 @@ pub enum Op {
     SetAutoCompaction(bool),
     SetAutoRetry(bool),
     AbortRetry,
-    /// A user's own command (RPC `bash`, the TUI's `!`/`!!`): the extensions' `user_bash` first, then the shell.
+    /// A user's own command (RPC `bash`, the TUI's `!`/`!!`), run by the shell.
     /// `id` tags its streamed output (`bash_execution_update`), as AgentSession's `executeBash` `options.id`.
     Bash {
         command: String,
@@ -160,7 +160,8 @@ pub enum Op {
     },
     /// The current Pi leaf (an error without one), which a clone copies to.
     CloneSource,
-    /// Record the session-start marker in the forked session file `target` (`control.forked`).
+    /// Record the session-start marker in the forked session file `target` (`control.forked`), as TypeScript
+    /// records it: its first worker removes it (TypeScript's tells its extensions the session started as a fork).
     Forked {
         target: String,
     },
@@ -235,35 +236,6 @@ pub enum Op {
     },
     /// The session's slash commands (RPC `get_commands`: crate::commands).
     Commands,
-    /// Runs an extension's command `/name args` (`pi.legacy-extension-commands.run`), answered when its handler
-    /// returned; the actor goes on meanwhile.
-    ExtensionCommand {
-        name: String,
-        args: String,
-    },
-    /// An extension command's argument completions for `prefix` (`commands/complete`), off the actor.
-    ExtensionCompletions {
-        name: String,
-        prefix: String,
-    },
-    /// The extensions' keyboard shortcuts the TUI binds under its resolved keybindings (action, keys) and the
-    /// conflict warnings (runner.ts `getShortcuts`, `getShortcutDiagnostics`): `{shortcuts: [{key, description,
-    /// extensionPath}], diagnostics: [{type, message, path}]}`.
-    ExtensionShortcuts {
-        keybindings: Vec<(String, Vec<String>)>,
-    },
-    /// Runs the extension shortcut bound to `key` under `keybindings` (`shortcuts/run`), answered when its handler
-    /// returned; the actor goes on meanwhile.
-    ExtensionShortcut {
-        key: String,
-        keybindings: Vec<(String, Vec<String>)>,
-    },
-    /// Pi's `session_before_fork` before a client forks (`position` "before") or clones ("at") the session at
-    /// `entry_id`: `{cancelled}` (control `beforeFork`), off the actor.
-    BeforeFork {
-        entry_id: String,
-        position: String,
-    },
     /// The session's working-tree checkpoints (core::checkpoints): `{checkpoints: [...], enabled}`.
     Checkpoints,
     /// Restore the working tree's files from checkpoint `checkpoint`, else from the checkpoint of entry `entry_id`
@@ -395,25 +367,6 @@ impl Op {
             },
             "asyncPending" => Op::AsyncPending,
             "commands" => Op::Commands,
-            "extensionCompletions" => Op::ExtensionCompletions {
-                name: need("name")?,
-                prefix: value["prefix"].as_str().unwrap_or_default().to_string(),
-            },
-            "extensionCommand" => Op::ExtensionCommand {
-                name: need("name")?,
-                args: value["args"].as_str().unwrap_or_default().to_string(),
-            },
-            "extensionShortcuts" => Op::ExtensionShortcuts {
-                keybindings: keybindings_from_json(&value["keybindings"]),
-            },
-            "extensionShortcut" => Op::ExtensionShortcut {
-                key: need("key")?,
-                keybindings: keybindings_from_json(&value["keybindings"]),
-            },
-            "beforeFork" => Op::BeforeFork {
-                entry_id: need("entryId")?,
-                position: need("position")?,
-            },
             "inspect" => Op::Inspect {
                 request: need("request")?,
                 payload: value.get("payload").cloned().unwrap_or(Value::Null),
@@ -502,88 +455,12 @@ impl Op {
             Op::AsyncPending => json!({"op": "asyncPending"}),
             Op::Inspect { request, payload } => json!({"op": "inspect", "request": request, "payload": payload}),
             Op::Commands => json!({"op": "commands"}),
-            Op::ExtensionCommand { name, args } => json!({"op": "extensionCommand", "name": name, "args": args}),
-            Op::ExtensionCompletions { name, prefix } => {
-                json!({"op": "extensionCompletions", "name": name, "prefix": prefix})
-            }
-            Op::BeforeFork { entry_id, position } => {
-                json!({"op": "beforeFork", "entryId": entry_id, "position": position})
-            }
             Op::Checkpoints => json!({"op": "checkpoints"}),
             Op::RestoreFiles { entry_id, checkpoint } => {
                 json!({"op": "restoreFiles", "entryId": entry_id, "checkpoint": checkpoint})
             }
-            Op::ExtensionShortcuts { keybindings } => {
-                json!({"op": "extensionShortcuts", "keybindings": keybindings_json(keybindings)})
-            }
-            Op::ExtensionShortcut { key, keybindings } => {
-                json!({"op": "extensionShortcut", "key": key, "keybindings": keybindings_json(keybindings)})
-            }
         }
     }
-}
-
-/// Resolved keybindings as JSON: `{action: [keys]}` in order.
-fn keybindings_json(keybindings: &[(String, Vec<String>)]) -> Value {
-    Value::Object(
-        keybindings
-            .iter()
-            .map(|(action, keys)| (action.clone(), json!(keys)))
-            .collect(),
-    )
-}
-
-fn keybindings_from_json(value: &Value) -> Vec<(String, Vec<String>)> {
-    value
-        .as_object()
-        .into_iter()
-        .flatten()
-        .map(|(action, keys)| {
-            let keys = keys
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(|k| k.as_str().map(str::to_string))
-                .collect();
-            (action.clone(), keys)
-        })
-        .collect()
-}
-
-/// `getShortcuts` and `getShortcutDiagnostics` of the session's extensions as [`Op::ExtensionShortcuts`] answers.
-pub fn extension_shortcuts(
-    host: Option<&Arc<extensions::ExtensionHost>>,
-    keybindings: &[(String, Vec<String>)],
-) -> Value {
-    extension_issues(&[], host, keybindings)
-}
-
-/// [`extension_shortcuts`] after the extensions that did not load (`resourceLoader.getExtensions().errors`, type
-/// `error`), as interactive-mode.ts lists them first under `[Extension issues]`.
-pub fn extension_issues(
-    load_errors: &[extensions::manifest::Diagnostic],
-    host: Option<&Arc<extensions::ExtensionHost>>,
-    keybindings: &[(String, Vec<String>)],
-) -> Value {
-    let resolved = host.map(|host| host.shortcuts(keybindings)).unwrap_or_default();
-    let errors = load_errors
-        .iter()
-        .map(|d| json!({"type": "error", "message": d.message, "path": d.path.display().to_string()}));
-    json!({
-        "shortcuts": resolved
-            .shortcuts
-            .iter()
-            .map(|(_, s)| json!({"key": s.key, "description": s.description, "extensionPath": s.extension_path}))
-            .collect::<Vec<_>>(),
-        "diagnostics": errors
-            .chain(
-                resolved
-                    .diagnostics
-                    .iter()
-                    .map(|(message, path)| json!({"type": "warning", "message": message, "path": path})),
-            )
-            .collect::<Vec<_>>(),
-    })
 }
 
 /// What reaches the actor.
@@ -597,7 +474,7 @@ pub enum Input {
     BashDone {
         command: String,
         exclude: bool,
-        result: Result<BashOutcome, String>,
+        result: Result<Value, String>,
         reply: Reply,
     },
     /// A chunk of a running user command's output (`bash_execution_update`).
@@ -605,8 +482,6 @@ pub enum Input {
         id: Option<String>,
         delta: String,
     },
-    /// An extension handler failed (the router's error listeners: `extension_error`).
-    ExtensionError(Value),
     /// Stop the lane; the sender is told when done.
     Close(std::sync::mpsc::Sender<()>),
     /// Stop the lane for a successor worker (its shell jobs keep running for it); the sender is told when done.
@@ -621,17 +496,6 @@ pub enum Input {
     HarnessIdle,
     /// A compaction's work off the actor ended (core::compacting).
     Woken,
-    /// An extension's request that needs the actor (crate::extension_host).
-    Extension(crate::extension_host::Call),
-}
-
-/// How a user's command ended (crate::user_bash).
-pub enum BashOutcome {
-    /// It ran, or an extension's `user_bash` answered it: the `BashResult` to record and answer with.
-    Ran(Value),
-    /// An extension's `user_bash` failed it (TypeScript fails closed): nothing is recorded; the message is the error
-    /// the extension runner reported.
-    FailedClosed(String),
 }
 
 /// Where lane-watch events go.
@@ -724,7 +588,7 @@ pub struct OpenOptions {
     /// The session root (`<root>/--<cwd>--/<file>.jsonl`).
     pub session_root: PathBuf,
     pub metadata: Metadata,
-    /// `print`, `json`, `rpc`, `interactive` (extensions see it).
+    /// `print`, `json`, `rpc`, `interactive`.
     pub mode: String,
     pub services: Services,
     /// Name the session from its first prompt (and by the model's title); off for sessions removed at the end.
@@ -790,8 +654,6 @@ pub struct Core {
     /// The compaction or branch summary in progress (manual or automatic): `abort` cancels it, `state` reports it
     /// (`isCompacting`).
     compacting: Option<AbortSignal>,
-    /// The `session_before_compact` dispatch in flight: `abort` gives it up (the hooks' `signal`).
-    hook: Option<extensions::CancelToken>,
     /// A tree navigation's branch summary is in progress (core::navigate).
     navigating: bool,
     /// What waits for the run in progress to end: a manual `compact` aborts the run first (AgentSession `compact`
@@ -805,17 +667,18 @@ pub struct Core {
 mod auto_compact;
 mod checkpoints;
 pub use checkpoints::{RESTORE_IN_SANDBOX, RESTORE_WHILE_STREAMING};
-mod compacting;
-mod extension_ops;
-mod user_bash;
-pub use extension_ops::before_fork;
-pub use user_bash::USER_BASH_FAILED;
 mod agent_ops;
 pub mod budget_gate;
+mod compacting;
 mod context_children;
 mod context_lane;
 mod durable_turns;
 pub mod event_lanes;
+mod user_bash;
+
+/// The fork marker the session a client forked to carries until its first worker reads it
+/// (`forkedSessionStart` of session-start.ts).
+const SESSION_START: (&str, &str) = ("ultron.session.start", "fork");
 
 /// A user message with text and images, as the transcript stores it.
 pub fn user_message(text: String, images: Vec<Value>) -> Value {
@@ -950,8 +813,6 @@ impl Core {
             },
         };
         let resume = open_operation.filter(|_| durable_records);
-        // Extensions load before the model is chosen: the providers they declare can be the session's model
-        // (agent-session-services.ts registers them before `findInitialModel`).
         let sessions_dir = session_root.join(lane::session_directory_name(&metadata.cwd));
         let trace =
             |label: &str| crate::startup_trace::trace_startup((env.var)("ULTRON_STARTUP_TRACE").as_deref(), label);
@@ -993,7 +854,7 @@ impl Core {
                 children: child_context.clone(),
             },
         )));
-        child_context.observe(&context, runtime.extensions.clone());
+        child_context.observe(&context);
         let _ = lane.stack.context.set(context.clone());
         // Requests read the settings as they are now (crate::request_settings): the stream options, transport and
         // idle timeout of `/settings` apply to the next request.
@@ -1134,7 +995,6 @@ impl Core {
             inputs: None,
             deferred: std::collections::VecDeque::new(),
             compacting: None,
-            hook: None,
             navigating: false,
             after_run: Vec::new(),
             nudger: crate::nudge::ToolRoundNudger::new(
@@ -1154,7 +1014,13 @@ impl Core {
         }
         // Whatever else the runtime holds (subagents, background work) continues now.
         core.durable.chat.resume().map_err(|e| e.to_string())?;
-        core.open_extensions()?;
+        // A fork's first worker consumes the marker its source recorded (`forkedSessionStart` of session-start.ts).
+        let forked = lock_session(&core.session)
+            .value(SESSION_START.0, SESSION_START.1)
+            .is_some();
+        if forked {
+            lock_session(&core.session).commit(&[Write::delete(SESSION_START.0, SESSION_START.1)])?;
+        }
         Ok(core)
     }
 
@@ -1215,7 +1081,6 @@ impl Core {
                     reply,
                 } => self.bash_done(command, exclude, result, reply),
                 Input::BashOutput { id, delta } => self.emit_bash_output(id, delta),
-                Input::ExtensionError(error) => self.emit_extension_error(error),
                 Input::Close(done) => {
                     self.close();
                     let _ = done.send(());
@@ -1230,7 +1095,6 @@ impl Core {
                 Input::ActivityTick => self.report_activity(),
                 // A compaction's wake-up is read by the compaction itself.
                 Input::Woken => {}
-                Input::Extension(call) => self.extension_call(call),
             }
         }
         self.close();
@@ -1246,7 +1110,6 @@ impl Core {
 
     fn emit(&mut self, value: Value) {
         (self.sink)(value);
-        self.refresh_extension_facts();
     }
 
     /// The session's name now (`session_name`, a Rust-only event the worker serves as `ultron.session-ops` state,
@@ -1256,8 +1119,7 @@ impl Core {
         self.emit(json!({"type": "session_name", "lane": LANE, "name": name}));
     }
 
-    /// AgentSession `setSessionName`: `session_info_changed` to clients (Pi's RPC event) and, without waiting, to
-    /// the extensions.
+    /// AgentSession `setSessionName`: `session_info_changed` to clients (Pi's RPC event).
     fn session_info_changed(&mut self) {
         let name = lock_session(&self.session).name();
         let mut fields = vec![("type", json!("session_info_changed")), ("lane", json!(LANE))];
@@ -1265,18 +1127,6 @@ impl Core {
             fields.push(("name", json!(name)));
         }
         self.emit(event(fields));
-        if let Some(host) = self
-            .extension_host()
-            .filter(|h| h.router().has_handlers("session_info_changed"))
-        {
-            let mut event = json!({"type": "session_info_changed"});
-            if let Some(name) = name {
-                event["name"] = json!(name);
-            }
-            std::thread::spawn(move || {
-                host.router().emit(&event);
-            });
-        }
     }
 
     fn api_key(&self) -> Option<String> {
@@ -1293,12 +1143,7 @@ impl Core {
         let entries: Vec<Value> = lock_session(&self.session).state().entries()[self.announced..].to_vec();
         self.announced += entries.len();
         for entry in entries {
-            // A context edit that lands on the branch is published to extensions (`pi.events`).
-            if let Some(edit) = self.context.entry_added(LANE, &entry)
-                && let Some(host) = &self.runtime.extensions
-            {
-                host.publish(kernel_apis::context_control::CONTEXT_EDIT_EVENT, &edit);
-            }
+            let _ = self.context.entry_added(LANE, &entry);
             self.emit(event(vec![
                 ("type", json!("entry_added")),
                 ("lane", json!(LANE)),
@@ -1749,15 +1594,41 @@ impl Core {
         for input in std::mem::take(&mut self.after_run).into_iter().rev() {
             self.deferred.push_front(input);
         }
-        self.emit_agent_end();
     }
 
-    fn bash_done(&mut self, command: String, exclude: bool, result: Result<BashOutcome, String>, reply: Reply) {
+    /// `appendCustomEntry`: a `custom` entry at the tip of `main`, announced; after the run in progress (a custom
+    /// entry joins the branch at a boundary).
+    fn append_custom(&mut self, custom_type: String, data: Value, reply: Reply) {
+        if self.run.is_some() {
+            self.after_run
+                .push(Input::Op(Op::AppendCustom { custom_type, data }, reply));
+            return;
+        }
+        let id = session_journal::lock_clock(&lock_session(&self.session).clock()).next_id();
+        let mut entry = Map::new();
+        entry.insert("id".into(), id.clone().into());
+        entry.insert("parentId".into(), self.tip().map_or(Value::Null, Value::from));
+        entry.insert("type".into(), "custom".into());
+        entry.insert("customType".into(), custom_type.into());
+        if !data.is_null() {
+            entry.insert("data".into(), data);
+        }
+        let lane_state = self.lane_state();
+        let committed = lock_session(&self.session).commit(&[
+            Write::Entry(entry),
+            Write::set(session_journal::session::BRANCH_TIP, LANE, id.into()),
+            Write::set(session_journal::session::LANE_STATE, LANE, lane_state),
+        ]);
+        if committed.is_ok() {
+            self.announce();
+        }
+        reply(committed.map(|_| None));
+    }
+
+    fn bash_done(&mut self, command: String, exclude: bool, result: Result<Value, String>, reply: Reply) {
         self.bash = None;
         let result = match result {
-            Ok(BashOutcome::Ran(result)) => result,
-            // An answer, not a failure of the call: the client tells it from a command that could not run.
-            Ok(BashOutcome::FailedClosed(error)) => return reply(Ok(Some(json!({ USER_BASH_FAILED: error })))),
+            Ok(result) => result,
             Err(e) => return reply(Err(e)),
         };
         let message = user_bash::bash_message(&command, &result, exclude, now_ms());
@@ -1787,18 +1658,7 @@ impl Core {
         self.emit(event(fields));
     }
 
-    /// An extension handler failed (rpc-mode.ts `onError`, interactive-mode.ts `showExtensionError`).
-    fn emit_extension_error(&mut self, error: Value) {
-        self.emit(event(vec![
-            ("type", json!("extension_error")),
-            ("lane", json!(LANE)),
-            ("extensionPath", error["extensionPath"].clone()),
-            ("event", error["event"].clone()),
-            ("error", error["error"].clone()),
-        ]));
-    }
-
-    /// Stop the lane (kernels, subagents, extensions).
+    /// Stop the lane (kernels, subagents).
     pub fn close(&mut self) {
         self.stop(false);
     }
@@ -1836,10 +1696,6 @@ impl Core {
         } else {
             self.lane.shutdown();
         }
-        self.emit_session_shutdown();
-        if let Some(host) = &self.runtime.extensions {
-            host.shutdown();
-        }
         self.events.close();
     }
 
@@ -1875,10 +1731,7 @@ impl Core {
                 }
             }
             bash @ Op::Bash { .. } => self.bash(bash, reply),
-            Op::AppendCustom { custom_type, data } => {
-                self.extension_call(crate::extension_host::Call::AppendCustom { custom_type, data });
-                reply(Ok(None));
-            }
+            Op::AppendCustom { custom_type, data } => self.append_custom(custom_type, data, reply),
             Op::BugSummary { hint } => {
                 let summarizer = self.summarizer();
                 let messages = view::messages(&self.pi());
@@ -1897,29 +1750,6 @@ impl Core {
             compact @ Op::Compact { .. } if self.run.is_some() => {
                 self.abort();
                 self.after_run.push(Input::Op(compact, reply));
-            }
-            Op::ExtensionCommand { name, args } => {
-                // A command may prompt and has no timeout: it runs off the actor.
-                let stack = self.lane.stack.clone();
-                std::thread::spawn(move || reply(stack.run_extension_command(&name, &args).map(Some)));
-            }
-            Op::ExtensionCompletions { name, prefix } => {
-                let stack = self.lane.stack.clone();
-                std::thread::spawn(move || reply(stack.complete_extension_command(&name, &prefix).map(Some)));
-            }
-            Op::ExtensionShortcut { key, keybindings } => {
-                // A handler may prompt: it runs off the actor, as TypeScript runs it without blocking input.
-                let host = self.runtime.extensions.clone();
-                std::thread::spawn(move || {
-                    let run = host
-                        .ok_or_else(|| format!("No extension shortcut {key}"))
-                        .and_then(|host| host.run_shortcut(&key, &keybindings).map_err(|e| e.to_string()));
-                    reply(run.map(|_| None));
-                });
-            }
-            Op::BeforeFork { entry_id, position } => {
-                let host = self.runtime.extensions.clone();
-                std::thread::spawn(move || reply(Ok(Some(before_fork(host.as_ref(), &entry_id, &position)))));
             }
             Op::Recover => {
                 let result = self.recover();
@@ -1943,18 +1773,9 @@ impl Core {
             | Op::Bash { .. }
             | Op::BugSummary { .. }
             | Op::AppendCustom { .. }
-            | Op::Recover
-            | Op::ExtensionCommand { .. }
-            | Op::ExtensionCompletions { .. }
-            | Op::ExtensionShortcut { .. }
-            | Op::BeforeFork { .. } => {
+            | Op::Recover => {
                 unreachable!("answered in op")
             }
-            Op::ExtensionShortcuts { keybindings } => Ok(Some(extension_issues(
-                &self.runtime.extension_errors,
-                self.runtime.extensions.as_ref(),
-                &keybindings,
-            ))),
             Op::Enqueue {
                 kind,
                 message,
@@ -1975,7 +1796,7 @@ impl Core {
             }
             Op::State => Ok(Some(self.state())),
             Op::AvailableModels => {
-                // The registry is read now (credentials and extension providers change while the session runs).
+                // The registry is read now (credentials change while the session runs).
                 self.models = lane::available_models(&self.env);
                 Ok(Some(Value::Array(
                     self.models
@@ -2134,13 +1955,11 @@ impl Core {
                 let metadata = session_journal::repo::read_metadata(Path::new(&target))
                     .ok_or_else(|| format!("Not a session file: {target}"))?;
                 let mut session = self.repo.open(&metadata)?;
-                // The fork's first worker reads (and removes) the marker: its `session_start` says "fork".
                 session.commit(&[Write::set(
-                    extension_ops::SESSION_START.0,
-                    extension_ops::SESSION_START.1,
+                    SESSION_START.0,
+                    SESSION_START.1,
                     json!({"previousSessionFile": self.session_file()}),
                 )])?;
-                self.extensions_forked(&target);
                 Ok(None)
             }
             Op::Describe => Ok(Some(json!({
@@ -2514,7 +2333,6 @@ impl Core {
         if let Some(options) = self.provider.stream_options() {
             journal.set_stream_options(options);
         }
-        self.before_agent_start(&prompt, journal.run().map(|r| r.operation_id()));
         if let Some(run) = journal.run() {
             self.lane.stack.agents.begin_root_turn(run.operation_id());
             self.durable
@@ -2729,8 +2547,6 @@ impl Core {
         let signal = kernel::Signal::new();
         self.bash = Some(signal.clone());
         let host = self.lane.host.clone();
-        let extensions = self.extension_host();
-        let cwd = self.env.cwd.display().to_string();
         let tx = self.tx.clone();
         // session-control-provider.ts `bash`: the `shellCommandPrefix` setting runs first; the message keeps the
         // command as typed.
@@ -2741,22 +2557,13 @@ impl Core {
             .as_object()
             .and_then(config::settings_keys::shell_command_prefix);
         std::thread::spawn(move || {
-            // Off the actor: a handler may ask the session for anything while it decides.
-            let result = user_bash::run(
-                extensions.as_deref(),
-                &host,
-                &command,
-                prefix.as_deref(),
-                exclude,
-                &cwd,
-                &signal,
-                &mut |delta| {
-                    let _ = tx.send(Input::BashOutput {
-                        id: id.clone(),
-                        delta: delta.to_string(),
-                    });
-                },
-            );
+            // Off the actor: the actor keeps serving while the command runs.
+            let result = user_bash::run(&host, &command, prefix.as_deref(), &signal, &mut |delta| {
+                let _ = tx.send(Input::BashOutput {
+                    id: id.clone(),
+                    delta: delta.to_string(),
+                });
+            });
             let _ = tx.send(Input::BashDone {
                 command,
                 exclude,

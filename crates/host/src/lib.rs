@@ -48,7 +48,7 @@ const MAX_TIMEOUT_SECONDS: f64 = 86_400.0;
 // ponytail: 10 ms polling instead of wiring the kernel Signal into a condvar; fine for a handful of waiters.
 const POLL: Duration = Duration::from_millis(10);
 
-/// The before-write and before-shell guards (Loki, extension hooks). The default allows everything.
+/// The before-write and before-shell guards (Loki). The default allows everything.
 pub trait Guard: Send + Sync {
     /// `Some(reason)` blocks the command: "bash command was not run: {reason}".
     fn before_shell(&self, _command: &str) -> Option<String> {

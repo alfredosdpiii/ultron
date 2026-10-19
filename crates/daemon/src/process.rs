@@ -66,7 +66,7 @@ pub fn executable() -> PathBuf {
 }
 
 /// What cli/setup.ts `setupCli` puts in the CLI's environment (`PI_CODING_AGENT=true`, `AI_AGENT=pi`), so every
-/// process the session starts (its bash commands, the Python kernel, extensions, MCP servers) inherits it. Rust
+/// process the session starts (its bash commands, the Python kernel, MCP servers) inherits it. Rust
 /// cannot set its own environment without `unsafe`, so the internal processes, which run every session, get it.
 pub const AGENT_MARKERS: [(&str, &str); 2] = [("PI_CODING_AGENT", "true"), ("AI_AGENT", "pi")];
 

@@ -259,11 +259,6 @@ pub enum LaneEvent {
     /// A `!` command finished (its message follows as [`LaneEvent::Message`] with role `bashExecution`), or failed
     /// to run.
     BashDone(Result<BashResult, String>),
-    /// An extension's `user_bash` failed a `!` command closed (it did not run; the extension's error is shown as
-    /// [`LaneEvent::ExtensionError`]).
-    BashFailedClosed,
-    /// A handler of the session's extensions failed (`extension_error`).
-    ExtensionError { path: String, error: String },
     /// `/bug`'s summary: the text, or why there is none.
     BugSummary(Result<String, String>),
     /// `/bug`'s report was delivered, or not.
@@ -332,21 +327,6 @@ pub enum LaneEvent {
         providers: Vec<crate::selectors::AuthProvider>,
         query: String,
     },
-    /// The session's extension commands (`LegacyExtensionCommands.list`): invocation name and description, in
-    /// load order; each becomes a slash command of its own.
-    ExtensionCommands(Vec<(String, Option<String>)>),
-    /// The extensions' keyboard shortcuts in force and the conflict warnings ([`LaneClient::extension_shortcuts`]).
-    ExtensionShortcuts {
-        shortcuts: Vec<crate::extension_shortcuts::ExtensionShortcut>,
-        diagnostics: Vec<crate::extension_shortcuts::ShortcutDiagnostic>,
-    },
-    /// An extension command's argument completions for `prefix`: `(value, label, description)` items, or `None`
-    /// when it offers none.
-    ExtensionCompletions {
-        name: String,
-        prefix: String,
-        items: Option<Vec<(String, String, Option<String>)>>,
-    },
     /// A subscription login's progress (the flow runs in the client process).
     Login(LoginStep),
     /// What `/changelog` shows, lexed off the UI thread ([`crate::changelog::changelog_tokens`]).
@@ -355,9 +335,6 @@ pub enum LaneEvent {
     Catalog(Vec<ModelInfo>),
     /// The model catalogs refreshed ([`LaneClient::refresh_catalog`]), or why not.
     CatalogRefreshed(CatalogRefresh),
-    /// Configured packages behind their source, found by the startup update check (display names); the transcript
-    /// shows [`crate::package_updates::PackageUpdateNotice`] when there are any.
-    PackageUpdates(Vec<String>),
     /// A startup notice from the client ([`crate::startup_notices`]); shown once the session is open.
     StartupNotice(StartupNotice),
     /// The session's subagents for the RLM views (`rlm.list_subagents`: `{subagents: [...]}`).
@@ -391,8 +368,8 @@ pub enum LaneEvent {
     AllSessions(Vec<SessionListing>),
     /// Pi's sessions of every project, newest first (`/import`'s All scope).
     PiAllSessions(Vec<SessionListing>),
-    /// A dialog or notification of the session's extensions (`/mcp`), in Pi's RPC wire format
-    /// (`extension_ui_request`: `select`, `confirm`, `input`, `editor`, `notify`, `set_editor_text`, ...).
+    /// A dialog or notification of `/mcp` or the MCP gateway, in Pi's RPC wire format (`extension_ui_request`:
+    /// `select`, `input`, `notify`).
     ExtensionUi(Value),
 }
 
@@ -405,7 +382,7 @@ pub struct PromptImage {
 
 /// TUI to lane. Every call returns at once; results arrive as [`LaneEvent`]s.
 pub trait LaneClient {
-    /// Answer an extension dialog (`ultron.extension-ui.respond`): `{value}`, `{confirmed}` or `{cancelled: true}`.
+    /// Answer a `/mcp` dialog (`ultron.extension-ui.respond`): `{value}` or `{cancelled: true}`.
     fn extension_ui_respond(&self, _id: &str, _answer: Value) {}
     /// Start a turn. The first prompt of an unnamed session also names it (shown at once, refined in the
     /// background), unless the user names it first.
@@ -557,25 +534,10 @@ pub trait LaneClient {
     fn subscription_auth_warning(&self, provider: &str) {
         let _ = provider;
     }
-    /// Run an extension's command `/name args` (`LegacyExtensionCommands.run`); statuses answer. `/mcp`'s dialogs
-    /// and notices arrive as [`LaneEvent::ExtensionUi`].
-    fn extension_command(&self, name: &str, args: &str) {
-        let _ = (name, args);
-    }
-    /// Ask for the extensions' shortcuts under the TUI's effective keybindings (action, keys);
-    /// [`LaneEvent::ExtensionShortcuts`] answers.
-    fn extension_shortcuts(&self, keybindings: Vec<(String, Vec<String>)>) {
-        let _ = keybindings;
-    }
-    /// Run the extension shortcut bound to `key` (`shortcuts/run`) without waiting for it; a failure answers as
-    /// [`LaneEvent::Error`] `Shortcut handler error: <message>`.
-    fn extension_shortcut(&self, key: &str, keybindings: Vec<(String, Vec<String>)>) {
-        let _ = (key, keybindings);
-    }
-    /// Ask for an extension command's argument completions for `prefix` (`commands/complete`);
-    /// [`LaneEvent::ExtensionCompletions`] answers.
-    fn extension_completions(&self, name: &str, prefix: &str) {
-        let _ = (name, prefix);
+    /// Run `/mcp args` (`LegacyExtensionCommands.run`, the built-in MCP gateway's command); statuses answer. Its
+    /// dialogs and notices arrive as [`LaneEvent::ExtensionUi`].
+    fn mcp_command(&self, args: &str) {
+        let _ = args;
     }
     /// `/share`: export the session and upload it as a secret gist with `gh`; statuses answer, and
     /// [`LaneEvent::ShareLoader`] while the gist is created. The page uses `theme`, as `/export` does.

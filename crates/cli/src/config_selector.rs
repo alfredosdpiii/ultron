@@ -1,17 +1,14 @@
 //! `ultron config`: the resource selector (cli/config-selector.ts, modes/interactive/components/config-selector.ts).
-//! Every resource the package manager resolves is listed by package and type; Space toggles it in global settings,
+//! Every local resource (session-core `local_resources`) is listed by group and type; Space toggles it in global settings,
 //! or cycles a project override (inherit, load, unload) in project mode; Tab switches mode when the project is
 //! trusted; typing filters; Esc closes.
 
 use crate::Env;
-use crate::packages::manager::{
-    Origin, PackageManager, PathMetadata, ResolvedPaths, Scope, is_local_path, source_string,
-};
-use crate::packages::resources::{RESOURCE_TYPES, ResourceType};
 use config::settings::SettingsManager;
 use interactive::{bold, key_hint, key_text};
 use resources::paths::{basename, canonicalize, dirname, join, relative};
 use serde_json::{Map, Value};
+use session_core::local_resources::{LocalResources, PathMetadata, RESOURCE_TYPES, ResolvedPaths, ResourceType, Scope};
 use std::collections::HashMap;
 use std::io::Write;
 use std::rc::Rc;
@@ -53,7 +50,6 @@ struct Subgroup {
 struct Group {
     label: String,
     scope: Scope,
-    origin: Origin,
     source: String,
     subgroups: Vec<Subgroup>,
 }
@@ -68,7 +64,6 @@ enum Row {
 
 fn type_label(kind: ResourceType) -> &'static str {
     match kind {
-        ResourceType::Extensions => "Extensions",
         ResourceType::Skills => "Skills",
         ResourceType::Prompts => "Prompts",
         ResourceType::Themes => "Themes",
@@ -93,9 +88,6 @@ fn format_base_dir(base: &str, home: &str) -> String {
 
 /// `getGroupLabel`.
 fn group_label(m: &PathMetadata, agent_dir: &str, home: &str) -> String {
-    if m.origin == Origin::Package {
-        return format!("{} ({})", m.source, m.scope.name());
-    }
     if m.source == "auto" {
         return match (&m.base_dir, m.scope) {
             (Some(base), Scope::User) => format!("User ({})", format_base_dir(base, home)),
@@ -132,8 +124,7 @@ fn build_groups(resolved: &ResolvedPaths, agent_dir: &str, home: &str) -> Vec<Gr
         for res in resolved.of(kind) {
             let m = &res.metadata;
             let key = format!(
-                "{:?}:{}:{}:{}",
-                m.origin,
+                "{}:{}:{}",
                 m.scope.name(),
                 m.source,
                 m.base_dir.as_deref().unwrap_or("")
@@ -146,7 +137,6 @@ fn build_groups(resolved: &ResolvedPaths, agent_dir: &str, home: &str) -> Vec<Gr
                         Group {
                             label: group_label(m, agent_dir, home),
                             scope: m.scope,
-                            origin: m.origin,
                             source: m.source.clone(),
                             subgroups: Vec::new(),
                         },
@@ -168,9 +158,7 @@ fn build_groups(resolved: &ResolvedPaths, agent_dir: &str, home: &str) -> Vec<Gr
             let file = basename(&res.path).to_string();
             let parent_dir = dirname(&res.path);
             let parent = basename(&parent_dir).to_string();
-            let display_name = if kind == ResourceType::Extensions && parent != "extensions" {
-                format!("{parent}/{file}")
-            } else if kind == ResourceType::Skills && file == "SKILL.md" {
+            let display_name = if kind == ResourceType::Skills && file == "SKILL.md" {
                 parent
             } else {
                 file
@@ -186,13 +174,6 @@ fn build_groups(resolved: &ResolvedPaths, agent_dir: &str, home: &str) -> Vec<Gr
     }
     let mut groups: Vec<Group> = groups.into_iter().map(|(_, g)| g).collect();
     groups.sort_by(|a, b| {
-        if a.origin != b.origin {
-            return if a.origin == Origin::Package {
-                std::cmp::Ordering::Less
-            } else {
-                std::cmp::Ordering::Greater
-            };
-        }
         if a.scope != b.scope {
             return if a.scope == Scope::User {
                 std::cmp::Ordering::Less
@@ -250,7 +231,6 @@ pub struct ConfigSelector {
     pub settings: SettingsManager,
     cwd: String,
     agent_dir: String,
-    home: String,
     write_scope: WriteScope,
     project_mode: bool,
     inherited: HashMap<String, bool>,
@@ -304,7 +284,6 @@ impl ConfigSelector {
             settings,
             cwd: cwd.to_string(),
             agent_dir: agent_dir.to_string(),
-            home: home.to_string(),
             write_scope,
             project_mode,
             inherited,
@@ -509,46 +488,17 @@ impl ConfigSelector {
         }
         let enabled = !item.enabled;
         let scope = item.metadata.scope;
-        if item.metadata.origin == Origin::TopLevel {
-            let pattern = relative(
-                item.metadata.base_dir.as_deref().unwrap_or(&self.base_dir(scope)),
-                &item.path,
-            );
-            let mut updated: Vec<String> = strings(self.scope_settings(scope).get(item.kind.key()))
-                .into_iter()
-                .filter(|p| target(p) != pattern)
-                .collect();
-            updated.push(format!("{}{pattern}", if enabled { "+" } else { "-" }));
-            self.write(scope, item.kind.key(), to_value(updated));
-        } else {
-            let mut packages = strings_or_values(self.scope_settings(scope).get("packages"));
-            let Some(index) = packages.iter().position(|p| source_string(p) == item.metadata.source) else {
-                return Some(enabled);
-            };
-            let mut pkg = match &packages[index] {
-                Value::Object(map) => map.clone(),
-                other => Map::from_iter([("source".to_string(), Value::String(source_string(other)))]),
-            };
-            let pattern = self.package_pattern(item);
-            let mut updated: Vec<String> = strings(pkg.get(item.kind.key()))
-                .into_iter()
-                .filter(|p| target(p) != pattern)
-                .collect();
-            updated.push(format!("{}{pattern}", if enabled { "+" } else { "-" }));
-            pkg.insert(item.kind.key().into(), to_value(updated));
-            packages[index] = if RESOURCE_TYPES.iter().any(|k| pkg.contains_key(k.key())) {
-                Value::Object(pkg)
-            } else {
-                pkg.get("source").cloned().unwrap_or(Value::Null)
-            };
-            self.write(scope, "packages", Value::Array(packages));
-        }
+        let pattern = relative(
+            item.metadata.base_dir.as_deref().unwrap_or(&self.base_dir(scope)),
+            &item.path,
+        );
+        let mut updated: Vec<String> = strings(self.scope_settings(scope).get(item.kind.key()))
+            .into_iter()
+            .filter(|p| target(p) != pattern)
+            .collect();
+        updated.push(format!("{}{pattern}", if enabled { "+" } else { "-" }));
+        self.write(scope, item.kind.key(), to_value(updated));
         Some(enabled)
-    }
-
-    fn package_pattern(&self, item: &Item) -> String {
-        let base = item.metadata.base_dir.clone().unwrap_or_else(|| dirname(&item.path));
-        relative(&base, &item.path)
     }
 
     fn pattern_for_scope(&self, item: &Item, scope: Scope) -> String {
@@ -591,23 +541,6 @@ impl ConfigSelector {
             })
     }
 
-    fn sources_match(&self, left: &str, left_scope: Scope, right: &str, right_scope: Scope) -> bool {
-        if left == right {
-            return true;
-        }
-        if !is_local_path(left) || !is_local_path(right) {
-            return false;
-        }
-        let resolve = |s: &str, scope: Scope| {
-            config::paths::resolve(
-                s.trim(),
-                std::path::Path::new(&self.base_dir(scope)),
-                std::path::Path::new(&self.home),
-            )
-        };
-        resolve(left, left_scope) == resolve(right, right_scope)
-    }
-
     fn state_from(entries: &[String], patterns: &[String], empty_is_unload: bool) -> OverrideState {
         if entries.is_empty() && empty_is_unload {
             return OverrideState::Unload;
@@ -630,30 +563,8 @@ impl ConfigSelector {
         if self.write_scope != WriteScope::Project {
             return OverrideState::Inherit;
         }
-        if item.metadata.origin == Origin::TopLevel {
-            let entries = strings(self.settings.project_settings().get(item.kind.key()));
-            return Self::state_from(&entries, &self.top_level_patterns(item), false);
-        }
-        let packages = strings_or_values(self.settings.project_settings().get("packages"));
-        let found = packages.iter().find(|p| {
-            self.sources_match(
-                &item.metadata.source,
-                item_scope(item),
-                &source_string(p),
-                Scope::Project,
-            )
-        });
-        let Some(Value::Object(pkg)) = found else {
-            return OverrideState::Inherit;
-        };
-        let Some(entries) = pkg.get(item.kind.key()) else {
-            return OverrideState::Inherit;
-        };
-        Self::state_from(
-            &strings(Some(entries)),
-            &[self.package_pattern(item)],
-            pkg.get("autoload") != Some(&Value::Bool(false)),
-        )
+        let entries = strings(self.settings.project_settings().get(item.kind.key()));
+        Self::state_from(&entries, &self.top_level_patterns(item), false)
     }
 
     fn next_state(&self, item: &Item) -> OverrideState {
@@ -671,96 +582,32 @@ impl ConfigSelector {
 
     fn set_project_override(&mut self, item: &Item, state: OverrideState) -> bool {
         let sign = |s: OverrideState| if s == OverrideState::Load { "+" } else { "-" };
-        if item.metadata.origin == Origin::TopLevel {
-            let current = strings(self.settings.project_settings().get(item.kind.key()));
-            let inherited = self.is_inherited_global(item);
-            let pattern = if inherited {
-                item.path.clone()
-            } else {
-                self.pattern_for_scope(item, Scope::Project)
-            };
-            let patterns = self.top_level_patterns(item);
-            let mut updated: Vec<String> = current
-                .into_iter()
-                .filter(|e| {
-                    let t = target(e);
-                    if (e.starts_with('!') || e.starts_with('+') || e.starts_with('-'))
-                        && patterns.iter().any(|p| p == t)
-                    {
-                        return false;
-                    }
-                    !(state == OverrideState::Inherit && inherited && t == pattern)
-                })
-                .collect();
-            if state != OverrideState::Inherit {
-                if inherited && !updated.contains(&pattern) {
-                    updated.push(pattern.clone());
-                }
-                updated.push(format!("{}{pattern}", sign(state)));
-            }
-            let _ = self.settings.set_project(item.kind.key(), Some(to_value(updated)));
-            return true;
-        }
-        let mut packages = strings_or_values(self.settings.project_settings().get("packages"));
-        let mut index = packages.iter().position(|p| {
-            self.sources_match(
-                &item.metadata.source,
-                item_scope(item),
-                &source_string(p),
-                Scope::Project,
-            )
-        });
-        if index.is_none() {
-            if state == OverrideState::Inherit {
-                return false;
-            }
-            packages.push(self.override_source(item));
-            index = Some(packages.len() - 1);
-        }
-        let Some(index) = index else { return false };
-        let mut pkg = match &packages[index] {
-            Value::Object(map) => map.clone(),
-            other => Map::from_iter([("source".to_string(), Value::String(source_string(other)))]),
+        let current = strings(self.settings.project_settings().get(item.kind.key()));
+        let inherited = self.is_inherited_global(item);
+        let pattern = if inherited {
+            item.path.clone()
+        } else {
+            self.pattern_for_scope(item, Scope::Project)
         };
-        let pattern = self.package_pattern(item);
-        let mut updated: Vec<String> = strings(pkg.get(item.kind.key()))
+        let patterns = self.top_level_patterns(item);
+        let mut updated: Vec<String> = current
             .into_iter()
-            .filter(|e| target(e) != pattern)
+            .filter(|e| {
+                let t = target(e);
+                if (e.starts_with('!') || e.starts_with('+') || e.starts_with('-')) && patterns.iter().any(|p| p == t) {
+                    return false;
+                }
+                !(state == OverrideState::Inherit && inherited && t == pattern)
+            })
             .collect();
         if state != OverrideState::Inherit {
+            if inherited && !updated.contains(&pattern) {
+                updated.push(pattern.clone());
+            }
             updated.push(format!("{}{pattern}", sign(state)));
         }
-        if updated.is_empty() {
-            pkg.shift_remove(item.kind.key());
-        } else {
-            pkg.insert(item.kind.key().into(), to_value(updated));
-        }
-        if !RESOURCE_TYPES.iter().any(|k| pkg.contains_key(k.key())) {
-            if pkg.get("autoload") == Some(&Value::Bool(false)) {
-                packages.remove(index);
-            } else {
-                packages[index] = pkg.get("source").cloned().unwrap_or(Value::Null);
-            }
-        } else {
-            packages[index] = Value::Object(pkg);
-        }
-        let _ = self.settings.set_project("packages", Some(Value::Array(packages)));
+        let _ = self.settings.set_project(item.kind.key(), Some(to_value(updated)));
         true
-    }
-
-    /// `createPackageOverrideSource`.
-    fn override_source(&self, item: &Item) -> Value {
-        let source = &item.metadata.source;
-        if !is_local_path(source) {
-            return serde_json::json!({ "source": source, "autoload": false });
-        }
-        let path = config::paths::resolve(
-            source.trim(),
-            std::path::Path::new(&self.base_dir(item_scope(item))),
-            std::path::Path::new(&self.home),
-        );
-        let rel = relative(&self.base_dir(Scope::Project), &path.display().to_string());
-        serde_json::json!({ "source": if rel.is_empty() { ".".to_string() } else { rel }, "autoload": false })
     }
 
     fn checkbox(&self, item: &Item) -> String {
@@ -923,10 +770,6 @@ fn item_scope(item: &Item) -> Scope {
     item.metadata.scope
 }
 
-fn strings_or_values(value: Option<&Value>) -> Vec<Value> {
-    value.and_then(Value::as_array).cloned().unwrap_or_default()
-}
-
 fn theme_for(env: &Env, settings: &SettingsManager) -> Result<Rc<Theme>, String> {
     let caps = crate::terminal_settings::capabilities(env, settings);
     let name = settings.theme().unwrap_or_else(|| "dark".into());
@@ -1051,12 +894,12 @@ fn track(row: &mut i64, out: &str) {
 /// `handleConfigCommand` after its arguments: resolve global and project resources, then run the selector.
 pub fn run(env: &Env, settings: SettingsManager, local: bool) -> Result<(), String> {
     let global_settings = SettingsManager::create(&env.cwd, &env.agent_dir(), false);
-    let global = PackageManager::new(env, global_settings).resolve()?;
+    let global = LocalResources::new(env, global_settings).resolve();
     let trusted = settings.is_project_trusted();
     let project = if trusted {
         let mut project_settings = SettingsManager::create(&env.cwd, &env.agent_dir(), false);
         project_settings.set_project_trusted(true);
-        PackageManager::new(env, project_settings).resolve()?
+        LocalResources::new(env, project_settings).resolve()
     } else {
         global.clone()
     };

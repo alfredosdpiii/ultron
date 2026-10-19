@@ -50,7 +50,7 @@ A48	acceptance	Contract repair: a malformed frame answer is re-asked within budg
 A49	acceptance	Budget subtree: a map of 8 frames under calls=6 runs 6 and marks 2 incomplete; tranches never oversubscribe the token pool; provider failures are refunded	acceptance_a49_a_map_of_8_frames_under_calls_6_runs_6_and_marks_2_incomplete_in_order
 A50	acceptance	Cancellation: aborting the root cancels every running inference frame within 2 s	acceptance_a50_end_to_end_aborting_the_root_turn_cancels_every_running_frame_within_2s
 A51	acceptance	After 20 completed tasks the root's next request stays bounded (results collapse on return by context edit) while agents.result still returns full values	acceptance_a51_twenty_completed_tasks_keep_the_next_request_bounded_and_values_full_through_agents_result
-A52	acceptance	ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins	acceptance_a52_forget_spares_the_current_turn_and_pins_extensions_observe_it_compaction_keeps_notes_and_pins
+A52	acceptance	ctx.forget never removes the current user turn or pinned items, an extension can observe the edit, and compaction keeps notes and pins	acceptance_a52_forget_spares_the_current_turn_and_pins_compaction_keeps_notes_and_pins
 A53	acceptance	A proposed code skill whose test fails is never importable; a passing one is, survives worker restart, and rolls back cleanly	acceptance_a53_a_passing_skill_is_importable_listed_and_survives_worker_restart
 A54	acceptance	On a repeated task the second run uses the saved skill (tool use and skill import observed) and costs less than the first	acceptance_a54_the_second_run_imports_the_saved_skill_and_makes_fewer_cheaper_calls
 A55	acceptance	An agent class defined in a cell is invokable typed end to end, its state persists across cells and snapshots, and a bad return is rejected with the schema error	acceptance_a55_a_class_defined_in_a_cell_is_invokable_typed_end_to_end_keeps_state_and_rejects_a_bad_return
@@ -434,7 +434,6 @@ LOKI-04	loki	core rules: 8 secret kinds, placeholder and entropy filters, confli
 LOKI-05	loki	--format json report (blocked/passed/error), text stderr output, exit codes	loki_protect_matches_loki_py_corpus
 LOKI-06	loki	JS/TS preview unavailable gives a NOT CHECKED warning; LOKI_STRICT=1 makes it block	loki_protect_matches_loki_py_corpus
 LOKI-07	loki	context command (default and ultron host, rule packs, sobelow levels, invalid config)	loki_protect_matches_loki_py_corpus
-LOKI-08	loki	unported language rule packs and commands fail closed	loki_unported_checks_fail_closed
 LOKI-09	loki	Python json.dumps formatting with non-ASCII escaped	loki_py_dumps_matches_python_json
 LOKI-10	loki	shlex.split POSIX-mode behaviour	loki_py_shlex_matches_python
 LOKI-11	loki	fnmatch semantics	loki_py_fnmatch_matches_python
@@ -446,7 +445,6 @@ CLI-02	cli	binary stdout/stderr/exit code match node cli.ts for 25 vectors (help
 CLI-03	cli	--list-models order matches localeCompare over the whole built-in catalog	cli_list_models_order_matches_typescript_locale_compare
 CLI-04	cli	formatTokenCount rounding (toFixed ties up)	cli_format_token_count_rounds_like_to_fixed
 CLI-05	cli	--version equals packages/coding-agent/package.json version	cli_version_matches_typescript
-CLI-06	cli	prompt, subcommands and --export exit 1 with a not-implemented error	cli_prompt_and_subcommands_report_not_implemented
 CLI-07	cli	native session listing (cwd filter, .jsonl only, missing dir) and exact/prefix/path selectors	cli_session_selector_resolves_native_sessions
 RES-PROMPT-01	resources	system prompt sections/text (tools, rules dedup, docs, project_context, skills, cwd, custom/override sections, invalid names) match TS	resources_system_prompts_match_typescript
 RES-PROMPT-02	resources	diffSystemPromptSections patch matches TS	resources_system_prompts_match_typescript
@@ -613,24 +611,6 @@ AI-W5-37	ai	ai oauth login copilot matches typescript	ai_oauth_login_copilot_mat
 AI-W5-38	ai	ai oauth login pages match typescript	ai_oauth_login_pages_match_typescript
 AI-W5-39	ai	ai oauth login parses pasted codes	ai_oauth_login_parses_pasted_codes
 AI-W5-40	ai	ai oauth login pkce is rfc7636	ai_oauth_login_pkce_is_rfc7636
-EXT-01	extensions	extensions discovery follows package manager order and trust	extensions_discovery_follows_package_manager_order_and_trust
-EXT-02	extensions	extensions discovery reads settings files through config	extensions_discovery_reads_settings_files_through_config
-EXT-03	extensions	extensions discovery reports javascript extensions and bad entries	extensions_discovery_reports_javascript_extensions_and_bad_entries
-EXT-04	extensions	extensions manifest parsing	extensions_manifest_parsing
-EXT-05	extensions	extensions process bus messages reach every subscriber	extensions_process_bus_messages_reach_every_subscriber
-EXT-06	extensions	extensions process command prompts and contributes declarative ui	extensions_process_command_prompts_and_contributes_declarative_ui
-EXT-07	extensions	extensions process crash during event dispatch reports and continues	extensions_process_crash_during_event_dispatch_reports_and_continues
-EXT-08	extensions	extensions process crash is isolated restarted then disabled	extensions_process_crash_is_isolated_restarted_then_disabled
-EXT-09	extensions	extensions process event timeout is a handler error	extensions_process_event_timeout_is_a_handler_error
-EXT-11	extensions	extensions process failed handshakes become diagnostics	extensions_process_failed_handshakes_become_diagnostics
-EXT-12	extensions	extensions process handshake registers functions commands and events	extensions_process_handshake_registers_functions_commands_and_events
-EXT-13	extensions	extensions process kernel function call round trip	extensions_process_kernel_function_call_round_trip
-EXT-14	extensions	extensions process shutdown stops the process	extensions_process_shutdown_stops_the_process
-EXT-15	extensions	extensions process timeout and cancel notify the extension	extensions_process_timeout_and_cancel_notify_the_extension
-EXT-16	extensions	extensions process without ui prompts get default answers	extensions_process_without_ui_prompts_get_default_answers
-EXT-17	extensions	extensions ui model keys status and panels per extension	extensions_ui_model_keys_status_and_panels_per_extension
-EXT-18	extensions	extensions functions never become model tools	extensions_functions_never_become_model_tools
-EXT-19	extensions	extensions router matches typescript runner	extensions_router_matches_typescript_runner
 HOST-W7-01	host	host inside matches path relative	host_inside_matches_path_relative
 HOST-W7-02	host	host loki cells match the typescript host	host_loki_cells_match_the_typescript_host
 HOST-W7-03	host	host loki mode matches typescript	host_loki_mode_matches_typescript
@@ -656,7 +636,6 @@ LOKI-W5-13	loki	loki text masks match python	loki_text_masks_match_python
 LOKI-W5-14	loki	loki text unicode offsets are code points	loki_text_unicode_offsets_are_code_points
 LOKI-W5-15	loki	loki hook matches loki py corpus	loki_hook_matches_loki_py_corpus
 LOKI-W5-16	loki	loki shell matches loki py corpus	loki_shell_matches_loki_py_corpus
-LOKI-W5-17	loki	loki shell record fails closed	loki_shell_record_fails_closed
 KSNAP-W8-01	kernel	kernel append bounded cuts once with a marker	kernel_append_bounded_cuts_once_with_a_marker
 KSNAP-W8-02	kernel	kernel marker prefix finds the longest partial marker at the end	kernel_marker_prefix_finds_the_longest_partial_marker_at_the_end
 KSNAP-W8-03	kernel	kernel orphan text wraps and marks dropped output	kernel_orphan_text_wraps_and_marks_dropped_output
@@ -748,7 +727,7 @@ SUB-12	cli	cli auth matches typescript	cli_auth_matches_typescript
 SUB-13	cli	cli export matches typescript	cli_export_matches_typescript
 SUB-14	cli	cli mcp matches typescript	cli_mcp_matches_typescript
 SUB-15	cli	cli migrate matches typescript	cli_migrate_matches_typescript
-SUB-16	cli	cli package commands match typescript	cli_package_commands_match_typescript
+SUB-16	cli	cli package commands match typescript	cli_config_command_matches_typescript
 SUB-17	cli	cli setup matches typescript	cli_setup_matches_typescript
 SUB-18	cli	cli usage matches typescript	cli_usage_matches_typescript
 DMN-01	daemon	daemon control lines match encode control line	daemon_control_lines_match_encode_control_line
@@ -887,7 +866,7 @@ TUIQOL-88	tui	tui vim editor visual mode and clipboard yank	tui_vim_editor_visua
 TUIQOL-89	tui	tui vim editor yank expands paste markers	tui_vim_editor_yank_expands_paste_markers
 TUIQOL-90	tui	tui vim state machine matches omp	tui_vim_state_machine_matches_omp
 CLI-INT-01	cli	cli composition cell calls a code skill	cli_composition_cell_calls_a_code_skill
-CLI-INT-02	cli	cli composition cell calls an extension function never a tool	cli_composition_cell_calls_an_extension_function_never_a_tool
+CLI-INT-02	cli	cli composition cell calls an extension function never a tool	cli_composition_cell_has_no_extension_functions_and_only_the_rlm_tool
 CLI-INT-03	cli	cli composition cell calls the memory api on the injected backend	cli_composition_cell_calls_the_memory_api_on_the_injected_backend
 CLI-INT-04	cli	cli composition delegation spawns and collects a subagent	cli_composition_delegation_child_done_continues_the_run
 CLI-INT-05	cli	cli composition kernel sigkill recovers state and reports restored names	cli_composition_kernel_sigkill_recovers_state_and_reports_restored_names
@@ -1045,9 +1024,6 @@ PYWRAP-01	delegation	delegation rlm cell wrappers list and cancel a parked cell	
 PYWRAP-02	delegation	delegation rlm lane wrappers open list and close lanes	delegation_rlm_lane_wrappers_open_list_and_close_lanes
 PYWRAP-03	delegation	delegation rlm recovery reports the lane kernels restart	delegation_rlm_recovery_reports_the_lane_kernels_restart
 PYWRAP-04	delegation	delegation rlm results never waits and host collect raises naming running children	delegation_rlm_results_never_waits_and_host_collect_raises_naming_running_children
-PYWRAP-EXT-01	extensions	extensions ext namespace calls extension functions from a cell	extensions_ext_namespace_calls_extension_functions_from_a_cell
-PYWRAP-EXT-02	extensions	extensions ext namespace is absent without extension functions	extensions_ext_namespace_is_absent_without_extension_functions
-PYWRAP-EXT-03	extensions	extensions ext namespace maps names and raises on error results	extensions_ext_namespace_maps_names_and_raises_on_error_results
 TUIQOL2-01	tui	tui outline append entries folds tool results like omp	tui_outline_append_entries_folds_tool_results_like_omp
 TUIQOL2-02	tui	tui outline compose column matches omp	tui_outline_compose_column_matches_omp
 TUIQOL2-03	tui	tui outline frame browser lays out and maps points	tui_outline_frame_browser_lays_out_and_maps_points
@@ -1793,8 +1769,7 @@ SELA-4	cli	/resume search through the worker listing finds a later reply's word	
 SELA-5	cli	daemon describe lists allMessagesText	cli_daemon_describe_lists_all_messages_text
 SELA-6	ai	Radius loopback login completes under port contention (shared lock, fail-fast browser)	ai_oauth_radius_browser_login_completes_through_the_loopback_callback
 CTX-1	session-core	root requests stay bounded: a seen task result collapses on return (ContextControl hooks on the live root lane)	acceptance_a51_twenty_completed_tasks_keep_the_next_request_bounded_and_values_full_through_agents_result
-CTX-2	session-core	ctx.forget guards, edit-aware run split, boundary-deferred note, pi.events observation, notes and pins kept across compaction	acceptance_a52_forget_spares_the_current_turn_and_pins_extensions_observe_it_compaction_keeps_notes_and_pins
-CTX-3	extensions	host publish on the event bus reaches subscribed channels only	extensions_process_host_publish_reaches_bus_subscribers_only
+CTX-2	session-core	ctx.forget guards, edit-aware run split, boundary-deferred note, pi.events observation, notes and pins kept across compaction	acceptance_a52_forget_spares_the_current_turn_and_pins_compaction_keeps_notes_and_pins
 CTX-4	kernel-apis	note projector: Note (ctx.note) custom message, empty note projects nothing	kernel_apis_context_note_projector_is_a_custom_message_at_its_place
 CTX-5	session-journal	buildSessionContext entry projectors after edits	session_journal_context_projectors_place_custom_messages_and_respect_edits
 FIN46-01	acceptance A21	lost response then owner crash: no replay, same key returns durable interrupted result, reservation settles unknown	acceptance_a21_a_lost_response_followed_by_an_owner_crash_is_not_replayed_and_the_same_key_returns_the_durable_interrupted_result
@@ -1809,10 +1784,6 @@ FIN46-09	cli A25	/import without path lists this project's Pi sessions and impor
 FIN56-01	auth	request key order from ModelRuntime.getAuth (flag, auth.json, models.json, env)	session_core_request_key_matches_typescript_resolution_order
 FIN56-02	auth	stored key reaches lane api_key	session_core_request_key_stored_key_reaches_lane_api_key
 FIN56-03	auth	print mode sends auth.json key; flag beats it	cli_print_mode_sends_the_auth_json_key
-FIN56-04	tools	cell abort cancels a waited call, nothing announced	acceptance_a56_aborting_the_cell_cancels_a_call_it_is_waiting_on_and_nothing_is_announced
-FIN56-05	tools	slow call detaches after yield; end reported for tool_done	acceptance_a56_a_slow_call_detaches_after_the_yield_time_and_its_end_is_reported_for_an_event
-FIN56-06	tools	yield_after handle: result, cancel, root abort	acceptance_a56_yield_after_returns_a_handle_result_waits_cancel_stops_a_root_abort_cancels
-FIN56-07	tools	detached mcp wait's tool_done re-invokes the model (CLI)	acceptance_a56_a_wait_past_the_tool_yield_detaches_and_its_tool_done_event_reinvokes_the_model
 FIN56-08	hints	job-detached	kernel_apis_hints_job_detached_a_plain_bash_that_came_back_running
 FIN56-09	hints	blocked-on-job	kernel_apis_hints_blocked_on_job_over_60_s_awaiting_job_result_while_events_are_on
 FIN56-10	hints	poll-loop	kernel_apis_hints_poll_loop_repeated_status_calls_or_sleeping_in_a_loop_around_a_check
@@ -1872,9 +1843,6 @@ ACMP-25	cli/interactive	compaction_start reason and compaction_end mapped to TUI
 FIN1-02	ai/claude-subscription	discovery probes run the fake CLI via the interpreter, never a freshly written executable	ai_claude_subscription_discovery_probes_follow_the_telemetry_setting
 FIN1-03	session-core/compaction	abort cancels a running manual compaction; isCompacting reported; op ends aborted; session prompts on	cli_rpc_compaction_abort_cancels_a_manual_compaction
 FIN1-04	session-core/compaction	abort cancels a run's threshold compaction with the run; nothing left open	cli_rpc_compaction_abort_cancels_an_automatic_compaction_with_its_run
-FIN1-05	session-core/extensions	session_before_compact cancel cancels a manual compaction; session_compact_failed follows	cli_rpc_compaction_extension_cancels_a_manual_compaction
-FIN1-06	session-core/extensions	session_before_compact compaction supplies the summary (fromHook, usage row, no request); session_compact follows	cli_rpc_compaction_extension_supplies_the_summary
-FIN1-07	session-core/extensions	automatic compactions emit before/after hooks; a hook cancel lets the run complete without compaction	cli_rpc_compaction_extension_sees_and_cancels_automatic_compactions
 FIN1-08	session-core/recovery	kill after a journaled compaction cancel settles aborted, branch unchanged, preparation removed	session_core_compaction_cancel_journaled_before_a_kill_settles_aborted
 FIN1-09	session-core/recovery	kill during a compaction without cancel settles failed and drops its preparation	session_core_compaction_killed_without_a_cancel_settles_failed_and_drops_its_preparation
 FIN1-10	session-core/compaction	live cancel ends the compaction operation aborted with the lane idle	session_core_compaction_cancelled_live_ends_aborted
@@ -1892,9 +1860,6 @@ INITM-05	session-core/model	no credentials at all still asks for --model	session
 INITM-06	session-core/model	a resumed session without --model keeps its own model and thinking level	session_core_initial_model_never_replaces_a_resumed_sessions_model
 CMP2-01	compaction	compact during a run aborts the run first, persists the aborted response, then one manual compaction (TS #7253)	cli_rpc_compaction_compact_during_a_run_aborts_the_run_first
 CMP2-02	compaction	compaction started by compact-during-run: isCompacting, kill settles run aborted + compaction interrupted, abort cancels it	cli_rpc_compaction_compact_during_a_run_recovers_and_cancels
-CMP2-03	compaction	abort during session_before_compact reaches the hook as notifications/cancelled, compaction_end manual aborted, session prompts on (TS #8920)	cli_rpc_compaction_abort_during_a_hook_reaches_it_as_its_signal
-CMP2-04	extensions	cancellable session_before_* dispatch gives up a hook that never answers, notifies it, skips later handlers, reports no error	extensions_cancellable_abort_gives_up_a_hook_that_never_answers
-CMP2-05	extensions	cancellable dispatch without an abort follows emit's rules	extensions_cancellable_without_an_abort_is_emit
 CMP2-06	compaction	cancel journaled at summary.deciding (during the hook) then kill settles aborted	session_core_compaction_cancel_during_the_hook_then_a_kill_settles_aborted
 CMP2-07	navigation	branch summary is isCompacting, refuses a second navigation, writes nothing before commit, abort ends it aborted with the leaf unchanged	cli_rpc_compaction_branch_summary_is_compacting_and_abortable
 CMP2-08	navigation	navigation refused during a manual compaction (TS #9178); compact during a branch summary aborts it, then compacts	cli_rpc_compaction_navigation_and_compaction_exclude_each_other
@@ -1907,12 +1872,7 @@ PKG-05	release	a damaged directory (truncated, deleted file, foreign marker, no 
 PKG-06	release	embedded set equals the runtime modules, patterns, skills, docs and changelog byte for byte, with executable modes	cli_package_embeds_the_runtime_skills_docs_and_changelog_byte_for_byte
 PKG-07	release	ULTRON_DEV_ASSETS selects checkout, embedded or a given package directory, with errors	cli_package_dev_assets_chooses_where_the_files_come_from
 PKG-08	release	install.sh installs into a prefix without Node, replaces by rename, copies license files, refuses unknown arguments	cli_package_install_script_installs_into_a_prefix_without_node
-CTXEXT-01	session-core/ctx	ctx.* on a subagent lane edits only that lane's next request (summarize/forget/pin/note/guards, TS literal expectations)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane_and_is_observed_once_with_its_lane
-CTXEXT-02	session-core/commands	get_commands lists extension-process commands in TS precedence order with name:N, descriptions, SourceInfo, /mcp after them	acceptance_a25_get_commands_lists_extension_process_commands_in_typescript_order_with_their_source
-CTXEXT-03	session-core/daemon	legacy-extension-commands list/run and listCommands shapes; run reaches the registering process; unknown name refused	acceptance_a25_the_session_lists_and_runs_extension_commands_for_the_client_tui
-CTXEXT-04	interactive	direct extension slash commands skip built-ins and invalid names; default description	interactive_extension_commands_direct_commands_skip_builtins_and_invalid_names
-CTXEXT-05	interactive	/name and /extension <name> [args] dispatch; usage error; unknown before listing	interactive_extension_commands_run_directly_and_through_slash_extension
-CTXEXT-06	interactive	autocomplete offers extension commands with descriptions	interactive_extension_commands_are_offered_by_autocomplete_with_their_descriptions
+CTXEXT-01	session-core/ctx	ctx.* on a subagent lane edits only that lane's next request (summarize/forget/pin/note/guards, TS literal expectations)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane
 HARD-01	cli tests	scripts exec'd by path launch under concurrent forks (no ETXTBSY)	cli_exec_race_installed_scripts_always_launch_while_other_threads_fork
 HARD-02	ai oauth	radius browser login completes on a private callback port; redirect URI stays 1456	ai_oauth_radius_browser_login_completes_through_the_loopback_callback
 HARD-03	ai oauth	radius denial ends the login on a private callback port	ai_oauth_radius_browser_denial_ends_the_login
@@ -1961,7 +1921,6 @@ PKG2-04	release	a run waiting on a lock while its install is pruned and replaced
 HARD2-06	tui	lexing work grows linearly (deterministic counter)	tui_marked_lex_work_grows_linearly
 HARD2-07	tui	O(log n) closing search equals the run walk	tui_marked_closing_search_matches_the_walk
 HARD2-08	sandbox	docker without setpriv: status kept, holder ends, killed client stops container	sandbox_escape_docker_without_setpriv_ties_the_container_to_its_client
-HARD2-09	acceptance	root-abort cancel waits for the async end record	acceptance_a56_yield_after_returns_a_handle_result_waits_cancel_stops_a_root_abort_cancels
 HARD2-10	acceptance	rpc client stop waits for a clean exit (120 s hang guard)	acceptance_a02_large_input_stays_in_the_kernel_and_the_model_sees_only_bounded_results
 CMP3-01	navigation	summarized navigation admitted at summary.deciding with branch_summary preparation, intent and commit_navigation boundary	session_core_navigation_journal_admits_a_summarized_navigation_at_deciding
 CMP3-02	navigation	branch summary commits under the target as the tip, label on the summary, result navigation/completed, preparation removed	session_core_navigation_journal_commits_the_summary_under_the_target
@@ -1970,12 +1929,6 @@ CMP3-04	navigation	kill at navigation.ready_to_commit commits on reopen (label s
 CMP3-05	navigation	direct navigation commits tip and label and ends completed	session_core_navigation_journal_direct_navigation_commits_live
 CMP3-06	navigation	interrupted summary settles failed/interrupted, cancel-requested settles aborted, branch unchanged	session_core_navigation_journal_interrupted_summary_settles_without_moving
 CMP3-07	navigation	live navigation journal trace, events carry the operation id	cli_rpc_compaction_navigation_is_journaled_as_an_operation
-CMP3-08	extensions	session_before_tree cancel: "Navigation cancelled", isCompacting cleared, leaf unchanged, declined op (TS #3688)	cli_rpc_compaction_tree_hook_cancels_the_navigation
-CMP3-09	extensions	session_before_tree summary replaces the model's; session_tree reports new/old leaf, summaryEntry, fromExtension	cli_rpc_compaction_tree_hook_supplies_the_summary
-CMP3-10	extensions	session_before_tree customInstructions/replaceInstructions/label override the caller's	cli_rpc_compaction_tree_hook_overrides_instructions_and_label
-CMP3-11	extensions	abort during session_before_tree reaches the hook as notifications/cancelled, navigation aborted; prompt meanwhile refused with LaneBusy	cli_rpc_compaction_tree_hook_is_cancelled_by_abort
-CMP3-12	compaction	isCompacting true during session_compact (manual) and session_tree, false during manual session_compact_failed	cli_rpc_compaction_is_compacting_while_after_hooks_run
-CMP3-13	compaction	isCompacting true during an automatic compaction's session_compact_failed	cli_rpc_compaction_is_compacting_while_an_automatic_failure_hook_runs
 CMP3-14	tui	a hook-cancelled navigation shows "Navigation cancelled" as status, not an error	interactive_commands_tree_navigates_before_a_user_message
 CMP4-01	navigation	selected user message: tip to its parent, editorText answered, hook targetId is the selection, label on the selection (labelEntryId) or on the summary; current tip is a no-op; unknown entry "Entry X not found"	cli_rpc_compaction_navigation_resolves_a_selected_user_message
 CMP4-02	navigation	recovery of navigation.ready_to_commit labels labelEntryId, not the target	session_core_navigation_journal_labels_the_selected_entry_on_recovery
@@ -1988,15 +1941,10 @@ CMP4-08	compaction	kill during a live retry_wait settles failed/interrupted; abo
 CMP4-09	compaction	branch summary and in-run threshold compaction retry	cli_rpc_compaction_branch_summary_and_run_compaction_retry
 CMP4-10	compaction	no retry for a non-transient error or with retry.enabled false	cli_rpc_compaction_summary_retry_needs_a_transient_error_and_retries_on
 CTXEXT2-01	cli/daemon	A signalled worker's task-journal writes are dropped from hand-over on; its running child is reattached and resent by the successor	cli_durable_a_signalled_worker_leaves_its_running_child_to_its_successor
-CTXEXT2-02	session-core/ctx	ctx.forget of a note still waiting for the boundary hides it (write withdrawn, requeued without its message)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane_and_is_observed_once_with_its_lane
+CTXEXT2-02	session-core/ctx	ctx.forget of a note still waiting for the boundary hides it (write withdrawn, requeued without its message)	acceptance_a52_ctx_on_a_subagent_lane_edits_only_that_lane
 CTXEXT2-03	harness/session-core	Subagent lanes compact at threshold with TS default policy; ctx trims an answered large result instead; after compaction the request carries summary then kept notes/pins	acceptance_a52_a_subagent_lane_trims_then_compacts_and_keeps_its_notes
-CTXEXT2-04	session-core	commands/complete of the registering extension under its own name; null when none	acceptance_a25_the_session_lists_and_runs_extension_commands_for_the_client_tui
-CTXEXT2-05	interactive	extension command argument completions fetched off the UI thread and shown on arrival; never asked for built-ins	interactive_extension_commands_complete_arguments_off_the_ui_thread
-CTXEXT2-06	interactive	extension slash commands inserted right after /extension, before /mcp	interactive_extension_commands_sit_after_slash_extension_before_mcp
-CTXEXT2-07	cli	an extension command runs off the TUI link thread; a prompt completes meanwhile	cli_interactive_an_extension_command_does_not_hold_up_other_commands
 CTXEXT3-01	harness/compaction	Edits of entries a compaction keeps still apply after it; the summarizer sees edits applied	harness_chat_compaction_keeps_the_edits_of_kept_entries
 MODELS2-01	interactive	Ctrl+P nextModel via resolveModelScopeFromModels (globs, fuzzy, suffixes, claude-code, available order, errors)	interactive_next_model_matches_typescript
-MODELS2-02	cli	--models parsed but not forwarded to the session (native-command.ts)	cli_models_flag_is_parsed_but_not_forwarded_to_the_session
 MODELS2-03	session-core	stored catalog restore, legacy Radius import, update --models network refresh vs TS	session_core_model_refresh_matches_typescript
 MODELS2-04	session-core	pi.dev overlay needs a lastModified newer than the bundled data	session_core_stored_catalog_overlay_needs_a_newer_stamp
 MODELS2-05	cli	update --models without credentials succeeds and fetches nothing	cli_update_models_without_credentials_refreshes_nothing_and_succeeds
@@ -2033,11 +1981,10 @@ MCPGW2-21	daemon	bridge: expected client queue	daemon_extension_ui_an_expected_c
 MCPGW2-22	daemon	bridge: expected client absent	daemon_extension_ui_an_expected_client_that_never_arrives_leaves_dialogs_with_defaults
 MCPGW2-23	interactive	/mcp runs in worker; dialogs in order	interactive_mcp_runs_in_the_worker_and_its_dialogs_are_answered_in_order
 MCPGW2-24	interactive	input answer/cancel; notify status	interactive_mcp_input_dialogs_answer_or_cancel_and_notices_show_in_the_status_line
-MCPGW2-25	interactive	/extension usage	interactive_extension_command_names_the_command
 MCPGW2-26	session-core	REPL tool args validated/coerced e2e	session_core_tool_arguments_are_validated_and_coerced_as_typescript_prepares_them
 MCPGW2-27	session-core	config errors reach client UI	session_core_mcp_configuration_errors_reach_the_clients_ui_when_the_session_starts
 MCPGW2-28	cli	worker /mcp list/run/menu + eager notice	cli_daemon_mcp_command_and_notices_reach_the_client
-MCPGW2-29	cli	--no-extensions leaves MCP out	cli_daemon_no_extensions_leaves_mcp_out
+MCPGW2-29	cli	--no-extensions leaves MCP out	cli_daemon_no_extensions_flag_keeps_mcp
 MCPGW2-30	cli	RPC relays extension_ui_request	cli_rpc_mode_relays_mcp_notices_as_extension_ui_requests
 MCPGW2-31	cli	/mcp status and menu in tmux TUI	cli_interactive_mcp_status_and_menu_in_the_tui
 CMP6-01	ai	provider stream-error stopReason, errorMessage and request count match the TS providers over real HTTP (Anthropic SSE/HTTP, OpenAI completions/responses, Google, Mistral)	ai_stream_errors_match_typescript_over_http
@@ -2067,7 +2014,7 @@ MODELS4-03	print-mode	ultron -p with Kimi OAuth passes preflight and prompt with
 MODELS4-04	tui-scoped-models	refresh timeout shows "Model refresh timed out; showing cached models." (warning)	cli_scoped_models_refresh_timeout_says_so_like_ts
 MODELS4-06	delegation-usage	a cancelled task settles its open model reservation before its result is published	acceptance_a09_a_cancelled_task_settles_its_model_reservation_before_its_result_is_published
 P-CLI-01	cli	prompt without -p streams; no-prompt runs list/attach; stdin and @file prompts; system-prompt/no-skills/no-context-files reach the request; setup hints	cli_native_run_matches_typescript
-P-CLI-02	cli	-e manifests load before discovered ones and with --no-extensions	cli_native_extension_flag_loads_a_manifest_also_with_no_extensions
+P-CLI-02	cli	-e manifests load before discovered ones and with --no-extensions	cli_native_extension_flags_and_settings_packages_are_warned_about_and_ignored
 P-CLI-03	cli	--models scopes a new session's model	cli_native_models_flag_scopes_a_new_sessions_model
 P-CLI-04	cli	tool flags warn; tool list stays [rlm]	cli_native_tool_flags_warn_and_keep_the_rlm_tool
 P-CLI-05	cli	httpProxy setting routes provider requests	cli_native_http_proxy_setting_routes_provider_requests
@@ -2146,7 +2093,6 @@ P-KERNEL-32	host	Loki text reports, engine errors, paused .loki	host_loki_after_
 P-KERNEL-33	host	Loki after-cell 40-file cap	host_loki_after_cell_checks_at_most_40_files_inside_the_repository
 P-KERNEL-34	host	Rust engine catches a shell-written secret after the cell	host_loki_after_cell_rust_engine_catches_a_secret_a_shell_write_introduced
 P-KERNEL-35	host	outside a repo only before-write checks	host_loki_outside_a_repository_runs_only_before_write_checks
-P-KERNEL-36	session-core	extension after_cell_changes event and message	session_core_extension_after_cell_changes_event_and_message
 P-KERNEL-37	acceptance	Loki after-cell finding arrives with a later cell (binary)	acceptance_after_cell_loki_finding_arrives_with_the_next_cell
 P-KERNEL-38	loki	--record events match loki.py	loki_record_events_match_loki_py
 P-KERNEL-39	loki	shell --record appends its event	loki_shell_record_appends_its_event
@@ -2161,22 +2107,15 @@ P-KERNEL-47	loki	daemon forwards hooks with identical results; stop	loki_daemon_
 P-KERNEL-48	loki	daemon stale engine reply and exit	loki_daemon_answers_another_engine_stale_and_exits
 P-KERNEL-49	loki	client protocol and local fallback	loki_daemon_client_speaks_the_protocol_and_falls_back_locally
 P-KERNEL-50	loki	hooks never autostart a daemon	loki_daemon_is_never_started_by_a_hook_unasked
-PKG-1	packages	parseGitUrl incl. hosted-git-info shortcuts	cli_packages_parse_git_url_matches_typescript
-PKG-2	packages	npm source parsing	cli_packages_parse_npm_source_matches_typescript
-PKG-3	packages	node-semver subset	cli_packages_semver_matches_node_semver
-PKG-4	packages	minimatch for resource filters	cli_packages_minimatch_matches_typescript
-PKG-5	packages	ignore-file rules	cli_packages_ignore_rules_match_the_ignore_package
-PKG-6	packages	resolve() of configured resources	cli_packages_resolve_matches_typescript
-PKG-7	packages	install/remove npm (npm, bun, pnpm, project, failure)	cli_packages_install_and_remove_npm_match_typescript
-PKG-8	packages	update npm (newer, current, range, pinned, suggestion, offline)	cli_packages_update_npm_matches_typescript
-PKG-9	packages	git install/pinned/missing, update/pinned ref, remove	cli_packages_git_install_update_remove_match_typescript
-PKG-10	packages	list with legacy npm root; missing local path	cli_packages_list_reads_the_legacy_global_npm_root_like_typescript
-PKG-11	packages	update --self/--all registry check	cli_packages_self_update_check_matches_typescript
-PKG-12	packages	self-contained binary points to release download	cli_packages_self_update_points_the_binary_at_the_release_download
+PKG-3	packages	node-semver subset	cli_local_resources_semver_matches_node_semver
+PKG-4	packages	minimatch for resource filters	cli_local_resources_minimatch_matches_typescript
+PKG-5	packages	ignore-file rules	cli_local_resources_ignore_rules_match_the_ignore_package
+PKG-6	packages	resolve() of configured resources	cli_local_resources_resolve_matches_typescript_top_level_resources
+PKG-11	packages	update --self/--all registry check	cli_self_update_check_matches_typescript
+PKG-12	packages	self-contained binary points to release download	cli_self_update_points_the_binary_at_the_release_download
 CFG-1	config	global mode toggles and filter	cli_config_selector_global_mode_like_ts
 CFG-2	config	project override cycle and Tab	cli_config_selector_project_mode_like_ts
 CFG-3	config	untrusted -l refused	cli_config_selector_untrusted_local_is_refused_like_ts
-CFG-4	config	project package override cycling (ported TS test)	cli_config_selector_cycles_project_package_overrides
 SETUP-1	setup	custom endpoint merged into models.json	cli_setup_core_custom_endpoint_merges_into_models_json_like_typescript
 SETUP-2	setup	provider id/base URL/model id validation	cli_setup_core_validates_names_urls_and_model_lists
 SETUP-3	setup	endpoint /models listing	cli_setup_core_lists_endpoint_models_without_the_key_in_the_url
@@ -2249,8 +2188,6 @@ TUI-P08	tui	editor setPaddingX	tui_editor_padding_x_moves_the_text
 TUI-P09	tui	viewport clearOnShrink full repaint	tui_viewport_clear_on_shrink_repaints_the_shrunk_viewport
 INT-P01	interactive	multi-field API-key login flows match TS	interactive_p_tui_api_key_login_flows_match_typescript
 INT-P02	interactive	/login bedrock flow in dialog saves credential	interactive_p_tui_login_runs_the_bedrock_flow_in_the_dialog_and_saves_the_credential
-INT-P03	interactive	extension setStatus/setWidget/setTitle	interactive_p_tui_extension_status_widgets_and_title
-INT-P04	interactive	extension editor dialog multi-line	interactive_p_tui_extension_editor_dialog_is_multi_line
 INT-P05	interactive	extension input countdown and expiry	interactive_p_tui_extension_input_counts_down_and_cancels
 INT-P06	interactive	doubleEscapeAction tree/fork/none	interactive_p_tui_double_escape_action_tree_fork_none
 INT-P07	interactive	quietStartup hides splash	interactive_p_tui_quiet_startup_hides_the_splash_live
@@ -2271,53 +2208,14 @@ INT-P21	interactive	local settings live from /settings	interactive_p_tui_local_s
 CR-P01	claude-root	ultron watch frames match TS renderWatchFrame	claude_root_watch_frames_match_typescript
 CR-P02	claude-root	watch --once --plain over control socket	claude_root_watch_once_plain_draws_the_session_over_its_socket
 CR-P03	claude-root	watch plain output strips CSI/OSC	claude_root_watch_strips_csi_and_osc
-W2EXT-PROV-01	ai	extension providers compose over built-in and models.json like TS registerProvider	ai_extension_providers_compose_like_typescript
-W2EXT-PROV-02	ai	a registration that does not compose is refused and changes nothing	ai_extension_providers_refuse_registrations_that_do_not_compose
-W2EXT-PROV-03	ai	extension provider availability matches TS	ai_extension_providers_availability_matches_typescript
-W2EXT-PROV-04	ai	extension provider request key and headers (apiKey, headers, authHeader) match TS getAuth	ai_extension_providers_request_auth_matches_typescript
-W2EXT-PROV-05	ai	model references to extension providers resolve like TS resolveCliModel	ai_extension_providers_references_match_typescript
-W2EXT-PROV-06	ai	extension providers listed after models.json ones; missing model fields defaulted	ai_extension_providers_are_listed_after_models_json_providers
-W2EXT-PROV-07	cli	session starts on an extension model; its requests go to its baseUrl with its key and headers	cli_extension_provider_model_starts_a_session_and_receives_its_requests
-W2EXT-PROV-08	cli	setModel to an extension model from a built-in one routes the next request	cli_extension_provider_model_is_selectable_from_a_builtin_model
-W2EXT-PROV-09	cli	provider that does not compose is a load diagnostic Extension "<path>" error	cli_extension_provider_that_does_not_compose_is_a_load_diagnostic
-W2EXT-PROV-10	cli	extension providers are scoped to the profile and leave with the session	cli_extension_providers_leave_the_registry_when_the_session_ends
-W2EXT-PROV-11	cli	installed provider source removed with its guard	cli_extension_provider_source_is_removed_with_its_guard
-W2EXT-PROV-12	cli	--list-models shows extension providers; --no-extensions hides them	cli_list_models_shows_extension_providers
 W2EXT-PROV-13	cli	session model list and setModel follow credentials saved later	cli_session_available_models_follow_credentials_saved_later
-W2EXT-PROV-14	cli	/model offers an extension provider in tmux and the prompt reaches it	cli_interactive_model_selector_offers_an_extension_provider
-W2EXT-PROV-15	cli	scoped Ctrl+P cycle reaches an extension provider in tmux	cli_interactive_scoped_model_cycle_reaches_an_extension_provider
-W2EXT-SC-01	cli	TUI keybindings resolve extension shortcut conflicts like TS getShortcuts	cli_extension_shortcuts_resolve_under_the_tui_keybindings_like_typescript
-W2EXT-SC-02	cli	session lists shortcuts and diagnostics, runs shortcuts/run, reports refusal and handler failure	cli_extension_shortcuts_are_listed_and_run_through_the_session
-W2EXT-SC-03	cli	example extension Alt+H runs its handler and /hotkeys lists it (tmux)	cli_interactive_example_extension_shortcut_runs_its_handler
-W2EXT-SC-04	cli	failing shortcut handler shows Shortcut handler error (tmux)	cli_interactive_extension_shortcut_failure_is_shown
-W2EXT-SC-05	interactive	opened session is asked for its shortcuts under effective keybindings	interactive_extension_shortcuts_are_asked_for_when_a_session_opens
-W2EXT-SC-06	interactive	shortcuts run before built-in keys; other keys reach the editor; reset per session	interactive_extension_shortcuts_run_before_builtin_keys_and_leave_other_keys_to_the_editor
-W2EXT-SC-07	interactive	shortcut keys match case-insensitively (legacy and Kitty sequences)	interactive_extension_shortcuts_match_keys_case_insensitively
-W2EXT-SC-08	interactive	/hotkeys Extensions section as TS	interactive_extension_shortcuts_are_listed_by_hotkeys
-W2EXT-SC-09	interactive	conflict warnings shown as [Extension issues]	interactive_extension_shortcut_conflicts_show_as_extension_issues
-W2EXT-TH-01	cli	package and settings themes register like TS resource loader (order, dedupe, failures)	cli_package_themes_register_like_typescript
-W2EXT-TH-02	cli	/settings offers registered themes (getAvailableThemesWithPaths) and the controller applies one	cli_package_themes_are_offered_and_applied_by_the_settings
-W2EXT-TH-03	cli	theme setting naming a package theme draws with it at TUI startup (tmux)	cli_interactive_theme_setting_names_a_package_theme
+W2EXT-TH-01	cli	package and settings themes register like TS resource loader (order, dedupe, failures)	cli_local_themes_register_like_typescript
+W2EXT-TH-02	cli	/settings offers registered themes (getAvailableThemesWithPaths) and the controller applies one	cli_local_themes_are_offered_and_applied_by_the_settings
+W2EXT-TH-03	cli	theme setting naming a package theme draws with it at TUI startup (tmux)	cli_interactive_theme_setting_names_a_local_theme
 W2M-01	ai/vertex	external_account WIF (file/url/AWS/executable), external_account_authorized_user, universe domains, GOOGLE_VERTEX_BASE_URL replay TypeScript	ai_google_vertex_adc_replays_recorded_typescript_scenarios
 W2M-02	ai/vertex	self-signed JWT for a service account outside the default universe is byte-identical	ai_google_auth_self_signed_jwt_matches_typescript_signature
 W2M-03	ai/vertex	AWS SigV4 GetCallerIdentity subject token is byte-identical	ai_google_auth_aws_subject_token_matches_typescript_signature
 W2M-04	cli/mcp	mcp list shows resource counts of 0 for a signed-in OAuth server with resources	cli_mcp_login_logout_and_list_match_typescript
-W2M-05	cli/packages	checkForAvailableUpdates and temporary -e sources match TypeScript	cli_packages_update_check_and_temporary_sources_match_typescript
-W2M-06	cli/packages	-e npm: installs once into the temp folder and is replaced by its directory	cli_temporary_extension_source_installs_once_and_replaces_the_source_with_its_directory
-W2M-07	cli/packages	-e source skipped offline; failed install fails the start	cli_temporary_extension_source_is_left_out_offline_and_a_failed_install_fails_the_start
-W2M-08	interactive	package update notice renders as TypeScript	interactive_package_update_notice_matches_ts
-W2M-09	cli/interactive	TUI shows package updates at startup	cli_interactive_startup_shows_package_updates
-W2M-10	cli/interactive	offline startup checks no packages	cli_interactive_startup_offline_checks_no_packages
-W2M-11	interactive	notice shown only when packages came back	interactive_package_updates_show_only_when_there_are_any
-W2M-12	cli/trust	project_trust extension decides package command trust	cli_package_trust_uses_project_trust_extensions_for_package_commands
-W2M-13	cli/trust	untrusted project packages skipped without an extension	cli_package_trust_skips_untrusted_project_packages_without_an_extension
-W2M-14	cli/trust	remember saves the decision	cli_package_trust_remembers_a_decision_when_asked
-W2M-15	cli/trust	undecided falls through to the default	cli_package_trust_undecided_falls_through_to_the_default
-W2M-16	cli/trust	handler errors and load failures are warnings	cli_package_trust_handler_errors_and_load_failures_are_warnings
-W2M-17	cli/trust	update and overrides never ask extensions	cli_package_trust_update_and_overrides_never_ask_extensions
-W2M-18	cli/trust	local package and config changes use hook trust	cli_package_trust_applies_to_local_package_and_config_changes
-W2M-19	cli/trust	no hook when nothing needs trust	cli_package_trust_asks_no_extension_when_nothing_needs_trust
-W2M-20	cli/trust	config reports hook warnings	cli_package_trust_config_reports_hook_warnings
 W2M-21	interactive/theme	color scheme reports parse as TypeScript	interactive_theme_color_scheme_reports_parse_like_ts
 W2M-22	interactive/theme	pair follows terminal appearance changes	interactive_theme_pair_follows_terminal_appearance_changes
 W2M-23	interactive/theme	only a pair syncs	interactive_theme_only_a_pair_syncs
@@ -2391,10 +2289,7 @@ W3K-07	host	disabled or non-write guards are not asked or counted	host_disabled_
 W3K-08	host	GuardRecord fields and turn-time reset	host_guard_records_and_turn_times_follow_file_hooks_ts
 W3K-09	host	after-cell stats and records (findings, advisory, unchecked, clean)	host_after_cell_stats_count_findings_and_failures_not_advisories
 W3K-10	host	host requests check writes and shell commands as the requesting lane	host_requests_check_writes_and_commands_as_the_requesting_lane
-W3K-11	session-core	before_file_write answer maps to a verdict; event carries path, content, cwd, lane	session_core_extension_before_write_maps_the_event_answer_to_a_verdict
-W3K-12	session-core	extension guard through FileHooks: block, note, unchecked, inactive without handlers	session_core_extension_before_write_through_file_hooks
 W3K-13	session-core	ULTRON_LOKI_LOG lines are JSON with "at" first; unset or blank writes nothing	session_core_loki_log_lines_are_json_with_at_first
-W3K-14	cli	real extension process guards cell writes; pool guards stats, log lines, per-turn reset	cli_extension_before_file_write_guards_cell_writes
 W3M-01	ai/vertex	certificate credential_source: subject token, chain order, config lookup, errors; STS + impersonation over mTLS	ai_google_vertex_adc_replays_recorded_typescript_scenarios
 W3M-02	ai/vertex	mTLS exchange presents the workload certificate to a 127.0.0.1 TLS fake	ai_google_auth_certificate_source_exchanges_over_mtls
 W3M-03	ai/vertex	fake requires a client cert; with_client_identity satisfies it	ai_google_auth_mtls_fake_refuses_a_client_without_a_certificate
@@ -2409,20 +2304,10 @@ W3M-11	cli/proxy	httpProxy setting carries the self-update version check	cli_pro
 W3M-12	cli/proxy	setup fetch honours HTTP_PROXY/NO_PROXY	cli_proxy_setup_fetch_goes_through_the_injected_proxy
 W3M-13	cli/proxy	OAuth/login transports tunnel through HTTPS_PROXY	cli_proxy_oauth_requests_tunnel_through_https_proxy
 W3M-14	cli/proxy	offline run sends nothing	cli_proxy_offline_run_sends_nothing
-W3M-15	cli/proxy	npm/git children get the run's proxy variables	cli_proxy_package_installs_pass_the_proxy_to_npm
 W3M-16	cli/signin	line editing and echo	cli_line_input_reads_an_edited_line_and_echoes_it
 W3M-17	cli/signin	Esc/Ctrl+C cancel, EOF closes	cli_line_input_esc_and_ctrl_c_cancel_and_the_end_closes
 W3M-18	cli/signin	callback ends the read; later input not consumed	cli_line_input_callback_ends_the_question_without_taking_later_input
 W3M-19	cli/signin	pasted URL answers; deadline and Esc give up	cli_line_input_pasted_url_answers_and_the_deadline_gives_up
-W3M-20	cli/resources	-e and package skills/prompts, order, sourceInfo, --no-skills match TS DefaultResourceLoader	cli_session_resources_match_typescript_resource_loader
-W3M-21	cli/resources	-e skill/prompt paths travel in the worker options	cli_session_resources_cli_paths_travel_in_the_worker_options
-W3M-22	session-core	package and -e skills reach prompt and commands	session_core_settings_packages_and_cli_sources_reach_the_prompt_and_commands
-W3M-23	session-core	--no-skills keeps -e skills (prompt and commands)	session_core_no_skills_keeps_only_the_cli_sources_skills
-W3M-24	session-core	package extension.json discovered after the profile's; filter [] disables	session_core_package_extension_manifests_are_discovered_after_the_profiles
-W3M-25	session-core	load errors lead the [Extension issues] answer	session_core_extension_load_errors_reach_the_extension_issues_answer
-W3M-26	interactive	[Extension issues] colors load errors as errors	interactive_extension_issues_color_load_errors_as_errors
-W3M-27	interactive	load errors shown at startup	interactive_extension_load_errors_show_at_startup
-W3M-28	cli	issues answer maps type error to the error flag	cli_extension_issues_answer_keeps_load_errors_apart_from_warnings
 W3M-29	cli/setup	setup help names the Rust checks (python3, no Node.js)	cli_setup_help_names_the_checks_the_rust_setup_runs
 W4F-01	inference	frames reach anthropic-messages through ai dispatch with TS request body and result	inference_frames_call_anthropic_messages_like_typescript
 W4F-02	inference	frame thinking budget capped under the tranche like capOutputTokens	inference_frames_cap_anthropic_thinking_budgets_like_typescript
@@ -2445,8 +2330,8 @@ W4F-18	inference	ULTRON_RLM_FRAME_MODEL routes code-free frames (ported claude-c
 W4F-19	session-core	frame resolver: catalog + models.json + provider key	session_core_frame_models_resolve_the_catalog_and_models_json_with_the_providers_key
 W4F-20	session-core	frame on models.json model sends its headers and key	session_core_frame_naming_a_models_json_model_sends_its_headers_and_key
 W4F-21	cli	ultron -p: frame calls another catalog model; rlm.spawn unknown model refused (A04)	cli_frame_naming_another_catalog_model_calls_it_and_spawn_refuses_an_unknown_model
-W4R-01	rpc	RPC bash: user_bash answers/refuses/invalid, bash_execution_update by id, session_info_changed, extension_error = Pi rpc-mode stream	cli_rpc_pi_events_user_bash_bash_updates_session_info_and_extension_errors
-W4R-02	tui	!/!! through user_bash with the hello extension: answered, failed closed (error shown, nothing run), local run	cli_interactive_user_bash_extension_answers_refuses_or_lets_commands_run
+W4R-01	rpc	RPC bash: user_bash answers/refuses/invalid, bash_execution_update by id, session_info_changed, extension_error = Pi rpc-mode stream	cli_rpc_pi_events_bash_updates_and_session_info
+W4R-02	tui	!/!! through user_bash with the hello extension: answered, failed closed (error shown, nothing run), local run	cli_interactive_user_bash_commands_run_in_the_shell
 W4R-03	session-core	recordBashResult message keeps the members it was given	session_core_user_bash_message_keeps_the_result_members_it_was_given
 W4R-04	compaction	generateBugReportSummary requests and outcomes match TS	compaction_bug_summary_requests_and_outcomes_match_typescript
 W4R-05	compaction	selectMessages keeps the newest message and notes the rest	compaction_bug_summary_keeps_the_newest_message_and_notes_the_rest
@@ -2527,9 +2412,7 @@ W5S-19	loki-log	nothing logged with Loki off	session_core_loki_log_is_empty_with
 W5R-01	resources	settings local skills/prompts entries, patterns, auto-discovery (~/.agents, ancestor .agents), bundled skills, order and sourceInfo match DefaultResourceLoader.reload	session_core_resources_match_typescript_resource_loader
 W5R-02	resources	SYSTEM.md / APPEND_SYSTEM.md shape the session system prompt; untrusted project uses the profile's	session_core_resources_shape_the_session_system_prompt
 W5R-03	resources	stored trust decision (workerProjectTrusted) removes project skills, prompts, SYSTEM.md, ancestor .agents	session_core_resources_follow_the_stored_trust_decision
-W5R-04	resources	a failing settings package is reported; local and auto resources still load	session_core_resources_keep_local_ones_when_a_package_fails
-W5R-05	resources	skills under a cli skill directory get cli sourceInfo	session_core_resources_skills_under_a_cli_directory_are_cli
-W5R-06	resources	-e prompts carry their package metadata; -e/package/defaults lists match TS	cli_session_resources_match_typescript_resource_loader
+W5R-04	resources	a failing settings package is reported; local and auto resources still load	session_core_resources_ignore_settings_packages_and_keep_local_ones
 W5R-07	mcp	connection reaches HTTP server through injected HTTP_PROXY (absolute form)	mcp_proxy_connection_reaches_an_http_server_through_the_injected_proxy
 W5R-08	mcp	https server tunnelled with CONNECT via https_proxy	mcp_proxy_https_server_is_tunnelled_with_connect
 W5R-09	mcp	NO_PROXY host goes direct	mcp_proxy_no_proxy_server_goes_direct
@@ -2539,17 +2422,9 @@ W5R-12	mcp	injected env ignores process env proxies	mcp_proxy_injected_environme
 W5R-13	mcp	session gateway uses the session env's proxy	session_core_mcp_gateway_reaches_http_servers_through_the_session_proxy
 W5R-14	cli	ultron mcp list/login go through the run's HTTP_PROXY	cli_mcp_proxy_list_and_login_go_through_the_run_proxy
 W5R-15	cli	ALL_PROXY is not used (undici semantics); list/login go direct	cli_mcp_proxy_all_proxy_is_not_an_undici_variable
-W6E-01	extensions	handshake advertises only the 19 delivered events; other known subscriptions load and never fire; unknown names fail	extensions_handshake_advertises_only_delivered_events
-W6E-02	extensions	registerTool label/executionMode/promptGuidelines registered; invalid executionMode fails the load	extensions_function_metadata_is_registered
-W6E-03	extensions	onUpdate: functions/update for the toolCallId reaches the call in flight, in order, before the result	extensions_function_updates_reach_the_call_in_flight
-W6E-04	extensions	ui/setTheme without UI answers noOpUIContext's {success:false,error:"UI not available"}	extensions_set_theme_without_ui_answers_ui_not_available
 W6E-05	kernel-apis	sequential tool waits for the lane's calls, runs alone, later calls wait; other lanes unaffected; queued preview	kernel_apis_sequential_tool_waits_for_lane_calls_and_runs_alone
 W6E-06	kernel-apis	a call cancelled while queued never starts and does not block the queue	kernel_apis_call_cancelled_while_queued_never_starts
 W6E-07	kernel-apis	onUpdate progress text becomes the running call's preview; the result replaces it	kernel_apis_tool_progress_becomes_the_running_preview
-W6E-08	session-core	ExtensionTools keep label/executionMode and forward toolCallId and progress	session_core_extension_tools_keep_metadata_and_progress
-W6E-09	session-core	with a client attached, working message/visible, hidden-thinking label, tools-expanded and theme are the worker's headless context; setTheme refused with the worker text	session_core_extension_ui_rest_is_the_worker_headless_context
-W6E-10	session-core	getActiveTools/setActiveTools keep rlm pinned; systemPromptOptions {cwd}; registry needs an open session	session_core_extension_active_tools_keep_the_repl
-W6E-11	cli	in a session: modelRegistry, scopedModels, sessionManager getters, setActiveTools into selectedTools with model tools still [rlm], promptGuidelines, REPL tool label	cli_extension_context_model_registry_session_manager_and_active_tools
 W6D-01	cli/daemon-tests	a test client built by Home::command never waits on the launcher's open stdin; the four gate-hung tests pass under a never-EOF stdin pipe	cli_daemon_test_clients_ignore_the_launchers_open_stdin
 W6D-02	cli/daemon-tests	inner half of W6D-01: a print client spawned without setting stdin, in a run whose stdin is a pipe, reaches the provider and finishes	cli_daemon_print_client_spawned_under_an_open_stdin_reaches_the_provider
 W6D-03	cli/print	a print client with an open stdin pipe blocks in pipe_read before any request (hang report shows fd0=pipe and wchan), then sends "piped text\n\nhello" once the pipe closes	cli_daemon_print_client_reads_an_open_stdin_to_its_end_before_its_first_request
@@ -2686,7 +2561,6 @@ W9T-04	interactive/link	markdown link click opens via fake launcher on injected 
 W9T-05	interactive/link	/copy picker opens a link with the session launcher	interactive_copy_picker_opens_a_link_with_the_session_launcher
 W9T-06	interactive/link	/copy picker without an opener reports it	interactive_copy_picker_without_an_opener_opens_nothing
 W9T-07	interactive/link	openBrowser launcher per platform, lookup on the given PATH only	interactive_url_opener_finds_the_launcher_on_the_given_path_only
-W9T-08	tui/fullscreen	CJK double-click selection matches TS, or the script run containing ICU's word	tui_fullscreen_double_click_word_selection_on_cjk_matches_ts_or_selects_the_script_run
 W9T-09	tui/fullscreen	double click copies a Japanese word	tui_fullscreen_double_click_copies_a_japanese_word
 W9T-10	tui/viewport	reserved rows cleared before an appended image is placed	tui_split_kitty_reserved_rows_are_cleared_before_an_appended_image_is_placed
 W9T-11	tui/viewport	full paint reserves image rows before placing	tui_split_kitty_full_paint_reserves_image_rows_before_placing
@@ -2785,7 +2659,6 @@ W10A-35	loki	session-PATH python/python3 of an environment is the project python
 W10A-36	loki	system interpreter skipped; venv/.venv found	loki_project_python_skips_a_system_interpreter_and_finds_a_venv
 W10A-37	loki	failing python falls through to python3	loki_project_python_failing_python_falls_through_to_python3
 W10A-38	host/loki	project python reaches the post-write engine import check	host_loki_project_python_decides_unresolved_imports
-W10A-39	session	ULTRON_LOKI_BUILTIN=1 reaches extensions when Loki on/advise, not off	session_core_loki_builtin_reaches_extensions_when_loki_is_on
 W10A-40	ai	OpenRouter images timeoutMs: timeout, retry, success replay TS	ai_images_timeout_ms_matches_typescript
 W10A-41	ai	pi-messages unknown event skipped, unknown done reason stops	ai_pi_messages_unknown_event_and_reason_finish_the_stream
 W10A-42	ai	pi-messages error with unknown reason is an error	ai_pi_messages_error_with_an_unknown_reason_is_an_error
@@ -2793,7 +2666,7 @@ W10T-01	interactive qol	tuiMode defaults to fullscreen; only "regular" selects t
 W10T-02	interactive settings	TUI mode row defaults to fullscreen; toggle saves regular with restart status	interactive_tui_mode_change_says_when_it_applies
 W10T-03	tui keybindings	keybindings.json load/migrate/order/filter/conflicts match TS create()	tui_keybindings_file_load_and_migrate_match_ts_create
 W10T-04	tui keybindings	reload() re-reads the file like TS	tui_keybindings_file_reload_rereads_the_file_like_ts
-W10T-05	interactive keybindings	/reload bindings reach app keys, editor and extension shortcut resolution	interactive_keybindings_reload_applies_the_file_to_app_editor_and_shortcut_conflicts
+W10T-05	interactive keybindings	/reload bindings reach app keys, editor and extension shortcut resolution	interactive_keybindings_reload_applies_the_file_to_app_and_editor
 W10T-06	cli keybindings	composition root loads <agentDir>/keybindings.json	cli_user_keybindings_load_the_agent_dir_file
 W10T-07	tui keyboard	query bytes before any fallback	tui_keyboard_protocol_queries_kitty_mode_before_enabling_modify_other_keys
 W10T-08	tui keyboard	non-zero flags activate Kitty; stop pops once	tui_keyboard_protocol_activates_kitty_for_non_zero_flags
@@ -2890,7 +2763,6 @@ W12C-02	interactive	submenu wheel moves selection; submenu title row inert	inter
 W12C-03	interactive	list submenu (automatic theme) rows activate; nested select under kept headers	interactive_mouse_settings_list_submenu_row_activates
 W12C-04	interactive	login key input (LoginPrompt) press moves masked cursor	interactive_mouse_press_in_the_login_key_input_moves_its_cursor
 W12C-05	interactive	extension input dialog press moves cursor	interactive_mouse_press_in_an_extension_input_moves_its_cursor
-W12C-06	interactive	extension editor dialog click moves cursor	interactive_mouse_click_in_an_extension_editor_moves_its_cursor
 W12C-07	interactive	session selector: rename input takes press, list takes none	interactive_mouse_session_selector_rename_input_takes_a_press_and_the_list_none
 W12C-08	interactive	/login provider and /scoped-models search lines take a press	interactive_mouse_press_in_selector_search_lines_moves_their_cursor
 W12C-09	interactive	/bug hint editor takes a click; border inert	interactive_mouse_click_in_the_bug_report_editor_moves_its_cursor
@@ -2915,7 +2787,7 @@ W12C-27	cli	RPC new_session during a run switches; old turn runs on; switch back
 W12C-28	cli	ULTRON_STARTUP_TRACE milestones appended in RPC mode	cli_rpc_startup_trace_appends_milestones_as_json_lines
 W12C-29	cli	startup trace line matches JSON.stringify	cli_rpc_startup_trace_line_matches_json_stringify
 W12C-30	cli	presentation-plugin data checked like createPresentationFacetLoaders	cli_presentation_plugins_data_is_checked_like_create_presentation_facet_loaders
-W12C-31	interactive	extension dialogs drawn in the session theme	interactive_extension_dialogs_are_drawn_in_the_session_theme
+W12C-31	interactive	extension dialogs drawn in the session theme	interactive_mcp_dialogs_are_drawn_in_the_session_theme
 W12E-01	session-core	A session value in an unknown format version refuses resume with the TS text, nothing rewritten	session_core_format_version_newer_values_stop_the_resume_like_typescript
 W12E-02	session-core	Current and unversioned values resume	session_core_format_version_resumes_current_and_unversioned_values
 W12E-03	session-core	UnsupportedFormatVersionError exact text	session_core_format_version_error_text_matches_typescript
@@ -2933,8 +2805,6 @@ W12E-14	session-core	Loki setup note opens the first root turn once (transcript 
 W12E-15	session-core	Not-committed note; nothing when Loki is off	session_core_loki_notice_says_why_it_did_not_commit_and_nothing_when_loki_is_off
 W12E-16	session-core	Notice waits briefly, opens a later turn, once	session_core_loki_notice_waits_briefly_then_opens_a_later_turn_once
 W12E-17	claude-root	Claude root gets the Loki setup note with the session context once	claude_root_mcp_loki_setup_note_comes_with_the_session_context_once
-W12E-18	session-core	pi-mcp-adapter left out with one ADAPTER_NOTICE (info)	session_core_mcp_coexistence_leaves_the_adapter_out_with_one_notice_like_typescript
-W12E-19	session-core	Without the built-in gateway the adapter is untouched	session_core_mcp_coexistence_without_the_builtin_gateway_touches_nothing
 W12E-20	resources	Skill dirs honour .gitignore/.ignore/.fdignore (defaults and explicit paths)	resources_skill_directories_honour_ignore_files_like_typescript
 W12E-21	ai	Mistral whole-request timeout (no answer, stalled stream, in time)	ai_mistral_whole_request_timeout_matches_typescript
 W12E-22	ai	Mistral request limit defaults to 60 s	ai_mistral_request_limit_defaults_to_sixty_seconds
@@ -2951,12 +2821,11 @@ W12E-37	cli	ULTRON_STARTUP_TRACE: a -p run records cli.* and worker.* milestones
 W12E-38	cli	No trace file without ULTRON_STARTUP_TRACE	cli_startup_trace_is_off_without_the_variable
 W12D-01	cli	autoreview doctor runs autoreview_tests.py doctor [image] with the kernel interpreter (180 s), reports sandbox/self-check like cli.ts, mechanism null only means none, errors with stderr else stdout	cli_autoreview_doctor_runs_the_review_test_script
 W12D-02	cli	autoreview doctor --repo lists bound environments from autoreview_tests.py environments <checkout> (60 s)	cli_autoreview_doctor_repo_lists_bound_environments_from_the_script
-W12D-03	extensions	session_before_* veto through a real extension process	extensions_process_events_veto
 W12D-04	telemetry	clear_crash_log on a directory is a no-op; a missing crash log reads empty	telemetry_clear_crash_log_is_best_effort
 W13C-01	cli/rpc	ULTRON_STARTUP_TRACE in RPC mode: CLI-process milestones in TS order (cli.native, cli.list-sessions, server.*, cli.server-started, rpc.open, rpc.services-ready, rpc.session-selected, server.spawn-worker, rpc.attached) from Link::open	cli_rpc_startup_trace_appends_milestones_as_json_lines
 W13C-02	cli/tui	the TUI opens its session through the same link and traces no rpc.* milestones	cli_rpc_startup_trace_milestones_are_not_traced_by_the_tui
 W13C-03	cli/bug	/bug report.json provider section (name, baseUrl, authTypes, authStatus sources/labels, usingOAuth) matches TS describeProvider over ModelRuntime for every built-in and models.json case	cli_bug_report_provider_section_matches_typescript
-W13C-04	cli/bug	--api-key reports authStatus "runtime" ahead of stored; a provider only an extension declares is registeredByExtension	cli_bug_report_provider_runtime_key_and_extension_provider
+W13C-04	cli/bug	--api-key reports authStatus "runtime" ahead of stored; a provider only an extension declares is registeredByExtension	cli_bug_report_provider_runtime_key_and_no_extension_provider
 W13C-05	cli/bug	product path: /bug in the TUI of `ultron --api-key` exports a report whose provider section is the session model's provider (models.json baseUrl override, runtime key)	cli_bug_report_provider_section_of_the_tui_report
 W13E-01	tui/hljs	JS regex sources keep JavaScript semantics (ASCII \w \b, JS \s, . and multi-line ^ $, literal braces)	hljs_js_regex_has_javascript_semantics
 W13E-02	interactive/rlm	rlm cells highlighted by the highlight.js port: tokens equal hljs HTML and lines equal TS highlightCode, 401 cells x 2 themes	interactive_rlm_highlight_matches_highlightjs_and_ts_highlight_code
@@ -2974,8 +2843,6 @@ W13E-13	claude-root	external-root events delivered when the first event's window
 W13E-14	claude-root	an event after a closed window opens the next batch	claude_root_sink_an_event_after_the_window_opens_the_next_batch
 W13E-15	claude-root	ultron-mode children of the Claude root are steered by the agent hub	claude_root_ultron_children_are_steered_by_the_agent_hub
 W13E-16	claude-root	ultron-mode children of the Claude root get the context-pressure reminder	claude_root_ultron_children_get_the_context_reminder
-W13E-17	session-core/mcp	an extension's mcp tool replaces the built-in gateway (no servers, guide, /mcp, adapter notice)	session_core_an_extensions_mcp_tool_replaces_the_builtin_gateway
-W13E-18	session-core/mcp	without such an extension the gateway, its guide, /mcp and the adapter notice stay	session_core_without_an_mcp_extension_the_builtin_gateway_stays
 W13F-1	session-journal	directory session listing is newest file mtime first, then newest createdAt, this cwd only (listNativeSessions)	session_journal_lists_sessions_newest_modified_first
 W13F-2	interactive	/name shows the name and "Session name set" only after the worker's session_name event confirms it (TS awaits setName); another name event is not the confirmation	interactive_slash_commands
 W13F-3	interactive	an unconfirmed /name is dropped when another session opens	interactive_name_notice_is_not_carried_across_a_session_switch
@@ -3107,7 +2974,6 @@ W14C-17	trace	ultron trace check exits 0 on append-only, 2 on usage/bad input	cl
 W14A-01	acp	initialize: protocol v1, loadSession, image+embeddedContext prompts, session list, no auth; session/new with model/thought_level configOptions; rlm cells as execute tool calls with code, output, rawInput/rawOutput; written files as edit + locations + diff; end_turn; usage_update; unknown method/session errors	cli_acp_initialize_new_session_and_a_prompt_with_cells
 W14A-02	acp	session/cancel mid-cell aborts the run, cell ends failed, prompt answers cancelled; next prompt works	cli_acp_cancel_mid_turn_ends_with_cancelled
 W14A-03	acp	session/list lists the cwd's sessions; session/load replays the conversation before its answer, then continues	cli_acp_load_replays_the_conversation_then_continues
-W14A-04	acp	extension ui/confirm during a cell becomes session/request_permission on that cell's toolCallId	cli_acp_extension_confirm_becomes_a_permission_request
 W14A-05	acp	CodeCompanion.nvim recorded sequence accepted by its parser rules and label formatter	cli_acp_codecompanion_message_sequence
 W14A-06	acp	avante.nvim recorded sequence (id 0 init, exact protocolVersion, stale-session recovery error) accepted	cli_acp_avante_message_sequence
 W14A-07	acp	stdout is only JSON-RPC; parse error -32700 with null id; invalid params -32602	cli_acp_stdout_is_only_json_rpc_and_bad_input_is_answered
@@ -3120,8 +2986,20 @@ W14A-13	acp	cell end update: completed/failed, edit kind, locations, diffs, dele
 W14A-14	acp	stop reasons: cancelled, aborted, length->max_tokens, refusal, other errors->JSON-RPC error	cli_acp_turn_ends
 W14A-15	acp	usage_update from the last answer's tokens and the context window, with cost	cli_acp_usage_updates
 W14A-16	acp	replay of stored messages; cells without result reported failed	cli_acp_replay_of_a_conversation
-W14A-17	acp	confirm/select dialogs <-> permission options and answers	cli_acp_dialogs_as_permission_requests
 W14A-18	acp	per-cell file changes between pictures: added/modified/deleted, diffs	cli_acp_cell_changes_between_pictures
+W15X-01	cli	package commands and update's package targets say Pi packages are not supported and exit 1	cli_self_update_package_commands_and_targets_are_not_supported
+W15X-02	interactive	extension-only UI requests (confirm/editor/setWidget/setStatus) open nothing; /extension says unsupported	interactive_mcp_dialogs_leave_extension_only_requests_alone
+W15X-03	cli	the TS-recorded update self cases replay through update_cli	cli_self_update_check_matches_typescript
+W15L-01	claude-root/mcp	notifications/cancelled cancels the stuck cell (git child ends), stops the turn's shell jobs, answers "Abort requested"; next call runs in lane main	claude_root_mcp_cancelled_call_cancels_its_stuck_cell_and_the_next_call_runs_in_main
+W15L-02	claude-root/mcp	busy lane: next call runs in main-side-1 with the note; stuck call answers detached; rlm.cancel from side stops cell and git; calls return to main	claude_root_mcp_busy_lane_runs_the_next_call_in_a_side_lane_and_rlm_cancel_stops_the_stuck_cell
+W15L-03	claude-root/mcp	stuck cell left to end is delivered as a cell_done runtime_event at the top of a later result	claude_root_mcp_stuck_cell_left_to_end_arrives_as_a_cell_done_event
+W15L-04	claude-root/native	native root lane rlm tool routes past a busy lane; rlm.cancel stops the cell and its git child	claude_root_native_root_lane_routes_past_a_busy_lane_and_rlm_cancel_stops_the_cell
+W15L-05	delegation/lanes	side lane with exact note, own kernel, host handler of owner lane, waiter returns detached, side lane reused, end is main's CellEnd, idle side closed once free	delegation_busy_lane_runs_the_next_cell_in_a_side_lane_with_the_note_and_goes_back_once_free
+W15L-06	delegation/lanes	a busy side lane opens main-side-2; a detached side-lane cell's end is reported as lane main's	delegation_a_side_lane_busy_too_opens_another_and_its_detached_end_is_its_lanes
+W15L-07	delegation/lanes	rlm.cancel from a side lane stops the stuck cell, no CellEnd, lane main free; a cell cannot cancel itself	delegation_rlm_cancel_from_a_side_lane_stops_the_stuck_cell_and_frees_its_lane
+W15L-08	delegation/lanes	a cell being cancelled is waited for, not routed around	delegation_a_cell_being_cancelled_is_waited_for_not_routed_around
+W15L-09	delegation/lanes	no room for a side lane: error names the busy cell and rlm.cancel; nothing detached; plain run still refuses	delegation_no_room_for_a_side_lane_says_how_to_stop_the_busy_cell
+W15L-10	delegation/lanes	rlm.cells marks cancelling; the cell's waiting call and its canceller both get the outcome	delegation_a_cancelled_cells_waiting_call_gets_its_outcome_too
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

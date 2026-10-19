@@ -43,7 +43,7 @@ fn cli_tool_env_and_extension_tools_setting_warn_and_keep_only_rlm() {
         ],
     );
     assert_eq!(text(&output.stdout), "a\n", "{}", text(&output.stderr));
-    let ext = "the model's only tool is rlm; extension tools stay in its REPL (tools.call)";
+    let ext = "the model's only tool is rlm, and Pi extensions are not supported by ultron-rs";
     assert_eq!(
         text(&output.stderr),
         format!(

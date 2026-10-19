@@ -56,6 +56,9 @@ pub trait RootHost: Send + Sync {
     fn run_ended(&self, _lane: &str) {}
     /// `fileHooks.beginTurn`: the guards' per-turn times start from zero.
     fn begin_file_turn(&self) {}
+    /// Claude Code cancelled a cell's call (Esc): stop the shell jobs and REPL calls started under the usage root
+    /// `root`, as Esc on a native root turn does (`onRootAborted`).
+    fn root_aborted(&self, _root: &str) {}
 }
 
 /// A host that does nothing (cells and turns only).
@@ -333,6 +336,11 @@ impl ExternalRoot {
             Ok(content) => (content, false),
             Err(error) => (vec![json!({"type": "text", "text": error})], true),
         };
+        // The call was cancelled: the cell was cancelled with it (the rlm tool's abort); what it started under this
+        // turn stops too.
+        if signal.aborted() {
+            self.host.root_aborted(&self.host.root_id_of_run(&turn));
+        }
         let running = self.host.pending_root_notifications();
         let notes: Vec<String> = {
             let mut nudgers = self.nudgers.lock().unwrap_or_else(PoisonError::into_inner);

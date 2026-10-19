@@ -8,6 +8,11 @@
 //!   (`rlm.collect` / `rlm.merge` waiting on children): such a cell is detached at once, so the wait happens in the
 //!   host, not in the turn.
 //! - A detached cell's end is pushed to the [`CellEnd`] channel (no polling).
+//! - A busy lane never refuses the `rlm` tool ([`Lanes::start_routed`]): the next cell runs in a side lane of it
+//!   (`<lane>-side-<n>`, its own kernel, host requests answered as the lane's), the busy cell is detached (its end
+//!   arrives as the lane's [`CellEnd`]), and the cell's result starts with a note naming the busy cell and how to
+//!   stop it (`rlm.cancel(id)`). A cell being cancelled is waited for instead; once the lane is free its idle side
+//!   lanes close.
 //! - Cancelling a cell first aborts its host waits (a parked `rlm.collect` raises in Python and the cell ends with
 //!   its kernel and variables intact); only a cell still running after the grace period has its kernel killed (its
 //!   Python state is lost and the lane's next cell starts a fresh kernel).
@@ -124,11 +129,36 @@ struct Cell {
     parked: usize,
     detached: bool,
     cancelled: bool,
+    /// A caller is in [`Lanes::wait`] for this cell, and how many [`Lanes::cancel`]s are: the last of them to see
+    /// the cell's outcome removes its record.
+    waiting: bool,
+    cancellers: usize,
+    started: Instant,
     outcome: Option<Result<ExecutionResult, String>>,
 }
 
 struct Lane {
     busy: Option<String>,
+    /// A side lane [`Lanes::start_routed`] opened for this lane while it was busy: its cells' host requests are
+    /// this lane's, and its detached cells' ends are reported as this lane's.
+    serves: Option<String>,
+}
+
+/// A cell [`Lanes::start_routed`] started.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Started {
+    pub cell: String,
+    /// The lane it runs in: the one asked for, or a side lane of it.
+    pub lane: String,
+    /// When it runs in a side lane: the one line the cell's result starts with.
+    pub note: Option<String>,
+}
+
+/// The note a cell run in side lane `side` starts its result with, `lane` still running `cell` for `secs` seconds.
+pub fn side_lane_note(lane: &str, cell: &str, secs: u64, side: &str) -> String {
+    format!(
+        "[lane {lane} is still running {cell} (started {secs}s ago); this ran in lane {side}; await rlm.cancel(\"{cell}\") stops it]"
+    )
 }
 
 #[derive(Default)]
@@ -186,7 +216,11 @@ impl HostHandler for CellHandler {
         if let Some(observer) = observer {
             observer(kind);
         }
-        if kind.starts_with("rlm.lane") || kind.starts_with("rlm.cell") || kind == "rlm.recovery" || kind == "rlm.pool"
+        if kind.starts_with("rlm.lane")
+            || kind.starts_with("rlm.cell")
+            || kind == "rlm.cancel"
+            || kind == "rlm.recovery"
+            || kind == "rlm.pool"
         {
             return self.lanes.request(kind, payload, Some(&self.cell));
         }
@@ -400,7 +434,13 @@ impl Lanes {
         // (`kernels.use`): an open lane is not a live kernel (`rlm.pool` shows 0/16 at idle). Past the pool's capacity
         // (every live kernel running or pinned) the lane is refused now.
         self.check_room(lane)?;
-        state.lanes.insert(lane.to_string(), Lane { busy: None });
+        state.lanes.insert(
+            lane.to_string(),
+            Lane {
+                busy: None,
+                serves: None,
+            },
+        );
         Ok(())
     }
 
@@ -445,48 +485,155 @@ impl Lanes {
 
     /// Runs a cell in `lane`, returning within `budget` (see [`CellOutcome`]). A lane still running a cell refuses.
     pub fn run(&self, lane: &str, code: &str, budget: Duration) -> Result<CellOutcome, String> {
-        let (id, kernel, waits, kill) = {
+        let cell = {
             let mut state = lock(&self.inner.state);
-            if state.closed {
-                return Err("REPL lanes are closed".into());
-            }
-            state.next_cell += 1;
-            let id = format!("cell-{}", state.next_cell);
-            let entry = state
-                .lanes
-                .get_mut(lane)
-                .ok_or_else(|| format!("Unknown REPL lane: {lane}"))?;
-            if let Some(cell) = &entry.busy {
-                return Err(format!(
-                    "REPL lane {lane} is still running {cell}: cancel it, wait for its end, or run in another lane"
-                ));
-            }
-            // The lane's kernel for this cell: its live one, or a new one restoring its snapshot. Past the pool's
-            // capacity the cell is refused before it is admitted.
-            let (lease, kernel) = self.lease(lane)?;
-            if let Some(entry) = state.lanes.get_mut(lane) {
-                entry.busy = Some(id.clone());
-            }
-            let (waits, kill) = (Signal::new(), Signal::new());
-            state.cells.insert(
-                id.clone(),
-                Cell {
-                    lane: lane.to_string(),
-                    lease: Some(lease),
-                    waits: waits.clone(),
-                    kill: kill.clone(),
-                    parked: 0,
-                    detached: false,
-                    cancelled: false,
-                    outcome: None,
-                },
-            );
-            (id, kernel, waits, kill)
+            self.start_in(&mut state, lane, code)?
         };
+        self.wait(&cell, budget)
+    }
+
+    /// Starts a cell in `lane`, never refused because the lane is busy: a lane whose cell is being cancelled is
+    /// waited for (its kernel is killed within the cancel grace), and a lane still running a cell runs this one in a
+    /// side lane of its own (its own kernel; host requests answered as `lane`'s), the busy cell detached so its end
+    /// arrives as a [`CellEnd`] of `lane`. Once `lane` is free again its idle side lanes are closed. Wait for the
+    /// cell with [`Lanes::wait`].
+    pub fn start_routed(&self, lane: &str, code: &str) -> Result<Started, String> {
+        let mut state = lock(&self.inner.state);
+        // A cancelled cell ends within its grace and the kill that follows it.
+        let deadline = Instant::now() + self.inner.options.cancel_grace + Duration::from_secs(15);
+        loop {
+            let busy = state.lanes.get(lane).and_then(|l| l.busy.clone());
+            let Some(busy) = busy else {
+                self.close_idle_sides(&mut state, lane);
+                let cell = self.start_in(&mut state, lane, code)?;
+                return Ok(Started {
+                    cell,
+                    lane: lane.to_string(),
+                    note: None,
+                });
+            };
+            let left = deadline.saturating_duration_since(Instant::now());
+            let cancelling = state.cells.get(&busy).is_some_and(|c| c.cancelled);
+            if !cancelling || left.is_zero() {
+                let secs = state.cells.get(&busy).map_or(0, |c| c.started.elapsed().as_secs());
+                let side = self.side_lane(&mut state, lane).map_err(|error| {
+                    format!(
+                        "REPL lane {lane} is still running {busy} and no side lane could open ({error}): await rlm.cancel(\"{busy}\") stops it"
+                    )
+                })?;
+                let cell = self.start_in(&mut state, &side, code)?;
+                // The busy cell's own call returns now; its end is reported as an event.
+                if let Some(cell) = state.cells.get_mut(&busy)
+                    && !cell.cancelled
+                {
+                    cell.detached = true;
+                }
+                self.inner.changed.notify_all();
+                return Ok(Started {
+                    cell,
+                    note: Some(side_lane_note(lane, &busy, secs, &side)),
+                    lane: side,
+                });
+            }
+            state = self
+                .inner
+                .changed
+                .wait_timeout(state, left)
+                .unwrap_or_else(PoisonError::into_inner)
+                .0;
+        }
+    }
+
+    /// An idle side lane of `lane`, or a new one (`<lane>-side-<n>`).
+    fn side_lane(&self, state: &mut State, lane: &str) -> Result<String, String> {
+        if let Some((name, _)) = state
+            .lanes
+            .iter()
+            .find(|(_, l)| l.serves.as_deref() == Some(lane) && l.busy.is_none())
+        {
+            return Ok(name.clone());
+        }
+        if state.lanes.len() >= self.inner.options.max_lanes {
+            return Err(format!(
+                "REPL lane limit reached: {} of {} lanes are open",
+                state.lanes.len(),
+                self.inner.options.max_lanes
+            ));
+        }
+        let name = (1..)
+            .map(|n| format!("{lane}-side-{n}"))
+            .find(|name| !state.lanes.contains_key(name))
+            .unwrap_or_default();
+        self.check_room(&name)?;
+        state.lanes.insert(
+            name.clone(),
+            Lane {
+                busy: None,
+                serves: Some(lane.to_string()),
+            },
+        );
+        Ok(name)
+    }
+
+    /// Closes the idle side lanes of `lane` (their kernels go).
+    fn close_idle_sides(&self, state: &mut State, lane: &str) {
+        let idle: Vec<String> = state
+            .lanes
+            .iter()
+            .filter(|(_, l)| l.serves.as_deref() == Some(lane) && l.busy.is_none())
+            .map(|(name, _)| name.clone())
+            .collect();
+        for name in idle {
+            state.lanes.remove(&name);
+            self.pool().discard(&name);
+        }
+    }
+
+    /// Starts a cell in `lane` (refused while it is busy); its id.
+    fn start_in(&self, state: &mut State, lane: &str, code: &str) -> Result<String, String> {
+        if state.closed {
+            return Err("REPL lanes are closed".into());
+        }
+        state.next_cell += 1;
+        let id = format!("cell-{}", state.next_cell);
+        let entry = state
+            .lanes
+            .get_mut(lane)
+            .ok_or_else(|| format!("Unknown REPL lane: {lane}"))?;
+        if let Some(cell) = &entry.busy {
+            return Err(format!(
+                "REPL lane {lane} is still running {cell}: cancel it, wait for its end, or run in another lane"
+            ));
+        }
+        // A side lane's host requests are those of the lane it serves.
+        let owner = entry.serves.clone().unwrap_or_else(|| lane.to_string());
+        // The lane's kernel for this cell: its live one, or a new one restoring its snapshot. Past the pool's
+        // capacity the cell is refused before it is admitted.
+        let (lease, kernel) = self.lease(lane)?;
+        if let Some(entry) = state.lanes.get_mut(lane) {
+            entry.busy = Some(id.clone());
+        }
+        let (waits, kill) = (Signal::new(), Signal::new());
+        state.cells.insert(
+            id.clone(),
+            Cell {
+                lane: lane.to_string(),
+                lease: Some(lease),
+                waits: waits.clone(),
+                kill: kill.clone(),
+                parked: 0,
+                detached: false,
+                cancelled: false,
+                waiting: false,
+                cancellers: 0,
+                started: Instant::now(),
+                outcome: None,
+            },
+        );
         let handler: Arc<dyn HostHandler> = Arc::new(CellHandler {
             lanes: self.clone(),
             cell: id.clone(),
-            inner: (self.inner.options.handlers)(lane, waits.clone(), {
+            inner: (self.inner.options.handlers)(&owner, waits.clone(), {
                 let (lanes, cell) = (self.clone(), id.clone());
                 Arc::new(move |on| lanes.park(&cell, if on { 1 } else { -1 }))
             }),
@@ -498,23 +645,50 @@ impl Lanes {
                 .map_err(|e| e.message().to_string());
             lanes.ended(&cell, outcome);
         });
+        Ok(id)
+    }
+
+    /// Waits for a started cell, returning within `budget` (see [`CellOutcome`]). A cell detached meanwhile (a call
+    /// routed past it, see [`Lanes::start_routed`]) returns as running and parked: its end arrives as a [`CellEnd`].
+    pub fn wait(&self, id: &str, budget: Duration) -> Result<CellOutcome, String> {
         let deadline = Instant::now() + budget;
         let mut state = lock(&self.inner.state);
         loop {
-            let cell = state.cells.get_mut(&id).ok_or("cell vanished")?;
+            let cell = state.cells.get_mut(id).ok_or_else(|| format!("Unknown cell: {id}"))?;
+            cell.waiting = true;
+            if cell.detached {
+                // Its end was (or will be) reported as an event.
+                cell.waiting = false;
+                if cell.outcome.is_some() && cell.cancellers == 0 {
+                    state.cells.remove(id);
+                }
+                return Ok(CellOutcome::Running {
+                    cell: id.to_string(),
+                    parked: true,
+                });
+            }
             if let Some(outcome) = &cell.outcome {
                 let outcome = outcome.clone();
-                state.cells.remove(&id);
+                // A cell being cancelled is left for its canceller to remove.
+                cell.waiting = false;
+                if cell.cancellers == 0 {
+                    state.cells.remove(id);
+                }
                 return Ok(CellOutcome::Done(outcome));
             }
             if cell.parked > 0 {
                 cell.detached = true;
-                return Ok(CellOutcome::Running { cell: id, parked: true });
+                cell.waiting = false;
+                return Ok(CellOutcome::Running {
+                    cell: id.to_string(),
+                    parked: true,
+                });
             }
             let left = deadline.saturating_duration_since(Instant::now());
             if left.is_zero() {
+                cell.waiting = false;
                 return Ok(CellOutcome::Running {
-                    cell: id,
+                    cell: id.to_string(),
                     parked: false,
                 });
             }
@@ -548,12 +722,20 @@ impl Lanes {
                 self.pool().release(lease);
             }
             let lane = cell.lane.clone();
-            let event = (cell.detached && !cell.cancelled).then(|| CellEnd {
+            let waiting = cell.waiting;
+            let detached = cell.detached && !cell.cancelled;
+            // A side lane's cell ends as a cell of the lane it serves.
+            let owner = state
+                .lanes
+                .get(&lane)
+                .and_then(|l| l.serves.clone())
+                .unwrap_or_else(|| lane.clone());
+            let event = detached.then(|| CellEnd {
                 cell: id.to_string(),
-                lane: lane.clone(),
+                lane: owner,
                 outcome,
             });
-            if event.is_some() {
+            if event.is_some() && !waiting {
                 state.cells.remove(id);
             }
             if let Some(entry) = state.lanes.get_mut(&lane)
@@ -594,24 +776,34 @@ impl Lanes {
             let mut state = lock(&self.inner.state);
             let cell = state.cells.get_mut(id).ok_or_else(|| format!("Unknown cell: {id}"))?;
             cell.cancelled = true;
+            cell.cancellers += 1;
             (cell.waits.clone(), cell.kill.clone())
         };
         waits.abort(reason);
-        if let Some(outcome) = self.await_end(id, self.inner.options.cancel_grace) {
-            return Ok(outcome);
+        let outcome = match self.await_end(id, self.inner.options.cancel_grace) {
+            Some(outcome) => Ok(outcome),
+            None => {
+                kill.abort(reason);
+                self.await_end(id, Duration::from_secs(10))
+                    .ok_or_else(|| format!("cell {id} did not end after its kernel was killed"))
+            }
+        };
+        let mut state = lock(&self.inner.state);
+        if let Some(cell) = state.cells.get_mut(id) {
+            cell.cancellers -= 1;
+            if cell.outcome.is_some() && cell.cancellers == 0 && !cell.waiting {
+                state.cells.remove(id);
+            }
         }
-        kill.abort(reason);
-        self.await_end(id, Duration::from_secs(10))
-            .ok_or_else(|| format!("cell {id} did not end after its kernel was killed"))
+        outcome
     }
 
     fn await_end(&self, id: &str, timeout: Duration) -> Option<Result<ExecutionResult, String>> {
         let deadline = Instant::now() + timeout;
         let mut state = lock(&self.inner.state);
         loop {
-            let outcome = state.cells.get(id)?.outcome.clone();
-            if let Some(outcome) = outcome {
-                state.cells.remove(id);
+            // The record stays: the canceller removes it (a caller still waiting gets the outcome too).
+            if let Some(outcome) = state.cells.get(id)?.outcome.clone() {
                 return Some(outcome);
             }
             let left = deadline.saturating_duration_since(Instant::now());
@@ -663,14 +855,21 @@ impl Lanes {
                     .cells
                     .iter()
                     .filter(|(_, c)| c.outcome.is_none())
-                    .map(
-                        |(id, c)| json!({ "cell": id, "lane": c.lane, "parked": c.parked > 0, "detached": c.detached }),
-                    )
+                    .map(|(id, c)| {
+                        let mut cell =
+                            json!({ "cell": id, "lane": c.lane, "parked": c.parked > 0, "detached": c.detached });
+                        // A cell being cancelled (its kernel is killed when the grace passes).
+                        if c.cancelled {
+                            cell["cancelling"] = json!(true);
+                        }
+                        cell
+                    })
                     .collect();
                 cells.sort_by(|a, b| a["cell"].as_str().cmp(&b["cell"].as_str()));
                 Ok(json!({ "cells": cells }))
             }
-            "rlm.cell.cancel" => {
+            // `rlm.cancel(id)` and `rlm.cell.cancel(id)`: any lane's running cell but the requesting one.
+            "rlm.cell.cancel" | "rlm.cancel" => {
                 only(&["cell"])?;
                 let cell = text("cell")?;
                 if own == Some(cell.as_str()) {

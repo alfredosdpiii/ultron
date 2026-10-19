@@ -14,8 +14,8 @@
 //!   `session/prompt` (answered with its `stopReason` when the run ends), `session/cancel`,
 //!   `session/set_config_option` (model, thinking level). MCP servers a client passes are not used (the session's MCP
 //!   gateway reads `mcp.json`); a note goes to stderr.
-//! - `session/request_permission` only where Ultron already asks: an extension's `confirm`/`select` dialog during a
-//!   prompt. There is no per-tool approval.
+//! - No `session/request_permission`: there is no per-tool approval, and the worker's dialogs (`/mcp`'s, which a
+//!   prompt does not raise) are answered as dismissed; its notices go to stderr.
 
 pub mod changes;
 pub mod translate;
@@ -31,7 +31,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, PoisonError};
-use translate::{Action, Dialog, TurnEnd};
+use translate::{Action, TurnEnd};
 
 const PARSE_ERROR: i64 = -32700;
 const INVALID_REQUEST: i64 = -32600;
@@ -89,8 +89,6 @@ struct Turn {
     request: Value,
     session_id: String,
     cancelled: bool,
-    /// The cell in progress (its permission requests name it).
-    cell: Option<String>,
 }
 
 /// The sessions of one working directory: one front end, attached to one of them at a time.
@@ -121,12 +119,6 @@ impl Write for Capture {
     }
 }
 
-/// A permission request this agent sent and the dialog it answers.
-struct Pending {
-    slot: usize,
-    dialog: Dialog,
-}
-
 pub struct Server {
     parsed: &'static Args,
     env: Env,
@@ -136,8 +128,6 @@ pub struct Server {
     slots: Vec<Slot>,
     /// Session id -> its slot.
     sessions: HashMap<String, usize>,
-    pending: HashMap<String, Pending>,
-    next_request: u64,
 }
 
 type Reply = Result<Value, RpcError>;
@@ -158,8 +148,6 @@ impl Server {
             tx,
             slots: Vec::new(),
             sessions: HashMap::new(),
-            pending: HashMap::new(),
-            next_request: 0,
         }
     }
 
@@ -195,10 +183,8 @@ impl Server {
             }
         };
         let Some(method) = message["method"].as_str() else {
-            // A response to one of this agent's requests (a permission prompt).
-            if let Some(id) = message.get("id") {
-                self.answered(id, &message);
-            } else {
+            // This agent sends no requests, so a response answers nothing.
+            if message.get("id").is_none() {
                 self.respond(&Value::Null, Err(RpcError::new(INVALID_REQUEST, "Invalid request")));
             }
             return;
@@ -519,7 +505,6 @@ impl Server {
             request: id.clone(),
             session_id,
             cancelled: false,
-            cell: None,
         });
         Ok(())
     }
@@ -534,31 +519,6 @@ impl Server {
             _ => return,
         }
         slot.remote.abort();
-        // Open dialogs end with the turn; a client's late answer is ignored.
-        let open: Vec<String> = self
-            .pending
-            .iter()
-            .filter(|(_, p)| p.slot == index)
-            .map(|(id, _)| id.clone())
-            .collect();
-        for id in open {
-            if let Some(pending) = self.pending.remove(&id) {
-                self.slots[index]
-                    .remote
-                    .extension_ui_response(&pending.dialog.id, json!({"cancelled": true}));
-            }
-        }
-    }
-
-    /// The client answered a permission request.
-    fn answered(&mut self, id: &Value, message: &Value) {
-        let Some(pending) = id.as_str().and_then(|id| self.pending.remove(id)) else {
-            return;
-        };
-        let answer = translate::dialog_answer(&pending.dialog, &message["result"]);
-        self.slots[pending.slot]
-            .remote
-            .extension_ui_response(&pending.dialog.id, answer);
     }
 
     /// An event of slot `index`'s session.
@@ -589,13 +549,8 @@ impl Server {
             Action::Update(update) => {
                 let slot = &mut self.slots[index];
                 // Outside a turn only a rename is news to the client.
-                let to = match (&session, &mut slot.turn) {
-                    (Some(session), Some(turn)) => {
-                        if update["sessionUpdate"] == "tool_call" {
-                            turn.cell = update["toolCallId"].as_str().map(str::to_string);
-                        }
-                        Some(session.clone())
-                    }
+                let to = match (&session, &slot.turn) {
+                    (Some(session), Some(_)) => Some(session.clone()),
                     _ => (update["sessionUpdate"] == "session_info_update").then(|| slot.attached.clone()),
                 };
                 if let Some(to) = to {
@@ -614,9 +569,6 @@ impl Server {
             } => {
                 let slot = &mut self.slots[index];
                 let changes = slot.tracker.cell_ended(&slot.cwd);
-                if let Some(turn) = &mut slot.turn {
-                    turn.cell = None;
-                }
                 if let Some(session) = session {
                     self.notify(
                         &session,
@@ -642,35 +594,21 @@ impl Server {
         }
     }
 
-    /// An extension's dialog or notification: a `confirm`/`select` during a prompt asks the client; anything that
-    /// cannot be asked is answered as dismissed so the worker does not wait.
+    /// A dialog or notice of the worker (`/mcp`'s, the MCP gateway's): a notice goes to stderr; a dialog is answered
+    /// as dismissed so the worker does not wait.
     fn extension_ui(&mut self, index: usize, request: &Value) {
         let method = request["method"].as_str().unwrap_or_default();
         if method == "notify" {
             eprintln!("ultron acp: {}", request["message"].as_str().unwrap_or_default());
             return;
         }
-        let Some(id) = request["id"].as_str() else { return };
-        let slot = &self.slots[index];
-        let asking = slot.turn.as_ref().filter(|t| !t.cancelled);
-        let asked = asking.and_then(|turn| {
-            translate::permission_request(request, turn.cell.as_deref()).map(|(d, p)| (turn.session_id.clone(), d, p))
-        });
-        let Some((session_id, dialog, mut params)) = asked else {
-            if ["confirm", "select", "input", "editor"].contains(&method) {
-                self.slots[index]
-                    .remote
-                    .extension_ui_response(id, json!({"cancelled": true}));
-            }
-            return;
-        };
-        params["sessionId"] = json!(session_id);
-        self.next_request += 1;
-        let request_id = format!("ultron-permission-{}", self.next_request);
-        self.pending.insert(request_id.clone(), Pending { slot: index, dialog });
-        self.send(
-            json!({"jsonrpc": "2.0", "id": request_id, "method": "session/request_permission", "params": params}),
-        );
+        if let Some(id) = request["id"].as_str()
+            && ["confirm", "select", "input", "editor"].contains(&method)
+        {
+            self.slots[index]
+                .remote
+                .extension_ui_response(id, json!({"cancelled": true}));
+        }
     }
 
     /// Release every session (a running turn keeps running in its worker, detached, as when `--mode rpc` ends).

@@ -82,6 +82,11 @@ impl crate::external_root::RootHost for LaneRootHost {
     fn begin_file_turn(&self) {
         self.stack.begin_turn();
     }
+
+    fn root_aborted(&self, root: &str) {
+        self.stack.host.cancel_root(root);
+        self.stack.tool_calls().cancel_root(root);
+    }
 }
 
 /// `pendingRootNotifications`: subagents and root-level tasks the root started that have not ended.

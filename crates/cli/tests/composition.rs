@@ -177,34 +177,47 @@ fn cli_composition_cell_calls_a_code_skill() {
     assert!(sandbox.agent_dir.join("skills").join("double").exists());
 }
 
+/// Pi extensions are not supported by ultron-rs: one in the profile's extensions directory gives the kernel no `ext`
+/// (runtime.py's ext_api.py leaves it out without `ULTRON_EXT_FUNCTIONS`), an `ext.call` host request is refused
+/// with that reason, the system prompt lists no extension functions, and the tool list stays [rlm].
 #[test]
-fn cli_composition_cell_calls_an_extension_function_never_a_tool() {
+fn cli_composition_cell_has_no_extension_functions_and_only_the_rlm_tool() {
     let (port, seen) = mock_server(
         vec![
-            anthropic_tool("toolu_e", "print(await ext.hello.greet(name='Rust'))\nprint(ext.hello)"),
-            anthropic_text("greeted"),
+            anthropic_tool(
+                "toolu_e",
+                "print('ext' in globals())\ntry:\n    await rlm.host_request('ext.call', {'extension': 'hello', 'function': 'greet', 'arguments': {}})\nexcept Exception as e:\n    print('REFUSED', e)",
+            ),
+            anthropic_text("checked"),
         ],
         Naming::Fail,
     );
     let sandbox = sandbox(port);
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../extensions/examples/hello");
     let installed = sandbox.agent_dir.join("extensions").join("hello");
     std::fs::create_dir_all(&installed).unwrap();
-    for file in ["extension.json", "hello.py"] {
-        std::fs::copy(example.join(file), installed.join(file)).unwrap();
-    }
-    let output = run(&sandbox, &["-p", "--model", MODEL, "greet"]);
-    assert_eq!(stdout(&output), "greeted\n", "{}", stderr(&output));
+    std::fs::write(
+        installed.join("extension.json"),
+        r#"{"name": "hello", "command": "/bin/false", "capabilities": {"functions": [{"name": "greet"}]}}"#,
+    )
+    .unwrap();
+    let output = run(&sandbox, &["-p", "--model", MODEL, "-e", "./elsewhere", "greet"]);
+    assert_eq!(stdout(&output), "checked\n", "{}", stderr(&output));
+    assert!(
+        stderr(&output)
+            .contains("Warning: Pi extensions are not supported by ultron-rs; ignoring --extension ./elsewhere\n"),
+        "{}",
+        stderr(&output)
+    );
     let requests = seen.lock().unwrap().requests.clone();
-    // The function is a kernel API listed in the system prompt; the tool list stays [rlm].
     assert_only_rlm(&requests);
     let system = requests[0]["body"]["system"].to_string();
-    assert!(system.contains("ext.hello.greet(name: string)"), "{system}");
-    let greeted = tool_result_text(&requests[1]["body"], "toolu_e").unwrap();
-    // runtime.py's `ext` (ext_api.py) shows an extension with its functions.
-    assert_eq!(
-        greeted,
-        "Hello, Rust!\n<ext.hello: cancelled, crash, greet, info, shout, slow>"
+    assert!(!system.contains("ext.hello"), "{system}");
+    assert!(!system.contains("## Extension tools"), "{system}");
+    let checked = tool_result_text(&requests[1]["body"], "toolu_e").unwrap();
+    assert!(checked.starts_with("False\nREFUSED "), "{checked}");
+    assert!(
+        checked.contains("Pi extensions are not supported by ultron-rs"),
+        "{checked}"
     );
 }
 
@@ -458,15 +471,17 @@ fn cli_composition_sandbox_doctor_reports_isolation() {
 
 #[test]
 fn cli_composition_lane_declares_exactly_the_rlm_tool() {
-    // With an extension that registers functions loaded, the lane's tool list and the tools its system message
-    // declares are both exactly [rlm]: extension functions are kernel APIs.
+    // The lane's tool list and the tools its system message declares are both exactly [rlm]. A Pi extension in the
+    // profile's extensions directory changes nothing: Pi extensions are not supported by ultron-rs.
     let sandbox = sandbox(1);
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../extensions/examples/hello");
     let installed = sandbox.agent_dir.join("extensions").join("hello");
     std::fs::create_dir_all(&installed).unwrap();
-    for file in ["extension.json", "hello.py"] {
-        std::fs::copy(example.join(file), installed.join(file)).unwrap();
-    }
+    std::fs::write(
+        installed.join("extension.json"),
+        r#"{"name": "hello", "command": "/bin/false", "capabilities": {"functions": [{"name": "hello"}]}}"#,
+    )
+    .unwrap();
+    std::fs::write(installed.join("index.ts"), "export default function () {}").unwrap();
     let vars: Vec<(String, String)> = vec![
         ("HOME".into(), sandbox.root.display().to_string()),
         (
@@ -488,12 +503,7 @@ fn cli_composition_lane_declares_exactly_the_rlm_tool() {
         cli::compose::Services::default(),
     )
     .unwrap();
-    assert!(
-        runtime
-            .extensions
-            .as_ref()
-            .is_some_and(|host| !host.functions().is_empty())
-    );
+    assert!(runtime.diagnostics.is_empty(), "{:?}", runtime.diagnostics);
     let model = ai::models::builtin_model("anthropic", "claude-sonnet-4-5")
         .unwrap()
         .clone();
@@ -505,10 +515,11 @@ fn cli_composition_lane_declares_exactly_the_rlm_tool() {
     };
     let declared: Vec<String> = system.tools_added.iter().flatten().map(|t| t.name.clone()).collect();
     assert_eq!(declared, ["rlm"]);
+    assert!(
+        !runtime.system.current().contains("hello"),
+        "no extension reaches the prompt"
+    );
     lane.shutdown();
-    if let Some(host) = &runtime.extensions {
-        host.shutdown();
-    }
 }
 
 #[test]

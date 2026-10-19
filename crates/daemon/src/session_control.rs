@@ -1,7 +1,7 @@
 //! The members of `ultron.session-control` that act on the worker's settings and session state
 //! (experimental/services/session-control-provider.ts): `getSettings`, the queue modes, auto compaction and retry,
-//! labels, `beforeFork` (the extensions' `session_before_fork`), `readSettings` / `setSetting` (crate::worker_settings), `/trust`'s `setProjectTrust`,
-//! `reloadAuth` and `debugInfo`. They reach the session through [`CoreCall`] (session-core operations), so a test
+//! labels, `beforeFork` (always `{cancelled: false}`), `readSettings` / `setSetting` (crate::worker_settings),
+//! `/trust`'s `setProjectTrust`, `reloadAuth` and `debugInfo`. They reach the session through [`CoreCall`] (session-core operations), so a test
 //! drives them with a recording core.
 
 use crate::chord::{Service, ServiceError, ServiceResult};
@@ -264,20 +264,9 @@ pub fn members(service: Service, core: CoreCall, context: Arc<ControlContext>) -
                 .map(|_| None)
             }),
         )
-        // The session's extensions answer `session_before_fork`; one of them may cancel the fork.
-        .method(
-            "beforeFork",
-            with(|core, _, args| {
-                let position = args.get(1).and_then(Value::as_str).unwrap_or("before").to_string();
-                // No extension answered: the fork goes ahead (`{cancelled: false}`).
-                core(Op::BeforeFork {
-                    entry_id: text(&args, 0),
-                    position,
-                })
-                .map_err(internal)
-                .map(|answer| answer.or_else(|| Some(json!({"cancelled": false}))))
-            }),
-        )
+        // Pi's `session_before_fork` asked the session's extensions; Pi extensions are not supported by ultron-rs, so
+        // nothing cancels a fork (the member stays for the clients that call it).
+        .method("beforeFork", |_| Ok(Some(json!({"cancelled": false}))))
         .method(
             "readSettings",
             with(|core, context, _| {
@@ -381,7 +370,7 @@ pub fn context(env: &session_core::RunEnv, path: &std::path::Path) -> Arc<Contro
     let agent_dir = env.agent_dir();
     let models_env = env.clone();
     Arc::new(ControlContext {
-        project_trusted: session_core::extension_commands::worker_project_trusted(&env.cwd, &agent_dir, &env.home),
+        project_trusted: config::trust::worker_project_trusted(&env.cwd, &agent_dir, &env.home),
         cwd: env.cwd.clone(),
         agent_dir,
         session_file: Some(path.display().to_string()),

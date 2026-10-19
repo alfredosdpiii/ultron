@@ -257,24 +257,6 @@ fn interactive_mouse_press_in_an_extension_input_moves_its_cursor() {
     assert_eq!(calls(&c).last().unwrap(), "respond p1 {\"value\":\"abXcd\"}");
 }
 
-/// editor.ts through `ExtensionEditorComponent`: a click on a text row moves the cursor there.
-#[test]
-fn interactive_mouse_click_in_an_extension_editor_moves_its_cursor() {
-    let (mut app, c) = app();
-    app.apply(LaneEvent::ExtensionUi(
-        json!({"type": "extension_ui_request", "id": "e1", "method": "editor",
-        "title": "Edit it", "prefill": "first line\nsecond line"}),
-    ));
-    let (x, y) = cell_of(&mut app, "first line");
-    click(&mut app, (x + 5, y));
-    typed(&mut app, "X");
-    app.handle_input("\r");
-    assert_eq!(
-        calls(&c).last().unwrap(),
-        "respond e1 {\"value\":\"firstX line\\nsecond line\"}"
-    );
-}
-
 fn listing(path: &str, name: Option<&str>, first: &str, modified: i64) -> SessionListing {
     SessionListing {
         path: path.into(),

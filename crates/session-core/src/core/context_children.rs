@@ -12,19 +12,17 @@
 //! projected message as the entry's model message (`CONTEXT_ENTRY_PROJECTORS`, then `convertToLlm`), and a context
 //! edit carries the durable edits (`omit` / `replace` of the targeted entries) that make the conversation's
 //! derived context equal `applyContextEdits` of the branch, so the lane's next request, and nothing else, sees it.
-//! Collapse on return stays on the root lane, as in TypeScript; the extension event of an edit
-//! (`ultron:context_edit`) fires once, when the edit lands on the child's branch.
+//! Collapse on return stays on the root lane, as in TypeScript.
 
 use super::context_lane::RootBranches;
 use crate::durable_store::{SharedSession, lock as lock_session};
 use crate::subagents::{CONVERSATION_LANE_PREFIX, DurableChildren};
 use durable::{ConversationId, EntryRecord, SubmissionId};
-use extensions::ExtensionHost;
 use harness::chat::SubmissionDraft;
 use kernel_apis::ContextControl;
 use kernel_apis::context_control::{
-    CONTEXT_EDIT_CUSTOM_TYPE, CONTEXT_EDIT_EVENT, CONTEXT_NOTE_CUSTOM_TYPE, CONTEXT_OMITTED_CUSTOM_TYPE,
-    ContextBranches, apply_context_edits, project_note,
+    CONTEXT_EDIT_CUSTOM_TYPE, CONTEXT_NOTE_CUSTOM_TYPE, CONTEXT_OMITTED_CUSTOM_TYPE, ContextBranches,
+    apply_context_edits, project_note,
 };
 use serde_json::{Value, json};
 use std::collections::HashSet;
@@ -168,8 +166,8 @@ pub(crate) struct ChildContext {
     session: SharedSession,
     /// Custom entries appended while their lane's turn ran, until its branch shows them.
     queued: Mutex<Vec<Queued>>,
-    /// Where a landed context edit is reported: the module and the extensions' event bus.
-    observers: OnceLock<(Weak<ContextControl>, Option<Arc<ExtensionHost>>)>,
+    /// Where a landed context entry is reported: the module.
+    observers: OnceLock<Weak<ContextControl>>,
     /// While `before_compaction` runs for a lane: the writes its entries become, for the harness to place.
     capture: Mutex<Option<(String, Vec<Value>)>>,
 }
@@ -185,9 +183,9 @@ impl ChildContext {
         }
     }
 
-    /// Report landed entries to `context` and publish its edit events to `extensions`.
-    pub(crate) fn observe(&self, context: &Arc<ContextControl>, extensions: Option<Arc<ExtensionHost>>) {
-        let _ = self.observers.set((Arc::downgrade(context), extensions));
+    /// Report landed entries to `context`.
+    pub(crate) fn observe(&self, context: &Arc<ContextControl>) {
+        let _ = self.observers.set(Arc::downgrade(context));
     }
 
     /// A durable entry committed: a context entry of a child lane landed on its branch (`entry_added`).
@@ -195,21 +193,14 @@ impl ChildContext {
         let Some((lane, custom)) = stored_custom(entry) else {
             return;
         };
-        let Some((context, extensions)) = self.observers.get() else {
+        let Some(context) = self.context() else {
             return;
         };
-        let Some(context) = context.upgrade() else {
-            return;
-        };
-        if let Some(edit) = context.entry_added(&lane, &custom)
-            && let Some(host) = extensions
-        {
-            host.publish(CONTEXT_EDIT_EVENT, &edit);
-        }
+        let _ = context.entry_added(&lane, &custom);
     }
 
     fn context(&self) -> Option<Arc<ContextControl>> {
-        self.observers.get()?.0.upgrade()
+        self.observers.get()?.upgrade()
     }
 
     /// The lane of a child conversation.

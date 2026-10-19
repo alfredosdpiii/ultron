@@ -7,9 +7,8 @@
 //! the end-to-end CLI case) runs through `session_core::migration` and `ultron migrate import-pi|export-pi`, and is
 //! checked byte for byte against the TypeScript output (`mod migration`).
 //! The native RPC run also covers `inspect` (session inspector), `get_commands` (with sources; the full list is
-//! replayed against TS in crates/cli/tests/rpc_mode.rs) and `export_html`. Extension commands in `get_commands` are
-//! a25_extension_commands.rs: the Rust host runs extensions as processes, never TypeScript modules (scope decision),
-//! so the TS test's `hello.ts` command is listed there from an extension process instead.
+//! replayed against TS in crates/cli/tests/rpc_mode.rs) and `export_html`. Pi extensions are not supported by
+//! ultron-rs, so the TS test's `hello.ts` extension command is not listed.
 
 mod common;
 
@@ -473,8 +472,7 @@ fn acceptance_a25_native_rpc_runs_prompts_bash_and_session_commands_ported_part(
     assert_eq!(refused["success"], false);
     assert_eq!(refused["error"], "Not an inspection request: agents.spawn");
 
-    // Commands: `/mcp`, `/review`, the profile's prompt template and skill, each with its source (an extension's
-    // commands come before `/mcp`: a25_extension_commands.rs).
+    // Commands: `/mcp`, `/review`, the profile's prompt template and skill, each with its source.
     let commands = client.get_commands().unwrap()["commands"].clone();
     let commands = commands.as_array().unwrap();
     let agent = install.agent().display().to_string();
