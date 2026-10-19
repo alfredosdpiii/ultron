@@ -209,7 +209,8 @@ fn harness_chat_submissions_cancels_only_a_wait_and_rejects_pending_waits_on_clo
 
 #[test]
 fn harness_chat_submissions_reacquires_a_submission_after_reopen_and_settles_it_durably() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         // The first process never answers; the reopened one does.

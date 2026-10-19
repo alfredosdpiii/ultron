@@ -417,6 +417,8 @@ fn run_case_with(case: &Value, journals: bool) -> Vec<Value> {
         ("PI_OFFLINE", "1".into()),
         ("NO_COLOR", "1".into()),
         ("TZ", "UTC".into()),
+        // Requests are compared with TS recordings: the TS runtime guide.
+        ("ULTRON_GUIDE", "ts".into()),
     ];
     let options = RpcClientOptions {
         program: env!("CARGO_BIN_EXE_ultron").into(),
@@ -795,6 +797,8 @@ fn start_client(replies: Vec<Reply>) -> (RpcClient, Arc<Mutex<Vec<Value>>>, temp
         ("PI_OFFLINE", "1".into()),
         ("NO_COLOR", "1".into()),
         ("TZ", "UTC".into()),
+        // Requests are compared with TS recordings: the TS runtime guide.
+        ("ULTRON_GUIDE", "ts".into()),
     ];
     let options = RpcClientOptions {
         program: env!("CARGO_BIN_EXE_ultron").into(),

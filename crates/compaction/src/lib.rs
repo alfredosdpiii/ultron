@@ -8,6 +8,7 @@
 
 mod branch;
 mod bug_summary;
+pub mod prompt_budget;
 
 use std::collections::HashSet;
 

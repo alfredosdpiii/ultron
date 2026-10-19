@@ -112,6 +112,17 @@ pub trait FileWriteGuard: Send + Sync {
     }
 }
 
+/// Something that wants the files each cell changed without being a guard: no verdicts, no statistics, no records.
+/// Its lines are delivered verbatim with the lane's next cell result (memory pointers, `kernel_apis::memory_pointers`).
+pub trait CellObserver: Send + Sync {
+    /// False while the observer has nothing to do (checked per cell, like a guard's `watches_cells`).
+    fn enabled(&self) -> bool {
+        true
+    }
+    /// The files a cell on `lane` (working in `cwd`) changed, checked writes included; lines for the model.
+    fn cell_changed(&self, changes: &CellChanges, cwd: &Path, lane: &str) -> Vec<String>;
+}
+
 /// A picture of a working directory: relative path (with `/`) to a metadata signature (workspace-snapshot.ts).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Snapshot {
@@ -394,6 +405,7 @@ pub struct FileHooks {
 struct Inner {
     cwd: PathBuf,
     guards: Mutex<Vec<Registered>>,
+    observers: Mutex<Vec<Arc<dyn CellObserver>>>,
     on_record: Mutex<Option<OnRecord>>,
     now: Mutex<Clock>,
     snapshot: Option<Snapshotter>,
@@ -454,6 +466,7 @@ impl FileHooks {
             inner: Arc::new(Inner {
                 cwd: cwd.into(),
                 guards: Mutex::new(Vec::new()),
+                observers: Mutex::new(Vec::new()),
                 on_record: Mutex::new(None),
                 now: Mutex::new({
                     let started = std::time::Instant::now();
@@ -489,6 +502,11 @@ impl FileHooks {
             guard: Arc::from(guard),
             stats: Arc::new(Mutex::new(stats)),
         });
+    }
+
+    /// `observer` sees what each cell changed (after the guards); its lines go with the lane's next cell result.
+    pub fn observe(&self, observer: Arc<dyn CellObserver>) {
+        lock(&self.inner.observers).push(observer);
     }
 
     /// Files `changes` records as changed outside the cells are not a cell's changes (unless it changed them
@@ -764,7 +782,9 @@ impl Inner {
     }
 
     fn watches_cells(&self) -> bool {
-        self.snapshot.is_some() && lock(&self.guards).iter().any(|r| Inner::watching(&*r.guard))
+        self.snapshot.is_some()
+            && (lock(&self.guards).iter().any(|r| Inner::watching(&*r.guard))
+                || lock(&self.observers).iter().any(|observer| observer.enabled()))
     }
 
     fn now(&self) -> u64 {
@@ -915,6 +935,14 @@ impl Inner {
             if let Some(text) = text {
                 found.push(format!("[{name}] {text}"));
             }
+        }
+        let observers: Vec<Arc<dyn CellObserver>> = lock(&self.observers)
+            .iter()
+            .filter(|observer| observer.enabled())
+            .cloned()
+            .collect();
+        for observer in observers {
+            found.extend(observer.cell_changed(&changes, &self.cwd, lane));
         }
         if !found.is_empty() {
             lock(&self.pending).entry(lane.to_string()).or_default().extend(found);

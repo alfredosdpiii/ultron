@@ -7,6 +7,7 @@
 //! entries of a superseded claim or a forgotten document are withheld (`excluded`). Interrupted operations are
 //! settled on reopen and remote mutations are never replayed. A failed store write poisons the service.
 
+use crate::memory_records::{IndexEntry, RecordIndex, Typed, content_cap, typed_fields};
 use crate::store::{DocumentStore, read_versioned};
 use crate::util::{Clock, iso, js_trim, lock, sha256_hex, stringify, system_clock, uuid};
 use kernel::Signal;
@@ -42,11 +43,14 @@ pub fn worker_gate() -> MemoryGate {
             return Ok(json!({"retrieve": true, "probability": 1}));
         }
         let text = request["text"].as_str().unwrap_or_default();
-        let action = if host::secrets::contains_sensitive_memory(text) {
-            "sensitive"
-        } else {
-            "keep"
-        };
+        // A typed record's situation, key and globs are checked too (they reach later sessions as pointers).
+        let typed = request["situation"].as_str().unwrap_or_default();
+        let action =
+            if host::secrets::contains_sensitive_memory(text) || host::secrets::contains_sensitive_memory(typed) {
+                "sensitive"
+            } else {
+                "keep"
+            };
         Ok(json!({"action": action, "confidence": 1}))
     })
 }
@@ -554,6 +558,8 @@ pub struct MemoryService {
     filters: Map<String, Value>,
     clock: Clock,
     inner: Mutex<Inner>,
+    /// Typed records' metadata, shared by every session of the machine (crate::memory_records).
+    records: Arc<RecordIndex>,
 }
 
 impl MemoryService {
@@ -581,7 +587,70 @@ impl MemoryService {
                 busy: HashSet::new(),
                 reuse: HashMap::new(),
             }),
+            records: Arc::new(RecordIndex::in_memory()),
         })
+    }
+
+    /// Keep typed records' metadata in `records` (the composition root passes the agent directory's shared index).
+    pub fn with_records(mut self, records: Arc<RecordIndex>) -> Self {
+        self.records = records;
+        self
+    }
+
+    /// The typed record index this service writes.
+    pub fn records(&self) -> &Arc<RecordIndex> {
+        &self.records
+    }
+
+    /// Scope → identity tags of this service's backend.
+    pub fn filters(&self) -> &Map<String, Value> {
+        &self.filters
+    }
+
+    /// The visible indexed record with document id `id`.
+    fn indexed(&self, id: &str) -> Option<IndexEntry> {
+        self.records
+            .entry(id)
+            .ok()
+            .flatten()
+            .filter(|entry| entry.visible(&self.filters))
+    }
+
+    /// Whether this session's journal holds the propose that created document `id`.
+    fn journal_owns(&self, id: &str) -> bool {
+        lock(&self.inner)
+            .records
+            .iter()
+            .any(|op| op["kind"] == "propose" && op["memoryId"] == id && op["phase"] == "backend")
+    }
+
+    /// After a write: index the typed record when the backend took it, and show its typed fields in `op`.
+    fn index_written(&self, mut op: Value, typed: Option<&Typed>, text: &str) -> Value {
+        let Some(typed) = typed else {
+            return op;
+        };
+        let taken = op["phase"] == "backend" && op["state"].as_str().is_some_and(|s| CLAIM_STATES.contains(&s));
+        let mut record = typed.to_json();
+        if taken {
+            let entry = IndexEntry {
+                id: op["memoryId"].as_str().unwrap_or_default().to_string(),
+                typed: typed.clone(),
+                scope: op["scope"].as_str().unwrap_or_default().to_string(),
+                tags: op["tags"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|tag| tag.as_str().map(str::to_string))
+                    .collect(),
+                text_hash: hash(text),
+                updated_at: self.now(),
+            };
+            record["indexed"] = self.records.upsert(entry).is_ok().into();
+        } else {
+            record["indexed"] = false.into();
+        }
+        op["record"] = record;
+        op
     }
 
     fn now(&self) -> String {
@@ -1029,18 +1098,55 @@ impl MemoryService {
         let scope = scope_of(payload.get("scope").unwrap_or(&json!("session")))?;
         let refs = evidence_refs(payload.get("evidence").unwrap_or(&Value::Null))?;
         let class = evidence_class_of(payload.get("evidenceClass"), "hypothesis")?;
+        let typed = typed_fields(payload, text.as_str().unwrap_or(""))?;
         let tags = self.tags(scope)?;
         self.load()?;
-        self.retain(
-            "propose",
-            None,
-            text.as_str().unwrap_or(""),
-            refs,
-            &class,
-            scope,
-            tags,
-            signal,
-        )
+        let text = text.as_str().unwrap_or("");
+        // A key names one record per scope: proposing it again replaces that record.
+        let existing = match typed.as_ref().and_then(|typed| typed.key.as_deref()) {
+            Some(key) => self
+                .records
+                .by_key(key, scope, &self.filters)
+                .map_err(|_| MemoryError::code("STORE_ERROR"))?,
+            None => None,
+        };
+        let written = match existing {
+            Some(entry) if self.journal_owns(&entry.id) => {
+                let memory_id = entry.id.clone();
+                self.locked(&memory_id, || {
+                    self.retain(
+                        "correct",
+                        Some(&memory_id),
+                        text,
+                        refs,
+                        &class,
+                        scope,
+                        tags,
+                        typed.as_ref(),
+                        signal,
+                    )
+                })?
+            }
+            // A record another session wrote: a new claim on the same document replaces its text.
+            Some(entry) => {
+                let memory_id = entry.id.clone();
+                self.locked(&memory_id, || {
+                    self.retain(
+                        "propose",
+                        Some(&memory_id),
+                        text,
+                        refs,
+                        &class,
+                        scope,
+                        tags,
+                        typed.as_ref(),
+                        signal,
+                    )
+                })?
+            }
+            None => self.retain("propose", None, text, refs, &class, scope, tags, typed.as_ref(), signal)?,
+        };
+        Ok(self.index_written(written, typed.as_ref(), text))
     }
 
     pub fn correct(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value> {
@@ -1053,18 +1159,29 @@ impl MemoryService {
         self.load()?;
         let (scope, tags) = self.owned(&id)?;
         let memory_id = id.as_str().unwrap_or("").to_string();
-        self.locked(&memory_id, || {
+        let text = text.as_str().unwrap_or("");
+        // A typed record keeps its type, and with it its content cap.
+        let typed = self.indexed(&memory_id).map(|entry| entry.typed);
+        if typed
+            .as_ref()
+            .is_some_and(|typed| text.len() > content_cap(&typed.kind))
+        {
+            return Err(MemoryError::code("INVALID_INPUT"));
+        }
+        let written = self.locked(&memory_id, || {
             self.retain(
                 "correct",
                 Some(&memory_id),
-                text.as_str().unwrap_or(""),
+                text,
                 refs,
                 &class,
                 &scope,
                 tags,
+                typed.as_ref(),
                 signal,
             )
-        })
+        })?;
+        Ok(self.index_written(written, typed.as_ref(), text))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1077,9 +1194,12 @@ impl MemoryService {
         class: &str,
         scope: &str,
         tags: Vec<String>,
+        typed: Option<&Typed>,
         signal: &Signal,
     ) -> Result<Value> {
-        let previous = memory_id.and_then(|id| Self::current_claim(&lock(&self.inner).records, id));
+        let previous = memory_id
+            .filter(|_| kind == "correct")
+            .and_then(|id| Self::current_claim(&lock(&self.inner).records, id));
         let mut fields = Vec::new();
         if let Some(memory_id) = memory_id {
             fields.push(("memoryId", Value::from(memory_id)));
@@ -1095,10 +1215,13 @@ impl MemoryService {
         }
         let id = self.start(kind, fields)?;
         self.attempt(&id, signal, || {
-            if let Some(memory_id) = memory_id {
+            if let Some(memory_id) = memory_id.filter(|_| kind == "correct") {
                 self.editable(memory_id)?;
             }
-            let request = json!({"action": "retain", "text": text, "evidence": evidence, "scope": scope});
+            let mut request = json!({"action": "retain", "text": text, "evidence": evidence, "scope": scope});
+            if let Some(typed) = typed {
+                request["situation"] = typed.screened().into();
+            }
             let decision = gate_decision(
                 &(self.gate)(&request, signal).map_err(|_| MemoryError::code("OPERATION_ERROR"))?,
                 false,
@@ -1126,6 +1249,14 @@ impl MemoryService {
             )?;
             lock(&self.inner).reuse.clear();
             check_abort(signal)?;
+            let mut metadata = json!({"ultron_operation": id, "ultron_evidence_class": class});
+            if let Some(typed) = typed {
+                metadata["ultron_type"] = typed.kind.clone().into();
+                metadata["ultron_situation"] = typed.situation.clone().into();
+                if let Some(key) = &typed.key {
+                    metadata["ultron_key"] = key.clone().into();
+                }
+            }
             let request = json!({
                 "async": true,
                 "operation_id": id,
@@ -1136,7 +1267,7 @@ impl MemoryService {
                     // Hindsight consolidates only within exactly these tags, never across scopes.
                     "observation_scopes": [tags],
                     "update_mode": "replace",
-                    "metadata": {"ultron_operation": id, "ultron_evidence_class": class},
+                    "metadata": metadata,
                 }],
             });
             let response = self
@@ -1180,6 +1311,16 @@ impl MemoryService {
         self.load()?;
         let (scope, tags) = self.owned(&id)?;
         let memory_id = id.as_str().unwrap_or("").to_string();
+        let outcome = self.forget_owned(&memory_id, scope, tags, signal);
+        // A requested forget outranks the backend (see `withdrawn`): the typed record stops pointing at it too.
+        if Self::withdrawn(&lock(&self.inner).records, &memory_id) && self.indexed(&memory_id).is_some() {
+            let _ = self.records.remove(&memory_id);
+        }
+        outcome
+    }
+
+    fn forget_owned(&self, memory_id: &str, scope: String, tags: Vec<String>, signal: &Signal) -> Result<Value> {
+        let memory_id = memory_id.to_string();
         self.locked(&memory_id, || {
             let op = self.start(
                 "forget",
@@ -1214,8 +1355,48 @@ impl MemoryService {
     pub fn get(&self, payload: &Map<String, Value>, signal: &Signal) -> Result<Value> {
         let id = payload.get("id").cloned().unwrap_or(Value::Null);
         self.load()?;
-        let (scope, tags) = self.owned(&id)?;
         let memory_id = id.as_str().unwrap_or("").to_string();
+        let entry = self.indexed(&memory_id);
+        let (scope, tags) = match (self.owned(&id), &entry) {
+            (Ok(owned), _) => owned,
+            // A typed record another session (or `ultron memory import`) wrote: read from the backend by its index
+            // entry, which this session's journal cannot record (it holds only its own documents).
+            (Err(error), Some(entry)) if error.code == "UNKNOWN_MEMORY" => return self.get_indexed(entry, signal),
+            (Err(error), _) => return Err(error),
+        };
+        let mut read = self.get_owned(&memory_id, scope, tags, signal)?;
+        if let Some(entry) = entry {
+            read["record"] = entry.typed.to_json();
+        }
+        Ok(read)
+    }
+
+    /// `get` of an indexed record whose propose is not in this session's journal.
+    fn get_indexed(&self, entry: &IndexEntry, signal: &Signal) -> Result<Value> {
+        check_abort(signal)?;
+        if !self.backend.supports("get") {
+            return Err(MemoryError::code("UNSUPPORTED_API"));
+        }
+        let document = self
+            .backend
+            .get(&entry.id, signal)
+            .map_err(|error| MemoryError::of(&error))?;
+        check_abort(signal)?;
+        if !document.is_object()
+            || document["id"] != entry.id.as_str()
+            || !same_tags(&document["tags"], &entry.tags)
+            || !(document["original_text"].is_null() || document["original_text"].is_string())
+        {
+            return Err(MemoryError::code("INVALID_RESPONSE"));
+        }
+        Ok(json!({
+            "id": entry.id, "scope": entry.scope, "state": "stored", "operation": null,
+            "content": document["original_text"], "record": entry.typed.to_json(),
+        }))
+    }
+
+    fn get_owned(&self, memory_id: &str, scope: String, tags: Vec<String>, signal: &Signal) -> Result<Value> {
+        let memory_id = memory_id.to_string();
         self.locked(&memory_id, || {
             let op = self.start("get", vec![("memoryId", memory_id.clone().into()), ("scope", scope.clone().into())])?;
             self.attempt(&op, signal, || {
@@ -1326,11 +1507,30 @@ fn payload_valid(kind: &str, payload: &Map<String, Value>) -> bool {
                 && payload.get("refresh").is_none_or(Value::is_boolean)
         }
         "memory.propose" => {
-            exact_fields(payload, &["text", "evidence", "scope", "evidenceClass"])
-                && string_min1(payload.get("text"))
+            exact_fields(
+                payload,
+                &[
+                    "text",
+                    "evidence",
+                    "scope",
+                    "evidenceClass",
+                    "type",
+                    "key",
+                    "situation",
+                    "pathGlobs",
+                ],
+            ) && string_min1(payload.get("text"))
                 && evidence_schema(payload.get("evidence"))
                 && optional_in(payload.get("scope"), SCOPES)
                 && optional_in(payload.get("evidenceClass"), EVIDENCE_CLASSES)
+                && optional_in(payload.get("type"), &crate::memory_records::RECORD_TYPES)
+                && payload.get("key").is_none_or(|key| string_min1(Some(key)))
+                && payload.get("situation").is_none_or(|text| string_min1(Some(text)))
+                && payload.get("pathGlobs").is_none_or(|globs| {
+                    globs
+                        .as_array()
+                        .is_some_and(|items| items.iter().all(|g| string_min1(Some(g))))
+                })
         }
         "memory.correct" => {
             exact_fields(payload, &["id", "text", "evidence", "evidenceClass"])

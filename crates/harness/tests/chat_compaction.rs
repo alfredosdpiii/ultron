@@ -763,7 +763,8 @@ fn first(backend: Backend) -> (Chat, Controlled) {
 
 #[test]
 fn harness_chat_compaction_recovery_keeps_a_generation_waiting_on_its_blocking_compaction_across_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let (chat, storage) = first(backend);
         let reached = Deferred::new();
         chat.faux.summary(Step::Gated(
@@ -805,7 +806,8 @@ fn harness_chat_compaction_recovery_keeps_a_generation_waiting_on_its_blocking_c
 
 #[test]
 fn harness_chat_compaction_recovery_fails_an_overflow_run_with_its_text_when_its_compaction_fails_after_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let (chat, storage) = first(backend);
         chat.setup.settings(|settings| settings.compaction = ENABLED);
         let reached = Deferred::new();
@@ -835,7 +837,8 @@ fn harness_chat_compaction_recovery_fails_an_overflow_run_with_its_text_when_its
 
 #[test]
 fn harness_chat_compaction_recovery_repeats_nothing_after_reopen_once_the_summary_is_placed() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let (chat, storage) = first(backend);
         chat.faux.summary(step(text_message("SUMMARY")));
         let id = chat.root.compact(None).unwrap();

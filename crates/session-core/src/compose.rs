@@ -372,6 +372,9 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
                 description: t.description,
             })
             .collect(),
+        // The session runtime serves `rlm.ask`, `swarm`, `board`, `notes` (swarm_ops.rs) and typed memory: the model
+        // is told, unless `ULTRON_GUIDE=ts` asks for the TypeScript guide (the TS-recorded request replays use it).
+        durable_apis: (config.var)("ULTRON_GUIDE").as_deref() != Some("ts"),
         ..Default::default()
     }
 }
@@ -660,8 +663,14 @@ impl Runtime {
         };
         // The session's runtime counters (`ultron.module/stats`): saved once the session actor attaches its journal.
         let stats = Arc::new(SessionStats::system("lane"));
+        // Typed memory records (kernel_apis::memory_records) are shared by every session of the agent directory;
+        // a cell's file changes that match one point at it with the next result (kernel_apis::memory_pointers).
+        let memory_records = Arc::new(kernel_apis::memory_records::RecordIndex::for_agent_dir(
+            &config.agent_dir,
+        ));
+        let pointers = self.memory_pointers(session_id, &memory_records);
         let host = Arc::new(
-            self.host_in(&config.cwd, session_id, "bash", Some(&stats))?
+            self.host_in(&config.cwd, session_id, "bash", Some(&stats), pointers)?
                 .with_journal(jobs)?,
         );
         crate::guard_log::loki_setup(&config);
@@ -705,7 +714,8 @@ impl Runtime {
                     backend.clone(),
                     kernel_apis::worker_gate(),
                 )
-                .map_err(|e| format!("memory: {e:?}"))?,
+                .map_err(|e| format!("memory: {e:?}"))?
+                .with_records(memory_records.clone()),
             ),
             None => None,
         };
@@ -1035,7 +1045,12 @@ impl Runtime {
 
     /// The file hooks of a host in `cwd`: Loki's (see [`Config::file_hooks_in`]), then extensions'
     /// `after_cell_changes`.
-    fn file_hooks_in(&self, cwd: &Path, stats: Option<&Arc<SessionStats>>) -> FileHooks {
+    fn file_hooks_in(
+        &self,
+        cwd: &Path,
+        stats: Option<&Arc<SessionStats>>,
+        observer: Option<Arc<dyn host::file_hooks::CellObserver>>,
+    ) -> FileHooks {
         let record = stats.map(|stats| {
             let stats = stats.clone();
             Arc::new(move |record: &GuardRecord| {
@@ -1056,7 +1071,30 @@ impl Runtime {
                 extensions.clone(),
             )));
         }
+        if let Some(observer) = observer {
+            hooks.observe(observer);
+        }
         hooks
+    }
+
+    /// The session's memory pointers: on while memory is (an injected backend or a Hindsight server) and the
+    /// `memory.filePointers` setting is not false; scoped by the session's identity tags.
+    fn memory_pointers(
+        &self,
+        session_id: &str,
+        records: &Arc<kernel_apis::memory_records::RecordIndex>,
+    ) -> Option<Arc<dyn host::file_hooks::CellObserver>> {
+        let config = &self.config;
+        let filters = match (&self.services.memory, &self.hindsight) {
+            (Some(backend), _) => backend.scope_tags(),
+            (None, Some(_)) => hindsight::worker_scope_tags(
+                session_id,
+                &config.cwd.display().to_string(),
+                &config.home.display().to_string(),
+            ),
+            (None, None) => return None,
+        };
+        kernel_apis::memory_pointers::session_pointers(&config.settings, records.clone(), filters)
     }
 
     /// A sandboxed host with its working directory at `cwd` (the session's, or a worktree subagent's); its guard
@@ -1067,6 +1105,7 @@ impl Runtime {
         session_id: &str,
         spill: &str,
         stats: Option<&Arc<SessionStats>>,
+        observer: Option<Arc<dyn host::file_hooks::CellObserver>>,
     ) -> Result<Host, String> {
         let config = &self.config;
         let jobs_dir = self.sessions_dir.join("rlm-jobs").join(session_id);
@@ -1082,16 +1121,19 @@ impl Runtime {
             .settings
             .as_object()
             .and_then(|settings| config::settings_keys::shell_path(settings, &config.home));
-        Ok(
-            Host::new(cwd, jobs_dir, spill_dir, Box::new(self.file_hooks_in(cwd, stats)))
-                .with_shell_path(shell_path)
-                .sandboxed(
-                    &config.settings,
-                    &config.home,
-                    Some(&tmp_dir),
-                    self.services.approver.clone(),
-                ),
+        Ok(Host::new(
+            cwd,
+            jobs_dir,
+            spill_dir,
+            Box::new(self.file_hooks_in(cwd, stats, observer)),
         )
+        .with_shell_path(shell_path)
+        .sandboxed(
+            &config.settings,
+            &config.home,
+            Some(&tmp_dir),
+            self.services.approver.clone(),
+        ))
     }
 }
 
@@ -1812,6 +1854,7 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
             &stack.session_id,
             &lane_dir(&run.lane_name),
             Some(&stack.stats),
+            None,
         );
         match host {
             Ok(host) => {

@@ -315,3 +315,15 @@ fn session_core_tool_arguments_are_validated_and_coerced_as_typescript_prepares_
     );
     session.lane.shutdown();
 }
+
+#[test]
+fn session_core_the_session_runtime_guide_tells_the_model_about_the_swarm_apis() {
+    // The session runtime serves `rlm.ask`, `swarm`, `board` and `notes` (swarm_ops.rs), so its guide names them.
+    let dir = tempfile::tempdir().unwrap();
+    let session = session(dir.path(), None);
+    let system = session.runtime.system.current();
+    for needle in ["keep=True", "await rlm.ask(h, question)", "swarm.route", "help(swarm)"] {
+        assert!(system.contains(needle), "{needle}: {system}");
+    }
+    session.lane.shutdown();
+}

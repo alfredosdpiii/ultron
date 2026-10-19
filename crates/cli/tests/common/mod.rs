@@ -362,7 +362,9 @@ impl Sandbox {
             .env("ULTRON_SERVER_DIR", self.root.join("server"))
             .env("ANTHROPIC_API_KEY", "test-key")
             .env("NO_COLOR", "1")
-            .env("TZ", "UTC");
+            .env("TZ", "UTC")
+            // Requests are compared with TS recordings: the TS runtime guide, without the Rust-only lines.
+            .env("ULTRON_GUIDE", "ts");
         command
     }
 }

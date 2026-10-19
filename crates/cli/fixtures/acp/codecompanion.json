@@ -1,0 +1,11 @@
+{
+  "client": "CodeCompanion.nvim",
+  "source": "olimorris/codecompanion.nvim@ac5b0c3f28a961846293a02a2e3b98754e981f16: lua/codecompanion/acp/init.lua (Connection:_initialize, :_authenticate, :_establish_session), lua/codecompanion/acp/prompt_builder.lua (PromptBuilder:send, :cancel), lua/codecompanion/utils/jsonrpc.lua (IdGenerator starts at 1, empty params become {}), lua/codecompanion/adapters/acp/opencode.lua (parameters, defaults.mcpServers = {} which vim.json encodes as []), lua/codecompanion/adapters/acp/helpers.lua (build_messages: one text block per unsent user message; a shared file becomes 'Sharing the following file as context: <path>')",
+  "steps": [
+    {"send": {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": 1, "clientCapabilities": {"fs": {"readTextFile": true, "writeTextFile": true}}, "clientInfo": {"name": "CodeCompanion.nvim", "version": "1.0.0"}}}},
+    {"send": {"jsonrpc": "2.0", "id": 2, "method": "session/new", "params": {"cwd": "<CWD>", "mcpServers": []}}},
+    {"send": {"jsonrpc": "2.0", "id": 3, "method": "session/prompt", "params": {"sessionId": "<SESSION>", "prompt": [{"type": "text", "text": "Sharing the following file as context: <CWD>/notes.txt"}, {"type": "text", "text": "Compute the answer"}]}}},
+    {"send": {"jsonrpc": "2.0", "id": 4, "method": "session/prompt", "params": {"sessionId": "<SESSION>", "prompt": [{"type": "text", "text": "Now wait"}]}}, "cancel_after": "tool_call"},
+    {"cancel": {"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "<SESSION>"}}}
+  ]
+}

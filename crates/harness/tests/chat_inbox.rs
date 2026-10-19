@@ -545,7 +545,8 @@ fn harness_chat_inbox_leaves_queued_items_after_a_failed_run_until_the_next_subm
 
 #[test]
 fn harness_chat_inbox_keeps_queued_submissions_across_reopen_and_settles_them_afterwards() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         let (first, reached, _release) = gated(text_message("first"));
@@ -1183,7 +1184,8 @@ fn harness_chat_usage_keeps_tools_named_like_object_prototype_keys_in_the_ledger
 
 #[test]
 fn harness_chat_usage_keeps_usage_totals_exact_across_reopen_counting_a_partial_converted_after_reopen_once() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::with(FauxOptions {
             tokens_per_second: Some(200.0),

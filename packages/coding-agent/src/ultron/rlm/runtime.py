@@ -354,7 +354,7 @@ class BashOutput(str):
 
     def __new__(cls, output: str, exit_code: int | None, *, timed_out: bool = False, cancelled: bool = False,
                 truncated: bool = False, full_output_path: str | None = None, timeout: float | None = None,
-                job: "ShellJob | None" = None, waited: float | None = None) -> "BashOutput":
+                job: "ShellJob | None" = None, waited: float | None = None, **notes: Any) -> "BashOutput":
         text = output.strip()
         running = job is not None and job.running
         if running:
@@ -371,7 +371,7 @@ class BashOutput(str):
         elif cancelled:
             text += "\n[cancelled]"
         elif exit_code not in (0, None):
-            text += f"\n[exit code {exit_code}]"
+            text += _bash_exit_lines(exit_code, notes)
         if truncated:
             text += f"\n[output truncated; full output in {full_output_path}]" if full_output_path else "\n[output truncated]"
         self = super().__new__(cls, text.strip() or "(no output)")
@@ -382,7 +382,7 @@ class BashOutput(str):
         self.truncated = truncated
         self.full_output_path = full_output_path
         self.running = running
-        self.job = job
+        self.job, self.exit_note, self.sandbox_note = job, notes.get("exit_note"), notes.get("sandbox_note")
         return self
 
     @property
@@ -443,7 +443,7 @@ class ShellJob:
         self.output_bytes: int = int(data.get("output_bytes") or 0)
         self.elapsed_seconds: float = float(data.get("elapsed_seconds") or 0)
         error = data.get("error")
-        self.error: str | None = error if isinstance(error, str) else None
+        self.error, self.exit_note, self.sandbox_note = (error if isinstance(error, str) else None), *_bash_notes(data).values()
 
     @property
     def job(self) -> "ShellJob":
@@ -473,12 +473,12 @@ class ShellJob:
         if self.running:
             return f"[job {self.id} running {self.elapsed_seconds:g}s: completion arrives as a <runtime_event>; await job.result() to wait]"
         if self.status == "completed":
-            return f"[job {self.id} exit code {self.exit_code} after {self.elapsed_seconds:g}s]"
+            return f"[job {self.id} {_exit_words(self.exit_code, self.exit_note)} after {self.elapsed_seconds:g}s]"
         detail = f": {self.error}" if self.error else ""
         return f"[job {self.id} {self.status}{detail}]"
 
     def __str__(self) -> str:
-        body = (self.text or "").strip()
+        body = "\n".join(part for part in ((self.text or "").strip(), self.sandbox_note) if part)
         return f"{body}\n{self._status_line()}" if body else self._status_line()
 
     def __repr__(self) -> str:
@@ -602,7 +602,7 @@ async def bash(command: str, timeout: float | None = None, yield_after: Any = _D
         full_output_path=path if isinstance(path, str) else None,
         timeout=timeout,
         job=job,
-        waited=auto,
+        waited=auto, **_bash_notes(result),
     )
 
 
@@ -2282,6 +2282,27 @@ class _LiveTee(io.TextIOBase):
 
     def getvalue(self) -> str:
         return self._capture.getvalue()  # type: ignore[attr-defined]
+
+
+# Notes on a bash result that only the Rust host sends (the TypeScript host never does), defined here so the lines
+# above keep their numbers: `exit_note` when exit code 1 reports a result rather than a failure (grep found no
+# match: "[No matches found (exit code 1)]" replaces "[exit code 1]"; .ok stays False, as it means a clean exit 0),
+# and `sandbox_note`, a line saying the sandbox refused the command and what it allows.
+def _bash_notes(result: Any) -> dict[str, str | None]:
+    def note(key: str) -> str | None:
+        value = result.get(key) if isinstance(result, dict) else None
+        return value if isinstance(value, str) and value else None
+
+    return {"exit_note": note("exit_note"), "sandbox_note": note("sandbox_note")}
+
+
+def _exit_words(exit_code: int | None, exit_note: str | None) -> str:
+    return f"{exit_note} (exit code {exit_code})" if exit_note else f"exit code {exit_code}"
+
+
+def _bash_exit_lines(exit_code: int | None, notes: dict[str, Any]) -> str:
+    sandbox_note = notes.get("sandbox_note")
+    return (f"\n{sandbox_note}" if sandbox_note else "") + f"\n[{_exit_words(exit_code, notes.get('exit_note'))}]"
 
 
 if __name__ == "__main__":

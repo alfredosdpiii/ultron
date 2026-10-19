@@ -17,6 +17,9 @@
 //! Crashes: each worktree has a record (`<id>.json`) naming its owner process; [`prune_worktrees`] removes those of
 //! gone owners, committing uncommitted work first and keeping branches that hold work.
 
+#[path = "checkpoints.rs"]
+pub mod checkpoints;
+
 use kernel::Signal;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

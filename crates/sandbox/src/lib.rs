@@ -6,12 +6,14 @@
 //! - [`doctor`]: verify that isolation holds by trying the escapes it must stop.
 //! - [`approval`] and [`patterns`]: omp's approval tiers and bash critical-pattern guard, mapped onto host operations
 //!   (the model's only tool is the Python REPL; the host decides each operation a cell reaches).
+//! - [`refusal`]: the note a failed command's result gets when its output shows the sandbox refused it.
 //! - [`settings`] reads the `sandbox.*` settings.
 
 pub mod approval;
 pub mod doctor;
 pub mod launcher;
 pub mod patterns;
+pub mod refusal;
 pub mod settings;
 
 pub use approval::{ApprovalRequest, Approvals, Approver};

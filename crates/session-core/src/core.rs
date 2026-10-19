@@ -264,6 +264,14 @@ pub enum Op {
         entry_id: String,
         position: String,
     },
+    /// The session's working-tree checkpoints (core::checkpoints): `{checkpoints: [...], enabled}`.
+    Checkpoints,
+    /// Restore the working tree's files from checkpoint `checkpoint`, else from the checkpoint of entry `entry_id`
+    /// (the start of its turn), saving the current files as another checkpoint first.
+    RestoreFiles {
+        entry_id: Option<String>,
+        checkpoint: Option<String>,
+    },
 }
 
 impl Op {
@@ -323,6 +331,11 @@ impl Op {
                 id: value["id"].as_str().map(str::to_string),
             },
             "abortBash" => Op::AbortBash,
+            "checkpoints" => Op::Checkpoints,
+            "restoreFiles" => Op::RestoreFiles {
+                entry_id: text("entryId"),
+                checkpoint: text("checkpoint"),
+            },
             "bugSummary" => Op::BugSummary {
                 hint: value["hint"].as_str().map(str::to_string),
             },
@@ -495,6 +508,10 @@ impl Op {
             }
             Op::BeforeFork { entry_id, position } => {
                 json!({"op": "beforeFork", "entryId": entry_id, "position": position})
+            }
+            Op::Checkpoints => json!({"op": "checkpoints"}),
+            Op::RestoreFiles { entry_id, checkpoint } => {
+                json!({"op": "restoreFiles", "entryId": entry_id, "checkpoint": checkpoint})
             }
             Op::ExtensionShortcuts { keybindings } => {
                 json!({"op": "extensionShortcuts", "keybindings": keybindings_json(keybindings)})
@@ -786,6 +803,8 @@ pub struct Core {
 }
 
 mod auto_compact;
+mod checkpoints;
+pub use checkpoints::{RESTORE_IN_SANDBOX, RESTORE_WHILE_STREAMING};
 mod compacting;
 mod extension_ops;
 mod user_bash;
@@ -2143,6 +2162,8 @@ impl Core {
                 .navigate(target_id, summarize, instructions.as_deref(), label)
                 .map(Some),
             Op::SetLabel { entry_id, label } => self.set_label(&entry_id, label.as_deref()).map(|()| None),
+            Op::Checkpoints => Ok(Some(self.list_checkpoints())),
+            Op::RestoreFiles { entry_id, checkpoint } => self.restore_files(entry_id, checkpoint).map(Some),
             Op::Agents => self
                 .lane
                 .stack
@@ -2502,6 +2523,10 @@ impl Core {
         }
         // The turn runs in the durable runtime; its prompt is the entry the run just admitted.
         let prompt_entry = self.tip().unwrap_or_default();
+        // A root user turn records the working tree before it runs (core::checkpoints).
+        if !continuation && prompt["role"] == "user" {
+            self.checkpoint_turn(&prompt_entry);
+        }
         let submission = match self.start_turn(&prompt, &prompt_entry) {
             Ok(submission) => submission,
             Err(error) => {

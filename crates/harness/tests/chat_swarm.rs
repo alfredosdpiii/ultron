@@ -123,7 +123,8 @@ fn child_task(handle: &Arc<Mutex<Option<Value>>>) -> TaskId {
 
 #[test]
 fn harness_chat_swarm_keeps_a_persistent_child_alive_and_answers_follow_ups_through_its_inbox_across_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         route(&setup, child_answer);
@@ -275,7 +276,8 @@ fn conversations(chat: &ChatHarness, count: usize) -> Vec<ConversationId> {
 
 #[test]
 fn harness_chat_swarm_registers_what_agents_hold_and_routes_a_question_to_the_agent_with_the_context() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.fix_clock(5);
@@ -387,7 +389,8 @@ fn harness_chat_swarm_registers_spawned_children_with_their_brief_as_recent_work
 
 #[test]
 fn harness_chat_swarm_delivers_durable_peer_messages_and_marks_them_read() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.fix_clock(9);
@@ -490,7 +493,8 @@ fn harness_chat_swarm_wakes_a_persistent_child_with_a_message_as_a_follow_up() {
 
 #[test]
 fn harness_chat_swarm_keeps_a_durable_task_board_with_exclusive_claims() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.fix_clock(3);
@@ -564,7 +568,8 @@ fn harness_chat_swarm_keeps_a_durable_task_board_with_exclusive_claims() {
 
 #[test]
 fn harness_chat_swarm_keeps_shared_notes_and_refuses_a_stale_writer() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         let (chat, root) = open_chat(storage.clone(), &setup);

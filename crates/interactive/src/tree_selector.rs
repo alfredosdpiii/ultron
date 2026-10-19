@@ -61,6 +61,8 @@ pub enum TreeAction {
     Copy(Option<String>),
     /// A label was saved (`None` removes it).
     Label(String, Option<String>),
+    /// Restore the working tree's files to the selected entry's checkpoint (after a confirmation).
+    RestoreFiles(String),
 }
 
 #[derive(Clone, Debug)]
@@ -72,6 +74,8 @@ struct Gutter {
 /// One session tree node.
 struct Node {
     entry: Value,
+    /// The client marked the entry as one with a working-tree checkpoint (Rust-only `checkpoint: true`).
+    checkpoint: bool,
     children: Vec<usize>,
     label: Option<String>,
     label_timestamp: Option<String>,
@@ -1149,8 +1153,16 @@ fn word_replace(text: &str) -> String {
 }
 
 /// `TreeHelp`.
-fn help_lines(theme: &Theme, keys: &KeybindingsManager, width: usize) -> Vec<String> {
-    let items: Vec<String> = HELP
+/// The help item of the file-restoring rewind, shown only when some entry has a checkpoint (so a session without
+/// checkpoints shows TypeScript's help).
+const RESTORE_HELP: (&[&str], &str, bool) = (&["app.tree.restoreFiles"], "restore files", false);
+
+fn help_lines(theme: &Theme, keys: &KeybindingsManager, width: usize, checkpoints: bool) -> Vec<String> {
+    let mut help = HELP.to_vec();
+    if checkpoints {
+        help.insert(6, RESTORE_HELP);
+    }
+    let items: Vec<String> = help
         .iter()
         .map(|(ids, label, label_first)| {
             let text = help_keys(keys, ids);
@@ -1217,6 +1229,7 @@ impl TreeSelector {
             let index = nodes.len();
             nodes.push(Node {
                 entry: value["entry"].clone(),
+                checkpoint: value["checkpoint"] == true,
                 children: Vec::new(),
                 label: value["label"].as_str().map(str::to_string),
                 label_timestamp: value["labelTimestamp"].as_str().map(str::to_string),
@@ -1296,6 +1309,13 @@ impl TreeSelector {
             input.handle_input(data);
             return None;
         }
+        if keys.matches(data, "app.tree.restoreFiles") {
+            return self
+                .list
+                .filtered
+                .get(self.list.selected)
+                .map(|f| TreeAction::RestoreFiles(id_of(&self.list.nodes[f.node].entry).to_string()));
+        }
         if keys.matches(data, "app.tree.editLabel") {
             if let Some(f) = self.list.filtered.get(self.list.selected) {
                 let node = &self.list.nodes[f.node];
@@ -1333,7 +1353,8 @@ impl Component for TreeSelector {
         let border = fg(&t, "border", &"─".repeat(width.max(1)));
         let mut lines = vec![String::new(), border.clone()];
         lines.extend(Text::new(&bold("  Session Tree"), 1, 0, None).render(width));
-        lines.extend(help_lines(&t, &self.list.keys, width));
+        let checkpoints = self.list.nodes.iter().any(|n| n.checkpoint);
+        lines.extend(help_lines(&t, &self.list.keys, width, checkpoints));
         let query = &self.list.query;
         let search = if query.is_empty() {
             format!("  {}", fg(&t, "muted", "Type to search:"))

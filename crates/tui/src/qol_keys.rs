@@ -53,6 +53,17 @@ pub fn qol_keybindings() -> Vec<KeybindingDefinition> {
         def("app.rewind.prevUser", &["left"], "Rewind: previous user turn"),
         def("app.rewind.nextUser", &["right"], "Rewind: next user turn"),
         def("app.rewind.filter", &["f"], "Rewind: filter turns by words"),
+        // Working-tree checkpoints (Rust-only): restore the files to a turn's start.
+        def(
+            "app.rewind.restoreFiles",
+            &["r"],
+            "Rewind: restore files to before this turn",
+        ),
+        def(
+            "app.tree.restoreFiles",
+            &["shift+r"],
+            "Tree: restore files to this point",
+        ),
         // Agent hub table and transcript viewer.
         def("app.agentHub.up", &["k"], "Agent hub: previous agent"),
         def("app.agentHub.down", &["j"], "Agent hub: next agent"),

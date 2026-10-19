@@ -5,6 +5,7 @@
 pub use ai::claude_subscription::inert_mcp;
 pub use session_core::{compose, journal, lane, naming};
 
+pub mod acp;
 pub mod args;
 pub mod assets;
 pub mod auth;
@@ -24,6 +25,7 @@ pub mod list_models;
 pub mod localtime;
 pub mod mcp_cli;
 pub mod mcp_login;
+pub mod memory_cli;
 pub mod migrate;
 pub mod package_cli;
 pub mod packages;
@@ -40,6 +42,7 @@ pub mod startup;
 pub mod startup_checks;
 pub mod terminal_settings;
 pub mod tools_manager;
+pub mod trace_cli;
 pub mod tui_login;
 pub mod usage;
 
@@ -121,6 +124,8 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     match argv.first().map(String::as_str) {
         Some("instances") => return instances::list(env, out),
         Some("durable") => return instances::durable(&argv[1..], env, out),
+        // `ultron trace check <file>`: the resets of a request trace (`ULTRON_REQUEST_TRACE`).
+        Some("trace") => return Ok(trace_cli::run(&argv[1..], out, err)),
         _ => {}
     }
     if argv.first().is_some_and(|a| a == "autoreview") {
@@ -169,13 +174,19 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if let Some(code) = claude_root::cli::run(argv, env, out, err) {
         return Ok(code);
     }
+    // `ultron memory import ...` only: a bare `ultron memory` stays a prompt, as in TypeScript.
+    if argv.first().is_some_and(|a| a == "memory") && argv.get(1).is_some_and(|a| a == "import") {
+        return memory_cli::run(&argv[1..], env, out, err);
+    }
     if argv.first().is_some_and(|a| a == "sandbox") {
         return sandbox_cli::run(&argv[1..], env, out, err);
     }
     if let Some(command) = argv.first().filter(|a| COMMANDS.contains(&a.as_str())) {
         return Err(format!("`ultron {command}` is not implemented in the Rust build yet"));
     }
-    let mut parsed = parse_args(argv);
+    // `ultron acp [options]`: an Agent Client Protocol agent on stdio (crate::acp); the options are the session's.
+    let acp = argv.first().is_some_and(|a| a == "acp");
+    let mut parsed = parse_args(if acp { &argv[1..] } else { argv });
     for d in &parsed.diagnostics {
         let label = if d.kind == DiagnosticKind::Error {
             "Error"
@@ -250,6 +261,17 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
                 return Ok(1);
             }
         }
+    }
+    if acp {
+        if !parsed.file_args.is_empty() || !parsed.messages.is_empty() || parsed.mode.is_some() {
+            writeln!(
+                err,
+                "Error: `ultron acp` takes session options only (no messages, @files or --mode)"
+            )
+            .map_err(io)?;
+            return Ok(1);
+        }
+        return acp::run(parsed, env, Box::new(std::io::stdin()), Box::new(std::io::stdout()));
     }
     let rpc_mode = parsed.mode.as_deref() == Some("rpc");
     if rpc_mode && !parsed.file_args.is_empty() {
@@ -428,7 +450,7 @@ pub fn render_session_list(sessions: &[SessionListing], cwd: &str) -> String {
 }
 
 /// The session metadata of `id` among every session (`resolveSession` of the server).
-fn session_by_id(repo: &SessionRepo, id: &str) -> Result<Option<Metadata>, String> {
+pub(crate) fn session_by_id(repo: &SessionRepo, id: &str) -> Result<Option<Metadata>, String> {
     let matches: Vec<Metadata> = repo.list(None).into_iter().filter(|m| m.id == id).collect();
     match matches.len() {
         0 => Ok(None),

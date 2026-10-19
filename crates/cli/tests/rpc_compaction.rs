@@ -199,6 +199,8 @@ fn start_full(
         ("PI_OFFLINE", "1".into()),
         ("NO_COLOR", "1".into()),
         ("TZ", "UTC".into()),
+        // Requests are compared with TS recordings: the TS runtime guide.
+        ("ULTRON_GUIDE", "ts".into()),
     ];
     let options = RpcClientOptions {
         program: env!("CARGO_BIN_EXE_ultron").into(),

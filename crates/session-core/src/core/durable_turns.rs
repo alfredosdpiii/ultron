@@ -149,6 +149,8 @@ pub(super) fn open_durable(
                 crate::view_images::apply_image_budget(messages, budget);
             })
         }),
+        trace: crate::request_trace::RequestTrace::from_env(&*env.var)
+            .map(|trace| (trace, lock_session(session).id().to_string())),
     };
     let cells = TurnCells {
         bridge: bridge.clone(),
@@ -628,6 +630,21 @@ impl Core {
         Ok(self.extension_request(messages, prompt_end))
     }
 
+    /// Whether the root lane's system message (the system prompt with the runtime and extension guides, and the
+    /// `rlm` tool schema) leaves the conversation room under the model's window and compaction settings.
+    fn prompt_budget(&self) -> Result<(), String> {
+        let Some(system) = self.lane.system_message(&self.runtime.system.current()) else {
+            return Ok(());
+        };
+        let system = serde_json::to_value(&system).map_err(|error| error.to_string())?;
+        compaction::prompt_budget::check_prompt_budget(
+            compaction::prompt_budget::PromptSize::of(&system),
+            self.model.context_window,
+            &self.compaction_settings(),
+            &format!("{}/{}", self.model.provider, self.model.id),
+        )
+    }
+
     /// A generation is about to request the model: the turn's `turn_start`, the user messages it takes (queued ones
     /// commit with its `assistant.ready`), and the request it sends.
     pub(super) fn generation(&mut self, users: Vec<Message>, answer: Answer<Result<GenerationStart, StartError>>) {
@@ -658,6 +675,11 @@ impl Core {
             }
         }
         if let Err(error) = self.checkpoint_compaction() {
+            return answer.give(Err(StartError::Checkpoint(error)));
+        }
+        // The prompt budget (compaction::prompt_budget): a system prompt and tool schemas that leave the
+        // conversation no room under the compaction threshold fail the run before any request.
+        if let Err(error) = self.prompt_budget() {
             return answer.give(Err(StartError::Checkpoint(error)));
         }
         let Some(run) = self.run.as_ref() else {

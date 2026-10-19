@@ -118,7 +118,8 @@ fn harness_chat_migrate_refuses_the_documents_the_old_journal_refused_with_its_e
 
 #[test]
 fn harness_chat_migrate_keeps_imported_results_across_reopen_and_reports_them_to_results() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let lifecycle = &fixture()["scenarios"]["lifecycle"]["steps"];
         let stored = lifecycle.as_array().unwrap().last().unwrap()["stored"].clone();

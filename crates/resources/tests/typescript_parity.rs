@@ -322,6 +322,8 @@ fn resources_runtime_guide_matches_typescript() {
                 .unwrap_or_default(),
             mcp_servers: strings(&o["mcpServers"]),
             native_extension_tools: strings(&o["nativeExtensionTools"]),
+            // The TS guide never names the Rust-only APIs (its host does not serve them).
+            durable_apis: false,
         };
         match case["text"].as_str() {
             Some(expected) => assert_text(
@@ -433,4 +435,39 @@ fn resources_system_prompt_files_match_typescript() {
         });
         assert_eq!(actual, case["out"], "case {case}");
     }
+}
+
+#[test]
+fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them() {
+    let tools = ["rlm"];
+    let plain = rlm_runtime_prompt(&tools, &RuntimeGuideOptions::default()).unwrap();
+    let swarm = rlm_runtime_prompt(
+        &tools,
+        &RuntimeGuideOptions {
+            durable_apis: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(!plain.contains("rlm.ask"), "the TS guide has no swarm section");
+    for needle in [
+        "keep=True",
+        "await rlm.ask(h, question)",
+        "swarm.route",
+        "board",
+        "notes",
+        "help(swarm)",
+    ] {
+        assert!(swarm.contains(needle), "{needle}");
+    }
+    // The section follows the delegation section; with the typed-memory sentence removed too, nothing else changes.
+    let at = swarm.find("Persistent agents:").unwrap();
+    assert!(swarm[..at].contains("## Delegation"));
+    let end = at + swarm[at..].find("`help(swarm)`.").unwrap() + "`help(swarm)`.".len();
+    let typed = swarm.find(" A fact tied to files can be typed:").unwrap();
+    let typed_end =
+        typed + swarm[typed..].find("(`await memory.get(id)`).").unwrap() + "(`await memory.get(id)`).".len();
+    assert!(swarm[typed..typed_end].contains("path_globs"));
+    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[typed_end..]);
+    assert_eq!(without, plain);
 }

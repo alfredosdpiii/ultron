@@ -39,4 +39,5 @@ url = "=2.5.8"
 workspace = true
 
 [dev-dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
 tempfile = "=3.27.0"

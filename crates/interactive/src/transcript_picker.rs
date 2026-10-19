@@ -64,6 +64,10 @@ pub enum PickerEvent {
     Rewind {
         entry_id: String,
     },
+    /// Restore the working tree's files to the checkpoint of `entry_id`'s turn (after a confirmation).
+    RestoreFiles {
+        entry_id: String,
+    },
     Cancel,
 }
 
@@ -294,6 +298,14 @@ impl TranscriptPicker {
                 if self.k(data, "tui.select.confirm") {
                     return match self.targets.get(self.selected) {
                         Some(t) => PickerEvent::Rewind {
+                            entry_id: t.entry_id.clone(),
+                        },
+                        None => PickerEvent::Ignored,
+                    };
+                }
+                if self.k(data, "app.rewind.restoreFiles") {
+                    return match self.targets.get(self.selected) {
+                        Some(t) => PickerEvent::RestoreFiles {
                             entry_id: t.entry_id.clone(),
                         },
                         None => PickerEvent::Ignored,
@@ -876,11 +888,12 @@ impl TranscriptPicker {
             String::new()
         };
         let hint = format!(
-            "{position}{} step  {} user turns  {} filter  {} rewind  {} expand  {} cancel",
+            "{position}{} step  {} user turns  {} filter  {} rewind  {} restore files  {} expand  {} cancel",
             self.keys_pair("tui.select.up", "tui.select.down"),
             self.keys_pair("app.rewind.prevUser", "app.rewind.nextUser"),
             self.first_key("app.rewind.filter"),
             self.first_key("tui.select.confirm"),
+            self.first_key("app.rewind.restoreFiles"),
             self.first_key("app.tools.expand"),
             self.first_key("tui.select.cancel"),
         );

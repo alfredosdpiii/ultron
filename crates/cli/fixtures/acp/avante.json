@@ -1,0 +1,10 @@
+{
+  "client": "avante.nvim",
+  "source": "yetone/avante.nvim@2cab1e14c9eb9501d0e10537e80c9ba8d471ba98: lua/avante/libs/acp_client.lua (ACPClient:new protocol_version 1 and capabilities, :initialize with clientInfo, :_next_id starts at 0, :_session_setup_params always sends mcpServers, :create_session, :load_session, :send_prompt, :cancel_session, :_handle_request_permission answers outcome selected), lua/avante/llm.lua (_stream_acp: the prompt is the generated system prompt then the user's message as text blocks; session-not-found recovery on error -32603 with data.details 'Session not found...')",
+  "steps": [
+    {"send": {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1, "clientCapabilities": {"terminal": false, "fs": {"readTextFile": true, "writeTextFile": true}}, "clientInfo": {"name": "avante.nvim", "title": "Avante.nvim", "version": "unknown"}}}},
+    {"send": {"jsonrpc": "2.0", "id": 1, "method": "session/new", "params": {"cwd": "<CWD>", "mcpServers": []}}},
+    {"send": {"jsonrpc": "2.0", "id": 2, "method": "session/prompt", "params": {"sessionId": "<SESSION>", "prompt": [{"type": "text", "text": "You are a helpful coding assistant working in Neovim."}, {"type": "text", "text": "Compute the answer"}]}}},
+    {"send": {"jsonrpc": "2.0", "id": 3, "method": "session/prompt", "params": {"sessionId": "stale-session-id", "prompt": [{"type": "text", "text": "hello"}]}}}
+  ]
+}

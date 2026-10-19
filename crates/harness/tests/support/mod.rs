@@ -1,35 +1,39 @@
 //! Port of upstream `test/session-support.ts` (ControlledStorage) and `test/task-support.ts` for the scheduler
-//! tests: a storage over Memory, SQLite or JSONL that records commits, holds commits at a gate, injects one commit
-//! failure, simulates a crash, and reopens.
+//! tests: a storage that records commits, holds commits at a gate, injects one commit failure, simulates a crash,
+//! and reopens. It runs over a MemoryStorage kept across reopen, or over one that reopens by replaying its
+//! acknowledged commits, the way the product's journal-backed storage reopens (`replay_support`).
 
 #![allow(dead_code)]
 
 use durable::TaskOptions;
 use durable::{
     ConversationId, ConversationQuery, ConversationRecord, Cursor, DocumentAddress, DocumentId, DocumentPoint,
-    DocumentQuery, DocumentRecord, EntryId, EntryQuery, EntryRecord, JsonlOptions, JsonlStorage, MemoryStorage, Page,
-    Seq, SqliteOptions, SqliteStorage, Storage, StorageError, StorageWrite, StoredDocument, StoredEntry, SubmissionId,
-    SubmissionQuery, SubmissionRecord, TaskId, TaskQuery, TaskRecord,
+    DocumentQuery, DocumentRecord, EntryId, EntryQuery, EntryRecord, MemoryStorage, Page, Seq, Storage, StorageError,
+    StorageWrite, StoredDocument, StoredEntry, SubmissionId, SubmissionQuery, SubmissionRecord, TaskId, TaskQuery,
+    TaskRecord,
 };
 use harness::scheduler::{
     Cancel, Conversation, Ctx, Extension, Harness, HarnessError, HarnessOptions, NextState, Registry, Task, TaskRuntime,
 };
 use serde_json::{Value, json};
-use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
-use tempfile::TempDir;
+
+#[path = "../../../durable/tests/replay_support/mod.rs"]
+mod replay;
+
+use replay::ReplayLog;
 
 type Result<T> = std::result::Result<T, StorageError>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backend {
     Memory,
-    Sqlite,
-    Jsonl,
+    /// Reopens by replaying the acknowledged commits into a fresh working copy.
+    Replay,
 }
 
-pub const BACKENDS: [Backend; 3] = [Backend::Memory, Backend::Sqlite, Backend::Jsonl];
+pub const BACKENDS: [Backend; 2] = [Backend::Memory, Backend::Replay];
 
 /// A hang guard, never a timing expectation: a loaded machine must slow a test down, never fail it.
 pub const HANG_GUARD: Duration = Duration::from_secs(120);
@@ -86,8 +90,7 @@ struct Control {
 
 struct Shared {
     backend: Backend,
-    _dir: Option<TempDir>,
-    path: Option<PathBuf>,
+    log: ReplayLog,
     inner: Mutex<Box<dyn Storage + Send>>,
     control: Mutex<Control>,
 }
@@ -99,27 +102,21 @@ pub struct Controlled {
     generation: u64,
 }
 
-fn open(backend: Backend, path: Option<&PathBuf>) -> Box<dyn Storage + Send> {
+fn open(backend: Backend, log: &ReplayLog) -> Box<dyn Storage + Send> {
     match backend {
         Backend::Memory => Box::new(MemoryStorage::new()),
-        Backend::Sqlite => Box::new(SqliteStorage::open(path.unwrap(), SqliteOptions::default()).unwrap()),
-        Backend::Jsonl => Box::new(JsonlStorage::open(path.unwrap(), JsonlOptions::default()).unwrap()),
+        Backend::Replay => Box::new(log.open()),
     }
 }
 
 impl Controlled {
     pub fn new(backend: Backend) -> Controlled {
-        let dir = (backend != Backend::Memory).then(|| tempfile::tempdir().unwrap());
-        let path = dir.as_ref().map(|dir| match backend {
-            Backend::Sqlite => dir.path().join("session.sqlite"),
-            _ => dir.path().join("session"),
-        });
-        let inner = open(backend, path.as_ref());
+        let log = ReplayLog::default();
+        let inner = open(backend, &log);
         Controlled {
             shared: Arc::new(Shared {
                 backend,
-                _dir: dir,
-                path,
+                log,
                 inner: Mutex::new(inner),
                 control: Mutex::new(Control::default()),
             }),
@@ -200,7 +197,7 @@ impl Controlled {
     /// Reopen after close, as a fresh process would reopen the same database, keeping every committed record.
     pub fn reopen(&self) -> Controlled {
         if self.shared.backend != Backend::Memory {
-            *self.inner() = open(self.shared.backend, self.shared.path.as_ref());
+            *self.inner() = open(self.shared.backend, &self.shared.log);
         }
         let mut control = self.control();
         control.closed = false;

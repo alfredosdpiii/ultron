@@ -28,6 +28,30 @@ use tui::keybindings_file::UserBindings;
 use tui::qol_keys::native_app_keybindings;
 use tui::theme::{ColorMode, builtin_theme_json, create_theme};
 
+/// The tree's nodes with `checkpoint: true` on the entries a checkpoint (with a commit) is attached to.
+pub fn mark_checkpoints(mut tree: Value, checkpoints: &Value) -> Value {
+    let marked: std::collections::HashSet<&str> = checkpoints["checkpoints"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|c| c["commit"].is_string())
+        .filter_map(|c| c["entryId"].as_str())
+        .collect();
+    if marked.is_empty() {
+        return tree;
+    }
+    let mut stack: Vec<&mut Value> = tree.as_array_mut().into_iter().flatten().collect();
+    while let Some(node) = stack.pop() {
+        if node["entry"]["id"].as_str().is_some_and(|id| marked.contains(id)) {
+            node["checkpoint"] = json!(true);
+        }
+        if let Some(children) = node.get_mut("children").and_then(Value::as_array_mut) {
+            stack.extend(children.iter_mut());
+        }
+    }
+    tree
+}
+
 fn uuid() -> String {
     session_file::SystemEnv.random_uuid()
 }
@@ -114,6 +138,8 @@ enum Command {
     ImportPi(String),
     Tree,
     Navigate(Option<String>, bool, Option<String>),
+    /// Restore the working tree's files to an entry's checkpoint.
+    RestoreFiles(String),
     SetLabel(String, Option<String>),
     /// The answer to an extension dialog.
     ExtensionUiRespond(String, Value),
@@ -440,6 +466,9 @@ impl LaneClient for DaemonLane {
     }
     fn set_label(&self, entry_id: &str, label: Option<&str>) {
         self.send(Command::SetLabel(entry_id.to_string(), label.map(str::to_string)));
+    }
+    fn restore_files(&self, entry_id: &str) {
+        self.send(Command::RestoreFiles(entry_id.to_string()));
     }
     fn kill_agent(&self, id: &str) {
         self.send(Command::KillAgent(id.to_string()));
@@ -1138,8 +1167,10 @@ fn link_thread(
             Command::Tree => match link.op(&Op::Tree) {
                 Ok(read) => {
                     let read = read.unwrap_or_default();
+                    // Entries with a working-tree checkpoint are marked for the tree's restore key.
+                    let checkpoints = link.op(&Op::Checkpoints).ok().flatten().unwrap_or_default();
                     send(LaneEvent::Tree {
-                        tree: read["tree"].clone(),
+                        tree: mark_checkpoints(read["tree"].clone(), &checkpoints),
                         leaf: read["leafId"].as_str().map(str::to_string),
                     });
                 }
@@ -1169,6 +1200,17 @@ fn link_thread(
                 // AgentSession `navigateTree`'s `editorText`: the selected user or custom message's text.
                 send(LaneEvent::Navigated(result.map(|answer| {
                     answer.and_then(|a| a["editorText"].as_str().map(str::to_string))
+                })));
+            }
+            Command::RestoreFiles(entry_id) => {
+                let restored = link.op(&Op::RestoreFiles {
+                    entry_id: Some(entry_id),
+                    checkpoint: None,
+                });
+                send(LaneEvent::FilesRestored(restored.map(|answer| {
+                    answer
+                        .and_then(|a| a["message"].as_str().map(str::to_string))
+                        .unwrap_or_default()
                 })));
             }
             Command::SetLabel(entry_id, label) => {

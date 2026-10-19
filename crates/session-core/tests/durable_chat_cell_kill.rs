@@ -1,12 +1,15 @@
 //! Kill/reopen process test of the durable REPL cell (spec §8.4, rewriteplan "Example recovery contract"): a child
-//! process (this binary re-run in child mode) opens a ChatHarness over a real SQLite or JSONL file with cells running
-//! in the real Python kernel (`runtime.py`). The model calls the REPL; the cell commits partial output through the
+//! process (this binary re-run in child mode) opens a ChatHarness over the product's durable store (a format-4
+//! session file through `JournalStorage`) with cells running in the real Python kernel (`runtime.py`). The model calls the REPL; the cell commits partial output through the
 //! `cell.output` host request, records an external effect, and blocks. The parent SIGKILLs the child and its kernel,
-//! reopens the same file with a fresh kernel, and checks the contract: the cell's committed intent is answered with
+//! reopens the same session file with a fresh kernel, and checks the contract: the cell's committed intent is answered with
 //! one `interrupted` result carrying the committed partial output, the cell's code never runs again, and the run
 //! finishes.
 
+#[path = "../../harness/tests/chat_support/mod.rs"]
 mod chat_support;
+mod journal_kill_support;
+#[path = "../../harness/tests/support/mod.rs"]
 mod support;
 
 use std::path::{Path, PathBuf};
@@ -14,11 +17,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use chat_support::*;
-use durable::{JsonlOptions, JsonlStorage, SqliteOptions, SqliteStorage, SubmissionStatus};
+use durable::SubmissionStatus;
 use harness::chat::faux::{rlm_call, text_message};
 use harness::chat::kernel_cells::{KernelCells, rlm_tool};
 use harness::chat::{ChatHarness, ChatOptions, Conversation, SubmissionDraft};
 use harness::scheduler::Registry;
+use journal_kill_support::{create_session, kill_reported_pid, open_journal};
 use kernel::{HostHandler, Kernel, KernelOptions, Signal};
 use serde_json::{Map, Value, json};
 use support::{bg, eventually};
@@ -28,20 +32,6 @@ const DIR_ENV: &str = "ULTRON_CHAT_KILL_DIR";
 
 fn runtime() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/coding-agent/src/ultron/rlm/runtime.py")
-}
-
-fn open_storage(backend: &str, dir: &Path, options: ChatOptions) -> ChatHarness {
-    match backend {
-        "sqlite" => ChatHarness::open(
-            SqliteStorage::open(dir.join("session.sqlite"), SqliteOptions::default()).unwrap(),
-            options,
-        ),
-        _ => ChatHarness::open(
-            JsonlStorage::open(dir.join("session"), JsonlOptions::default()).unwrap(),
-            options,
-        ),
-    }
-    .unwrap()
 }
 
 /// Cells in per-lane kernels rooted at `dir`, with private agent and server directories.
@@ -66,11 +56,11 @@ fn kernel_cells(dir: &Path) -> Arc<KernelCells> {
     Arc::new(KernelCells::new(rlm_tool("Python REPL"), open, None))
 }
 
-fn open(backend: &str, dir: &Path, setup: &Setup, cells: Arc<KernelCells>) -> (ChatHarness, Conversation) {
+fn open(journal: &Path, setup: &Setup, cells: Arc<KernelCells>) -> (ChatHarness, Conversation) {
     let mut options = ChatOptions::new(Registry::new(), Arc::new(setup.faux.clone()), cells);
     let reports = setup.reports.clone();
     options.on_report = Some(Arc::new(move |error| reports.lock().unwrap().push(error.clone())));
-    let chat = open_storage(backend, dir, options);
+    let chat = ChatHarness::open(open_journal(journal), options).unwrap();
     let root = chat
         .root(Some(&harness::chat::AgentChange::model(
             harness::chat::faux::Faux::model_ref(),
@@ -90,11 +80,11 @@ fn cell_code(dir: &Path) -> String {
     )
 }
 
-fn child_main(backend: &str, dir: &Path) {
+fn child_main(journal: &Path, dir: &Path) {
     let setup = Setup::new();
     setup.faux.set_responses(vec![rlm_call(&cell_code(dir), "c1").into()]);
     let cells = kernel_cells(dir);
-    let (chat, root) = open(backend, dir, &setup, cells.clone());
+    let (chat, root) = open(journal, &setup, cells.clone());
     root.submit(SubmissionDraft::input("go")).unwrap();
     // The partial output is durable and the effect happened: hand the kernel's PID to the parent.
     eventually(|| {
@@ -112,27 +102,25 @@ fn child_main(backend: &str, dir: &Path) {
 
 /// Child entry point: does nothing unless the parent test re-ran this binary in child mode.
 #[test]
-fn harness_chat_cell_kill_child_process() {
-    let (Ok(backend), Ok(dir)) = (std::env::var(CHILD_ENV), std::env::var(DIR_ENV)) else {
+fn session_core_durable_chat_cell_kill_child_process() {
+    let (Ok(journal), Ok(dir)) = (std::env::var(CHILD_ENV), std::env::var(DIR_ENV)) else {
         return;
     };
-    child_main(&backend, Path::new(&dir));
+    child_main(Path::new(&journal), Path::new(&dir));
 }
 
-fn kill(pid: &str) {
-    let _ = std::process::Command::new("kill").args(["-9", pid]).status();
-}
-
-fn kill_and_recover(backend: &str) {
+#[test]
+fn session_core_durable_chat_cell_kill_answers_a_cell_interrupted_by_sigkill_exactly_once_without_rerunning_it() {
     let dir = tempfile::tempdir().unwrap();
+    let journal = create_session(dir.path());
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
-            "harness_chat_cell_kill_child_process",
+            "session_core_durable_chat_cell_kill_child_process",
             "--exact",
             "--nocapture",
             "--test-threads=1",
         ])
-        .env(CHILD_ENV, backend)
+        .env(CHILD_ENV, &journal)
         .env(DIR_ENV, dir.path())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -149,12 +137,12 @@ fn kill_and_recover(backend: &str) {
     // SIGKILL the process and its kernel mid-cell.
     child.kill().unwrap();
     child.wait().unwrap();
-    kill(kernel.trim());
+    kill_reported_pid(&kernel);
 
     let setup = Setup::new();
     setup.faux.set_responses(vec![text_message("done").into()]);
     let cells = kernel_cells(dir.path());
-    let (chat, root) = open(backend, dir.path(), &setup, cells.clone());
+    let (chat, root) = open(&journal, &setup, cells.clone());
     let submission = chat
         .inspect()
         .unwrap()
@@ -203,20 +191,11 @@ fn kill_and_recover(backend: &str) {
     assert!(setup.reports().is_empty(), "{:?}", setup.reports());
 }
 
-#[test]
-fn harness_chat_cell_kill_answers_a_cell_interrupted_by_sigkill_exactly_once_without_rerunning_it_sqlite() {
-    kill_and_recover("sqlite");
-}
-
-#[test]
-fn harness_chat_cell_kill_answers_a_cell_interrupted_by_sigkill_exactly_once_without_rerunning_it_jsonl() {
-    kill_and_recover("jsonl");
-}
-
 /// The same cell runs to completion through the kernel when nothing interrupts it: the executor's own output.
 #[test]
-fn harness_chat_cell_kill_runs_a_cell_in_the_kernel_and_answers_with_its_output() {
+fn session_core_durable_chat_cell_kill_runs_a_cell_in_the_kernel_and_answers_with_its_output() {
     let dir = tempfile::tempdir().unwrap();
+    let journal = create_session(dir.path());
     let setup = Setup::new();
     setup.faux.set_responses(vec![
         rlm_call(
@@ -227,7 +206,7 @@ fn harness_chat_cell_kill_runs_a_cell_in_the_kernel_and_answers_with_its_output(
         text_message("done").into(),
     ]);
     let cells = kernel_cells(dir.path());
-    let (chat, root) = open("sqlite", dir.path(), &setup, cells.clone());
+    let (chat, root) = open(&journal, &setup, cells.clone());
     let settled = root.submit(SubmissionDraft::input("go")).unwrap().wait(&bg()).unwrap();
     assert_eq!(settled.status, SubmissionStatus::Done);
     let result = root

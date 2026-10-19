@@ -1120,7 +1120,8 @@ fn harness_chat_generation_orphans_a_blocked_run_task_with_full_run_cleanup() {
 
 #[test]
 fn harness_chat_generation_recovery_reruns_preparation_interrupted_before_its_commit() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let mut setup = Setup::new();
         let reached = Deferred::new();
@@ -1156,7 +1157,8 @@ fn harness_chat_generation_recovery_reruns_preparation_interrupted_before_its_co
 
 #[test]
 fn harness_chat_generation_recovery_resends_a_request_interrupted_before_any_partial_without_repeating_preparation() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let mut setup = Setup::new();
         preamble(&mut setup, "p");
@@ -1215,7 +1217,8 @@ fn harness_chat_generation_recovery_resends_a_request_interrupted_before_any_par
 
 #[test]
 fn harness_chat_generation_recovery_converts_a_committed_partial_into_an_aborted_entry_and_resends_the_same_messages() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let slow = Setup::with(FauxOptions {
             tokens_per_second: Some(20.0),
@@ -1271,7 +1274,8 @@ fn harness_chat_generation_recovery_converts_a_committed_partial_into_an_aborted
 
 #[test]
 fn harness_chat_generation_recovery_resumes_a_retry_backoff_after_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.fix_clock(1_000);
@@ -1314,7 +1318,8 @@ fn harness_chat_generation_recovery_resumes_a_retry_backoff_after_reopen() {
 
 #[test]
 fn harness_chat_generation_recovery_resumes_polling_a_deferred_response_after_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = deferred();
         setup.fix_clock(1_000);
@@ -1351,7 +1356,8 @@ fn harness_chat_generation_recovery_resumes_polling_a_deferred_response_after_re
 
 #[test]
 fn harness_chat_generation_recovery_fails_no_model_when_the_pinned_model_is_gone_after_reopen_in_request_and_in_poll() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = deferred();
         let (busy, reached) = unanswered();
@@ -1392,7 +1398,8 @@ fn harness_chat_generation_recovery_fails_no_model_when_the_pinned_model_is_gone
 
 #[test]
 fn harness_chat_generation_recovery_runs_a_print_style_turn_and_reads_the_durable_answer_after_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let mut setup = Setup::new();
         preamble(&mut setup, "You are terse.");

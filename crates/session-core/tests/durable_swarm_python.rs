@@ -1,10 +1,14 @@
 //! Python-level process tests of the durable many-agent APIs through the real `runtime.py` (`swarm_api.py`): the
 //! model's REPL cells call `rlm.spawn(keep=True)`, `rlm.collect`, `rlm.ask`, `rlm.partial`, `swarm`, `board` and
-//! `notes`; every request reaches the Rust host operations through the kernel protocol. One test SIGKILLs the process
-//! (and its kernel) after a persistent child answered, reopens the session file, and asks the child again from a new
-//! cell: the child survived the restart with its context.
+//! `notes`; every request reaches the Rust host operations through the kernel protocol, and every durable record
+//! goes to the product's durable store (a format-4 session file through `JournalStorage`). One test SIGKILLs the
+//! process (and its kernel) after a persistent child answered, reopens the session file, and asks the child again
+//! from a new cell: the child survived the restart with its context.
 
+#[path = "../../harness/tests/chat_support/mod.rs"]
 mod chat_support;
+mod journal_kill_support;
+#[path = "../../harness/tests/support/mod.rs"]
 mod support;
 
 use std::path::{Path, PathBuf};
@@ -13,12 +17,13 @@ use std::time::{Duration, Instant};
 
 use ai::Message;
 use chat_support::*;
-use durable::{ConversationId, SqliteOptions, SqliteStorage, SubmissionStatus};
+use durable::{ConversationId, SubmissionStatus};
 use harness::chat::faux::{FauxStep, rlm_call, text_message};
 use harness::chat::host_ops::HostOps;
 use harness::chat::kernel_cells::{KernelCells, rlm_tool};
 use harness::chat::{AgentChange, ChatHarness, ChatOptions, Conversation, SubmissionDraft};
 use harness::scheduler::Registry;
+use journal_kill_support::{create_session, kill_reported_pid, open_journal};
 use kernel::{HostHandler, Kernel, KernelOptions, Signal};
 use serde_json::{Map, Value, json};
 use support::{bg, js};
@@ -108,7 +113,7 @@ struct Opened {
     cells: Arc<KernelCells>,
 }
 
-fn open(dir: &Path, setup: &Setup) -> Opened {
+fn open(dir: &Path, journal: &Path, setup: &Setup) -> Opened {
     let cwd = dir.to_path_buf();
     let open_lane = Arc::new(move |_: ConversationId, _: &str| {
         let mut options = KernelOptions::new(&cwd, runtime());
@@ -139,8 +144,7 @@ fn open(dir: &Path, setup: &Setup) -> Opened {
     let mut options = ChatOptions::new(Registry::new(), Arc::new(setup.faux.clone()), cells.clone());
     let reports = setup.reports.clone();
     options.on_report = Some(Arc::new(move |error| reports.lock().unwrap().push(error.clone())));
-    let storage = SqliteStorage::open(dir.join("session.sqlite"), SqliteOptions::default()).unwrap();
-    let chat = ChatHarness::open(storage, options).unwrap();
+    let chat = ChatHarness::open(open_journal(journal), options).unwrap();
     let _ = ops.set(HostOps::new(chat.clone()));
     let root = chat
         .root(Some(&AgentChange::model(harness::chat::faux::Faux::model_ref())))
@@ -174,11 +178,12 @@ fn turn(opened: &Opened, user: &str) {
 }
 
 #[test]
-fn harness_chat_swarm_python_runs_the_durable_agent_apis_from_repl_cells() {
+fn session_core_durable_swarm_python_runs_the_durable_agent_apis_from_repl_cells() {
     let dir = tempfile::tempdir().unwrap();
+    let journal = create_session(dir.path());
     let setup = Setup::new();
     route(&setup);
-    let opened = open(dir.path(), &setup);
+    let opened = open(dir.path(), &journal, &setup);
     turn(&opened, "go");
     let out = printed(&opened.root, "c-go");
     assert_eq!(out["first"], "I know the parser.");
@@ -200,10 +205,10 @@ fn harness_chat_swarm_python_runs_the_durable_agent_apis_from_repl_cells() {
     opened.cells.shutdown();
 }
 
-fn child_main(dir: &Path) {
+fn child_main(dir: &Path, journal: &Path) {
     let setup = Setup::new();
     route(&setup);
-    let opened = open(dir, &setup);
+    let opened = open(dir, journal, &setup);
     turn(&opened, "go");
     let pids: Vec<String> = opened
         .cells
@@ -222,24 +227,25 @@ fn child_main(dir: &Path) {
 
 /// Child entry point: does nothing unless the parent test re-ran this binary in child mode.
 #[test]
-fn harness_chat_swarm_python_child_process() {
-    if std::env::var(CHILD_ENV).is_err() {
+fn session_core_durable_swarm_python_child_process() {
+    let (Ok(journal), Ok(dir)) = (std::env::var(CHILD_ENV), std::env::var(DIR_ENV)) else {
         return;
-    }
-    child_main(Path::new(&std::env::var(DIR_ENV).unwrap()));
+    };
+    child_main(Path::new(&dir), Path::new(&journal));
 }
 
 #[test]
-fn harness_chat_swarm_python_asks_a_persistent_child_again_after_the_process_was_killed() {
+fn session_core_durable_swarm_python_asks_a_persistent_child_again_after_the_process_was_killed() {
     let dir = tempfile::tempdir().unwrap();
+    let journal = create_session(dir.path());
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
-            "harness_chat_swarm_python_child_process",
+            "session_core_durable_swarm_python_child_process",
             "--exact",
             "--nocapture",
             "--test-threads=1",
         ])
-        .env(CHILD_ENV, "1")
+        .env(CHILD_ENV, &journal)
         .env(DIR_ENV, dir.path())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -255,12 +261,12 @@ fn harness_chat_swarm_python_asks_a_persistent_child_again_after_the_process_was
     child.kill().unwrap();
     child.wait().unwrap();
     for pid in std::fs::read_to_string(&ready).unwrap().split_whitespace() {
-        let _ = std::process::Command::new("kill").args(["-9", pid]).status();
+        kill_reported_pid(pid);
     }
 
     let setup = Setup::new();
     route(&setup);
-    let opened = open(dir.path(), &setup);
+    let opened = open(dir.path(), &journal, &setup);
     turn(&opened, "again");
     let out = printed(&opened.root, "c-again");
     assert_eq!(out, json!({ "answer": "re: Still there?", "board": ["claimed"] }));

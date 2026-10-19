@@ -62,7 +62,8 @@ fn blocking(setup: &Setup, code: &str) {
 
 #[test]
 fn harness_chat_cells_answer_an_unsafe_cell_interrupted_after_intent_with_its_durable_partial_output() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         blocking(&setup, "work");
@@ -108,7 +109,8 @@ fn harness_chat_cells_rerun_a_cell_only_when_both_the_stored_and_the_current_rep
         (Replay::Safe, Replay::Unsafe, false),
         (Replay::Unsafe, Replay::Safe, false),
     ];
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         for (stored, current, reruns) in cases {
             let storage = Controlled::new(backend);
             let setup = Setup::new();
@@ -227,7 +229,8 @@ fn harness_chat_cells_let_context_derivation_answer_a_faulted_cell_and_continue_
 
 #[test]
 fn harness_chat_cells_clear_the_interrupted_attempts_progress_before_a_safe_rerun() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.cells.script(

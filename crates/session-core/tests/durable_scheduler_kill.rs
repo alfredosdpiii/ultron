@@ -1,17 +1,17 @@
-//! Kill/reopen process test: a child process (this test binary, re-run in child mode) opens a Harness over a real
-//! SQLite or JSONL file, commits task intents and starts their effects, then freezes Storage so the cascade commit
-//! that follows an abort mark never lands; the parent SIGKILLs it mid-phase, reopens the same file, and asserts the
+//! Kill/reopen process test: a child process (this test binary, re-run in child mode) opens a Harness over the
+//! product's durable store (a format-4 session file through `JournalStorage`), commits task intents and starts their effects, then freezes Storage so the cascade commit
+//! that follows an abort mark never lands; the parent SIGKILLs it mid-phase, reopens the same session file, and asserts the
 //! recovery contract (spec §5.2, §5.4, §5.5, §10.1): a replay-safe phase reruns, an unsafe one yields an interrupted
 //! outcome, abort cascades and `completing` holds are re-derived from durable records, abandoned work is aborted with
 //! reason `restart`, and every acknowledged commit survived.
 
+mod journal_kill_support;
+#[path = "../../harness/tests/support/mod.rs"]
 mod support;
 
-use durable::{
-    JsonlOptions, JsonlStorage, Seq, SqliteOptions, SqliteStorage, Storage, StorageError, StorageWrite, TaskId,
-    TaskOptions, TaskRecord, TaskStatus,
-};
+use durable::{Seq, Storage, StorageError, StorageWrite, TaskId, TaskOptions, TaskRecord, TaskStatus};
 use harness::scheduler::{Cancel, Extension, Harness, HarnessError, HarnessOptions, Registry, Task};
+use journal_kill_support::{create_session, durable_commits, open_journal};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io::Write;
@@ -22,13 +22,7 @@ use std::time::{Duration, Instant};
 use support::{Deferred, aborted_with, bg, completed, eventually, js, running};
 
 const CHILD_ENV: &str = "ULTRON_HARNESS_KILL_CHILD";
-
-fn open_storage(backend: &str, path: &Path) -> Box<dyn Storage + Send> {
-    match backend {
-        "sqlite" => Box::new(SqliteStorage::open(path, SqliteOptions::default()).unwrap()),
-        _ => Box::new(JsonlStorage::open(path, JsonlOptions::default()).unwrap()),
-    }
-}
+const DIR_ENV: &str = "ULTRON_HARNESS_KILL_DIR";
 
 /// Append one line with a single write: task threads log concurrently, and `writeln!` on a `File` issues the text
 /// and its newline as separate writes, so two appenders interleaved ("hold:abandonhold:owner", then two newlines)
@@ -256,11 +250,11 @@ fn hold_input(name: &str) -> Value {
 }
 
 /// Child mode: build the state, start every effect, abort-mark one owner, and block until killed.
-fn child_main(backend: &str, dir: &Path) {
+fn child_main(journal: &Path, dir: &Path) {
     let effects = dir.join("effects.log");
     let freeze_after: Arc<Mutex<Option<TaskId>>> = Arc::default();
     let storage = Freezing {
-        inner: open_storage(backend, &dir.join("session")),
+        inner: Box::new(open_journal(journal)),
         freeze_after: freeze_after.clone(),
         frozen: Arc::default(),
         ready: dir.join("ready"),
@@ -375,24 +369,26 @@ fn until(mut check: impl FnMut() -> bool) {
 
 /// Child entry point: does nothing unless the parent test re-ran this binary in child mode.
 #[test]
-fn harness_kill_child_process() {
-    let (Ok(backend), Ok(dir)) = (std::env::var(CHILD_ENV), std::env::var("ULTRON_HARNESS_KILL_DIR")) else {
+fn session_core_durable_kill_child_process() {
+    let (Ok(journal), Ok(dir)) = (std::env::var(CHILD_ENV), std::env::var(DIR_ENV)) else {
         return;
     };
-    child_main(&backend, Path::new(&dir));
+    child_main(Path::new(&journal), Path::new(&dir));
 }
 
-fn kill_and_recover(backend: &str) {
+#[test]
+fn session_core_durable_kill_reopen_journal_recovers_after_sigkill_mid_phase() {
     let dir = tempfile::tempdir().unwrap();
+    let path = create_session(dir.path());
     let mut child = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
-            "harness_kill_child_process",
+            "session_core_durable_kill_child_process",
             "--exact",
             "--nocapture",
             "--test-threads=1",
         ])
-        .env(CHILD_ENV, backend)
-        .env("ULTRON_HARNESS_KILL_DIR", dir.path())
+        .env(CHILD_ENV, &path)
+        .env(DIR_ENV, dir.path())
         .stdout(std::process::Stdio::null())
         .stderr(std::fs::File::create(dir.path().join("child.stderr")).unwrap())
         .spawn()
@@ -421,14 +417,18 @@ fn kill_and_recover(backend: &str) {
     child.kill().unwrap();
     child.wait().unwrap();
 
-    let path = dir.path().join("session");
     let effects = dir.path().join("effects.log");
     let ids: Value = serde_json::from_str(&std::fs::read_to_string(dir.path().join("ids.json")).unwrap()).unwrap();
     let id = |key: &str| TaskId(ids[key].as_u64().unwrap());
 
     // What the kill left durable, read before any Harness derives anything.
+    let acknowledged = durable_commits(&path);
+    assert!(
+        acknowledged > 0,
+        "the child's acknowledged commits are in the session file"
+    );
     {
-        let mut raw = open_storage(backend, &path);
+        let mut raw = open_journal(&path);
         let state = |key: &str| js(&raw.task(id(key)).unwrap().unwrap());
         support::assert_matches(
             &state("owner"),
@@ -462,7 +462,7 @@ fn kill_and_recover(backend: &str) {
         ))
         .unwrap();
     let storage = Freezing {
-        inner: open_storage(backend, &path),
+        inner: Box::new(open_journal(&path)),
         freeze_after: Arc::default(),
         frozen: Arc::default(),
         ready: dir.path().join("unused"),
@@ -509,14 +509,6 @@ fn kill_and_recover(backend: &str) {
     assert_eq!(outcome("inner2"), json!({ "status": "completed", "result": null }));
     assert_eq!(outcome("owner2"), json!({ "status": "completed", "result": null }));
     harness.close().unwrap();
-}
-
-#[test]
-fn harness_kill_reopen_sqlite_recovers_after_sigkill_mid_phase() {
-    kill_and_recover("sqlite");
-}
-
-#[test]
-fn harness_kill_reopen_jsonl_recovers_after_sigkill_mid_phase() {
-    kill_and_recover("jsonl");
+    // Recovery committed through the same journal: the reopened file holds more durable commits than the kill left.
+    assert!(durable_commits(&path) > acknowledged);
 }

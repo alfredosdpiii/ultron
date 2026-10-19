@@ -306,6 +306,8 @@ pub enum LaneEvent {
     /// A tree navigation ended (after the session reopened at its new position), with the selected user or custom
     /// message's text for the editor (AgentSession `navigateTree`'s `editorText`).
     Navigated(Result<Option<String>, String>),
+    /// A file-restoring rewind ended: the session's message (`Err`: why nothing, or not everything, was restored).
+    FilesRestored(Result<String, String>),
     /// A session was deleted (`Err`: why not); a fresh [`LaneEvent::Sessions`] follows.
     SessionDeleted(Result<(), String>),
     /// The settings `/settings` shows: the merged settings document, the model settings environment variables
@@ -499,6 +501,11 @@ pub trait LaneClient {
     /// Label a tree entry (`None` removes it).
     fn set_label(&self, entry_id: &str, label: Option<&str>) {
         let _ = (entry_id, label);
+    }
+    /// Restore the working tree's files to the checkpoint of entry `entry_id` (its turn's start), the current files
+    /// saved as a checkpoint first ([`LaneEvent::FilesRestored`]).
+    fn restore_files(&self, entry_id: &str) {
+        let _ = entry_id;
     }
     /// List the session's subagents ([`LaneEvent::Agents`]).
     fn agents(&self) {}

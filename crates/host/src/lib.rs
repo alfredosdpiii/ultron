@@ -12,6 +12,7 @@
 //! running (the keeper is alive: it is followed again), completed with the status the keeper wrote, or `lost` (the
 //! process ended without one); never silently gone.
 
+pub mod bash_notes;
 pub mod cell;
 pub mod file_hooks;
 pub mod journal;
@@ -723,6 +724,31 @@ impl Host {
         {
             return Err(format!("bash command was not run: {reason}"));
         }
+        let requested = payload.get("command").and_then(Value::as_str).map(str::to_string);
+        let mut result = self.dispatch_shell(lane, kind, payload, signal)?;
+        // The model's results: a non-error exit 1 and a sandbox refusal are noted (bash_notes).
+        if matches!(
+            kind,
+            "bash" | "shell.bash" | "shell.run" | "shell.result" | "shell.get" | "shell.cancel"
+        ) {
+            let command = requested.unwrap_or_else(|| result["command"].as_str().unwrap_or_default().to_string());
+            let policy = self
+                .launcher
+                .as_deref()
+                .filter(|launcher| launcher.mechanism().is_some())
+                .map(|launcher| &launcher.policy);
+            bash_notes::annotate(&mut result, &command, policy);
+        }
+        Ok(result)
+    }
+
+    fn dispatch_shell(
+        &self,
+        lane: &str,
+        kind: &str,
+        payload: Map<String, Value>,
+        signal: &Signal,
+    ) -> Result<Value, String> {
         match kind {
             "bash" if payload.contains_key("yield_after") => self.shell_bash(lane, &payload, signal),
             "bash" => self.blocking_bash(&payload, signal, &mut |_| {}),

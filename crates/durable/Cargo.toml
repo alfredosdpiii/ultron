@@ -1,7 +1,7 @@
 [package]
 name = "durable"
 version = "0.1.0"
-description = "Pi Durable storage: records, the Storage contract, and its backends"
+description = "Pi Durable storage: records, the Storage contract, and the in-memory working copy"
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -9,7 +9,6 @@ publish.workspace = true
 [dependencies]
 chord-delta = { path = "../chord-delta" }
 indexmap = "=2.14.2"
-rusqlite = { version = "=0.40.2", features = ["bundled"] }
 rustix = { version = "=1.1.5", features = ["fs", "std"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
@@ -18,5 +17,4 @@ serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 workspace = true
 
 [dev-dependencies]
-rusqlite = { version = "=0.40.2", features = ["bundled"] }
 tempfile = "=3.27.0"

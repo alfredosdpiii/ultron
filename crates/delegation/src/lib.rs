@@ -19,3 +19,5 @@ pub mod verdict;
 pub mod workflow_worktrees;
 pub mod workspace;
 pub mod worktrees;
+
+pub use worktrees::checkpoints;

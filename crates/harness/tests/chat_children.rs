@@ -231,7 +231,8 @@ fn harness_chat_children_hold_the_spawning_cell_completing_until_an_uncollected_
 
 #[test]
 fn harness_chat_children_time_out_on_a_durable_deadline_that_survives_reopen() {
-    for backend in [Backend::Sqlite, Backend::Jsonl] {
+    {
+        let backend = Backend::Replay;
         let storage = Controlled::new(backend);
         let setup = Setup::new();
         setup.fix_clock(1_000);

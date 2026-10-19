@@ -413,6 +413,8 @@ pub struct TurnModels {
     /// Changes a child conversation's request before it is sent (`transform_context`: what `ctx` kept across a
     /// compaction).
     pub transform_child: Option<TransformChild>,
+    /// `ULTRON_REQUEST_TRACE` (crate::request_trace) and the session's id: every answered request is traced.
+    pub trace: Option<(Arc<crate::request_trace::RequestTrace>, String)>,
 }
 
 /// Changes the messages of a child conversation's request.
@@ -454,6 +456,12 @@ impl TurnModels {
         };
         let message = runtime()?.block_on(self.provider.stream(model, context, &options, &mut sink));
         drop(bridged);
+        if let Some((trace, session)) = &self.trace {
+            let lane = request
+                .conversation_id
+                .map_or_else(|| "child".to_string(), |id| format!("conversation:{}", id.0));
+            trace.record(session, &lane, model, context, &message);
+        }
         signal.check()?;
         if let (Some(charge), Some(conversation)) = (&self.charge, request.conversation_id) {
             charge(conversation, &message);
@@ -576,6 +584,9 @@ impl TurnModels {
         };
         let message = runtime()?.block_on(self.provider.stream(model, &llm, &options, &mut sink));
         drop(bridged);
+        if let Some((trace, session)) = &self.trace {
+            trace.record(session, crate::request_trace::ROOT_LANE, model, &llm, &message);
+        }
         // The ledger counts the response before its entry commits and before the next request or cell is gated, as
         // the TypeScript drive's `after_response` does; a response a closing worker drops is not counted (the
         // reopened runtime resends it).

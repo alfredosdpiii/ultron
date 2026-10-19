@@ -1,7 +1,10 @@
-//! Pi Durable storage: typed records, the [`Storage`] contract, and its backends.
+//! Pi Durable storage: typed records, the [`Storage`] contract, and [`MemoryStorage`].
 //!
-//! Port of `packages/durable/src/{types,errors}.ts` and `storage/` from earendil-works/pi (MIT); the pinned revision
-//! is recorded in `fixtures/storage-conformance.json`. Errors carry the upstream error name and message.
+//! Port of `packages/durable/src/{types,errors}.ts` and `storage/memory-storage.ts` from earendil-works/pi (MIT); the
+//! pinned revision is recorded in `fixtures/storage-conformance.json`. Errors carry the upstream error name and
+//! message. Upstream's SQLite and JSONL file backends are not ported: the product keeps durable records in the
+//! session's format-4 journal (`session-core`'s `JournalStorage`, a MemoryStorage working copy whose commits are
+//! journal records).
 //!
 //! Differences from upstream:
 //! - Storage is synchronous and takes no cancellation context; the Session (phase 3) owns scheduling and cancellation.
@@ -10,26 +13,19 @@
 
 mod document_state;
 mod documents;
-mod jsonl;
 mod memory;
 mod observation;
 pub mod owner;
 mod records;
 mod session;
-mod sqlite;
 mod transaction;
 
 pub use document_state::{Delivery, DeliveryKind, DocumentState, StateSubscription};
 pub use documents::{CheckpointInfo, Doc, DocDefinition, DocSemantics, Owner};
-pub use jsonl::{JsonlFs, JsonlOptions, JsonlStorage, StdFs};
 pub use memory::{MemoryStorage, PreparedCommit};
 pub use observation::{Observed, Watch, WatchEnd};
 pub use records::*;
 pub use session::{CommitChange, CommitPublication, Session, SessionEnd, SessionError, Subscription};
-pub use sqlite::{
-    CURRENT_SQLITE_SCHEMA_VERSION, SQLITE_MIGRATIONS, SqliteMigration, SqliteOptions, SqliteStorage,
-    apply_sqlite_migrations,
-};
 pub use transaction::{
     ConversationOwnership, EntryDraft, EntryHead, SubmissionCreate, SubmissionSettlement, TaskDefinition, TaskOptions,
     TaskOwnership, Tx, TxScope,
@@ -45,11 +41,8 @@ use std::fmt;
 pub enum StorageError {
     Request(String),
     Failed(String),
-    /// A complete JSONL line or committed JSONL state is invalid (upstream `JsonlCorruptionError`).
+    /// Persisted durable state is invalid (upstream `JsonlCorruptionError`): a journal record that does not parse.
     Corrupt(String),
-    /// A JSONL publication write failed part-way; the storage must be reopened (upstream `JsonlStoragePoisonedError`).
-    /// Holds the failure that poisoned it.
-    Poisoned(String),
 }
 
 impl StorageError {
@@ -59,14 +52,12 @@ impl StorageError {
             StorageError::Request(_) => "StorageRequestError",
             StorageError::Failed(_) => "Error",
             StorageError::Corrupt(_) => "JsonlCorruptionError",
-            StorageError::Poisoned(_) => "JsonlStoragePoisonedError",
         }
     }
 
     pub fn message(&self) -> &str {
         match self {
             StorageError::Request(message) | StorageError::Failed(message) | StorageError::Corrupt(message) => message,
-            StorageError::Poisoned(_) => "JSONL storage is poisoned and must be reopened",
         }
     }
 }
@@ -229,17 +220,6 @@ impl Table {
             Table::Document => "document",
         }
     }
-
-    pub(crate) fn parse(name: &str) -> Result<Table> {
-        Ok(match name {
-            "conversation" => Table::Conversation,
-            "entry" => Table::Entry,
-            "task" => Table::Task,
-            "submission" => Table::Submission,
-            "document" => Table::Document,
-            other => return failed(format!("Unknown record type: {other}")),
-        })
-    }
 }
 
 impl fmt::Display for Table {
@@ -346,23 +326,6 @@ pub(crate) fn document_actions(writes: &[StorageWrite]) -> Result<Vec<(u64, Docu
         }
     }
     Ok(actions)
-}
-
-/// The largest ID a commit writes plus one, at least `next_id`.
-pub(crate) fn candidate_next_id(next_id: u64, writes: &[StorageWrite]) -> u64 {
-    writes
-        .iter()
-        .filter_map(|write| match write {
-            StorageWrite::Conversation { value } => Some(value.id.0),
-            StorageWrite::Entry { value } => Some(value.id.0),
-            StorageWrite::Task { value } => Some(value.id.0),
-            StorageWrite::Submission { value } => Some(value.id.0),
-            StorageWrite::DocumentCreate { record, .. } | StorageWrite::DocumentCopy { record, .. } => {
-                Some(record.id.0)
-            }
-            StorageWrite::DocumentChange { .. } | StorageWrite::DocumentRetire { .. } => None,
-        })
-        .fold(next_id, |next, id| next.max(id + 1))
 }
 
 /// At most `limit` items, and a cursor after the last one when more matched.

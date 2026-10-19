@@ -8,6 +8,7 @@
 //! commit. [`run`] writes the harness operation journal of a prompted run; [`names`] lists sessions with their
 //! names and resolves `--resume <name|id>`.
 
+pub mod checkpoints;
 pub mod codec;
 pub mod context;
 pub mod fork;

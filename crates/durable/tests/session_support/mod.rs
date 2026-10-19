@@ -1,32 +1,35 @@
 //! Port of upstream `test/session-support.ts`: a controlled storage that records admitted commits, counts mints and
-//! document reads, holds calls at a gate, injects one commit failure, and reopens after close. It wraps every Rust
-//! backend, so each ported Session test runs against MemoryStorage, SqliteStorage and JsonlStorage.
+//! document reads, holds calls at a gate, injects one commit failure, and reopens after close. Each ported Session
+//! test runs against a MemoryStorage kept across reopen and against a storage that reopens by replaying its
+//! acknowledged commits, the way the product's journal-backed storage reopens (`replay_support`).
 
 #![allow(dead_code)]
 
 use durable::{
     CommitChange, CommitPublication, ConversationId, ConversationOwnership, ConversationQuery, ConversationRecord,
     Cursor, DocumentAddress, DocumentId, DocumentPoint, DocumentQuery, DocumentRecord, EntryId, EntryQuery,
-    EntryRecord, JsonlOptions, JsonlStorage, MemoryStorage, Page, Seq, Session, SqliteOptions, SqliteStorage, Storage,
-    StorageError, StorageWrite, StoredDocument, StoredEntry, SubmissionId, SubmissionQuery, SubmissionRecord, TaskId,
-    TaskQuery, TaskRecord,
+    EntryRecord, MemoryStorage, Page, Seq, Session, Storage, StorageError, StorageWrite, StoredDocument, StoredEntry,
+    SubmissionId, SubmissionQuery, SubmissionRecord, TaskId, TaskQuery, TaskRecord,
 };
 use serde_json::Value;
-use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::Duration;
-use tempfile::TempDir;
+
+#[path = "../replay_support/mod.rs"]
+mod replay;
+
+use replay::ReplayLog;
 
 type Result<T> = std::result::Result<T, StorageError>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backend {
     Memory,
-    Sqlite,
-    Jsonl,
+    /// Reopens by replaying the acknowledged commits into a fresh working copy.
+    Replay,
 }
 
-pub const BACKENDS: [Backend; 3] = [Backend::Memory, Backend::Sqlite, Backend::Jsonl];
+pub const BACKENDS: [Backend; 2] = [Backend::Memory, Backend::Replay];
 
 /// A gate that holds calls until released and reports when the first held call arrives.
 #[derive(Clone, Default)]
@@ -72,8 +75,7 @@ struct Control {
 
 struct Shared {
     backend: Backend,
-    _dir: Option<TempDir>,
-    path: Option<PathBuf>,
+    log: ReplayLog,
     inner: Mutex<Box<dyn Storage + Send>>,
     control: Mutex<Control>,
 }
@@ -82,26 +84,20 @@ struct Shared {
 #[derive(Clone)]
 pub struct Controlled(Arc<Shared>);
 
-fn open(backend: Backend, path: Option<&PathBuf>) -> Box<dyn Storage + Send> {
+fn open(backend: Backend, log: &ReplayLog) -> Box<dyn Storage + Send> {
     match backend {
         Backend::Memory => Box::new(MemoryStorage::new()),
-        Backend::Sqlite => Box::new(SqliteStorage::open(path.unwrap(), SqliteOptions::default()).unwrap()),
-        Backend::Jsonl => Box::new(JsonlStorage::open(path.unwrap(), JsonlOptions::default()).unwrap()),
+        Backend::Replay => Box::new(log.open()),
     }
 }
 
 impl Controlled {
     pub fn new(backend: Backend) -> Controlled {
-        let dir = (backend != Backend::Memory).then(|| tempfile::tempdir().unwrap());
-        let path = dir.as_ref().map(|dir| match backend {
-            Backend::Sqlite => dir.path().join("session.sqlite"),
-            _ => dir.path().join("session"),
-        });
-        let inner = open(backend, path.as_ref());
+        let log = ReplayLog::default();
+        let inner = open(backend, &log);
         Controlled(Arc::new(Shared {
             backend,
-            _dir: dir,
-            path,
+            log,
             inner: Mutex::new(inner),
             control: Mutex::new(Control::default()),
         }))
@@ -163,7 +159,7 @@ impl Controlled {
     /// Reopen after close, as a fresh process would reopen the same database, keeping every committed record.
     pub fn reopen(&self) {
         if self.0.backend != Backend::Memory {
-            *self.inner() = open(self.0.backend, self.0.path.as_ref());
+            *self.inner() = open(self.0.backend, &self.0.log);
         }
         self.control().closed = false;
     }

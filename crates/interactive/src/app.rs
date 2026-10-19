@@ -117,6 +117,11 @@ pub struct AppOptions {
     pub qol: QolSettings,
 }
 
+/// The file-restoring rewind's choices.
+const RESTORE_FILES: &str = "Restore files";
+const RESTORE_FILES_AND_REWIND: &str = "Restore files and rewind the conversation";
+const RESTORE_CANCEL: &str = "Cancel";
+
 enum Purpose {
     Model,
     Thinking,
@@ -126,6 +131,9 @@ enum Purpose {
     AutoreviewAccount(Vec<(String, String)>),
     /// "Summarize branch?" before navigating to this entry.
     Summarize(String),
+    /// "Restore files ...?" before restoring the working tree to this entry's checkpoint (the rewind selector's
+    /// choices may also rewind the conversation to it).
+    RestoreFiles(String),
     /// "Select authentication method": the options it chooses among (`None`: every provider).
     LoginMethod(Vec<crate::selectors::AuthProvider>, bool),
     /// An extension's `select` (or, `confirm`, its Yes/No) dialog: the request id.
@@ -519,6 +527,8 @@ pub struct App {
     rewind_pending: bool,
     /// The rewind selector's turns: their ids and whether each is a session user entry.
     rewind_ids: Vec<(String, bool)>,
+    /// The conversation rewinds to this entry once its file restore succeeded.
+    rewind_after_restore: Option<String>,
     /// Models picked this session, newest first (the model hub's Recent scope).
     recent_models: Vec<String>,
     /// The terminal display should be reset (Alt+L): the run loop clears it and paints everything again.
@@ -901,6 +911,7 @@ impl App {
             escapes: Default::default(),
             rewind_pending: false,
             rewind_ids: Vec::new(),
+            rewind_after_restore: None,
             recent_models: Vec::new(),
             reset_display: false,
             tree: None,
@@ -2167,6 +2178,22 @@ impl App {
                     }
                 }
             }
+            LaneEvent::FilesRestored(result) => match result {
+                Ok(message) => {
+                    self.show_status(&message);
+                    if let Some(entry) = self.rewind_after_restore.take() {
+                        if self.operation.is_some() {
+                            self.client.abort();
+                        }
+                        self.client.fork(&entry);
+                    }
+                }
+                Err(error) => {
+                    // The conversation stays where it is when its files could not be restored.
+                    self.rewind_after_restore = None;
+                    self.show_status(&format!("Error: {error}"));
+                }
+            },
             LaneEvent::Navigated(result) => {
                 self.chat.set_navigating(false);
                 let summarized = self.summarizing_branch.take();
@@ -3716,6 +3743,10 @@ impl App {
                     Some(text) => self.copy_to_clipboard(&text, "Copied selected message to clipboard"),
                 },
                 Some(TreeAction::Label(entry, label)) => self.client.set_label(&entry, label.as_deref()),
+                Some(TreeAction::RestoreFiles(entry)) => {
+                    self.panel = None;
+                    self.ask_restore(entry, false);
+                }
                 None => {}
             },
             Some(Panel::ExtensionInput { id, dialog }) => {
@@ -4540,6 +4571,42 @@ impl App {
         self.open_selection("Summarize branch?", items, None, Purpose::Summarize(entry));
     }
 
+    /// The user turn the rewind selector continues from for the selected row: the row's own user turn, else the
+    /// next one (`None` after the last).
+    fn rewind_target(&self, entry_id: &str) -> Option<String> {
+        let at = self.rewind_ids.iter().position(|(id, _)| id == entry_id)?;
+        let (_, user) = &self.rewind_ids[at];
+        let from = if *user { at } else { at + 1 };
+        self.rewind_ids[from..]
+            .iter()
+            .find(|(_, user)| *user)
+            .map(|(id, _)| id.clone())
+    }
+
+    /// Confirm a file-restoring rewind to `entry`'s checkpoint (`rewind`: offer to rewind the conversation too).
+    fn ask_restore(&mut self, entry: String, rewind: bool) {
+        let item = |value: &str, description: &str| SelectItem {
+            value: value.to_string(),
+            label: value.to_string(),
+            description: Some(description.to_string()),
+        };
+        let saved = "The current files are saved as a checkpoint first, so this can be undone";
+        let mut items = vec![item(RESTORE_FILES, saved)];
+        if rewind {
+            items.push(item(
+                RESTORE_FILES_AND_REWIND,
+                "Then continue the conversation from there",
+            ));
+        }
+        items.push(item(RESTORE_CANCEL, "Keep the files as they are"));
+        let title = if rewind {
+            "Restore files to before this turn?"
+        } else {
+            "Restore files to this point?"
+        };
+        self.open_selection(title, items, None, Purpose::RestoreFiles(entry));
+    }
+
     fn navigate(&mut self, entry_id: &str, summarize: bool, instructions: Option<&str>) {
         if self.operation.is_some() {
             self.client.abort();
@@ -4744,16 +4811,7 @@ impl App {
                     self.overlay = None;
                     // A user turn: fork before it (its prompt returns to the editor). Any other turn: keep it, so
                     // fork before the next user turn; after the last one there is nothing to drop.
-                    let at = self.rewind_ids.iter().position(|(id, _)| *id == entry_id);
-                    let target = at.and_then(|at| {
-                        let (_, user) = &self.rewind_ids[at];
-                        let from = if *user { at } else { at + 1 };
-                        self.rewind_ids[from..]
-                            .iter()
-                            .find(|(_, user)| *user)
-                            .map(|(id, _)| id.clone())
-                    });
-                    let Some(entry_id) = target else {
+                    let Some(entry_id) = self.rewind_target(&entry_id) else {
                         self.show_status("Already at this point");
                         return;
                     };
@@ -4761,6 +4819,16 @@ impl App {
                         self.client.abort();
                     }
                     self.client.fork(&entry_id);
+                }
+                PickerEvent::RestoreFiles { entry_id } => {
+                    self.overlay = None;
+                    // The files before the turn the rewind would continue from: the selected user turn, else the
+                    // next one; after the last one the files are already where they are.
+                    let target = self.rewind_target(&entry_id);
+                    match target {
+                        Some(entry) => self.ask_restore(entry, true),
+                        None => self.show_status("Files are already at this point"),
+                    }
                 }
                 PickerEvent::Cancel => self.overlay = None,
                 PickerEvent::Ignored | PickerEvent::Render => {}
@@ -4979,6 +5047,14 @@ impl App {
                             });
                         }
                         choice => self.navigate(&entry, choice == "Summarize", None),
+                    },
+                    Purpose::RestoreFiles(entry) => match item.value.as_str() {
+                        RESTORE_FILES => self.client.restore_files(&entry),
+                        RESTORE_FILES_AND_REWIND => {
+                            self.rewind_after_restore = Some(entry.clone());
+                            self.client.restore_files(&entry);
+                        }
+                        _ => {}
                     },
                     Purpose::SwitchImported {
                         session_file,
