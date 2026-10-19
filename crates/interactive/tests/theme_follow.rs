@@ -170,7 +170,10 @@ fn interactive_theme_reports_switch_the_running_app() {
         Some("light/dark".into()),
         Some("15;0"),
     ));
-    assert_eq!(std::mem::take(&mut app.terminal_writes), ["\x1b[?2031h", "\x1b[?996n"]);
+    assert_eq!(
+        std::mem::take(&mut app.terminal_writes),
+        ["\x1b[?2031h", "\x1b[?996n", "\x1b]11;?\x07"]
+    );
     assert_eq!(which(&theme), "dark");
     app.handle_input("\x1b[?997;2n");
     assert_eq!(which(&theme), "light");

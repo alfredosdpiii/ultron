@@ -19,6 +19,7 @@ harness = { path = "../harness" }
 host = { path = "../host" }
 inference = { path = "../inference" }
 kernel = { path = "../kernel" }
+kernel-apis = { path = "../kernel-apis" }
 loki = { path = "../loki" }
 mcp = { path = "../mcp" }
 nix = { version = "=0.31.3", features = ["signal"] }

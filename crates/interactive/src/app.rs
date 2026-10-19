@@ -562,6 +562,8 @@ pub struct App {
     clock: Box<dyn Fn() -> Instant>,
     /// The theme setting, its live application and previews.
     theme_controller: Option<crate::theme_setup::ThemeController>,
+    /// Takes the OSC 11 background replies out of the input.
+    osc11: tui::terminal_colors::Osc11Reader,
     /// The terminal's color palette notifications are on (`CSI ? 2031 h` sent, not yet turned off).
     scheme_notifications: bool,
     /// `showHardwareCursor`: the painter shows the terminal's cursor at the editor's.
@@ -890,6 +892,7 @@ impl App {
             clock: Box::new(Instant::now),
             editor_keys,
             theme_controller: None,
+            osc11: tui::terminal_colors::Osc11Reader::new(),
             scheme_notifications: false,
             show_hardware_cursor: false,
             image_protocol: None,
@@ -1071,6 +1074,7 @@ impl App {
                     let applied = controller.set_setting(setting);
                     self.adopt_theme(&applied.theme);
                     self.sync_scheme_notifications(applied.query_scheme);
+                    self.query_background(applied.query_background);
                     if let Some(error) = applied.error {
                         self.show_status(&format!("Error: {error}"));
                     }
@@ -1106,11 +1110,32 @@ impl App {
         self.theme_controller = Some(controller);
         self.adopt_theme(&applied.theme);
         self.sync_scheme_notifications(applied.query_scheme);
+        self.query_background(applied.query_background);
         if let Some(save) = applied.save {
             self.client.save_setting("theme", Value::String(save));
         }
         if let Some(error) = applied.error {
             self.show_status(&format!("Error: {error}"));
+        }
+    }
+
+    /// `queryTerminalBackgroundColor`: the OSC 11 query; the reply arrives as input ([`App::handle_input`]).
+    fn query_background(&mut self, query: bool) {
+        if query {
+            self.terminal_writes
+                .push(tui::terminal_colors::OSC11_BACKGROUND_QUERY.to_string());
+        }
+    }
+
+    /// An OSC 11 reply: the reported background applies when the controller still wants it (a repaint), and a
+    /// detected appearance is saved as the setting.
+    fn background_reported(&mut self, rgb: Option<(u8, u8, u8)>) {
+        let Some(applied) = self.theme_controller.as_mut().and_then(|c| c.background_reported(rgb)) else {
+            return;
+        };
+        self.adopt_theme(&applied.theme);
+        if let Some(save) = applied.save {
+            self.client.save_setting("theme", Value::String(save));
         }
     }
 
@@ -2010,6 +2035,7 @@ impl App {
                     supports_images: self.image_protocol.is_some(),
                     follow_up_key: key_display_text(&self.keys, "app.message.followUp"),
                     cycle_thinking_key: key_display_text(&self.keys, "app.thinking.cycle"),
+                    rust_rows: self.qol.any(),
                 };
                 let selector = SettingsSelector::new(Rc::clone(&self.theme), self.keys.clone(), input);
                 self.panel = Some(Panel::Settings(Box::new(selector)));
@@ -2384,6 +2410,19 @@ impl App {
     }
 
     pub fn handle_input(&mut self, data: &str) {
+        // `consumeOsc11BackgroundResponse`: the background reply is the terminal's, never a key, wherever it arrives
+        // (also split across reads while a query is outstanding).
+        let expecting = self.theme_controller.as_ref().is_some_and(|c| c.expects_background());
+        let read = self.osc11.input(data, expecting);
+        if let Some(rgb) = read.reply {
+            self.background_reported(rgb);
+        }
+        for data in read.forward {
+            self.handle_terminal_input(&data);
+        }
+    }
+
+    fn handle_terminal_input(&mut self, data: &str) {
         // `consumeCellSizeResponse`: `CSI 6 ; height ; width t`; a usable size re-renders the images with it.
         if let Some((height, width)) = parse_cell_size_response(data) {
             if height > 0 && width > 0 {
@@ -2867,6 +2906,10 @@ impl App {
                 }
                 None => self.show_status("Usage: /persona ultron|off"),
             },
+            // The session's scheduled prompts (kernel_apis::prompt_schedule in the engine), one line each.
+            "schedules" => self
+                .client
+                .inspect("/schedules", "schedule.list", serde_json::json!({"text": true})),
             "autoreview" => match args.trim().to_lowercase().as_str() {
                 "" => self.client.autoreview(AutoreviewRequest::Status),
                 "on" => self.client.autoreview(AutoreviewRequest::Accounts),
@@ -5000,6 +5043,7 @@ impl App {
                         .map_or(0, |b| b.iter().filter(|b| b["type"] == "toolCall").count());
                 }
                 Some("toolResult") => s.tool_results += 1,
+                Some("custom") if m["customType"] == crate::chat::NUDGE_CUSTOM_TYPE => s.auto_continues += 1,
                 _ => {}
             }
         }

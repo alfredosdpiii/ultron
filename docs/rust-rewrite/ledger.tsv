@@ -3062,6 +3062,59 @@ W17P-19	claude-root	persona off leaves the launch prompt unchanged	claude_root_p
 W17P-20	claude-root	engineering mode launch prompt uses the proactive wording	claude_root_engineering_mode_asks_claude_to_use_bundled_skills_on_its_own
 W17P-21	claude-root	Stop answer blocks announced steps, capped at 5	claude_root_persona_stop_answer_blocks_announced_steps_up_to_the_cap
 W17P-22	claude-root	hook command to server: Stop blocks until the cap, user-prompt resets, off answers {}	claude_root_mcp_persona_stop_hook_nudges_announced_steps_until_the_cap
+W18O-01	tui	OSC 11 reply parsing matches terminal-colors.ts fixture	tui_osc11_reply_parsing_matches_typescript
+W18O-02	tui	OSC 11 query bytes and literal reply colours	tui_osc11_reply_literals
+W18O-03	tui	complete replies taken from the input among keys	tui_osc11_reader_takes_whole_replies_among_keys
+W18O-04	tui	replies split across reads are joined and never forwarded	tui_osc11_reader_joins_replies_split_across_reads
+W18O-05	tui	broken fragments dropped, short fragments and keys kept	tui_osc11_reader_drops_broken_fragments_and_keeps_keys
+W18O-06	interactive	start without setting sends OSC 11 once; reply switches theme, repaints, saves	interactive_osc11_reply_switches_the_startup_theme
+W18O-07	interactive	no reply keeps the COLORFGBG theme	interactive_osc11_no_reply_keeps_colorfgbg
+W18O-08	interactive	named theme sends no query and ignores replies	interactive_osc11_named_theme_ignores_replies
+W18O-09	interactive	automatic pair: reply picks the side; scheme report wins	interactive_osc11_pair_scheme_report_wins
+W18O-10	interactive	a reply applies once	interactive_osc11_reply_applies_once
+W18O-11	interactive	reply after /settings chose a named theme changes nothing	interactive_osc11_reply_after_named_choice_changes_nothing
+W18S-01	delegation	baseline of a clean, unchanged tree lists nothing	delegation_w18s_git_baseline_of_an_unchanged_clean_tree_lists_nothing
+W18S-02	delegation	edits, additions, deletions listed; ignored output not	delegation_w18s_git_baseline_lists_edits_additions_and_deletions_since_the_start
+W18S-03	delegation	paths dirty at start count only when content changes or is restored	delegation_w18s_git_baseline_paths_dirty_at_the_start_count_only_when_their_content_changes
+W18S-04	delegation	work the child committed is listed	delegation_w18s_git_baseline_sees_work_the_child_committed
+W18S-05	delegation	subdirectory baseline is relative to it	delegation_w18s_git_baseline_in_a_subdirectory_is_relative_to_it_and_ignores_the_rest
+W18S-06	delegation	no baseline outside git, before a commit, or without git; GIT_DIR ignored	delegation_w18s_git_baseline_is_none_outside_git_before_a_commit_or_without_git_on_the_path
+W18S-07	delegation	baseline round-trips; a lost commit is an error	delegation_w18s_git_baseline_round_trips_and_a_lost_commit_is_an_error
+W18S-08	delegation	status digest tells a changed clean tree	delegation_w18s_git_baseline_status_digest_tells_a_changed_clean_tree
+W18S-09	session-core	workspace checks verified after restart via kept baseline	session_core_w18s_changed_files_within_after_a_restart_compares_with_the_kept_git_baseline
+W18S-10	session-core	out-of-scope edit after restart is contract_failed	session_core_w18s_an_out_of_scope_edit_after_a_restart_is_still_contract_failed
+W18S-11	session-core	outside git, workspace checks after restart fail closed	session_core_w18s_workspace_checks_after_a_restart_outside_git_still_fail_closed
+W18S-12	session-core	kept child's workspace checks after restart use the kept baseline	session_core_w18s_a_kept_childs_workspace_checks_after_a_restart_use_the_kept_git_baseline
+W18S-13	session-core	each kept-child answer is held to its contract	session_core_w18s_kept_child_each_answer_is_held_to_its_contract
+W18S-14	session-core	kept retry hop asks again with the failures	session_core_w18s_kept_child_retry_hop_asks_it_again_with_its_failures
+W18S-15	session-core	kept returns reads each answer's own verdict	session_core_w18s_kept_child_returns_reads_each_answers_own_verdict
+W18S-16	session-core	kept review hop spawns <name>-review	session_core_w18s_kept_child_review_hop_spawns_the_reviewer
+W18S-17	session-core	kept workspace checks are cumulative since the spawn	session_core_w18s_kept_child_workspace_checks_compare_with_its_spawn
+W18S-18	session-core	help documents keep=True contracts and keep takes them	session_core_spawn_contract_help_documents_the_options_and_keep_takes_them
+W18S-19	cli	guide --for claude words skills as the launch does	claude_root_w18s_guide_for_claude_words_skills_as_the_launch_does
+W18S-20	interactive	/settings lists persona and writes it like /persona	interactive_w18s_settings_lists_persona_and_writes_it_like_the_command
+W18S-21	interactive	parity TUI build has no persona row	interactive_w18s_settings_in_the_parity_build_has_no_persona_row
+W18S-22	interactive	/session shows auto-continues only when > 0	interactive_w18s_session_info_counts_auto_continues_only_when_there_were_some
+W18S-23	host	sandbox host env: base env, else SANDBOX_PATH plus HOME	host_w18s_sandbox_host_env_is_the_base_env_else_only_the_sandbox_path
+W18S-24	host	sandboxed host without base env never reads the process env	host_w18s_a_sandboxed_host_without_a_base_env_never_reads_the_process_env
+W18T-01	schedule	interval syntax, min 60s, max 365d	kernel_apis_prompt_schedule_interval_syntax
+W18T-02	schedule	every() writes the session value and reports it	kernel_apis_prompt_schedule_every_records_a_session_value_and_reports_it
+W18T-03	schedule	each slot fires once; missed slots collapse to one	kernel_apis_prompt_schedule_fire_runs_each_slot_once_and_collapses_missed_slots
+W18T-04	schedule	max_runs, until and at end the schedule	kernel_apis_prompt_schedule_max_runs_until_and_at_end_the_schedule
+W18T-05	schedule	cancel by id or name stops firing	kernel_apis_prompt_schedule_cancel_by_id_or_name_stops_firing
+W18T-06	schedule	root-only, validation, 32 active cap	kernel_apis_prompt_schedule_refuses_subagents_bad_input_and_too_many
+W18T-07	schedule	values copied from another session never fire	kernel_apis_prompt_schedule_values_of_another_session_are_not_its_own
+W18T-08	session	cell-created schedule fires as ultron.schedule custom-message run	session_core_schedule_from_a_cell_fires_as_a_custom_message_run
+W18T-09	session	fire during a run waits for its end	session_core_schedule_fired_during_a_run_waits_for_its_end
+W18T-10	session	Python API validates and lists	session_core_schedule_python_api_validates_and_lists
+W18T-11	daemon	journal scan reads only the session's own last values	daemon_prompt_schedules_scan_reads_only_the_sessions_own_last_values
+W18T-12	daemon	missed slots fire once on start; timer waits for earliest due	daemon_prompt_schedules_missed_slots_fire_once_on_start_then_wait_for_the_next
+W18T-13	daemon	failed delivery retries after 60s; gone session dropped	daemon_prompt_schedules_retry_waits_and_a_gone_session_is_dropped
+W18T-14	daemon	offline cancel takes session locks	daemon_prompt_schedules_cancel_in_journal_takes_the_locks_and_writes_the_cancel
+W18T-15	product	server+worker fire, restart replay, collapse, CLI list/cancel	cli_daemon_schedules_fire_restart_collapse_and_cancel_through_the_product
+W18T-16	product	CLI cancel without a server writes the journal	cli_daemon_schedules_cancel_without_a_server_writes_the_journal
+W18T-17	tui	/schedules lists; fired prompt is one line	interactive_commands_schedules_lists_and_a_fired_schedule_is_one_line
+W18T-18	guide	Rust guide has one schedule pointer line; TS guide none	resources_runtime_guide_points_at_schedule_only_with_the_rust_apis
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

@@ -7,7 +7,7 @@
 
 use crate::{Guard, Host};
 use sandbox::Settings;
-use sandbox::launcher::{Launcher, Mechanism, Policy};
+use sandbox::launcher::{Launcher, Mechanism, Policy, SANDBOX_PATH};
 use sandbox::settings::Mode;
 use serde_json::{Value, json};
 use std::path::Path;
@@ -63,6 +63,20 @@ impl Guard for SandboxGuard {
     }
 }
 
+/// The environment a sandbox policy is built from: the host's base environment (the session's, see
+/// [`Host::with_base_env`]); a host without one gets an empty environment plus `PATH` = [`SANDBOX_PATH`] and `HOME` =
+/// the sandbox's `home`, never this process's environment (its PATH, credentials or `DOCKER_HOST` would otherwise
+/// reach the sandbox and its launcher).
+pub fn sandbox_host_env(base: Option<&[(String, String)]>, home: &Path) -> Vec<(String, String)> {
+    match base {
+        Some(env) => env.to_vec(),
+        None => vec![
+            ("PATH".to_string(), SANDBOX_PATH.to_string()),
+            ("HOME".to_string(), home.display().to_string()),
+        ],
+    }
+}
+
 fn outside_message(policy: &Policy) -> String {
     let roots: Vec<String> = policy.writable.iter().map(|p| p.display().to_string()).collect();
     format!(
@@ -98,10 +112,7 @@ impl Host {
         mechanism: Option<Option<Mechanism>>,
     ) -> Self {
         let sandbox_settings = Settings::from_settings(settings);
-        let host_env: Vec<(String, String)> = match &self.base_env {
-            Some(env) => env.as_ref().clone(),
-            None => std::env::vars().collect(),
-        };
+        let host_env = sandbox_host_env(self.base_env.as_deref().map(Vec::as_slice), home);
         let policy = Policy::new(
             &sandbox_settings,
             &self.cwd,

@@ -44,14 +44,16 @@ impl Core {
         let _ = self.prompt_with(message, None, true);
     }
 
-    /// What clients are shown for a message of the run: a nudge run's prompt (which reaches the loop as a user
-    /// message) is shown as the nudge, so clients draw its one line instead of a user bubble.
+    /// What clients are shown for a message of the run: a nudge or fired schedule run's prompt (which reaches the
+    /// loop as a user message) is shown as that custom message, so clients draw its one line instead of a user
+    /// bubble.
     pub(super) fn persona_shown(&self, message: Value) -> Value {
         match self.run.as_ref() {
             Some(run)
                 if run.prompt_pending
                     && message["role"] == "user"
-                    && run.prompt["customType"] == resources::persona::NUDGE_CUSTOM_TYPE =>
+                    && (run.prompt["customType"] == resources::persona::NUDGE_CUSTOM_TYPE
+                        || run.prompt["customType"] == kernel_apis::prompt_schedule::CUSTOM_TYPE) =>
             {
                 run.prompt.clone()
             }

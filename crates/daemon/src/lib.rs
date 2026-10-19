@@ -15,6 +15,7 @@ pub mod lock;
 pub mod lost;
 pub mod paths;
 pub mod process;
+pub mod prompt_schedules;
 pub mod routed;
 pub mod server;
 pub mod session;

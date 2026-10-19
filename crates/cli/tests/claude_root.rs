@@ -162,7 +162,12 @@ fn text(value: &Value) -> String {
 fn run_process(case: &Value) -> Vec<String> {
     let root = Root::new();
     root.place(case.get("files"));
-    let env = root.env(case.get("env"));
+    let mut env = root.env(case.get("env"));
+    // `ultron guide` prints TypeScript's guide under ULTRON_GUIDE=ts (the Rust guide words engineering mode's
+    // bundled-skills note as `ultron claude` launches with it).
+    if case["name"].as_str().is_some_and(|name| name.starts_with("guide-")) {
+        env.push(("ULTRON_GUIDE".into(), "ts".into()));
+    }
     let args: Vec<String> = strings(&case["args"]).iter().map(|a| root.sub(a)).collect();
     let mut child = root
         .command(&args, &env)
@@ -541,4 +546,47 @@ fn claude_root_skip_permissions_setting_leaves_the_flag_out() {
         &json!({"a/settings.json": "{\"claudeCode\": {\"skipPermissions\": false}}\n"}),
     ));
     assert!(!run(&root));
+}
+
+/// Engineering mode's bundled-skills note: `ultron guide --for claude` prints the proactive wording `ultron claude`
+/// launches Claude Code with (the Rust guide); `ULTRON_GUIDE=ts` keeps TypeScript's. New in Rust (wave 41).
+#[test]
+fn claude_root_w18s_guide_for_claude_words_skills_as_the_launch_does() {
+    const PROACTIVE: &str = "Use them on your own: when a task fits one, read it and follow it without being asked";
+    const TS: &str = "Read one only when the user asks for it or the task plainly calls for that workflow";
+    let fixture = fixture();
+    let case = fixture["processes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "guide-engineering")
+        .unwrap();
+    let run = |args: &[&str], extra: &[(&str, &str)]| {
+        let root = Root::new();
+        root.place(case.get("files"));
+        let mut env = root.env(None);
+        env.extend(extra.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+        let args: Vec<String> = args.iter().map(|a| root.sub(a)).collect();
+        let output = root.command(&args, &env).stdin(Stdio::null()).output().unwrap();
+        let launched = std::fs::read_to_string(root.path().join("launch.json"))
+            .ok()
+            .map(|text| serde_json::from_str::<Value>(&text).unwrap());
+        (String::from_utf8_lossy(&output.stdout).into_owned(), launched)
+    };
+    let guide = ["guide", "--for", "claude", "--cwd", "<T>/w", "-nc"];
+    let (rust, _) = run(&guide, &[]);
+    assert!(rust.contains(PROACTIVE) && !rust.contains(TS), "{rust}");
+    let (ts, _) = run(&guide, &[("ULTRON_GUIDE", "ts")]);
+    assert!(ts.contains(TS) && !ts.contains(PROACTIVE), "{ts}");
+    // The launch's system prompt carries the same note, line for line.
+    let (_, launched) = run(&["claude", "-p", "hi", "-nc"], &[]);
+    let launched = launched.expect("the fake claude was launched");
+    let prompt = launched["files"]["--system-prompt-file"]["content"].as_str().unwrap();
+    let note = |text: &str| {
+        text.lines()
+            .find(|line| line.starts_with("Bundled skills in "))
+            .map(str::to_string)
+    };
+    assert!(note(prompt).is_some_and(|line| line.contains(PROACTIVE)), "{prompt}");
+    assert_eq!(note(&rust), note(prompt));
 }

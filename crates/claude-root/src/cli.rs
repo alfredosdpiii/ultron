@@ -89,12 +89,9 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
             cwd: PathBuf::from(&dir),
             ..ctx.env.clone()
         };
-        // `ultron guide` prints what TypeScript prints (recorded): engineering mode's bundled-skills note keeps its
-        // wording here; `ultron claude` launches with the proactive one.
-        resources = crate::guide::PromptResources {
-            proactive_skills: false,
-            ..crate::guide::load_prompt_resources(&env, bundled.as_deref(), flags)
-        };
+        // What `ultron claude` launches with: engineering mode's bundled-skills note is the proactive one, except
+        // under `ULTRON_GUIDE=ts`, which keeps TypeScript's wording (load_prompt_resources decides both).
+        resources = crate::guide::load_prompt_resources(&env, bundled.as_deref(), flags);
         GuideOptions {
             cwd: Some(dir.clone()),
             platform: Some(crate::guide::platform().into()),

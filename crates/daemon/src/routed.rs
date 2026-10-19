@@ -318,6 +318,57 @@ impl Hub {
         Ok(handle)
     }
 
+    /// One session service call made by the server itself (a fired schedule, crate::prompt_schedules): the session's
+    /// worker is started or adopted as for a client, attached for the call and released after it. Clients attached
+    /// to the session see what the call starts live.
+    pub fn session_call(&self, session_id: &str, call: Value) -> ServiceResult {
+        if self.closing.load(Ordering::SeqCst) {
+            return Err(coded("server_draining", "Server is draining"));
+        }
+        let mut handle = self.serialized(|| self.acquire(session_id))?;
+        let attachment = match self.manager.attach_client(&handle) {
+            Ok(attachment) => attachment,
+            // The worker is retiring: once it is gone, a new one is started for the call.
+            Err(_) => {
+                let (gone, ended) = std::sync::mpsc::channel();
+                handle.terminated.on_resolve(Box::new(move |_| {
+                    let _ = gone.send(());
+                }));
+                let _ = ended.recv_timeout(Duration::from_secs(30));
+                // The hub drops the ended worker's entry on its own thread (`invalidate`).
+                let deadline = std::time::Instant::now() + Duration::from_secs(30);
+                while std::time::Instant::now() < deadline
+                    && self
+                        .router()
+                        .hosted
+                        .get(session_id)
+                        .is_some_and(|h| Arc::ptr_eq(&h.handle.terminated, &handle.terminated))
+                {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                handle = self.serialized(|| self.acquire(session_id))?;
+                self.manager.attach_client(&handle)?
+            }
+        };
+        let (tx, rx) = std::sync::mpsc::channel();
+        let publish: Publish = Arc::new(|_: &str, _: Value| {});
+        self.manager.invoke(
+            &handle,
+            &attachment,
+            call,
+            publish,
+            Box::new(move |result| {
+                let _ = tx.send(result);
+            }),
+        );
+        // A worker that dies under the call rejects it; the bound only guards a hung coordinator.
+        let result = rx
+            .recv_timeout(Duration::from_secs(600))
+            .unwrap_or_else(|_| Err(ServiceError::internal("Session worker did not answer")));
+        self.manager.release_attachment(&handle, &attachment);
+        result
+    }
+
     /// The worker ended: drop the hosted session and its attachments (clients see `attachment: null`). When the
     /// worker manager restarts it, the clients are re-attached to the new worker (a new attachment ID; session
     /// calls in between fail with `session_reconnecting`).
@@ -621,7 +672,12 @@ impl Hub {
                 })
             });
         Provider {
-            services: vec![directory, management, plugins],
+            services: vec![
+                directory,
+                management,
+                plugins,
+                crate::prompt_schedules::server_service(self.me.clone()),
+            ],
         }
     }
 

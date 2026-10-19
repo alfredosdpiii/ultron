@@ -28,6 +28,7 @@ pub mod frames;
 pub mod guard_log;
 pub mod inspect;
 pub mod journal;
+pub mod kept_contracts;
 pub mod lane;
 pub mod lane_reuse;
 pub mod local_resources;

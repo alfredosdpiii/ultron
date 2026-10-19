@@ -5,6 +5,8 @@
 //! its own. Ordinary subagents stay with the delegation host; `rlm.collect`, `rlm.results`, `rlm.cancel` and
 //! `rlm.delete_subagent` come here only when every child they name is a persistent one.
 
+use crate::compose::Stack;
+use crate::kept_contracts::KeptContracts;
 use crate::subagents::{CONVERSATION_LANE_PREFIX, DurableChildren};
 use durable::{ConversationId, ROOT_CONVERSATION_ID, TaskId};
 use harness::chat::CellCall;
@@ -12,7 +14,7 @@ use harness::chat::children::CHILD_KIND;
 use harness::chat::host_ops::HostOps;
 use kernel::Signal;
 use serde_json::{Map, Value, json};
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 /// Requests that always come here.
 const SHARED: [&str; 13] = [
@@ -36,11 +38,22 @@ const CHILD_REQUESTS: [&str; 4] = ["rlm.collect", "rlm.results", "rlm.cancel", "
 
 pub struct SwarmOps {
     children: Arc<DurableChildren>,
+    /// Contracts of persistent children (crate::kept_contracts), once the session's stack is known.
+    contracts: Option<KeptContracts>,
 }
 
 impl SwarmOps {
     pub fn new(children: Arc<DurableChildren>) -> SwarmOps {
-        SwarmOps { children }
+        SwarmOps {
+            children,
+            contracts: None,
+        }
+    }
+
+    /// Persistent children may be spawned with `role=` / `contract=` / `hop=`: each of their answers is checked.
+    pub fn with_contracts(mut self, stack: Weak<Stack>) -> SwarmOps {
+        self.contracts = Some(KeptContracts::new(self.children.clone(), stack));
+        self
     }
 
     /// The conversation `lane` works in.
@@ -94,16 +107,45 @@ impl SwarmOps {
         payload: &Map<String, Value>,
         signal: &Signal,
     ) -> Option<Result<Value, String>> {
+        // A kept child's verdict, when it was spawned with a contract (others go to the delegation host).
+        if kind == "rlm.finish" {
+            return self.contracts.as_ref()?.finish(lane, payload);
+        }
         if !self.serves(kind, payload) {
             return None;
         }
-        let Some(chat) = self.children.chat() else {
-            return Some(Err("The durable runtime is not open".into()));
+        let serve = |kind: &str, payload: &Map<String, Value>| self.serve(lane, kind, payload, signal);
+        let Some(contracts) = &self.contracts else {
+            return Some(serve(kind, payload));
         };
-        let Some(conversation) = self.conversation(lane) else {
-            return Some(Err(format!("The lane {lane} has no conversation")));
-        };
-        let payload = payload.clone();
+        Some(match kind {
+            "rlm.spawn" => contracts.spawn(payload, &serve).unwrap_or_else(|| serve(kind, payload)),
+            "rlm.ask" => {
+                let child = payload.get("child").map(|c| match c {
+                    Value::String(text) => text.clone(),
+                    other => other.to_string(),
+                });
+                if let Some(child) = &child {
+                    contracts.before_ask(child);
+                }
+                serve(kind, payload).map(|answer| match &child {
+                    Some(child) => contracts.ask_answer(child, answer, lane, signal, &serve),
+                    None => answer,
+                })
+            }
+            "rlm.collect" | "rlm.results" => {
+                serve(kind, payload).map(|answer| contracts.reported(answer, lane, signal, &serve))
+            }
+            _ => serve(kind, payload),
+        })
+    }
+
+    /// Serve `kind` for `lane` from the durable runtime's host operations.
+    fn serve(&self, lane: &str, kind: &str, payload: &Map<String, Value>, signal: &Signal) -> Result<Value, String> {
+        let chat = self.children.chat().ok_or("The durable runtime is not open")?;
+        let conversation = self
+            .conversation(lane)
+            .ok_or_else(|| format!("The lane {lane} has no conversation"))?;
         let call = CellCall {
             conversation_id: conversation,
             task_id: TaskId(0),
@@ -111,6 +153,8 @@ impl SwarmOps {
             name: "rlm".into(),
             arguments: json!({"lane": lane}),
         };
-        Some(HostOps::new(chat).handler(call, None).handle(kind, payload, signal))
+        HostOps::new(chat)
+            .handler(call, None)
+            .handle(kind, payload.clone(), signal)
     }
 }

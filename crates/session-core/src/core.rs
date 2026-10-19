@@ -244,6 +244,17 @@ pub enum Op {
         entry_id: Option<String>,
         checkpoint: Option<String>,
     },
+    /// Run scheduled prompt `id` for its slot `due` (the server's timer, crates/daemon `prompt_schedules`): the
+    /// prompt starts a run, or waits for the run in progress to end (core::schedule_ops). Answers
+    /// `{fired, run, schedules}`.
+    ScheduleFire {
+        id: String,
+        due: i64,
+    },
+    /// Cancel the active schedule `id` (or name); answers it.
+    ScheduleCancel {
+        id: String,
+    },
 }
 
 impl Op {
@@ -371,6 +382,11 @@ impl Op {
                 request: need("request")?,
                 payload: value.get("payload").cloned().unwrap_or(Value::Null),
             },
+            "scheduleFire" => Op::ScheduleFire {
+                id: need("id")?,
+                due: value["due"].as_i64().ok_or("due must be a time in ms")?,
+            },
+            "scheduleCancel" => Op::ScheduleCancel { id: need("id")? },
             other => return Err(format!("Unknown session operation: {other}")),
         })
     }
@@ -459,6 +475,8 @@ impl Op {
             Op::RestoreFiles { entry_id, checkpoint } => {
                 json!({"op": "restoreFiles", "entryId": entry_id, "checkpoint": checkpoint})
             }
+            Op::ScheduleFire { id, due } => json!({"op": "scheduleFire", "id": id, "due": due}),
+            Op::ScheduleCancel { id } => json!({"op": "scheduleCancel", "id": id}),
         }
     }
 }
@@ -496,6 +514,8 @@ pub enum Input {
     HarnessIdle,
     /// A compaction's work off the actor ended (core::compacting).
     Woken,
+    /// A fired schedule's prompt that waited for the run in progress (core::schedule_ops).
+    Scheduled(Value),
 }
 
 /// Where lane-watch events go.
@@ -677,6 +697,7 @@ mod context_lane;
 mod durable_turns;
 pub mod event_lanes;
 mod persona_nudge;
+mod schedule_ops;
 mod user_bash;
 
 /// The fork marker the session a client forked to carries until its first worker reads it
@@ -937,10 +958,9 @@ impl Core {
                 epoch: view.head.as_ref().map(|head| head.id.0),
             })
         }));
-        let _ = lane
-            .stack
-            .swarm
-            .set(Arc::new(crate::swarm_ops::SwarmOps::new(children.clone())));
+        let _ = lane.stack.swarm.set(Arc::new(
+            crate::swarm_ops::SwarmOps::new(children.clone()).with_contracts(Arc::downgrade(&lane.stack)),
+        ));
         // rlm.spawn(fork=True): the child's conversation starts as its caller's.
         lane.stack.delegation.set_fork_point(children.fork_point_hook());
         children.restore(&lane.stack, &unfinished)?;
@@ -1099,6 +1119,7 @@ impl Core {
                 Input::ActivityTick => self.report_activity(),
                 // A compaction's wake-up is read by the compaction itself.
                 Input::Woken => {}
+                Input::Scheduled(message) => self.schedule_start(message),
             }
         }
         self.close();
@@ -1999,6 +2020,8 @@ impl Core {
                 .map(Some),
             Op::SetLabel { entry_id, label } => self.set_label(&entry_id, label.as_deref()).map(|()| None),
             Op::Checkpoints => Ok(Some(self.list_checkpoints())),
+            Op::ScheduleFire { id, due } => self.schedule_fire(&id, due),
+            Op::ScheduleCancel { id } => self.schedule_cancel(&id),
             Op::RestoreFiles { entry_id, checkpoint } => self.restore_files(entry_id, checkpoint).map(Some),
             Op::Agents => self
                 .lane

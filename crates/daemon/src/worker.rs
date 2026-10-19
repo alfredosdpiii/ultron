@@ -698,6 +698,8 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         crate::extension_ui::ExtensionUiBridge::new(matches!(options.mode.as_str(), "interactive" | "tui" | "rpc"));
     let gateway_slot: Arc<OnceLock<Arc<mcp::gateway::Gateway>>> = Arc::new(OnceLock::new());
     let (notice_ui, slot) = (ui.clone(), gateway_slot.clone());
+    let shared_slot: Arc<OnceLock<Weak<Shared>>> = Arc::new(OnceLock::new());
+    let schedules_shared = shared_slot.clone();
     let open = OpenOptions {
         env,
         flags: options.session.clone(),
@@ -712,6 +714,14 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
                 mcp::gateway::CommandUi::notify(&crate::extension_ui::BridgeUi(notice_ui.clone()), message, level);
             })),
             session: options.session_flags.clone(),
+            // The session's active schedules go to the server whose timer fires them (crate::prompt_schedules).
+            on_schedules: Some(Arc::new(move |schedules: Vec<Value>| {
+                if let Some(shared) = schedules_shared.get().and_then(Weak::upgrade) {
+                    let event = json!({"type": "worker_schedules", "token": shared.token,
+                        "sessionKey": shared.session_key, "schedules": schedules});
+                    let _ = shared.send(event, None);
+                }
+            })),
             ..Services::default()
         },
         auto_name: !options.no_naming,
@@ -721,7 +731,6 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
     let progress = Arc::new(Progress::default());
     let stuck_after = crate::watchdog::stuck_after(&|k| std::env::var(k).ok());
     let health_state = crate::chord::State::new(progress.health(session_core::lane::now_ms(), stuck_after));
-    let shared_slot: Arc<OnceLock<Weak<Shared>>> = Arc::new(OnceLock::new());
     let (sink_progress, sink_shared) = (progress.clone(), shared_slot.clone());
     let (core, _actor, summary) = session_core::core::spawn(
         open,

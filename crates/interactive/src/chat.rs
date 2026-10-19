@@ -30,6 +30,19 @@ pub fn nudge_line(message: &Value) -> String {
     )
 }
 
+/// The custom message type of a fired schedule's prompt (`kernel_apis::prompt_schedule::CUSTOM_TYPE` in the engine).
+pub const SCHEDULE_CUSTOM_TYPE: &str = "ultron.schedule";
+
+/// What the chat shows for a fired schedule: `scheduled: <name> (run n)`.
+pub fn schedule_line(message: &Value) -> String {
+    let details = &message["details"];
+    format!(
+        "scheduled: {} (run {})",
+        details["name"].as_str().unwrap_or("schedule"),
+        details["run"].as_u64().unwrap_or(1)
+    )
+}
+
 pub fn user_message_text(message: &Value) -> String {
     match &message["content"] {
         Value::String(s) => s.clone(),
@@ -432,6 +445,12 @@ impl ChatView {
             // The persona's auto-nudge (resources::persona in the engine): one line, not the nudge's text.
             Some("custom") if message["customType"] == NUDGE_CUSTOM_TYPE => {
                 let line = nudge_line(message);
+                let t = Rc::clone(&self.style.theme);
+                self.append_notice_text(&fg(&t, "muted", &line));
+            }
+            // A fired schedule (kernel_apis::prompt_schedule in the engine): one line, not its prompt.
+            Some("custom") if message["customType"] == SCHEDULE_CUSTOM_TYPE => {
+                let line = schedule_line(message);
                 let t = Rc::clone(&self.style.theme);
                 self.append_notice_text(&fg(&t, "muted", &line));
             }

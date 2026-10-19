@@ -553,7 +553,7 @@ fn session_core_spawn_contract_workflow_nodes_take_role_contract_and_hop() {
 }
 
 #[test]
-fn session_core_spawn_contract_help_documents_the_options_and_keep_refuses_them() {
+fn session_core_spawn_contract_help_documents_the_options_and_keep_takes_them() {
     let out = std::path::PathBuf::from(RESULT);
     let cell = format!(
         "import json\ndoc = rlm.spawn.__doc__\ntry:\n    await rlm.spawn('CHILD: kept', name='k', keep=True, contract={{'checks': [{{'run': 'true'}}]}})\n    kept = 'spawned'\nexcept ValueError as e:\n    kept = str(e)\nopen({}, 'w').write(json.dumps({{'child': {{'doc': doc, 'keep': kept}}}}))\nprint('written')",
@@ -571,13 +571,12 @@ fn session_core_spawn_contract_help_documents_the_options_and_keep_refuses_them(
         "{\"review\": \"brief\"}",
         "check[\"contract\"]",
         "rlm-child@1 workflow nodes take the same role, contract and hop fields.",
+        "With keep=True every answer is\n        checked so",
     ] {
         assert!(doc.contains(needle), "{needle}: {doc}");
     }
-    assert_eq!(
-        r.out["child"]["keep"],
-        "rlm.spawn role, contract and hop apply to children without keep=True"
-    );
+    // A persistent child takes a contract too (wave 41; crate::kept_contracts).
+    assert_eq!(r.out["child"]["keep"], "spawned");
 }
 
 #[test]

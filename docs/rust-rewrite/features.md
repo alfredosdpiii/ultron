@@ -190,7 +190,7 @@ HOST verifies itself when the child ends. Nothing is trusted from the child, and
   with `[Contract] Attempt k did not pass the host's contract checks: ...` appended to its brief, on a verdict of
   its own; `{"review": "brief"}` spawns a sibling reviewer `<name>-review` whose brief is the review brief, the failed
   checks, the child's summary and declared files; its handle is in `check.contract.hop.review`.
-- Kept across a worker restart (see w17-env below); `changed_files_within` and `no_new_dependencies` fail closed after one.
+- Kept across a worker restart (see w17-env below); `changed_files_within` and `no_new_dependencies` compare with a kept git baseline after one (wave 41), else fail closed.
 - Python: `swarm_api.py` (Rust-served additions) passes the options through and documents them in
   `help(rlm.spawn)`; the TS host refuses them (`Unknown payload field: role`). The Rust runtime guide names them in
   the delegation section with the durable APIs on (`ULTRON_GUIDE=ts` keeps the TS text).
@@ -265,7 +265,7 @@ restart: `returns` is checked on its `rlm.finish`, the checks run when it ends, 
   <error>` (never treated as no contract).
 - `changed_files_within` / `no_new_dependencies` need the start snapshot, which is not kept: after a restart they
   fail with "no working directory was snapshotted when the child started" (fail closed). `run`, `files_exist` and
-  `returns` work as before. `keep=True` still refuses contracts.
+  `returns` work as before. `keep=True` takes contracts since wave 41 (see below).
 
 **Session env for code-skill and review kernels.** `skills.propose_code` / `propose_policy` test kernels
 (`CodeSkillsOptions::for_session`, `base_env` = the session's `compose::session_environment`, and the session's
@@ -312,3 +312,96 @@ count; `stop_hook_active` does not stop the chain, the cap does.
 bundled-skills note says "Use them on your own: when a task fits one, read it and follow it without being asked, and
 say which in one line." instead of "Read one only when the user asks for it ...". `ultron claude` launches with the
 same wording when engineering is on; `ultron guide --for claude` keeps the TypeScript wording it is recorded with.
+
+## Terminal background detection (OSC 11) (wave 41, w18-osc)
+
+At TUI start without a `theme` setting, and whenever an automatic `light/dark` pair is applied, the app sends the
+OSC 11 background query `ESC ] 11 ; ? BEL` (`queryTerminalBackgroundColor`). The theme first comes from `COLORFGBG`
+(else the dark fallback) and is drawn at once; nothing waits for the answer. The reply
+(`ESC ] 11 ; rgb:R/G/B` or `#RRGGBB` / `#RRRRGGGGBBBB`, ended by BEL or ST, any number of hex digits per channel, as
+`parseOsc11BackgroundColor`) is taken out of the input wherever it arrives (`crates/tui/src/terminal_colors.rs`,
+`Osc11Reader`): a complete reply is never typed text; while a query is outstanding a reply cut short by the stdin
+buffer's timeout is held and joined with what follows (a held fragment that already began `ESC ] 11 ;` and stops
+looking like a reply is dropped; a shorter one, which may be Alt+], is handed on as keys). When the reply arrives the
+reported background wins (`getThemeForRgbColor`: relative luminance >= 0.5 is light): without a setting that theme
+applies with a repaint and is saved as the setting (the detection is confident); with a pair its side applies unless a
+`CSI ? 997 ; 1|2 n` scheme report came first (`detectTerminalThemeForAuto`: the scheme wins). A reply after
+`/settings` chose a named theme, an unasked second reply, or an unparseable one changes nothing. Without a reply the
+`COLORFGBG` result stands.
+
+## Contract follow-ups: Git baselines, contracts for kept children, guide wording, persona polish (wave 41, w18-small)
+
+**Workspace checks after a restart.** A contract with `changed_files_within` or `no_new_dependencies` now keeps a
+Git baseline with its session value (`ultron.subagent-contracts` / `<task id>`, key `baseline`) when the child's
+working directory is in a Git work tree with a commit: `{"commit": HEAD, "status": <blob id of git status
+--porcelain -z -uall --no-renames -- .>, "dirty": {<path>: <blob id or "-">}}` (at most 256 dirty paths, else none).
+A host that reattaches the child after a restart compares with it (`delegation::git_baseline`): changed =
+`git diff --name-only --relative <commit>` plus untracked files (`ls-files --others --exclude-standard`), minus paths
+dirty at the start whose content is unchanged, plus dirty ones the child restored; a same-commit, unchanged-status,
+clean tree short-cuts to nothing. Git runs in the working directory with the session's environment
+(`Delegation::set_command_env`, compose's `session_environment`; GIT_DIR/GIT_WORK_TREE and similar redirects
+dropped, `core.fsmonitor=false`, never a remote; no PATH: `/usr/local/bin:/usr/bin:/bin`). The live path keeps its
+metadata snapshot. Outside Git (or before the first commit, or git missing) no baseline is kept and the checks fail
+closed after a restart with "no working directory was snapshotted when the child started, so its changes are
+unknown", as before. Contracts without workspace checks are kept exactly as before (no `baseline` key).
+
+**Contracts with keep=True.** `rlm.spawn(brief, name=..., keep=True, role=, contract=, hop=)` is accepted
+(swarm_api.py no longer refuses it; the TS host still rejects `keep`). The session's swarm ops
+(`crate::kept_contracts`) parse the contract as a one-shot spawn does, lead the brief with the role and checks, and
+keep `{"contract", "baseline", "verdict", "first"}` as `ultron.kept-contracts` / `<child id>`. The kept child's
+`rlm.finish` is served there (validated like a subagent verdict and against `returns`; rejections say "Fix these and
+call rlm.finish again."); each `rlm.ask` starts it on a fresh verdict. Each answer is checked through the same
+`spawn_contract::enforce` as a one-shot child's end: the first answer once, when `rlm.collect` / `rlm.results`
+first reports it (that checked result is kept and reported from then on), each `rlm.ask` answer when it arrives.
+`{"retry": N}` asks the child again with the failures (`[Contract] Attempt k ...`), `{"review": brief}` spawns the
+reviewer subagent `<name>-review` from the asking lane. Workspace checks are cumulative since the spawn: the
+in-process snapshot, else (after a restart) the kept Git baseline. Results carry `verdict` (that answer's own) and
+`check.contract` as one-shot results do.
+
+**`ultron guide --for claude`.** Prints what `ultron claude` launches with: with engineering on and the Rust guide,
+the proactive bundled-skills note; `ULTRON_GUIDE=ts` keeps the TypeScript text (the recorded `guide-*` parity cases
+run under it).
+
+**Persona polish.** `/settings` lists `Persona` (ultron|off; off removes the key, as `/persona off`) outside the
+TypeScript-parity TUI build (`ULTRON_TUI_PARITY=1` shows exactly TypeScript's rows). `/session` shows
+`Auto-continues: N` under the tool counts when the transcript has N > 0 persona nudges.
+
+**Sandbox environment.** A sandboxed host without a base environment builds its policy from an empty environment
+plus `PATH=/usr/local/bin:/usr/bin:/bin` (`host::sandboxed::sandbox_host_env`), never the process's.
+
+## Scheduled prompts: `schedule.every` / `schedule.at` (wave 41, w18-sched)
+
+The proactive agent: a session sends itself a prompt later. RLM-first: no model tool; `schedule` is a kernel API
+(`schedule_api.py`, installed from `swarm_api.install`; the TypeScript host answers its requests with an error), the
+server owns timing, and the user sees every schedule (`/schedules`, `ultron schedule list`). No approvals.
+
+- **API** (root agent only; subagents get "schedule.every is available to the root agent only"):
+  `id = await schedule.every(interval, prompt, *, name=None, until=None, max_runs=None)` (interval `"90s"`, `"15m"`,
+  `"1h"`, `"1d"`, `"1h30m"`, a number of seconds or a timedelta; at least 60 s, at most 365 d; the first run one
+  interval from now), `id = await schedule.at(when, prompt, name=None)` (ISO time, naive times local, a datetime, or
+  seconds from now; must be in the future), `await schedule.list()`, `await schedule.cancel(name_or_id)`. Names are
+  one word, unique among active schedules (default: the id `sch-<8 hex>`); at most 32 active schedules per session;
+  prompts up to 8 KiB. The Rust guide gets one pointer line (`help(schedule)`); `ULTRON_GUIDE=ts` has none.
+- **Storage**: one session value per schedule, `ultron.schedule` / `<id>` (`crates/kernel-apis/src/prompt_schedule.rs`):
+  `{id, name, sessionId, prompt, kind, intervalMs, until, maxRuns, createdAt, nextDue, runs, lastFired, state}`,
+  append-only journal writes replayed on open; a run, a cancel and the end are writes too. A value whose `sessionId`
+  is not the session's own (copied by a tree fork) is ignored, so a fork never fires its source's schedules.
+- **Firing** (`crates/daemon/src/prompt_schedules.rs`): each server generation reads its store's journals when it
+  starts (complete lines only, never opening the session), then keeps what workers report after every change
+  (`worker_schedules`). One timer thread sleeps until the earliest due time (wall clock, at most 5 minutes per sleep,
+  no polling). A due schedule is delivered through the hub as the session operation `scheduleFire {id, due}`: the
+  worker is started or adopted like a client attach (attached clients see the run live), and the session actor
+  records the run and sends the prompt as a displayed custom message (`customType: ultron.schedule`,
+  `details: {name, id, run}`) that starts a run; during a run it waits for that run's end (never interrupting).
+  A fire names its slot: a duplicate (another generation) or early fire does nothing. Missed slots collapse into one
+  fire (the next slot is the first after now). A session whose file is gone is dropped; a delivery that failed is
+  retried after 60 s. Schedules fire while an Ultron server runs (an interactive `ultron`, `ultron durable`); a
+  server that starts later fires what it missed once.
+- **Visibility**: `/schedules` (with the overlays) lists `name  next <ISO>  runs n[/max]  every 15m|once  <id>`; the
+  transcript shows a fired prompt as one muted line `scheduled: <name> (run n)`, live and on resume.
+  `ultron schedule list` prints `ID NAME NEXT RUNS REPEAT STATE SESSION CWD` (tab-separated) from the journals;
+  `ultron schedule cancel <id|name>` goes through a running server of the instance (server service
+  `ultron.schedules`, unlisted), else writes the journal under the session's locks. Any other `ultron schedule ...`
+  stays a prompt.
+- Tests use a clock file (`__ULTRON_SCHEDULE_CLOCK_FILE`, epoch ms; the timer looks at it every 20 ms), never real
+  waits.

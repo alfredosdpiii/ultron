@@ -54,6 +54,10 @@ impl Delegation {
                     Some(r) => (Some(r.waiter), r.contract, r.run),
                     None => (None, None, None),
                 };
+                // The Git baseline kept beside a contract with workspace checks: their "before" from now on.
+                let git_baseline = contract
+                    .as_ref()
+                    .and_then(|kept| GitBaseline::from_value(&kept["baseline"]));
                 let contract = contract.map(|kept| SpawnContract::from_described(&kept).map(Arc::new));
                 let signal = Signal::new();
                 let outcome = match &waiter {
@@ -105,6 +109,7 @@ impl Delegation {
                     before: None,
                     merge_status: None,
                     contract: contract.clone().and_then(Result::ok),
+                    git_baseline,
                 });
                 if let Some(waiter) = waiter {
                     let unreadable = contract.and_then(Result::err);

@@ -77,6 +77,9 @@ pub struct Services {
     /// journal), set by the session actor: resuming restores them and a tree fork copies them (A07). None: files
     /// under `rlm-modules/<session id>/` (no session).
     pub values: Option<services::SessionValues>,
+    /// Told the session's active schedules (`schedule.*`, kernel_apis::prompt_schedule) after every change: the
+    /// session worker reports them to its server, which fires them.
+    pub on_schedules: Option<kernel_apis::prompt_schedule::Listener>,
 }
 
 /// What every lane of this process shares: settings, locations, guards and the snapshot key. Owned
@@ -718,6 +721,16 @@ impl Runtime {
             memory: Arc::new(MemoryApi { service: memory }),
             hints: Arc::new(HintsModule::new(modules("hints"))),
             images: Arc::new(crate::session_images::module(&config, session_id)),
+            // `schedule.*`: the session's own prompts for later, kept as session values.
+            schedule: Arc::new(kernel_apis::prompt_schedule::ScheduleModule::new(
+                match &values {
+                    Some(values) => Box::new(values.keyed(kernel_apis::prompt_schedule::NAMESPACE)),
+                    None => Box::new(kernel_apis::artifacts::MemoryKeyedDocuments::default()),
+                },
+                session_id,
+                kernel_apis::prompt_schedule::clock_for(&*config.var),
+                self.services.on_schedules.clone(),
+            )),
             // `tools.*`: the `mcp` gateway called from the REPL, detached after `yield_after`.
             tools: Arc::new(kernel_apis::ToolCalls::new(
                 gateway.tool().is_some().then(|| {
@@ -871,6 +884,8 @@ impl Runtime {
             delegation.set_model_check(config.model_check());
             // Spawn contract `run` checks run under the session's shell sandbox, in the child's working directory.
             delegation.set_check_runner(crate::contract_checks::check_runner(me.clone()));
+            // Contract baselines run git with the session's environment (its PATH finds git).
+            delegation.set_command_env(config.child_env());
             let factory_stack = me.clone();
             let handler_stack = me.clone();
             let lanes = Lanes::new(LanesOptions {
@@ -1098,6 +1113,7 @@ struct ApiModules {
     memory: Arc<MemoryApi>,
     hints: Arc<HintsModule>,
     images: Arc<kernel_apis::ImagesModule>,
+    schedule: Arc<kernel_apis::prompt_schedule::ScheduleModule>,
     tools: Arc<kernel_apis::ToolCalls>,
     instances: Arc<kernel_apis::InstancesModule>,
     progress: Arc<kernel_apis::ProgressModule>,
@@ -1179,6 +1195,16 @@ pub struct Stack {
 }
 
 impl Stack {
+    /// The settings and locations the session's lanes share.
+    pub(crate) fn config(&self) -> &Arc<Config> {
+        &self.config
+    }
+
+    /// `schedule.*`: the session's scheduled prompts (fired by the server through the session actor).
+    pub fn prompt_schedules(&self) -> &Arc<kernel_apis::prompt_schedule::ScheduleModule> {
+        &self.apis.schedule
+    }
+
     /// `poolStats()` as the worker answers an inspected `rlm.pool`: the lanes' kernel pool, plus the session's
     /// file-hook guard statistics (`guards`) when it has guards.
     pub fn pool_stats(&self) -> Value {
@@ -1295,6 +1321,7 @@ impl Stack {
             .with(self.apis.memory.clone())
             .with(self.apis.hints.clone())
             .with(self.apis.images.clone())
+            .with(self.apis.schedule.clone())
             .with(self.apis.tools.clone())
             .with(self.apis.local.clone())
             .with(self.apis.gates.clone())

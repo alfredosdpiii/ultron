@@ -1810,3 +1810,44 @@ fn interactive_commands_persona_nudge_is_one_auto_continue_line() {
     assert!(s.contains("fix it") && s.contains("auto-continue (1/5)"), "{s}");
     assert!(!s.contains("take that next step"), "{s}");
 }
+
+/// `/schedules` (Rust-only, with the overlays) asks the session for its scheduled prompts as `/schedules` lines; a
+/// fired schedule's prompt is one line, `scheduled: <name> (run n)`, live and in a reopened transcript, never its
+/// prompt as a user bubble.
+#[test]
+fn interactive_commands_schedules_lists_and_a_fired_schedule_is_one_line() {
+    let qol = interactive::qol::QolSettings {
+        overlays: true,
+        ..interactive::qol::QolSettings::parity()
+    };
+    let (mut tui, c) = app_with(qol, vec![model("a", true)]);
+    submit(&mut tui, "/schedules");
+    assert_eq!(calls(&c), [r#"inspect /schedules schedule.list {"text":true}"#]);
+    let (mut parity, pc) = app_with(interactive::qol::QolSettings::parity(), vec![model("a", true)]);
+    submit(&mut parity, "/schedules");
+    assert!(screen(&mut parity).contains("Unknown slash command: /schedules"));
+    assert!(calls(&pc).is_empty());
+
+    let fired = |run: u64| {
+        json!({"role": "custom", "customType": "ultron.schedule", "display": true, "content": "check the build",
+               "details": {"name": "build", "id": "sch-1a2b3c4d", "run": run}, "timestamp": 1})
+    };
+    let (mut live, _) = app();
+    live.apply(LaneEvent::Message(fired(3)));
+    let s = screen(&mut live);
+    assert!(s.contains("scheduled: build (run 3)"), "{s}");
+    assert!(
+        !s.contains("check the build") && !s.contains("[ultron.schedule]"),
+        "{s}"
+    );
+    let (mut reopened, _) = app();
+    reopened.apply(LaneEvent::Opened(SessionOpened {
+        session_id: "s1".into(),
+        session_file: None,
+        name: None,
+        messages: vec![json!({"role": "user", "content": "watch it", "timestamp": 1}), fired(1)],
+    }));
+    let s = screen(&mut reopened);
+    assert!(s.contains("watch it") && s.contains("scheduled: build (run 1)"), "{s}");
+    assert!(!s.contains("check the build"), "{s}");
+}

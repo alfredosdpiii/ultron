@@ -30,7 +30,7 @@ const fn c(name: &'static str, hint: &'static str, description: &'static str) ->
 /// Every command the TypeScript client TUI offers, in its order.
 /// The Rust-only commands, offered with the overlays ([`crate::qol::QolSettings::overlays`]); a parity build has
 /// exactly the client TUI's [`COMMANDS`].
-pub const QOL_COMMANDS: [CommandSpec; 3] = [
+pub const QOL_COMMANDS: [CommandSpec; 4] = [
     c(
         "mode",
         "[name]",
@@ -40,6 +40,11 @@ pub const QOL_COMMANDS: [CommandSpec; 3] = [
         "persona",
         "[ultron|off]",
         "The Ultron persona: personality.md in the system prompt, announced next steps continued",
+    ),
+    c(
+        "schedules",
+        "",
+        "Scheduled prompts of this session (schedule.every / schedule.at): name, next run, runs",
     ),
     // Pi's own (core/slash-commands.ts), which the client TUI does not offer.
     c("bug", "<description>", "Report a bug to the Pi developers"),
@@ -307,6 +312,8 @@ pub struct SessionStats {
     pub cost: f64,
     /// (tokens, context window, percent) when the model's window is known.
     pub context: Option<(Option<u64>, u64, Option<f64>)>,
+    /// Runs the persona's auto-nudge continued (its `ultron.nudge` messages).
+    pub auto_continues: usize,
 }
 
 /// `toLocaleString()` for an integer in the en-US locale.
@@ -335,12 +342,12 @@ pub fn session_info(t: &Theme, s: &SessionStats) -> String {
     );
     info += &format!("{} {}\n", dim("User:"), s.user_messages);
     info += &format!("{} {}\n", dim("Assistant:"), s.assistant_messages);
-    info += &format!(
-        "{} {} calls, {} results\n\n",
-        dim("Tools:"),
-        s.tool_calls,
-        s.tool_results
-    );
+    info += &format!("{} {} calls, {} results\n", dim("Tools:"), s.tool_calls, s.tool_results);
+    // Rust-only (the persona's auto-nudge), so only when there was one.
+    if s.auto_continues > 0 {
+        info += &format!("{} {}\n", dim("Auto-continues:"), s.auto_continues);
+    }
+    info += "\n";
     info += &format!("{}\n", bold("Tokens"));
     let prompt = s.input + s.cache_read + s.cache_write;
     info += &format!("{} {}\n", dim("Input:"), locale(prompt));

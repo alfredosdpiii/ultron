@@ -43,6 +43,7 @@ pub mod status_line;
 pub mod stdin_buffer;
 mod tables;
 pub mod terminal;
+pub mod terminal_colors;
 pub mod theme;
 pub mod transcript_search;
 pub mod tty_writer;

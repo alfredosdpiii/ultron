@@ -1070,3 +1070,90 @@ fn interactive_p_tui_local_settings_apply_live_from_settings() {
     h.app.handle_input(ESC);
     assert_eq!(h.calls(), ["fork_messages"]);
 }
+
+// ---- the persona (wave 41) ----
+
+fn open_settings(h: &mut Harness, settings: Value) {
+    h.app.apply(LaneEvent::Settings {
+        settings,
+        env_overrides: Default::default(),
+        themes: vec!["dark".into(), "light".into()],
+        terminal_theme: "dark".into(),
+    });
+}
+
+/// `/settings` lists `persona` (ultron|off) outside the TypeScript-parity build; a change writes it as
+/// `/persona ultron|off` does (off removes the key).
+#[test]
+fn interactive_w18s_settings_lists_persona_and_writes_it_like_the_command() {
+    let mut h = harness_with(QolSettings::default(), false);
+    open_settings(&mut h, json!({"persona": "ultron"}));
+    h.typed("persona");
+    let screen = h.screen_at(160, 40);
+    let row = screen
+        .lines()
+        .find(|l| l.contains("Persona"))
+        .unwrap_or_else(|| panic!("no Persona row:\n{screen}"));
+    assert!(row.trim_end().ends_with("ultron"), "{row}");
+    assert!(
+        screen.contains("The Ultron persona: personality.md in the system prompt"),
+        "{screen}"
+    );
+    h.app.handle_input("\r");
+    assert_eq!(h.calls().last().unwrap(), "setting persona=null");
+    h.app.handle_input(ESC);
+    open_settings(&mut h, json!({}));
+    h.typed("persona");
+    let screen = h.screen_at(160, 40);
+    let row = screen.lines().find(|l| l.contains("Persona")).unwrap();
+    assert!(row.trim_end().ends_with("off"), "{row}");
+    h.app.handle_input("\r");
+    assert_eq!(h.calls().last().unwrap(), "setting persona=\"ultron\"");
+}
+
+/// The TypeScript-parity build (`ULTRON_TUI_PARITY=1`) shows exactly TypeScript's rows: no persona.
+#[test]
+fn interactive_w18s_settings_in_the_parity_build_has_no_persona_row() {
+    let mut h = harness();
+    open_settings(&mut h, json!({"persona": "ultron"}));
+    h.typed("persona");
+    let screen = h.screen_at(160, 40);
+    assert!(!screen.contains("Persona"), "{screen}");
+}
+
+fn nudge(n: u32) -> Value {
+    json!({"role": "custom", "customType": "ultron.nudge", "content": "Continue: take that next step now.",
+           "display": true, "details": {"nudge": n, "max": 5}, "timestamp": 1})
+}
+
+fn session_screen(messages: Vec<Value>) -> String {
+    let mut h = harness();
+    h.app.apply(LaneEvent::Opened(SessionOpened {
+        session_id: "sess".into(),
+        session_file: Some("/s/cur".into()),
+        name: None,
+        messages,
+    }));
+    h.submit("/session");
+    h.screen_at(120, 60)
+}
+
+/// `/session` counts the persona's auto-continues, only when there were some.
+#[test]
+fn interactive_w18s_session_info_counts_auto_continues_only_when_there_were_some() {
+    let user = json!({"role": "user", "content": "do it", "timestamp": 1});
+    let screen = session_screen(vec![user.clone(), nudge(1), nudge(2)]);
+    let line = screen
+        .lines()
+        .find(|l| l.contains("Auto-continues:"))
+        .unwrap_or_else(|| panic!("no auto-continues line:\n{screen}"));
+    assert_eq!(line.trim(), "Auto-continues: 2");
+    let tools = screen.lines().position(|l| l.contains("Tools:")).unwrap();
+    assert!(
+        screen.lines().nth(tools + 1).unwrap().contains("Auto-continues: 2"),
+        "{screen}"
+    );
+    let screen = session_screen(vec![user]);
+    assert!(screen.contains("Tools:"), "{screen}");
+    assert!(!screen.contains("Auto-continues"), "{screen}");
+}

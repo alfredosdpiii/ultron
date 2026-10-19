@@ -183,6 +183,8 @@ pub struct Handle {
 }
 
 type Logger = Box<dyn Fn(&str, &str) + Send + Sync>;
+/// Told a worker's report of its session's active schedules (crate::prompt_schedules).
+type SchedulesListener = Box<dyn Fn(&Meta, &Value) + Send + Sync>;
 
 pub struct Manager {
     me: std::sync::Weak<Manager>,
@@ -193,6 +195,7 @@ pub struct Manager {
     changed: Condvar,
     on_count: Box<dyn Fn(usize) + Send + Sync>,
     logger: OnceLock<Logger>,
+    schedules: OnceLock<SchedulesListener>,
 }
 
 fn scoped(scope: &Value, subscription: &str) -> String {
@@ -214,6 +217,7 @@ impl Manager {
             changed: Condvar::new(),
             on_count,
             logger: OnceLock::new(),
+            schedules: OnceLock::new(),
         })
     }
 
@@ -225,6 +229,11 @@ impl Manager {
     /// Where restarts, hung workers and stuck runs are reported (the server log).
     pub fn set_logger(&self, logger: Logger) {
         let _ = self.logger.set(logger);
+    }
+
+    /// Where workers' reports of their sessions' active schedules go (the server's schedule timer).
+    pub fn on_schedules(&self, listener: SchedulesListener) {
+        let _ = self.schedules.set(listener);
     }
 
     fn log(&self, label: &str, message: &str) {
@@ -1267,6 +1276,19 @@ impl Manager {
                     && valid
                 {
                     publish(subscription, message["update"].clone());
+                }
+                return;
+            }
+            Some("worker_schedules") => {
+                let path = key(message);
+                let meta = inner
+                    .workers
+                    .get(from)
+                    .filter(|_| owns(&inner, &path))
+                    .map(|w| w.meta.clone());
+                drop(inner);
+                if let (Some(meta), Some(listener)) = (meta, self.schedules.get()) {
+                    listener(&meta, &message["schedules"]);
                 }
                 return;
             }

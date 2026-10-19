@@ -201,6 +201,8 @@ pub struct RunningServer {
     closed: Arc<Closed>,
     closing: Mutex<bool>,
     relay: Mutex<Option<server::radius_relay::RadiusRelayHost>>,
+    /// The timer of the sessions' scheduled prompts (crate::prompt_schedules).
+    pub schedules: Arc<crate::prompt_schedules::Scheduler>,
 }
 
 impl RunningServer {
@@ -214,6 +216,7 @@ impl RunningServer {
             return self.wait_closed();
         }
         self.lifetime.stop();
+        self.schedules.stop();
         let relay = self.relay.lock().unwrap_or_else(|e| e.into_inner()).take();
         if let Some(relay) = relay {
             relay.close();
@@ -316,6 +319,17 @@ fn start_generation(
     );
     let log_path = error_log_path(&options.directory, server_id);
     manager.set_logger(Box::new(move |label, message| record_error(&log_path, label, message)));
+    // Scheduled prompts: one timer per generation over the store's sessions; workers report their changes.
+    let schedule_log = error_log_path(&options.directory, server_id);
+    let schedules = crate::prompt_schedules::Scheduler::new(
+        kernel_apis::prompt_schedule::clock_for(&|key| std::env::var(key).ok()),
+        Arc::new(crate::prompt_schedules::HubDeliver(Arc::downgrade(&hub))),
+        Some(Box::new(move |message| {
+            record_error(&schedule_log, "[ultron server warning]", message)
+        })),
+    );
+    let reports = schedules.clone();
+    manager.on_schedules(Box::new(move |meta, active| reports.update(meta, active)));
     let listener = sockets::listen(&endpoint_path).map_err(Err)?;
     hub.serve(listener);
     // The lease connects before the coordinator has accepted (and counted) it, so a coordinator whose empty
@@ -365,6 +379,7 @@ fn start_generation(
     );
     manager.discover();
     hub.refresh();
+    schedules.start(options.session_dir.clone());
     let record = options
         .directory
         .join(format!("generation-{}.json", coordinator.server_connection_id));
@@ -394,6 +409,7 @@ fn start_generation(
         }),
         closing: Mutex::new(false),
         relay: Mutex::new(relay),
+        schedules,
     });
     // Only losing the coordinator itself ends a generation early.
     let lost = Arc::downgrade(&running);

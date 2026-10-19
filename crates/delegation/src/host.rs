@@ -12,9 +12,8 @@
 mod restore;
 pub use restore::{ChildWaiter, Reattached};
 
-use crate::spawn_contract::{
-    CheckPlace, CheckRunner, Hop, SpawnContract, plain_check_runner, retry_note, review_brief,
-};
+use crate::git_baseline::GitBaseline;
+use crate::spawn_contract::{CheckPlace, CheckRunner, Enforcer, SpawnContract, enforce, plain_check_runner};
 use crate::task_store::{MemoryStore, TaskJournal, TaskStore, task_fingerprint};
 use crate::verdict::{MAX_VERDICT_REJECTIONS, validate_verdict};
 use crate::workspace::{
@@ -175,6 +174,9 @@ struct Task {
     merge_status: Option<String>,
     /// `rlm.spawn(role=, contract=, hop=)`: what the host checks when the child ends (see [`crate::spawn_contract`]).
     contract: Option<Arc<SpawnContract>>,
+    /// The Git baseline of its working directory when it started (a contract with workspace checks), kept with the
+    /// contract so a restarted host can still compare (see [`crate::git_baseline`]).
+    git_baseline: Option<GitBaseline>,
 }
 
 struct State {
@@ -217,6 +219,8 @@ struct Inner {
     root: Mutex<RootOptions>,
     /// Runs contract `run` checks (see [`Delegation::set_check_runner`]); none: [`plain_check_runner`].
     check_runner: Mutex<Option<CheckRunner>>,
+    /// The session environment git runs with for contract baselines (see [`Delegation::set_command_env`]).
+    command_env: Mutex<Vec<(String, String)>>,
 }
 
 /// Where a root that is itself a subagent (an `ultron mcp --child` server) sends its `rlm.finish` verdict
@@ -470,6 +474,7 @@ impl Delegation {
                 on_task_end: Mutex::new(None),
                 root: Mutex::new(RootOptions::default()),
                 check_runner: Mutex::new(None),
+                command_env: Mutex::new(Vec::new()),
             }),
         };
         (host, receiver)
@@ -479,6 +484,20 @@ impl Delegation {
     /// unsandboxed with `/bin/sh -c`.
     pub fn set_check_runner(&self, runner: CheckRunner) {
         *self.inner.check_runner.lock().unwrap_or_else(PoisonError::into_inner) = Some(runner);
+    }
+
+    /// The session's environment, for the git commands of contract baselines (by default none: git is looked up
+    /// on `/usr/local/bin:/usr/bin:/bin` with an otherwise empty environment, never this process's).
+    pub fn set_command_env(&self, env: Vec<(String, String)>) {
+        *self.inner.command_env.lock().unwrap_or_else(PoisonError::into_inner) = env;
+    }
+
+    fn command_env(&self) -> Vec<(String, String)> {
+        self.inner
+            .command_env
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     /// Refuse spawns whose `model=` fails `check` (by default only the `provider/model` form is checked).
@@ -1262,6 +1281,7 @@ impl Delegation {
                 before: None,
                 merge_status: None,
                 contract: contract.clone(),
+                git_baseline: None,
             });
             let level = root.level + state.line(Some(&id)).iter().filter(|a| state.is_child(a)).count() as u32;
             let running = state.journal.transition(&id, "running", None)?;
@@ -1403,65 +1423,79 @@ impl Delegation {
         result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }))
     }
 
-    /// Hold a child's `result` to its contract: the host runs the checks, and the hop decides what a failure does
-    /// (a retry re-runs `run`; with no run to repeat, the failure is reported as it is). `None` when the task was
-    /// cancelled meanwhile.
+    /// Hold a child's `result` to its contract ([`enforce`]): a retry re-runs `run` (with no run to repeat, the
+    /// failure is reported as it is), a review spawns the reviewer as a sibling of the child. `None` when the task
+    /// was cancelled meanwhile.
     fn enforce_contract(
         &self,
         id: &str,
         contract: &SpawnContract,
         mut run: Option<ChildRun>,
-        mut result: Value,
+        result: Value,
         signal: &Signal,
     ) -> Option<Value> {
-        let mut attempts: Vec<Value> = Vec::new();
-        loop {
-            if !(contract.checks_anything() && result["status"] == "succeeded") {
-                return Some(result);
-            }
+        let name = run.as_ref().map_or_else(|| id.to_string(), |run| run.name.clone());
+        let mut check = || {
             let report = self.check_contract(id, contract, signal);
+            (!signal.is_aborted()).then_some(report)
+        };
+        let mut retry = |note: &str| {
+            let Some(again) = run.as_mut() else {
+                return Some(None);
+            };
+            // Again, with what failed appended to its brief, on a verdict of its own.
+            if let Some(task) = lock(&self.inner.state).task_mut(id) {
+                task.verdict = None;
+                task.verdict_rejections = 0;
+                task.verdict_problems.clear();
+                task.verdict_invalid = false;
+            }
+            again.prompt = format!("{}\n\n{note}", again.prompt);
+            let reply = (self.inner.runner)(again.clone());
             if signal.is_aborted() {
                 return None;
             }
-            attempts.push(report.clone());
-            let attempt = attempts.len() as u32;
-            match (&contract.hop, report["verdict"] == "verified", run.as_mut()) {
-                (Hop::Retry(retries), false, Some(again)) if attempt <= *retries => {
-                    // Again, with what failed appended to its brief, on a verdict of its own.
-                    if let Some(task) = lock(&self.inner.state).task_mut(id) {
-                        task.verdict = None;
-                        task.verdict_rejections = 0;
-                        task.verdict_problems.clear();
-                        task.verdict_invalid = false;
-                    }
-                    again.prompt = format!("{}\n\n{}", again.prompt, retry_note(&report, attempt));
-                    let reply = (self.inner.runner)(again.clone());
-                    if signal.is_aborted() {
-                        return None;
-                    }
-                    result = self.reply_result(id, reply);
-                }
-                _ => {
-                    let name = run.as_ref().map_or_else(|| id.to_string(), |run| run.name.clone());
-                    return Some(self.contract_result(id, &name, contract, result, &attempts));
-                }
-            }
-        }
+            Some(Some(self.reply_result(id, reply)))
+        };
+        let mut review = |name: &str, prompt: &str| {
+            let (parent, owner) = {
+                let state = lock(&self.inner.state);
+                let parent = state.task(id).and_then(|t| t.parent_id.clone());
+                let owner = parent
+                    .as_deref()
+                    .and_then(|p| state.task(p).and_then(|t| t.lane_name.clone()))
+                    .unwrap_or_else(|| "main".into());
+                (parent, owner)
+            };
+            let payload = json!({ "prompt": prompt, "kwargs": { "name": name } });
+            let payload = payload.as_object().cloned().unwrap_or_default();
+            self.spawn(&payload, parent.as_deref(), &owner)
+        };
+        let mut enforcer = Enforcer {
+            check: &mut check,
+            retry: &mut retry,
+            review: &mut review,
+        };
+        enforce(contract, result, id, &name, &mut enforcer)
     }
 
     /// The contract of task `id` as [`SpawnContract::describe`] writes it, for its session to keep with the task
     /// (`None`: it was spawned without one).
+    /// A contract with workspace checks carries the Git baseline of its start (`baseline`), when there is one.
     pub fn contract_of(&self, id: &str) -> Option<Value> {
-        lock(&self.inner.state)
-            .task(id)
-            .and_then(|task| task.contract.as_ref())
-            .map(|contract| contract.describe())
+        let state = lock(&self.inner.state);
+        let task = state.task(id)?;
+        let mut described = task.contract.as_ref()?.describe();
+        if let Some(baseline) = &task.git_baseline {
+            described["baseline"] = baseline.describe();
+        }
+        Some(described)
     }
 
     /// Run a child's contract checks in its working directory (its worktree's, else the shared one), on the files
     /// as they are now, against the snapshot taken when it started.
     fn check_contract(&self, id: &str, contract: &SpawnContract, signal: &Signal) -> Value {
-        let (verdict, before, workspace, env) = {
+        let (verdict, before, baseline, workspace, env) = {
             let state = lock(&self.inner.state);
             let Some(task) = state.task(id) else {
                 return json!({ "verdict": "contract_failed", "checks": [], "failed": ["Unknown Ultron task"] });
@@ -1469,16 +1503,19 @@ impl Delegation {
             (
                 task.verdict.clone(),
                 task.before.clone(),
+                task.git_baseline.clone(),
                 state.workspace_of(Some(id), self.inner.workspace.as_deref()),
                 state.worktree_of(Some(id)).map(wt::worktree_env).unwrap_or_default(),
             )
         };
-        let diff = match (&before, &workspace) {
-            (Some(before), Some(_)) => diff_snapshots(
+        // The snapshot of its start, else (a child reattached after a restart) the kept Git baseline.
+        let diff = match (&before, &baseline, &workspace) {
+            (Some(before), _, Some(_)) => diff_snapshots(
                 before,
                 &snapshot_workspace(&before.root, DEFAULT_MAX_SNAPSHOT_ENTRIES, true),
             )
             .ok(),
+            (None, Some(baseline), Some(workspace)) => baseline.changes(workspace, &self.command_env()).ok(),
             _ => None,
         };
         let runner = self
@@ -1497,74 +1534,10 @@ impl Delegation {
         contract.evaluate(verdict.as_ref(), &place, &runner)
     }
 
-    /// The child's result with its contract report: verified, or a failure naming the failed checks (after the
-    /// hop: a review hop spawns the reviewer, a sibling of the child, whose handle the report carries).
-    fn contract_result(
-        &self,
-        id: &str,
-        child_name: &str,
-        contract: &SpawnContract,
-        mut result: Value,
-        attempts: &[Value],
-    ) -> Value {
-        let Some(last) = attempts.last() else {
-            return result;
-        };
-        let mut report = last.clone();
-        report["attempts"] = json!(attempts.len());
-        if attempts.len() > 1 {
-            report["previous"] = json!(
-                attempts[..attempts.len() - 1]
-                    .iter()
-                    .map(|a| a["failed"].clone())
-                    .collect::<Vec<_>>()
-            );
-        }
-        report["hop"] = contract.hop.describe();
-        let failed = report["verdict"] != "verified";
-        if failed && let Hop::Review(brief) = &contract.hop {
-            let (parent, owner) = {
-                let state = lock(&self.inner.state);
-                let parent = state.task(id).and_then(|t| t.parent_id.clone());
-                let owner = parent
-                    .as_deref()
-                    .and_then(|p| state.task(p).and_then(|t| t.lane_name.clone()))
-                    .unwrap_or_else(|| "main".into());
-                (parent, owner)
-            };
-            let name = format!("{child_name}-review");
-            let prompt = review_brief(brief, child_name, id, &result, &report);
-            let payload = json!({ "prompt": prompt, "kwargs": { "name": name } });
-            let payload = payload.as_object().cloned().unwrap_or_default();
-            report["hop"] = match self.spawn(&payload, parent.as_deref(), &owner) {
-                Ok(handle) => json!({ "review": { "rlm_child_id": handle["rlm_child_id"], "name": name } }),
-                Err(error) => json!({ "review": { "error": error } }),
-            };
-        }
-        if failed {
-            let names: Vec<&str> = report["failed"]
-                .as_array()
-                .map(|f| f.iter().filter_map(Value::as_str).collect())
-                .unwrap_or_default();
-            let mut error = format!("Contract failed: {}", names.join("; "));
-            if let Some(reviewer) = report["hop"]["review"]["rlm_child_id"].as_str() {
-                error.push_str(&format!(" (reviewer {reviewer} spawned)"));
-            }
-            result["status"] = json!("failed");
-            result["error"] = json!(error);
-        }
-        // Under `check` (free-form in the task journal's result shape, which TypeScript reads too).
-        if !result["check"].is_object() {
-            result["check"] = json!({});
-        }
-        result["check"]["contract"] = report;
-        result
-    }
-
     /// `childStart`: a worktree child's setup command runs, then its working directory is pictured (plus the parent's
     /// tree for a worktree child, to see writes it makes outside its worktree).
     fn child_start(&self, id: &str, signal: &Signal) -> Result<(), String> {
-        let (own, workspace, parent_workspace) = {
+        let (own, workspace, parent_workspace, needs_baseline) = {
             let state = lock(&self.inner.state);
             let task = state.task(id).ok_or("Unknown Ultron task")?;
             let shared = self.inner.workspace.as_deref();
@@ -1572,11 +1545,17 @@ impl Delegation {
                 task.worktree.clone(),
                 state.workspace_of(Some(id), shared),
                 state.workspace_of(task.parent_id.as_deref(), shared),
+                task.contract.as_ref().is_some_and(|c| c.needs_baseline()),
             )
         };
         if let Some(record) = &own {
             wt::run_setup_command(record, Some(signal)).map_err(|e| e.message)?;
         }
+        // Workspace checks keep a Git baseline too, for a host that reattaches the child after a restart.
+        let git_baseline = match (&workspace, needs_baseline) {
+            (Some(w), true) => GitBaseline::capture(w, &self.command_env()),
+            _ => None,
+        };
         let before = workspace.map(|w| snapshot_workspace(&w, DEFAULT_MAX_SNAPSHOT_ENTRIES, true));
         let outside = match (&own, &before) {
             (Some(_), Some(_)) => parent_workspace.map(|w| snapshot_workspace(&w, DEFAULT_MAX_SNAPSHOT_ENTRIES, true)),
@@ -1589,6 +1568,7 @@ impl Delegation {
                 task.outside_before = outside;
             }
             task.before = before;
+            task.git_baseline = git_baseline;
         }
         Ok(())
     }

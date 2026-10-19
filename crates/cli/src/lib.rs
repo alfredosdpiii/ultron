@@ -31,6 +31,7 @@ pub mod print_mode;
 pub mod radius_relay;
 pub mod rpc;
 pub mod sandbox_cli;
+pub mod schedule_cli;
 pub mod semver;
 pub mod session;
 pub mod setup;
@@ -178,6 +179,12 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     // `ultron memory import ...` only: a bare `ultron memory` stays a prompt, as in TypeScript.
     if argv.first().is_some_and(|a| a == "memory") && argv.get(1).is_some_and(|a| a == "import") {
         return memory_cli::run(&argv[1..], env, out, err);
+    }
+    // `ultron schedule list|cancel <id>` only: any other `ultron schedule ...` stays a prompt.
+    if argv.first().is_some_and(|a| a == "schedule")
+        && let Some(result) = schedule_cli::run(&argv[1..], env, out, err)
+    {
+        return result;
     }
     if argv.first().is_some_and(|a| a == "sandbox") {
         return sandbox_cli::run(&argv[1..], env, out, err);

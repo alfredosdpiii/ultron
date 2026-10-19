@@ -351,7 +351,8 @@ impl SpawnContract {
     /// is checked as it was spawned). Parsed as a spawn's options again, so a kept contract is held to the same rules.
     pub fn from_described(described: &Value) -> Result<SpawnContract, String> {
         let map = described.as_object().ok_or("a kept contract must be an object")?;
-        only(map, &["role", "checks", "returns", "hop"], "kept contract")?;
+        // `baseline`: the workspace baseline kept beside it ([`crate::git_baseline`]), read by the host itself.
+        only(map, &["role", "checks", "returns", "hop", "baseline"], "kept contract")?;
         let mut kwargs = Map::new();
         kwargs.insert("role".into(), map.get("role").cloned().unwrap_or(Value::Null));
         kwargs.insert(
@@ -363,6 +364,13 @@ impl SpawnContract {
         );
         kwargs.insert("hop".into(), map.get("hop").cloned().unwrap_or(Value::Null));
         SpawnContract::parse(&kwargs)?.ok_or_else(|| "a kept contract names nothing".to_string())
+    }
+
+    /// Whether a check compares the working directory with how it was when the child started.
+    pub fn needs_baseline(&self) -> bool {
+        self.checks
+            .iter()
+            .any(|check| matches!(check, HostCheck::ChangedFilesWithin(_) | HostCheck::NoNewDependencies))
     }
 
     /// Whether anything is checked when the child ends.
@@ -778,4 +786,100 @@ pub fn review_brief(brief: &str, name: &str, id: &str, result: &Value, report: &
             listed(&changed)
         }
     )
+}
+
+/// How [`enforce`] reaches the child and the session.
+pub struct Enforcer<'a> {
+    /// Run the checks on the child's end now: the report of [`SpawnContract::evaluate`]; `None` when the task was
+    /// cancelled meanwhile.
+    pub check: &'a mut dyn FnMut() -> Option<Value>,
+    /// A `{"retry": N}` hop: give the child `note` (its failures) and wait for its next end; `None` when cancelled,
+    /// `Some(None)` when there is nothing to repeat (the failure is then reported as it is).
+    pub retry: &'a mut dyn FnMut(&str) -> Option<Option<Value>>,
+    /// A `{"review": brief}` hop: spawn the reviewer `name` with `prompt`; its handle (`rlm_child_id`) or an error.
+    pub review: &'a mut dyn FnMut(&str, &str) -> Result<Value, String>,
+}
+
+/// Hold a child's `result` to its contract: the host runs the checks, and the hop decides what a failure does (a
+/// retry gives the child its failures and checks its next end, at most N more times). `None` when cancelled.
+/// One-shot children (the delegation host) and kept children (`keep=True`, each answer) go through here.
+pub fn enforce(
+    contract: &SpawnContract,
+    mut result: Value,
+    id: &str,
+    child_name: &str,
+    enforcer: &mut Enforcer<'_>,
+) -> Option<Value> {
+    let mut attempts: Vec<Value> = Vec::new();
+    loop {
+        if !(contract.checks_anything() && result["status"] == "succeeded") {
+            return Some(result);
+        }
+        let report = (enforcer.check)()?;
+        attempts.push(report.clone());
+        let attempt = attempts.len() as u32;
+        // A retry the child answered is checked again; with nothing to repeat the failure is reported.
+        if let Hop::Retry(retries) = contract.hop
+            && report["verdict"] != "verified"
+            && attempt <= retries
+            && let Some(next) = (enforcer.retry)(&retry_note(&report, attempt))?
+        {
+            result = next;
+            continue;
+        }
+        return Some(contract_result(id, child_name, contract, result, &attempts, enforcer));
+    }
+}
+
+/// The child's result with its contract report: verified, or a failure naming the failed checks (after the hop: a
+/// review hop spawns the reviewer, whose handle the report carries).
+fn contract_result(
+    id: &str,
+    child_name: &str,
+    contract: &SpawnContract,
+    mut result: Value,
+    attempts: &[Value],
+    enforcer: &mut Enforcer<'_>,
+) -> Value {
+    let Some(last) = attempts.last() else {
+        return result;
+    };
+    let mut report = last.clone();
+    report["attempts"] = json!(attempts.len());
+    if attempts.len() > 1 {
+        report["previous"] = json!(
+            attempts[..attempts.len() - 1]
+                .iter()
+                .map(|a| a["failed"].clone())
+                .collect::<Vec<_>>()
+        );
+    }
+    report["hop"] = contract.hop.describe();
+    let failed = report["verdict"] != "verified";
+    if failed && let Hop::Review(brief) = &contract.hop {
+        let name = format!("{child_name}-review");
+        let prompt = review_brief(brief, child_name, id, &result, &report);
+        report["hop"] = match (enforcer.review)(&name, &prompt) {
+            Ok(handle) => json!({ "review": { "rlm_child_id": handle["rlm_child_id"], "name": name } }),
+            Err(error) => json!({ "review": { "error": error } }),
+        };
+    }
+    if failed {
+        let names: Vec<&str> = report["failed"]
+            .as_array()
+            .map(|f| f.iter().filter_map(Value::as_str).collect())
+            .unwrap_or_default();
+        let mut error = format!("Contract failed: {}", names.join("; "));
+        if let Some(reviewer) = report["hop"]["review"]["rlm_child_id"].as_str() {
+            error.push_str(&format!(" (reviewer {reviewer} spawned)"));
+        }
+        result["status"] = json!("failed");
+        result["error"] = json!(error);
+    }
+    // Under `check` (free-form in the task journal's result shape, which TypeScript reads too).
+    if !result["check"].is_object() {
+        result["check"] = json!({});
+    }
+    result["check"]["contract"] = report;
+    result
 }

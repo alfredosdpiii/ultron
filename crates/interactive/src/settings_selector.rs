@@ -67,6 +67,9 @@ pub struct SettingsInput {
     /// Formatted `app.message.followUp` and `app.thinking.cycle` keys (`keyDisplayText`).
     pub follow_up_key: String,
     pub cycle_thinking_key: String,
+    /// Rows of Rust-only settings (`persona`); off in the TypeScript-parity build (`ULTRON_TUI_PARITY=1`), which
+    /// shows exactly TypeScript's rows.
+    pub rust_rows: bool,
 }
 
 impl SettingsInput {
@@ -857,6 +860,20 @@ impl SettingsSelector {
                 )
             },
         ];
+        if c.rust_rows
+            && let Some(at) = items.iter().position(|it| it.id == "autoreview-enabled")
+        {
+            items.insert(
+                at,
+                item(
+                    "persona",
+                    "Persona",
+                    "The Ultron persona: personality.md in the system prompt, announced next steps continued (applies from the next prompt)",
+                    if c.text("persona").as_deref() == Some("ultron") { "ultron" } else { "off" }.into(),
+                    &["ultron", "off"],
+                ),
+            );
+        }
         let mut at = 1;
         if c.supports_images {
             items.insert(
@@ -1838,6 +1855,8 @@ impl SettingsSelector {
             "fullscreen-exit-output" => ("fullscreenExitOutput", value.into()),
             "fullscreen-scrollbar" => ("fullscreenScrollbar", value.into()),
             "fullscreen-copy-on-select" => ("fullscreenCopyOnSelect", b),
+            // As `/persona ultron|off` writes it: off removes the key.
+            "persona" => ("persona", if value == "ultron" { value.into() } else { Value::Null }),
             other => (other, value.into()),
         };
         set_path(&mut self.input.settings, key, v.clone());

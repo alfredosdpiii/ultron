@@ -396,6 +396,19 @@ impl DurableChildren {
         .flatten()
     }
 
+    /// The session whose values these children's records are, once [`DurableChildren::host`] gave it.
+    pub fn session(&self) -> Option<SharedSession> {
+        self.session.get().cloned()
+    }
+
+    /// The persistent child (`keep=True`, unfinished) whose cells run on `lane` (its name), as its REPL id.
+    pub fn kept_child_of_lane(&self, lane: &str) -> Option<String> {
+        let chat = self.chat.get()?;
+        let children = child_tasks(chat).ok()?;
+        let (task, input, terminal) = children.get(lane)?;
+        (input.keep && !*terminal).then(|| task.0.to_string())
+    }
+
     /// The conversation a child lane runs in, while its task is unfinished.
     pub fn conversation_of_lane(&self, lane: &str) -> Option<ConversationId> {
         self.child_of_lane(lane)?.1

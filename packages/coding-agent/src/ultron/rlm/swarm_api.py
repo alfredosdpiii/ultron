@@ -60,7 +60,9 @@ _CONTRACT_DOC = """
         naming each failed check. hop says what happens then: "report" (default), {"retry": 1} re-runs the child
         (up to 3 times) with the failures appended to its brief, {"review": "brief"} spawns a reviewer child
         `<name>-review` with that brief, the result and the failures (its handle in `check["contract"]["hop"]`).
-        rlm-child@1 workflow nodes take the same role, contract and hop fields."""
+        rlm-child@1 workflow nodes take the same role, contract and hop fields. With keep=True every answer is
+        checked so: the first when rlm.collect reports it, each rlm.ask answer as it arrives (a retry asks the
+        child again); file checks compare with the workspace when the child was spawned."""
 
 
 class Swarm:
@@ -142,11 +144,10 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
             raise ValueError("rlm.spawn keep must be True or False")
         given = {key: kwargs.pop(key, None) for key in _CONTRACT_KEYS}
         extra = {key: value for key, value in given.items() if value is not None}
-        if extra and keep:
-            raise ValueError("rlm.spawn role, contract and hop apply to children without keep=True")
         if extra:
             checked = copy.copy(self)
-            checked._bridge = _ContractBridge(self._bridge, extra)
+            bridge = _ContractBridge(self._bridge, extra)
+            checked._bridge = _KeepBridge(bridge) if keep else bridge
             return await original_spawn(checked, prompt, **kwargs)
         if not keep:
             return await original_spawn(self, prompt, **kwargs)
@@ -181,3 +182,7 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
     from images_api import install as install_images
 
     install_images(rlm_class)
+    # `schedule` (prompts the session sends itself later) is Rust-host only too.
+    from schedule_api import Schedule
+
+    namespace["schedule"] = Schedule(bridge)

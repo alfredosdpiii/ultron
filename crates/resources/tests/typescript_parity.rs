@@ -432,6 +432,7 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
         "notes",
         "help(swarm)",
         "rlm.images.generate",
+        "schedule.every",
     ] {
         assert!(swarm.contains(needle), "{needle}");
     }
@@ -450,6 +451,10 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
         images, typed_end,
         "the images line directly follows the typed-memory sentence"
     );
-    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[images_end..]);
+    // The schedule line directly follows the images line.
+    let schedule_end =
+        images_end + swarm[images_end..].find("(`help(schedule)`).").unwrap() + "(`help(schedule)`).".len();
+    assert!(swarm[images_end..schedule_end].starts_with("\n- `await schedule.every("));
+    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[schedule_end..]);
     assert_eq!(without, plain);
 }

@@ -32,6 +32,7 @@ pub mod memory_import;
 pub mod memory_pointers;
 pub mod memory_records;
 pub mod progress;
+pub mod prompt_schedule;
 pub mod schedule_tick;
 pub mod schedules;
 pub mod skills;

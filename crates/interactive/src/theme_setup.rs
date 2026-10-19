@@ -3,16 +3,20 @@
 //! when `/settings` changes it, and previewing themes while the user browses them. Themes come from a
 //! [`ThemeRegistry`]: the built-ins, `<agent dir>/themes/*.json` and registered ones.
 //!
-//! The terminal's appearance starts from `COLORFGBG` (`detectTerminalBackgroundFromEnv`). An automatic pair follows the
-//! terminal live, as TypeScript's auto-sync does: the app turns on the color palette notifications (`CSI ? 2031 h`)
-//! while the setting is a pair and asks for the current scheme (`CSI ? 996 n`) each time it applies one; the
-//! terminal's `CSI ? 997 ; 1|2 n` reports arrive as input and switch the theme when they arrive. Nothing waits for an
-//! answer (TypeScript waits up to 100 ms at startup), so the input pump and the paint path never block. The OSC 11
-//! background query of a start without a theme setting is not sent.
+//! The terminal's appearance starts from `COLORFGBG` (`detectTerminalBackgroundFromEnv`) and is then asked for, as
+//! TypeScript's `detectTerminalBackgroundTheme` does: without a theme setting, and with an automatic pair, the app sends
+//! the OSC 11 background query (`ESC ] 11 ; ? BEL`); the reply arrives as input and the reported background wins
+//! (`getThemeForRgbColor`, luminance >= 0.5 is light) when it arrives. Without a reply the `COLORFGBG` result stands.
+//! An automatic pair follows the terminal live, as TypeScript's auto-sync does: the app turns on the color palette
+//! notifications (`CSI ? 2031 h`) while the setting is a pair and asks for the current scheme (`CSI ? 996 n`) each
+//! time it applies one; the terminal's `CSI ? 997 ; 1|2 n` reports arrive as input and switch the theme when they
+//! arrive, and a scheme report wins over the background reply (`detectTerminalThemeForAuto`). Nothing waits for an
+//! answer (TypeScript waits up to 100 ms at startup), so the input pump and the paint path never block.
 
 use tui::theme::registry::ThemeRegistry;
 use tui::theme::{
-    TerminalTheme, Theme, detect_terminal_background_from_env, parse_auto_theme_setting, resolve_theme_setting,
+    TerminalTheme, Theme, detect_terminal_background_from_env, detect_terminal_background_theme,
+    parse_auto_theme_setting, resolve_theme_setting,
 };
 
 /// What applying a setting did.
@@ -24,6 +28,8 @@ pub struct Applied {
     pub save: Option<String>,
     /// An automatic pair was applied: ask the terminal for its current scheme (`queryTerminalColorScheme`).
     pub query_scheme: bool,
+    /// Ask the terminal for its background color (`queryTerminalBackgroundColor`, OSC 11): no setting, or a pair.
+    pub query_background: bool,
     /// `Failed to load theme "<name>": <error>\nFell back to dark theme.` (`showError`).
     pub error: Option<String>,
 }
@@ -37,6 +43,10 @@ pub struct ThemeController {
     active: Option<String>,
     /// `autoSyncEnabled`: the setting is an automatic pair, so the terminal's scheme reports switch the theme.
     auto_sync: bool,
+    /// OSC 11 queries sent and not yet answered (`pendingOsc11BackgroundReplies`).
+    background_queries: u32,
+    /// A scheme report arrived since the last background query: it wins over the background reply.
+    scheme_reported: bool,
 }
 
 /// `parseTerminalColorSchemeReport`: input made only of `CSI ? 997 ; 1 n` (dark) / `CSI ? 997 ; 2 n` (light)
@@ -68,6 +78,8 @@ impl ThemeController {
             detection_confident: detection.confidence == "high",
             active: None,
             auto_sync: false,
+            background_queries: 0,
+            scheme_reported: false,
         }
     }
 
@@ -82,6 +94,7 @@ impl ThemeController {
         if !self.auto_sync {
             return None;
         }
+        self.scheme_reported = true;
         self.terminal = terminal;
         let Some((light, dark)) = parse_auto_theme_setting(self.setting.as_deref()) else {
             self.auto_sync = false;
@@ -92,6 +105,63 @@ impl ThemeController {
             return None;
         }
         Some(self.apply_name(&name, false).0)
+    }
+
+    /// An OSC 11 query is waiting for its reply.
+    pub fn expects_background(&self) -> bool {
+        self.background_queries > 0
+    }
+
+    /// An OSC 11 reply (`consumeOsc11BackgroundResponse` resolving `detectTerminalBackgroundTheme`): the reported
+    /// background is the terminal's appearance. Without a setting its theme applies and is saved (the detection is
+    /// confident); with an automatic pair its side applies unless a scheme report came first. A reply nobody asked
+    /// for, an unparseable one, or one after the setting became a name changes nothing. The theme to draw with and
+    /// the setting to save, when something changed.
+    pub fn background_reported(&mut self, rgb: Option<(u8, u8, u8)>) -> Option<Applied> {
+        if self.background_queries == 0 {
+            return None;
+        }
+        self.background_queries -= 1;
+        let detection = detect_terminal_background_theme(Some(rgb?), None);
+        if let Some((light, dark)) = parse_auto_theme_setting(self.setting.as_deref()) {
+            if self.scheme_reported {
+                return None;
+            }
+            self.terminal = detection.theme;
+            let name = if detection.theme == TerminalTheme::Light {
+                light
+            } else {
+                dark
+            };
+            if self.active.as_deref() == Some(name.as_str()) {
+                return None;
+            }
+            return Some(Applied {
+                theme: self.apply_name(&name, false).0,
+                save: None,
+                query_scheme: false,
+                query_background: false,
+                error: None,
+            });
+        }
+        if self.setting.is_some() {
+            return None;
+        }
+        self.terminal = detection.theme;
+        let detected = self.terminal_theme();
+        if self.detection_confident && self.active.as_deref() == Some(detected) {
+            // `COLORFGBG` already chose and saved this theme.
+            return None;
+        }
+        self.detection_confident = true;
+        let (theme, _, ok) = self.apply_name(detected, false);
+        Some(Applied {
+            theme,
+            save: ok.then(|| detected.to_string()),
+            query_scheme: false,
+            query_background: false,
+            error: None,
+        })
     }
 
     /// The name of the theme applied last (`theme.name`): the theme document's own name, `dark` after a fallback.
@@ -146,11 +216,13 @@ impl ThemeController {
                 dark
             };
             self.auto_sync = true;
+            self.query_background();
             let (theme, error, _) = self.apply_name(&name, true);
             return Applied {
                 theme,
                 save: None,
                 query_scheme: true,
+                query_background: true,
                 error,
             };
         }
@@ -161,17 +233,26 @@ impl ThemeController {
                 theme,
                 save: None,
                 query_scheme: false,
+                query_background: false,
                 error,
             };
         }
+        self.query_background();
         let detected = self.terminal_theme();
         let (theme, _, ok) = self.apply_name(detected, false);
         Applied {
             theme,
             save: (ok && self.detection_confident).then(|| detected.to_string()),
             query_scheme: false,
+            query_background: true,
             error: None,
         }
+    }
+
+    /// An OSC 11 query goes out: its reply is awaited, and scheme reports count again from here.
+    fn query_background(&mut self) {
+        self.background_queries += 1;
+        self.scheme_reported = false;
     }
 
     /// `setThemeSetting` (a `/settings` change).
