@@ -10,7 +10,7 @@
 //! A detached child's end is pushed to the [`DetachedEnd`] channel as soon as its result is durable.
 
 mod restore;
-pub use restore::ChildWaiter;
+pub use restore::{ChildWaiter, Reattached};
 
 use crate::spawn_contract::{
     CheckPlace, CheckRunner, Hop, SpawnContract, plain_check_runner, retry_note, review_brief,
@@ -1375,51 +1375,87 @@ impl Delegation {
         let signal = run.signal.clone();
         let contract = lock(&self.inner.state).task(&id).and_then(|t| t.contract.clone());
         let started = self.child_start(&id, &signal);
-        let mut run = run;
+        let reply = match &started {
+            Ok(()) => (self.inner.runner)(run.clone()),
+            Err(error) => Err(error.clone()),
+        };
+        if signal.is_aborted() {
+            return;
+        }
+        let result = self.reply_result(&id, reply);
+        let result = match &contract {
+            Some(contract) => match self.enforce_contract(&id, contract, Some(run), result, &signal) {
+                Some(result) => result,
+                None => return,
+            },
+            None => result,
+        };
+        let result = self.with_limit_reason(&id, result);
+        let _ = self.end(&id, result);
+    }
+
+    /// A child run's reply as its result (a failed run is a failed, unverified result).
+    fn reply_result(&self, id: &str, reply: Result<String, String>) -> Value {
+        let result = match reply {
+            Ok(text) => self.child_result(id, &text),
+            Err(error) => Err(error),
+        };
+        result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }))
+    }
+
+    /// Hold a child's `result` to its contract: the host runs the checks, and the hop decides what a failure does
+    /// (a retry re-runs `run`; with no run to repeat, the failure is reported as it is). `None` when the task was
+    /// cancelled meanwhile.
+    fn enforce_contract(
+        &self,
+        id: &str,
+        contract: &SpawnContract,
+        mut run: Option<ChildRun>,
+        mut result: Value,
+        signal: &Signal,
+    ) -> Option<Value> {
         let mut attempts: Vec<Value> = Vec::new();
-        let result = loop {
-            let reply = match &started {
-                Ok(()) => (self.inner.runner)(run.clone()),
-                Err(error) => Err(error.clone()),
-            };
-            if signal.is_aborted() {
-                return;
+        loop {
+            if !(contract.checks_anything() && result["status"] == "succeeded") {
+                return Some(result);
             }
-            let result = match reply {
-                Ok(text) => self.child_result(&id, &text),
-                Err(error) => Err(error),
-            };
-            let result = result
-                .unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
-            let Some(contract) = contract
-                .as_ref()
-                .filter(|c| c.checks_anything() && result["status"] == "succeeded")
-            else {
-                break result;
-            };
-            let report = self.check_contract(&id, contract, &signal);
+            let report = self.check_contract(id, contract, signal);
             if signal.is_aborted() {
-                return;
+                return None;
             }
             attempts.push(report.clone());
             let attempt = attempts.len() as u32;
-            match (&contract.hop, report["verdict"] == "verified") {
-                (Hop::Retry(retries), false) if attempt <= *retries => {
+            match (&contract.hop, report["verdict"] == "verified", run.as_mut()) {
+                (Hop::Retry(retries), false, Some(again)) if attempt <= *retries => {
                     // Again, with what failed appended to its brief, on a verdict of its own.
-                    if let Some(task) = lock(&self.inner.state).task_mut(&id) {
+                    if let Some(task) = lock(&self.inner.state).task_mut(id) {
                         task.verdict = None;
                         task.verdict_rejections = 0;
                         task.verdict_problems.clear();
                         task.verdict_invalid = false;
                     }
-                    run.prompt = format!("{}\n\n{}", run.prompt, retry_note(&report, attempt));
-                    continue;
+                    again.prompt = format!("{}\n\n{}", again.prompt, retry_note(&report, attempt));
+                    let reply = (self.inner.runner)(again.clone());
+                    if signal.is_aborted() {
+                        return None;
+                    }
+                    result = self.reply_result(id, reply);
                 }
-                _ => break self.contract_result(&id, &run, contract, result, &attempts),
+                _ => {
+                    let name = run.as_ref().map_or_else(|| id.to_string(), |run| run.name.clone());
+                    return Some(self.contract_result(id, &name, contract, result, &attempts));
+                }
             }
-        };
-        let result = self.with_limit_reason(&id, result);
-        let _ = self.end(&id, result);
+        }
+    }
+
+    /// The contract of task `id` as [`SpawnContract::describe`] writes it, for its session to keep with the task
+    /// (`None`: it was spawned without one).
+    pub fn contract_of(&self, id: &str) -> Option<Value> {
+        lock(&self.inner.state)
+            .task(id)
+            .and_then(|task| task.contract.as_ref())
+            .map(|contract| contract.describe())
     }
 
     /// Run a child's contract checks in its working directory (its worktree's, else the shared one), on the files
@@ -1466,7 +1502,7 @@ impl Delegation {
     fn contract_result(
         &self,
         id: &str,
-        run: &ChildRun,
+        child_name: &str,
         contract: &SpawnContract,
         mut result: Value,
         attempts: &[Value],
@@ -1496,8 +1532,8 @@ impl Delegation {
                     .unwrap_or_else(|| "main".into());
                 (parent, owner)
             };
-            let name = format!("{}-review", run.name);
-            let prompt = review_brief(brief, &run.name, id, &result, &report);
+            let name = format!("{child_name}-review");
+            let prompt = review_brief(brief, child_name, id, &result, &report);
             let payload = json!({ "prompt": prompt, "kwargs": { "name": name } });
             let payload = payload.as_object().cloned().unwrap_or_default();
             report["hop"] = match self.spawn(&payload, parent.as_deref(), &owner) {

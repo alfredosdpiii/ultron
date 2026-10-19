@@ -282,6 +282,9 @@ pub struct CodeSkillsOptions {
     /// Wall budget of one test run (`ULTRON_CODE_SKILL_TEST_TIMEOUT_MS`, default 120 s).
     pub test_timeout_ms: u64,
     pub now: Clock,
+    /// The environment test kernels start from (`KernelOptions::base_env`): the session's, so a skill's test finds
+    /// its tools on the session's PATH, never the server process's. None: this process's environment.
+    pub base_env: Option<Vec<(String, String)>>,
 }
 
 impl CodeSkillsOptions {
@@ -296,6 +299,26 @@ impl CodeSkillsOptions {
             python: None,
             test_timeout_ms: configured.unwrap_or(DEFAULT_TEST_TIMEOUT_MS),
             now: system_clock(),
+            base_env: None,
+        }
+    }
+
+    /// [`CodeSkillsOptions::new`] for a session: test kernels start from `base_env`, and the test budget is the
+    /// session's `ULTRON_CODE_SKILL_TEST_TIMEOUT_MS` (from `base_env`, not this process's environment).
+    pub fn for_session(
+        dir: impl Into<PathBuf>,
+        runtime_path: impl Into<PathBuf>,
+        base_env: Vec<(String, String)>,
+    ) -> Self {
+        let configured = base_env
+            .iter()
+            .find(|(key, _)| key == "ULTRON_CODE_SKILL_TEST_TIMEOUT_MS")
+            .and_then(|(_, value)| value.trim().parse::<u64>().ok())
+            .filter(|value| *value > 0);
+        Self {
+            test_timeout_ms: configured.unwrap_or(DEFAULT_TEST_TIMEOUT_MS),
+            base_env: Some(base_env),
+            ..Self::new(dir, runtime_path)
         }
     }
 }
@@ -384,6 +407,7 @@ impl CodeSkills {
         std::fs::write(dir.join("test_skill.py"), test_source).map_err(|error| error.to_string())?;
         let mut options = KernelOptions::new(work.path(), &self.options.runtime_path);
         options.python = self.options.python.clone();
+        options.base_env = self.options.base_env.clone();
         options.env = vec![(
             "ULTRON_CODE_SKILLS_DIR".into(),
             self.options.dir.to_string_lossy().into_owned(),

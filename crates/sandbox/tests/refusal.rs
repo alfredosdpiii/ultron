@@ -42,6 +42,7 @@ fn policy(network: bool) -> Policy {
         image: None,
         uid: 1000,
         gid: 1000,
+        launch: Vec::new(),
     }
 }
 

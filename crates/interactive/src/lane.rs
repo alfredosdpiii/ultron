@@ -318,6 +318,8 @@ pub enum LaneEvent {
         engineering: bool,
         always_skills: Vec<String>,
     },
+    /// The settings' `persona` for `/persona` (`None`: unset).
+    Persona(Option<String>),
     /// The accounts `gh` is logged in to, as `(login, host)`, for `/autoreview on`.
     AutoreviewAccounts(Vec<(String, String)>),
     /// The stored credentials (`auth.json`): provider id and type (`api_key` or `oauth`), for `/logout`.
@@ -497,6 +499,8 @@ pub trait LaneClient {
     fn read_settings(&self) {}
     /// Read the settings' mode for `/mode` and `/engineering` ([`LaneEvent::Mode`]).
     fn read_mode(&self) {}
+    /// Read the settings' persona for `/persona` ([`LaneEvent::Persona`]).
+    fn read_persona(&self) {}
     /// `/autoreview`: answered by [`LaneEvent::AutoreviewAccounts`] for [`AutoreviewRequest::Accounts`], else by a
     /// [`LaneEvent::Status`].
     fn autoreview(&self, request: AutoreviewRequest) {

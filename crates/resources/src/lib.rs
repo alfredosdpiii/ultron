@@ -5,6 +5,7 @@ pub mod context_files;
 pub mod frontmatter;
 pub mod ignore;
 pub mod paths;
+pub mod persona;
 pub mod prompt_files;
 pub mod prompt_templates;
 pub mod runtime_guide;

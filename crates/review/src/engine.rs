@@ -182,6 +182,10 @@ pub struct EngineOptions {
     pub settings: ModelSettings,
     /// Extra environment for the kernels (applied after the kernel's credential filter).
     pub kernel_env: Vec<(String, String)>,
+    /// The environment the review kernels start from (`KernelOptions::base_env`): the caller's session environment,
+    /// so a review runs its tools (git, the repository's test commands) from the session's PATH, never the server
+    /// process's. None: this process's environment.
+    pub base_env: Option<Vec<(String, String)>>,
     pub log: Option<Log>,
 }
 
@@ -329,6 +333,7 @@ pub struct KernelEngine {
     runtime_path: PathBuf,
     python: Option<PathBuf>,
     kernel_env: Vec<(String, String)>,
+    base_env: Option<Vec<(String, String)>>,
     router: Arc<Router>,
     /// Milliseconds opening the engine took.
     pub start_ms: u64,
@@ -369,6 +374,7 @@ impl KernelEngine {
             runtime_path: options.runtime_path,
             python: options.python,
             kernel_env: options.kernel_env,
+            base_env: options.base_env,
             router: Arc::new(router),
             start_ms,
         })
@@ -478,6 +484,7 @@ impl ReviewEngine for KernelEngine {
             max_cpu_seconds: Some(0),
         };
         options.env = self.kernel_env.clone();
+        options.base_env = self.base_env.clone();
         let kernel = Kernel::new(options, self.router.clone()).map_err(|error| error.message().to_string())?;
         let cell = review_cell(&spec_path.to_string_lossy(), &result_path.to_string_lossy());
         let outcome = kernel.execute(&cell, signal, None);

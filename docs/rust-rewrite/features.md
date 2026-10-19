@@ -190,7 +190,7 @@ HOST verifies itself when the child ends. Nothing is trusted from the child, and
   with `[Contract] Attempt k did not pass the host's contract checks: ...` appended to its brief, on a verdict of
   its own; `{"review": "brief"}` spawns a sibling reviewer `<name>-review` whose brief is the review brief, the failed
   checks, the child's summary and declared files; its handle is in `check.contract.hop.review`.
-- Not kept across a worker restart: a child reattached by the durable runtime ends with its ordinary verdict check.
+- Kept across a worker restart (see w17-env below); `changed_files_within` and `no_new_dependencies` fail closed after one.
 - Python: `swarm_api.py` (Rust-served additions) passes the options through and documents them in
   `help(rlm.spawn)`; the TS host refuses them (`Unknown payload field: role`). The Rust runtime guide names them in
   the delegation section with the durable APIs on (`ULTRON_GUIDE=ts` keeps the TS text).
@@ -249,3 +249,66 @@ tool-expand key toggles it and the collapsed cell is byte-identical to TypeScrip
 pattern guard), the `Approver` UI hook and `grants.*` (scoped approvals) are gone: every operation the sandbox
 contains runs. `sandbox.*` (bwrap, unshare, docker, write containment) is unchanged. The shared runtime still binds
 `grants` (the TypeScript product serves it); in ultron-rs its calls fail as unserved host requests.
+
+## Contracts survive a restart; every kernel and the sandbox launcher get the session env (w17-env)
+
+**Kept contracts.** A subagent spawned with `role=` / `contract=` / `hop=` has its contract written to the session
+journal as a session value, `ultron.subagent-contracts` / `<task id>` (the `SpawnContract::describe` form:
+`{"role", "checks", "returns", "hop"}`), in the same commit as its name (`ultron.subagent-names`), before its child
+conversation exists. Values are append-only journal writes replayed on open; the last write per task id wins. A
+worker that reattaches an unfinished child (`DurableChildren::restore`) reads the value back
+(`SpawnContract::from_described`, the spawn parser again) and the host holds the child's end to it as before the
+restart: `returns` is checked on its `rlm.finish`, the checks run when it ends, a failure is `contract_failed`, a
+`{"retry": N}` hop re-runs it (the run rebuilt from its child task), a `{"review": ...}` hop spawns the reviewer.
+- Sessions from before have no value: their children are reattached and end with their ordinary verdict, unchanged.
+- A kept value that no longer parses fails the child: `Contract failed: the session's kept contract is unreadable:
+  <error>` (never treated as no contract).
+- `changed_files_within` / `no_new_dependencies` need the start snapshot, which is not kept: after a restart they
+  fail with "no working directory was snapshotted when the child started" (fail closed). `run`, `files_exist` and
+  `returns` work as before. `keep=True` still refuses contracts.
+
+**Session env for code-skill and review kernels.** `skills.propose_code` / `propose_policy` test kernels
+(`CodeSkillsOptions::for_session`, `base_env` = the session's `compose::session_environment`, and the session's
+`ULTRON_CODE_SKILL_TEST_TIMEOUT_MS`) and the review engine's kernels (`EngineOptions::base_env`, set by `ultron
+autoreview` from its `Env`) start from the session environment, as the lanes' kernels do: a tool only the server
+process's PATH has is not found.
+
+**Sandbox launcher.** `Policy` carries `launch` (`launch_env(host_env)`: the session's PATH, else
+`/usr/local/bin:/usr/bin:/bin`, and its DOCKER_HOST; never the process's). The launcher binary (bwrap, unshare,
+setpriv, the Docker client's bash) is resolved on that PATH (`resolve_program`), `setpriv` is used only when that
+PATH has it (`Policy::layout`), and the launcher process starts with exactly that environment, for the mechanism
+probe, shell commands, persistent jobs, contract checks, kernels (`crates/kernel/src/sandboxed.rs`) and `ultron sandbox
+doctor` (which now builds its policy from the session environment). `RealLayout::which` looks on the fixed PATH only.
+
+## Ultron persona, auto-nudge, proactive skills (w17-persona)
+
+**Persona.** `"persona": "ultron"` in settings.json (agent dir; a trusted project's settings may override it like
+any key) puts the text of `<agent dir>/personality.md` in the root system prompt as its own `<persona>` section,
+after the context files and before the skills. Any other value, or none, leaves the prompt unchanged. A missing or
+unreadable file is one warning (`persona: cannot read ...`) and no section. The file is read when the prompt renders:
+at session start and when the settings' prompt mode changes (engineering, `alwaysSkills`, persona), never per
+request, so the prompt-cache prefix stays stable. `/persona` reports the setting, `/persona ultron|off` writes it
+(off removes the key); RPC clients set it through the worker's `setSetting` (`persona`: `ultron`, `off` or null,
+applied live). `ultron claude` gets the same section in Claude Code's system prompt (root only, never a subagent),
+followed by `The pstack skills directory is <bundled>/pstack (principle-<name>/SKILL.md).`; nothing is installed in
+~/.claude.
+
+**Auto-nudge** (persona on only). After a root run ends normally (not aborted, no error, no queued user message or
+other waiting input), the host starts a new run with the nudge when the run made at least one rlm call, the final
+assistant text's last paragraph (split on blank lines) does not end with `?` and matches
+`\b(next,? I(?:'ll| will)|I(?:'ll| will) (?:now|next|then|start|run|add|fix|write|check)|then I(?:'ll| will)|let me|next step|going to|about to)\b`
+(case-insensitive), and fewer than 5 nudges ran since the user's last input. The nudge text is
+"Continue: take that next step now. End the turn only when the work is done and verified, or when you need the user;
+then ask one direct question." It is a displayed custom message (`customType: ultron.nudge`,
+`details: {nudge, max}`), journaled as the run's prompt, which the model reads as a user message; the TUI draws it as
+one muted line `auto-continue (n/5)`, live and on resume. A prompt or queued message from the user resets the count;
+an abort ends the chain until the next input. The rule and text are those of the user's Claude Code hook
+(ultron-persona.py), recorded in crates/resources/fixtures/persona-nudge.json. For `ultron claude`, the server's
+answer to the Stop hook the launcher already installs applies the same rule to Claude Code's transcript (its tool
+calls count as the rlm calls) and returns `{"decision": "block", "reason": <nudge>}`; UserPromptSubmit resets the
+count; `stop_hook_active` does not stop the chain, the cap does.
+
+**Proactive skills in engineering mode.** With engineering mode on and the Rust guide (not `ULTRON_GUIDE=ts`), the
+bundled-skills note says "Use them on your own: when a task fits one, read it and follow it without being asked, and
+say which in one line." instead of "Read one only when the user asks for it ...". `ultron claude` launches with the
+same wording when engineering is on; `ultron guide --for claude` keeps the TypeScript wording it is recorded with.

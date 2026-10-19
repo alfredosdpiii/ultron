@@ -29,6 +29,11 @@ pub struct BuildOptions {
     pub doc_paths: DocPaths,
     /// `getBundledSkillsDir()`: where bundled skills live, if any.
     pub bundled_skills_dir: Option<String>,
+    /// The persona's text (crate::persona), its own section after the context files and before the skills.
+    pub persona: Option<String>,
+    /// Engineering mode with the Rust guide: the model uses the bundled skills on its own
+    /// ([`crate::skills::bundled_skills_note`]).
+    pub proactive_skills: bool,
 }
 
 impl BuildOptions {
@@ -172,6 +177,9 @@ pub fn build_system_prompt_sections(options: &BuildOptions) -> Result<Sections, 
         }));
         set(&mut out, "project_context", parts.join("\n\n"));
     }
+    if let Some(persona) = options.persona.as_deref().filter(|p| !p.is_empty()) {
+        set(&mut out, "persona", persona.to_string());
+    }
     let read_tool = ["read", "bash", "rlm"]
         .into_iter()
         .find(|tool| options.selected_tools.iter().any(|t| t == tool));
@@ -179,7 +187,7 @@ pub fn build_system_prompt_sections(options: &BuildOptions) -> Result<Sections, 
         let parts = [
             format_always_skills_for_prompt(&skills),
             format_skills_for_prompt(&skills, tool).trim().to_string(),
-            bundled_skills_note(&skills, options.bundled_skills_dir.as_deref()),
+            bundled_skills_note(&skills, options.bundled_skills_dir.as_deref(), options.proactive_skills),
         ];
         let text = parts
             .into_iter()

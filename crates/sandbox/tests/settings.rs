@@ -117,6 +117,7 @@ fn flat_policy(network: bool, tmp: Option<&str>) -> Policy {
         image: Some("img".into()),
         uid: 7,
         gid: 8,
+        launch: Vec::new(),
     }
 }
 

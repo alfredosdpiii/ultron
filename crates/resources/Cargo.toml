@@ -8,10 +8,10 @@ publish.workspace = true
 
 [dependencies]
 regex = "=1.13.1"
+serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 yaml-rust2 = "=0.13.0"
 
 [dev-dependencies]
-serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 tempfile = "=3.27.0"
 
 [lints]

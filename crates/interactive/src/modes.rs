@@ -49,6 +49,34 @@ pub enum ModeRequest {
     Set(bool),
 }
 
+/// `/persona`'s argument: `None` for a usage error, `Some(None)` to report, `Some(Some(on))` to write it.
+pub fn persona_arg(args: &str) -> Option<Option<bool>> {
+    match args.trim().to_lowercase().as_str() {
+        "" => Some(None),
+        "ultron" | "on" => Some(Some(true)),
+        "off" | "none" => Some(Some(false)),
+        _ => None,
+    }
+}
+
+/// `/persona` without an argument: the settings' persona.
+pub fn persona_status(persona: Option<&str>) -> String {
+    match persona {
+        Some("ultron") => "Persona is ultron: personality.md is in the system prompt".into(),
+        Some(other) => format!("Persona \"{other}\" is not known, so it is off: /persona ultron|off"),
+        None => "Persona is off (/persona ultron turns it on)".into(),
+    }
+}
+
+/// What the status line says after `/persona ultron|off` wrote the setting.
+pub fn persona_changed(on: bool) -> String {
+    if on {
+        "Persona ultron on from the next message".into()
+    } else {
+        "Persona off from the next message".into()
+    }
+}
+
 /// `/engineering`'s argument: `None` for a usage error, `Some(None)` to report.
 pub fn engineering_arg(args: &str) -> Option<Option<bool>> {
     match args.trim().to_lowercase().as_str() {

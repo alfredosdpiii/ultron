@@ -17,6 +17,19 @@ use crate::lane::{QueueKind, Queued};
 use crate::rlm_cell::{Highlighter, rlm_renderers};
 
 /// Text of a user message's text blocks.
+/// The custom message type of the persona's auto-nudge (`resources::persona::NUDGE_CUSTOM_TYPE` in the engine).
+pub const NUDGE_CUSTOM_TYPE: &str = "ultron.nudge";
+
+/// What the chat shows for a nudge: `auto-continue (n/max)`.
+pub fn nudge_line(message: &Value) -> String {
+    let details = &message["details"];
+    format!(
+        "auto-continue ({}/{})",
+        details["nudge"].as_u64().unwrap_or(1),
+        details["max"].as_u64().unwrap_or(5)
+    )
+}
+
 pub fn user_message_text(message: &Value) -> String {
     match &message["content"] {
         Value::String(s) => s.clone(),
@@ -415,6 +428,12 @@ impl ChatView {
                     message["fullOutputPath"].as_str(),
                 );
                 self.push(Kind::Bash(Box::new(bash)));
+            }
+            // The persona's auto-nudge (resources::persona in the engine): one line, not the nudge's text.
+            Some("custom") if message["customType"] == NUDGE_CUSTOM_TYPE => {
+                let line = nudge_line(message);
+                let t = Rc::clone(&self.style.theme);
+                self.append_notice_text(&fg(&t, "muted", &line));
             }
             // Other injected context is shown muted, so what reached the model is visible.
             Some("custom") if message["display"] == true => {

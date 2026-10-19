@@ -590,6 +590,16 @@ pub fn apply(
             set(settings, key, json!(bool_value(key, value)?));
             applied = Applied::Live;
         }
+        // The persona (resources::persona): `ultron`, or `off`/null to remove it; the worker renders its system
+        // prompt again on the next request and reads it when a run ends.
+        "persona" => {
+            let persona = match value {
+                Value::Null => None,
+                value => Some(one_of(key, value, &[resources::persona::ULTRON, "off"])?),
+            };
+            settings.set_global(key, persona.filter(|p| p != "off").map(Value::String));
+            applied = Applied::Live;
+        }
         "autoreview.enabled" | "autoreview.ack" => {
             let flag = bool_value(key, value)?;
             settings.set_autoreview_settings(&[(&key["autoreview.".len()..], Some(json!(flag)))]);

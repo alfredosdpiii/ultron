@@ -499,6 +499,8 @@ pub struct Server {
     hints: bool,
     /// Tokens of running Claude Code subagents: a verdict is accepted only from the child holding its token.
     child_tokens: ChildTokens,
+    /// The persona's nudges since the user's last prompt (crate::persona_hook).
+    persona_nudges: Mutex<u32>,
 }
 
 impl Server {
@@ -590,7 +592,11 @@ impl Server {
                     None | Some(Value::Null) => String::new(),
                     other => crate::mcp_protocol::js_string(other),
                 };
-                self.hook(&event)
+                let input = match request.get("input") {
+                    Some(Value::Object(input)) => input.clone(),
+                    _ => Map::new(),
+                };
+                self.hook(&event, &input)
             }
             "child.finish" => {
                 let lane = request
@@ -620,7 +626,7 @@ impl Server {
     }
 
     /// Claude Code hook events: the hook command forwards its input here and prints what this returns.
-    fn hook(&self, event: &str) -> Result<Value, String> {
+    fn hook(&self, event: &str, input: &Map<String, Value>) -> Result<Value, String> {
         let opened = self.runtime()?;
         let root = &opened.root;
         let context = |name: &str, context: Option<String>| match context {
@@ -629,13 +635,34 @@ impl Server {
         };
         match event {
             "session-start" => Ok(context("SessionStart", root.session_context())),
-            "user-prompt" => Ok(context("UserPromptSubmit", root.begin_turn())),
+            "user-prompt" => {
+                *self.persona_nudges.lock().unwrap_or_else(PoisonError::into_inner) = 0;
+                Ok(context("UserPromptSubmit", root.begin_turn()))
+            }
             "stop" => {
                 root.end_turn();
-                Ok(json!({}))
+                let mut nudges = self.persona_nudges.lock().unwrap_or_else(PoisonError::into_inner);
+                let persona = self.persona_on();
+                let transcript = if persona {
+                    crate::persona_hook::transcript_of(input)
+                } else {
+                    String::new()
+                };
+                Ok(crate::persona_hook::stop_answer(persona, &transcript, &mut nudges))
             }
             other => Err(format!("unknown hook event: {other}")),
         }
+    }
+
+    /// The root's settings name the persona (read per Stop; a subagent never has it).
+    fn persona_on(&self) -> bool {
+        if self.args.child {
+            return false;
+        }
+        let agent_dir = self.env.agent_dir();
+        let trusted = crate::guide::project_trusted(&self.env.cwd, &agent_dir, &self.env.home);
+        let settings = config::settings::SettingsManager::create(&self.env.cwd, &agent_dir, trusted);
+        resources::persona::enabled(settings.settings())
     }
 
     fn guide_text(&self) -> String {
@@ -915,6 +942,7 @@ pub fn start(argv: &[String], ctx: &Ctx) -> Result<(Arc<Running>, Arc<Handlers>)
         ready: Condvar::new(),
         cells: Mutex::default(),
         child_tokens: ChildTokens::default(),
+        persona_nudges: Mutex::new(0),
     });
     // `--children claude` (the default when `claude` is installed): each `rlm.spawn` child is a Claude Code process
     // attached to its own `ultron mcp --child` server.

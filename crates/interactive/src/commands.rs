@@ -30,11 +30,16 @@ const fn c(name: &'static str, hint: &'static str, description: &'static str) ->
 /// Every command the TypeScript client TUI offers, in its order.
 /// The Rust-only commands, offered with the overlays ([`crate::qol::QolSettings::overlays`]); a parity build has
 /// exactly the client TUI's [`COMMANDS`].
-pub const QOL_COMMANDS: [CommandSpec; 2] = [
+pub const QOL_COMMANDS: [CommandSpec; 3] = [
     c(
         "mode",
         "[name]",
         "Switch mode (Default, Engineering); without a name, pick one",
+    ),
+    c(
+        "persona",
+        "[ultron|off]",
+        "The Ultron persona: personality.md in the system prompt, announced next steps continued",
     ),
     // Pi's own (core/slash-commands.ts), which the client TUI does not offer.
     c("bug", "<description>", "Report a bug to the Pi developers"),

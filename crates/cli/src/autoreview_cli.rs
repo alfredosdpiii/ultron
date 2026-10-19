@@ -866,6 +866,8 @@ fn open_engine(
             review_model: saved.fallbacks_review_model.clone(),
         },
         kernel_env: Vec::new(),
+        // The review kernels start from this environment's variables, never the server process's.
+        base_env: Some(session_core::compose::session_environment(&*env.var)),
         log: Some(log),
     };
     KernelEngine::open(options)

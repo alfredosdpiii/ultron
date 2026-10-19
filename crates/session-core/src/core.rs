@@ -662,6 +662,8 @@ pub struct Core {
     /// The research-loop brake and the skill hint on `main`'s turns (crate::nudge).
     nudger: crate::nudge::ToolRoundNudger,
     skill_nudger: crate::nudge::SkillExtractionNudger,
+    /// The persona's auto-nudge chain (core::persona_nudge).
+    persona: resources::persona::Chain,
 }
 
 mod auto_compact;
@@ -674,6 +676,7 @@ mod context_children;
 mod context_lane;
 mod durable_turns;
 pub mod event_lanes;
+mod persona_nudge;
 mod user_bash;
 
 /// The fork marker the session a client forked to carries until its first worker reads it
@@ -1004,6 +1007,7 @@ impl Core {
             skill_nudger: crate::nudge::SkillExtractionNudger::new(crate::nudge::skill_nudge_from_env(
                 (env_var)("ULTRON_SKILL_NUDGE").as_deref(),
             )),
+            persona: Default::default(),
         };
         if let Some(operation) = resume {
             core.resumed = Some(core.reopen_run(&operation)?);
@@ -1274,11 +1278,12 @@ impl Core {
                     return;
                 }
                 self.journal(&agent_event);
+                let shown = self.persona_shown(value);
                 self.emit(event(vec![
                     ("type", json!("message_start")),
                     ("runId", run),
                     ("lane", lane),
-                    ("message", value),
+                    ("message", shown),
                 ]));
             }
             AgentEvent::MessageUpdate {
@@ -1320,11 +1325,12 @@ impl Core {
                 {
                     running.error = value["errorMessage"].as_str().map(str::to_string);
                 }
+                let shown = self.persona_shown(value.clone());
                 self.emit(event(vec![
                     ("type", json!("message_end")),
                     ("runId", run),
                     ("lane", lane),
-                    ("message", value.clone()),
+                    ("message", shown),
                 ]));
                 let delivered = if value["role"] == "user" {
                     let mut queues = lock(&self.queues);
@@ -1363,6 +1369,9 @@ impl Core {
                 } else {
                     if let Message::Assistant(answer) = message {
                         retry = self.retry_decision(answer);
+                    }
+                    if value["role"] == "assistant" {
+                        self.persona_assistant(&value);
                     }
                     self.journal(&agent_event);
                 }
@@ -1574,6 +1583,7 @@ impl Core {
             ("endedAt", json!(now_ms())),
         ]);
         self.emit(event(fields));
+        let failed = error.is_some();
         // The dispatcher's `run_end`: an aborted root never restarts work; unconsumed steers are taken back.
         if let Some(operation) = &operation {
             self.events.run_ended(LANE, operation, aborted);
@@ -1594,6 +1604,8 @@ impl Core {
         for input in std::mem::take(&mut self.after_run).into_iter().rev() {
             self.deferred.push_front(input);
         }
+        // The persona continues a turn that announced its next step instead of taking it.
+        self.persona_run_ended(aborted, failed);
     }
 
     /// `appendCustomEntry`: a `custom` entry at the tip of `main`, announced; after the run in progress (a custom
@@ -1711,6 +1723,7 @@ impl Core {
     fn op(&mut self, op: Op, reply: Reply) {
         match op {
             Op::Prompt { message, images, queue } => {
+                self.persona_user_input();
                 let result = if self.run.is_some() {
                     match queue {
                         Some(kind) => self.enqueue(kind, message, images, None).map(drop),
@@ -1722,6 +1735,7 @@ impl Core {
                 reply(result.map(|()| None));
             }
             Op::PromptAndWait { message, images } => {
+                self.persona_user_input();
                 if self.run.is_some() {
                     return reply(Err("Agent is already processing".into()));
                 }
@@ -1781,7 +1795,10 @@ impl Core {
                 message,
                 images,
                 entry_id,
-            } => self.enqueue(kind, message, images, entry_id).map(|id| Some(json!(id))),
+            } => {
+                self.persona_user_input();
+                self.enqueue(kind, message, images, entry_id).map(|id| Some(json!(id)))
+            }
             Op::CancelQueued { entry_id } => {
                 let found = lock(&self.queues).items.iter().any(|q| q.entry_id == entry_id);
                 if found {
@@ -2377,6 +2394,7 @@ impl Core {
             compaction_failed: false,
             resume_overflow: None,
         });
+        self.persona_run_started();
         self.emit(event(vec![
             ("type", json!("run_start")),
             ("runId", json!(id)),

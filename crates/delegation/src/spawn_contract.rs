@@ -347,6 +347,24 @@ impl SpawnContract {
         }))
     }
 
+    /// A contract kept as [`SpawnContract::describe`] wrote it (the session journal keeps it so; a reattached child
+    /// is checked as it was spawned). Parsed as a spawn's options again, so a kept contract is held to the same rules.
+    pub fn from_described(described: &Value) -> Result<SpawnContract, String> {
+        let map = described.as_object().ok_or("a kept contract must be an object")?;
+        only(map, &["role", "checks", "returns", "hop"], "kept contract")?;
+        let mut kwargs = Map::new();
+        kwargs.insert("role".into(), map.get("role").cloned().unwrap_or(Value::Null));
+        kwargs.insert(
+            "contract".into(),
+            json!({
+                "checks": map.get("checks").cloned().unwrap_or(Value::Null),
+                "returns": map.get("returns").cloned().unwrap_or(Value::Null),
+            }),
+        );
+        kwargs.insert("hop".into(), map.get("hop").cloned().unwrap_or(Value::Null));
+        SpawnContract::parse(&kwargs)?.ok_or_else(|| "a kept contract names nothing".to_string())
+    }
+
     /// Whether anything is checked when the child ends.
     pub fn checks_anything(&self) -> bool {
         !self.checks.is_empty() || self.returns.is_some()

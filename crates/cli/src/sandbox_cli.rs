@@ -13,7 +13,8 @@ pub const USAGE: &str = "Usage: ultron sandbox doctor\n\nChecks the shell sandbo
 pub fn launcher(env: &Env) -> Launcher {
     let config = Config::from_env(env);
     let settings = sandbox::Settings::from_settings(&config.settings);
-    let host_env: Vec<(String, String)> = std::env::vars().collect();
+    // The session's environment (its PATH finds the sandbox launcher), as a session's host gets it.
+    let host_env = config.child_env();
     let policy = Policy::new(&settings, &config.cwd, &config.home, &[], None, &host_env);
     Launcher::new(settings.mode, policy)
 }

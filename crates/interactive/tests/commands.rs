@@ -126,6 +126,9 @@ impl LaneClient for Recorder {
     fn read_mode(&self) {
         self.push("read_mode".into());
     }
+    fn read_persona(&self) {
+        self.push("read_persona".into());
+    }
     fn autoreview(&self, request: AutoreviewRequest) {
         self.push(match request {
             AutoreviewRequest::Status => "autoreview status".into(),
@@ -1746,4 +1749,64 @@ fn interactive_commands_autoreview_picks_the_account_to_review_as() {
     app.handle_input("\x1b");
     assert!(screen(&mut app).contains("Autoreview left as it was"));
     assert_eq!(calls(&c).len(), before);
+}
+
+/// `/persona [ultron|off]` (Rust-only, with the overlays): report the settings' persona, write it, usage.
+#[test]
+fn interactive_commands_persona_reports_and_writes_the_setting() {
+    let qol = interactive::qol::QolSettings {
+        overlays: true,
+        ..interactive::qol::QolSettings::parity()
+    };
+    let (mut app, c) = app_with(qol, vec![model("a", true)]);
+    submit(&mut app, "/persona");
+    assert_eq!(calls(&c), ["read_persona"]);
+    app.apply(LaneEvent::Persona(Some("ultron".into())));
+    assert!(screen(&mut app).contains("Persona is ultron: personality.md is in the system prompt"));
+    app.apply(LaneEvent::Persona(None));
+    assert!(screen(&mut app).contains("Persona is off (/persona ultron turns it on)"));
+    app.apply(LaneEvent::Persona(Some("jarvis".into())));
+    assert!(screen(&mut app).contains("Persona \"jarvis\" is not known, so it is off"));
+    completed(&mut app, "/persona ultron");
+    assert_eq!(calls(&c).last().unwrap(), "setting persona=\"ultron\"");
+    assert!(screen(&mut app).contains("Persona ultron on from the next message"));
+    submit(&mut app, "/persona OFF");
+    assert_eq!(calls(&c).last().unwrap(), "setting persona=null");
+    assert!(screen(&mut app).contains("Persona off from the next message"));
+    let before = calls(&c).len();
+    submit(&mut app, "/persona jarvis");
+    assert!(screen(&mut app).contains("Usage: /persona ultron|off"));
+    assert_eq!(calls(&c).len(), before);
+    // The parity build has exactly the client TUI's commands.
+    let (mut parity, pc) = app_with(interactive::qol::QolSettings::parity(), vec![model("a", true)]);
+    submit(&mut parity, "/persona ultron");
+    assert!(screen(&mut parity).contains("Unknown slash command: /persona"));
+    assert!(calls(&pc).is_empty());
+}
+
+/// The persona's auto-nudge is one line, `auto-continue (n/5)`, live and in a reopened transcript, never the nudge
+/// text as a user bubble.
+#[test]
+fn interactive_commands_persona_nudge_is_one_auto_continue_line() {
+    let nudge = |n: u64| {
+        json!({"role": "custom", "customType": "ultron.nudge", "display": true,
+               "content": "Continue: take that next step now. End the turn only when the work is done and verified, or when you need the user; then ask one direct question.",
+               "details": {"nudge": n, "max": 5}, "timestamp": 1})
+    };
+    let (mut live, _) = app();
+    live.apply(LaneEvent::Message(nudge(2)));
+    let s = screen(&mut live);
+    assert!(s.contains("auto-continue (2/5)"), "{s}");
+    assert!(!s.contains("take that next step"), "{s}");
+    assert!(!s.contains("[ultron.nudge]"), "{s}");
+    let (mut reopened, _) = app();
+    reopened.apply(LaneEvent::Opened(SessionOpened {
+        session_id: "s1".into(),
+        session_file: None,
+        name: None,
+        messages: vec![json!({"role": "user", "content": "fix it", "timestamp": 1}), nudge(1)],
+    }));
+    let s = screen(&mut reopened);
+    assert!(s.contains("fix it") && s.contains("auto-continue (1/5)"), "{s}");
+    assert!(!s.contains("take that next step"), "{s}");
 }

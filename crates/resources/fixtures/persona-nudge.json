@@ -1,0 +1,604 @@
+{
+ "nudge": "Continue: take that next step now. End the turn only when the work is done and verified, or when you need the user; then ask one direct question.",
+ "maxNudges": 5,
+ "cases": [
+  {
+   "text": "Next I'll run the tests.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Next I'll run the tests.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Next, I will update the docs.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next, I will update the docs.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Next, I will update the docs.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "next I'll do it",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "next I'll do it",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "next I'll do it",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll now write the parser.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll now write the parser.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'll now write the parser.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I will check the logs.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I will check the logs.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I will check the logs.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll fix it.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll fix it.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'll fix it.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll add a test.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll add a test.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'll add a test.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll start the build.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll start the build.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'll start the build.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll then commit.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll then commit.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'll then commit.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'll look at it later.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'll look at it later.",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "I'll look at it later.",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Then I'll rebuild.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Then I'll rebuild.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Then I'll rebuild.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Let me look.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Let me look.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Let me look.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "LET ME check that.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "LET ME check that.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "LET ME check that.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "The next step is the migration.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "The next step is the migration.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "The next step is the migration.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I'm going to refactor this.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'm going to refactor this.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "I'm going to refactor this.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "About to deploy.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "About to deploy.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "About to deploy.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Should I run the tests?",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Should I run the tests?",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Should I run the tests?",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests?  ",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests?  ",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests?  ",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.\n\nAll done.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.\n\nAll done.",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.\n\nAll done.",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "All done.\n\nNext I'll run the tests.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "All done.\n\nNext I'll run the tests.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "All done.\n\nNext I'll run the tests.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Next I'll run the tests.\n\nShall I continue?",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.\n\nShall I continue?",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Next I'll run the tests.\n\nShall I continue?",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Done: 14 tests pass.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Done: 14 tests pass.",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Done: 14 tests pass.",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Outlet me know",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Outlet me know",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "Outlet me know",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "nextstep",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "nextstep",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "nextstep",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "I'llrun",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I'llrun",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "I'llrun",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "I’ll run the tests.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I’ll run the tests.",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "I’ll run the tests.",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "  \n\nLet me run it.\n\n  ",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "  \n\nLet me run it.\n\n  ",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "  \n\nLet me run it.\n\n  ",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Paragraph one.\n \nLet me run it.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Paragraph one.\n \nLet me run it.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Paragraph one.\n \nLet me run it.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "Ich werde es tun. Let me see.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Ich werde es tun. Let me see.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Ich werde es tun. Let me see.",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Let me",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Let me",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Let me",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "going to?",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "going to?",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "going to?",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "a\n\nb\n\n\nlet me x",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "a\n\nb\n\n\nlet me x",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "a\n\nb\n\n\nlet me x",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "I will  run it.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "I will  run it.",
+   "tools": 1,
+   "nudge": false
+  },
+  {
+   "text": "I will  run it.",
+   "tools": 3,
+   "nudge": false
+  },
+  {
+   "text": "Next , I'll run",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "Next , I'll run",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "Next , I'll run",
+   "tools": 3,
+   "nudge": true
+  },
+  {
+   "text": "next, i will",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "text": "next, i will",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "text": "next, i will",
+   "tools": 3,
+   "nudge": true
+  }
+ ],
+ "transcripts": [
+  {
+   "name": "one tool then announce",
+   "jsonl": "{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"fix the bug\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"Looking.\"}, {\"type\": \"tool_use\", \"id\": \"t1\", \"name\": \"rlm\", \"input\": {}}]}}\n{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"t1\", \"content\": \"ok\"}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"Patched.\\n\\nNext I'll run the tests.\"}]}}\n\n",
+   "text": "Patched.\n\nNext I'll run the tests.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "name": "earlier turn tools do not count",
+   "jsonl": "{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"first\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"t1\", \"name\": \"rlm\", \"input\": {}}]}}\n{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"t1\", \"content\": \"ok\"}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"done\"}]}}\n{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": [{\"type\": \"text\", \"text\": \"second\"}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"Let me think.\"}]}}\n\n",
+   "text": "Let me think.",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "name": "two tools in one message",
+   "jsonl": "{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"go\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"a\", \"name\": \"rlm\", \"input\": {}}, {\"type\": \"tool_use\", \"id\": \"b\", \"name\": \"rlm\", \"input\": {}}]}}\n{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": \"a\", \"content\": \"ok\"}, {\"type\": \"tool_result\", \"tool_use_id\": \"b\", \"content\": \"ok\"}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"One\"}, {\"type\": \"text\", \"text\": \"Two  \"}]}}\n\n",
+   "text": "One\nTwo",
+   "tools": 2,
+   "nudge": false
+  },
+  {
+   "name": "last assistant without text",
+   "jsonl": "{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"go\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"I'll run it.\"}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"a\", \"name\": \"rlm\", \"input\": {}}]}}\n\n",
+   "text": "I'll run it.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "name": "other entry kinds are skipped",
+   "jsonl": "{\"type\": \"summary\", \"summary\": \"x\"}\n{\"type\": \"user\", \"message\": {\"role\": \"user\", \"content\": \"go\"}}\n{\"type\": \"system\", \"message\": {\"content\": \"note\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"a\", \"name\": \"rlm\", \"input\": {}}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": \"a string content is skipped\"}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"Going to retry.\"}]}}\n\n",
+   "text": "Going to retry.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "name": "no user prompt at all",
+   "jsonl": "{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"tool_use\", \"id\": \"a\", \"name\": \"rlm\", \"input\": {}}]}}\n{\"type\": \"assistant\", \"message\": {\"role\": \"assistant\", \"content\": [{\"type\": \"text\", \"text\": \"About to finish.\"}]}}\n\n",
+   "text": "About to finish.",
+   "tools": 1,
+   "nudge": true
+  },
+  {
+   "name": "empty",
+   "jsonl": "\n",
+   "text": "",
+   "tools": 0,
+   "nudge": false
+  },
+  {
+   "name": "malformed line",
+   "jsonl": "{\"type\": \"assistant\", \"message\": {\"content\": [{\"type\": \"tool_use\"}]}}\nnot json\n",
+   "text": "",
+   "tools": 0,
+   "nudge": false
+  }
+ ]
+}

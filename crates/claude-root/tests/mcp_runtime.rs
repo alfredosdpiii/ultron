@@ -532,3 +532,47 @@ fn claude_root_mcp_loki_setup_note_comes_with_the_session_context_once() {
     assert!(!turn.to_string().contains("Loki set up"), "{turn}");
     server.close();
 }
+
+/// The persona's auto-nudge through the hook command's path (`ultron hook stop|user-prompt --socket ...` as the
+/// launcher installs it): the server reads the transcript Claude Code names and blocks the stop with the nudge, at
+/// most five times until the next prompt; persona off answers nothing.
+#[test]
+fn claude_root_mcp_persona_stop_hook_nudges_announced_steps_until_the_cap() {
+    let nudge = json!({"decision": "block", "reason": resources::persona::NUDGE_TEXT});
+    let root = Root::new();
+    std::fs::write(root.path("a/settings.json"), json!({"persona": "ultron"}).to_string()).unwrap();
+    let transcript = root.path("tmp/transcript.jsonl");
+    let lines = [
+        json!({"type": "user", "message": {"role": "user", "content": "fix it"}}),
+        json!({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "mcp__ultron__rlm", "input": {}}]}}),
+        json!({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1", "content": "1"}]}}),
+        json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Patched.\n\nNext I'll run the tests."}]}}),
+    ];
+    std::fs::write(&transcript, lines.iter().map(|l| format!("{l}\n")).collect::<String>()).unwrap();
+    let env = root.env(&[]);
+    let var = env.var.clone();
+    let mut server = Server::start(&[], env);
+    assert_eq!(server.cell("print(1)"), "1");
+    let socket = || Some(PathBuf::from(server.running.socket()));
+    let input = json!({"session_id": "c1", "transcript_path": transcript, "stop_hook_active": true}).to_string();
+    let hook = |event: &str| {
+        let output = claude_root::hooks::run_hook(event, socket(), &input, &*var);
+        if output.is_empty() {
+            json!({})
+        } else {
+            serde_json::from_str::<Value>(&output).unwrap()
+        }
+    };
+    for _ in 0..5 {
+        assert_eq!(hook("stop"), nudge);
+    }
+    assert_eq!(hook("stop"), json!({}), "the cap");
+    // The user's next prompt starts the count over.
+    hook("user-prompt");
+    assert_eq!(hook("stop"), nudge);
+    // Persona off (read per Stop): nothing.
+    std::fs::write(root.path("a/settings.json"), json!({}).to_string()).unwrap();
+    hook("user-prompt");
+    assert_eq!(hook("stop"), json!({}));
+    server.close();
+}

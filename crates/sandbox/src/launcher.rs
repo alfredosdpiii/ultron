@@ -47,7 +47,20 @@ pub trait Layout {
     fn which(&self, name: &str) -> bool;
 }
 
+/// The host filesystem, with executables looked up on [`SANDBOX_PATH`] (never this process's PATH); [`PathLayout`]
+/// looks them up on a session's PATH.
 pub struct RealLayout;
+
+/// Whether `name` is an executable file in one of the `path` directories.
+fn on_path(path: &str, name: &str) -> bool {
+    std::env::split_paths(path).any(|dir| {
+        let candidate = dir.join(name);
+        std::fs::metadata(&candidate).is_ok_and(|meta| {
+            use std::os::unix::fs::PermissionsExt;
+            meta.is_file() && meta.permissions().mode() & 0o111 != 0
+        })
+    })
+}
 
 impl Layout for RealLayout {
     fn entry(&self, path: &Path) -> Entry {
@@ -61,14 +74,21 @@ impl Layout for RealLayout {
         }
     }
     fn which(&self, name: &str) -> bool {
-        let path = std::env::var_os("PATH").unwrap_or_default();
-        std::env::split_paths(&path).any(|dir| {
-            let candidate = dir.join(name);
-            std::fs::metadata(&candidate).is_ok_and(|meta| {
-                use std::os::unix::fs::PermissionsExt;
-                meta.is_file() && meta.permissions().mode() & 0o111 != 0
-            })
-        })
+        on_path(SANDBOX_PATH, name)
+    }
+}
+
+/// The host filesystem, with executables looked up on `path` (a session's PATH: [`Policy::layout`]).
+pub struct PathLayout {
+    pub path: String,
+}
+
+impl Layout for PathLayout {
+    fn entry(&self, path: &Path) -> Entry {
+        RealLayout.entry(path)
+    }
+    fn which(&self, name: &str) -> bool {
+        on_path(&self.path, name)
     }
 }
 
@@ -215,6 +235,9 @@ pub struct Policy {
     pub image: Option<String>,
     pub uid: u32,
     pub gid: u32,
+    /// The environment of the launcher itself (bwrap, unshare, docker, setpriv), from the session's environment
+    /// ([`launch_env`]): where they are found and which Docker daemon is asked. Never this process's environment.
+    pub launch: Vec<(String, String)>,
 }
 
 /// `path` with symlinks resolved when it exists; None when it does not.
@@ -224,7 +247,8 @@ fn existing(path: PathBuf) -> Option<PathBuf> {
 
 impl Policy {
     /// The policy for a session in `cwd`: the project, `extra_writable` (job and spill dirs) and `sandbox.writable`
-    /// writable; `host_env` filtered to the allowlist. Paths that do not exist are left out.
+    /// writable; `host_env` (the session's environment) filtered to the allowlist, and its PATH and DOCKER_HOST for
+    /// the launcher ([`launch_env`]). Paths that do not exist are left out.
     pub fn new(
         settings: &Settings,
         cwd: &Path,
@@ -270,7 +294,37 @@ impl Policy {
             image: settings.image.clone(),
             uid: rustix::process::getuid().as_raw(),
             gid: rustix::process::getgid().as_raw(),
+            launch: launch_env(host_env),
         }
+    }
+
+    /// The host filesystem with the launcher's PATH: what [`Policy::wrap`] looks executables up on.
+    pub fn layout(&self) -> PathLayout {
+        PathLayout {
+            path: self
+                .launch
+                .iter()
+                .find(|(name, _)| name == "PATH")
+                .map_or_else(|| s(SANDBOX_PATH), |(_, value)| value.clone()),
+        }
+    }
+
+    /// [`Policy::wrap`] on the host filesystem as a [`Command`]: started from the launcher's environment only, in
+    /// `cwd`. The launcher binary (`bwrap`, `unshare`, `setpriv`, `bash`) is found on that environment's PATH.
+    pub fn command(&self, mechanism: Mechanism, argv: &[String], cwd: &Path) -> Command {
+        self.spawnable(self.wrap(mechanism, &self.layout(), argv, cwd), cwd)
+    }
+
+    fn spawnable(&self, wrapped: Vec<String>, cwd: &Path) -> Command {
+        let layout = self.layout();
+        let program = resolve_program(&wrapped[0], &layout.path);
+        let mut command = Command::new(program);
+        command
+            .args(&wrapped[1..])
+            .env_clear()
+            .envs(self.launch.iter().map(|(k, v)| (k, v)))
+            .current_dir(cwd);
+        command
     }
 
     /// Whether `path` (absolute, lexically normal) may be written: inside a writable path and not hidden, the most
@@ -493,13 +547,37 @@ pub fn resolve_for_write(path: &Path) -> PathBuf {
     }
 }
 
-/// The environment of the launcher itself (bwrap, unshare, docker): PATH and DOCKER_HOST, nothing else of ours.
-pub fn launch_env() -> Vec<(String, String)> {
-    let mut env = vec![(s("PATH"), std::env::var("PATH").unwrap_or_else(|_| s(SANDBOX_PATH)))];
-    if let Ok(host) = std::env::var("DOCKER_HOST") {
-        env.push((s("DOCKER_HOST"), host));
+/// The environment of the launcher itself (bwrap, unshare, docker) from a session's environment `env`: its PATH
+/// (else [`SANDBOX_PATH`]) and DOCKER_HOST, nothing else. Never this process's environment.
+pub fn launch_env(env: &[(String, String)]) -> Vec<(String, String)> {
+    let var = |name: &str| {
+        env.iter()
+            .rev()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.clone())
+    };
+    let mut out = vec![(s("PATH"), var("PATH").unwrap_or_else(|| s(SANDBOX_PATH)))];
+    if let Some(host) = var("DOCKER_HOST") {
+        out.push((s("DOCKER_HOST"), host));
     }
-    env
+    out
+}
+
+/// `program` as the launcher's PATH finds it: a bare name becomes the first executable of that name in `path`, so
+/// the spawn does not search this process's PATH; a name found nowhere (or a path) stays as it is.
+pub fn resolve_program(program: &str, path: &str) -> PathBuf {
+    if program.contains('/') {
+        return PathBuf::from(program);
+    }
+    std::env::split_paths(path)
+        .map(|dir| dir.join(program))
+        .find(|candidate| {
+            std::fs::metadata(candidate).is_ok_and(|meta| {
+                use std::os::unix::fs::PermissionsExt;
+                meta.is_file() && meta.permissions().mode() & 0o111 != 0
+            })
+        })
+        .unwrap_or_else(|| PathBuf::from(program))
 }
 
 /// A session's launcher: the mode, the policy, and the mechanism found on first use.
@@ -530,10 +608,11 @@ impl Launcher {
             return None;
         }
         *self.mechanism.get_or_init(|| {
+            let layout = self.policy.layout();
             detect(
                 self.policy.image.as_deref(),
                 None,
-                |name| RealLayout.which(name),
+                |name| layout.which(name),
                 |mechanism| self.probe(mechanism),
             )
         })
@@ -541,16 +620,8 @@ impl Launcher {
 
     /// Whether `true` runs under `mechanism` here.
     pub fn probe(&self, mechanism: Mechanism) -> bool {
-        let argv = self.policy.wrap(mechanism, &RealLayout, &[s("true")], &self.policy.cwd);
-        let mut command = Command::new(&argv[0]);
-        command
-            .args(&argv[1..])
-            .env_clear()
-            .envs(launch_env())
-            .current_dir(&self.policy.cwd)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+        let mut command = self.policy.command(mechanism, &[s("true")], &self.policy.cwd);
+        command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
         command.status().is_ok_and(|status| status.success())
     }
 
@@ -567,14 +638,7 @@ impl Launcher {
             command.args(&argv[1..]).current_dir(cwd);
             return Ok(command);
         };
-        let wrapped = self.policy.wrap(mechanism, &RealLayout, argv, cwd);
-        let mut command = Command::new(&wrapped[0]);
-        command
-            .args(&wrapped[1..])
-            .env_clear()
-            .envs(launch_env())
-            .current_dir(cwd);
-        Ok(command)
+        Ok(self.policy.command(mechanism, argv, cwd))
     }
 
     /// [`Launcher::command`] for a process that outlives its starter ([`Policy::wrap_persistent`]): shell jobs,
@@ -583,14 +647,8 @@ impl Launcher {
         let Some(mechanism) = self.mechanism() else {
             return self.command(argv, cwd);
         };
-        let wrapped = self.policy.wrap_persistent(mechanism, &RealLayout, argv, cwd);
-        let mut command = Command::new(&wrapped[0]);
-        command
-            .args(&wrapped[1..])
-            .env_clear()
-            .envs(launch_env())
-            .current_dir(cwd);
-        Ok(command)
+        let wrapped = self.policy.wrap_persistent(mechanism, &self.policy.layout(), argv, cwd);
+        Ok(self.policy.spawnable(wrapped, cwd))
     }
 
     /// Which isolation is in use, for status lines and `doctor`.

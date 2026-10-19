@@ -412,7 +412,8 @@ fn short_purpose(description: &str, max: usize) -> String {
 }
 
 /// Index of the bundled skills that are loaded but hidden from the listing; "" when none (or no bundled dir).
-pub fn bundled_skills_note(skills: &[Skill], bundled: Option<&str>) -> String {
+/// `proactive` (engineering mode with the Rust guide): the model uses them on its own instead of only when asked.
+pub fn bundled_skills_note(skills: &[Skill], bundled: Option<&str>, proactive: bool) -> String {
     let Some(bundled) = bundled else { return String::new() };
     let prefix = format!("{bundled}/");
     let listed: Vec<String> = skills
@@ -434,9 +435,15 @@ pub fn bundled_skills_note(skills: &[Skill], bundled: Option<&str>) -> String {
     if listed.is_empty() {
         return String::new();
     }
-    let mut lines = vec![format!(
-        "Bundled skills in {bundled} (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md."
-    )];
+    let mut lines = vec![if proactive {
+        format!(
+            "Bundled skills in {bundled} (<source>/<name>/SKILL.md). Use them on your own: when a task fits one, read it and follow it without being asked, and say which in one line. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md."
+        )
+    } else {
+        format!(
+            "Bundled skills in {bundled} (<source>/<name>/SKILL.md). Read one only when the user asks for it or the task plainly calls for that workflow; ordinary coding needs none. The principles pstack's skills cite are pstack/principle-<name>/SKILL.md."
+        )
+    }];
     lines.extend(listed);
     lines.join("\n")
 }

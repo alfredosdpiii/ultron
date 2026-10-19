@@ -5,7 +5,7 @@
 //! see a variable the launcher had; and, with the network configured off, connect to a listener the doctor opened on
 //! the host's loopback (no outside traffic). What counts is what the host sees afterwards, not what the probe reports.
 
-use crate::launcher::{Launcher, Mechanism, Policy, RealLayout, launch_env};
+use crate::launcher::{Launcher, Mechanism, Policy};
 use crate::settings::Mode;
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
@@ -75,12 +75,7 @@ pub fn self_check(policy: &Policy, mechanism: Option<Mechanism>, scratch_parent:
     argv.push(port.to_string());
     argv.extend(policy.hidden.iter().map(|p| p.to_string_lossy().into_owned()));
     let mut command = match mechanism {
-        Some(mechanism) => {
-            let wrapped = policy.wrap(mechanism, &RealLayout, &argv, &project);
-            let mut command = Command::new(&wrapped[0]);
-            command.args(&wrapped[1..]).env_clear().envs(launch_env());
-            command
-        }
+        Some(mechanism) => policy.command(mechanism, &argv, &project),
         None => {
             let mut command = Command::new(&argv[0]);
             command.args(&argv[1..]);

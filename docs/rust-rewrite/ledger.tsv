@@ -3026,6 +3026,42 @@ W16Z-10	interactive	expanded rlm cell draws written-file diffs (word level); col
 W16Z-11	host	approval.* settings are ignored; bash, jobs and writes all run	host_sandboxed_approval_settings_are_ignored_and_every_operation_runs
 W16Z-12	interactive	status lines pass through the friendlyStatus filter	interactive_status_lines_pass_through_the_status_filter
 W16Z-13	session-core	Copilot availableModelIds limit the available models (filterModels)	session_core_copilot_available_model_ids_limit_the_available_models
+W17E-01	delegation	a violating child reattached after a restart is still contract_failed against the contract the session kept	session_core_w17e_a_violating_child_reattached_after_a_restart_is_still_contract_failed
+W17E-02	delegation	a retry hop still re-runs a reattached child; its passing result is verified	session_core_w17e_a_retry_hop_still_reruns_a_reattached_child_and_its_passing_result_is_verified
+W17E-03	delegation	a child without a kept contract is reattached and ends unchecked	session_core_w17e_a_child_without_a_kept_contract_is_reattached_and_ends_unchecked
+W17E-04	delegation	a kept contract reads back as the spawn wrote it; malformed ones are refused	delegation_w17e_a_kept_contract_reads_back_as_the_spawn_wrote_it
+W17E-05	delegation	a reopened host holds a reattached child to its kept contract	delegation_w17e_a_reattached_child_is_held_to_its_kept_contract
+W17E-06	delegation	no kept contract: the reattached child ends unchecked	delegation_w17e_a_reattached_child_without_a_kept_contract_ends_unchecked
+W17E-07	delegation	an unreadable kept contract fails the reattached child	delegation_w17e_an_unreadable_kept_contract_fails_the_reattached_child
+W17E-08	kernel-apis	a code-skill test kernel sees the session PATH, not the process PATH	session_core_w17e_a_code_skill_test_kernel_sees_the_session_path_not_the_process_path
+W17E-09	review	a review kernel sees the session PATH, not the process PATH	review_w17e_a_review_kernel_sees_the_session_path_not_the_process_path
+W17E-10	sandbox	launch env is the session PATH/DOCKER_HOST, else SANDBOX_PATH	sandbox_w17e_launch_env_is_the_session_path_and_docker_host_else_sandbox_path
+W17E-11	sandbox	launcher binary found on the session PATH, started with only its env	sandbox_w17e_the_launcher_binary_is_found_on_the_session_path_and_started_with_only_its_env
+W17E-12	sandbox	a launcher only on the process PATH is not resolved	sandbox_w17e_a_launcher_only_on_the_process_path_is_not_resolved
+W17E-13	sandbox	setpriv used only when the session PATH has it	sandbox_w17e_setpriv_is_used_only_when_the_session_path_has_it
+W17E-14	host	a sandboxed host's launcher uses the base-env PATH	host_w17e_a_sandboxed_hosts_launcher_uses_the_base_env_path
+W17P-01	resources	nudge rule and last_turn match the user's hook, replayed against the recorded fixture	resources_persona_nudge_rule_matches_the_recorded_hook
+W17P-02	resources	nudge decision requires every condition	resources_persona_decide_requires_every_condition
+W17P-03	resources	nudge chain caps at 5, user input resets it, an abort ends it, a queued message wins	resources_persona_chain_counts_to_the_cap_resets_on_input_and_an_abort_ends_it
+W17P-04	resources	nudge is a displayed custom message with the exact text	resources_persona_nudge_message_is_a_displayed_custom_message
+W17P-05	resources	personality.md read trimmed; missing file is a warning	resources_persona_personality_is_read_trimmed_and_a_missing_file_is_a_warning
+W17P-06	resources	persona section sits after the context files, before the skills	resources_system_prompt_persona_section_sits_after_the_context_files_and_before_the_skills
+W17P-07	resources	bundled skills note proactive wording only when asked	resources_bundled_skills_note_is_proactive_only_when_asked
+W17P-08	session-core	product prompt has the persona section and follows the settings	session_core_persona_puts_personality_md_in_the_prompt_and_follows_the_settings
+W17P-09	session-core	missing personality.md gives one warning and no section	session_core_persona_without_personality_md_warns_once_and_has_no_section
+W17P-10	session-core	engineering mode with the Rust guide uses the proactive wording	session_core_engineering_mode_with_the_rust_guide_uses_bundled_skills_proactively
+W17P-11	session-core	an announced step after an rlm call is nudged, journaled, shown as custom	session_core_persona_nudge_continues_a_turn_that_announced_its_next_step
+W17P-12	session-core	no nudge for a question, a run without rlm, or persona off	session_core_persona_nudge_skips_questions_runs_without_rlm_and_persona_off
+W17P-13	session-core	five nudges then stop; the user's next prompt starts over	session_core_persona_nudge_stops_at_five_and_user_input_starts_over
+W17P-14	session-core	a queued user message wins over the nudge	session_core_persona_nudge_yields_to_a_queued_user_message
+W17P-15	interactive	/persona reports, writes ultron or null, usage error	interactive_commands_persona_reports_and_writes_the_setting
+W17P-16	interactive	nudge renders as one auto-continue (n/5) line, live and on reopen	interactive_commands_persona_nudge_is_one_auto_continue_line
+W17P-17	daemon	worker setSetting persona saved live, off removes it	daemon_worker_settings_persona_is_saved_live_and_removed_by_off
+W17P-18	claude-root	ultron claude root launch prompt has persona plus pstack line; child has none	claude_root_persona_is_in_the_root_launch_prompt_with_the_pstack_dir
+W17P-19	claude-root	persona off leaves the launch prompt unchanged	claude_root_persona_off_leaves_the_launch_prompt_unchanged
+W17P-20	claude-root	engineering mode launch prompt uses the proactive wording	claude_root_engineering_mode_asks_claude_to_use_bundled_skills_on_its_own
+W17P-21	claude-root	Stop answer blocks announced steps, capped at 5	claude_root_persona_stop_answer_blocks_announced_steps_up_to_the_cap
+W17P-22	claude-root	hook command to server: Stop blocks until the cap, user-prompt resets, off answers {}	claude_root_mcp_persona_stop_hook_nudges_announced_steps_until_the_cap
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

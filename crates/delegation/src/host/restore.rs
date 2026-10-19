@@ -12,14 +12,28 @@ use super::*;
 /// Waits for a reattached child's reply. It is given the task's signal, aborted when the task is cancelled.
 pub type ChildWaiter = Box<dyn FnOnce(Signal) -> Result<String, String> + Send>;
 
+/// A child a durable runtime still runs, as its session kept it.
+pub struct Reattached {
+    pub waiter: ChildWaiter,
+    /// Its contract as [`Delegation::contract_of`] gave it when it was spawned (`None`: it had none, or the session
+    /// predates kept contracts): the host checks the child's end against it, as before the restart.
+    pub contract: Option<Value>,
+    /// The run to repeat for a `{"retry": N}` hop (its signal is replaced by the task's); `None`: a failed
+    /// contract is reported without a retry.
+    pub run: Option<ChildRun>,
+}
+
 impl Delegation {
     /// Load the journal's tasks after a restart. `reattach` is asked about every subagent task the journal held
     /// unfinished before it was reopened (`unfinished`, read from the stored document first) and returns a waiter
-    /// for those a durable runtime still runs. Returns the reattached task ids.
+    /// (with the child's kept contract) for those a durable runtime still runs. Returns the reattached task ids.
+    ///
+    /// A kept contract that no longer parses fails the child when it ends ("Contract failed: ..."): the host never
+    /// lets a contract it cannot read pass as no contract.
     pub fn restore(
         &self,
         unfinished: &[String],
-        mut reattach: impl FnMut(&str) -> Option<ChildWaiter>,
+        mut reattach: impl FnMut(&str) -> Option<Reattached>,
     ) -> Result<Vec<String>, String> {
         let records = lock(&self.inner.state).journal.list()?;
         let mut waiters = Vec::new();
@@ -31,11 +45,16 @@ impl Delegation {
                     continue;
                 }
                 let child = record["definition"] == CHILD;
-                let waiter = if child && unfinished.contains(&id) {
+                let reattached = if child && unfinished.contains(&id) {
                     reattach(&id)
                 } else {
                     None
                 };
+                let (waiter, contract, run) = match reattached {
+                    Some(r) => (Some(r.waiter), r.contract, r.run),
+                    None => (None, None, None),
+                };
+                let contract = contract.map(|kept| SpawnContract::from_described(&kept).map(Arc::new));
                 let signal = Signal::new();
                 let outcome = match &waiter {
                     Some(_) => {
@@ -85,33 +104,51 @@ impl Delegation {
                     outside_before: None,
                     before: None,
                     merge_status: None,
-                    // A contract is not kept in the journal: a child reattached after a restart ends unchecked.
-                    contract: None,
+                    contract: contract.clone().and_then(Result::ok),
                 });
                 if let Some(waiter) = waiter {
-                    waiters.push((id, signal, waiter));
+                    let unreadable = contract.and_then(Result::err);
+                    waiters.push((id, signal, waiter, run, unreadable));
                 }
             }
         }
-        let resumed = waiters.iter().map(|(id, _, _)| id.clone()).collect();
-        for (id, signal, waiter) in waiters {
+        let resumed = waiters.iter().map(|(id, ..)| id.clone()).collect();
+        for (id, signal, waiter, run, unreadable) in waiters {
             let host = self.clone();
-            std::thread::spawn(move || host.run_restored(&id, &signal, waiter));
+            std::thread::spawn(move || host.run_restored(&id, &signal, waiter, run, unreadable));
         }
         Ok(resumed)
     }
 
-    fn run_restored(&self, id: &str, signal: &Signal, waiter: ChildWaiter) {
+    fn run_restored(
+        &self,
+        id: &str,
+        signal: &Signal,
+        waiter: ChildWaiter,
+        run: Option<ChildRun>,
+        unreadable: Option<String>,
+    ) {
         let reply = waiter(signal.clone());
         if signal.is_aborted() {
             return;
         }
-        let result = match reply {
-            Ok(text) => self.child_result(id, &text),
-            Err(error) => Err(error),
-        };
-        let result =
-            result.unwrap_or_else(|error| json!({ "status": "failed", "error": error, "verification": "unverified" }));
+        let mut result = self.reply_result(id, reply);
+        let contract = lock(&self.inner.state).task(id).and_then(|t| t.contract.clone());
+        if let Some(contract) = contract {
+            let run = run.map(|run| ChildRun {
+                signal: signal.clone(),
+                ..run
+            });
+            result = match self.enforce_contract(id, &contract, run, result, signal) {
+                Some(result) => result,
+                None => return,
+            };
+        } else if let Some(error) = unreadable {
+            result["status"] = json!("failed");
+            result["error"] = json!(format!(
+                "Contract failed: the session's kept contract is unreadable: {error}"
+            ));
+        }
         // As any child's end (its worktree work committed first), kept by the host: the journal already holds the
         // task as it recovered it.
         let _ = self.end(id, result);

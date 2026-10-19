@@ -666,7 +666,12 @@ impl Runtime {
         let no_skills = self.services.session.no_skills;
         let extra = self.services.resources.clone();
         let loader: kernel_apis::SkillLoader = Arc::new(move || Ok(skill_sources(&skills_config, &extra, no_skills)));
-        let code = CodeSkills::new(CodeSkillsOptions::new(&config.skills_dir, &config.runtime_path));
+        // Skill test kernels start from the session's environment, as the lanes' kernels do.
+        let code = CodeSkills::new(CodeSkillsOptions::for_session(
+            &config.skills_dir,
+            &config.runtime_path,
+            config.child_env(),
+        ));
         let clock = kernel_apis::util::system_clock();
         let artifacts = kernel_apis::artifacts::Artifacts::new(
             Box::new(kernel_apis::artifacts::FileKeyedDocuments::new(

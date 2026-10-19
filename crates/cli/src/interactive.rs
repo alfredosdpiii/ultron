@@ -94,6 +94,7 @@ enum Command {
     AgentTranscript(String),
     ReadSettings,
     ReadMode,
+    ReadPersona,
     /// `/autoreview`.
     Autoreview(interactive::lane::AutoreviewRequest),
     RlmStatus,
@@ -317,6 +318,9 @@ impl LaneClient for DaemonLane {
     }
     fn read_mode(&self) {
         self.send(Command::ReadMode);
+    }
+    fn read_persona(&self) {
+        self.send(Command::ReadPersona);
     }
     fn autoreview(&self, request: interactive::lane::AutoreviewRequest) {
         self.send(Command::Autoreview(request));
@@ -1431,6 +1435,15 @@ fn link_thread(
                     engineering: mode.engineering,
                     always_skills: mode.always_skills,
                 });
+            }
+            Command::ReadPersona => {
+                let (cwd, agent_dir) = &settings_path;
+                let settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
+                let persona = settings
+                    .settings()
+                    .get(resources::persona::SETTING)
+                    .and_then(Value::as_str);
+                send(LaneEvent::Persona(persona.map(str::to_string)));
             }
             Command::Autoreview(request) => send(crate::autoreview_toggle::autoreview(
                 request,

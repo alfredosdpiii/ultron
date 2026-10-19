@@ -26,6 +26,11 @@ pub struct PromptResources {
     pub skills: Vec<Skill>,
     /// Engineering mode when loaded: the always-on skills' text goes in the prompt.
     pub engineering: bool,
+    /// Engineering mode outside the TypeScript guide (`ULTRON_GUIDE=ts`): the bundled skills are used without being
+    /// asked (resources::skills::bundled_skills_note).
+    pub proactive_skills: bool,
+    /// `"persona": "ultron"`: the text of `<agent dir>/personality.md` (resources::persona), for the root's prompt.
+    pub persona: Option<String>,
 }
 
 /// `--no-context-files` / `--no-skills`.
@@ -55,14 +60,24 @@ pub fn project_trusted(cwd: &Path, agent_dir: &Path, home: &Path) -> bool {
 /// project contributes no settings and no project skills). `bundled` is the bundled skills directory, unless
 /// `ULTRON_BUNDLED_SKILLS` turned it off.
 pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: ResourceFlags) -> PromptResources {
-    if flags.no_context_files && flags.no_skills {
-        return PromptResources::default();
-    }
-    let cwd = env.cwd.display().to_string();
     let agent_dir_path = env.agent_dir();
-    let agent_dir = agent_dir_path.display().to_string();
     let trusted = project_trusted(&env.cwd, &agent_dir_path, &env.home);
     let settings = config::settings::SettingsManager::create(&env.cwd, &agent_dir_path, trusted);
+    // The persona does not depend on the context-file and skill flags; an unreadable file gives no section.
+    let persona = if resources::persona::enabled(settings.settings()) {
+        resources::persona::read_personality(&agent_dir_path).ok().flatten()
+    } else {
+        None
+    };
+    if flags.no_context_files && flags.no_skills {
+        return PromptResources {
+            persona,
+            ..PromptResources::default()
+        };
+    }
+    let engineering = settings.settings().get("engineering") == Some(&serde_json::Value::Bool(true));
+    let cwd = env.cwd.display().to_string();
+    let agent_dir = agent_dir_path.display().to_string();
     let skills = if flags.no_skills {
         Vec::new()
     } else {
@@ -78,13 +93,21 @@ pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: Resour
     PromptResources {
         context_files,
         skills,
-        engineering: settings.settings().get("engineering") == Some(&serde_json::Value::Bool(true)),
+        engineering,
+        proactive_skills: engineering && (env.var)("ULTRON_GUIDE").as_deref() != Some("ts"),
+        persona,
     }
 }
 
-/// The `<project_context>` and `<skills>` sections as native Ultron renders them for the REPL-only tool set.
-pub fn render_prompt_resources(resources: &PromptResources, bundled_skills: Option<&Path>) -> Vec<String> {
-    if resources.context_files.is_empty() && resources.skills.is_empty() {
+/// The `<project_context>` and `<skills>` sections as native Ultron renders them for the REPL-only tool set; for the
+/// root (`root`), the `<persona>` section between them when the persona is on.
+pub fn render_prompt_resources(resources: &PromptResources, bundled_skills: Option<&Path>, root: bool) -> Vec<String> {
+    let persona = resources
+        .persona
+        .as_deref()
+        .filter(|_| root)
+        .map(|text| resources::persona::claude_persona_text(text, bundled_skills));
+    if resources.context_files.is_empty() && resources.skills.is_empty() && persona.is_none() {
         return Vec::new();
     }
     let options = BuildOptions {
@@ -94,12 +117,14 @@ pub fn render_prompt_resources(resources: &PromptResources, bundled_skills: Opti
         skills: resources.skills.clone(),
         engineering: resources.engineering,
         bundled_skills_dir: bundled_skills.map(|p| p.display().to_string()),
+        persona,
+        proactive_skills: resources.proactive_skills,
         ..BuildOptions::new("")
     };
     let Ok(sections) = build_system_prompt_sections(&options) else {
         return Vec::new();
     };
-    ["project_context", "skills"]
+    ["project_context", "persona", "skills"]
         .into_iter()
         .filter_map(|name| {
             sections
@@ -225,7 +250,11 @@ pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: b
         vec![child_identity(), text, claude_runtime_guide(hints)]
     };
     if let Some(resources) = options.resources {
-        parts.extend(render_prompt_resources(resources, options.bundled_skills));
+        parts.extend(render_prompt_resources(
+            resources,
+            options.bundled_skills,
+            audience == Audience::Claude,
+        ));
     }
     parts.extend(environment(options));
     parts.join("\n\n")

@@ -744,7 +744,11 @@ fn slash_commands(models: &[ModelInfo], qol: &QolSettings) -> Vec<SlashCommand> 
         }));
     }
     // `/engineering` and `/autoreview`: their fixed arguments, by prefix (client-tui-pi-commands.ts).
-    for (name, values) in [("engineering", ["true", "false"]), ("autoreview", ["on", "off"])] {
+    for (name, values) in [
+        ("engineering", ["true", "false"]),
+        ("autoreview", ["on", "off"]),
+        ("persona", ["ultron", "off"]),
+    ] {
         if let Some(command) = commands.iter_mut().find(|c| c.name == name) {
             command.argument_completions = Some(Box::new(move |prefix: &str| {
                 Some(
@@ -1983,6 +1987,7 @@ impl App {
                 engineering,
                 always_skills,
             } => self.mode_read(engineering, always_skills),
+            LaneEvent::Persona(persona) => self.show_status(&crate::modes::persona_status(persona.as_deref())),
             LaneEvent::AutoreviewAccounts(accounts) => self.autoreview_accounts(accounts),
             LaneEvent::Settings {
                 settings,
@@ -2850,6 +2855,17 @@ impl App {
                 Some(None) => self.request_mode(crate::modes::ModeRequest::Status),
                 Some(Some(enabled)) => self.request_mode(crate::modes::ModeRequest::Set(enabled)),
                 None => self.show_status("Usage: /engineering true|false"),
+            },
+            // The persona (resources::persona in the engine): written like `/engineering`, applied from the next
+            // message.
+            "persona" => match crate::modes::persona_arg(args) {
+                Some(None) => self.client.read_persona(),
+                Some(Some(on)) => {
+                    self.client
+                        .save_setting("persona", if on { Value::from("ultron") } else { Value::Null });
+                    self.show_status(&crate::modes::persona_changed(on));
+                }
+                None => self.show_status("Usage: /persona ultron|off"),
             },
             "autoreview" => match args.trim().to_lowercase().as_str() {
                 "" => self.client.autoreview(AutoreviewRequest::Status),

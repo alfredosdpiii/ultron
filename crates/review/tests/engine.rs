@@ -219,6 +219,7 @@ fn review_engine_reviews_a_local_diff_through_a_kernel_with_frames_routed_by_mod
         frame_env: Default::default(),
         settings: Default::default(),
         kernel_env: Vec::new(),
+        base_env: None,
         log: Some(Arc::new(move |line: &str| {
             logged.lock().unwrap().push(line.to_string())
         })),

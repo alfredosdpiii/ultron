@@ -16,7 +16,7 @@
 
 use crate::KernelError;
 use crate::config::kernel_environment;
-use sandbox::launcher::{Launcher, Mechanism, Policy, RealLayout, launch_env};
+use sandbox::launcher::{Launcher, Mechanism, Policy};
 use sandbox::settings::Mode;
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -159,14 +159,8 @@ pub(crate) fn command(launch: Launch<'_>) -> Command {
         .iter()
         .map(|arg| arg.to_string_lossy().into_owned())
         .collect();
-    let wrapped = policy.wrap(launch.mechanism, &RealLayout, &argv, launch.cwd);
-    let mut command = Command::new(&wrapped[0]);
-    command
-        .args(&wrapped[1..])
-        .env_clear()
-        .envs(launch_env())
-        .current_dir(launch.cwd);
-    command
+    // The launcher's own environment and PATH are the session's (`Policy::launch`), never this process's.
+    policy.command(launch.mechanism, &argv, launch.cwd)
 }
 
 type SpawnJob = (Command, mpsc::Sender<std::io::Result<Child>>);

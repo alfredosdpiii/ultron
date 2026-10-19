@@ -10,7 +10,7 @@
 use crate::compose::{AgentStores, Stack, SubagentHost, child_setup};
 use crate::durable_store::{SharedSession, lock};
 use delegation::agents::{LaneReply, LaneRun, LaneRunner};
-use delegation::host::{ChildRun, ChildRunner, ChildWaiter};
+use delegation::host::{ChildRun, ChildRunner, ChildWaiter, Reattached};
 use delegation::task_store::TaskStore;
 use durable::{ConversationId, Cursor, ROOT_CONVERSATION_ID, TaskId, TaskQuery};
 use harness::chat::children::{CHILD_KIND, ChildInput, child_report, spawn_child};
@@ -34,6 +34,11 @@ pub const CONVERSATION_LANE_PREFIX: &str = "ultron.conversation.";
 /// The `rlm.spawn(name=...)` of each subagent, a session value per task id (Rust-only: the task journal and the
 /// child task keep no name), so a revived subagent keeps its name.
 pub const NAMES_NAMESPACE: &str = "ultron.subagent-names";
+
+/// The contract (`role`, `contract`, `hop`) of each subagent spawned with one, a session value per task id as
+/// `delegation::host::Delegation::contract_of` describes it (Rust-only, like the names): a child reattached after a
+/// restart is still held to it. Sessions without these values reattach their children unchecked, as before.
+pub const CONTRACTS_NAMESPACE: &str = "ultron.subagent-contracts";
 
 /// The name subagent `task_id` was spawned with, if this session recorded it.
 pub fn subagent_name(session: &SharedSession, task_id: &str) -> Option<String> {
@@ -199,7 +204,12 @@ impl DurableChildren {
         if let Some(session) = self.session.get()
             && !self.handed_over.load(Ordering::SeqCst)
         {
-            lock(session).commit(&[Write::set(NAMES_NAMESPACE, &run.task_id, run.name.clone().into())])?;
+            let mut writes = vec![Write::set(NAMES_NAMESPACE, &run.task_id, run.name.clone().into())];
+            // Kept before the child conversation exists, so a worker that dies after starting it leaves both.
+            if let Some(contract) = run.host.contract_of(&run.task_id) {
+                writes.push(Write::set(CONTRACTS_NAMESPACE, &run.task_id, contract));
+            }
+            lock(session).commit(&writes)?;
         }
         let input = ChildInput {
             name: run.lane_name.clone(),
@@ -467,15 +477,23 @@ impl DurableChildren {
             if input.agent || input.keep {
                 return None;
             }
-            self.restore_lane(stack, id, &input);
+            let run = self.restore_lane(stack, id, &input);
             let chat = chat.clone();
             let (lanes, lane) = (stack.lanes.clone(), input.name.clone());
-            Some(Box::new(move |signal: Signal| {
-                let reply = wait_child(&chat, task, &signal);
-                // The lane closes when its run ends, as a fresh child's does.
-                let _ = lanes.close_lane(&lane);
-                reply
-            }) as ChildWaiter)
+            let contract = self
+                .session
+                .get()
+                .and_then(|session| lock(session).value(CONTRACTS_NAMESPACE, id).cloned());
+            Some(Reattached {
+                waiter: Box::new(move |signal: Signal| {
+                    let reply = wait_child(&chat, task, &signal);
+                    // The lane closes when its run ends, as a fresh child's does.
+                    let _ = lanes.close_lane(&lane);
+                    reply
+                }) as ChildWaiter,
+                contract,
+                run: Some(run),
+            })
         })?;
         for (name, (task, input, terminal)) in &children {
             let ours = !terminal
@@ -491,8 +509,9 @@ impl DurableChildren {
     }
 
     /// The lane setup a reattached child had in the worker that started it: its worktree (working directory and
-    /// environment), thinking level and system prompt naming that directory.
-    fn restore_lane(&self, stack: &Stack, id: &str, input: &ChildInput) {
+    /// environment), thinking level and system prompt naming that directory. Returns the run, which a contract's
+    /// retry hop repeats.
+    fn restore_lane(&self, stack: &Stack, id: &str, input: &ChildInput) -> ChildRun {
         let run = ChildRun {
             task_id: id.to_string(),
             name: self
@@ -515,6 +534,7 @@ impl DurableChildren {
         };
         let setup = child_setup(stack, &run);
         lock_map(&self.systems).insert(input.name.clone(), setup.system);
+        run
     }
 }
 

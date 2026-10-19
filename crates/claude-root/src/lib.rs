@@ -17,6 +17,7 @@ pub mod hooks;
 pub mod launcher;
 pub mod mcp_protocol;
 pub mod mcp_server;
+pub mod persona_hook;
 pub mod root_sink;
 pub mod self_cmd;
 pub mod settings;

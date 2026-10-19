@@ -247,6 +247,9 @@ pub struct PromptMode {
     pub no_skills: bool,
     /// `--no-context-files`: no AGENTS.md / CLAUDE.md.
     pub no_context_files: bool,
+    /// `"persona": "ultron"`: `<agent dir>/personality.md` is a section of the prompt (resources::persona), read
+    /// when the prompt renders (session start, a change of the mode), never per request.
+    pub persona: bool,
 }
 
 impl PromptMode {
@@ -260,6 +263,7 @@ impl PromptMode {
                 .and_then(Value::as_array)
                 .map(|names| names.iter().filter_map(Value::as_str).map(str::to_string).collect())
                 .unwrap_or_default(),
+            persona: resources::persona::enabled(settings),
             ..PromptMode::default()
         }
     }
@@ -300,6 +304,17 @@ pub fn system_prompt_with_resources(
             .map(|d| d.message)
             .collect();
     }
+    let persona = if mode.persona {
+        match resources::persona::read_personality(&env.agent_dir()) {
+            Ok(text) => text,
+            Err(warning) => {
+                warnings.push(warning);
+                None
+            }
+        }
+    } else {
+        None
+    };
     let runtime = resources::runtime_guide::rlm_runtime_prompt(&["rlm"], guide).unwrap_or_default();
     // loki.ts `readContext`: a policy the engine cannot read gives no note (the guard still runs and reports it).
     let loki_note = loki_root
@@ -325,6 +340,10 @@ pub fn system_prompt_with_resources(
             .chain(loki_note.map(|note| ("loki".to_string(), note)))
             .collect(),
         engineering: mode.engineering,
+        persona,
+        // Engineering mode with the Rust guide: the bundled skills are used without being asked (the TypeScript
+        // guide keeps TypeScript's wording).
+        proactive_skills: mode.engineering && guide.durable_apis,
         ..BuildOptions::new(cwd)
     };
     Ok((build_system_prompt(&options, None)?, warnings))
