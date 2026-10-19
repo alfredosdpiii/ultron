@@ -1,0 +1,5 @@
+pele 1.7.0 (MIT, Copyright (c) 2026 kepano), https://github.com/obsidianmd/pele
+file: dist/pele.js of the npm package pele@1.7.0, self-contained ESM, no imports
+sha256 9d090e85100bda4fc8ec282257e07d350954435566354f1bd1a37d2469f10b98  pele.js
+Embedded by crates/kernel-apis/src/diagram.rs (include_bytes!) and written to <agent dir>/cache/pele-<sha256 prefix>/
+on first use; the release's THIRD_PARTY_LICENSES must carry ./LICENSE.

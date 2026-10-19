@@ -81,11 +81,14 @@ pub fn assistant_view(message: &Value) -> AssistantView {
 }
 
 fn tool_result_view(message: &Value) -> ToolResultView {
+    // `details.displayImages` (a shown `diagram.mermaid`) are drawn after the content: they never reached the model.
+    let display = message["details"]["displayImages"].as_array().into_iter().flatten();
     let content = message["content"]
         .as_array()
         .map(|blocks| {
             blocks
                 .iter()
+                .chain(display)
                 .filter_map(|b| match b["type"].as_str() {
                     Some("text") => Some(ToolContent::Text(b["text"].as_str().unwrap_or("").to_string())),
                     Some("image") => Some(ToolContent::Image {

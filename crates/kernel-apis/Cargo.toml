@@ -1,7 +1,7 @@
 [package]
 name = "kernel-apis"
 version = "0.1.0"
-description = "Host operations behind the thin Python kernel APIs: code skills and the skill catalog, memory, hints, images"
+description = "Host operations behind the thin Python kernel APIs: code skills and the skill catalog, memory, hints, images, Mermaid diagrams"
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
@@ -14,12 +14,14 @@ getrandom = "=0.4.3"
 host = { path = "../host" }
 kernel = { path = "../kernel" }
 resources = { path = "../resources" }
+resvg = { version = "=0.48.1", default-features = false, features = ["text", "system-fonts"] }
 serde = "=1.0.229"
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 session-file = { path = "../session-file" }
 sha2 = "=0.10.9"
 tempfile = "=3.27.0"
 tokio = { version = "=1.53.2", features = ["rt", "time"] }
+tui = { path = "../tui" }
 yaml-rust2 = "=0.13.0"
 
 [lints]

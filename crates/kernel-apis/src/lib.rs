@@ -6,6 +6,7 @@
 //! - `memory.*`: prepare / propose / correct / get / forget / why / list over a Hindsight-shaped backend, ported from
 //!   `ultron/memory.ts` and the dispatch of `ultron/worker-services.ts`;
 //! - `images.*`: image generation through the OpenRouter images API, saved to files ([`images`]);
+//! - `diagram.*`: Mermaid diagrams through node and the vendored Pele, themed and rasterized ([`diagram`]);
 //! - `hints.*`: per-lane hint mutes (`ultron/rlm/hints.ts`), and [`cell_hints`], the situational hints a cell's
 //!   result ends with;
 //! - `tools.*`: extension tool calls from the REPL, detached after `yield_after` (`ultron/rlm/extension-tools.ts`);
@@ -20,6 +21,8 @@ pub mod artifacts;
 pub mod cell_hints;
 pub mod code_skills;
 pub mod context_control;
+pub mod diagram;
+pub mod diagram_svg;
 pub mod durable_work;
 pub mod family;
 pub mod goal;
@@ -50,6 +53,7 @@ pub use artifacts::{
 };
 pub use code_skills::{CodeSkillKind, CodeSkills, CodeSkillsOptions};
 pub use context_control::{ContextBranches, ContextControl};
+pub use diagram::{DiagramConfig, DiagramModule};
 pub use durable_work::{DurableWork, DurableWorkOptions, Recovered};
 pub use family::{FamilyModule, FamilyOptions};
 pub use goal::{GoalDriver, GoalJobs, JobState, TaskGoalJobs};

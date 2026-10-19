@@ -405,3 +405,39 @@ server owns timing, and the user sees every schedule (`/schedules`, `ultron sche
   stays a prompt.
 - Tests use a clock file (`__ULTRON_SCHEDULE_CLOCK_FILE`, epoch ms; the timer looks at it every 20 ms), never real
   waits.
+
+## Mermaid diagrams: `diagram.mermaid` (wave 42, W19M-)
+
+The model renders Mermaid through the REPL; the user sees the diagram inline, the model only its path.
+
+- **API** (`packages/coding-agent/src/ultron/rlm/diagram_api.py`, installed by swarm_api.py like `schedule`; the
+  TypeScript host answers the request with an error): `d = await diagram.mermaid(text, *, theme="auto", show=True,
+  to_model=False, path=None)` returns `{svg_path, png_path, width, height, type}` (PNG pixels, Pele's diagram type).
+  The Rust guide gets one pointer line (`help(diagram)`); `ULTRON_GUIDE=ts` has none.
+- **Rendering** (`crates/kernel-apis/src/diagram.rs`): Pele 1.7.0 (MIT, `crates/kernel-apis/assets/pele/`, with
+  `LICENSE` and a `VERSION` note carrying the sha256) is embedded with `include_bytes!` and unpacked once to
+  `<agent dir>/cache/pele-<sha256 prefix of pele+runner>/` (staging directory renamed into place; a damaged one is
+  replaced). The host runs `node runner.mjs` with node found on the **session environment's** `PATH` only (never the
+  process's), an environment of just that `PATH` and the session `HOME`, the text on stdin, 20 s timeout (the
+  child is killed and reaped), 16 MiB output cap, cancelled with the cell. No node: `diagram.mermaid needs Node.js
+  on PATH; the source stays in the transcript`. A Mermaid error is Pele's message (plus `(line L, column C)` when
+  the message does not name the line), raised as RuntimeError in the cell.
+- **Theme** (`crates/kernel-apis/src/diagram_svg.rs`): every `var(--name, fallback)` inside tags is replaced
+  (`--pele-*` by the theme's colour, `--_*` by the SVG's own definition, else the fallback, else the theme's
+  foreground; nested and cyclic references handled), `color-mix(in srgb, ...)` of the results is computed, the
+  custom-property declarations are dropped; labels between tags are never touched. Colours come from the TUI theme
+  (`tui::theme`): bg = export.pageBg, fg/line = text, muted, surface = toolPendingBg, surface-alt = selectedBg,
+  border, accent, critical/error = error, series 1-8 = accent, success, warning, error, border, thinkingHigh,
+  mdHeading, syntaxType. `theme="auto"` reads the `theme` setting at each call (a `light/dark` pair or unset follows
+  the session's `COLORFGBG`, else dark; a custom theme from `<agent dir>/themes`); `"dark"`/`"light"` override.
+- **Files**: the flattened SVG and a PNG drawn by resvg 0.48.1 at 2x on the page colour (longest side capped at
+  8192 px; system fonts with sans/serif/mono pointed at installed families) go to
+  `<agent dir>/rlm-output/<session>/diagrams/<slug>-<n>.svg|png` (slug from the diagram's title, else its type;
+  first free n), or `path=` (a stem; `.svg`/`.png` dropped; an existing directory takes the default names).
+- **Showing**: `show=True, to_model=False` (default) keeps the PNG for the user only: the session's cell images
+  (`session_core::view_images::ViewImages::display`) put it in the `rlm` result's `details.displayImages` (up to
+  4 MiB; providers never see details) and the model's text gets one line `diagram: <png path> (WxH)`; the TUI
+  (`interactive::chat`) draws details images after the result's content, live and on resume. `to_model=True`
+  attaches the PNG like `view_image` (model-normalized image block). `show=False` only saves.
+- Tests: a fake `node` on the injected session PATH; the real node with the vendored Pele runs only with
+  `ULTRON_MERMAID_TEST_NODE=1`.

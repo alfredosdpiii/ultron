@@ -1,7 +1,7 @@
 //! The composition root of a session's host stack. A cell's host request passes, outermost first:
 //!
 //! 1. [`kernel_apis::KernelApis`]: the kernel-API modules (`skills.*` with code skills, `memory.*`,
-//!    `hints.*`, `images.*`, and the local services of [`services`]: `refinements.*`, `experiments.*`, `gates.*`),
+//!    `hints.*`, `images.*`, `diagram.*`, and the local services of [`services`]: `refinements.*`, `experiments.*`, `gates.*`),
 //!    matched by prefix;
 //! 2. [`inference::Inference`]: `rlm.infer`, `rlm.load`, `rlm.frames`;
 //! 3. [`Router`]: subagents (`rlm.spawn`, `rlm.collect`, ... served by [`delegation::host::Delegation`] for the
@@ -707,6 +707,12 @@ impl Runtime {
         if let Some(on_mcp) = &self.services.on_mcp {
             on_mcp(&gateway);
         }
+        let images = Arc::new(crate::view_images::ViewImages::new(
+            model.clone(),
+            config.cwd.clone(),
+            config.agent_dir.clone(),
+            config.project_trusted,
+        ));
         let apis = ApiModules {
             local: match branch {
                 Some(branch) => Arc::new(services::BranchedLocalServices {
@@ -721,6 +727,8 @@ impl Runtime {
             memory: Arc::new(MemoryApi { service: memory }),
             hints: Arc::new(HintsModule::new(modules("hints"))),
             images: Arc::new(crate::session_images::module(&config, session_id)),
+            // `diagram.*`: Mermaid diagrams through node and Pele, shown through the lanes' cell images.
+            diagram: Arc::new(crate::session_diagrams::module(&config, session_id, images.clone())),
             // `schedule.*`: the session's own prompts for later, kept as session values.
             schedule: Arc::new(kernel_apis::prompt_schedule::ScheduleModule::new(
                 match &values {
@@ -779,12 +787,6 @@ impl Runtime {
         };
         let mut built: Result<(), String> = Ok(());
         let (schedules_store, goal_store) = (modules("schedules"), modules("goal"));
-        let images = Arc::new(crate::view_images::ViewImages::new(
-            model.clone(),
-            config.cwd.clone(),
-            config.agent_dir.clone(),
-            config.project_trusted,
-        ));
         let stack = Arc::new_cyclic(|me: &Weak<Stack>| {
             let runner_stack = me.clone();
             let (store, inner, agent_stores) = match subagents.take() {
@@ -1113,6 +1115,7 @@ struct ApiModules {
     memory: Arc<MemoryApi>,
     hints: Arc<HintsModule>,
     images: Arc<kernel_apis::ImagesModule>,
+    diagram: Arc<kernel_apis::DiagramModule>,
     schedule: Arc<kernel_apis::prompt_schedule::ScheduleModule>,
     tools: Arc<kernel_apis::ToolCalls>,
     instances: Arc<kernel_apis::InstancesModule>,
@@ -1321,6 +1324,7 @@ impl Stack {
             .with(self.apis.memory.clone())
             .with(self.apis.hints.clone())
             .with(self.apis.images.clone())
+            .with(self.apis.diagram.clone())
             .with(self.apis.schedule.clone())
             .with(self.apis.tools.clone())
             .with(self.apis.local.clone())

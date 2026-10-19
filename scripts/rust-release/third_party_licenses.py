@@ -59,6 +59,17 @@ def main() -> int:
                     out.append(f"\n[{name}]\n\n{handle.read().rstrip()}\n")
         if not files:
             out.append("\n(no license file in the published crate; licensed under the expression above)\n")
+    # Non-crate code embedded in the binary: (name, version, license, repository, license file under the workspace).
+    vendored = [("pele", "1.7.0", "MIT", "https://github.com/obsidianmd/pele", "crates/kernel-apis/assets/pele/LICENSE")]
+    out.append("\n\nThird-party code embedded in ultron\n" + "=" * 35 + "\n")
+    for name, version, license, repository, file in vendored:
+        path = os.path.join(metadata["workspace_root"], file)
+        if not os.path.isfile(path):
+            missing.append(f"{name} {version} (vendored, {file} missing)")
+            continue
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            text = handle.read().rstrip()
+        out.append("\n" + "-" * 79 + f"\n{name} {version} ({license})\n{repository}\n" + "-" * 79 + f"\n\n[LICENSE]\n\n{text}\n")
     sys.stdout.write("".join(out))
     if missing:
         print("crates without any license information: " + ", ".join(missing), file=sys.stderr)

@@ -433,6 +433,7 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
         "help(swarm)",
         "rlm.images.generate",
         "schedule.every",
+        "diagram.mermaid",
     ] {
         assert!(swarm.contains(needle), "{needle}");
     }
@@ -455,6 +456,11 @@ fn resources_runtime_guide_names_the_swarm_apis_only_when_the_host_serves_them()
     let schedule_end =
         images_end + swarm[images_end..].find("(`help(schedule)`).").unwrap() + "(`help(schedule)`).".len();
     assert!(swarm[images_end..schedule_end].starts_with("\n- `await schedule.every("));
-    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[schedule_end..]);
+    // The diagram line directly follows the schedule line and ends the guide.
+    let diagram_end =
+        schedule_end + swarm[schedule_end..].find("(`help(diagram)`).").unwrap() + "(`help(diagram)`).".len();
+    assert!(swarm[schedule_end..diagram_end].starts_with("\n- `await diagram.mermaid("));
+    assert_eq!(diagram_end, swarm.len());
+    let without = format!("{}{}{}", &swarm[..at - 1], &swarm[end..typed], &swarm[diagram_end..]);
     assert_eq!(without, plain);
 }

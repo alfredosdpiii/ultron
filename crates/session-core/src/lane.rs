@@ -1068,6 +1068,7 @@ impl Rlm {
                         self.count_cell(&code, true, 0);
                         let findings = self.end_cell();
                         self.images.take(&self.lane);
+                        self.images.take_display(&self.lane);
                         return Err(match findings {
                             Some(findings) => format!("{ABORT_REQUESTED}\n{findings}"),
                             None => ABORT_REQUESTED.into(),
@@ -1093,6 +1094,7 @@ impl Rlm {
             // What the cell attached ends with its tool call (a cell that keeps running loses later ones).
             let outcome = outcome.map_err(|e| self.with_reminder(with_findings(e.to_string())));
             let images = self.images.take(&self.lane);
+            let shown = self.images.take_display(&self.lane);
             let outcome = outcome?.map_err(|e| self.with_reminder(with_findings(e.to_string())))?;
             if signal.aborted() {
                 if has_result {
@@ -1132,10 +1134,13 @@ impl Rlm {
             })?;
             // Only a hint is appended: output that itself starts with a newline stays as it is.
             let hint = self.hint(&output.text, None);
-            let text = with_findings(match output.text.is_empty() {
-                true => "(no result)".to_string(),
-                false => output.text,
-            });
+            let text = with_findings(crate::view_images::with_display_lines(
+                match output.text.is_empty() {
+                    true => "(no result)".to_string(),
+                    false => output.text,
+                },
+                &shown,
+            ));
             let text = match hint {
                 Some(hint) => format!("{text}\n{hint}"),
                 None => text,
@@ -1153,12 +1158,15 @@ impl Rlm {
             };
             Ok(AgentToolResult {
                 content: crate::view_images::cell_content(images.as_ref(), text),
-                details: self.host.as_ref().map_or_else(
-                    || json!({}),
-                    |host| {
-                        let mask = |text: &str| self.masker.mask_counted(text, self.mask_secrets.as_deref()).0;
-                        crate::cell_file_changes::details(host, &self.lane, &mask)
-                    },
+                details: crate::view_images::with_display_details(
+                    self.host.as_ref().map_or_else(
+                        || json!({}),
+                        |host| {
+                            let mask = |text: &str| self.masker.mask_counted(text, self.mask_secrets.as_deref()).0;
+                            crate::cell_file_changes::details(host, &self.lane, &mask)
+                        },
+                    ),
+                    &shown,
                 ),
                 usage: None,
                 terminate: None,

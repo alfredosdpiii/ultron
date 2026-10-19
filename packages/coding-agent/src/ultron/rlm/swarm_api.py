@@ -186,3 +186,7 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
     from schedule_api import Schedule
 
     namespace["schedule"] = Schedule(bridge)
+    # `diagram` (Mermaid diagrams through node and Pele) is Rust-host only too.
+    from diagram_api import Diagram
+
+    namespace["diagram"] = Diagram(bridge)

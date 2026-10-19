@@ -39,6 +39,8 @@ pub fn image_model(model: &Model) -> ImageModel {
 /// Every lane's images of the cell it runs now, and the model each lane's results go to.
 pub struct ViewImages {
     cells: Mutex<HashMap<String, CellImages>>,
+    /// Images each lane's running cell shows the user but not the model (`diagram.mermaid` without `to_model`).
+    display: Mutex<HashMap<String, Vec<DisplayImage>>>,
     models: Mutex<HashMap<String, Model>>,
     /// The session's model: a lane without a model of its own sends its results there.
     default_model: Mutex<Model>,
@@ -53,6 +55,7 @@ impl ViewImages {
     pub fn new(model: Model, cwd: PathBuf, agent_dir: PathBuf, project_trusted: bool) -> ViewImages {
         ViewImages {
             cells: Mutex::default(),
+            display: Mutex::default(),
             models: Mutex::default(),
             default_model: Mutex::new(model),
             cwd,
@@ -92,6 +95,20 @@ impl ViewImages {
     pub fn begin(&self, lane: &str) {
         let options = self.options(lane);
         lock(&self.cells).insert(lane.to_string(), CellImages::new(options));
+        lock(&self.display).remove(lane);
+    }
+
+    /// A PNG `lane`'s running cell shows the user only; `line` is what the model reads instead.
+    pub fn display(&self, lane: &str, png: Vec<u8>, line: String) {
+        lock(&self.display)
+            .entry(lane.to_string())
+            .or_default()
+            .push(DisplayImage { png, line });
+    }
+
+    /// The display-only images of `lane`'s cell (its cell ended).
+    pub fn take_display(&self, lane: &str) -> Vec<DisplayImage> {
+        lock(&self.display).remove(lane).unwrap_or_default()
     }
 
     /// One `rlm.view_image` request of `lane`'s running cell.
@@ -108,6 +125,46 @@ impl ViewImages {
     pub fn take(&self, lane: &str) -> Option<CellImages> {
         lock(&self.cells).remove(lane)
     }
+}
+
+/// An image for the user only: the TUI draws it from the tool result's `details.displayImages`; the model's copy of
+/// the result has [`DisplayImage::line`] instead.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DisplayImage {
+    pub png: Vec<u8>,
+    pub line: String,
+}
+
+/// A display-only image larger than this is not kept in the transcript (its line still is).
+pub const MAX_DISPLAY_IMAGE_BYTES: usize = 4 * 1024 * 1024;
+
+/// The result text followed by one line per display-only image.
+pub fn with_display_lines(text: String, shown: &[DisplayImage]) -> String {
+    shown.iter().fold(text, |text, image| format!("{text}\n{}", image.line))
+}
+
+/// `details` with the display-only images as `displayImages`: image blocks the TUI draws after the result's own
+/// content (providers never see `details`).
+pub fn with_display_details(mut details: Value, shown: &[DisplayImage]) -> Value {
+    let blocks: Vec<Value> = shown
+        .iter()
+        .filter(|image| image.png.len() <= MAX_DISPLAY_IMAGE_BYTES)
+        .map(|image| {
+            serde_json::json!({
+                "type": "image",
+                "data": base64::engine::general_purpose::STANDARD.encode(&image.png),
+                "mimeType": "image/png",
+            })
+        })
+        .collect();
+    if blocks.is_empty() {
+        return details;
+    }
+    if !details.is_object() {
+        details = serde_json::json!({});
+    }
+    details["displayImages"] = Value::Array(blocks);
+    details
 }
 
 /// The tool result content of a cell (`CellImages.content`): the text (with the non-vision note when images are

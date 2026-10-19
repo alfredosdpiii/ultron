@@ -3115,6 +3115,26 @@ W18T-15	product	server+worker fire, restart replay, collapse, CLI list/cancel	cl
 W18T-16	product	CLI cancel without a server writes the journal	cli_daemon_schedules_cancel_without_a_server_writes_the_journal
 W18T-17	tui	/schedules lists; fired prompt is one line	interactive_commands_schedules_lists_and_a_fired_schedule_is_one_line
 W18T-18	guide	Rust guide has one schedule pointer line; TS guide none	resources_runtime_guide_points_at_schedule_only_with_the_rust_apis
+W19M-01	kernel-apis/diagram	Ultron theme tokens map to Pele colours	kernel_apis_diagram_palette_maps_the_ultron_theme_tokens
+W19M-02	kernel-apis/diagram	theme auto follows setting and terminal; explicit overrides	kernel_apis_diagram_theme_follows_the_setting_and_the_terminal
+W19M-03	kernel-apis/diagram	var() resolution with nesting, definitions, missing fallbacks	kernel_apis_diagram_var_resolution_handles_nesting_definitions_and_missing_fallbacks
+W19M-04	kernel-apis/diagram	color-mix in srgb with CSS weight rules	kernel_apis_diagram_color_mix_follows_css_weights
+W19M-05	kernel-apis/diagram	flattened SVG has no variables and keeps labels	kernel_apis_diagram_flatten_leaves_no_variables_and_keeps_labels
+W19M-06	kernel-apis/diagram	PNG at 2x in theme colours, size cap, parse error	kernel_apis_diagram_png_is_drawn_at_twice_the_size_in_theme_colours
+W19M-07	kernel-apis/diagram	font fallback prefers common families	kernel_apis_diagram_font_fallback_prefers_common_families
+W19M-08	kernel-apis/diagram	slugs, output paths, runner answers	kernel_apis_diagram_slugs_paths_and_runner_answers
+W19M-09	kernel-apis/diagram	Pele unpacked once, content-addressed	kernel_apis_diagram_pele_is_unpacked_once_under_a_content_addressed_name
+W19M-10	kernel-apis/diagram	node found only on the given PATH	kernel_apis_diagram_node_is_found_on_the_given_path_only
+W19M-11	kernel-apis/diagram	fake node from session PATH, themed SVG/PNG saved	kernel_apis_diagram_mermaid_runs_node_from_the_session_path_and_saves_themed_files
+W19M-12	kernel-apis/diagram	errors reach the cell	kernel_apis_diagram_mermaid_errors_reach_the_cell
+W19M-13	kernel-apis/diagram	node past timeout is killed and reaped	kernel_apis_diagram_mermaid_stops_a_node_past_its_timeout
+W19M-14	kernel-apis/diagram	real node + Pele end to end (opt-in)	kernel_apis_diagram_mermaid_renders_with_real_node_and_pele
+W19M-15	session-core/diagram	PNG shown to user, one line to the model; to_model=True attaches it	session_core_diagram_mermaid_shows_the_png_to_the_user_and_a_line_to_the_model
+W19M-16	session-core/diagram	no node on session PATH is a one-line error	session_core_diagram_mermaid_without_node_on_the_session_path_is_one_line
+W19M-17	session-core/diagram	display images within the 4 MiB cap	session_core_diagram_display_images_add_lines_and_details_within_the_size_cap
+W19M-18	session-core/diagram	display images reset per cell	session_core_diagram_display_images_start_empty_with_each_cell
+W19M-19	interactive/chat	TUI draws details.displayImages inline	interactive_diagram_display_images_are_drawn_inline_from_details
+W19M-20	resources/guide	diagram pointer line only with the Rust APIs	resources_runtime_guide_points_at_diagram_mermaid_only_with_the_rust_apis
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
