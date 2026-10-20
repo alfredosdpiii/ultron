@@ -1,0 +1,1552 @@
+{
+	"date": "2026-10-20",
+	"dataset": "datacurve/deep-swe",
+	"model": "cliproxyapi/gpt-6.1-sol",
+	"runId": "ab4",
+	"binary": {
+		"name": "ultron-cf87c0643-portable",
+		"version": "0.87.39",
+		"commit": "cf87c0643"
+	},
+	"arms": [
+		"ultron",
+		"ultron-swarm"
+	],
+	"tasks": [
+		"arcane-drift-detection-baselines",
+		"kysely-window-grouping-helpers",
+		"wasmi-trap-coredumps",
+		"sqlfmt-create-table-ddl-formatting"
+	],
+	"directiveSha256": "6f188c4b6e0215101c2416559078b744b99a05cfa85d3b5b6843d24668cc18b4",
+	"isolation": {
+		"container": "one fresh container per (task, arm) from the task's docker_image, sleep infinity, memory and cpus from the task row; removed after the run",
+		"network": "agent containers use --network host (the proxy is on 127.0.0.1:8317); this departs from the tasks' allow_internet=false. Grading containers use --network none.",
+		"agentState": "ULTRON_CODING_AGENT_DIR, ULTRON_SERVER_DIR and HOME are fresh dirs under /agent inside the container; models.json holds only the proxy provider cut to the one model, with $CLIPROXY_API_KEY in place of the key; no auth.json",
+		"key": "passed as CLIPROXY_API_KEY in the environment of docker exec; never written to a file; evidence scrubbed of it",
+		"swarmArm": "the same, plus the swarm directive written as APPEND_SYSTEM.md into the run's agent dir",
+		"python": "the REPL kernel runs on a read-only mounted python-build-standalone CPython 3.12 (ULTRON_PYTHON); the task's own toolchain is untouched"
+	},
+	"grading": "Harbor's: tests/test.sh and tests/test.patch at /tests, `bash /tests/test.sh` after `git apply` of the prediction in /app, reward read from /logs/verifier/reward.txt",
+	"cost": "notional: tokens at the list prices in models.json; the proxy bills a subscription",
+	"gold": [
+		{
+			"task_id": "arcane-drift-detection-baselines",
+			"verdict": "pass",
+			"reward": 1
+		},
+		{
+			"task_id": "kysely-window-grouping-helpers",
+			"verdict": "pass",
+			"reward": 1
+		},
+		{
+			"task_id": "wasmi-trap-coredumps",
+			"verdict": "pass",
+			"reward": 1
+		},
+		{
+			"task_id": "sqlfmt-create-table-ddl-formatting",
+			"verdict": "pass",
+			"reward": 1
+		}
+	],
+	"imageSizes": [
+		{
+			"task_id": "arcane-drift-detection-baselines",
+			"bytes": 5856200030
+		},
+		{
+			"task_id": "kysely-window-grouping-helpers",
+			"bytes": 3306299680
+		},
+		{
+			"task_id": "sqlfmt-create-table-ddl-formatting",
+			"bytes": 2581660362
+		},
+		{
+			"task_id": "wasmi-trap-coredumps",
+			"bytes": 2966128828
+		}
+	],
+	"summary": {
+		"ultron": {
+			"runs": 4,
+			"passed": 2,
+			"timeouts": 0,
+			"harnessFailures": 0,
+			"wallMsTotal": 3126654,
+			"wallMsMedian": 663804,
+			"responses": 373,
+			"tokens": 11213611,
+			"rootTokens": 7045700,
+			"childTokens": 4167911,
+			"notionalCostUsd": 3.2078,
+			"children": 7,
+			"swarmCalls": 79
+		},
+		"ultron-swarm": {
+			"runs": 4,
+			"passed": 3,
+			"timeouts": 1,
+			"harnessFailures": 0,
+			"wallMsTotal": 11535931,
+			"wallMsMedian": 2279827,
+			"responses": 1162,
+			"tokens": 25055753,
+			"rootTokens": 2178225,
+			"childTokens": 22877528,
+			"notionalCostUsd": 9.6738,
+			"children": 77,
+			"swarmCalls": 490
+		}
+	},
+	"records": [
+		{
+			"task_id": "arcane-drift-detection-baselines",
+			"language": "go",
+			"arm": "ultron",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "fail",
+				"reward": 0,
+				"wallMs": 161566
+			},
+			"wallMs": 1320785,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 76566,
+				"files": 21
+			},
+			"metrics": {
+				"verdict": "fail",
+				"status": "completed",
+				"wallMs": 1320785,
+				"rootTurns": 57,
+				"responses": 112,
+				"childResponses": 55,
+				"tokens": 3475824,
+				"rootTokens": 1973901,
+				"childTokens": 1501923,
+				"notionalCostUsd": 0.9948,
+				"children": 2,
+				"frames": 0,
+				"swarmCalls": {
+					"rlm.spawn": 2,
+					"swarm.agents": 3,
+					"swarm.inbox": 12,
+					"swarm.send": 15,
+					"rlm.collect": 5,
+					"rlm.ask": 1
+				},
+				"swarmCallTotal": 38,
+				"swarmCallsInRootCode": 2
+			},
+			"usage": {
+				"turns": 3,
+				"tokens": {
+					"responses": 58,
+					"input": 70086,
+					"cacheRead": 1889152,
+					"cacheWrite": 0,
+					"output": 15439,
+					"total": 1974677
+				},
+				"lanes": {
+					"root": {
+						"responses": 57,
+						"input": 69319,
+						"cacheRead": 1889152,
+						"cacheWrite": 0,
+						"output": 15430,
+						"total": 1973901
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 767,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 9,
+						"total": 776
+					}
+				},
+				"subagents": {
+					"count": 2,
+					"maxDepth": 1,
+					"completed": 2,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "depth 1: 0 frames, 2 sub-agents",
+				"cells": {
+					"root": 54,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.48347720000000005
+			},
+			"host": {
+				"cells": {
+					"root": 54,
+					"subagents": 53,
+					"other": 0
+				},
+				"hostCalls": {
+					"bash": 56,
+					"rlm.spawn": 2,
+					"swarm.agents": 3,
+					"files.before_write": 61,
+					"swarm.inbox": 12,
+					"swarm.send": 15,
+					"tools.list": 1,
+					"shell.run": 27,
+					"rlm.collect": 5,
+					"rlm.ask": 1,
+					"shell.get": 19,
+					"shell.result": 19,
+					"cell.output": 10,
+					"rlm.finish": 2,
+					"rlm.merge": 2
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 112,
+						"tokens": 3475824,
+						"costUsd": 0.9948144
+					}
+				},
+				"total": {
+					"responses": 112,
+					"tokens": 3475824,
+					"costUsd": 0.9948
+				}
+			},
+			"rootJournal": {
+				"turns": 57,
+				"cells": 54,
+				"errorCells": 4,
+				"frameCalls": 2,
+				"spawnCalls": 2,
+				"tokens": {
+					"input": 70086,
+					"cacheRead": 1889152,
+					"cacheWrite": 0,
+					"output": 15439,
+					"reasoning": 1180,
+					"total": 1974677
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 0,
+					"ask": 2,
+					"partial": 0,
+					"register": 0,
+					"route": 0,
+					"send": 0,
+					"inbox": 0,
+					"boardAdd": 0,
+					"boardClaim": 0,
+					"boardUpdate": 0,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "arcane-drift-detection-baselines",
+			"language": "go",
+			"arm": "ultron-swarm",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "fail",
+				"reward": 0,
+				"wallMs": 138381
+			},
+			"wallMs": 1857050,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 102441,
+				"files": 30
+			},
+			"metrics": {
+				"verdict": "fail",
+				"status": "completed",
+				"wallMs": 1857050,
+				"rootTurns": 18,
+				"responses": 204,
+				"childResponses": 186,
+				"tokens": 5463978,
+				"rootTokens": 400148,
+				"childTokens": 5063830,
+				"notionalCostUsd": 1.6545,
+				"children": 10,
+				"frames": 0,
+				"swarmCalls": {
+					"board.add": 7,
+					"rlm.spawn": 10,
+					"board.claim": 9,
+					"board.list": 4,
+					"swarm.route": 7,
+					"swarm.send": 41,
+					"swarm.agents": 3,
+					"swarm.inbox": 22,
+					"rlm.collect": 8,
+					"board.update": 10,
+					"rlm.ask": 5
+				},
+				"swarmCallTotal": 126,
+				"swarmCallsInRootCode": 15
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 19,
+					"input": 35713,
+					"cacheRead": 360832,
+					"cacheWrite": 0,
+					"output": 4394,
+					"total": 400939
+				},
+				"lanes": {
+					"root": {
+						"responses": 18,
+						"input": 34946,
+						"cacheRead": 360832,
+						"cacheWrite": 0,
+						"output": 4370,
+						"total": 400148
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 767,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 24,
+						"total": 791
+					}
+				},
+				"subagents": {
+					"count": 0,
+					"maxDepth": 0,
+					"completed": 0,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "root only",
+				"cells": {
+					"root": 17,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.1514492
+			},
+			"host": {
+				"cells": {
+					"root": 17,
+					"subagents": 0,
+					"other": 171
+				},
+				"hostCalls": {
+					"bash": 108,
+					"board.add": 7,
+					"rlm.spawn": 10,
+					"board.claim": 9,
+					"board.list": 4,
+					"shell.run": 31,
+					"swarm.route": 7,
+					"tools.list": 1,
+					"swarm.send": 41,
+					"swarm.agents": 3,
+					"files.before_write": 63,
+					"shell.result": 18,
+					"swarm.inbox": 22,
+					"shell.get": 19,
+					"cell.output": 11,
+					"rlm.collect": 8,
+					"board.update": 10,
+					"rlm.finish": 6,
+					"rlm.ask": 5
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 18,
+						"tokens": 400148,
+						"costUsd": 0.1496752
+					},
+					"ultron-root": {
+						"responses": 186,
+						"tokens": 5063830,
+						"costUsd": 1.5048280000000014
+					}
+				},
+				"total": {
+					"responses": 204,
+					"tokens": 5463978,
+					"costUsd": 1.6545
+				}
+			},
+			"rootJournal": {
+				"turns": 18,
+				"cells": 17,
+				"errorCells": 0,
+				"frameCalls": 4,
+				"spawnCalls": 4,
+				"tokens": {
+					"input": 35713,
+					"cacheRead": 360832,
+					"cacheWrite": 0,
+					"output": 4394,
+					"reasoning": 372,
+					"total": 400939
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 4,
+					"ask": 2,
+					"partial": 0,
+					"register": 0,
+					"route": 1,
+					"send": 1,
+					"inbox": 1,
+					"boardAdd": 3,
+					"boardClaim": 1,
+					"boardUpdate": 1,
+					"boardList": 1,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "kysely-window-grouping-helpers",
+			"language": "typescript",
+			"arm": "ultron",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "pass",
+				"reward": 1,
+				"wallMs": 31754
+			},
+			"wallMs": 783945,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 55146,
+				"files": 22
+			},
+			"metrics": {
+				"verdict": "pass",
+				"status": "completed",
+				"wallMs": 783945,
+				"rootTurns": 51,
+				"responses": 104,
+				"childResponses": 53,
+				"tokens": 2317738,
+				"rootTokens": 1136531,
+				"childTokens": 1181207,
+				"notionalCostUsd": 0.7232,
+				"children": 2,
+				"frames": 0,
+				"swarmCalls": {
+					"rlm.spawn": 2,
+					"swarm.inbox": 6,
+					"swarm.send": 4,
+					"swarm.agents": 1,
+					"rlm.collect": 4,
+					"rlm.ask": 1
+				},
+				"swarmCallTotal": 18,
+				"swarmCallsInRootCode": 1
+			},
+			"usage": {
+				"turns": 2,
+				"tokens": {
+					"responses": 52,
+					"input": 56179,
+					"cacheRead": 1072512,
+					"cacheWrite": 0,
+					"output": 8649,
+					"total": 1137340
+				},
+				"lanes": {
+					"root": {
+						"responses": 51,
+						"input": 55382,
+						"cacheRead": 1072512,
+						"cacheWrite": 0,
+						"output": 8637,
+						"total": 1136531
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 797,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 12,
+						"total": 809
+					}
+				},
+				"subagents": {
+					"count": 2,
+					"maxDepth": 1,
+					"completed": 2,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "depth 1: 0 frames, 2 sub-agents",
+				"cells": {
+					"root": 49,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.3060992000000001
+			},
+			"host": {
+				"cells": {
+					"root": 49,
+					"subagents": 51,
+					"other": 0
+				},
+				"hostCalls": {
+					"bash": 99,
+					"rlm.spawn": 2,
+					"swarm.inbox": 6,
+					"swarm.send": 4,
+					"files.before_write": 81,
+					"cell.output": 3,
+					"swarm.agents": 1,
+					"rlm.load": 1,
+					"shell.run": 10,
+					"rlm.collect": 4,
+					"shell.get": 3,
+					"shell.result": 3,
+					"rlm.finish": 4,
+					"rlm.merge": 1,
+					"rlm.ask": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 104,
+						"tokens": 2317738,
+						"costUsd": 0.7231943999999998
+					}
+				},
+				"total": {
+					"responses": 104,
+					"tokens": 2317738,
+					"costUsd": 0.7232
+				}
+			},
+			"rootJournal": {
+				"turns": 51,
+				"cells": 49,
+				"errorCells": 6,
+				"frameCalls": 2,
+				"spawnCalls": 2,
+				"tokens": {
+					"input": 56179,
+					"cacheRead": 1072512,
+					"cacheWrite": 0,
+					"output": 8649,
+					"reasoning": 1057,
+					"total": 1137340
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 0,
+					"ask": 1,
+					"partial": 0,
+					"register": 0,
+					"route": 0,
+					"send": 0,
+					"inbox": 0,
+					"boardAdd": 0,
+					"boardClaim": 0,
+					"boardUpdate": 0,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "kysely-window-grouping-helpers",
+			"language": "typescript",
+			"arm": "ultron-swarm",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "pass",
+				"reward": 1,
+				"wallMs": 27856
+			},
+			"wallMs": 1571215,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 94714,
+				"files": 25
+			},
+			"metrics": {
+				"verdict": "pass",
+				"status": "completed",
+				"wallMs": 1571215,
+				"rootTurns": 17,
+				"responses": 285,
+				"childResponses": 268,
+				"tokens": 4392494,
+				"rootTokens": 275494,
+				"childTokens": 4117000,
+				"notionalCostUsd": 1.9165,
+				"children": 23,
+				"frames": 0,
+				"swarmCalls": {
+					"board.add": 8,
+					"rlm.spawn": 23,
+					"board.claim": 8,
+					"board.list": 3,
+					"rlm.collect": 22,
+					"swarm.agents": 2,
+					"swarm.send": 21,
+					"board.update": 10,
+					"rlm.ask": 8,
+					"swarm.route": 5,
+					"swarm.inbox": 1
+				},
+				"swarmCallTotal": 111,
+				"swarmCallsInRootCode": 15
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 18,
+					"input": 23487,
+					"cacheRead": 248960,
+					"cacheWrite": 0,
+					"output": 3856,
+					"total": 276303
+				},
+				"lanes": {
+					"root": {
+						"responses": 17,
+						"input": 22690,
+						"cacheRead": 248960,
+						"cacheWrite": 0,
+						"output": 3844,
+						"total": 275494
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 797,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 12,
+						"total": 809
+					}
+				},
+				"subagents": {
+					"count": 0,
+					"maxDepth": 0,
+					"completed": 0,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "root only",
+				"cells": {
+					"root": 16,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.11043000000000001
+			},
+			"host": {
+				"cells": {
+					"root": 16,
+					"subagents": 0,
+					"other": 237
+				},
+				"hostCalls": {
+					"bash": 208,
+					"board.add": 8,
+					"rlm.spawn": 23,
+					"board.claim": 8,
+					"board.list": 3,
+					"rlm.collect": 22,
+					"files.before_write": 109,
+					"swarm.agents": 2,
+					"swarm.send": 21,
+					"cell.output": 30,
+					"board.update": 10,
+					"rlm.list_subagents": 2,
+					"shell.run": 17,
+					"rlm.ask": 8,
+					"swarm.route": 5,
+					"rlm.results": 2,
+					"shell.get": 15,
+					"shell.result": 14,
+					"swarm.inbox": 1,
+					"rlm.finish": 4,
+					"rlm.merge": 2,
+					"rlm.lanes": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 17,
+						"tokens": 275494,
+						"costUsd": 0.10871600000000002
+					},
+					"ultron-root": {
+						"responses": 268,
+						"tokens": 4117000,
+						"costUsd": 1.8077775999999994
+					}
+				},
+				"total": {
+					"responses": 285,
+					"tokens": 4392494,
+					"costUsd": 1.9165
+				}
+			},
+			"rootJournal": {
+				"turns": 17,
+				"cells": 16,
+				"errorCells": 0,
+				"frameCalls": 3,
+				"spawnCalls": 3,
+				"tokens": {
+					"input": 23487,
+					"cacheRead": 248960,
+					"cacheWrite": 0,
+					"output": 3856,
+					"reasoning": 213,
+					"total": 276303
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 3,
+					"ask": 4,
+					"partial": 0,
+					"register": 0,
+					"route": 0,
+					"send": 0,
+					"inbox": 0,
+					"boardAdd": 6,
+					"boardClaim": 1,
+					"boardUpdate": 1,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "wasmi-trap-coredumps",
+			"language": "rust",
+			"arm": "ultron",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "pass",
+				"reward": 1,
+				"wallMs": 35885
+			},
+			"wallMs": 543663,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 51313,
+				"files": 16
+			},
+			"metrics": {
+				"verdict": "pass",
+				"status": "completed",
+				"wallMs": 543663,
+				"rootTurns": 47,
+				"responses": 85,
+				"childResponses": 38,
+				"tokens": 3181457,
+				"rootTokens": 2245186,
+				"childTokens": 936271,
+				"notionalCostUsd": 0.8744,
+				"children": 2,
+				"frames": 0,
+				"swarmCalls": {
+					"rlm.spawn": 2,
+					"rlm.ask": 1,
+					"rlm.collect": 3
+				},
+				"swarmCallTotal": 6,
+				"swarmCallsInRootCode": 1
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 48,
+					"input": 80515,
+					"cacheRead": 2151936,
+					"cacheWrite": 0,
+					"output": 13558,
+					"total": 2246009
+				},
+				"lanes": {
+					"root": {
+						"responses": 47,
+						"input": 79705,
+						"cacheRead": 2151936,
+						"cacheWrite": 0,
+						"output": 13545,
+						"total": 2245186
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 810,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 13,
+						"total": 823
+					}
+				},
+				"subagents": {
+					"count": 2,
+					"maxDepth": 1,
+					"completed": 2,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "depth 1: 0 frames, 2 sub-agents",
+				"cells": {
+					"root": 46,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.5118035999999999
+			},
+			"host": {
+				"cells": {
+					"root": 46,
+					"subagents": 36,
+					"other": 0
+				},
+				"hostCalls": {
+					"bash": 98,
+					"rlm.spawn": 2,
+					"files.before_write": 77,
+					"cell.output": 8,
+					"shell.run": 22,
+					"shell.get": 20,
+					"shell.result": 20,
+					"rlm.ask": 1,
+					"rlm.collect": 3,
+					"rlm.finish": 2,
+					"rlm.merge": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 85,
+						"tokens": 3181457,
+						"costUsd": 0.8743780000000001
+					}
+				},
+				"total": {
+					"responses": 85,
+					"tokens": 3181457,
+					"costUsd": 0.8744
+				}
+			},
+			"rootJournal": {
+				"turns": 47,
+				"cells": 46,
+				"errorCells": 2,
+				"frameCalls": 2,
+				"spawnCalls": 2,
+				"tokens": {
+					"input": 80515,
+					"cacheRead": 2151936,
+					"cacheWrite": 0,
+					"output": 13558,
+					"reasoning": 1694,
+					"total": 2246009
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 0,
+					"ask": 1,
+					"partial": 0,
+					"register": 0,
+					"route": 0,
+					"send": 0,
+					"inbox": 0,
+					"boardAdd": 0,
+					"boardClaim": 0,
+					"boardUpdate": 0,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "wasmi-trap-coredumps",
+			"language": "rust",
+			"arm": "ultron-swarm",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "pass",
+				"reward": 1,
+				"wallMs": 30488
+			},
+			"wallMs": 2702604,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 69519,
+				"files": 15
+			},
+			"metrics": {
+				"verdict": "pass",
+				"status": "completed",
+				"wallMs": 2702604,
+				"rootTurns": 32,
+				"responses": 454,
+				"childResponses": 422,
+				"tokens": 11509086,
+				"rootTokens": 989745,
+				"childTokens": 10519341,
+				"notionalCostUsd": 4.4623,
+				"children": 29,
+				"frames": 0,
+				"swarmCalls": {
+					"board.add": 5,
+					"rlm.spawn": 29,
+					"rlm.ask": 28,
+					"board.claim": 5,
+					"board.list": 5,
+					"swarm.agents": 2,
+					"swarm.send": 45,
+					"rlm.collect": 20,
+					"swarm.route": 5,
+					"board.update": 5,
+					"swarm.inbox": 16
+				},
+				"swarmCallTotal": 165,
+				"swarmCallsInRootCode": 17
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 33,
+					"input": 59287,
+					"cacheRead": 923904,
+					"cacheWrite": 0,
+					"output": 7377,
+					"total": 990568
+				},
+				"lanes": {
+					"root": {
+						"responses": 32,
+						"input": 58477,
+						"cacheRead": 923904,
+						"cacheWrite": 0,
+						"output": 7364,
+						"total": 989745
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 810,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 13,
+						"total": 823
+					}
+				},
+				"subagents": {
+					"count": 0,
+					"maxDepth": 0,
+					"completed": 0,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "root only",
+				"cells": {
+					"root": 31,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.28473439999999994
+			},
+			"host": {
+				"cells": {
+					"root": 31,
+					"subagents": 0,
+					"other": 367
+				},
+				"hostCalls": {
+					"bash": 324,
+					"board.add": 5,
+					"rlm.spawn": 29,
+					"rlm.ask": 28,
+					"cell.output": 21,
+					"board.claim": 5,
+					"board.list": 5,
+					"swarm.agents": 2,
+					"swarm.send": 45,
+					"rlm.collect": 20,
+					"swarm.route": 5,
+					"shell.run": 30,
+					"files.before_write": 89,
+					"shell.result": 21,
+					"board.update": 5,
+					"shell.get": 25,
+					"rlm.list_subagents": 7,
+					"swarm.inbox": 16,
+					"rlm.lanes": 2,
+					"rlm.cells": 1,
+					"rlm.results": 3,
+					"rlm.finish": 7,
+					"rlm.cancel": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 32,
+						"tokens": 989745,
+						"costUsd": 0.28298439999999997
+					},
+					"ultron-root": {
+						"responses": 422,
+						"tokens": 10519341,
+						"costUsd": 4.179328399999999
+					}
+				},
+				"total": {
+					"responses": 454,
+					"tokens": 11509086,
+					"costUsd": 4.4623
+				}
+			},
+			"rootJournal": {
+				"turns": 32,
+				"cells": 31,
+				"errorCells": 0,
+				"frameCalls": 3,
+				"spawnCalls": 3,
+				"tokens": {
+					"input": 59287,
+					"cacheRead": 923904,
+					"cacheWrite": 0,
+					"output": 7377,
+					"reasoning": 1031,
+					"total": 990568
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 3,
+					"ask": 3,
+					"partial": 0,
+					"register": 0,
+					"route": 1,
+					"send": 2,
+					"inbox": 1,
+					"boardAdd": 3,
+					"boardClaim": 1,
+					"boardUpdate": 2,
+					"boardList": 1,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "sqlfmt-create-table-ddl-formatting",
+			"language": "python",
+			"arm": "ultron",
+			"status": "completed",
+			"attempt": 1,
+			"grade": {
+				"verdict": "fail",
+				"reward": 0,
+				"wallMs": 24142
+			},
+			"wallMs": 478261,
+			"timedOut": false,
+			"exitCode": 0,
+			"patch": {
+				"bytes": 31711,
+				"files": 10
+			},
+			"metrics": {
+				"verdict": "fail",
+				"status": "completed",
+				"wallMs": 478261,
+				"rootTurns": 49,
+				"responses": 72,
+				"childResponses": 23,
+				"tokens": 2238592,
+				"rootTokens": 1690082,
+				"childTokens": 548510,
+				"notionalCostUsd": 0.6154,
+				"children": 1,
+				"frames": 0,
+				"swarmCalls": {
+					"rlm.spawn": 1,
+					"rlm.ask": 1,
+					"swarm.send": 8,
+					"swarm.inbox": 5,
+					"rlm.collect": 2
+				},
+				"swarmCallTotal": 17,
+				"swarmCallsInRootCode": 6
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 50,
+					"input": 58656,
+					"cacheRead": 1618944,
+					"cacheWrite": 0,
+					"output": 13242,
+					"total": 1690842
+				},
+				"lanes": {
+					"root": {
+						"responses": 49,
+						"input": 57906,
+						"cacheRead": 1618944,
+						"cacheWrite": 0,
+						"output": 13232,
+						"total": 1690082
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 750,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 10,
+						"total": 760
+					}
+				},
+				"subagents": {
+					"count": 1,
+					"maxDepth": 1,
+					"completed": 1,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "depth 1: 0 frames, 1 sub-agent",
+				"cells": {
+					"root": 48,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.4116264
+			},
+			"host": {
+				"cells": {
+					"root": 48,
+					"subagents": 22,
+					"other": 0
+				},
+				"hostCalls": {
+					"bash": 47,
+					"rlm.spawn": 1,
+					"rlm.ask": 1,
+					"swarm.send": 8,
+					"files.before_write": 48,
+					"cell.output": 6,
+					"swarm.inbox": 5,
+					"shell.run": 13,
+					"shell.get": 12,
+					"shell.result": 12,
+					"rlm.collect": 2,
+					"rlm.finish": 1,
+					"rlm.merge": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 72,
+						"tokens": 2238592,
+						"costUsd": 0.6154319999999999
+					}
+				},
+				"total": {
+					"responses": 72,
+					"tokens": 2238592,
+					"costUsd": 0.6154
+				}
+			},
+			"rootJournal": {
+				"turns": 49,
+				"cells": 48,
+				"errorCells": 3,
+				"frameCalls": 1,
+				"spawnCalls": 1,
+				"tokens": {
+					"input": 58656,
+					"cacheRead": 1618944,
+					"cacheWrite": 0,
+					"output": 13242,
+					"reasoning": 2523,
+					"total": 1690842
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 0,
+					"ask": 1,
+					"partial": 0,
+					"register": 0,
+					"route": 0,
+					"send": 5,
+					"inbox": 0,
+					"boardAdd": 0,
+					"boardClaim": 0,
+					"boardUpdate": 0,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		},
+		{
+			"task_id": "sqlfmt-create-table-ddl-formatting",
+			"language": "python",
+			"arm": "ultron-swarm",
+			"status": "timeout",
+			"attempt": 1,
+			"grade": {
+				"verdict": "pass",
+				"reward": 1,
+				"wallMs": 18443
+			},
+			"wallMs": 5405062,
+			"timedOut": true,
+			"exitCode": 124,
+			"patch": {
+				"bytes": 44858,
+				"files": 7
+			},
+			"metrics": {
+				"verdict": "pass",
+				"status": "timeout",
+				"wallMs": 5405062,
+				"rootTurns": 24,
+				"responses": 219,
+				"childResponses": 195,
+				"tokens": 3690195,
+				"rootTokens": 512838,
+				"childTokens": 3177357,
+				"notionalCostUsd": 1.6405,
+				"children": 15,
+				"frames": 0,
+				"swarmCalls": {
+					"board.add": 4,
+					"rlm.spawn": 15,
+					"board.list": 4,
+					"board.claim": 4,
+					"swarm.send": 14,
+					"rlm.collect": 15,
+					"swarm.inbox": 8,
+					"rlm.ask": 14,
+					"board.update": 6,
+					"swarm.route": 4
+				},
+				"swarmCallTotal": 88,
+				"swarmCallsInRootCode": 21
+			},
+			"usage": {
+				"turns": 1,
+				"tokens": {
+					"responses": 25,
+					"input": 40658,
+					"cacheRead": 467328,
+					"cacheWrite": 0,
+					"output": 5612,
+					"total": 513598
+				},
+				"lanes": {
+					"root": {
+						"responses": 24,
+						"input": 39908,
+						"cacheRead": 467328,
+						"cacheWrite": 0,
+						"output": 5602,
+						"total": 512838
+					},
+					"frames": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"subagents": {
+						"responses": 0,
+						"input": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 0,
+						"total": 0
+					},
+					"other": {
+						"responses": 1,
+						"input": 750,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"output": 10,
+						"total": 760
+					}
+				},
+				"subagents": {
+					"count": 0,
+					"maxDepth": 0,
+					"completed": 0,
+					"failed": 0
+				},
+				"frames": 0,
+				"depth": "root only",
+				"cells": {
+					"root": 24,
+					"subagents": 0,
+					"other": 0
+				},
+				"reportedCostUsd": 0.18416880000000005
+			},
+			"host": {
+				"cells": {
+					"root": 23,
+					"subagents": 0,
+					"other": 166
+				},
+				"hostCalls": {
+					"bash": 151,
+					"board.add": 4,
+					"rlm.spawn": 15,
+					"shell.run": 10,
+					"board.list": 4,
+					"files.before_write": 64,
+					"board.claim": 4,
+					"swarm.send": 14,
+					"shell.result": 4,
+					"rlm.collect": 15,
+					"cell.output": 18,
+					"swarm.inbox": 8,
+					"shell.list": 1,
+					"rlm.ask": 14,
+					"shell.get": 7,
+					"board.update": 6,
+					"rlm.finish": 3,
+					"swarm.route": 4,
+					"rlm.cells": 1,
+					"rlm.list_subagents": 1
+				}
+			},
+			"ledger": {
+				"roots": {
+					"turn": {
+						"responses": 24,
+						"tokens": 512838,
+						"costUsd": 0.18256880000000006
+					},
+					"ultron-root": {
+						"responses": 195,
+						"tokens": 3177357,
+						"costUsd": 1.4578836000000004
+					}
+				},
+				"total": {
+					"responses": 219,
+					"tokens": 3690195,
+					"costUsd": 1.6405
+				}
+			},
+			"rootJournal": {
+				"turns": 24,
+				"cells": 24,
+				"errorCells": 0,
+				"frameCalls": 3,
+				"spawnCalls": 3,
+				"tokens": {
+					"input": 40658,
+					"cacheRead": 467328,
+					"cacheWrite": 0,
+					"output": 5612,
+					"reasoning": 423,
+					"total": 513598
+				},
+				"models": [
+					"cliproxyapi/gpt-6.1-sol"
+				],
+				"swarmCallsInRootCode": {
+					"keepSpawn": 3,
+					"ask": 4,
+					"partial": 0,
+					"register": 0,
+					"route": 1,
+					"send": 5,
+					"inbox": 4,
+					"boardAdd": 4,
+					"boardClaim": 0,
+					"boardUpdate": 0,
+					"boardList": 0,
+					"notes": 0,
+					"brief": 0
+				}
+			}
+		}
+	],
+	"notes": [
+		"Tasks: narwhals-rolling-window-suite (the brief's Python task) was swapped for sqlfmt-create-table-ddl-formatting: its gold patch fails in its image (test.sh base: 6 failures unrelated to the task, polars DeprecationWarnings in the interchange tests and a get_column assertion). Gold passes for all four tasks run.",
+		"Agent containers ran with --network host (the proxy is on 127.0.0.1:8317), departing from the tasks' allow_internet=false; grading containers ran with --network none.",
+		"One trial per (task, arm): a 4-task, single-trial A/B; differences of one task are within run-to-run noise.",
+		"Tree usage (responses, tokens, cost) is the host's budget ledger in the session journal: ultron usage --json in 0.87.39 reports the root lane only and shows zero sub-agent usage even when children ran. Children's tokens have no cached/uncached split; cost is the ledger's, at the models.json list prices (notional: the proxy bills a subscription).",
+		"Swarm calls are the host's counters (hostCalls), children's calls included; children = the host's rlm.spawn count.",
+		"sqlfmt ultron-swarm hit the 90-minute limit: from minute 20 the root sat in one `await rlm.ask(<kept child>, ...)` with no journal write for 67 minutes until the limit; its working tree at the limit passed the verifier.",
+		"The sqlfmt pair ran in a second harness process (run id ab4b) while the first finished wasmi; its records were merged into this run unchanged."
+	]
+}
