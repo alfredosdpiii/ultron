@@ -539,10 +539,14 @@ impl Runtime {
         let trusted = config.project_trusted;
         let manager = config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted);
         // resource-loader.ts `reload`: the local skills and prompts.
-        let resolved = crate::session_resources::resolve(
+        let mut resolved = crate::session_resources::resolve(
             env,
             config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted),
         );
+        if let Some(appends) = &services.session.append_system_prompt {
+            // `--append-system-prompt` replaces a discovered APPEND_SYSTEM.md (resource-loader.ts).
+            resolved.append_system_prompt = appends.clone();
+        }
         services.resources = Arc::new(resolved);
         let mut diagnostics: Vec<String> = Vec::new();
         let hindsight = hindsight::Endpoint::resolve(&|key| (env.var)(key), hindsight::resolve::setting_url(&manager));

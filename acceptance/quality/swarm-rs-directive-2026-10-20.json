@@ -1,0 +1,396 @@
+{
+  "taskSet": "swarm",
+  "frozenAt": "2026-10-19-swarm",
+  "thresholds": {
+    "maxPassRateDropPoints": 10,
+    "maxMedianLatencyRatio": 2,
+    "maxCostRatio": 2
+  },
+  "model": "cliproxyapi/gpt-6.1-sol",
+  "ultronCommand": "~/Projects/personal/ultron-rust-wt/eval-frozen/ultron-d1da5e5ad",
+  "appendSystem": "6f188c4b6e0215101c2416559078b744b99a05cfa85d3b5b6843d24668cc18b4",
+  "trials": 1,
+  "isolation": {
+    "home": "per-run empty HOME inside the run's work dir (no ~/.agents, ~/.pi, ~/.ultron or other user-global resources)",
+    "agentDir": "per-run agent dir holding only models.json and auth.json copied from ~/.ultron/agent",
+    "memory": "off (ULTRON_HINDSIGHT_URL=off)",
+    "loki": "off (ULTRON_LOKI=off, ULTRON_LOKI_AUTOINIT=off) unless --loki"
+  },
+  "loki": "off",
+  "summary": {
+    "byVariant": {
+      "ultron": {
+        "runs": 4,
+        "infrastructure": 0,
+        "passRate": 1,
+        "passRateRequired": 1,
+        "optionalTasks": [
+          "contracts (contracts)"
+        ],
+        "categories": {
+          "swarm": {
+            "passed": 4,
+            "runs": 4
+          }
+        },
+        "medianDurationMs": 216990,
+        "totalCost": 0.3144144,
+        "uptake": {
+          "toolsByName": {
+            "rlm": 47
+          },
+          "swarmCalls": {
+            "keepSpawn": 10,
+            "ask": 5,
+            "partial": 0,
+            "register": 0,
+            "route": 2,
+            "send": 0,
+            "inbox": 0,
+            "boardAdd": 6,
+            "boardClaim": 2,
+            "boardUpdate": 2,
+            "boardList": 1,
+            "notes": 0,
+            "brief": 0
+          },
+          "rlmRunShare": 1,
+          "framesSpawned": {
+            "runs": 4,
+            "total": 0,
+            "median": 0
+          },
+          "childrenSpawned": {
+            "runs": 4,
+            "total": 0,
+            "median": 0
+          },
+          "rootUnseenBytes": {
+            "runs": 0,
+            "total": null,
+            "median": null
+          }
+        },
+        "timing": {
+          "runs": 4,
+          "withinBudget": 4,
+          "passedWithinBudget": 4,
+          "passed": 4,
+          "medianDurationMs": 216990,
+          "perRun": [
+            {
+              "task": "shared-board",
+              "trial": 1,
+              "durationMs": 170316,
+              "timeBudgetMs": 600000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "follow-ups",
+              "trial": 1,
+              "durationMs": 285711,
+              "timeBudgetMs": 900000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "contracts",
+              "trial": 1,
+              "durationMs": 112329,
+              "timeBudgetMs": 420000,
+              "withinBudget": true,
+              "passed": true
+            },
+            {
+              "task": "route",
+              "trial": 1,
+              "durationMs": 263664,
+              "timeBudgetMs": 900000,
+              "withinBudget": true,
+              "passed": true
+            }
+          ]
+        }
+      }
+    },
+    "gate": [],
+    "comparison": "skipped",
+    "skipped": [
+      {
+        "check": "pass rate",
+        "detail": "needs both pi and ultron; this run has only ultron"
+      },
+      {
+        "check": "median latency",
+        "detail": "needs both pi and ultron; this run has only ultron"
+      },
+      {
+        "check": "cost",
+        "detail": "needs both pi and ultron; this run has only ultron"
+      }
+    ],
+    "checks": [
+      {
+        "check": "runs",
+        "ok": true,
+        "detail": "ultron: 4 of 4 measured runs passed"
+      }
+    ],
+    "passed": true
+  },
+  "records": [
+    {
+      "task": "shared-board",
+      "category": "swarm",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 9
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "rootInputTokensByPrompt": [
+        92581
+      ],
+      "swarmCalls": {
+        "keepSpawn": 6,
+        "ask": 0,
+        "partial": 0,
+        "register": 0,
+        "route": 0,
+        "send": 0,
+        "inbox": 0,
+        "boardAdd": 2,
+        "boardClaim": 1,
+        "boardUpdate": 1,
+        "boardList": 0,
+        "notes": 0,
+        "brief": 0
+      },
+      "toolCalls": 9,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0706896,
+      "tokens": 95896,
+      "durationMs": 170316,
+      "timeBudgetMs": 600000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": " 1x\nT02: pass, marked done 1x\nT03: pass, marked done 1x\nT04: pass, marked done 1x\nT05: pass, marked done 1x\nT06: pass, marked done 1x\nT07: pass, marked done 1x\nT08: pass, marked done 1x\nT09: pass, marked done 1x\nT10: pass, marked done 1x\nT11: pass, marked done 1x\nT12: pass, marked done 1x\n{\"passed\":12,\"total\":12,\"duplicates\":[],\"unmarked\":[],\"marks\":12,\"tickets\":{\"T01\":true,\"T02\":true,\"T03\":true,\"T04\":true,\"T05\":true,\"T06\":true,\"T07\":true,\"T08\":true,\"T09\":true,\"T10\":true,\"T11\":true,\"T12\":true}}\n"
+      },
+      "metrics": {
+        "passed": 12,
+        "total": 12,
+        "duplicates": [],
+        "unmarked": [],
+        "marks": 12,
+        "tickets": {
+          "T01": true,
+          "T02": true,
+          "T03": true,
+          "T04": true,
+          "T05": true,
+          "T06": true,
+          "T07": true,
+          "T08": true,
+          "T09": true,
+          "T10": true,
+          "T11": true,
+          "T12": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/shared-board-ultron-1-2026-10-20T07-13-12-025Z"
+    },
+    {
+      "task": "follow-ups",
+      "category": "swarm",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 13
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "rootInputTokensByPrompt": [
+        76267,
+        44222,
+        46237,
+        48268
+      ],
+      "swarmCalls": {
+        "keepSpawn": 2,
+        "ask": 3,
+        "partial": 0,
+        "register": 0,
+        "route": 0,
+        "send": 0,
+        "inbox": 0,
+        "boardAdd": 1,
+        "boardClaim": 0,
+        "boardUpdate": 0,
+        "boardList": 0,
+        "notes": 0,
+        "brief": 0
+      },
+      "rootRereads": [
+        0,
+        1,
+        0
+      ],
+      "toolCalls": 13,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.0786728,
+      "tokens": 217218,
+      "durationMs": 285711,
+      "timeBudgetMs": 900000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "customs\", \"dim_weight\", \"last_mile\", \"intake\", \"remote_zone\", \"audit\", \"courier_fit\", \"hub_check\", \"tariff\",)\nq1: pass (got {\"stage\": \"customs\", \"code\": \"D-7856\"}, expected {\"stage\": \"customs\", \"code\": \"D-7856\"})\nq2: pass (got {\"constant\": \"EAST_REMOTE_ZONE_MAX\"}, expected {\"constant\": \"EAST_REMOTE_ZONE_MAX\"})\nq3: pass (got {\"stage\": \"dim_weight\", \"code\": \"D-6601\"}, expected {\"stage\": \"dim_weight\", \"code\": \"D-6601\"})\n{\"passed\":4,\"total\":4,\"answers\":{\"stages\":true,\"q1\":true,\"q2\":true,\"q3\":true}}\n"
+      },
+      "metrics": {
+        "passed": 4,
+        "total": 4,
+        "answers": {
+          "stages": true,
+          "q1": true,
+          "q2": true,
+          "q3": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/follow-ups-ultron-1-2026-10-20T07-13-11-646Z"
+    },
+    {
+      "task": "contracts",
+      "category": "swarm",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "optional": "contracts",
+      "toolsByName": {
+        "rlm": 14
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "rootInputTokensByPrompt": [
+        173828
+      ],
+      "swarmCalls": {
+        "keepSpawn": 1,
+        "ask": 0,
+        "partial": 0,
+        "register": 0,
+        "route": 0,
+        "send": 0,
+        "inbox": 0,
+        "boardAdd": 1,
+        "boardClaim": 0,
+        "boardUpdate": 0,
+        "boardList": 0,
+        "notes": 0,
+        "brief": 0
+      },
+      "toolCalls": 14,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.07351,
+      "tokens": 175719,
+      "durationMs": 112329,
+      "timeBudgetMs": 420000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "durations: pass\nranges: pass\nsemver: pass\n{\"passed\":3,\"total\":3,\"modules\":{\"durations\":true,\"ranges\":true,\"semver\":true}}\n"
+      },
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "modules": {
+          "durations": true,
+          "ranges": true,
+          "semver": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/contracts-ultron-1-2026-10-20T07-17-58-399Z"
+    },
+    {
+      "task": "route",
+      "category": "swarm",
+      "variant": "ultron",
+      "trial": 1,
+      "model": "cliproxyapi/gpt-6.1-sol",
+      "passed": true,
+      "homeIsolated": true,
+      "toolsByName": {
+        "rlm": 11
+      },
+      "framesSpawned": 0,
+      "childrenSpawned": 0,
+      "childDepth": 0,
+      "rootUnseenBytes": null,
+      "rootInputTokensByPrompt": [
+        82926,
+        86498,
+        69649
+      ],
+      "swarmCalls": {
+        "keepSpawn": 1,
+        "ask": 2,
+        "partial": 0,
+        "register": 0,
+        "route": 2,
+        "send": 0,
+        "inbox": 0,
+        "boardAdd": 2,
+        "boardClaim": 1,
+        "boardUpdate": 1,
+        "boardList": 1,
+        "notes": 0,
+        "brief": 0
+      },
+      "rootRereads": [
+        0,
+        0
+      ],
+      "toolCalls": 11,
+      "tasksByDefinition": {},
+      "framesSource": "inspect",
+      "cost": 0.09154199999999998,
+      "tokens": 241027,
+      "durationMs": 263664,
+      "timeBudgetMs": 900000,
+      "withinBudget": true,
+      "verify": {
+        "status": 0,
+        "output": "rier_fit, expected {\"dispatch\": [\"measure\", \"dim_weight\", \"pack\", \"label\", \"insure\", \"audit\", \"returns\", \"sort\", \"depot_cap\", \"seal\", \"fragile\", \"last_mile\", \"priority\", \"weigh\", \"remote_zone\", \"bulk_gate\", \"courier_fit)\nq1: pass (got {\"stage\": \"idle_timeout\", \"code\": \"A-9035\"}, expected {\"stage\": \"idle_timeout\", \"code\": \"A-9035\"})\nq2: pass (got {\"constant\": \"WEST_CHARGEBACK_MAX\"}, expected {\"constant\": \"WEST_CHARGEBACK_MAX\"})\n{\"passed\":3,\"total\":3,\"answers\":{\"stages\":true,\"q1\":true,\"q2\":true}}\n"
+      },
+      "metrics": {
+        "passed": 3,
+        "total": 3,
+        "answers": {
+          "stages": true,
+          "q1": true,
+          "q2": true
+        }
+      },
+      "evidence": "/tmp/ultron-quality-failed/route-ultron-1-2026-10-20T07-16-06-220Z"
+    }
+  ]
+}

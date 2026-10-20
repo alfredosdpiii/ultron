@@ -2,7 +2,8 @@
 //! `--no-extensions` (Pi extensions are not supported by ultron-rs: each flag is warned about and ignored, and so are
 //! the settings `packages`, with one note), `--models` scoping a new
 //! session's model (decisions: scoped models choose it), the tool flags (the model's tool list stays `[rlm]`), the
-//! `httpProxy` setting (HTTP_PROXY for the session's provider requests) and `!command` keys in auth.json.
+//! `httpProxy` setting (HTTP_PROXY for the session's provider requests), `!command` keys in auth.json, and
+//! `--append-system-prompt` (the TS server never passed it to a worker).
 
 mod common;
 
@@ -85,6 +86,47 @@ fn cli_native_extension_flags_and_settings_packages_are_warned_about_and_ignored
             "{request}"
         );
     }
+}
+
+#[test]
+fn cli_native_append_system_prompt_reaches_the_worker() {
+    let (port, seen) = mock_server(vec![anthropic_text("a"), anthropic_text("b")], Naming::Fail);
+    let sandbox = Sandbox::new(port);
+    std::fs::write(sandbox.agent_dir.join("APPEND_SYSTEM.md"), "DISCOVERED-APPEND").unwrap();
+    // A file input is read in the CLI's directory (relative path), a literal input is the text itself.
+    std::fs::write(sandbox.cwd.join("extra.md"), "FILE-APPEND").unwrap();
+    let output = run(
+        &sandbox,
+        &[
+            "-p",
+            "--model",
+            MODEL,
+            "--append-system-prompt",
+            "extra.md",
+            "--append-system-prompt",
+            "LITERAL-APPEND",
+            "x",
+        ],
+        &[],
+    );
+    assert_eq!(text(&output.stdout), "a\n", "{}", text(&output.stderr));
+    let output = run(&sandbox, &["-p", "--model", MODEL, "y"], &[]);
+    assert_eq!(text(&output.stdout), "b\n", "{}", text(&output.stderr));
+    let requests = seen.lock().unwrap().requests.clone();
+    let flagged = system_of(&requests[0]);
+    assert!(
+        flagged.contains("FILE-APPEND") && flagged.contains("LITERAL-APPEND"),
+        "{flagged}"
+    );
+    assert!(
+        !flagged.contains("DISCOVERED-APPEND"),
+        "the flag replaces APPEND_SYSTEM.md: {flagged}"
+    );
+    let plain = system_of(&requests[1]);
+    assert!(
+        plain.contains("DISCOVERED-APPEND") && !plain.contains("FILE-APPEND"),
+        "{plain}"
+    );
 }
 
 #[test]

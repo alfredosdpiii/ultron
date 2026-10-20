@@ -88,6 +88,9 @@
  * `--keep-all` keeps the same evidence for passing runs too, and runs the agent with a session instead of
  * `--no-session`, so the kept agent dir holds every lane's transcript and usage and the frame traces (cost diagnosis).
  * `--ultron-command` replaces the `ultron` binary (e.g. a worktree's source through the source resolver).
+ * `--append-system <file>` writes that file as APPEND_SYSTEM.md into every native run's isolated agent dir, so the
+ * Pi and Ultron variants append it to their system prompt (an arm that changes only the instructions, e.g. one that
+ * tells the model to use the swarm APIs). Its sha256 is recorded as `appendSystem`.
  *
  * Claude Code variants (drive only the official `claude` CLI; the login is the user's, e.g. a subscription):
  * - `claude`: plain Claude Code, `claude -p` with its default tools and default system prompt;
@@ -104,6 +107,7 @@
  * transcript is written). Claude Code's own global state file in that dir is still updated as by any `claude` run.
  */
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	appendFileSync,
 	copyFileSync,
@@ -294,6 +298,7 @@ export function claudeVariantArgs(variant, { model, frameModel }) {
 const DEFAULT_KEEP_DIR = "/tmp/ultron-quality-failed";
 
 const VALUE_FLAGS = [
+	"append-system",
 	"baseline",
 	"concurrency",
 	"frame-model",
@@ -818,7 +823,7 @@ async function runClaudeAgent({ command, args, cwd, env, prompts, log, timeoutMs
 	return { lines, stderr, timedOut, exitCode: child.exitCode };
 }
 
-async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge, loki = false, frameModel }) {
+async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll, commands, judge, loki = false, frameModel, appendSystem }) {
 	if (VARIANTS[variant]?.claude) return runClaudeOne({ task, variant, trial, model, keepDir, keepAll, commands, judge, loki, frameModel });
 	const work = mkdtempSync(join(tmpdir(), `ultron-quality-${task.id}-${variant}-`));
 	const project = join(work, "project");
@@ -828,6 +833,7 @@ async function runOne({ task, variant, trial, model, thinking, keepDir, keepAll,
 	const profile = join(homedir(), ".ultron", "agent");
 	for (const file of ["models.json", "auth.json"])
 		if (existsSync(join(profile, file))) copyFileSync(join(profile, file), join(agentDir, file));
+	if (appendSystem !== undefined) writeFileSync(join(agentDir, "APPEND_SYSTEM.md"), appendSystem);
 	const { files, hidden } = materialize(task);
 	writeTree(project, files);
 	if (task.git) await initGitRepo(project);
@@ -1446,6 +1452,8 @@ async function main() {
 	const keepAll = process.argv.includes("--keep-all");
 	const loki = process.argv.includes("--loki");
 	const ultronCommand = arg("ultron-command", "");
+	const appendSystemPath = arg("append-system", "");
+	const appendSystem = appendSystemPath ? readFileSync(resolve(appendSystemPath), "utf8") : undefined;
 	const unknownVariants = variants.filter((variant) => !VARIANTS[variant]);
 	if (unknownVariants.length) {
 		console.error(`Unknown variants: ${unknownVariants.join(", ")} (expected ${Object.keys(VARIANTS).join(", ")})`);
@@ -1472,7 +1480,7 @@ async function main() {
 	const judge = process.argv.includes("--no-judge") ? undefined : makeJudge(keepDir);
 	const jobs = selected.flatMap((task) =>
 		variants.flatMap((variant) =>
-			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge, loki, frameModel })),
+			Array.from({ length: trials }, (_, index) => ({ task, variant, trial: index + 1, model, thinking, keepDir, keepAll, commands, judge, loki, frameModel, appendSystem })),
 		),
 	);
 	console.log(`Quality comparison (${taskSet} set): ${selected.length} tasks x ${variants.join("/")} x ${trials} trials = ${jobs.length} runs (${model}${thinking ? `, thinking ${thinking}` : ""}; Loki ${loki ? "on" : "off"})`);
@@ -1526,7 +1534,7 @@ async function main() {
 	}
 	mkdirSync(dirname(out), { recursive: true });
 	const judgeConfig = judge ? { model: judgeModel, thinking: judgeThinking ?? null, command: judgeCommand.join(" ") } : undefined;
-	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, trials, isolation: ISOLATION, loki: loki ? "on" : "off", ...(lokiSummary ? { lokiSummary } : {}), judge: judgeConfig, summary, records }, null, 2)}\n`);
+	writeFileSync(out, `${JSON.stringify({ taskSet, frozenAt: FROZEN_AT, thresholds: THRESHOLDS, model, thinking, ultronCommand: ultronCommand ? withoutHome(ultronCommand) : undefined, appendSystem: appendSystem === undefined ? undefined : createHash("sha256").update(appendSystem).digest("hex"), trials, isolation: ISOLATION, loki: loki ? "on" : "off", ...(lokiSummary ? { lokiSummary } : {}), judge: judgeConfig, summary, records }, null, 2)}\n`);
 	console.log(JSON.stringify(summary, null, 2));
 	for (const entry of summary.skipped ?? []) console.log(`Skipped the ${entry.check} gate: ${entry.detail}`);
 	console.log(`Wrote ${out}`);

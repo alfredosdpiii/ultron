@@ -159,6 +159,13 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
 pub fn session_flags(parsed: &Args) -> session_core::session_flags::SessionFlags {
     session_core::session_flags::SessionFlags {
         system_prompt: parsed.system_prompt.clone(),
+        // A file input is read here, in the CLI's directory; the worker gets the text.
+        append_system_prompt: parsed.append_system_prompt.as_ref().map(|inputs| {
+            inputs
+                .iter()
+                .filter_map(|input| resources::prompt_files::resolve_prompt_input(Some(input)))
+                .collect()
+        }),
         no_skills: parsed.no_skills,
         no_context_files: parsed.no_context_files,
     }

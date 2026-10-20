@@ -3135,6 +3135,7 @@ W19M-17	session-core/diagram	display images within the 4 MiB cap	session_core_di
 W19M-18	session-core/diagram	display images reset per cell	session_core_diagram_display_images_start_empty_with_each_cell
 W19M-19	interactive/chat	TUI draws details.displayImages inline	interactive_diagram_display_images_are_drawn_inline_from_details
 W19M-20	resources/guide	diagram pointer line only with the Rust APIs	resources_runtime_guide_points_at_diagram_mermaid_only_with_the_rust_apis
+W20A-01	cli/session-flags	--append-system-prompt (file or text, repeatable) reaches the worker and replaces APPEND_SYSTEM.md	cli_native_append_system_prompt_reaches_the_worker
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
