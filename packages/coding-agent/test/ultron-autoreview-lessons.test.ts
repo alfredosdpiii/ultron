@@ -89,11 +89,19 @@ describe("fates", () => {
 			at: NOW,
 		});
 
-		// At merge: what is still open was passed over; a fixed one is nothing new; no threads needed.
+		// At merge: a posted finding still open was passed over; a fixed one is nothing new; no threads needed. One
+		// listed only in the review body was never in front of anyone: merging says nothing about it, a fix still does
+		// (fisher-ki-saas#2945).
 		const atMerge = fatesOf({
 			pull: "github.com/o/r#1",
 			now: NOW,
-			findings: [finding("b-1"), finding("b-2", { status: "fixed" }), finding("b-3", { status: "not_applicable" })],
+			findings: [
+				finding("b-1", { commentId: 7 }),
+				finding("b-2", { status: "fixed" }),
+				finding("b-3", { status: "not_applicable" }),
+				finding("b-4"),
+				finding("b-5", { status: "still_present" }),
+			],
 			merged: true,
 		});
 		expect(atMerge.map((fate) => [fate.id, fate.fate, fate.how])).toEqual([

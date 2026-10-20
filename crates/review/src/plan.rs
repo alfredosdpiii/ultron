@@ -106,6 +106,11 @@ pub struct EarlierStatus {
     pub severity: Option<String>,
     /// `fixed`, `still_present`, `not_applicable` or `unknown`.
     pub status: String,
+    #[serde(default)]
+    pub claim: String,
+    /// What the re-check saw (the quoted line).
+    #[serde(default)]
+    pub evidence: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -685,6 +690,47 @@ pub fn plan_review(result: &EngineResult, options: &PlanOptions) -> ReviewPlan {
         }
     } else {
         second.push(format!("{}.", capitalized(&reason)));
+    }
+    // An earlier finding that still blocks is named with what the re-check saw, so the author can fix or dispute it
+    // (fisher-ki-saas#2917: two reviews requested changes for "1 finding from an earlier review" and named none).
+    let earlier_blockers: Vec<&EarlierStatus> = result
+        .earlier
+        .iter()
+        .filter(|item| {
+            item.status == "still_present"
+                && at_or_above(level_of(item.level.as_deref(), item.severity.as_deref()), block_at)
+        })
+        .collect();
+    if verdict == Verdict::RequestChanges && !earlier_blockers.is_empty() {
+        let named: Vec<String> = earlier_blockers
+            .iter()
+            .take(MAX_BLOCKING_LISTED)
+            .enumerate()
+            .map(|(position, item)| {
+                let number = if earlier_blockers.len() > 1 {
+                    format!("({}) ", position + 1)
+                } else {
+                    String::new()
+                };
+                let seen = if item.evidence.is_empty() {
+                    String::new()
+                } else {
+                    format!(" Re-check: {}", sentence(&short(&item.evidence, 200)))
+                };
+                format!(
+                    "{number}{} {}{seen}",
+                    place(&item.file, item.line),
+                    sentence(&short(&item.claim, 220))
+                )
+            })
+            .collect();
+        second.push(format!("Still present from an earlier review: {}", named.join(" ")));
+        if earlier_blockers.len() > MAX_BLOCKING_LISTED {
+            second.push(format!(
+                "And {} more from earlier reviews.",
+                earlier_blockers.len() - MAX_BLOCKING_LISTED
+            ));
+        }
     }
     let with_status =
         |status: &str| -> Vec<&EarlierStatus> { result.earlier.iter().filter(|item| item.status == status).collect() };

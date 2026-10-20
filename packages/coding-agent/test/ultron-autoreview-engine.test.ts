@@ -376,6 +376,28 @@ emit({"kept": [[item["file"], item["line"], item["level"], item.get("also_at", [
 			["a.py", 90, "medium", []],
 			["d.py", 3, "low", []],
 		]);
+
+		// fisher-ki-saas#2917 and #2964: one problem filed by two passes under two categories, on the same or a nearby
+		// line, is one finding; another problem on the same line, or a like claim far away, is not.
+		const near = py<{ kept: Array<[number, string]>; merged: number }>(`
+def f(line, category, claim, level="low"):
+    return {"file": "rum.ts", "line": line, "level": level, "severity": a.LEVEL_TO_OLD[level], "claim": claim,
+            "category": category, "confidence": 0.8, "reviewers": [category]}
+kept, merged = a.group_root_causes([
+    f(134, "reliability", "The docstring says record() never throws and the controller fires it with void, but the user-hash computation runs before the try block, so a throw rejects the promise.", "medium"),
+    f(134, "correctness", "The docstring says record never throws, but the user-hash and event-id computation runs before the try block, so a throw there rejects the promise."),
+    f(137, "security", "The user hash is computed with an unsalted SHA-256, so a known user id is recoverable from the stored hash."),
+    f(160, "correctness", "The docstring says flush never throws, but the batch computation runs before the try block, so a throw there rejects the promise."),
+])
+emit({"kept": [[item["line"], item["category"]] for item in kept], "merged": merged})`);
+		expect(near).toEqual({
+			kept: [
+				[134, "reliability"],
+				[137, "security"],
+				[160, "correctness"],
+			],
+			merged: 1,
+		});
 	});
 
 	test("the context block is bounded, labelled as untrusted, and includes guidelines and others' comments", () => {
@@ -892,8 +914,14 @@ earlier = [
     {"id": "e3", "file": "calc.py", "line": 12, "severity": "minor", "claim": "Division result is a float."},
     {"id": "e4", "file": "old.py", "line": 1, "severity": "nit", "claim": "gone() is unused."},
     {"id": "e5", "file": "util.py", "line": 2, "severity": "minor", "claim": "helper() overflows."},
+    {"id": "e6", "file": "util.py", "line": 1, "severity": "minor", "claim": "Nothing iterates every item."},
 ]
 def recheck(text):
+    if "helper() overflows" in text:
+        return {"status": "still_present", "evidence": "helper() still adds without a bound.", "line": 2}
+    if "Nothing iterates every item" in text:
+        # Fixed by a change in another file, quoted from it.
+        return {"status": "fixed", "evidence": "\`for i in range(len(items)):\` in calc.py.", "line": None}
     if "skips the last item" in text:
         return {"status": "fixed", "evidence": "\`for i in range(len(items)):\` covers every item.", "line": None}
     if "KeyError" in text:
@@ -918,13 +946,16 @@ emit({"result": result, "rechecks": [call["text"] for call in rlm.calls if call[
 			status: "unknown",
 			evidence: "the re-check said fixed without quoting the source",
 		});
-		// A deleted file and an untouched file need no model call.
+		// A deleted file needs no model call.
 		expect(status.e4).toMatchObject({ status: "not_applicable", evidence: "the file was deleted" });
-		expect(status.e5).toMatchObject({
-			status: "still_present",
-			evidence: "the file did not change since the earlier review",
-		});
-		expect(out.rechecks).toHaveLength(3);
+		// An untouched file is still re-checked, against the changes elsewhere: a fix can live in another file
+		// (fisher-ki-saas#2917).
+		expect(status.e5).toMatchObject({ status: "still_present", line: 2 });
+		expect(status.e6).toMatchObject({ status: "fixed" });
+		expect(out.rechecks).toHaveLength(5);
+		const untouched = out.rechecks.find((text) => text.includes("helper() overflows"))!;
+		expect(untouched).toContain("util.py did not change since the earlier review. Changes elsewhere since then");
+		expect(untouched).toContain("--- calc.py");
 		// The re-check saw the mapped line (4 became 5 after the inserted first line) and the changes since.
 		expect(out.rechecks[0]).toContain(">    5 |     for i in range(len(items)):");
 		expect(out.rechecks[0]).toContain("Changes to calc.py since the earlier review");
@@ -1774,6 +1805,15 @@ emit({
 			expect(task).toContain("Look things up before you conclude.");
 			// The reference's four lookups (symbol, callers, callees, tests_of) cost about 330 characters a round.
 			expect(task.length).toBeLessThan(6_400);
+			expect(task).not.toContain("review_notes");
+		}
+		// The review-notes lookups are listed only for a repository with a knowledge store, at about 230 characters.
+		const withNotes = py<Record<string, string>>(
+			"emit({name: p.deep_task(name, notes=True) for name in p.DEEP_LENSES})",
+		);
+		for (const [name, task] of Object.entries(withNotes)) {
+			expect(task).toContain('{"like_notes": {"path": "..."}}');
+			expect(task.length - out[name]!.length).toBeLessThan(240);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");
 		expect(out.claims).toContain("necessary, not sufficient");

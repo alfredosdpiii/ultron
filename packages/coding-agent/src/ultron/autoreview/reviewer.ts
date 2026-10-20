@@ -528,8 +528,9 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 			deps.log(
 				`${pullKey(ref)}: environment ${preparedEnv.hash}${preparedEnv.cached ? " (cached)" : ""}: ${preparedEnv.prepared.join("; ") || "nothing prepared"}${preparedEnv.failures.length ? `; failed: ${preparedEnv.failures.join("; ")}` : ""}`,
 			);
-		const usePreparedEnv =
-			preparedEnv !== undefined && preparedEnv.failures.length === 0 && preparedEnv.prepared.length > 0;
+		// A partial environment is used: one sub-package that does not build (fisher-ki-saas: `ml/content_extractor`)
+		// left every test of the repository without its dependencies. Its failures go to the kernel for the report.
+		const usePreparedEnv = preparedEnv !== undefined && preparedEnv.prepared.length > 0;
 		const testCheckout = usePreparedEnv
 			? preparedEnv.dir
 			: runTests && testEnv === undefined && deps.config.checkoutRoots.length > 0
@@ -543,6 +544,7 @@ export async function runReview(deps: ReviewerDeps, prepared: Prepared): Promise
 				? {}
 				: { testCheckout, testEnvKind: usePreparedEnv ? ("prepared" as const) : ("checkout" as const) }),
 			...(usePreparedEnv ? { testToolchain: preparedEnv.toolchain.map((entry) => entry.path) } : {}),
+			...(usePreparedEnv && preparedEnv.failures.length > 0 ? { testEnvFailures: preparedEnv.failures } : {}),
 			...(deps.config.guides.length === 0 ? {} : { guides: deps.config.guides.map((path) => expandPath(path)) }),
 			repo: `${ref.owner}/${ref.repo}`,
 			diffPath,

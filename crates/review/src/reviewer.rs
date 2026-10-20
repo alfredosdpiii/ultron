@@ -29,12 +29,15 @@ use crate::github::{
     Clock, Comment, Error, GitHub, PullRef, PullRequest, Review, ReviewCommentInput, ReviewInput, iso_from_ms, pull_key,
 };
 use crate::js::{Num, cmp16, flatten, is_space, len16, path_join, to_fixed};
-use crate::ledger::{Fate, FateInput, FateKind, Lesson, ThreadState, fates_of, lessons_for, merge_fates, parse_iso_ms};
+use crate::ledger::{
+    Fate, FateInput, FateKind, Lesson, ThreadState, fates_of, lessons_for, merge_fates, parse_iso_ms,
+    without_unposted_merges,
+};
 use crate::local::{expand_path, find_checkout, without_guide_mentions};
 use crate::plan::{EngineResult, PlanOptions, ReviewPlan, Verdict, plan_review, without_inline};
 use crate::runner::Runner;
 use crate::settings::{AutoreviewConfig, AutoreviewPaths, MAX_ATTEMPTS, engine_settings, tests_eligible};
-use crate::state::{PostedFinding, PullState, ReviewRecord, StateStore, claim_hash, to_json_1};
+use crate::state::{AutoreviewState, PostedFinding, PullState, ReviewRecord, StateStore, claim_hash, to_json_1};
 
 /// Runs one review: `spec` is the TypeScript `EngineSpec` as JSON; the result is the `EngineResult` as JSON
 /// (`crate::engine::KernelEngine` in the service, a scripted engine in tests).
@@ -105,6 +108,103 @@ pub fn index_knowledge(deps: &ReviewerDeps, repo: &str, work_dir: &str, rev: &st
     }
 }
 
+/// Records the review threads of a closed pull request, by every reviewer, as notes in the knowledge graph: the
+/// investigators' `review_notes` and `like_notes` lookups read them. Never fails a review: an error is logged.
+pub fn record_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str) {
+    // Only for a repository the graph indexes: the lookups need its tree.
+    let db = std::path::Path::new(&deps.paths.knowledge);
+    let indexed = db.exists()
+        && knowledge::Store::open(db)
+            .and_then(|store| store.tree_count(&repo_key(r)))
+            .is_ok_and(|trees| trees > 0);
+    if !indexed {
+        return;
+    }
+    let recorded = github
+        .review_notes(r)
+        .map_err(|error| error.to_string())
+        .and_then(|notes| {
+            let mut store = knowledge::Store::open(std::path::Path::new(&deps.paths.knowledge))
+                .map_err(|error| error.to_string())?;
+            let added = store.record_notes(&repo_key(r), &notes).map_err(|error| error.to_string())?;
+            Ok((notes.len(), added))
+        });
+    match recorded {
+        Ok((0, _)) => {}
+        Ok((notes, added)) => (deps.log)(&format!("{name}: recorded {notes} review notes ({added} new)")),
+        Err(error) => (deps.log)(&format!("{name}: the review notes were not recorded: {error}")),
+    }
+}
+
+/// Closed pull requests whose review threads are read when a repository has no notes yet.
+pub const BACKFILL_PULLS: usize = 50;
+
+/// A repository indexed for the first time has no notes: those of its most recently closed pull requests are read
+/// once, so the lookups have history from the first review on. Never fails a review: an error is logged.
+fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str) {
+    let db = std::path::Path::new(&deps.paths.knowledge);
+    let repo = repo_key(r);
+    let Ok(mut store) = knowledge::Store::open(db) else { return };
+    // Once per repository: one whose pull requests have no review threads stays without notes.
+    let marker = format!("notes_backfilled:{repo}");
+    if store.meta(&marker).map_or(true, |done| done.is_some()) || store.note_count(&repo).map_or(true, |n| n > 0) {
+        return;
+    }
+    let pulls = match github.closed_pulls(&r.owner, &r.repo, 1) {
+        Ok(pulls) => pulls,
+        Err(error) => {
+            (deps.log)(&format!("{name}: the review notes were not backfilled: {error}"));
+            return;
+        }
+    };
+    let (mut read, mut added) = (0, 0);
+    for number in pulls.into_iter().take(BACKFILL_PULLS) {
+        let pull = PullRef::new(&r.host, &r.owner, &r.repo, number);
+        match github.review_notes(&pull).map_err(|error| error.to_string()).and_then(|notes| {
+            store.record_notes(&repo, &notes).map_err(|error| error.to_string())
+        }) {
+            Ok(new) => {
+                read += 1;
+                added += new;
+            }
+            Err(error) => {
+                (deps.log)(&format!("{name}: the review notes of #{number} were not backfilled: {error}"));
+                if error.to_lowercase().contains("rate limit") {
+                    break;
+                }
+            }
+        }
+    }
+    if read > 0 {
+        let _ = store.set_meta(&marker, &iso_from_ms((deps.now)()));
+    }
+    (deps.log)(&format!("{name}: backfilled {added} review notes from {read} closed pull requests"));
+}
+
+/// `(pull, id)` of the findings that no account posted as a review comment: listed only in a review body.
+fn unposted_findings(state: &AutoreviewState) -> HashSet<(String, String)> {
+    let (mut posted, mut unposted) = (HashSet::new(), HashSet::new());
+    for (key, pull) in &state.pulls {
+        let Some((_, pull_ref)) = key.split_once('@') else { continue };
+        for finding in &pull.findings {
+            let id = (pull_ref.to_string(), finding.id.clone());
+            if finding.comment_id.is_some() {
+                posted.insert(id);
+            } else {
+                unposted.insert(id);
+            }
+        }
+    }
+    unposted.retain(|id| !posted.contains(id));
+    unposted
+}
+
+/// A repository's ledger as the lessons read it: without merge rejections of findings nobody saw.
+fn repo_ledger(state: &AutoreviewState, repo: &str) -> Vec<Fate> {
+    let ledger = state.lessons.as_ref().and_then(|all| all.get(repo)).map_or(&[][..], Vec::as_slice);
+    without_unposted_merges(ledger, &unposted_findings(state))
+}
+
 /// Record what became of posted findings: into the state's ledger and, when configured, into the lesson memory.
 /// Never fails a review: an error is logged.
 fn learn(deps: &ReviewerDeps, r: &PullRef, fates: &[Fate], name: &str) -> Result<(), Error> {
@@ -114,10 +214,9 @@ fn learn(deps: &ReviewerDeps, r: &PullRef, fates: &[Fate], name: &str) -> Result
     let repo = repo_key(r);
     let now = iso_from_ms((deps.now)());
     let lessons = deps.store.update(|state| {
-        let ledger = state.lessons.get_or_insert_with(Default::default);
-        let merged = merge_fates(ledger.get(&repo).map_or(&[][..], Vec::as_slice), fates);
+        let merged = merge_fates(&repo_ledger(state, &repo), fates);
         let lessons = lessons_for(&merged, &now);
-        ledger.insert(repo.clone(), merged);
+        state.lessons.get_or_insert_with(Default::default).insert(repo.clone(), merged);
         lessons
     })?;
     let accepted = fates.iter().filter(|fate| fate.fate == FateKind::Accepted).count();
@@ -597,6 +696,9 @@ pub fn prepare_pull(deps: &ReviewerDeps, candidate: &Candidate, options: ReviewO
                     (deps.log)(&format!("{}: the fates at close were not read: {error}", pull_key(r)));
                 }
             }
+            if saved.closed != Some(true) && deps.config.learn {
+                record_notes(deps, r, &github, &format!("{} as {}", pull_key(r), account.login));
+            }
             deps.store.update_pull(&key, |state, _| state.closed = Some(true))?;
         }
         return Ok(Preparation::Done(Outcome::Skipped(decided.reason)));
@@ -727,6 +829,28 @@ fn earlier_statuses(result: &Value) -> Vec<EarlierStatus> {
         }
     }
     out
+}
+
+/// Review records kept: the newest this many.
+pub const MAX_REVIEW_RECORDS: usize = 200;
+
+/// Writes `<dir>/reviews/<name>.json` and removes the oldest records beyond [`MAX_REVIEW_RECORDS`].
+pub fn write_review_record(dir: &str, name: &str, record: &Value) -> std::io::Result<()> {
+    let reviews = path_join(&[dir, "reviews"]);
+    make_private_dir(&reviews)?;
+    write_private(&path_join(&[&reviews, &format!("{name}.json")]), &format!("{}\n", to_json_1(record)))?;
+    let mut records: Vec<(std::time::SystemTime, std::path::PathBuf)> = std::fs::read_dir(&reviews)?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
+        .filter_map(|entry| Some((entry.metadata().ok()?.modified().ok()?, entry.path())))
+        .collect();
+    if records.len() > MAX_REVIEW_RECORDS {
+        records.sort();
+        for (_, path) in &records[..records.len() - MAX_REVIEW_RECORDS] {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+    Ok(())
 }
 
 fn write_private(path: &str, text: &str) -> std::io::Result<()> {
@@ -860,12 +984,7 @@ fn review_in(
 
     let earlier: Vec<PostedFinding> = saved.findings.iter().filter(|f| f.status == "open").cloned().collect();
     let lessons = if deps.config.learn {
-        let ledger = deps
-            .store
-            .read()
-            .lessons
-            .and_then(|mut all| all.shift_remove(&repo_key(r)));
-        lessons_for(&ledger.unwrap_or_default(), &iso_from_ms(now()))
+        lessons_for(&repo_ledger(&deps.store.read(), &repo_key(r)), &iso_from_ms(now()))
     } else {
         Vec::new()
     };
@@ -943,9 +1062,9 @@ fn review_in(
             }
         ));
     }
-    let use_prepared = prepared_env
-        .as_ref()
-        .filter(|env| env.failures.is_empty() && !env.prepared.is_empty());
+    // A partial environment is used: one sub-package that does not build (fisher-ki-saas: `ml/content_extractor`)
+    // left every test of the repository without its dependencies. Its failures go to the kernel for the report.
+    let use_prepared = prepared_env.as_ref().filter(|env| !env.prepared.is_empty());
     let test_checkout = match use_prepared {
         Some(env) => Some(env.dir.clone()),
         None if run_tests && test_env.is_none() && !deps.config.checkout_roots.is_empty() => {
@@ -960,6 +1079,9 @@ fn review_in(
         spec.insert("baseSha".into(), json!(checkout.merge_base));
         if let Some(knowledge) = index_knowledge(deps, &repo_key(r), &checkout.work_dir, "HEAD") {
             spec.insert("knowledge".into(), knowledge);
+            if deps.config.learn {
+                backfill_notes(deps, r, &github, &name);
+            }
         }
     }
     spec.insert("runTests".into(), json!(run_tests));
@@ -976,6 +1098,9 @@ fn review_in(
     }
     if let Some(env) = use_prepared {
         spec.insert("testToolchain".into(), json!(env.toolchain));
+        if !env.failures.is_empty() {
+            spec.insert("testEnvFailures".into(), json!(env.failures));
+        }
     }
     if !deps.config.guides.is_empty() {
         let guides: Vec<String> = deps
@@ -1230,6 +1355,26 @@ fn review_in(
                 Ok(()) => resolved.push(finding.id.clone()),
                 Err(error) => (deps.log)(&format!("{name}: thread of {} was not resolved: {error}", finding.id)),
             }
+        }
+    }
+
+    if !dry_run {
+        // What the review was given and did (the brief, frames, investigators, drops, the posted plan), for reading
+        // back why it said what it said; the dry run writes its own.
+        let mut record = Map::new();
+        record.insert("account".into(), json!(account_key(account)));
+        record.insert("pull".into(), json!(pull_key(r)));
+        record.insert("sha".into(), json!(head));
+        record.insert("reviewId".into(), json!(review_id));
+        record.insert(
+            "review".into(),
+            serde_json::to_value(review_input(&head, &plan)).unwrap_or(Value::Null),
+        );
+        record.insert("posted".into(), serde_json::to_value(&posted).unwrap_or(Value::Null));
+        record.insert("result".into(), raw.clone());
+        let name_of = format!("{}-{}-{}-{short_sha}-{}", r.owner, r.repo, r.number, account.login);
+        if let Err(error) = write_review_record(&deps.paths.dir, &name_of, &Value::Object(record)) {
+            (deps.log)(&format!("{name}: the review record was not written: {error}"));
         }
     }
 

@@ -1,6 +1,9 @@
 //! Replays crates/review/fixtures/ledger.json, recorded from autoreview/lessons.ts (fixtures/generate.mjs).
 
-use review::ledger::{Fate, FateInput, PostedFinding, ThreadState, fates_of, lessons_for, merge_fates, parse_iso_ms};
+use review::ledger::{
+    Fate, FateInput, FateKind, MERGED_OPEN, PostedFinding, ThreadState, fates_of, lessons_for, merge_fates, parse_iso_ms,
+    without_unposted_merges,
+};
 use serde_json::Value;
 
 fn fixture() -> Value {
@@ -70,4 +73,34 @@ fn review_ledger_parses_iso_times_like_date_parse() {
     assert_eq!(parse_iso_ms("1969-12-31T23:59:59Z"), Some(-1000));
     assert_eq!(parse_iso_ms("not a date"), None);
     assert_eq!(parse_iso_ms("2026-13-01"), None);
+}
+
+/// fisher-ki-saas#2945: 199 findings listed only in the review body were recorded "merged with the finding open"
+/// and lowered whole categories. Those fates leave the ledger; a fix of an unposted finding and every fate of a
+/// posted one stay.
+#[test]
+fn review_ledger_forgets_merge_rejections_of_findings_nobody_saw() {
+    let fate = |id: &str, kind: FateKind, how: &str| Fate {
+        id: id.into(),
+        pull: "github.com/o/r#1".into(),
+        file: "f.ts".into(),
+        line: 1,
+        category: "correctness".into(),
+        kind: "fast".into(),
+        level: "low".into(),
+        claim: "c".into(),
+        fate: kind,
+        how: how.into(),
+        at: "2026-10-01T00:00:00.000Z".into(),
+    };
+    let ledger = vec![
+        fate("a-1", FateKind::Rejected, MERGED_OPEN),
+        fate("a-2", FateKind::Rejected, MERGED_OPEN),
+        fate("a-3", FateKind::Accepted, "fixed in a later commit"),
+    ];
+    let unposted = [("github.com/o/r#1".to_string(), "a-1".to_string()), ("github.com/o/r#1".into(), "a-3".into())]
+        .into_iter()
+        .collect();
+    let kept: Vec<String> = without_unposted_merges(&ledger, &unposted).into_iter().map(|f| f.id).collect();
+    assert_eq!(kept, ["a-2", "a-3"]);
 }

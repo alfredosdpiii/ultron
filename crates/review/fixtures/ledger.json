@@ -227,19 +227,6 @@
      "how": "fixed in a later commit"
     },
     {
-     "id": "a7",
-     "pull": "github.com/o/r#1",
-     "file": "fa7.ts",
-     "line": 7,
-     "category": "unknown",
-     "kind": "unknown",
-     "level": "high",
-     "claim": "claim a7",
-     "at": "2026-10-01T00:00:00.000Z",
-     "fate": "rejected",
-     "how": "merged with the finding open"
-    },
-    {
      "id": "a8",
      "pull": "github.com/o/r#1",
      "file": "fa8.ts",
@@ -322,21 +309,7 @@
     ],
     "merged": true
    },
-   "fates": [
-    {
-     "id": "c1",
-     "pull": "github.com/o/r#3",
-     "file": "fc1.ts",
-     "line": 1,
-     "category": "unknown",
-     "kind": "unknown",
-     "level": "high",
-     "claim": "claim c1",
-     "at": "2026-10-03T00:00:00.000Z",
-     "fate": "rejected",
-     "how": "merged with the finding open"
-    }
-   ]
+   "fates": []
   }
  ],
  "lessons": [

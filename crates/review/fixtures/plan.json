@@ -981,9 +981,9 @@
       "id": "ccccccc-1",
       "file": "calc.py",
       "line": 4,
-      "claim": "x",
+      "claim": "The in-flight cap is not pinned by a test",
       "severity": "major",
-      "evidence": "",
+      "evidence": "Line 4 still reads `const MAX_IN_FLIGHT_WRITES = 2` and no test asserts it",
       "status": "still_present"
      },
      {
@@ -1068,7 +1068,7 @@
    "plan": {
     "verdict": "request_changes",
     "event": "REQUEST_CHANGES",
-    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Still present from an earlier review: `calc.py:4` The in-flight cap is not pinned by a test. Re-check: Line 4 still reads `const MAX_IN_FLIGHT_WRITES = 2` and no test asserts it. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
     "comments": [],
     "inSummary": [],
     "overCap": []
@@ -1076,7 +1076,7 @@
    "withoutInline": {
     "verdict": "request_changes",
     "event": "REQUEST_CHANGES",
-    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
+    "body": "Read the diff of `abcdef0` (1 file, +1 -1) with the code around it; every finding below was checked against the source by a second pass.\n\n**Request changes.** 1 finding from an earlier review still present. Still present from an earlier review: `calc.py:4` The in-flight cap is not pinned by a test. Re-check: Line 4 still reads `const MAX_IN_FLIGHT_WRITES = 2` and no test asserts it. Earlier findings: 1 fixed (`b.py:9`); 2 still present (`calc.py:4`, `calc.py:4`); 2 no longer applicable or not re-checked.\n\nReviewed in 42 s: 12 model calls, 94k tokens, $0.31.\n\nAutomated review by Ultron",
     "comments": [],
     "inSummary": [],
     "overCap": []

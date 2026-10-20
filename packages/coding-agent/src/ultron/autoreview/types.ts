@@ -124,6 +124,8 @@ export interface EngineSpec {
 	 * needs: bound read-only into the sandbox with their `bin` first on its PATH.
 	 */
 	readonly testToolchain?: readonly string[];
+	/** What the host could not install into the prepared environment (a partial one is still used). */
+	readonly testEnvFailures?: readonly string[];
 	/** Where the test environment came from, for the report: `prepared`, `checkout`, `testEnv` or `none`. */
 	readonly testEnvKind?: "prepared" | "checkout" | "testEnv" | "none";
 	/** The user's private review guides (files or directories), and `owner/repo` to pick the specific ones. */

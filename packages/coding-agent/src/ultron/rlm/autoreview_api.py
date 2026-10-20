@@ -133,6 +133,8 @@ RECHECK_SHARE = 0.15
 MAX_REPLACEMENT_CHARS = 2_000
 MAX_REPLACEMENT_SPAN = 30
 MAX_EARLIER = 40
+#: The deep brief as kept in the result, for the review record.
+BRIEF_RECORD_CHARS = 24_000
 
 #: The levels of an automated review, most serious first.
 LEVELS = ("critical", "high", "medium", "low", "nit")
@@ -503,6 +505,29 @@ def _hunks_text(item: FileDiff | None, limit: int = RECHECK_DIFF_CHARS) -> str:
             lines.append(f"{number:>5} {entry.kind} {_clip(entry.text)}")
     text = "\n".join(lines)
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _elsewhere_text(since: list[FileDiff], path: str, limit: int = RECHECK_DIFF_CHARS) -> str:
+    """The changes since the earlier review outside `path`, for a finding whose own file did not change: a fix can
+    live elsewhere (a test that now pins the behaviour, a guard in a caller). Files named like `path` come first,
+    then tests, within `limit` characters."""
+    stem = Path(path).name.split(".")[0].lower()
+    def order(item: FileDiff) -> tuple[int, str]:
+        name = Path(item.path).name.lower()
+        if stem and name.split(".")[0] == stem:
+            return (0, item.path)
+        return (1 if re.search(r"(^|[/_.-])(tests?|spec)([/_.-]|$)", item.path.lower()) else 2, item.path)
+    parts: list[str] = []
+    used = 0
+    for item in sorted((item for item in since if item.path != path and item.hunks), key=order):
+        room = limit - used
+        if room < 200:
+            parts.append("(more files changed; not shown)")
+            break
+        text = f"--- {item.path}\n{_hunks_text(item, room - len(item.path) - 5)}"
+        parts.append(text)
+        used += len(text) + 1
+    return "\n".join(parts) if parts else "(nothing else changed)"
 
 
 def _reviewer_keys(only: Any) -> list[str]:
@@ -1019,19 +1044,29 @@ async def recheck_earlier(rlm: Any, earlier: list[dict[str, Any]], since: list[F
             else:
                 entry.update(status="not_applicable", evidence="the file no longer exists")
             continue
-        if since is not None and change is None:
-            entry.update(status="still_present", evidence="the file did not change since the earlier review")
+        if since is not None and change is None and not any(item.hunks for item in since):
+            entry.update(status="still_present", evidence="nothing changed since the earlier review")
             continue
-        mapped = map_line(change, old_line, nearest=True) if since is not None else old_line
+        mapped = map_line(change, old_line, nearest=True) if since is not None and change is not None else old_line
         line = min(max(1, mapped or old_line), max(1, len(source)))
         entry["file"] = path
         entry["line"] = line
         window = source_window(source, line, RECHECK_WINDOW)
-        changes = _hunks_text(change) if since is not None else "(the branch was rewritten; no diff since the earlier review)"
         public = {"file": raw["file"], "line": old_line, "severity": raw.get("severity"), "claim": entry["claim"]}
         views = [f"Earlier finding:\n{json.dumps(public, indent=1)}",
-                 f"Current source of {path} around line {line} (> marks the mapped line):\n{window}",
-                 f"Changes to {path} since the earlier review (new-file line numbers):\n{changes}"]
+                 f"Current source of {path} around line {line} (> marks the mapped line):\n{window}"]
+        if since is None:
+            changes = "(the branch was rewritten; no diff since the earlier review)"
+            views.append(f"Changes to {path} since the earlier review (new-file line numbers):\n{changes}")
+        elif change is None:
+            # fisher-ki-saas#2917: the cap was pinned in the spec and the settings documented in the runbook, while
+            # "the file did not change" kept both findings still present and blocking for three reviews.
+            changes = _elsewhere_text(since, path)
+            views.append(f"{path} did not change since the earlier review. Changes elsewhere since then "
+                         f"(new-file line numbers):\n{changes}")
+        else:
+            changes = _hunks_text(change)
+            views.append(f"Changes to {path} since the earlier review (new-file line numbers):\n{changes}")
         cost = _estimate_tokens(RECHECK_TASK, *views, output=400)
         if estimate + cost > budget_tokens:
             entry["evidence"] = "not re-checked (budget)"
@@ -1118,13 +1153,17 @@ def group_root_causes(confirmed: list[dict[str, Any]],
                       records: list[dict[str, Any]] | None = None) -> tuple[list[dict[str, Any]], int]:
     """One finding per root cause: confirmed findings of one category that say the same thing in different places
     (nearly identical claims, or scenarios that describe the same failing input) become the most serious of them,
-    with the other places listed in `also_at`."""
+    with the other places listed in `also_at`. Findings within `MERGE_WINDOW` lines of each other in one file whose
+    claims are alike are one finding whatever their categories: two passes filing one problem under `correctness`
+    and `reliability` (fisher-ki-saas#2917: "record() never throws" twice on line 134) is still one problem."""
     kept: list[dict[str, Any]] = []
     merged = 0
     # The most serious wording leads and, at one level, the one with the stronger evidence.
     strength = lambda item: 0 if item.get("test_run") or item.get("host_confirmed") else 1 if item.get("beyond_diff") else 2  # noqa: E731
     for finding in sorted(confirmed, key=lambda item: (level_rank(item)[0], strength(item), level_rank(item)[1])):
-        twin = next((item for item in kept if item["category"] == finding["category"] and (
+        twin = next((item for item in kept if (
+            item["file"] == finding["file"] and abs(item["line"] - finding["line"]) <= MERGE_WINDOW
+            and similar_claims(item["claim"], finding["claim"])) or item["category"] == finding["category"] and (
             nearly_identical(item["claim"], finding["claim"])
             # Both confirmed and about the same failing input: the scenarios in nearly the same words, and the
             # claims alike (a scenario's phrasing alone, "returns X; it should return Y", recurs everywhere).
@@ -1365,6 +1404,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             "toolchain": [item for item in (spec.get("testToolchain") or []) if isinstance(item, str)]
             if isinstance(spec.get("testToolchain"), list) else [],
             "env_kind": spec.get("testEnvKind") if isinstance(spec.get("testEnvKind"), str) else None,
+            # What the host could not install into that environment (a partial one is still used).
+            "env_failures": [_text(item, 200) for item in (spec.get("testEnvFailures") or []) if isinstance(item, str)]
+            if isinstance(spec.get("testEnvFailures"), list) else [],
         }
     test_report: dict[str, Any] = {"enabled": False, "mechanism": None, "note": None, "runs": [], "env": "none", "toolchain": []}
 
@@ -1384,6 +1426,8 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                     program = json.loads(Path(spec["programPath"]).read_text(encoding="utf-8"))
                 except (OSError, ValueError) as error:
                     raise ReviewError(f"the program file could not be read: {error}") from None
+            stored = spec.get("knowledge") if isinstance(spec.get("knowledge"), dict) else {}
+            knowledge = Knowledge.open(stored.get("db"), stored.get("repo"), stored.get("rev"))
             try:
                 compiled_out = await compiled.run_compiled(
                     frames_runner, scope.files, scope.read_file, root=scope.root, rev=deep_rev,
@@ -1396,11 +1440,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
                     enrich=parse_rules, generic=generic_reason, program=program,
                     dump_path=spec.get("dumpProgramPath") if isinstance(spec.get("dumpProgramPath"), str) else None,
                     plan_style=plan_style, plan_cells=plan_cells,
-                    python=spec.get("cellPython") if isinstance(spec.get("cellPython"), str) else "python3")
+                    python=spec.get("cellPython") if isinstance(spec.get("cellPython"), str) else "python3",
+                    knowledge=knowledge)
             except Exception as error:  # the fast and deep passes stand in for a program that could not run
                 not_checked.append(f"The review program failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                    "the fast and deep passes ran instead.")
                 mode = "both"
+            finally:
+                if knowledge is not None:
+                    knowledge.close()
             if compiled_out is not None and compiled_out["fallback"]:
                 not_checked.append(f"The compiled mode fell back to the fast and deep passes: {compiled_out['fallback']}.")
                 program_stats = {"planner": compiled_out["planner"], "fallback": compiled_out["fallback"]}
@@ -1425,6 +1473,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             repo_at = deep.Repo(scope.root, deep_rev, runner)
             if not repo_at.files():
                 raise RuntimeError("the reviewed commit could not be read")
+            # The review-notes lookups are offered when there are notes to read.
+            if knowledge is not None and knowledge.has_notes():
+                repo_at.knowledge = stored
             brief_at = deep.build_brief(repo_at, scope.files, scope.read_file, title=_bounded(context.get("title"), TITLE_CHARS),
                                         description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                                         base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
@@ -2118,6 +2169,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
         "program": program_stats,
         "assurance": assurance,
         "tests": test_report,
+        # What the deep pass was shown, for the review record (bounded).
+        "brief": {"text": prepared["brief"].text[:BRIEF_RECORD_CHARS], "lenses": list(prepared["brief"].lenses)}
+        if prepared else None,
         "guides": len([name for name in guide_names if os.sep in name]),
         "guideNames": guide_names,
         "notChecked": not_checked,

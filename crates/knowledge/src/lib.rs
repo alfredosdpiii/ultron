@@ -13,4 +13,4 @@ pub mod index;
 pub mod store;
 
 pub use index::{IndexStats, index_tree};
-pub use store::{SCHEMA_VERSION, Store};
+pub use store::{Note, SCHEMA_VERSION, Store};

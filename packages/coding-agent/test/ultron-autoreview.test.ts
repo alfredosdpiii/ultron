@@ -1129,12 +1129,12 @@ describe("reviewing a pull request", () => {
 			ci: "1 passed, 1 failed (test)",
 			comments: [{ author: "bob", path: "calc.py", line: 5, body: "price may be missing" }],
 		});
-		// No token cap, deadline or frame timeout unless configured.
+		// No token cap or frame timeout unless configured; a 45-minute deadline.
 		expect(spec).toMatchObject({
 			concurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 0,
+			deadlineSeconds: 2700,
 			frameTimeoutSeconds: 0,
 		});
 		expect(spec.budget).toBeUndefined();
@@ -1617,7 +1617,8 @@ describe("re-review", () => {
 		expect(outcome.plan.event).toBe("REQUEST_CHANGES");
 		expect(outcome.plan.body).toContain("Read the changes from `ccccccc` to `ddddddd` (1 file, +1 -1)");
 		expect(outcome.plan.body).toContain(
-			"**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:7`).",
+			// The earlier finding that blocks is named (fisher-ki-saas#2917).
+			"**Request changes.** 1 finding from an earlier review still present. Still present from an earlier review: `calc.py:7` price may be missing. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:7`).",
 		);
 		// Only the fixed finding's own thread is resolved.
 		expect([...pull.resolved]).toEqual([`PRRT_${fixedComment!.id}`]);
@@ -2365,7 +2366,7 @@ describe("the command", () => {
 			frameConcurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 0,
+			deadlineSeconds: 2700,
 			frameTimeoutSeconds: 0,
 			dryRun: false,
 			ack: true,

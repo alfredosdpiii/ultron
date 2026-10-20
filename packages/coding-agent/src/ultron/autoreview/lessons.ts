@@ -87,7 +87,11 @@ export interface FateInput {
 	readonly merged?: boolean;
 }
 
-/** The fates the current observation settles. A finding with nothing new about it yields none. */
+/**
+ * The fates the current observation settles. A finding with nothing new about it yields none. A finding never posted
+ * as a review comment (listed only in the review body: over the comment budget, or off the diff) is not rejected by a
+ * merge: nobody could react to it (fisher-ki-saas#2945: 199 of 200 findings "merged with the finding open").
+ */
 export function fatesOf(input: FateInput): Fate[] {
 	const out: Fate[] = [];
 	for (const finding of input.findings) {
@@ -111,7 +115,7 @@ export function fatesOf(input: FateInput): Fate[] {
 		else if (status === "fixed") out.push({ ...base, fate: "accepted", how: "fixed in a later commit" });
 		else if (thread?.resolved && !input.resolvedByUs?.has(thread.id) && status !== "not_applicable")
 			out.push({ ...base, fate: "rejected", how: "the thread was resolved without a fix" });
-		else if (input.merged && (status === "open" || status === "still_present"))
+		else if (input.merged && finding.commentId !== undefined && (status === "open" || status === "still_present"))
 			out.push({ ...base, fate: "rejected", how: "merged with the finding open" });
 	}
 	return out;

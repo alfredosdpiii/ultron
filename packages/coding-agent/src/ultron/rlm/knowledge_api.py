@@ -19,11 +19,25 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Any
 
-#: The store schema this reader understands (`knowledge::SCHEMA_VERSION`).
-SCHEMA_VERSION = 1
+#: The store schema this reader understands (`knowledge::SCHEMA_VERSION`): 2 added the review notes.
+SCHEMA_VERSION = 2
 
 #: A construct shared by more than this share of a language's files says nothing about similarity.
 COMMON_SHARE = 0.5
+
+
+@dataclass
+class Note:
+    """A review comment left on a pull request of the repository, by anyone (a teammate, a bot, this reviewer)."""
+    pull: int
+    path: str
+    line: int | None
+    author: str
+    body: str
+    url: str
+    at: str
+    #: `addressed` (its thread was resolved, or a later commit changed the lines) or `open`.
+    state: str
 
 
 @dataclass
@@ -37,9 +51,10 @@ class Similar:
 class Knowledge:
     """One repository at one revision, in the store."""
 
-    def __init__(self, conn: sqlite3.Connection, tree: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, tree: int, repo: int = 0) -> None:
         self._conn = conn
         self._tree = tree
+        self._repo = repo
 
     @classmethod
     def open(cls, db: Any, repo: Any, rev: Any) -> "Knowledge | None":
@@ -56,7 +71,7 @@ class Knowledge:
                 conn.close()
                 return None
             tree = conn.execute(
-                "SELECT t.id FROM trees t JOIN repos r ON r.id = t.repo WHERE r.name = ? AND t.rev = ?",
+                "SELECT t.id, t.repo FROM trees t JOIN repos r ON r.id = t.repo WHERE r.name = ? AND t.rev = ?",
                 (repo, rev),
             ).fetchone()
         except sqlite3.Error:
@@ -65,7 +80,7 @@ class Knowledge:
         if tree is None:
             conn.close()
             return None
-        return cls(conn, int(tree[0]))
+        return cls(conn, int(tree[0]), int(tree[1]))
 
     def close(self) -> None:
         self._conn.close()
@@ -131,6 +146,44 @@ class Knowledge:
             ranked.append(Similar(other, round(sum(weight[kind] for kind in kinds), 3), kinds))
         ranked.sort(key=lambda item: (-item.score, len(item.shared), item.path))
         return ranked[:limit]
+
+
+    def has_notes(self) -> bool:
+        """Whether the store holds any review note of this repository."""
+        try:
+            return self._conn.execute("SELECT 1 FROM notes WHERE repo = ? LIMIT 1", (self._repo,)).fetchone() is not None
+        except sqlite3.Error:
+            return False
+
+    def notes_on(self, path: str, *, limit: int = 8) -> list[Note]:
+        """Review comments left on `path` in earlier pull requests, addressed ones first, newest first."""
+        return self._notes("n.path = ?", (path,), limit)
+
+    def notes_like(self, path: str, *, limit: int = 8, exclude: set[str] | None = None) -> list[tuple[Note, Similar]]:
+        """Addressed review comments on the files most like `path` (`similar`): what reviewers asked of code that
+        does what this file does, with the constructs the two files share. Best match first."""
+        out: list[tuple[Note, Similar]] = []
+        for alike in self.similar(path, limit=6, exclude=exclude):
+            for note in self._notes("n.path = ? AND n.state = 'addressed'", (alike.path,), limit):
+                out.append((note, alike))
+        # The closest file first; among its notes, the newest.
+        out.sort(key=lambda pair: pair[0].at, reverse=True)
+        out.sort(key=lambda pair: -pair[1].score)
+        return out[:limit]
+
+    def _notes(self, where: str, args: tuple[Any, ...], limit: int) -> list[Note]:
+        try:
+            rows = self._conn.execute(
+                "SELECT n.pull, n.path, n.line, n.author, n.body, n.url, n.at, n.state FROM notes n"
+                f" WHERE n.repo = ? AND {where}"
+                " ORDER BY n.state = 'addressed' DESC, n.at DESC LIMIT ?",
+                (self._repo, *args, limit),
+            ).fetchall()
+        except sqlite3.Error:
+            # A store from before notes (schema 1) has none.
+            return []
+        return [Note(int(pull), str(path), None if line is None else int(line), str(author), str(body), str(url),
+                     str(at), str(state)) for pull, path, line, author, body, url, at, state in rows]
 
 
 def construct_label(kind: str) -> str:

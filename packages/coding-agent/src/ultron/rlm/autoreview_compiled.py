@@ -2398,7 +2398,7 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
                        generic: Callable[[dict[str, Any]], str | None] | None = None,
                        program: Any = None, dump_path: str | None = None, plan_style: str = DEFAULT_PLAN_STYLE,
                        plan_cells: int = DEFAULT_PLAN_CELLS, cell_sandbox: Any = "detect",
-                       python: str = "python3") -> dict[str, Any]:
+                       python: str = "python3", knowledge: Any = None) -> dict[str, Any]:
     """Map, retrieve, plan (the planner as sandboxed cells over the rv API, or one planner frame, or `program` given
     to replay), validate (one repair round for a frame), interpret.
     Returns findings (deterministic ones `host_confirmed`), what was dropped, the step records, the stats, the
@@ -2407,7 +2407,8 @@ async def run_compiled(frames: Any, files: list[FileDiff], read_file: Callable[[
     repo = deep.Repo(root, rev, runner)
     if not repo.files():
         raise RuntimeError("the reviewed commit could not be read")
-    brief = deep.build_brief(repo, files, read_file, title=title, description=description, base=base)
+    brief = deep.build_brief(repo, files, read_file, title=title, description=description, base=base,
+                             knowledge=knowledge)
     diff_lines = {item.path: {line.new for hunk in item.hunks for line in hunk.lines if line.new is not None}
                   for item in files}
     changed_lines = sum(item.added + item.removed for item in files)

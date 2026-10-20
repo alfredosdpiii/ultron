@@ -99,7 +99,7 @@ Options:
   --block-at <level>           review: request changes from this level up (critical, high, medium, low, nit)
   --max-comments <n>           review: inline comments at most
   --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
-                               autoreview.deadlineSeconds, none)
+                               autoreview.deadlineSeconds, 2700; 0 for none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
 frameConcurrency, modelConcurrency, mode, deepModel, deepThinking, deepRounds, referenceView, verifyBatch, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature, learn, skipBots.
@@ -914,6 +914,9 @@ fn offline_spec(
                     .collect();
                 spec.insert("testToolchain".into(), Value::Array(paths));
                 spec.insert("testEnvKind".into(), "prepared".into());
+                if !prepared.failures.is_empty() {
+                    spec.insert("testEnvFailures".into(), prepared.failures.clone().into());
+                }
             }
             // A checkout of the named repository under --checkout-roots, else the repository given: it is itself
             // a local checkout, and its own prepared environments serve the tests.
@@ -1900,9 +1903,8 @@ fn execute(
     } else {
         None
     };
-    let use_prepared = prepared
-        .as_ref()
-        .filter(|prepared| prepared.failures.is_empty() && !prepared.prepared.is_empty());
+    // A partial environment is used; its failures go to the kernel for the report.
+    let use_prepared = prepared.as_ref().filter(|prepared| !prepared.prepared.is_empty());
     let (engine, start_ms): (Arc<dyn ReviewEngine>, Option<u64>) = match &ov.engine {
         Some(engine) => (engine.clone(), None),
         None => {

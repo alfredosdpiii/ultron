@@ -7,9 +7,12 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::extract::{Construct, Extracted, Symbol};
 
-/// The schema the kernel reader (`rlm/knowledge.py`) is written against. Bump it with every change to a table the
+/// The schema the kernel reader (`rlm/knowledge_api.py`) is written against. Bump it with every change to a table the
 /// reader uses, and teach the reader the new version in the same change.
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
+
+/// Characters of a note's body kept.
+pub const NOTE_CHARS: usize = 2000;
 
 /// Trees kept per repository: enough for the reviews in flight and their re-reviews; older ones are dropped.
 pub const TREES_PER_REPO: i64 = 50;
@@ -38,7 +41,31 @@ CREATE TABLE IF NOT EXISTS entries (
     PRIMARY KEY (tree, path)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS entries_blob ON entries (blob);
+-- Schema 2. Review comments left on the repository's pull requests, by anyone: what reviewers asked of a file,
+-- and whether it was addressed (`addressed`: the thread was resolved, or a later commit changed its lines; `open`).
+CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY, repo INTEGER NOT NULL, pull INTEGER NOT NULL, path TEXT NOT NULL, line INTEGER,
+    author TEXT NOT NULL, body TEXT NOT NULL, url TEXT NOT NULL, at TEXT NOT NULL, state TEXT NOT NULL,
+    UNIQUE (repo, url)
+);
+CREATE INDEX IF NOT EXISTS notes_path ON notes (repo, path);
 ";
+
+/// A review comment, as [`Store::record_notes`] keeps it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Note {
+    pub pull: i64,
+    pub path: String,
+    pub line: Option<i64>,
+    pub author: String,
+    pub body: String,
+    /// The comment's URL: a note is recorded once, its state updated.
+    pub url: String,
+    /// ISO time the comment was made.
+    pub at: String,
+    /// `addressed` or `open`.
+    pub state: String,
+}
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -99,6 +126,13 @@ impl Store {
                 )?;
             }
             Some(Ok(SCHEMA_VERSION)) => {}
+            // Schema 1 had no notes; the table was created above.
+            Some(Ok(1)) => {
+                self.conn.execute(
+                    "UPDATE meta SET value = ?1 WHERE key = 'schema_version'",
+                    params![SCHEMA_VERSION.to_string()],
+                )?;
+            }
             Some(Ok(version)) if version > SCHEMA_VERSION => {
                 return Err(Error(format!(
                     "the knowledge store has schema {version}, newer than this build's {SCHEMA_VERSION}"
@@ -205,6 +239,63 @@ impl Store {
         }
         tx.commit()?;
         Ok(tree)
+    }
+
+    /// Records review comments of `repo`, in one transaction: a new one is added, a known one (by URL) gets its
+    /// current state, line and body. Returns how many were new.
+    pub fn record_notes(&mut self, repo: &str, notes: &[Note]) -> Result<usize, Error> {
+        let tx = self.conn.transaction()?;
+        tx.execute("INSERT INTO repos (name) VALUES (?1) ON CONFLICT (name) DO NOTHING", params![repo])?;
+        let repo_id: i64 = tx.query_row("SELECT id FROM repos WHERE name = ?1", params![repo], |row| row.get(0))?;
+        let mut added = 0;
+        {
+            let mut known = tx.prepare_cached("SELECT 1 FROM notes WHERE repo = ?1 AND url = ?2")?;
+            let mut row = tx.prepare_cached(
+                "INSERT INTO notes (repo, pull, path, line, author, body, url, at, state)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                 ON CONFLICT (repo, url) DO UPDATE SET
+                     path = excluded.path, line = excluded.line, body = excluded.body, state = excluded.state",
+            )?;
+            for note in notes {
+                if !known.exists(params![repo_id, note.url])? {
+                    added += 1;
+                }
+                let body: String = note.body.chars().take(NOTE_CHARS).collect();
+                row.execute(params![
+                    repo_id, note.pull, note.path, note.line, note.author, body, note.url, note.at, note.state
+                ])?;
+            }
+        }
+        tx.commit()?;
+        Ok(added)
+    }
+
+    /// A value the host keeps beside the graph (`meta`), such as when a repository's notes were backfilled.
+    pub fn meta(&self, key: &str) -> Result<Option<String>, Error> {
+        Ok(self
+            .conn
+            .query_row("SELECT value FROM meta WHERE key = ?1", params![key], |row| row.get(0))
+            .optional()?)
+    }
+
+    pub fn set_meta(&self, key: &str, value: &str) -> Result<(), Error> {
+        if key == "schema_version" {
+            return Err(Error("the schema version is the store's own".into()));
+        }
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    /// How many notes the store holds for `repo`.
+    pub fn note_count(&self, repo: &str) -> Result<i64, Error> {
+        Ok(self.conn.query_row(
+            "SELECT COUNT(*) FROM notes n JOIN repos r ON r.id = n.repo WHERE r.name = ?1",
+            params![repo],
+            |row| row.get(0),
+        )?)
     }
 
     /// The constructs of the file at `path` in `repo` at `rev`, for tests and the CLI: (kind, line, count).

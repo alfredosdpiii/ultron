@@ -96,12 +96,12 @@ fn review_github_a_requested_review_acknowledges_then_posts_one_atomic_review() 
         json!({ "title": "Tweak total", "description": "Sums prices.", "ci": "1 passed, 1 failed (test)",
             "comments": [{ "author": "bob", "body": "price may be missing", "path": "calc.py", "line": 5 }] })
     );
-    // No token cap, deadline or frame timeout unless configured.
+    // No token cap or frame timeout unless configured; a 45-minute deadline.
     for (key, value) in [
         ("concurrency", json!(8)),
         ("thinking", json!("low")),
         ("verifyThinking", json!("low")),
-        ("deadlineSeconds", json!(0)),
+        ("deadlineSeconds", json!(2700)),
         ("frameTimeoutSeconds", json!(0)),
     ] {
         assert_eq!(spec[key], value, "{key}");
@@ -958,9 +958,10 @@ fn review_github_new_commits_rereview_the_increment_and_resolve_fixed_threads() 
             .body
             .contains("Read the changes from `ccccccc` to `ddddddd` (1 file, +1 -1)")
     );
+    // The earlier finding that blocks is named (fisher-ki-saas#2917).
     assert!(outcome.plan.body.contains(
-        "**Request changes.** 1 finding from an earlier review still present. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:7`)."
-    ));
+        "**Request changes.** 1 finding from an earlier review still present. Still present from an earlier review: `calc.py:7` price may be missing. Earlier findings: 1 fixed (`calc.py:4`); 1 still present (`calc.py:7`)."
+    ), "{}", outcome.plan.body);
     // Only the fixed finding's own thread is resolved.
     assert_eq!(context.hub.pull().resolved, [format!("PRRT_{}", fixed.id)]);
     let resolves: Vec<Value> = context

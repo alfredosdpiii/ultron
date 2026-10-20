@@ -134,7 +134,7 @@ Options:
   --block-at <level>           review: request changes from this level up (critical, high, medium, low, nit)
   --max-comments <n>           review: inline comments at most
   --deadline <seconds>         review: give up unfinished passes after this long and report the rest (default:
-                               autoreview.deadlineSeconds, none)
+                               autoreview.deadlineSeconds, 2700; 0 for none)
 
 Settings (global settings.json): autoreview.accounts, pollSeconds, concurrency, model, verifyModel, budget, dryRun,
 frameConcurrency, modelConcurrency, mode, deepModel, deepThinking, deepRounds, referenceView, verifyBatch, planModel, planThinking, askModel, askThinking, planStyle, planCells, verifyCandidates, prepareEnvs, mise, blockAt, maxComments, runTests, testOwners, testRuns, testTimeoutSeconds, testEnv, testImage, checkoutRoots, guides, thinking, verifyThinking, deadlineSeconds, frameTimeoutSeconds, ack, ackLines, ackArt, signature, learn, skipBots.
@@ -759,8 +759,8 @@ export async function runAutoreviewCommand(
 						...prepared.failures.map((item) => `prepare: ${item}`),
 					])
 						io.stderr(`${line}\n`);
-				const usePrepared =
-					prepared !== undefined && prepared.failures.length === 0 && prepared.prepared.length > 0;
+				// A partial environment is used; its failures go to the kernel for the report.
+				const usePrepared = prepared !== undefined && prepared.prepared.length > 0;
 				await engine.start?.();
 				const result = await engine.review({
 					repoDir: resolve(cwd, parsed.repoDir!),
@@ -776,6 +776,7 @@ export async function runAutoreviewCommand(
 									testCheckout: prepared.dir,
 									testToolchain: prepared.toolchain.map((entry) => entry.path),
 									testEnvKind: "prepared" as const,
+									...(prepared.failures.length === 0 ? {} : { testEnvFailures: prepared.failures }),
 								}
 							: // A checkout of the named repository under --checkout-roots, else the repository given: it is
 								// itself a local checkout, and its own prepared environments serve the tests.

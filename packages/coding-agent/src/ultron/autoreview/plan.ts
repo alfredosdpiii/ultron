@@ -308,6 +308,20 @@ export function planReview(result: EngineResult, options: PlanOptions): ReviewPl
 			second.push(`And ${blockers.length - MAX_BLOCKING_LISTED} more at ${blockAt} or above.`);
 		if (verdict !== "request_changes") second.push(`${reason[0]!.toUpperCase()}${reason.slice(1)}.`);
 	} else second.push(`${reason[0]!.toUpperCase()}${reason.slice(1)}.`);
+	// An earlier finding that still blocks is named with what the re-check saw, so the author can fix or dispute it
+	// (fisher-ki-saas#2917: two reviews requested changes for "1 finding from an earlier review" and named none).
+	const earlierBlockers = result.earlier.filter(
+		(item) => item.status === "still_present" && atOrAbove(levelOf(item), blockAt),
+	);
+	if (verdict === "request_changes" && earlierBlockers.length > 0) {
+		const named = earlierBlockers.slice(0, MAX_BLOCKING_LISTED).map((item, position) => {
+			const seen = item.evidence ? ` Re-check: ${sentence(short(item.evidence, 200))}` : "";
+			return `${earlierBlockers.length > 1 ? `(${position + 1}) ` : ""}${where(item)} ${sentence(short(item.claim, 220))}${seen}`;
+		});
+		second.push(`Still present from an earlier review: ${named.join(" ")}`);
+		if (earlierBlockers.length > MAX_BLOCKING_LISTED)
+			second.push(`And ${earlierBlockers.length - MAX_BLOCKING_LISTED} more from earlier reviews.`);
+	}
 	const stillOpen = result.earlier.filter((item) => item.status === "still_present");
 	const fixed = result.earlier.filter((item) => item.status === "fixed");
 	if (result.earlier.length > 0) {

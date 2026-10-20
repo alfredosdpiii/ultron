@@ -10,7 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use knowledge::{SCHEMA_VERSION, Store, index_tree};
+use knowledge::{Note, SCHEMA_VERSION, Store, index_tree};
 
 const REPO: &str = "github.com/example/saas";
 const NEW: &str = "backend/prisma/migrations/20261014120000_add_question_topic_list_version/migration.sql";
@@ -338,7 +338,8 @@ reader = r._rev_reader(r.Git(root), head)
 without = deep.build_brief(deep.Repo(root, head), files, reader, base=base).text
 k = Knowledge.open(db, repo, head)
 with_k = deep.build_brief(deep.Repo(root, head), files, reader, base=base, knowledge=k).text
-print(json.dumps({'without': without, 'with': with_k}))";
+small = deep.build_brief(deep.Repo(root, head), files, reader, base=base, knowledge=k, limit=900).text
+print(json.dumps({'without': without, 'with': with_k, 'small': small}))";
     let out = kernel_python(
         body,
         &[&root.display().to_string(), &base, &head, &db.display().to_string(), REPO],
@@ -358,4 +359,126 @@ print(json.dumps({'without': without, 'with': with_k}))";
     assert!(like.contains(AUDIT), "{like}");
     assert!(like.contains("trigger before-update"), "{like}");
     assert!(!with.contains("same name elsewhere"), "{with}");
+    // The pointer follows the claims, ahead of the long sections: a brief cut at its size limit keeps it (on the
+    // real repository a 15-file change filled the brief before it).
+    let small = briefs["small"].as_str().unwrap();
+    assert!(small.ends_with("(brief cut at its size limit)"), "{small}");
+    assert!(small.contains(&format!("Like {NEW}")), "{small}");
+}
+
+fn note(pull: i64, path: &str, author: &str, body: &str, state: &str) -> Note {
+    Note {
+        pull,
+        path: path.into(),
+        line: Some(65),
+        author: author.into(),
+        body: body.into(),
+        url: format!("https://github.com/example/saas/pull/{pull}#discussion-{author}"),
+        at: format!("2026-08-{:02}T10:00:00Z", pull % 28 + 1),
+        state: state.into(),
+    }
+}
+
+#[test]
+fn a_store_of_schema_1_gains_the_notes_and_keeps_its_trees() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("repo");
+    std::fs::create_dir_all(&root).unwrap();
+    let (_, head) = repository(&root);
+    let db = dir.path().join("graph.db");
+    index_tree(&db, REPO, &root, "HEAD").unwrap();
+    // As a build of schema 1 left it: no notes table.
+    let out = kernel_python(
+        "import sqlite3\nconn = sqlite3.connect(sys.argv[1])\nconn.execute('DROP TABLE notes')\nconn.execute(\"UPDATE meta SET value = '1' WHERE key = 'schema_version'\")\nconn.commit()\nprint('ok')",
+        &[&db.display().to_string()],
+    );
+    assert_eq!(out, "ok");
+    let mut store = Store::open(&db).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    assert_eq!(store.tree_count(REPO).unwrap(), 1);
+    assert!(!store.constructs_at(REPO, &head, NEW).unwrap().is_empty());
+    assert_eq!(store.record_notes(REPO, &[note(2801, AUDIT, "jgericardo", "TRUNCATE?", "open")]).unwrap(), 1);
+}
+
+#[test]
+fn a_note_is_recorded_once_and_its_state_follows_the_thread() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("graph.db");
+    let mut store = Store::open(&db).unwrap();
+    let first = note(2801, AUDIT, "samsamlopez", "TRUNCATE skips the row-level DELETE trigger.", "open");
+    assert_eq!(store.record_notes(REPO, std::slice::from_ref(&first)).unwrap(), 1);
+    let addressed = Note { state: "addressed".into(), ..first.clone() };
+    assert_eq!(store.record_notes(REPO, &[addressed]).unwrap(), 0, "the same comment is not a new note");
+    assert_eq!(store.note_count(REPO).unwrap(), 1);
+    let out = kernel_python(
+        "import sqlite3\nprint(sqlite3.connect(sys.argv[1]).execute('SELECT state FROM notes').fetchone()[0])",
+        &[&db.display().to_string()],
+    );
+    assert_eq!(out, "addressed");
+    assert_eq!(store.meta("notes_backfilled:x").unwrap(), None);
+    store.set_meta("notes_backfilled:x", "2026-10-21T00:00:00.000Z").unwrap();
+    assert_eq!(store.meta("notes_backfilled:x").unwrap().as_deref(), Some("2026-10-21T00:00:00.000Z"));
+    assert!(store.set_meta("schema_version", "9").is_err(), "the version is not a host value");
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+}
+
+/// fisher-ki-saas#2920 with history: the audit table's pull request had a reviewer ask about TRUNCATE. An
+/// investigator of the new append-only migration who asks `like_notes` gets that comment, through the constructs
+/// the two migrations share, though the new file has no history of its own.
+#[test]
+fn an_investigator_gets_the_review_notes_of_files_like_the_one_it_reads() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("repo");
+    std::fs::create_dir_all(&root).unwrap();
+    let (_, head) = repository(&root);
+    let db = dir.path().join("graph.db");
+    index_tree(&db, REPO, &root, "HEAD").unwrap();
+    let mut store = Store::open(&db).unwrap();
+    store
+        .record_notes(
+            REPO,
+            &[
+                note(2801, AUDIT, "samsamlopez", "TRUNCATE skips the row-level DELETE trigger; add a statement-level one.", "addressed"),
+                note(2801, AUDIT, "julesballaran", "Name the retention window in the comment.", "open"),
+                note(2790, "backend/prisma/migrations/20250501000000_add_feedback/migration.sql", "jplbnrs", "Index the organization column.", "addressed"),
+            ],
+        )
+        .unwrap();
+    drop(store);
+    let body = "\
+import autoreview_deep as deep
+root, head, db, repo, new, audit = sys.argv[1:7]
+r = deep.Repo(root, head)
+r.knowledge = {'db': db, 'repo': repo, 'rev': head}
+out = {}
+for kind, path in (('like_notes', new), ('review_notes', audit), ('review_notes', new)):
+    title, body = deep.serve_request(r, {kind: {'path': path}})
+    out[kind + ':' + path] = [title, body]
+bare = deep.Repo(root, head)
+try:
+    deep.serve_request(bare, {'like_notes': {'path': new}})
+    out['bare'] = 'served'
+except deep.Rejected as error:
+    out['bare'] = str(error)
+print(json.dumps(out))";
+    let out = kernel_python(
+        body,
+        &[&root.display().to_string(), &head, &db.display().to_string(), REPO, NEW, AUDIT],
+    );
+    let served: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let like = served[format!("like_notes:{NEW}")][1].as_str().unwrap();
+    // The addressed comment on the audit migration, with what the two files share; the open one is not offered,
+    // nor the comment on a migration that shares only what every migration has.
+    assert!(like.contains("#2801 samsamlopez on"), "{like}");
+    assert!(like.contains("TRUNCATE skips the row-level DELETE trigger"), "{like}");
+    assert!(like.contains("trigger before-update"), "{like}");
+    assert!(!like.contains("retention window"), "{like}");
+    assert!(!like.contains("Index the organization column"), "{like}");
+    // On the file itself: both comments, the addressed one first.
+    let own = served[format!("review_notes:{AUDIT}")][1].as_str().unwrap();
+    let (addressed, open) = (own.find("samsamlopez").unwrap(), own.find("julesballaran").unwrap());
+    assert!(addressed < open, "{own}");
+    assert!(own.contains("[open, 2026-08-"), "{own}");
+    assert_eq!(served[format!("review_notes:{NEW}")][1], "no earlier review comment on this file");
+    assert_eq!(served["bare"], "no review history is available for this repository");
 }

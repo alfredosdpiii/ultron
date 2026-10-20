@@ -47,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_reference as reference_module
-from knowledge_api import construct_label
+from knowledge_api import Knowledge, construct_label
 import autoreview_tests as testing
 from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_SHAPE_NUDGE, DEEP_SHAPES_HEADER, DEEP_TRACE_NUDGE, deep_task
 
@@ -71,6 +71,9 @@ MAX_LIST = 200
 MAX_PATTERN_CHARS = 200
 MAX_FILE_BYTES = 2_000_000
 BRIEF_CHARS = 8_000
+#: Changed files whose likes the brief lists, and how many changed files it looks at for them.
+MAX_LIKE = 6
+MAX_LIKE_SCANNED = 12
 DIFF_CHARS = 40_000
 LEADS_CHARS = 4_000
 MAX_DEEP_FINDINGS = 8
@@ -146,6 +149,9 @@ class Repo:
         self.calls = 0
         #: The structural reference of the change (autoreview_reference.Reference), once the map built it.
         self.reference: Any = None
+        #: The knowledge store at this commit ({"db", "repo", "rev"}), when it holds review notes of the
+        #: repository: the review-notes lookups read it, and are offered only then.
+        self.knowledge: dict[str, Any] | None = None
 
     def _git(self, *args: str) -> tuple[int, str, str]:
         if not args or args[0] not in ALLOWED_GIT:
@@ -264,7 +270,7 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
     the closed set: five read-only lookups and, when the review may run tests, two sandboxed test executions."""
     if not isinstance(request, dict) or len(request) != 1:
         raise Rejected("a request is an object with exactly one of read, grep, list, definition, references, "
-                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe")
+                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe, review_notes, like_notes")
     kind, args = next(iter(request.items()))
     if not isinstance(args, dict):
         raise Rejected(f"{kind} takes an object")
@@ -392,6 +398,8 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
             raise Rejected("pickaxe takes a one-line string of 3 to 120 characters")
         lines = repo.pickaxe(text, min(MAX_HISTORY, max(1, _int(args.get("n"), 5))))
         return f"pickaxe {text!r} -> {len(lines)} commits", "\n".join(lines) or "no commit added or removed it"
+    if kind in ("review_notes", "like_notes"):
+        return _serve_notes(repo, kind, args)
     if kind in ("run_tests", "mutation_check"):
         if tests is None:
             raise Rejected("tests are not run in this review")
@@ -403,8 +411,39 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
         except testing.TestsRejected as error:
             raise Rejected(str(error)) from None
         return f"test run {record['n']}", testing.summarize(record)
-    raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition, references, history, blame_range "
-                   "or pickaxe")
+    raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition, references, history, blame_range, "
+                   "pickaxe, review_notes or like_notes")
+
+
+#: Review notes shown per request, and the characters of each.
+MAX_NOTES = 8
+NOTE_CHARS = 400
+
+
+def _serve_notes(repo: Repo, kind: str, args: dict[str, Any]) -> tuple[str, str]:
+    """What reviewers said in earlier pull requests: on this file (`review_notes`), or, addressed, on the files that
+    share its rarest constructs (`like_notes`). From the knowledge store; nothing when the host has none."""
+    spec = repo.knowledge or {}
+    path = repo.path(args.get("path"))
+    knowledge = Knowledge.open(spec.get("db"), spec.get("repo"), spec.get("rev"))
+    if knowledge is None:
+        raise Rejected("no review history is available for this repository")
+    try:
+        if kind == "review_notes":
+            notes = [(note, None) for note in knowledge.notes_on(path, limit=MAX_NOTES)]
+        else:
+            notes = [(note, alike) for note, alike in knowledge.notes_like(path, limit=MAX_NOTES)]
+    finally:
+        knowledge.close()
+    lines = []
+    for note, alike in notes:
+        where = f"{note.path}:{note.line}" if note.line else note.path
+        like = f" (shares {', '.join(construct_label(kind) for kind in alike.shared[:3])})" if alike else ""
+        lines.append(f"#{note.pull} {note.author} on {where}{like} [{note.state}, {note.at[:10]}]: "
+                     f"{_text(note.body, NOTE_CHARS)}")
+    title = f"{kind} {path} -> {len(lines)} note{'' if len(lines) == 1 else 's'}"
+    return title, "\n".join(lines) or ("no earlier review comment on this file" if kind == "review_notes"
+                                        else "no addressed review comment on files like this one")
 
 
 def _int(value: Any, default: int) -> int:
@@ -651,21 +690,31 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             sections.append(f"Structure of {path}: " + "; ".join(f"{n}: {_clip(t.strip(), 120)}" for _, n, t in hits))
     tracked = repo.files()
     changed_paths = {item.path for item in files}
+    # Files that do what a changed file does, by shared rare constructs; a name says nothing when every migration
+    # is `migration.sql`. Placed after the claims, ahead of the long sections, so the size limit never cuts them
+    # (fisher-ki-saas#2920: a 15-file change filled the brief before them). Without the knowledge store, the
+    # files of the same name are the only hint.
+    like_sections: list[str] = []
+    alike_for: set[str] = set()
+    for path in code_files[:MAX_LIKE_SCANNED] if knowledge is not None else []:
+        alike = knowledge.similar(path, exclude=changed_paths)
+        if not alike:
+            continue
+        alike_for.add(path)
+        like_sections.append(f"Like {path} (files sharing its rarest constructs; compare what each guards and "
+                             "what this change leaves out): "
+                             + "; ".join(f"{item.path} ({', '.join(construct_label(kind) for kind in item.shared[:4])})"
+                                         for item in alike))
+        if len(like_sections) >= MAX_LIKE:
+            break
     for path in code_files[:4]:
         directory, name = posixpath.split(path)
         beside = [other for other in tracked if posixpath.dirname(other) == directory and other != path][:8]
-        # Files that do what this one does, by shared rare constructs; a name says nothing when every migration
-        # is `migration.sql`. Without the knowledge store, the files of the same name are the only hint.
-        alike = knowledge.similar(path, exclude=changed_paths) if knowledge is not None else []
-        twins = [] if alike else [other for other in tracked if posixpath.basename(other) == name and other != path][:5]
+        twins = [] if path in alike_for else [
+            other for other in tracked if posixpath.basename(other) == name and other != path][:5]
         if beside or twins:
             sections.append(f"Beside {path}: " + (", ".join(posixpath.basename(other) for other in beside) or "nothing")
                             + (f"; same name elsewhere: {', '.join(twins)}" if twins else ""))
-        if alike:
-            sections.append(f"Like {path} (files sharing its rarest constructs; compare what each guards and "
-                            "what this change leaves out): "
-                            + "; ".join(f"{item.path} ({', '.join(construct_label(kind) for kind in item.shared[:4])})"
-                                        for item in alike))
     # The claims: what the change says it does, from its title and description, its commit messages, and the
     # comments and documents it changes; under each, where it has to be true.
     claim_list: list[tuple[str, str]] = []
@@ -697,6 +746,8 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
             for name in list(dict.fromkeys(named))[:2]:
                 lines.append(f"    must hold wherever `{name}` is used: {', '.join(used_at[name])}")
         sections.insert(0, "\n".join(lines))
+    at = 1 if claim_list else 0
+    sections[at:at] = like_sections
     text = "\n\n".join(sections)
     if len(text) > limit:
         text = text[: limit - 40] + "\n... (brief cut at its size limit)"
@@ -938,7 +989,7 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
     new results in full and a one-line ledger of the earlier ones (ids), which `{"recall": {"id": "r1.2"}}`
     re-reads in full. `leads_view`, when given, is the fast pass's leads as a view, awaited before the second round
     (the first round runs beside the fast pass)."""
-    task = deep_task(lens, tests is not None)
+    task = deep_task(lens, tests is not None, notes=repo.knowledge is not None)
     began = clock()
     leads_views: list[str] = []
     #: The latest round's results and the nudges (sent in full), the ledger of earlier results, and their text.
@@ -1189,7 +1240,10 @@ def start_tests(repo: Repo, files: list[FileDiff], tests: dict[str, Any] | None,
             out["observed"] = regression_findings(repo, compared)
             out["shown"] = [testing.summarize(record) for record in session.records]
             if compared["runs"] and all(record["status"] == "unavailable" for record in compared["runs"]):
-                out["note"] = "tests could not run: missing dependencies (the sandbox has no network and installs nothing)"
+                failed = tests.get("env_failures") or []
+                out["note"] = ("tests could not run: missing dependencies (the sandbox has no network and installs "
+                               "nothing" + (f"; the prepared environment is partial: {failed[0]}" if failed else "")
+                               + ")")
     except BaseException:
         # The caller never sees the session: its exports go now.
         session.close()

@@ -212,7 +212,8 @@ const planCases = [
 	[engineResult({ findings: [fnd({ level: "low" })] }), { blockAt: "low" }],
 	[engineResult({ findings: [fnd({ severity: "minor", replacement: undefined })] }), {}],
 	[engineResult({ findings: [fnd({ level: "critical", verification: "uncertain" })] }), {}],
-	[engineResult({ earlier: [earlier({ status: "still_present" }), earlier({ status: "fixed", file: "b.py", line: 9 }),
+	[engineResult({ earlier: [earlier({ status: "still_present", claim: "The in-flight cap is not pinned by a test",
+		evidence: "Line 4 still reads `const MAX_IN_FLIGHT_WRITES = 2` and no test asserts it" }), earlier({ status: "fixed", file: "b.py", line: 9 }),
 		earlier({ status: "unknown" }), earlier({ status: "not_applicable" }), earlier({ severity: "low", status: "still_present" })] }), {}],
 	[engineResult({ earlier: [earlier({ severity: "low", status: "still_present" })] }), {}],
 	// Many findings: ranking by tier, level and strength; the comment cap; relocation; alsoAt; summaries.

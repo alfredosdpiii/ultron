@@ -47,7 +47,10 @@ pub const DEFAULT_TEST_RUNS: f64 = 6.0;
 pub const MAX_TEST_RUNS: f64 = 30.0;
 pub const DEFAULT_TEST_TIMEOUT_SECONDS: f64 = 300.0;
 pub const DEFAULT_REFERENCE_VIEW: &str = "investigators";
-pub const DEFAULT_DEADLINE_SECONDS: f64 = 0.0;
+/// What was found by the deadline is verified and posted; 0 turns it off. 45 minutes, as the team's other automated
+/// reviewer: without one, cherry-pick pull requests with hundreds of findings took 4 to 8 hours (fisher-ki-saas#2945,
+/// #2951) while the median review took 8.5 minutes.
+pub const DEFAULT_DEADLINE_SECONDS: f64 = 2700.0;
 pub const MIN_DEADLINE_SECONDS: f64 = 30.0;
 pub const DEFAULT_FRAME_TIMEOUT_SECONDS: f64 = 0.0;
 pub const MIN_FRAME_TIMEOUT_SECONDS: f64 = 10.0;
@@ -380,7 +383,7 @@ pub fn resolve_config(settings: &AutoreviewSettings, fallbacks: &ModelFallbacks,
         test_image: settings.test_image.clone(),
         deadline_seconds: Num(match settings.deadline_seconds {
             None => DEFAULT_DEADLINE_SECONDS,
-            Some(0.0) => DEFAULT_DEADLINE_SECONDS,
+            Some(0.0) => 0.0,
             Some(seconds) => MIN_DEADLINE_SECONDS.max(seconds),
         }),
         frame_timeout_seconds: Num(settings

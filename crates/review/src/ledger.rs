@@ -91,7 +91,9 @@ pub struct FateInput {
     pub merged: bool,
 }
 
-/// The fates the current observation settles. A finding with nothing new about it yields none.
+/// The fates the current observation settles. A finding with nothing new about it yields none. A finding never posted
+/// as a review comment (listed only in the review body: over the comment budget, or off the diff) is not rejected by
+/// a merge: nobody could react to it (fisher-ki-saas#2945: 199 of 200 findings "merged with the finding open").
 pub fn fates_of(input: &FateInput) -> Vec<Fate> {
     let mut out = Vec::new();
     for finding in &input.findings {
@@ -108,8 +110,8 @@ pub fn fates_of(input: &FateInput) -> Vec<Fate> {
             Some((FateKind::Accepted, "fixed in a later commit"))
         } else if resolved_by_human && status != "not_applicable" {
             Some((FateKind::Rejected, "the thread was resolved without a fix"))
-        } else if input.merged && (status == "open" || status == "still_present") {
-            Some((FateKind::Rejected, "merged with the finding open"))
+        } else if input.merged && finding.comment_id.is_some() && (status == "open" || status == "still_present") {
+            Some((FateKind::Rejected, MERGED_OPEN))
         } else {
             None
         };
@@ -130,6 +132,19 @@ pub fn fates_of(input: &FateInput) -> Vec<Fate> {
         }
     }
     out
+}
+
+/// How a merge with a posted finding still open is recorded.
+pub const MERGED_OPEN: &str = "merged with the finding open";
+
+/// The ledger without the merge rejections of findings that were never posted as review comments (`unposted`:
+/// `(pull, id)`): fates recorded before [`fates_of`] stopped making them. Rust only; the TypeScript ledger has none.
+pub fn without_unposted_merges(ledger: &[Fate], unposted: &HashSet<(String, String)>) -> Vec<Fate> {
+    ledger
+        .iter()
+        .filter(|fate| fate.how != MERGED_OPEN || !unposted.contains(&(fate.pull.clone(), fate.id.clone())))
+        .cloned()
+        .collect()
 }
 
 /// The ledger with these fates added; a finding's later fate replaces its earlier one, bounded per repository.

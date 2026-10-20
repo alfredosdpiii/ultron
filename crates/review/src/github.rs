@@ -410,6 +410,9 @@ pub struct GitHub {
 }
 
 const THREADS_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{id isResolved comments(first:1){totalCount nodes{databaseId reactionGroups{content reactors{totalCount}}}}}}}}}";
+/// The review threads as notes for the knowledge graph: who said what where, and whether it was addressed. Its own
+/// query: [`THREADS_QUERY`] is the TypeScript reviewer's, replayed from fixtures.
+const NOTES_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path line originalLine comments(first:1){nodes{author{login} body url createdAt}}}}}}}";
 const RESOLVE_MUTATION: &str =
     "mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}";
 
@@ -952,6 +955,80 @@ impl GitHub {
             }
         }
         Ok(out)
+    }
+
+    /// The review threads of a pull request as knowledge-graph notes: the first comment of each, with `addressed`
+    /// when the thread was resolved or a later commit changed its lines (GitHub's "outdated").
+    pub fn review_notes(&self, r: &PullRef) -> Result<Vec<knowledge::Note>, Error> {
+        let mut out = Vec::new();
+        let mut after = Value::Null;
+        for _ in 0..10 {
+            let data = self.graphql(
+                NOTES_QUERY,
+                json!({ "owner": r.owner, "repo": r.repo, "number": r.number, "after": after }),
+            )?;
+            let threads = data
+                .get("repository")
+                .and_then(|repo| repo.get("pullRequest"))
+                .and_then(|pull| pull.get("reviewThreads"))
+                .filter(|threads| !threads.is_null())
+                .cloned()
+                .unwrap_or(json!({}));
+            for node in items(threads.get("nodes")) {
+                let Some(first) = node
+                    .get("comments")
+                    .and_then(|comments| comments.get("nodes"))
+                    .and_then(|nodes| nodes.get(0))
+                else {
+                    continue;
+                };
+                let (path, url) = (text(node.get("path")), text(first.get("url")));
+                if path.is_empty() || url.is_empty() {
+                    continue;
+                }
+                let flag = |name: &str| node.get(name) == Some(&Value::Bool(true));
+                let line = node
+                    .get("line")
+                    .and_then(Value::as_i64)
+                    .or_else(|| node.get("originalLine").and_then(Value::as_i64));
+                out.push(knowledge::Note {
+                    pull: r.number as i64,
+                    path,
+                    line,
+                    author: first
+                        .get("author")
+                        .and_then(|author| author.get("login"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("ghost")
+                        .to_string(),
+                    body: text(first.get("body")),
+                    url,
+                    at: text(first.get("createdAt")),
+                    state: if flag("isResolved") || flag("isOutdated") { "addressed" } else { "open" }.into(),
+                });
+            }
+            let page = threads.get("pageInfo");
+            match (
+                page.and_then(|p| p.get("hasNextPage")),
+                page.and_then(|p| p.get("endCursor")),
+            ) {
+                (Some(Value::Bool(true)), Some(Value::String(cursor))) => after = json!(cursor),
+                _ => break,
+            }
+        }
+        Ok(out)
+    }
+
+    /// The numbers of a repository's closed pull requests, most recently updated first.
+    pub fn closed_pulls(&self, owner: &str, repo: &str, max_pages: u32) -> Result<Vec<u64>, Error> {
+        let pulls = self.list(
+            &format!("repos/{owner}/{repo}/pulls?state=closed&sort=updated&direction=desc"),
+            max_pages,
+        )?;
+        Ok(pulls
+            .iter()
+            .filter_map(|pull| pull.get("number").and_then(Value::as_u64))
+            .collect())
     }
 
     pub fn resolve_thread(&self, thread_id: &str) -> Result<(), Error> {

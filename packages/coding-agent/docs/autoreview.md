@@ -127,8 +127,11 @@ commit moved while the review ran, the review is discarded and the pull request 
 
 When a review is due after the head moved since the account's last review, only the changes since the reviewed commit are reviewed (after
 a force-push, the whole pull request again). Each finding posted earlier is re-checked against the new source:
-fixed, still present, or no longer applicable. The summary has a table of them, and the account's own review
-threads whose finding is fixed are resolved (by the thread id stored when the comment was posted).
+fixed, still present, or no longer applicable. A finding whose file did not change is re-checked against the changes
+made elsewhere (a fix can be a test that now pins the behaviour, or a guard in a caller), never carried over as
+still present unread. An earlier finding that still blocks is named in the summary with what the re-check saw. The
+summary has a table of them, and the account's own review threads whose finding is fixed are resolved (by the
+thread id stored when the comment was posted).
 
 ## Settings
 
@@ -169,7 +172,7 @@ reviewed.
 | `autoreview.thinking` | `"low"` (`high` for the recommended model) | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). Every thinking default is per model: see "Recommended models". |
 | `autoreview.verifyThinking` | `"low"` (`high` for the recommended model) | Thinking level of the verifier frames. |
 | `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits; `autoreview.modelConcurrency` sets a limit per model. |
-| `autoreview.deadlineSeconds` | `0` (none) | Optional limit on how long one review may take (minimum 30). Unset, the review waits for every finder and verifier frame. See below. |
+| `autoreview.deadlineSeconds` | `2700` | How long one review may take (minimum 30); `0` waits for every finder and verifier frame. See below. |
 | `autoreview.frameTimeoutSeconds` | `0` (none) | Optional limit on how long one frame may take before it is retried or given up (minimum 10). |
 | `autoreview.dryRun` | `false` | Write would-be reviews to `autoreview/dry-run/` instead of posting. |
 | `autoreview.ack` | `true` | Post the acknowledgement comment. |
@@ -561,9 +564,10 @@ an environment.
 
 Every finding the reviewer posts has a fate, and the reviewer reads it back. On a re-review and when the pull
 request closes, each earlier finding is settled by what GitHub shows, never by a model: fixed in a later commit,
-or a thumbs-up on the comment, is *accepted*; a thread a human resolved without a fix, a thumbs-down, or a finding
-still open when the pull request merged is *rejected*; a reply alone settles nothing, and a thread the reviewer
-resolved itself (a fixed finding) is never a dismissal. The fates go into the reviewer's own ledger
+or a thumbs-up on the comment, is *accepted*; a thread a human resolved without a fix, a thumbs-down, or a posted
+finding still open when the pull request merged is *rejected*; a reply alone settles nothing, a thread the reviewer
+resolved itself (a fixed finding) is never a dismissal, and a finding listed only in the review body (over the
+comment budget, or off the diff) is never rejected by a merge: nobody could react to it. The fates go into the reviewer's own ledger
 (`state.json`, per `host/owner/repo`, the last 400) and, when memory is on (`hindsightUrl`, `ULTRON_HINDSIGHT_URL`),
 into Hindsight too: one document per fate and one per rule, in the `ultron-autoreview` bank, tagged
 `ultron:autoreview:project:<repository id>`, so a session can ask what a repository's reviewers accepted.
@@ -728,16 +732,36 @@ per review and the investigators a third of what they return at `high`. Do not l
   `reset_seconds`), before the pass is listed as not checked. A model the provider throttles has its in-flight limit
   halved for the rest of the review (`autoreview.modelConcurrency` sets the limits), and the review says so under
   "Not checked" when frames were lost to it.
-- By default there is no token cap, no per-frame timeout and no deadline: the review waits for every finder and
-  verifier frame and posts when all are done. Each limit is opt-in:
+- By default there is no token cap and no per-frame timeout, and a 45-minute deadline (without one, cherry-pick
+  pull requests with hundreds of findings took 4 to 8 hours). The limits:
   - `autoreview.budget` (or `--budget`): the cap counts what was really spent plus a bounded grant for each request
     in flight; a pass is refused only when that leaves no room for it.
   - `autoreview.frameTimeoutSeconds`: a frame that takes longer is retried, then given up.
-  - `autoreview.deadlineSeconds` (or `--deadline`): at three quarters of it unfinished finder passes are given up;
+  - `autoreview.deadlineSeconds` (or `--deadline`; `0` for none): at three quarters of it unfinished finder passes are given up;
     what was found is verified in the time left; the review is posted as incomplete (so never an approval) with
     the unfinished passes listed under "Not checked".
 - With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries, model, error}`, and
   `usage.byPhase` has frames and tokens per phase (`find`, `deep`, `verify`, ...).
+
+## The knowledge graph
+
+Every repository the reviewer checks out is indexed into one SQLite store, `~/.ultron/agent/knowledge/graph.db`:
+for each file (by git blob, so a later commit reads only what changed), the constructs it is made of
+(`sql:trigger:before-update`, `sql:rls-enable`, `ts:decorator:Controller`, `ts:call:runWithBypass`,
+`py:import:sqlalchemy`) and the symbols it defines. The deep pass reads it:
+
+- The investigation brief lists, beside each changed file, the files most like it: the same language, sharing its
+  rarest constructs (weighted by how rare each is in the repository). Names are not similarity: every Prisma
+  migration is `migration.sql`, and the one that matters next to a new append-only table is the other migration
+  with a refusing `BEFORE UPDATE` trigger.
+- Investigators may ask `review_notes` (what reviewers said about a file in earlier pull requests, and whether it
+  was addressed) and `like_notes` (addressed review comments on the files most like it). They are lookups, never
+  prompt text: the investigator asks when it wants them.
+
+The notes are the review threads of the repository's closed pull requests, by every reviewer (people and bots):
+recorded when a reviewed pull request closes, and, the first time a repository is indexed, from its 50 most
+recently closed pull requests. A thread is *addressed* when it was resolved or a later commit changed its lines.
+`autoreview.learn: false` turns the notes off with the rest of the learning.
 
 ## Run it as a service
 
@@ -770,6 +794,8 @@ writes the file and runs those commands for you, and `/autoreview off` stops the
 | `~/.ultron/agent/autoreview/state.json` | Per account and pull request: last reviewed and acknowledged commits, attempts, posted findings with their comment and thread ids; recent reviews; per repository, the fates of posted findings (`lessons`). |
 | `~/.ultron/agent/autoreview/logs/` | One log file per day (removed after 14 days). |
 | `~/.ultron/agent/autoreview/dry-run/` | Would-be reviews (`--dry-run`; removed after 14 days). |
+| `~/.ultron/agent/autoreview/reviews/` | One record per posted review (what the deep pass was shown, its frames and investigators, what was dropped, the posted plan); the newest 200 are kept. |
+| `~/.ultron/agent/knowledge/graph.db` | The knowledge graph: constructs and symbols per file of every reviewed repository (its newest 50 revisions), and the review notes of its closed pull requests. |
 | `~/.ultron/agent/autoreview/sessions/` | Frame traces of the engine (kept seven days). |
 | `~/.cache/ultron-autoreview/<host>/<owner>/<repo>.git` | Cached blob-less clones; a worktree per review under `worktrees/`, removed afterwards. |
 
@@ -779,6 +805,8 @@ writes the file and runs those commands for you, and `/autoreview off` stops the
   description, CI status, guideline files (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`) and other people's review
   comments. Do not point it at repositories whose code may not leave your machine, or choose a provider you trust
   with them.
+- Review comments of the repositories' pull requests, by everyone, are kept on this machine in the knowledge graph
+  (`graph.db`, readable only by you) and shown to the investigators of later reviews of the same repository.
 - Tokens come from `gh auth token` and reach child `gh` and `git` processes only through their environment. They
   are never written to disk, state, logs, git config or a command line, and are masked in log output.
 - Everything read from a pull request (description, comments, the mention itself, repository files) is treated as
