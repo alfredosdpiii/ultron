@@ -42,7 +42,12 @@ fn code_for(user: &str) -> String {
 import json
 h = await rlm.spawn("You own the parser.", name="parser", keep=True)
 first = await rlm.collect([h])
-follow = await rlm.ask(h, "And the lexer?")
+follow = await rlm.ask(h, "And the lexer?", timeout=60)
+try:
+    await rlm.ask(h, "?", timeout=0)
+    bad_timeout = "accepted"
+except ValueError as error:
+    bad_timeout = str(error)
 await swarm.register(topics=["planning"], work="split the parser")
 task = await board.add("fix lexer", detail="escapes")
 claimed = await board.claim(task["id"])
@@ -53,6 +58,7 @@ print(json.dumps({
     "child": h.rlm_child_id,
     "first": first[0]["result"]["value"],
     "follow": follow["value"],
+    "badTimeout": bad_timeout,
     "claimed": [claimed["status"], claimed["owner"]],
     "notes": (await notes.read())["text"],
     "routed": [entry["name"] for entry in routed],
@@ -188,6 +194,10 @@ fn session_core_durable_swarm_python_runs_the_durable_agent_apis_from_repl_cells
     let out = printed(&opened.root, "c-go");
     assert_eq!(out["first"], "I know the parser.");
     assert_eq!(out["follow"], "re: And the lexer?");
+    assert_eq!(
+        out["badTimeout"],
+        "rlm.ask timeout must be a positive number of seconds"
+    );
     assert_eq!(out["claimed"], json!(["claimed", "root"]));
     assert_eq!(out["notes"], "[root] lexer owned by parser\n");
     // Both hold "parser" in their recent work; the child that owns it ranks first (registered first on a tie).

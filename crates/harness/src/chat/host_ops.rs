@@ -18,6 +18,10 @@ use crate::scheduler::{Cancel, Ctx, HarnessError};
 /// How often a wait rechecks children that are not terminal tasks (persistent children going idle).
 const POLL: Duration = Duration::from_millis(20);
 
+/// How long `rlm.ask` waits for an answer when the call gives no `timeout_ms`: a kept child that stops making
+/// progress must not hold the caller's cell forever (a DeepSWE run sat 67 minutes in one ask).
+pub const ASK_TIMEOUT: Duration = Duration::from_secs(20 * 60);
+
 type OpResult = Result<Value, String>;
 
 fn error(error: HarnessError) -> String {
@@ -309,7 +313,9 @@ impl HostOps {
     }
 
     /// Ask a persistent child a follow-up question: an input submission to its conversation, answered there; the
-    /// caller's context grows only by the question and the answer.
+    /// caller's context grows only by the question and the answer. The wait is bounded by `timeout_ms` (default
+    /// [`ASK_TIMEOUT`]); when it runs out the answer is `status: "timeout"` and the question stays queued in the
+    /// child, which keeps working on it.
     fn ask(&self, payload: &Map<String, Value>, call: &CellCall, signal: &Cancel) -> OpResult {
         let id = parse_child(payload.get("child").ok_or("rlm.ask needs a child")?)?;
         let question = payload
@@ -348,8 +354,38 @@ impl HostOps {
             .conversation(conversation)
             .map_err(error)?
             .ok_or_else(|| format!("Subagent {} has no conversation", child_id(id)))?;
+        let limit = payload
+            .get("timeout_ms")
+            .and_then(Value::as_f64)
+            .filter(|ms| *ms > 0.0)
+            .map_or(ASK_TIMEOUT, |ms| Duration::from_millis(ms as u64));
         let submission = handle.submit(draft).map_err(error)?;
-        let settled = submission.wait(&Ctx::with_signal(signal)).map_err(error)?;
+        let (done, expired) = (Cancel::new(), Cancel::new());
+        let timer = {
+            let (done, expired) = (done.clone(), expired.clone());
+            std::thread::spawn(move || {
+                if done.wait_timeout(limit).is_none() {
+                    expired.cancel(HarnessError::msg("timeout"));
+                }
+            })
+        };
+        let linked = Cancel::any(&[signal, &expired]);
+        let waited = submission.wait(&Ctx::with_signal(linked.signal()));
+        done.abort();
+        let _ = timer.join();
+        if waited.is_err() && signal.reason().is_none() && expired.reason().is_some() {
+            return Ok(json!({
+                "id": child_id(id),
+                "status": "timeout",
+                "error": format!(
+                    "No answer from subagent {} within {} s; it is still working on the question. Carry on and \
+                     rlm.ask it again later (a new question queues behind this one), or rlm.cancel it.",
+                    child_id(id),
+                    limit.as_secs_f64().round()
+                ),
+            }));
+        }
+        let settled = waited.map_err(error)?;
         match (settled.status, settled.answer) {
             (SubmissionStatus::Done, Some(answer)) => {
                 let text = self

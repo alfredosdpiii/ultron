@@ -601,6 +601,32 @@ fn cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it() {
         counts[0].1, 4,
         "every response of the tree is charged to its root: {ledger}"
     );
+    // `ultron usage` reports the child's response (in its own conversation, not a session entry) from the ledger.
+    let output = home.run(&["usage", &id, "--json"]);
+    assert!(output.status.success(), "{output:?}");
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let lanes = &report["usage"]["lanes"];
+    assert_eq!(lanes["subagents"]["responses"], 1, "{lanes}");
+    assert_eq!(lanes["root"]["responses"], 3, "{lanes}");
+    let ledger_tokens = ledger["roots"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|root| root["turns"]["tokens"].as_f64().unwrap_or(0.0))
+        .sum::<f64>();
+    assert_eq!(
+        lanes["root"]["totalTokens"].as_f64().unwrap() + lanes["subagents"]["totalTokens"].as_f64().unwrap(),
+        ledger_tokens,
+        "{lanes}"
+    );
+    assert!(
+        report["usage"]["models"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["model"] == cli::usage::report::DURABLE_CHILDREN_MODEL && m["responses"] == 1),
+        "{report}"
+    );
     connection.disconnect();
     drop(server);
     assert_no_processes(&home.root, HANG_GUARD);

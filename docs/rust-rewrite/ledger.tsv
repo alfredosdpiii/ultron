@@ -3136,6 +3136,9 @@ W19M-18	session-core/diagram	display images reset per cell	session_core_diagram_
 W19M-19	interactive/chat	TUI draws details.displayImages inline	interactive_diagram_display_images_are_drawn_inline_from_details
 W19M-20	resources/guide	diagram pointer line only with the Rust APIs	resources_runtime_guide_points_at_diagram_mermaid_only_with_the_rust_apis
 W20A-01	cli/session-flags	--append-system-prompt (file or text, repeatable) reaches the worker and replaces APPEND_SYSTEM.md	cli_native_append_system_prompt_reaches_the_worker
+W20B-01	harness/rlm.ask	rlm.ask waits at most timeout_ms (default 20 min); then status timeout, the child keeps working	harness_chat_swarm_ask_returns_a_timeout_when_a_kept_child_never_answers
+W20B-02	python/rlm.ask	rlm.ask(timeout=seconds) reaches the host; a non-positive timeout is refused	session_core_durable_swarm_python_runs_the_durable_agent_apis_from_repl_cells
+W20B-03	cli/usage	ultron usage reports durable children from the host ledger (sub-agents lane, model row sub-agents (host ledger))	cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

@@ -225,6 +225,80 @@ fn harness_chat_swarm_keeps_a_persistent_child_alive_and_answers_follow_ups_thro
 }
 
 #[test]
+fn harness_chat_swarm_ask_returns_a_timeout_when_a_kept_child_never_answers() {
+    let setup = Setup::new();
+    // As `route`, but the follow-up "Stuck?" is never answered: the request blocks until it is cancelled.
+    let steps = (0..20)
+        .map(|_| {
+            FauxStep::factory(move |context, _, signal| {
+                let users: Vec<String> = context
+                    .messages
+                    .iter()
+                    .filter(|message| matches!(message, Message::User(_)))
+                    .filter_map(text_of)
+                    .collect();
+                let answered = context
+                    .messages
+                    .iter()
+                    .any(|message| matches!(message, Message::ToolResult(_)));
+                if users.first().map(String::as_str) == Some("go") {
+                    return Ok(if answered {
+                        text_message("done")
+                    } else {
+                        rlm_call("delegate", "c1")
+                    });
+                }
+                let last = users.last().map(String::as_str).unwrap_or_default();
+                if last == "Stuck?" {
+                    return Err(signal.wait());
+                }
+                Ok(text_message(&child_answer(last)))
+            })
+        })
+        .collect();
+    setup.faux.set_responses(steps);
+    let handle: Arc<Mutex<Option<Value>>> = Arc::default();
+    spawn_kept(&setup, handle.clone());
+    let (chat, root) = open_chat(Controlled::new(Backend::Replay), &setup);
+    root.submit(SubmissionDraft::input("go")).unwrap().wait(&bg()).unwrap();
+    let child = child_task(&handle);
+    chat.wait_for_idle(&bg()).unwrap();
+    let ops = HostOps::new(chat.clone());
+    let started = std::time::Instant::now();
+    let asked = op(
+        &ops,
+        "rlm.ask",
+        json!({ "child": child.0.to_string(), "question": "Stuck?", "timeout_ms": 200 }),
+        &call_from(root.id),
+    )
+    .unwrap();
+    assert!(started.elapsed() < std::time::Duration::from_secs(30));
+    assert_eq!(asked["status"], "timeout", "{asked}");
+    assert_eq!(asked["id"], child.0.to_string());
+    assert!(
+        asked["error"]
+            .as_str()
+            .unwrap()
+            .contains("it is still working on the question"),
+        "{asked}"
+    );
+    // Only the wait ended: the child is still running, with the question in its conversation.
+    assert_ne!(
+        chat.get_task(child).unwrap().unwrap().state.status(),
+        TaskStatus::Terminal
+    );
+    op(
+        &ops,
+        "rlm.cancel",
+        json!({ "selector": child.0.to_string() }),
+        &call_from(root.id),
+    )
+    .unwrap();
+    chat.wait_for_task(child, &bg()).unwrap();
+    chat.close().unwrap();
+}
+
+#[test]
 fn harness_chat_swarm_refuses_to_ask_an_ordinary_child() {
     each_backend(|backend| {
         let setup = Setup::new();

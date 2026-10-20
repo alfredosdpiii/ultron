@@ -25,6 +25,9 @@ enum Lane {
     Other,
 }
 
+/// The model row of durable children's usage taken from the host's ledger (it records no model per call).
+pub const DURABLE_CHILDREN_MODEL: &str = "sub-agents (host ledger)";
+
 fn lane_kind(lane: Option<&str>) -> Lane {
     match lane {
         Some("main") => Lane::Root,
@@ -62,6 +65,22 @@ impl Bucket {
             self.reported_usd = Some(self.reported_usd.unwrap_or(0.0) + cost);
         } else if usage.total_tokens > 0.0 {
             self.unpriced += 1.0;
+        }
+    }
+
+    /// Usage known only as totals (the host's ledger): responses, tokens and cost, with no input/output split.
+    fn add_totals(&mut self, responses: f64, tokens: f64, cost: f64, subscription: bool) {
+        self.responses += responses;
+        self.total_tokens += tokens;
+        if cost > 0.0 {
+            let slot = if subscription {
+                &mut self.subscription_usd
+            } else {
+                &mut self.reported_usd
+            };
+            *slot = Some(slot.unwrap_or(0.0) + cost);
+        } else if tokens > 0.0 {
+            self.unpriced += responses;
         }
     }
 
@@ -117,6 +136,15 @@ impl Buckets {
                 .or_default()
                 .add(usage, subscription);
         }
+    }
+
+    fn add_totals(&mut self, kind: Lane, model: &str, responses: f64, tokens: f64, cost: f64, subscription: bool) {
+        self.lanes[Self::index(kind)].add_totals(responses, tokens, cost, subscription);
+        self.models
+            .entry(model.to_string())
+            .or_default()
+            .add_totals(responses, tokens, cost, subscription);
+        self.total.add_totals(responses, tokens, cost, subscription);
     }
 
     fn unmeasured(&mut self, kind: Lane, model: &str) {
@@ -541,6 +569,49 @@ pub fn build_session_report(log: &SessionLog) -> Value {
                 &model,
                 &usage,
                 Some(&format!("ultron.rlm-child.{}", task.id)),
+            );
+        }
+    }
+
+    // Durable children (ultron-rs `rlm.spawn`, kept or not) answer in their own conversations, which are not session
+    // entries: the host's usage ledger is the one record of their model calls. Every budget root's turns are the
+    // whole tree (a turn's root carries its root lane and the children it spawned; kept children are charged to
+    // `ultron-root`), so what the ledger holds beyond the measured root, frame and sub-agent lanes is the durable
+    // children's usage. It has totals only: responses, tokens and cost, no input/output or cache split.
+    if !external {
+        let field = |root: &Value, name: &str| {
+            root.get("turns")
+                .and_then(|t| t.get(name))
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+        };
+        let (ledger_responses, ledger_tokens, ledger_cost) =
+            usage_roots.values().fold((0.0, 0.0, 0.0), |(r, t, c), root| {
+                (
+                    r + field(root, "count"),
+                    t + field(root, "tokens"),
+                    c + field(root, "cost"),
+                )
+            });
+        let seen = [Lane::Root, Lane::Frames, Lane::Subagents].map(|kind| &buckets.lanes[Buckets::index(kind)]);
+        let seen_tokens: f64 = seen.iter().map(|b| b.total_tokens).sum();
+        let seen_responses: f64 = seen.iter().map(|b| b.responses).sum();
+        let seen_cost: f64 = seen
+            .iter()
+            .map(|b| b.reported_usd.unwrap_or(0.0) + b.subscription_usd.unwrap_or(0.0))
+            .sum();
+        if ledger_tokens > seen_tokens && ledger_responses > seen_responses {
+            let subscription = root_models
+                .keys()
+                .next()
+                .is_some_and(|model| SUBSCRIPTION_PROVIDERS.contains(&provider_of(model)));
+            buckets.add_totals(
+                Lane::Subagents,
+                DURABLE_CHILDREN_MODEL,
+                ledger_responses - seen_responses,
+                ledger_tokens - seen_tokens,
+                (ledger_cost - seen_cost).max(0.0),
+                subscription,
             );
         }
     }

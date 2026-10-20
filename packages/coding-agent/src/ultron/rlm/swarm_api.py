@@ -159,13 +159,20 @@ def install(rlm_class: Any, namespace: dict[str, Any], bridge: Any) -> None:
         "\n\n        keep=True keeps the child alive after its first answer (it survives restarts); ask it follow-ups"
         " with `await rlm.ask(handle, question)`.") + _CONTRACT_DOC
 
-    async def ask(self: Any, child: Any, question: str) -> dict[str, Any]:
+    async def ask(self: Any, child: Any, question: str, timeout: float | None = None) -> dict[str, Any]:
         """Ask a persistent child (spawned with keep=True) a follow-up question and wait for its answer:
-        `{"id", "status": "succeeded", "value": answer}` or `{"status": "failed", "error": ...}`."""
+        `{"id", "status": "succeeded", "value": answer}` or `{"status": "failed", "error": ...}`. The wait is at
+        most `timeout` seconds (default 20 minutes); then the answer is `{"status": "timeout", "error": ...}` and the
+        child keeps working on the question."""
         child_id = getattr(child, "rlm_child_id", child)
         if not isinstance(question, str) or not question.strip():
             raise ValueError("rlm.ask question must be a non-empty string")
-        return await self._bridge.request("rlm.ask", {"child": child_id, "question": question})
+        payload: dict[str, Any] = {"child": child_id, "question": question}
+        if timeout is not None:
+            if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+                raise ValueError("rlm.ask timeout must be a positive number of seconds")
+            payload["timeout_ms"] = int(timeout * 1000)
+        return await self._bridge.request("rlm.ask", payload)
 
     async def partial(self: Any, text: str) -> None:
         """Record output of this cell that survives a crash: if the process dies while the cell runs, the
