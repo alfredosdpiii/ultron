@@ -13,6 +13,7 @@ pub mod autoreview_cli;
 pub mod autoreview_toggle;
 pub mod bug_report;
 pub mod config_selector;
+pub mod durable_client;
 pub mod experimental;
 pub mod export_html;
 pub mod file_args;
@@ -33,6 +34,7 @@ pub mod rpc;
 pub mod sandbox_cli;
 pub mod schedule_cli;
 pub mod semver;
+pub mod service_cli;
 pub mod session;
 pub mod setup;
 pub mod setup_core;
@@ -125,7 +127,7 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     }
     match argv.first().map(String::as_str) {
         Some("instances") => return instances::list(env, out),
-        Some("durable") => return instances::durable(&argv[1..], env, out),
+        Some("durable") => return instances::durable(&argv[1..], env, out, err),
         // `ultron trace check <file>`: the resets of a request trace (`ULTRON_REQUEST_TRACE`).
         Some("trace") => return Ok(trace_cli::run(&argv[1..], out, err)),
         _ => {}
@@ -180,9 +182,15 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if argv.first().is_some_and(|a| a == "memory") && argv.get(1).is_some_and(|a| a == "import") {
         return memory_cli::run(&argv[1..], env, out, err);
     }
-    // `ultron schedule list|cancel <id>` only: any other `ultron schedule ...` stays a prompt.
+    // `ultron schedule list|wake|cancel <id>|--help` only: any other `ultron schedule ...` stays a prompt.
     if argv.first().is_some_and(|a| a == "schedule")
         && let Some(result) = schedule_cli::run(&argv[1..], env, out, err)
+    {
+        return result;
+    }
+    // `ultron service install|uninstall|status|restart|run|--help` only: any other `ultron service ...` stays a prompt.
+    if argv.first().is_some_and(|a| a == "service")
+        && let Some(result) = service_cli::run(&argv[1..], env, out, err)
     {
         return result;
     }

@@ -30,6 +30,22 @@ pub const OWNER_ENV: &str = "PI_SESSION_WORKER_OWNER";
 pub const INITIAL_DEMAND_GRACE_ENV: &str = "__PI_SESSION_WORKER_INITIAL_DEMAND_GRACE_MS";
 pub const ORPHAN_DEMAND_GRACE_ENV: &str = "__PI_SESSION_WORKER_ORPHAN_DEMAND_GRACE_MS";
 pub const DISCOVERY_GRACE_ENV: &str = "__PI_SESSION_WORKER_DISCOVERY_GRACE_MS";
+/// Tests only: a directory where a retiring worker writes `retiring` and then waits (at most two minutes) for `go`
+/// before it announces the retirement and exits, and where it writes `rejected` when it refuses a client's demand
+/// meanwhile, so a test can attach a client exactly while the worker retires.
+pub const RETIRE_GATE_ENV: &str = "__ULTRON_TEST_WORKER_RETIRE_GATE";
+
+/// [`RETIRE_GATE_ENV`]: `retiring` written, then `go` awaited.
+fn retire_gate() {
+    let Some(dir) = std::env::var_os(RETIRE_GATE_ENV).map(std::path::PathBuf::from) else {
+        return;
+    };
+    let _ = std::fs::write(dir.join("retiring"), "");
+    let deadline = std::time::Instant::now() + Duration::from_secs(120);
+    while !dir.join("go").exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
 
 const DEFAULT_INITIAL_DEMAND_GRACE_MS: u64 = 10_000;
 const DEFAULT_ORPHAN_DEMAND_GRACE_MS: u64 = 1_000;
@@ -629,6 +645,12 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         return Err("Session worker requires one options argument".into());
     };
     let options = parse_options(argument)?;
+    // `settingsDefaults` (the durable instance's persona): under the user's settings files, for this whole worker.
+    if let Ok(Value::Object(raw)) = serde_json::from_str::<Value>(argument)
+        && let Some(Value::Object(defaults)) = raw.get("settingsDefaults")
+    {
+        config::settings::set_process_defaults(defaults.clone());
+    }
     let address = std::env::var(CONTROL_ADDRESS_ENV).ok();
     let token = std::env::var(CONTROL_TOKEN_ENV).ok();
     let encoded_key = std::env::var(SESSION_KEY_ENV).ok();
@@ -831,6 +853,7 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
             // Announce the deliberate retirement before exiting; the coordinator delivers it before the disconnect.
             if let Some(shared) = retiring.upgrade() {
                 std::thread::spawn(move || {
+                    retire_gate();
                     let event =
                         json!({"type": "worker_retiring", "token": shared.token, "sessionKey": shared.session_key});
                     let _ = shared.send(event, None);
@@ -965,8 +988,13 @@ fn demand(shared: &Arc<Shared>, lifecycle: &Arc<Lifecycle>, command: &Value) {
         shared.remove_subscriptions(|scope| scope_key(scope) == key);
     }
     let event = match lifecycle.set_demand(server, attachment, attached) {
-        Err(message) => json!({"type": "demand_rejected", "token": shared.token, "sessionKey": shared.session_key,
-            "requestId": command["requestId"], "message": message}),
+        Err(message) => {
+            if let Some(dir) = std::env::var_os(RETIRE_GATE_ENV) {
+                let _ = std::fs::write(std::path::Path::new(&dir).join("rejected"), &message);
+            }
+            json!({"type": "demand_rejected", "token": shared.token, "sessionKey": shared.session_key,
+            "requestId": command["requestId"], "message": message})
+        }
         Ok(()) => json!({"type": "demand_applied", "token": shared.token, "sessionKey": shared.session_key,
             "requestId": command["requestId"], "attachmentId": attachment, "attached": attached}),
     };

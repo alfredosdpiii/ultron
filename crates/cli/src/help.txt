@@ -14,6 +14,18 @@ Commands:
   ultron auth <command>            Print credentials or check provider readiness
   ultron usage [session|--last N]  What a session did: depth (frames, sub-agents), cells, tokens, cost
   ultron autoreview <command>      Review pull requests automatically as your gh accounts (run, once, review, status)
+  ultron schedule <list|cancel>    Scheduled prompts of this instance's sessions (list, cancel <id|name>)
+  ultron memory import <options>   Import Claude Code or Codex memory notes as Ultron memory records
+  ultron migrate <command>         Back up or restore the profile; import or export Pi sessions
+  ultron mcp <command>             Configure MCP servers and sign in (add, remove, list, login, logout)
+  ultron sandbox doctor            Check the shell sandbox a session in this directory gets
+  ultron instances                 List the running server instances
+  ultron durable [status|stop]     Start, inspect or stop the global durable instance
+  ultron trace check <file>        Report the prompt-cache resets of a request trace (ULTRON_REQUEST_TRACE)
+  ultron acp [options]             Run as an Agent Client Protocol agent on stdio
+  ultron claude [args...]          Run Claude Code as the root agent, with Ultron's REPL as its one tool
+  ultron watch [--once]            Show the RLM view of a running `ultron claude` session
+  ultron guide [--for <who>]       Print the runtime guide (Ultron's, or the one `ultron claude` gives Claude Code)
   ultron <command> --help          Show help for install/remove/uninstall/update/list/config/auth/usage
 
 Options:

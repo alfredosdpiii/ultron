@@ -25,7 +25,9 @@ enum Lane {
     Other,
 }
 
-/// The model row of durable children's usage taken from the host's ledger (it records no model per call).
+/// The model row of usage the host's ledger counted beyond every response the session file records (it keeps no
+/// model per call): totals only. Durable children's own responses are read from the durable records, with their
+/// models; this row is what remains (a session whose durable records are incomplete).
 pub const DURABLE_CHILDREN_MODEL: &str = "sub-agents (host ledger)";
 
 fn lane_kind(lane: Option<&str>) -> Lane {
@@ -573,11 +575,28 @@ pub fn build_session_report(log: &SessionLog) -> Value {
         }
     }
 
-    // Durable children (ultron-rs `rlm.spawn`, kept or not) answer in their own conversations, which are not session
-    // entries: the host's usage ledger is the one record of their model calls. Every budget root's turns are the
-    // whole tree (a turn's root carries its root lane and the children it spawned; kept children are charged to
-    // `ultron-root`), so what the ledger holds beyond the measured root, frame and sub-agent lanes is the durable
-    // children's usage. It has totals only: responses, tokens and cost, no input/output or cache split.
+    // Durable children (ultron-rs `rlm.spawn`, kept or not, typed agents) answer in their own conversations, which are
+    // not session entries: their responses are `pi.assistant` entries of the durable records, with model, split and
+    // cost. A conversation a task owns is a sub-agent's; another root conversation's goes to "other".
+    let mut durable_other = Bucket::default();
+    if !external {
+        for response in &log.durable_responses {
+            let kind = match lane_kind(response.lane.as_deref()) {
+                Lane::Frames => Lane::Frames,
+                _ if response.owned => Lane::Subagents,
+                _ => Lane::Other,
+            };
+            buckets.add(kind, &response.model, &response.usage, response.lane.as_deref());
+            if kind == Lane::Other {
+                let subscription = SUBSCRIPTION_PROVIDERS.contains(&provider_of(&response.model));
+                durable_other.add(&response.usage, subscription);
+            }
+        }
+    }
+
+    // The host's usage ledger counts every response of a budget root's tree (a turn's root carries its root lane and
+    // the children it spawned; kept children are charged to `ultron-root`). What it holds beyond every response the
+    // file records (root, frame and sub-agent lanes, other conversations) is usage the records lack: totals only.
     if !external {
         let field = |root: &Value, name: &str| {
             root.get("turns")
@@ -593,7 +612,10 @@ pub fn build_session_report(log: &SessionLog) -> Value {
                     c + field(root, "cost"),
                 )
             });
-        let seen = [Lane::Root, Lane::Frames, Lane::Subagents].map(|kind| &buckets.lanes[Buckets::index(kind)]);
+        let mut seen: Vec<&Bucket> = [Lane::Root, Lane::Frames, Lane::Subagents]
+            .map(|kind| &buckets.lanes[Buckets::index(kind)])
+            .to_vec();
+        seen.push(&durable_other);
         let seen_tokens: f64 = seen.iter().map(|b| b.total_tokens).sum();
         let seen_responses: f64 = seen.iter().map(|b| b.responses).sum();
         let seen_cost: f64 = seen
@@ -726,11 +748,19 @@ pub fn build_session_report(log: &SessionLog) -> Value {
     let mut claims = [0.0; 3];
     let mut worktrees = Vec::new();
     let mut child_by_model: IndexMap<String, ModelCount> = IndexMap::new();
+    // A durable child's model: its first response's.
+    let mut durable_models: HashMap<&str, &str> = HashMap::new();
+    for response in &log.durable_responses {
+        if let Some(lane) = &response.lane {
+            durable_models.entry(lane.as_str()).or_insert(response.model.as_str());
+        }
+    }
     for child in &children {
         let lane = format!("ultron.rlm-child.{}", child.id);
         let model = lane_models
             .get(lane.as_str())
             .cloned()
+            .or_else(|| durable_models.get(lane.as_str()).map(|m| m.to_string()))
             .or_else(|| child_models.get(child.id.as_str()).cloned())
             .or_else(|| stats.as_ref().and_then(|s| s.child_models.get(&child.id).cloned()))
             .unwrap_or_else(|| "not recorded".into());

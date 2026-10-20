@@ -120,6 +120,11 @@ pub enum Op {
     },
     SetAutoCompaction(bool),
     SetAutoRetry(bool),
+    /// The terminal appearance the attached TUI detected (`"light"` / `"dark"`: OSC 11, a scheme report, else its
+    /// `COLORFGBG`): what `diagram.mermaid`'s `auto` theme follows ([`crate::compose::Config::terminal_theme`]).
+    SetTerminalTheme {
+        theme: String,
+    },
     AbortRetry,
     /// A user's own command (RPC `bash`, the TUI's `!`/`!!`), run by the shell.
     /// `id` tags its streamed output (`bash_execution_update`), as AgentSession's `executeBash` `options.id`.
@@ -307,6 +312,7 @@ impl Op {
             },
             "setAutoCompaction" => Op::SetAutoCompaction(value["enabled"] == true),
             "setAutoRetry" => Op::SetAutoRetry(value["enabled"] == true),
+            "setTerminalTheme" => Op::SetTerminalTheme { theme: need("theme")? },
             "abortRetry" => Op::AbortRetry,
             "bash" => Op::Bash {
                 command: need("command")?,
@@ -422,6 +428,7 @@ impl Op {
             Op::Compact { instructions } => json!({"op": "compact", "instructions": instructions}),
             Op::SetAutoCompaction(enabled) => json!({"op": "setAutoCompaction", "enabled": enabled}),
             Op::SetAutoRetry(enabled) => json!({"op": "setAutoRetry", "enabled": enabled}),
+            Op::SetTerminalTheme { theme } => json!({"op": "setTerminalTheme", "theme": theme}),
             Op::AbortRetry => json!({"op": "abortRetry"}),
             Op::Bash { command, exclude, id } => {
                 let mut op = json!({"op": "bash", "command": command, "exclude": exclude});
@@ -1119,7 +1126,11 @@ impl Core {
                 Input::ActivityTick => self.report_activity(),
                 // A compaction's wake-up is read by the compaction itself.
                 Input::Woken => {}
-                Input::Scheduled(message) => self.schedule_start(message),
+                // A queued fire was counted when it was taken; one that cannot start now is dropped (the next slot
+                // fires as usual).
+                Input::Scheduled(message) => {
+                    let _ = self.schedule_start(message);
+                }
             }
         }
         self.close();
@@ -1911,6 +1922,18 @@ impl Core {
                 self.durable
                     .auto_retry
                     .store(enabled, std::sync::atomic::Ordering::SeqCst);
+                Ok(None)
+            }
+            Op::SetTerminalTheme { theme } => {
+                if theme != "light" && theme != "dark" {
+                    return Err(format!("theme must be light or dark, not {theme:?}"));
+                }
+                *self
+                    .runtime
+                    .config
+                    .terminal_theme
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner()) = Some(theme);
                 Ok(None)
             }
             // `abort_retry`: a run waiting to retry its generation is aborted (`requestAbort` of the operation).

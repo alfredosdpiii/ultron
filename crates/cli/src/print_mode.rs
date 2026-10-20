@@ -199,6 +199,33 @@ pub fn client_command(parsed: &Args, target: &Target, prompt: Option<String>) ->
     command
 }
 
+fn route_of(route: daemon::server::Route) -> Route {
+    Route {
+        server_id: route.server_id,
+        path: route.path,
+    }
+}
+
+/// The route a client run uses: a foreground generation of this process (returned, for the run to close); a client
+/// of the durable instance uses its detached server (activated when not running, never stopped by this run).
+pub fn open_route(
+    env: &Env,
+    options: &ServerOptions,
+) -> Result<(Route, Option<std::sync::Arc<daemon::server::RunningServer>>), String> {
+    if crate::durable_client::is_client(env) {
+        let route = crate::durable_client::activate(options)?;
+        trace_startup(env, "cli.server-attached");
+        return Ok((route_of(route), None));
+    }
+    let server = start_foreground_server(options).map_err(|e| e.to_string())?;
+    trace_startup(env, "cli.server-started");
+    let route = Route {
+        server_id: server.server_id.clone(),
+        path: server.endpoint_path.clone(),
+    };
+    Ok((route, Some(server)))
+}
+
 /// How long a signalled print run waits for its aborted turn to end before it exits anyway (`PROMPT_ABORT_WAIT_MS`).
 pub const PROMPT_ABORT_WAIT: std::time::Duration = std::time::Duration::from_millis(5_000);
 
@@ -217,13 +244,8 @@ pub fn run_prompt(
     preflight(parsed, env, &target)?;
     let json_mode = parsed.mode.as_deref() == Some("json");
     let options = server_options(parsed, env, if json_mode { "json" } else { "print" })?;
-    let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
-    trace_startup(env, "cli.server-started");
-    let route = Route {
-        server_id: server.server_id.clone(),
-        path: server.endpoint_path.clone(),
-    };
-    let servers = Arc::new(Mutex::new(vec![server]));
+    let (route, own) = open_route(env, &options)?;
+    let servers = Arc::new(Mutex::new(own.into_iter().collect::<Vec<_>>()));
     let interrupt = Arc::new(AtomicBool::new(false));
     let code = Arc::new(AtomicI32::new(0));
     let (flag, signalled) = (interrupt.clone(), code.clone());
@@ -235,11 +257,16 @@ pub fn run_prompt(
         std::process::exit(daemon::signals::exit_code(signal));
     }));
     let (restarted, server_options) = (servers.clone(), options.clone());
+    let durable = crate::durable_client::is_client(env);
     let run_options = RunOptions {
         on_event,
         interrupt: Some(interrupt.clone()),
         reconnect: Some(Arc::new(move || {
-            // The server generation went away with its coordinator: start a new one (and coordinator).
+            // The server generation went away with its coordinator: start a new one (and coordinator); a client of
+            // the durable instance activates the durable server again.
+            if durable {
+                return crate::durable_client::activate(&server_options).map(route_of);
+            }
             let server = start_foreground_server(&server_options).map_err(|e| e.to_string())?;
             let route = Route {
                 server_id: server.server_id.clone(),
@@ -314,15 +341,12 @@ pub fn run_unprompted(parsed: &Args, env: &Env, target: Target) -> Result<String
         "print"
     };
     let options = server_options(parsed, env, mode)?;
-    let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
-    trace_startup(env, "cli.server-started");
-    let route = Route {
-        server_id: server.server_id.clone(),
-        path: server.endpoint_path.clone(),
-    };
+    let (route, server) = open_route(env, &options)?;
     let command = client_command(parsed, &target, None);
     let result = run_client_with(&command, &route, &RunOptions::default());
-    server.close();
+    if let Some(server) = server {
+        server.close();
+    }
     Ok(render_unprompted(
         &result.map_err(|e| daemon::lost::describe(&e).unwrap_or(e))?,
     ))

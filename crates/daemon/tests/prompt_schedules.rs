@@ -296,3 +296,62 @@ fn daemon_prompt_schedules_cancel_in_journal_takes_the_locks_and_writes_the_canc
     assert!(error.contains("is open in another Ultron process"), "{error}");
     drop(owner);
 }
+
+#[test]
+fn daemon_prompt_schedules_hold_the_server_while_any_is_pending_and_keep_the_last_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let probe = session_with(dir.path(), &[]);
+    let mut session = SessionRepo::new(dir.path(), SystemClock::shared())
+        .open(&session_journal::repo::read_metadata(&probe.path).unwrap())
+        .unwrap();
+    let pending = schedule("sch-1", &probe.id, Some(T0), State::Active);
+    session
+        .commit(&[Write::set(NAMESPACE, "sch-1", pending.to_json())])
+        .unwrap();
+    drop(session);
+    let clock = ManualTickClock::new(T0);
+    let (s, deliveries, recorder) = scheduler(&clock);
+    let errors = dir.path().join("schedule-errors.json");
+    s.record_errors(errors.clone());
+    let (held, holds) = channel();
+    s.on_hold(Box::new(move |pending| {
+        let _ = held.send(pending);
+    }));
+    // Held from the start: the journals are not read yet.
+    assert!(holds.recv_timeout(HANG).unwrap());
+    recorder
+        .answers
+        .lock()
+        .unwrap()
+        .push(Delivery::Retry("No API key found for anthropic".into()));
+    s.start(dir.path().to_path_buf());
+    assert_eq!(deliveries.recv_timeout(HANG).unwrap().1, "sch-1");
+    settled(&s);
+    // A failed delivery keeps the slot (and the hold), and its error is kept for `ultron schedule list`.
+    assert!(s.holding());
+    assert_eq!(s.pending(), vec![(probe.id.clone(), "sch-1".to_string(), T0)]);
+    let kept = daemon::prompt_schedules::read_errors(&errors);
+    assert_eq!(
+        kept.get(&(probe.id.clone(), "sch-1".to_string())),
+        Some(&("No API key found for anthropic".to_string(), T0, T0))
+    );
+    // The retry delivers: the failure is cleared, the schedule still pending.
+    clock.set(T0 + RETRY_MS);
+    poke(&s);
+    assert_eq!(deliveries.recv_timeout(HANG).unwrap().2, T0);
+    settled(&s);
+    assert!(daemon::prompt_schedules::read_errors(&errors).is_empty());
+    assert_eq!(std::fs::read_to_string(&errors).unwrap(), "{}\n");
+    assert!(holds.try_recv().is_err(), "the hold did not change");
+    // The session's last schedule ends (a cancel's report): the hold is released once.
+    s.update(&probe, &json!([]));
+    assert!(!holds.recv_timeout(HANG).unwrap());
+    assert!(!s.holding());
+    // A new schedule holds again; a gone session releases it.
+    recorder.answers.lock().unwrap().push(Delivery::Gone);
+    s.update(&probe, &json!([{"id": "sch-2", "nextDue": T0 + RETRY_MS}]));
+    assert!(holds.recv_timeout(HANG).unwrap());
+    assert_eq!(deliveries.recv_timeout(HANG).unwrap().1, "sch-2");
+    assert!(!holds.recv_timeout(HANG).unwrap());
+    s.stop();
+}

@@ -339,13 +339,13 @@ fn env_without_experimental() -> cli::Env {
 fn cli_radius_detached_server_runs_the_relay_with_the_stored_credential() {
     let tmp = root(1);
     let bridge = Bridge::start();
-    // `ultron durable` activates a detached `__internal` server; its relay uses the stored credential (here
+    // `ultron durable start` activates a detached `__internal` server; its relay uses the stored credential (here
     // RADIUS_API_KEY) on PI_RADIUS_GATEWAY.
     let durable = tmp.0.join("durable");
     let (out, err, code) = run(&mut ultron(
         &tmp.0,
         &bridge.origin(),
-        &["durable"],
+        &["durable", "start"],
         &[
             ("RADIUS_API_KEY", "stored-key"),
             ("ULTRON_SERVER_DIR", &durable.display().to_string()),
@@ -720,4 +720,84 @@ fn cli_client_without_connect_works_across_several_servers() {
     assert_eq!(c.stop(), Some(0));
     assert_eq!(a.stop(), Some(0));
     assert_eq!(bridge.upgrades(), Vec::new());
+}
+
+/// Waits (bounded by the hang guard) for `path` to exist.
+fn wait_for_file(path: &Path) {
+    let deadline = std::time::Instant::now() + HANG_GUARD;
+    while !path.exists() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{} never appeared",
+            path.display()
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn cli_client_attaching_while_the_idle_worker_retires_gets_a_new_worker() {
+    // The flake of cli_client_without_connect_works_across_several_servers ("Error: Internal server error" on the
+    // second client of a session): a client that attaches just as the session's worker retires (it went idle when
+    // the previous client left) had its demand refused and the attach failed. The server now waits for the retiring
+    // worker to end and starts a new one. The worker is held in its retirement (RETIRE_GATE) until the second
+    // client's demand was refused, so the race is taken every time.
+    let mock = Mock::start(vec![text_reply("First"), text_reply("Second")], None);
+    let tmp = root(mock.port);
+    let bridge = Bridge::start();
+    let gate = tmp.0.join("gate");
+    std::fs::create_dir_all(&gate).unwrap();
+    let gate_env = gate.display().to_string();
+    let dir = tmp.0.join("sessions").display().to_string();
+    let mut server = ServerProcess::start(
+        &tmp.0,
+        &bridge.origin(),
+        &["--server-id", SERVER_B, "--session-dir", &dir],
+        &[("__ULTRON_TEST_WORKER_RETIRE_GATE", &gate_env)],
+    );
+    assert_eq!(server.line(), format!("Server: {SERVER_B}"));
+    let socket = format!("unix://{}", server.line().trim_start_matches("Socket: "));
+    assert_eq!(server.line(), recorded_status("no-credential"));
+    let (out, err, code) = run(&mut ultron(
+        &tmp.0,
+        &bridge.origin(),
+        &["client", "--connect", &socket, "One"],
+        &[],
+    ));
+    assert_eq!((out.as_str(), code), ("First\n", Some(0)), "{err}");
+    let (listed, _, _) = run(&mut ultron(
+        &tmp.0,
+        &bridge.origin(),
+        &["client", "--connect", &socket],
+        &[],
+    ));
+    let session = listed.trim().split_once('\t').unwrap().1.to_string();
+    // The client left: the idle worker retires and waits at the gate.
+    wait_for_file(&gate.join("retiring"));
+    let second = ultron(
+        &tmp.0,
+        &bridge.origin(),
+        &["client", "--connect", &socket, "--session-id", &session, "Two"],
+        &[],
+    )
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .unwrap();
+    // Its demand reached the retiring worker and was refused; now the worker may go.
+    wait_for_file(&gate.join("rejected"));
+    assert_eq!(
+        std::fs::read_to_string(gate.join("rejected")).unwrap(),
+        "Session worker is retiring"
+    );
+    std::fs::write(gate.join("go"), "").unwrap();
+    let output = second.wait_with_output().unwrap();
+    assert_eq!(
+        (String::from_utf8_lossy(&output.stdout).as_ref(), output.status.code()),
+        ("Second\n", Some(0)),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(server.stop(), Some(0));
 }

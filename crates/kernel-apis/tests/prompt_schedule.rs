@@ -388,3 +388,49 @@ fn kernel_apis_prompt_schedule_values_of_another_session_are_not_its_own() {
         json!({"name": "copied", "id": "sch-0000aaaa", "run": 3})
     );
 }
+
+#[test]
+fn kernel_apis_prompt_schedule_failed_delivery_counts_nothing_and_keeps_the_slot_due() {
+    let f = fixture();
+    let once = call(
+        &f.module,
+        "schedule.at",
+        json!({"prompt": "say hi", "when_in_ms": HOUR, "name": "hello"}),
+        None,
+    )
+    .unwrap();
+    let repeat = every(&f, json!({"interval": "1h", "prompt": "check"}));
+    let (once_id, repeat_id) = (once["id"].as_str().unwrap(), repeat["id"].as_str().unwrap());
+    f.clock.set(T0 + HOUR + 5);
+    let writes_before = f.reports.lock().unwrap().len();
+    // The prompt could not start: the error comes back, nothing is written, both stay due on their slot.
+    let mut offered = Vec::new();
+    for id in [once_id, repeat_id] {
+        let failed = f.module.fire_with(id, T0 + HOUR, &mut |message| {
+            offered.push(message["details"]["run"].clone());
+            Err("No API key found for anthropic".into())
+        });
+        assert_eq!(failed.err().as_deref(), Some("No API key found for anthropic"));
+    }
+    assert_eq!(offered, vec![json!(1), json!(1)]);
+    assert_eq!(f.reports.lock().unwrap().len(), writes_before);
+    let all = f.module.all().unwrap();
+    assert_eq!(
+        all.iter().map(|s| (s.runs, s.state, s.next_due)).collect::<Vec<_>>(),
+        vec![(0, State::Active, Some(T0 + HOUR)), (0, State::Active, Some(T0 + HOUR))]
+    );
+    // The retry that delivers counts the run (the `at` schedule is done only now).
+    let mut taken = Vec::new();
+    let ran = f
+        .module
+        .fire_with(once_id, T0 + HOUR, &mut |message| {
+            taken.push(message["content"].clone());
+            Ok(())
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(taken, vec![json!("say hi")]);
+    assert_eq!((ran.schedule.runs, ran.schedule.state), (1, State::Done));
+    let stored = Schedule::from_json(&f.store.get(once_id).unwrap().unwrap()).unwrap();
+    assert_eq!((stored.runs, stored.state, stored.next_due), (1, State::Done, None));
+}

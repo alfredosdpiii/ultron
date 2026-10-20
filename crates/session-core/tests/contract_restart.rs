@@ -170,8 +170,22 @@ fn git(home: &Home, args: &[&str]) {
 /// [`across_restart`]; with `repo` the working directory is a Git repository whose one commit ignores the test's own
 /// marker files and Loki's.
 fn across_restart_in(options: &str, first: &'static str, retry: &'static str, repo: bool) -> Restarted {
+    across_restart_home(options, first, retry, repo.then_some(&|_: &Path| ()))
+}
+
+/// [`across_restart_in`] in a repository that `dirty` changes after its commit, before the spawn.
+fn across_restart_with(options: &str, first: &'static str, dirty: impl Fn(&Path)) -> Restarted {
+    across_restart_home(options, first, "never", Some(&dirty))
+}
+
+fn across_restart_home(
+    options: &str,
+    first: &'static str,
+    retry: &'static str,
+    repo: Option<&dyn Fn(&Path)>,
+) -> Restarted {
     let home = Home::new(None);
-    if repo {
+    if let Some(dirty) = repo {
         std::fs::write(home.cwd.join("README.md"), "repo\n").unwrap();
         std::fs::write(
             home.cwd.join(".gitignore"),
@@ -182,6 +196,7 @@ fn across_restart_in(options: &str, first: &'static str, retry: &'static str, re
         git(&home, &["init", "-q"]);
         git(&home, &["add", "-A"]);
         git(&home, &["commit", "-q", "-m", "init"]);
+        dirty(&home.cwd);
     }
     let worker = home.open(first_script(options), &GIT_VARS, None);
     let ended = prompt(&worker, "ROOT1: delegate with a contract");
@@ -287,16 +302,17 @@ fn session_core_w17e_a_child_without_a_kept_contract_is_reattached_and_ends_unch
     assert_eq!(r.kept, Vec::<Value>::new());
 }
 
-/// The kept contract's Git baseline (wave 41): `{"commit": <40 hex>, "status": <blob id>, "dirty": {}}`.
+fn hex(v: &Value) -> bool {
+    v.as_str()
+        .is_some_and(|t| t.len() == 40 && t.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+/// The kept contract's Git baseline (waves 41, 43): `{"commit": <40 hex>, "tree": <40 hex>}`.
 fn assert_clean_baseline(kept: &[Value]) {
     assert_eq!(kept.len(), 1, "{kept:?}");
     let baseline = &kept[0]["baseline"];
-    let hex = |v: &Value| {
-        v.as_str()
-            .is_some_and(|t| t.len() == 40 && t.chars().all(|c| c.is_ascii_hexdigit()))
-    };
-    assert!(hex(&baseline["commit"]) && hex(&baseline["status"]), "{baseline}");
-    assert_eq!(baseline["dirty"], json!({}), "{baseline}");
+    assert!(hex(&baseline["commit"]) && hex(&baseline["tree"]), "{baseline}");
+    assert_eq!(baseline.as_object().map(|b| b.len()), Some(2), "{baseline}");
 }
 
 #[test]
@@ -427,6 +443,129 @@ fn session_core_w18s_a_kept_childs_workspace_checks_after_a_restart_use_the_kept
     drop(next);
     let kept: Vec<Value> = home.values("ultron.kept-contracts");
     let baseline = &kept[0]["baseline"];
-    assert_eq!(baseline["dirty"], json!({}), "{kept:?}");
-    assert_eq!(baseline["commit"].as_str().map(str::len), Some(40), "{kept:?}");
+    assert!(hex(&baseline["commit"]) && hex(&baseline["tree"]), "{kept:?}");
+}
+
+/// Wave 43: a working directory with far more dirty paths than the earlier baseline kept (256) when the child
+/// starts: the next worker still compares with the kept baseline (one tree id), so only the child's own edit counts.
+#[test]
+fn session_core_w21c_workspace_checks_after_a_restart_cover_a_thousand_dirty_paths() {
+    let r = across_restart_with(
+        r#"contract={'checks': [{'changed_files_within': ['status.txt']}]}"#,
+        "fixed",
+        |cwd| {
+            std::fs::create_dir_all(cwd.join("gen")).unwrap();
+            for n in 0..1000 {
+                std::fs::write(cwd.join(format!("gen/f{n:04}.txt")), format!("{n}\n")).unwrap();
+            }
+            std::fs::write(cwd.join("README.md"), "dirty before the spawn\n").unwrap();
+        },
+    );
+    let child = &r.result;
+    assert_eq!(child["status"], "succeeded", "{child}");
+    assert_eq!(child["check"]["contract"]["verdict"], "verified", "{child}");
+    assert_eq!(
+        child["check"]["contract"]["checks"][0]["changed"],
+        json!(["status.txt"]),
+        "{child}"
+    );
+    assert_clean_baseline(&r.kept);
+}
+
+/// Wave 43: a kept child's failed attempts are kept with its contract (`ultron.kept-contracts`), so the next worker
+/// goes on counting. `{"retry": 2}`: the first worker's first answer fails once and its retry passes (1 attempt
+/// used); after the restart a failing answer gets only the retry left (attempt 2, never 3), then its failure is
+/// final: the next answer reports it without re-running the checks and the child's `rlm.finish` is refused.
+#[test]
+fn session_core_w21c_a_kept_childs_used_attempts_survive_a_restart() {
+    let home = Home::new(None);
+    let spawn = format!(
+        "import json\nh = await rlm.spawn('KEPT: fix status', name='k', keep=True, contract={{'checks': [{{'run': 'grep -q fixed status.txt'}}]}}, hop={{'retry': 2}})\nopen({}, 'w').write(h.rlm_child_id)\nr = (await rlm.collect([h]))[0]['result']\nopen('first.json', 'w').write(json.dumps(r))\nprint('spawned')",
+        json!(HANDLE)
+    );
+    let ask = format!(
+        "import json\nhid = open({}).read()\nout = [await rlm.ask(hid, 'Q-BAD'), await rlm.ask(hid, 'Q-FIXED')]\nopen({}, 'w').write(json.dumps(out))\nprint('asked')",
+        json!(HANDLE),
+        json!(RESULT)
+    );
+    let finish = "try:\n    print(await rlm.finish('passed', 'did it', evidence=['status.txt:1'], changed_files=['status.txt']))\nexcept Exception as e:\n    print('FINISH-ERROR', e)";
+    let child_cell = move |status: &str| {
+        format!(
+            "from pathlib import Path\nPath('status.txt').write_text({})\n{finish}",
+            json!(format!("{status}\n"))
+        )
+    };
+    let script = move |root_cell: String| -> Script {
+        Box::new(move |request, _| {
+            let all = texts(request);
+            let kept = all.first().is_some_and(|t| t.contains("KEPT: fix status"));
+            let last = all.last().cloned().unwrap_or_default();
+            match (kept, answering(request)) {
+                (true, true) => text("kept child answered"),
+                (true, false) => {
+                    let status = match last.as_str() {
+                        "Q-FIXED" => "fixed",
+                        // The first worker's retry passes; every other answer fails.
+                        l if l.starts_with("[Contract] Attempt 1 ") => "fixed",
+                        _ => "wrong",
+                    };
+                    tool("toolu_k", &child_cell(status))
+                }
+                (false, false) => tool("toolu_root", &root_cell),
+                (false, true) => text("root done"),
+            }
+        })
+    };
+    let worker = home.open(script(spawn), &[], None);
+    let ended = prompt(&worker, "ROOT1: keep a child");
+    assert_eq!(ended["error"], Value::Null, "{ended}");
+    let first: Value = serde_json::from_str(&std::fs::read_to_string(home.cwd.join("first.json")).unwrap()).unwrap();
+    assert_eq!(first["check"]["contract"]["verdict"], "verified", "{first}");
+    assert_eq!(first["check"]["contract"]["attempts"], 2, "{first}");
+    worker.hand_over();
+
+    let next = home.open(script(ask), &[], None);
+    let ended = prompt(&next, "ROOT2: ask the kept child");
+    assert_eq!(ended["error"], Value::Null, "{ended}");
+    let written = std::fs::read_to_string(home.cwd.join(RESULT)).unwrap_or_else(|_| {
+        let seen: Vec<Vec<Value>> = next.requests().iter().map(tool_results).collect();
+        panic!("the root cell wrote no result: {seen:#?}")
+    });
+    let out: Value = serde_json::from_str(&written).unwrap();
+    let bad = &out[0];
+    assert_eq!(bad["status"], "failed", "{bad}");
+    assert_eq!(bad["check"]["contract"]["attempts"], 3, "{bad}");
+    assert_eq!(
+        bad["check"]["contract"]["previous"],
+        json!([["run \"grep -q fixed status.txt\": exit 1"]]),
+        "{bad}"
+    );
+    let fixed = &out[1];
+    assert_eq!(fixed["status"], "failed", "{fixed}");
+    assert_eq!(fixed["check"]["contract"], bad["check"]["contract"], "{fixed}");
+    let notes: std::collections::BTreeSet<String> = next
+        .requests()
+        .iter()
+        .flat_map(texts)
+        .filter(|t| t.starts_with("[Contract] Attempt"))
+        .map(|t| t.split(" did not").next().unwrap_or_default().to_string())
+        .collect();
+    // The child's conversation carries the first worker's Attempt 1; after the restart only Attempt 2 was asked.
+    assert_eq!(
+        notes,
+        ["[Contract] Attempt 1".to_string(), "[Contract] Attempt 2".to_string()].into(),
+        "{notes:?}"
+    );
+    let refused = next
+        .requests()
+        .iter()
+        .flat_map(tool_results)
+        .map(|r| r.to_string())
+        .any(|t| t.contains("FINISH-ERROR rlm.finish: this contract's attempts are used up (3 of 3"));
+    assert!(refused, "the child's finish after the limit was not refused");
+    drop(next);
+    // The session value's latest write.
+    let kept = home.values("ultron.kept-contracts").pop().unwrap();
+    assert_eq!(kept["failed_attempts"], 3, "{kept}");
+    assert_eq!(kept["final"]["contract"], bad["check"]["contract"], "{kept}");
 }

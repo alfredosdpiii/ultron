@@ -597,7 +597,9 @@ pub fn apply(
                 Value::Null => None,
                 value => Some(one_of(key, value, &[resources::persona::ULTRON, "off"])?),
             };
-            settings.set_global(key, persona.filter(|p| p != "off").map(Value::String));
+            // Off is kept as `"off"` where a process default would turn it on again (the durable instance).
+            let defaulted = config::settings::process_defaults().is_some_and(|d| d.contains_key(key));
+            settings.set_global(key, persona.filter(|p| p != "off" || defaulted).map(Value::String));
             applied = Applied::Live;
         }
         "autoreview.enabled" | "autoreview.ack" => {

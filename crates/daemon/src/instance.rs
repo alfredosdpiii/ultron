@@ -193,6 +193,13 @@ fn read_records(dir: &Path, kind: &'static str, out: &mut Vec<Running>) {
     }
 }
 
+/// The running server generations recorded in the instance directory `dir`.
+pub fn generations(dir: &Path) -> Vec<Running> {
+    let mut out = Vec::new();
+    read_records(dir, "instance", &mut out);
+    out
+}
+
 /// `ultron instances`: running server generations of the durable instance and of every project instance.
 pub fn running(home: &Path, explicit: Option<&Path>) -> Vec<Running> {
     let mut out = Vec::new();

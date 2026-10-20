@@ -35,6 +35,11 @@ pub const MAX_RESTARTS: u32 = 5;
 pub const RESTART_STABLE: Duration = Duration::from_secs(60);
 /// The code of an operation whose worker died under it (the worker is restarting).
 pub const WORKER_LOST_CODE: &str = "session_worker_lost";
+/// The code of an attach refused because the session's worker is retiring (it went idle after its last client left)
+/// or stopping: once it is gone, a new worker serves the session ([`Manager::attach_client`]).
+pub const WORKER_RETIRING_CODE: &str = "session_worker_retiring";
+/// What a retiring worker answers a demand (crate::lifecycle `set_demand`).
+const RETIRING_REJECTION: &str = "Session worker is retiring";
 
 /// The delay before restart `attempt` (1-based).
 pub fn restart_delay(attempt: u32) -> Duration {
@@ -196,6 +201,9 @@ pub struct Manager {
     on_count: Box<dyn Fn(usize) + Send + Sync>,
     logger: OnceLock<Logger>,
     schedules: OnceLock<SchedulesListener>,
+    /// Settings defaults its workers apply under the user's files (`settingsDefaults`; the durable instance's
+    /// `persona: "ultron"`).
+    settings_defaults: OnceLock<Value>,
 }
 
 fn scoped(scope: &Value, subscription: &str) -> String {
@@ -218,7 +226,14 @@ impl Manager {
             on_count,
             logger: OnceLock::new(),
             schedules: OnceLock::new(),
+            settings_defaults: OnceLock::new(),
         })
+    }
+
+    /// Workers started from now on apply `defaults` under the user's settings files (config::settings
+    /// `set_process_defaults`).
+    pub fn set_settings_defaults(&self, defaults: Value) {
+        let _ = self.settings_defaults.set(defaults);
     }
 
     pub fn set_coordinator(&self, coordinator: Arc<CoordinatorConnection>) {
@@ -532,6 +547,9 @@ impl Manager {
             options["models"] = json!(models);
         }
         model.session.write_worker_options(&mut options);
+        if let Some(defaults) = self.settings_defaults.get() {
+            options["settingsDefaults"] = defaults.clone();
+        }
         options
     }
 
@@ -641,8 +659,14 @@ impl Manager {
         {
             let inner = self.lock();
             let worker = inner.workers.get(&handle.peer);
-            if inner.detached || inner.shutting_down || worker.is_none_or(|w| w.stopping) {
+            if inner.detached || inner.shutting_down {
                 return Err(ServiceError::internal("Experimental Session worker is stopping"));
+            }
+            if worker.is_none_or(|w| w.stopping || w.retiring) {
+                return Err(ServiceError::coded(
+                    WORKER_RETIRING_CODE,
+                    "Experimental Session worker is stopping",
+                ));
             }
         }
         let attachment = uuid_v4();
@@ -652,6 +676,11 @@ impl Manager {
         if let Err(error) = self.apply_demand(&handle.peer, &attachment, true) {
             if let Some(worker) = self.lock().workers.get_mut(&handle.peer) {
                 worker.attachments.remove(&attachment);
+            }
+            // The worker went idle and is retiring (its announcement may still be in flight): the caller waits for
+            // it to end and starts a new one.
+            if error.ends_with(RETIRING_REJECTION) || handle.terminated.is_resolved() {
+                return Err(ServiceError::coded(WORKER_RETIRING_CODE, error));
             }
             return Err(ServiceError::internal(error));
         }

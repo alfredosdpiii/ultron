@@ -267,3 +267,41 @@ fn daemon_lifetime_requires_both_client_and_worker_demand_to_disappear() {
     retires(&count);
     lifetime.stop();
 }
+
+#[test]
+fn daemon_lifetime_never_retires_while_a_schedule_is_pending() {
+    // A long idle grace: an armed retirement stays visible (`retiring`) instead of firing.
+    let (tx, retired) = std::sync::mpsc::channel();
+    let lifetime = Lifetime::with_graces(false, Duration::from_secs(600), Duration::from_secs(600));
+    lifetime.set_schedules(true);
+    lifetime.start(Box::new(move || {
+        let _ = tx.send(());
+    }));
+    // The first client ends the startup grace; with it gone, the server is idle but for the schedule.
+    lifetime.set_connections(1);
+    lifetime.set_connections(0);
+    lifetime.set_workers(1);
+    lifetime.set_workers(0);
+    assert!(!lifetime.retiring());
+    // The schedule is done: the idle grace runs.
+    lifetime.set_schedules(false);
+    assert!(lifetime.retiring());
+    // Pending again before the grace ends: the retirement is called off.
+    lifetime.set_schedules(true);
+    assert!(!lifetime.retiring());
+    lifetime.stop();
+    assert!(retired.try_recv().is_err());
+    // With no grace, the release retires the server.
+    let (tx, retired) = std::sync::mpsc::channel();
+    let quick = Lifetime::with_graces(false, Duration::from_secs(600), Duration::ZERO);
+    quick.set_schedules(true);
+    quick.start(Box::new(move || {
+        let _ = tx.send(());
+    }));
+    quick.set_connections(1);
+    quick.set_connections(0);
+    assert!(!quick.retiring());
+    quick.set_schedules(false);
+    retired.recv_timeout(Duration::from_secs(120)).unwrap();
+    quick.stop();
+}

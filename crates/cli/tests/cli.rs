@@ -66,6 +66,92 @@ fn cli_version_matches_typescript() {
     assert_eq!(cli::version(), fixture()["version"].as_str().unwrap());
 }
 
+/// The help's command lines after TypeScript's `autoreview` line: the subcommands only the Rust build dispatches
+/// (or that TypeScript dispatched without listing them).
+const RUST_COMMANDS: &str =
+    "  ultron schedule <list|cancel>    Scheduled prompts of this instance's sessions (list, cancel <id|name>)
+  ultron memory import <options>   Import Claude Code or Codex memory notes as Ultron memory records
+  ultron migrate <command>         Back up or restore the profile; import or export Pi sessions
+  ultron mcp <command>             Configure MCP servers and sign in (add, remove, list, login, logout)
+  ultron sandbox doctor            Check the shell sandbox a session in this directory gets
+  ultron instances                 List the running server instances
+  ultron durable [status|stop]     Start, inspect or stop the global durable instance
+  ultron trace check <file>        Report the prompt-cache resets of a request trace (ULTRON_REQUEST_TRACE)
+  ultron acp [options]             Run as an Agent Client Protocol agent on stdio
+  ultron claude [args...]          Run Claude Code as the root agent, with Ultron's REPL as its one tool
+  ultron watch [--once]            Show the RLM view of a running `ultron claude` session
+  ultron guide [--for <who>]       Print the runtime guide (Ultron's, or the one `ultron claude` gives Claude Code)
+";
+
+/// A recorded TypeScript stdout with [`RUST_COMMANDS`] after its `ultron autoreview` help line (other output as is).
+fn with_rust_commands(stdout: &str) -> String {
+    let anchor = "  ultron autoreview <command>      Review pull requests automatically as your gh accounts (run, once, review, status)\n";
+    stdout.replacen(anchor, &format!("{anchor}{RUST_COMMANDS}"), 1)
+}
+
+/// `ultron --help` lists every subcommand the CLI dispatches before option parsing, in the help's column style
+/// (except the internal ones: bare `ultron mcp`, Claude Code's `ultron hook`, and `server`/`client` behind
+/// PI_EXPERIMENTAL=1); `schedule` was missing.
+#[test]
+fn cli_help_lists_every_dispatched_subcommand() {
+    let tmp = tempfile::tempdir().unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ultron"))
+        .arg("--help")
+        .current_dir(tmp.path())
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", tmp.path())
+        .env("ULTRON_CODING_AGENT_DIR", tmp.path().join("agent"))
+        .env("ULTRON_SERVER_DIR", tmp.path().join("server"))
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    let help = String::from_utf8(output.stdout).unwrap();
+    let commands: Vec<&str> = help
+        .split("\nCommands:\n")
+        .nth(1)
+        .unwrap()
+        .split("\n\n")
+        .next()
+        .unwrap()
+        .lines()
+        .collect();
+    for command in [
+        "setup",
+        "install",
+        "remove",
+        "uninstall",
+        "update",
+        "list",
+        "config",
+        "auth",
+        "usage",
+        "autoreview",
+        "schedule",
+        "memory import",
+        "migrate",
+        "mcp",
+        "sandbox",
+        "instances",
+        "durable",
+        "trace",
+        "acp",
+        "claude",
+        "watch",
+        "guide",
+    ] {
+        let line = commands
+            .iter()
+            .find(|line| line.starts_with(&format!("  ultron {command} ")))
+            .unwrap_or_else(|| panic!("`ultron {command}` is not listed:\n{help}"));
+        // The description starts at the column every other command's does.
+        assert!(
+            line.len() > 35 && line[..35].ends_with("  ") && !line[35..].starts_with(' '),
+            "{line:?}"
+        );
+    }
+}
+
 /// Runs the `ultron` binary for every recorded argument vector in the same private layout the generator used and
 /// compares stdout, stderr and exit code.
 #[test]
@@ -111,7 +197,7 @@ fn cli_binary_matches_typescript_cli() {
         };
         assert_eq!(
             sub(&output.stdout),
-            case["stdout"].as_str().unwrap(),
+            with_rust_commands(case["stdout"].as_str().unwrap()),
             "stdout of {args:?}"
         );
         assert_eq!(

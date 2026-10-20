@@ -60,6 +60,98 @@ pub struct LogUsageRow {
     pub adjustment: bool,
 }
 
+/// One model response of a durable runtime conversation other than the root's (an `rlm.spawn` child, a typed agent,
+/// another root conversation): its `pi.assistant` entry in the session's durable records (`ultron.module/durable`).
+/// The root conversation's responses are transcript entries already, so they are not listed.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DurableResponse {
+    /// The lane the conversation runs: its owning child task's name (`ultron.rlm-child.<task>`); none for another
+    /// root conversation.
+    pub lane: Option<String>,
+    /// Whether a task (a subagent) owns the conversation.
+    pub owned: bool,
+    /// `provider/model` of the response.
+    pub model: String,
+    pub usage: LogUsage,
+}
+
+/// What the durable records say, gathered while reading (resolved into [`DurableResponse`]s at the end).
+#[derive(Default)]
+struct DurableDigest {
+    /// Conversation id -> its owning task id (none for a root conversation).
+    owners: std::collections::HashMap<u64, Option<u64>>,
+    /// Task id -> its `input.name` (a child task's lane).
+    task_names: std::collections::HashMap<u64, String>,
+    /// (conversation, `provider/model`, usage), in commit order.
+    responses: Vec<(u64, String, LogUsage)>,
+}
+
+/// The root conversation of the durable runtime (`durable::ROOT_CONVERSATION_ID`).
+const ROOT_CONVERSATION: u64 = 1;
+/// A durable commit line: `{"kind":"list","op":"append","seq":N,"namespace":"ultron.module","key":"durable",...}`.
+const DURABLE_MARK: &str = r#""namespace":"ultron.module","key":"durable""#;
+
+/// Whether a list-append line is a durable commit: its namespace and key come within its first bytes.
+fn is_durable_commit(line: &str) -> bool {
+    let head = &line.as_bytes()[..line.len().min(160)];
+    head.windows(DURABLE_MARK.len()).any(|w| w == DURABLE_MARK.as_bytes())
+}
+
+impl DurableDigest {
+    /// One durable commit (`{seq, writes}`).
+    fn commit(&mut self, record: &Value) {
+        for write in record.get("writes").and_then(Value::as_array).into_iter().flatten() {
+            let value = &write["value"];
+            match write.get("type").and_then(Value::as_str) {
+                Some("conversation") => {
+                    if let Some(id) = value["id"].as_u64() {
+                        self.owners.insert(id, value["owner"]["taskId"].as_u64());
+                    }
+                }
+                Some("task") => {
+                    if let (Some(id), Some(name)) = (value["id"].as_u64(), value["input"]["name"].as_str()) {
+                        self.task_names.entry(id).or_insert_with(|| name.to_string());
+                    }
+                }
+                Some("entry") if value["kind"] == "pi.assistant" => {
+                    let Some(conversation) = value["conversationId"].as_u64() else {
+                        continue;
+                    };
+                    if conversation == ROOT_CONVERSATION {
+                        continue;
+                    }
+                    let message = &value["model"][0];
+                    let Some(usage) = log_usage(message.get("usage")) else {
+                        continue;
+                    };
+                    let model = format!(
+                        "{}/{}",
+                        message["provider"].as_str().unwrap_or("unknown"),
+                        message["model"].as_str().unwrap_or("unknown")
+                    );
+                    self.responses.push((conversation, model, usage));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn resolve(self) -> Vec<DurableResponse> {
+        self.responses
+            .into_iter()
+            .map(|(conversation, model, usage)| {
+                let owner = self.owners.get(&conversation).copied().flatten();
+                DurableResponse {
+                    lane: owner.and_then(|task| self.task_names.get(&task).cloned()),
+                    owned: owner.is_some(),
+                    model,
+                    usage,
+                }
+            })
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogOperation {
     pub id: String,
@@ -99,6 +191,8 @@ pub struct SessionLog {
     pub values: IndexMap<String, Value>,
     pub operations: IndexMap<String, LogOperation>,
     pub results: Vec<LogResult>,
+    /// Responses of the durable runtime's non-root conversations (sub-agents), from its records.
+    pub durable_responses: Vec<DurableResponse>,
     pub unreadable_lines: u64,
 }
 
@@ -364,14 +458,17 @@ pub fn read_session_log(path: &Path) -> Result<SessionLog, LogError> {
         values: IndexMap::new(),
         operations: IndexMap::new(),
         results: Vec::new(),
+        durable_responses: Vec::new(),
         unreadable_lines: 0,
     };
+    let mut durable = DurableDigest::default();
     for_each_line(path, |line| {
         if header.is_none() {
             header = Some(parse_header(line, path)?);
             return Ok(true);
         }
-        if line.is_empty() || line.starts_with(r#"{"kind":"list""#) {
+        // List appends are skipped unread (stream frames are most of a file), except the durable runtime's commits.
+        if line.is_empty() || (line.starts_with(r#"{"kind":"list""#) && !is_durable_commit(line)) {
             return Ok(true);
         }
         let Ok(parsed) = serde_json::from_str::<Value>(line) else {
@@ -384,17 +481,28 @@ pub fn read_session_log(path: &Path) -> Result<SessionLog, LogError> {
         };
         for write in &writes {
             if let Some(item) = write.as_object() {
-                apply(&mut log, item);
+                apply(&mut log, &mut durable, item);
             }
         }
         Ok(true)
     })?;
     log.header = header.ok_or_else(|| LogError::Session(format!("{} is empty", path.display())))?;
+    log.durable_responses = durable.resolve();
     Ok(log)
 }
 
-fn apply(log: &mut SessionLog, write: &Map<String, Value>) {
+fn apply(log: &mut SessionLog, durable: &mut DurableDigest, write: &Map<String, Value>) {
     let kind = write.get("kind").and_then(Value::as_str);
+    if kind == Some("list") {
+        if write.get("op").and_then(Value::as_str) == Some("append")
+            && write.get("namespace").and_then(Value::as_str) == Some("ultron.module")
+            && write.get("key").and_then(Value::as_str) == Some("durable")
+            && let Some(record) = write.get("value")
+        {
+            durable.commit(record);
+        }
+        return;
+    }
     if kind == Some("entry") {
         if let Some(entry) = digest_entry(write) {
             log.entries.push(entry);

@@ -395,8 +395,9 @@ server owns timing, and the user sees every schedule (`/schedules`, `ultron sche
   `details: {name, id, run}`) that starts a run; during a run it waits for that run's end (never interrupting).
   A fire names its slot: a duplicate (another generation) or early fire does nothing. Missed slots collapse into one
   fire (the next slot is the first after now). A session whose file is gone is dropped; a delivery that failed is
-  retried after 60 s. Schedules fire while an Ultron server runs (an interactive `ultron`, `ultron durable`); a
-  server that starts later fires what it missed once.
+  retried after 60 s. Schedules fire while an Ultron server runs (an interactive `ultron`, `ultron durable`, the
+  `ultron service` unit); a server holding a pending schedule never retires on idle, and a server that starts later
+  fires what it missed once (wave 43: see "Durable service" below).
 - **Visibility**: `/schedules` (with the overlays) lists `name  next <ISO>  runs n[/max]  every 15m|once  <id>`; the
   transcript shows a fired prompt as one muted line `scheduled: <name> (run n)`, live and on resume.
   `ultron schedule list` prints `ID NAME NEXT RUNS REPEAT STATE SESSION CWD` (tab-separated) from the journals;
@@ -441,3 +442,48 @@ The model renders Mermaid through the REPL; the user sees the diagram inline, th
   attaches the PNG like `view_image` (model-normalized image block). `show=False` only saves.
 - Tests: a fake `node` on the injected session PATH; the real node with the vendored Pele runs only with
   `ULTRON_MERMAID_TEST_NODE=1`.
+
+## Durable service, `ultron-s`, schedule delivery, usage, contracts, diagram contrast (wave 43, W21*)
+
+**Service** (`crates/cli/src/service_cli.rs`). `ultron service install|uninstall|status|restart|run` manages a systemd
+user unit for the **durable** instance only (`~/.ultron/server`): `ExecStart=ultron service run`, `Restart=always`,
+`WantedBy=default.target`, working directory `$HOME`, `EnvironmentFile=-<agent dir>/service.env`, no keys in the
+unit. `systemctl` and the unit directory come only from the injected environment; no systemd prints "No systemd
+found" (exit 1) and writes nothing, and a failed enable removes the unit. Project instances are unchanged: a plain
+`ultron`, `ultron --claude` and `ultron claude` keep their own foreground servers.
+
+**Durable clients** (`crates/cli/src/durable_client.rs`). `ultron durable` (interactive, `-p`, `--mode json`)
+attaches to the durable server, which outlives its clients; per-run worker options (`--model`, `--system-prompt`)
+are refused, since one server serves one worker model. Durable sessions get the persona by default through a process
+settings default `{persona: "ultron"}` (worker option `settingsDefaults`, below the settings files, never written);
+`/persona off` there is saved as an explicit `"off"`. An idle durable server without schedules makes no provider
+requests and starts no worker: it does nothing unless instructed.
+
+**`ultron-s`** (argv0 dispatch; `install.sh` links `ultron-s -> ultron`). Attaches to the durable instance's home
+session, recorded in `<durable dir>/home-session`: created once in `$HOME`, reused across clients and server
+restarts, replaced when deleted. `--new` replaces it, `--list` lists, `--session <id>` / `--home` pick one, `-p`
+prompts it. A client killed mid-run leaves the run going; the next client continues after it. `install.sh` runs
+`ultron service restart` when an `ultron-durable-*.service` unit is installed.
+
+**Schedule delivery.** A fire counts only once its prompt started or queued; a failed delivery keeps the slot due
+(an `at` schedule stays active), records `{error, at, due}` in `schedule-errors.json` and shows in the `ERROR` column of
+`ultron schedule list`. `schedule list` wakes the instance when a schedule is active.
+
+**Usage** (`crates/cli/src/usage/log.rs`). `ultron usage` reads durable children's responses from the session's
+durable records (`ultron.module/durable` `pi.assistant` entries): model, input/output/cache split and cost per
+response. A child on the root's model merges into its row; another model gets its own row. Ledger turns that the
+records lack stay a totals-only row, so totals equal the ledger; a conversation with no named owner goes to "other".
+
+**Contracts.** A Git baseline is HEAD plus a tree id written through a temporary `GIT_INDEX_FILE` (a copy of the
+index in a private temp dir; the real index is never written), so any number of dirty paths fits; older
+`{commit,status,dirty}` baselines still compare as before; a pruned tree fails closed. Kept children: failed check
+runs share one budget across answers (final when failures reach retries + 1, persisted in `ultron.kept-contracts`
+across restarts); verified answers cost nothing; rejected finishes are bounded per answer.
+
+**Diagrams and terminal theme.** Labels are recoloured after flattening to reach WCAG 4.5:1 against what is under
+them (text colour, then page colour, then black or white; pie percentages against their own slice), checked for all
+23 Pele kinds in both themes. The TUI's detected appearance (OSC 11, `COLORFGBG`, scheme report) reaches the session
+as `setTerminalTheme`, replayed on every attach; `theme="auto"` prefers it over the worker's `COLORFGBG`.
+
+**Server.** A client attaching while the idle worker retires waits for it to exit and starts a new worker (the
+`radius_client` flake). `--help` lists every dispatched subcommand.

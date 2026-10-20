@@ -7,7 +7,11 @@
 //! schedule is delivered to its session ([`Deliver`]: the hub starts or adopts the worker and sends it
 //! `scheduleFire {id, due}`); the worker records the run and starts it, or queues it after the run in progress.
 //! Missed slots collapse into one fire (the worker sets the next slot after now), a session whose file is gone is
-//! dropped, and a delivery that failed is tried again after [`RETRY_MS`].
+//! dropped, and a delivery that failed is tried again after [`RETRY_MS`] (its slot stays due: the worker counts a
+//! fire only once its prompt started or was queued); the last failure of each slot is kept in the instance's
+//! [`ERRORS_FILE`] for `ultron schedule list`. While it holds any schedule (or is still reading the journals) the
+//! timer holds its server open ([`Scheduler::on_hold`]): an automatically activated server never retires on idle with
+//! a schedule pending.
 
 use crate::catalog::{self, Meta};
 use crate::chord::{Service, ServiceError};
@@ -24,6 +28,9 @@ use std::time::Duration;
 pub const RETRY_MS: i64 = 60_000;
 /// The longest the timer sleeps before it reads the clock again (a suspended machine, a changed wall clock).
 pub const MAX_SLEEP: Duration = Duration::from_secs(300);
+/// The last delivery failure of each pending slot, in the instance directory: `{sessionId: {scheduleId: {error, at,
+/// due}}}`. An entry whose `due` is no longer the schedule's next slot is stale.
+pub const ERRORS_FILE: &str = "schedule-errors.json";
 
 /// What a delivered fire answered.
 #[derive(Debug, Clone, PartialEq)]
@@ -53,11 +60,16 @@ struct State {
     in_flight: HashSet<(PathBuf, String)>,
     retry_at: HashMap<(PathBuf, String), i64>,
     stopped: bool,
+    /// The journals have not been read yet (the timer holds its server open meanwhile).
+    loading: bool,
+    /// What [`Scheduler::on_hold`] was last told.
+    held: Option<bool>,
     /// How often the timer looked at the clock (it does once per wake-up, never in a loop).
     passes: u64,
 }
 
 type Log = Box<dyn Fn(&str) + Send + Sync>;
+type Hold = Box<dyn Fn(bool) + Send + Sync>;
 
 pub struct Scheduler {
     me: Weak<Scheduler>,
@@ -66,6 +78,8 @@ pub struct Scheduler {
     state: Mutex<State>,
     bell: Condvar,
     log: Option<Log>,
+    hold: std::sync::OnceLock<Hold>,
+    errors: std::sync::OnceLock<PathBuf>,
 }
 
 fn entries(value: &Value) -> Vec<Entry> {
@@ -88,10 +102,52 @@ impl Scheduler {
             me: me.clone(),
             clock,
             deliver,
-            state: Mutex::new(State::default()),
+            state: Mutex::new(State {
+                loading: true,
+                ..State::default()
+            }),
             bell: Condvar::new(),
             log,
+            hold: std::sync::OnceLock::new(),
+            errors: std::sync::OnceLock::new(),
         })
+    }
+
+    /// Told whether the timer holds a pending schedule (or has not read the journals yet), at once and on every
+    /// change: the server's lifetime does not retire on idle while it does.
+    pub fn on_hold(&self, hold: Hold) {
+        if self.hold.set(hold).is_ok() {
+            let mut state = self.lock();
+            self.report_hold(&mut state);
+        }
+    }
+
+    /// Keep each slot's last delivery failure in `path` ([`ERRORS_FILE`]).
+    pub fn record_errors(&self, path: PathBuf) {
+        let _ = self.errors.set(path);
+    }
+
+    /// Whether the timer holds its server open now.
+    pub fn holding(&self) -> bool {
+        let state = self.lock();
+        state.loading || !state.sessions.is_empty()
+    }
+
+    fn report_hold(&self, state: &mut State) {
+        let held = state.loading || !state.sessions.is_empty();
+        if state.held == Some(held) {
+            return;
+        }
+        if let Some(hold) = self.hold.get() {
+            state.held = Some(held);
+            hold(held);
+        }
+    }
+
+    fn note_error(&self, meta: &Meta, id: &str, failure: Option<(&str, i64, i64)>) {
+        if let Some(path) = self.errors.get() {
+            write_error(path, &meta.id, id, failure);
+        }
     }
 
     fn lock(&self) -> MutexGuard<'_, State> {
@@ -115,6 +171,8 @@ impl Scheduler {
                             .insert(meta.path.clone(), (meta, entries(&Value::Array(active))));
                     }
                 }
+                state.loading = false;
+                me.report_hold(&mut state);
             }
             me.run();
         });
@@ -133,6 +191,7 @@ impl Scheduler {
         } else {
             state.sessions.insert(meta.path.clone(), (meta.clone(), list));
         }
+        self.report_hold(&mut state);
         drop(state);
         self.bell.notify_all();
     }
@@ -233,6 +292,7 @@ impl Scheduler {
                     state.retry_at.insert(key, now + RETRY_MS);
                 } else {
                     state.retry_at.remove(&key);
+                    self.note_error(meta, &entry.id, None);
                 }
                 if list.is_empty() {
                     state.sessions.remove(&meta.path);
@@ -246,6 +306,7 @@ impl Scheduler {
             }
             Delivery::Retry(error) => {
                 state.retry_at.insert(key, now + RETRY_MS);
+                self.note_error(meta, &entry.id, Some((&error, now, entry.next_due)));
                 if let Some(log) = &self.log {
                     log(&format!(
                         "Session {}: schedule {} could not fire: {error}",
@@ -254,8 +315,64 @@ impl Scheduler {
                 }
             }
         }
+        self.report_hold(&mut state);
         drop(state);
         self.bell.notify_all();
+    }
+}
+
+/// The last delivery failure of each slot in an errors file ([`ERRORS_FILE`]): `(session id, schedule id)` to
+/// `(error, at, due)`. A missing or unreadable file holds none.
+pub fn read_errors(path: &Path) -> HashMap<(String, String), (String, i64, i64)> {
+    let value: Value = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or(Value::Null);
+    let mut out = HashMap::new();
+    for (session, schedules) in value.as_object().into_iter().flatten() {
+        for (id, entry) in schedules.as_object().into_iter().flatten() {
+            if let (Some(error), Some(at), Some(due)) =
+                (entry["error"].as_str(), entry["at"].as_i64(), entry["due"].as_i64())
+            {
+                out.insert((session.clone(), id.clone()), (error.to_string(), at, due));
+            }
+        }
+    }
+    out
+}
+
+/// Record (`Some((error, at, due))`) or clear the last delivery failure of `session`'s schedule `id` in `path`,
+/// replaced whole (a temporary file renamed over it). Never fails.
+fn write_error(path: &Path, session: &str, id: &str, failure: Option<(&str, i64, i64)>) {
+    let mut value: Value = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({}));
+    let Some(sessions) = value.as_object_mut() else { return };
+    match failure {
+        Some((error, at, due)) => {
+            let schedules = sessions.entry(session.to_string()).or_insert_with(|| json!({}));
+            if !schedules.is_object() {
+                *schedules = json!({});
+            }
+            schedules[id] = json!({"error": error, "at": at, "due": due});
+        }
+        None => {
+            let Some(schedules) = sessions.get_mut(session).and_then(Value::as_object_mut) else {
+                return;
+            };
+            if schedules.remove(id).is_none() {
+                return;
+            }
+            if schedules.is_empty() {
+                sessions.remove(session);
+            }
+        }
+    }
+    let temp = path.with_extension(format!("json.{}.tmp", std::process::id()));
+    if std::fs::write(&temp, format!("{value}\n")).is_ok() && std::fs::rename(&temp, path).is_err() {
+        let _ = std::fs::remove_file(&temp);
     }
 }
 

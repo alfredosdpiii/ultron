@@ -252,3 +252,58 @@ fn session_core_diagram_display_images_start_empty_with_each_cell() {
     );
     assert!(images.take_display("main").is_empty(), "taken once");
 }
+
+/// `diagram.mermaid`'s `auto` theme follows the terminal appearance the attached TUI reported (OSC 11, sent as
+/// `setTerminalTheme`) over the session's `COLORFGBG`; a pair setting picks that side.
+#[test]
+fn session_core_diagram_auto_theme_follows_the_terminal_the_tui_reported() {
+    let bin = tempfile::tempdir().unwrap();
+    let bin = bin.path().canonicalize().unwrap().join("bin");
+    fake_node(&bin);
+    let cell = "import json\nd = await diagram.mermaid('flowchart LR\\n  a --> b')\nprint('result', json.dumps(d))";
+    let script = in_order(vec![
+        tool("toolu_1", cell),
+        text("one"),
+        tool("toolu_2", cell),
+        text("two"),
+    ]);
+    let a = actor(
+        script,
+        Setup {
+            settings: Some(json!({"theme": "light/dark"})),
+            // COLORFGBG says dark (background 0).
+            vars: vec![("PATH", bin.display().to_string()), ("COLORFGBG", "15;0".into())],
+            ..Setup::default()
+        },
+    );
+    // The node surface colour of the `n`th saved diagram: dark #282832, light #e8e8f0.
+    let surface = |a: &p_session_support::Actor, n: usize| {
+        let mut found = Vec::new();
+        let mut stack = vec![a.root.join("agent/rlm-output")];
+        while let Some(path) = stack.pop() {
+            if path.is_dir() {
+                stack.extend(std::fs::read_dir(&path).unwrap().map(|e| e.unwrap().path()));
+            } else if path.ends_with(format!("diagrams/flowchart-{n}.svg")) {
+                found.push(std::fs::read_to_string(&path).unwrap());
+            }
+        }
+        assert_eq!(found.len(), 1);
+        ["#282832", "#e8e8f0"]
+            .into_iter()
+            .find(|c| found[0].contains(&format!("fill=\"{c}\"")))
+            .unwrap_or_default()
+            .to_string()
+    };
+    assert_eq!(a.prompt("draw it")["error"], Value::Null);
+    assert_eq!(surface(&a, 1), "#282832", "COLORFGBG's dark side");
+    // The TUI's OSC 11 answer said light: as a client sends it over the worker's control service.
+    let op = session_core::core::Op::from_json(&json!({"op": "setTerminalTheme", "theme": "light"})).unwrap();
+    assert_eq!(op.to_json(), json!({"op": "setTerminalTheme", "theme": "light"}));
+    assert_eq!(a.call(op), Ok(None));
+    assert_eq!(
+        a.call(session_core::core::Op::SetTerminalTheme { theme: "sepia".into() }),
+        Err("theme must be light or dark, not \"sepia\"".into())
+    );
+    assert_eq!(a.prompt("draw it again")["error"], Value::Null);
+    assert_eq!(surface(&a, 2), "#e8e8f0", "the reported light side");
+}

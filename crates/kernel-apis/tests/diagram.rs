@@ -13,7 +13,7 @@ use kernel_apis::diagram::{
 };
 use kernel_apis::diagram_svg::{
     DiagramPalette, VarScope, color_mix, custom_properties, flatten_svg, font_database, palette_from_theme,
-    pick_family, rasterize, select_palette,
+    pick_family, rasterize, select_palette, select_palette_for_terminal,
 };
 use resvg::tiny_skia::Pixmap;
 use resvg::usvg::fontdb;
@@ -132,6 +132,31 @@ fn kernel_apis_diagram_theme_follows_the_setting_and_the_terminal() {
         select_palette("sepia", None, None, none).unwrap_err(),
         "diagram.mermaid theme must be \"auto\", \"dark\" or \"light\", not \"sepia\""
     );
+}
+
+/// `auto` with the terminal's appearance known (what the attached TUI detected through OSC 11): it wins over
+/// `COLORFGBG`, which wins over dark; an explicit theme or a named setting still wins over both.
+#[test]
+fn kernel_apis_diagram_auto_theme_follows_the_detected_terminal_before_colorfgbg() {
+    let dir = tempfile::tempdir().unwrap();
+    let none = dir.path();
+    let theme = |requested: &str, setting: Option<&str>, terminal: Option<&str>, colorfgbg: Option<&str>| {
+        select_palette_for_terminal(requested, setting, terminal, colorfgbg, none)
+            .unwrap()
+            .theme
+    };
+    assert_eq!(theme("auto", None, Some("light"), Some("15;0")), "light");
+    assert_eq!(theme("auto", None, Some("dark"), Some("0;15")), "dark");
+    assert_eq!(theme("auto", Some("light/dark"), Some("light"), Some("15;0")), "light");
+    assert_eq!(theme("auto", Some("light/dark"), Some("dark"), Some("0;15")), "dark");
+    // Nothing detected (or something unknown): COLORFGBG, else dark.
+    assert_eq!(theme("auto", Some("light/dark"), None, Some("0;15")), "light");
+    assert_eq!(theme("auto", Some("light/dark"), Some("sepia"), Some("0;15")), "light");
+    assert_eq!(theme("auto", Some("light/dark"), None, None), "dark");
+    // Explicit choices win.
+    assert_eq!(theme("auto", Some("dark"), Some("light"), Some("0;15")), "dark");
+    assert_eq!(theme("dark", None, Some("light"), None), "dark");
+    assert_eq!(theme("light", Some("dark"), Some("dark"), None), "light");
 }
 
 #[test]
@@ -431,6 +456,7 @@ impl Setup {
             theme: Arc::new(|| ThemeInputs {
                 setting: Some("dark".into()),
                 colorfgbg: None,
+                terminal: None,
                 custom_dir: PathBuf::from("/nonexistent"),
             }),
             show,
@@ -666,6 +692,12 @@ fn kernel_apis_diagram_mermaid_renders_with_real_node_and_pele() {
         assert_eq!(result["type"], kind, "{text}");
         let svg = std::fs::read_to_string(result["svg_path"].as_str().unwrap()).unwrap();
         assert!(!svg.contains("var(") && !svg.contains("color-mix"), "{kind}: {svg}");
+        // Every label reads against what is under it (kernel_apis::diagram_contrast).
+        let palette = select_palette("dark", None, None, Path::new("/nonexistent")).unwrap();
+        for label in kernel_apis::diagram_contrast::label_backdrops(&svg, &palette) {
+            let ratio = kernel_apis::diagram_contrast::contrast(label.drawn, label.backdrop);
+            assert!(ratio >= 4.5, "{kind}: {label:?} {ratio:.2}");
+        }
         let png = std::fs::read(result["png_path"].as_str().unwrap()).unwrap();
         Pixmap::decode_png(&png).unwrap();
         if let Ok(out) = std::env::var("ULTRON_MERMAID_TEST_OUT") {

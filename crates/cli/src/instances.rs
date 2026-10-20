@@ -1,5 +1,7 @@
-//! `ultron instances` and `ultron durable [status|stop]` (user requirement; no TypeScript equivalent): the global
-//! durable instance is started on demand and held open; project instances run beside it.
+//! `ultron instances` and `ultron durable [start|status|stop|attach]` (user requirement; no TypeScript equivalent):
+//! the global durable instance is started on demand and held open; project instances run beside it. `ultron durable`
+//! with no command, `attach`, or client options (`-p`, `--mode json|rpc`, a prompt) is a client of the durable
+//! instance's server (crate::durable_client).
 
 use crate::Env;
 use daemon::instance::{self, Kind};
@@ -23,8 +25,9 @@ pub fn list(env: &Env, out: &mut dyn Write) -> Result<i32, String> {
     Ok(0)
 }
 
-/// `ultron durable`: start (or find) the durable instance's server; `status` lists it; `stop` ends it.
-pub fn durable(args: &[String], env: &Env, out: &mut dyn Write) -> Result<i32, String> {
+/// `ultron durable`: `start` starts (or finds) the durable instance's server and prints its route; `status` lists it;
+/// `stop` ends it; anything else (nothing, `attach`, client options) runs a client attached to it.
+pub fn durable(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> Result<i32, String> {
     let instance = crate::instance(env, true);
     let running = || {
         instance::running(&env.home, explicit(env).as_deref())
@@ -33,7 +36,7 @@ pub fn durable(args: &[String], env: &Env, out: &mut dyn Write) -> Result<i32, S
             .collect::<Vec<_>>()
     };
     match args.first().map(String::as_str) {
-        None | Some("start" | "attach") => {
+        Some("start") => {
             instance.prepare().map_err(io)?;
             let session_dir = crate::session::session_directory_of(None, env, &instance);
             let route = activate_server(
@@ -63,7 +66,9 @@ pub fn durable(args: &[String], env: &Env, out: &mut dyn Write) -> Result<i32, S
             }
             Ok(0)
         }
-        Some(other) => Err(format!("Unknown durable command: {other}")),
+        None => crate::durable_client::run(&[], env, out, err),
+        Some("attach") => crate::durable_client::run(&args[1..], env, out, err),
+        Some(_) => crate::durable_client::run(args, env, out, err),
     }
 }
 

@@ -23,6 +23,41 @@ const ACTIVATION_RETRY: Duration = Duration::from_millis(10);
 const MAX_SERVER_LOG_BYTES: u64 = 1024 * 1024;
 /// Set on a spawned server process to hold it open without demand (`ultron durable`).
 pub const KEEP_ALIVE_ENV: &str = "__ULTRON_SERVER_KEEP_ALIVE";
+/// A test knob: the idle grace of an automatically activated server in ms (default 1000). Never set in the product.
+pub const IDLE_GRACE_ENV: &str = "__ULTRON_SERVER_IDLE_GRACE_MS";
+
+/// Whether a client with `options` can use a server started on the default worker options: its workers would start
+/// exactly as that server's do (the client's mode is not a worker difference that matters).
+pub fn attach_compatible(options: &ServerOptions) -> bool {
+    WorkerModel {
+        extension_mode: None,
+        ..options.model.clone()
+    } == WorkerModel::default()
+}
+
+/// Whether `directory` is the durable instance's (`~/.ultron/server` of this process's HOME).
+pub fn is_durable_directory(directory: &Path) -> bool {
+    std::env::var_os("HOME").is_some_and(|home| {
+        config::paths::normalize(directory)
+            == config::paths::normalize(&instance::ultron_home(Path::new(&home)).join("server"))
+    })
+}
+
+/// A server process of the durable instance moves to the home directory.
+fn durable_home(directory: &Path) {
+    if is_durable_directory(directory)
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        let _ = std::env::set_current_dir(home);
+    }
+}
+
+/// The idle grace a server process uses: [`IDLE_GRACE_ENV`] when it holds a number of ms, else the default.
+pub fn idle_grace(var: &dyn Fn(&str) -> Option<String>) -> Duration {
+    var(IDLE_GRACE_ENV)
+        .and_then(|ms| ms.trim().parse::<u64>().ok())
+        .map_or(AUTO_SERVER_IDLE_GRACE, Duration::from_millis)
+}
 
 /// `serverErrorLogPath`.
 pub fn error_log_path(directory: &Path, server_id: &str) -> PathBuf {
@@ -53,14 +88,16 @@ pub fn record_error(path: &Path, label: &str, message: &str) {
 struct LifetimeState {
     connections: usize,
     workers: usize,
+    /// The schedule timer holds a pending schedule (crate::prompt_schedules).
+    schedules: bool,
     startup_held: bool,
     stopped: bool,
     timer: u64,
     armed: bool,
 }
 
-/// `ServerLifetime`: retires an automatically activated server once it has had no connection and no worker for the
-/// idle grace (after the startup grace, or the first connection).
+/// `ServerLifetime`: retires an automatically activated server once it has had no connection, no worker and no
+/// pending scheduled prompt for the idle grace (after the startup grace, or the first connection).
 pub struct Lifetime {
     keep_alive: bool,
     startup_grace: Duration,
@@ -127,6 +164,17 @@ impl Lifetime {
         self.reconcile();
     }
 
+    /// Whether the server's schedule timer holds a pending schedule: while it does the server never retires on idle.
+    pub fn set_schedules(&self, pending: bool) {
+        self.lock().schedules = pending;
+        self.reconcile();
+    }
+
+    /// Whether an idle retirement is armed (its grace running).
+    pub fn retiring(&self) -> bool {
+        self.lock().armed
+    }
+
     pub fn stop(&self) {
         let mut state = self.lock();
         state.stopped = true;
@@ -134,7 +182,7 @@ impl Lifetime {
     }
 
     fn idle(state: &LifetimeState) -> bool {
-        !state.stopped && !state.startup_held && state.connections == 0 && state.workers == 0
+        !state.stopped && !state.startup_held && state.connections == 0 && state.workers == 0 && !state.schedules
     }
 
     fn reconcile(&self) {
@@ -302,7 +350,11 @@ fn start_generation(
         std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
         "server.coordinator-ready",
     );
-    let lifetime = Lifetime::new(options.keep_alive);
+    let lifetime = Lifetime::with_graces(
+        options.keep_alive,
+        AUTO_SERVER_STARTUP_GRACE,
+        idle_grace(&|key| std::env::var(key).ok()),
+    );
     let workers_lifetime = lifetime.clone();
     let manager = Manager::new(
         options.session_dir.clone(),
@@ -317,6 +369,11 @@ fn start_generation(
         error_log_path(&options.directory, server_id),
         Box::new(move |count| connections_lifetime.set_connections(count)),
     );
+    // Every session of the durable instance has the Ultron persona on by default (a settings default under the
+    // user's files, which an explicit `persona` value overrides).
+    if is_durable_directory(&options.directory) {
+        manager.set_settings_defaults(json!({resources::persona::SETTING: resources::persona::ULTRON}));
+    }
     let log_path = error_log_path(&options.directory, server_id);
     manager.set_logger(Box::new(move |label, message| record_error(&log_path, label, message)));
     // Scheduled prompts: one timer per generation over the store's sessions; workers report their changes.
@@ -330,6 +387,10 @@ fn start_generation(
     );
     let reports = schedules.clone();
     manager.on_schedules(Box::new(move |meta, active| reports.update(meta, active)));
+    // A server holding a pending schedule stays up until it is done or cancelled.
+    schedules.record_errors(options.directory.join(crate::prompt_schedules::ERRORS_FILE));
+    let held = lifetime.clone();
+    schedules.on_hold(Box::new(move |pending| held.set_schedules(pending)));
     let listener = sockets::listen(&endpoint_path).map_err(Err)?;
     hub.serve(listener);
     // The lease connects before the coordinator has accepted (and counted) it, so a coordinator whose empty
@@ -549,6 +610,8 @@ pub fn run_server_process(args: &[String], relay: Option<server::radius_relay::R
     let session_dir = args.get(2).filter(|d| Path::new(d).is_absolute());
     let session_dir = session_dir.ok_or("Internal server requires an absolute Session directory")?;
     let model = parse_model(args.get(3))?;
+    // The durable instance works in the home directory (its sessions are created there), wherever it was activated.
+    durable_home(Path::new(directory));
     let server = start_server(&ServerOptions {
         directory: PathBuf::from(directory),
         session_dir: PathBuf::from(session_dir),
@@ -560,6 +623,20 @@ pub fn run_server_process(args: &[String], relay: Option<server::radius_relay::R
     })
     .map_err(|e| e.to_string())?;
     // A signal closes the generation (busy workers keep running detached) and removes its endpoint.
+    let signalled = server.clone();
+    crate::signals::set_handler(Arc::new(move |_| {
+        signalled.close();
+        std::process::exit(0);
+    }));
+    server.wait_closed();
+    Ok(())
+}
+
+/// `ultron service run`: the durable instance's server in this process, held open (a supervised service), until a
+/// signal. Serialized against cold activation as a foreground server is.
+pub fn serve(options: &ServerOptions) -> Result<(), String> {
+    durable_home(&options.directory);
+    let server = start_foreground_server(options).map_err(|e| e.to_string())?;
     let signalled = server.clone();
     crate::signals::set_handler(Arc::new(move |_| {
         signalled.close();

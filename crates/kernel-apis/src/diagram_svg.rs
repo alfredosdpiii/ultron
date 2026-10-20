@@ -98,6 +98,19 @@ pub fn select_palette(
     colorfgbg: Option<&str>,
     custom_dir: &std::path::Path,
 ) -> Result<DiagramPalette, String> {
+    select_palette_for_terminal(requested, setting, None, colorfgbg, custom_dir)
+}
+
+/// [`select_palette`] with the terminal's side known: `terminal` (`"light"` / `"dark"`, what the attached TUI
+/// detected through OSC 11) wins over `COLORFGBG`, which wins over dark. An explicit `requested` theme or a named
+/// setting still wins over both.
+pub fn select_palette_for_terminal(
+    requested: &str,
+    setting: Option<&str>,
+    terminal: Option<&str>,
+    colorfgbg: Option<&str>,
+    custom_dir: &std::path::Path,
+) -> Result<DiagramPalette, String> {
     let builtin = |name: &str| {
         let json = tui::theme::builtin_theme_json(name).ok_or_else(|| format!("built-in theme {name} is missing"))?;
         palette_from_theme(&json, name)
@@ -105,7 +118,11 @@ pub fn select_palette(
     match requested {
         "dark" | "light" => builtin(requested),
         "auto" => {
-            let terminal = tui::theme::detect_terminal_background_from_env(colorfgbg).theme;
+            let terminal = match terminal.map(str::trim) {
+                Some("light") => tui::theme::TerminalTheme::Light,
+                Some("dark") => tui::theme::TerminalTheme::Dark,
+                _ => tui::theme::detect_terminal_background_from_env(colorfgbg).theme,
+            };
             let side = match terminal {
                 tui::theme::TerminalTheme::Light => "light",
                 tui::theme::TerminalTheme::Dark => "dark",

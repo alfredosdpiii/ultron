@@ -131,18 +131,14 @@ const GREP: &str = r#"contract={'checks': [{'run': 'grep -q fixed status.txt'}]}
 fn session_core_w18s_kept_child_each_answer_is_held_to_its_contract() {
     let r = run(GREP, &["Q-GOOD", "Q-BAD"], false, |prompt| {
         Some(match prompt {
-            p if p.contains(BRIEF) => work("wrong", false, FINISH),
+            p if p.contains(BRIEF) => work("fixed", false, FINISH),
             "Q-GOOD" => work("fixed", false, FINISH),
             _ => work("broken", false, FINISH),
         })
     });
     let first = &r.out["first"];
-    assert_eq!(first["status"], "failed", "{first}");
-    assert_eq!(
-        first["error"], "Contract failed: run \"grep -q fixed status.txt\": exit 1",
-        "{first}"
-    );
-    assert_eq!(first["check"]["contract"]["verdict"], "contract_failed", "{first}");
+    assert_eq!(first["status"], "succeeded", "{first}");
+    assert_eq!(first["check"]["contract"]["verdict"], "verified", "{first}");
     assert_eq!(first["check"]["contract"]["hop"], "report", "{first}");
     assert_eq!(first["check"]["contract"]["attempts"], 1, "{first}");
     // The child's own claim stays beside the host's verdict.
@@ -160,12 +156,129 @@ fn session_core_w18s_kept_child_each_answer_is_held_to_its_contract() {
         bad["error"], "Contract failed: run \"grep -q fixed status.txt\": exit 1",
         "{bad}"
     );
+    assert_eq!(bad["check"]["contract"]["verdict"], "contract_failed", "{bad}");
     // The brief is led by what the host will check.
     assert!(
         r.child_texts[0].starts_with("Contract: when you finish, the host itself runs these checks in your working directory: {\"run\":\"grep -q fixed status.txt\""),
         "{:?}",
         r.child_texts
     );
+}
+
+/// A kept child's `rlm.finish` that catches what the host says.
+const TRY_FINISH: &str = "try:\n    print(await rlm.finish('passed', 'did it', evidence=['status.txt:1'], changed_files=['status.txt']))\nexcept Exception as e:\n    print('FINISH-ERROR', e)";
+
+/// Wave 43: a kept child's answers share its contract's attempts, as a one-shot child's runs do. Here
+/// `{"retry": 1}`: the first answer fails, its retry fails too (attempts 2 of 2), and that failure is final: the next
+/// question's answer reports it without re-running the checks (status.txt is fixed by then), and the child's
+/// `rlm.finish` says the limit is reached.
+#[test]
+fn session_core_w21c_kept_child_attempts_are_bounded_and_the_last_failure_is_final() {
+    let r = run(&format!("{GREP}, hop={{'retry': 1}}"), &["Q-FIXED"], false, |prompt| {
+        Some(match prompt {
+            "Q-FIXED" => work("fixed", false, TRY_FINISH),
+            _ => work("wrong", false, FINISH),
+        })
+    });
+    let first = &r.out["first"];
+    assert_eq!(first["status"], "failed", "{first}");
+    assert_eq!(first["check"]["contract"]["attempts"], 2, "{first}");
+    assert_eq!(first["check"]["contract"]["verdict"], "contract_failed", "{first}");
+    let fixed = &r.out["asks"][0];
+    assert_eq!(fixed["status"], "failed", "{fixed}");
+    assert_eq!(fixed["error"], first["error"], "{fixed}");
+    assert_eq!(fixed["check"]["contract"], first["check"]["contract"], "{fixed}");
+    assert_eq!(fixed["value"], "answered", "{fixed}");
+    let said = r
+        .child_results
+        .iter()
+        .map(Value::to_string)
+        .find(|t| t.contains("FINISH-ERROR"))
+        .unwrap_or_else(|| panic!("no finish error in {:?}", r.child_results));
+    assert!(
+        said.contains("FINISH-ERROR rlm.finish: this contract's attempts are used up (2 of 2, hop {\\\"retry\\\":1}); its verdict is final: contract_failed. Answer in your reply; the host no longer re-runs the checks."),
+        "{said}"
+    );
+    // Only the retry the limit allowed was asked.
+    let notes: std::collections::BTreeSet<&String> = r
+        .child_texts
+        .iter()
+        .filter(|t| t.starts_with("[Contract] Attempt"))
+        .collect();
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(
+        notes.iter().all(|t| t.starts_with("[Contract] Attempt 1 ")),
+        "{notes:?}"
+    );
+}
+
+/// The default hop (report) allows one attempt: a verified answer uses none, the first failure is final.
+#[test]
+fn session_core_w21c_kept_child_report_hop_failure_is_final_after_verified_answers() {
+    let r = run(GREP, &["Q-GOOD", "Q-BAD", "Q-FIXED"], false, |prompt| {
+        Some(match prompt {
+            "Q-BAD" => work("broken", false, FINISH),
+            "Q-FIXED" => work("fixed", false, TRY_FINISH),
+            _ => work("fixed", false, FINISH),
+        })
+    });
+    assert_eq!(r.out["first"]["check"]["contract"]["verdict"], "verified", "{}", r.out);
+    assert_eq!(
+        r.out["asks"][0]["check"]["contract"]["verdict"], "verified",
+        "{}",
+        r.out
+    );
+    let bad = &r.out["asks"][1];
+    assert_eq!(bad["check"]["contract"]["verdict"], "contract_failed", "{bad}");
+    let fixed = &r.out["asks"][2];
+    assert_eq!(fixed["status"], "failed", "{fixed}");
+    assert_eq!(fixed["check"]["contract"], bad["check"]["contract"], "{fixed}");
+    assert!(
+        r.child_results.iter().any(|t| t
+            .to_string()
+            .contains("attempts are used up (1 of 1, hop \\\"report\\\")")),
+        "{:?}",
+        r.child_results
+    );
+}
+
+/// A kept child's rejected finishes are bounded per answer as a one-shot child's are (`MAX_VERDICT_REJECTIONS`,
+/// the same messages); a retry and the next question start the count afresh.
+#[test]
+fn session_core_w21c_kept_child_rejected_finishes_are_bounded_per_answer() {
+    let options = r#"contract={'returns': {'type': 'object', 'required': ['n']}}, hop={'retry': 1}"#;
+    let bad = "await rlm.finish('passed', 'x', evidence=['data.txt:1 counted'], outputs={})";
+    let good = "print(await rlm.finish('passed', 'x', evidence=['data.txt:1 counted'], outputs={'n': 2}))";
+    let tries = |tag: &str, n: usize| {
+        format!(
+            "for i in range({n}):\n    try:\n        {bad}\n    except Exception as e:\n        print('{tag}', i, str(e).splitlines()[-1])\n"
+        )
+    };
+    let (four, one) = (tries("TRY", 4), tries("AGAIN", 1));
+    let r = run(options, &["Q-AGAIN"], false, move |prompt| {
+        Some(match prompt {
+            "Q-AGAIN" => format!("{one}{good}"),
+            p if p.starts_with("[Contract] Attempt 1") => good.to_string(),
+            _ => four.clone(),
+        })
+    });
+    let said: String = r.child_results.iter().map(Value::to_string).collect();
+    for line in [
+        "TRY 0 Fix these and call rlm.finish again (2 attempts left).",
+        "TRY 1 Fix these and call rlm.finish again (1 attempt left).",
+        "TRY 2 No attempts left: end your turn; your reply is returned unverified, with these problems.",
+        "TRY 3 rlm.finish: no attempts left; end your turn, your reply is returned unverified",
+        "AGAIN 0 Fix these and call rlm.finish again (2 attempts left).",
+    ] {
+        assert!(said.contains(line), "{line} in {said}");
+    }
+    // The retry's finish was accepted: the answer is verified on the second attempt.
+    let first = &r.out["first"];
+    assert_eq!(first["check"]["contract"]["verdict"], "verified", "{first}");
+    assert_eq!(first["check"]["contract"]["attempts"], 2, "{first}");
+    let again = &r.out["asks"][0];
+    assert_eq!(again["check"]["contract"]["verdict"], "verified", "{again}");
+    assert_eq!(again["verdict"]["outputs"], json!({"n": 2}), "{again}");
 }
 
 #[test]

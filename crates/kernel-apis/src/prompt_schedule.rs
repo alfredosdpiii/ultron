@@ -489,6 +489,18 @@ impl ScheduleModule {
     /// Run schedule `id` for its slot `due`: records the run (and the next slot after now) and returns the prompt
     /// message. `None`: nothing to run (not active, not due yet, or `due` is not its next slot: a duplicate fire).
     pub fn fire(&self, id: &str, due: i64) -> Result<Option<Fired>, String> {
+        self.fire_with(id, due, &mut |_| Ok(()))
+    }
+
+    /// [`ScheduleModule::fire`] that counts the run only once `deliver` took its prompt message (started or queued
+    /// a run): a delivery that fails writes nothing (the slot stays due, an `at` schedule stays active) and its
+    /// error is returned.
+    pub fn fire_with(
+        &self,
+        id: &str,
+        due: i64,
+        deliver: &mut dyn FnMut(&Value) -> Result<(), String>,
+    ) -> Result<Option<Fired>, String> {
         let _writing = lock(&self.writing);
         let now = self.now();
         let Some(mut schedule) = self.all()?.into_iter().find(|s| s.id == id) else {
@@ -510,8 +522,9 @@ impl ScheduleModule {
         if schedule.next_due.is_none() {
             schedule.state = State::Done;
         }
-        self.put(&schedule)?;
         let message = fire_message(&schedule, schedule.runs, now);
+        deliver(&message)?;
+        self.put(&schedule)?;
         Ok(Some(Fired { schedule, message }))
     }
 }

@@ -287,6 +287,19 @@ impl Hop {
             Hop::Review(brief) => json!({ "review": brief }),
         }
     }
+
+    /// The extra runs a failure may get: N for `{"retry": N}`, else none.
+    pub fn retries(&self) -> u32 {
+        match self {
+            Hop::Retry(count) => *count,
+            Hop::Report | Hop::Review(_) => 0,
+        }
+    }
+
+    /// How many failed check runs make the contract's verdict final: one, plus the retries.
+    pub fn attempts(&self) -> u32 {
+        self.retries() + 1
+    }
 }
 
 impl SpawnContract {
@@ -805,10 +818,23 @@ pub struct Enforcer<'a> {
 /// One-shot children (the delegation host) and kept children (`keep=True`, each answer) go through here.
 pub fn enforce(
     contract: &SpawnContract,
+    result: Value,
+    id: &str,
+    child_name: &str,
+    enforcer: &mut Enforcer<'_>,
+) -> Option<Value> {
+    enforce_after(contract, result, id, child_name, enforcer, 0)
+}
+
+/// [`enforce`] for a child whose earlier answers already failed `used` check runs (a kept child, `keep=True`: its
+/// retries are shared by all its answers): attempts are numbered on from there, and only the retries left run.
+pub fn enforce_after(
+    contract: &SpawnContract,
     mut result: Value,
     id: &str,
     child_name: &str,
     enforcer: &mut Enforcer<'_>,
+    used: u32,
 ) -> Option<Value> {
     let mut attempts: Vec<Value> = Vec::new();
     loop {
@@ -817,7 +843,7 @@ pub fn enforce(
         }
         let report = (enforcer.check)()?;
         attempts.push(report.clone());
-        let attempt = attempts.len() as u32;
+        let attempt = used + attempts.len() as u32;
         // A retry the child answered is checked again; with nothing to repeat the failure is reported.
         if let Hop::Retry(retries) = contract.hop
             && report["verdict"] != "verified"
@@ -827,7 +853,9 @@ pub fn enforce(
             result = next;
             continue;
         }
-        return Some(contract_result(id, child_name, contract, result, &attempts, enforcer));
+        return Some(contract_result(
+            id, child_name, contract, result, &attempts, used, enforcer,
+        ));
     }
 }
 
@@ -839,13 +867,14 @@ fn contract_result(
     contract: &SpawnContract,
     mut result: Value,
     attempts: &[Value],
+    used: u32,
     enforcer: &mut Enforcer<'_>,
 ) -> Value {
     let Some(last) = attempts.last() else {
         return result;
     };
     let mut report = last.clone();
-    report["attempts"] = json!(attempts.len());
+    report["attempts"] = json!(used as usize + attempts.len());
     if attempts.len() > 1 {
         report["previous"] = json!(
             attempts[..attempts.len() - 1]

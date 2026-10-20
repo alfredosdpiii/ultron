@@ -619,14 +619,145 @@ fn cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it() {
         ledger_tokens,
         "{lanes}"
     );
-    assert!(
-        report["usage"]["models"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|m| m["model"] == cli::usage::report::DURABLE_CHILDREN_MODEL && m["responses"] == 1),
+    // The child's response is read from the durable records with its split and model: on the root's model it
+    // merges into the root's row, and the ledger has nothing left over for a totals-only row.
+    assert_eq!(
+        (
+            &lanes["subagents"]["input"],
+            &lanes["subagents"]["output"],
+            &lanes["subagents"]["totalTokens"]
+        ),
+        (&json!(10), &json!(5), &json!(15)),
+        "{lanes}"
+    );
+    let models: Vec<(String, u64)> = report["usage"]["models"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            (
+                m["model"].as_str().unwrap().to_string(),
+                m["responses"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(models, vec![("anthropic/claude-sonnet-4-5".to_string(), 4)], "{report}");
+    connection.disconnect();
+    drop(server);
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
+/// `ultron usage` reports a durable child on another model than the root's under its own model row, with its
+/// input/output split, from the durable records; without any usage limit (the ledger then keeps no counts in the
+/// session) the child is still reported, and the totals are every response the provider answered.
+#[test]
+fn cli_durable_a_subagent_on_another_model_is_reported_under_its_model_with_its_split() {
+    let script: Script = Arc::new(|body, _| {
+        if first_user(body).starts_with("CHILD:") {
+            return (text_reply("hi"), None);
+        }
+        let last = user_texts(body).last().cloned().unwrap_or_default();
+        if last.contains("<runtime_event") {
+            return (text_reply("noted"), None);
+        }
+        if !tool_results(body).is_empty() {
+            return (text_reply("spawned"), None);
+        }
+        (
+            tool_reply(
+                "toolu_spawn",
+                "h = await rlm.spawn('CHILD: say hi', name='greeter', model='anthropic/claude-haiku-4-5')",
+            ),
+            None,
+        )
+    });
+    let provider = provider(script);
+    let home = Home::new(provider.port);
+    let server = Server::start(&home, &[]);
+    let connection = server.connect();
+    let id = open(&connection);
+    prompt(&connection, "spawn a greeter");
+    wait_until("four responses", || provider.bodies().len() == 4);
+    wait_idle(&connection, &id);
+    let child_models: Vec<Value> = provider
+        .bodies()
+        .iter()
+        .filter(|b| first_user(b).starts_with("CHILD:"))
+        .map(|b| b["model"].clone())
+        .collect();
+    assert_eq!(
+        child_models,
+        vec![json!("claude-haiku-4-5")],
+        "the child asked its own model"
+    );
+    let output = home.run(&["usage", &id, "--json"]);
+    assert!(output.status.success(), "{output:?}");
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let usage = &report["usage"];
+    let split = |bucket: &Value| {
+        ["responses", "input", "output", "cacheRead", "cacheWrite", "totalTokens"]
+            .map(|field| bucket[field].as_u64().unwrap_or(u64::MAX))
+    };
+    // The root: a tool call (10 in, 7 out) and two answers (10 in, 5 out); the child: one answer (10 in, 5 out).
+    assert_eq!(split(&usage["lanes"]["root"]), [3, 30, 17, 0, 0, 47], "{usage}");
+    assert_eq!(split(&usage["lanes"]["subagents"]), [1, 10, 5, 0, 0, 15], "{usage}");
+    assert_eq!(split(&usage["total"]), [4, 40, 22, 0, 0, 62], "{usage}");
+    let models: Vec<(&str, [u64; 6])> = usage["models"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| (m["model"].as_str().unwrap(), split(m)))
+        .collect();
+    assert_eq!(
+        models,
+        vec![
+            ("anthropic/claude-sonnet-4-5", [3, 30, 17, 0, 0, 47]),
+            ("anthropic/claude-haiku-4-5", [1, 10, 5, 0, 0, 15]),
+        ],
+        "{usage}"
+    );
+    // Priced at the child's model: haiku's rates, not the root's.
+    let cost = |bucket: &Value| bucket["cost"]["reportedUsd"].as_f64().unwrap();
+    let child_cost = cost(&usage["lanes"]["subagents"]);
+    assert!(child_cost > 0.0, "{usage}");
+    assert_eq!(cost(&usage["models"][1]), child_cost, "{usage}");
+    assert!(child_cost < cost(&usage["lanes"]["root"]) / 3.0, "{usage}");
+    // The depth section names the child's model.
+    assert_eq!(
+        report["depth"]["subagents"]["byModel"],
+        json!([{"model": "anthropic/claude-haiku-4-5", "count": 1, "tokens": 15, "unmeasured": 0}]),
         "{report}"
     );
+    // The text report shows the child's row with its split.
+    let output = home.run(&["usage", &id]);
+    assert!(output.status.success(), "{output:?}");
+    let text = String::from_utf8(output.stdout).unwrap();
+    let row = |name: &str| {
+        text.lines()
+            .map(|l| l.split_whitespace().collect::<Vec<_>>())
+            .find(|cells| cells.len() == 8 && cells[0] == name)
+            .unwrap_or_else(|| panic!("no {name} row: {text}"))
+    };
+    assert_eq!(&row("sub-agents")[1..7], ["1", "10", "5", "0", "0", "15"], "{text}");
+    assert_eq!(
+        &row("anthropic/claude-haiku-4-5")[1..7],
+        ["1", "10", "5", "0", "0", "15"],
+        "{text}"
+    );
+    // `--last` counts the child's tokens in the session's total.
+    let output = home.run(&["usage", "--last", "1", "--json"]);
+    assert!(output.status.success(), "{output:?}");
+    let list: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        split(&list["sessions"][0]["usage"]["total"]),
+        [4, 40, 22, 0, 0, 62],
+        "{list}"
+    );
+    let output = home.run(&["usage", "--last", "1"]);
+    assert!(output.status.success(), "{output:?}");
+    let table = String::from_utf8(output.stdout).unwrap();
+    let line = table.lines().nth(1).unwrap_or_default();
+    assert!(line.split_whitespace().any(|cell| cell == "62"), "{table}");
     connection.disconnect();
     drop(server);
     assert_no_processes(&home.root, HANG_GUARD);

@@ -3139,6 +3139,49 @@ W20A-01	cli/session-flags	--append-system-prompt (file or text, repeatable) reac
 W20B-01	harness/rlm.ask	rlm.ask waits at most timeout_ms (default 20 min); then status timeout, the child keeps working	harness_chat_swarm_ask_returns_a_timeout_when_a_kept_child_never_answers
 W20B-02	python/rlm.ask	rlm.ask(timeout=seconds) reaches the host; a non-positive timeout is refused	session_core_durable_swarm_python_runs_the_durable_agent_apis_from_repl_cells
 W20B-03	cli/usage	ultron usage reports durable children from the host ledger (sub-agents lane, model row sub-agents (host ledger))	cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it
+W21U-1	cli/usage	a durable child's responses are read from the durable records with model, input/output/cache split and cost; on the root's model they merge into its row	cli_durable_a_subagents_turns_are_charged_to_the_root_that_started_it
+W21U-2	cli/usage	a child on another model gets its own model row, lane split, cost, depth model and text rows; reported with no usage limit; --last totals include it	cli_durable_a_subagent_on_another_model_is_reported_under_its_model_with_its_split
+W21U-3	cli/usage	children on several models, other root conversations to "other", a conversation with an unnamed owner is a sub-agent's, root conversation not double counted	cli_usage_durable_children_are_reported_per_model_with_their_split
+W21U-4	cli/usage	ledger turns beyond the durable records stay a totals-only row; totals equal the ledger	cli_usage_ledger_turns_beyond_the_durable_records_stay_a_totals_row
+W21U-5	cli/usage	a session without durable records reports children from the ledger as before	cli_usage_a_session_without_durable_records_reports_children_from_the_ledger
+W21C-01	delegation/git_baseline	baseline is one tree id; >256 (1000) dirty paths survive describe/from_value; only later edits listed	delegation_w21c_git_baseline_covers_a_thousand_dirty_paths_across_a_restart
+W21C-02	delegation/git_baseline	temp GIT_INDEX_FILE: real index and staged content untouched; staged/intent-to-add/ignored handled; subdir relative	delegation_w21c_git_baseline_never_touches_the_real_index
+W21C-03	delegation/git_baseline	earlier {commit,status,dirty} baselines still read and compared as before	delegation_w21c_git_baseline_of_the_earlier_format_still_compares_as_before
+W21C-04	session-core/contract_restart	workspace checks after a restart with 1000 pre-dirty paths compare with the kept tree baseline (verified)	session_core_w21c_workspace_checks_after_a_restart_cover_a_thousand_dirty_paths
+W21C-05	session-core/kept_contracts	kept child retry budget shared across answers; last failure final; later ask reports it unchecked; finish refused naming the limit	session_core_w21c_kept_child_attempts_are_bounded_and_the_last_failure_is_final
+W21C-06	session-core/kept_contracts	report hop: verified answers use no attempt, first failure is final (1 of 1)	session_core_w21c_kept_child_report_hop_failure_is_final_after_verified_answers
+W21C-07	session-core/kept_contracts	rejected finishes bounded per answer with the one-shot messages; retry and next ask reset the count	session_core_w21c_kept_child_rejected_finishes_are_bounded_per_answer
+W21C-08	session-core/contract_restart	used attempts and the final failure persist in ultron.kept-contracts across a restart (Attempt 2 only, then final)	session_core_w21c_a_kept_childs_used_attempts_survive_a_restart
+W21UI-1	kernel-apis/diagram	every label of all 23 Pele kinds reaches WCAG 4.5:1 against its backdrop in both built-in themes, through diagram.mermaid	kernel_apis_diagram_contrast_every_label_of_every_kind_is_readable_in_both_themes
+W21UI-2	kernel-apis/diagram	pie percentages contrast with their own slice (checked by geometry)	kernel_apis_diagram_contrast_pie_percentages_contrast_with_their_own_slice
+W21UI-3	kernel-apis/diagram	dark percentages on dark slices (custom theme) get the theme text colour	kernel_apis_diagram_contrast_dark_percentages_on_dark_slices_get_the_text_colour
+W21UI-4	kernel-apis/diagram	recolour order: text colour, then page colour, then black or white; translucent labels judged as drawn	kernel_apis_diagram_contrast_picks_the_text_then_page_colour_then_black_or_white
+W21UI-5	kernel-apis/diagram	label boxes follow text-anchor middle/end	kernel_apis_diagram_contrast_label_boxes_follow_the_text_anchor
+W21UI-6	cli/help	--help lists every dispatched subcommand in column style	cli_help_lists_every_dispatched_subcommand
+W21UI-7	kernel-apis/diagram	auto theme: detected terminal, then COLORFGBG, then dark; explicit choices win	kernel_apis_diagram_auto_theme_follows_the_detected_terminal_before_colorfgbg
+W21UI-8	session-core	setTerminalTheme op changes diagram auto theme; invalid value refused	session_core_diagram_auto_theme_follows_the_terminal_the_tui_reported
+W21UI-9	interactive	app tells the client the terminal appearance (COLORFGBG, OSC 11 reply, scheme report), once per change	interactive_osc11_detected_appearance_is_told_to_the_client
+W21UI-10	daemon/cli	a client attaching while the idle worker retires gets a new worker	cli_client_attaching_while_the_idle_worker_retires_gets_a_new_worker
+W21S-01	kernel-apis/schedule	a fire counts only after its prompt is delivered; a failed delivery writes nothing and returns the error	kernel_apis_prompt_schedule_failed_delivery_counts_nothing_and_keeps_the_slot_due
+W21S-02	session-core/schedule	no-key scheduleFire answers the error, counts nothing, keeps the at schedule active; the retry with a key runs and counts	session_core_schedule_fire_that_cannot_start_counts_nothing_and_answers_the_error
+W21S-03	daemon/lifetime	an auto-activated server never arms idle retirement while a schedule is pending	daemon_lifetime_never_retires_while_a_schedule_is_pending
+W21S-04	daemon/schedules	hold while loading or holding schedules; Retry records {error,at,due}, success clears it	daemon_prompt_schedules_hold_the_server_while_any_is_pending_and_keep_the_last_failure
+W21S-05	cli/schedule	list wakes the instance; a no-key fire stays due with ERROR shown; the idle server stays and retries; cancel lets it retire	cli_daemon_schedules_list_wakes_the_instance_and_a_failed_delivery_stays_due
+W21S-10	cli/service	install writes and prints the durable unit (Restart=always, default.target, cwd HOME, no keys), fake systemctl enable --now; status; restart; uninstall	cli_service_installs_reports_restarts_and_removes_the_durable_unit_with_the_injected_systemctl
+W21S-11	cli/service	no systemctl: exit 1 "No systemd found", nothing written; failed enable removes the unit; usage exit 2	cli_service_without_systemd_or_a_user_manager_fails_and_writes_nothing
+W21S-12	cli/service	systemctl and the unit dir resolved only from the injected Env	cli_service_finds_systemctl_and_the_unit_dir_only_through_the_injected_env
+W21S-13	cli/service	service run serves the durable instance, status shows id/pid/sessions/schedules, SIGTERM exits 0	cli_service_run_serves_the_durable_instance_until_signalled_and_status_reports_it
+W21S-14	cli/service	service and schedule --help document the commands	cli_service_and_schedule_help_document_the_commands
+W21S-15	release/install.sh	ultron service restart runs only when an ultron-durable unit is installed; ultron-s relative link, replaced	cli_service_release_install_restarts_the_service_only_when_its_unit_is_installed
+W21S-16	cli/durable	durable -p and --mode json attach to one durable generation, exit, server stays and fires the pending schedule; persona on by default; project client keeps its own server without persona	cli_durable_clients_attach_exit_and_leave_the_server_and_its_schedules_running
+W21S-17	cli/durable	an idle durable server without schedules makes zero provider requests and starts no worker	cli_durable_server_idle_without_schedules_starts_no_run_of_its_own
+W21S-18	cli/durable	durable refuses client worker options (--model) and starts nothing	cli_durable_refuses_client_worker_options
+W21S-19	config/settings	process defaults sit under the files, explicit values win, never written	config_process_defaults_sit_under_the_files_and_are_never_written
+W21S-20	daemon/persona	persona off under the durable default is saved as "off" and stays off	daemon_worker_settings_persona_off_stays_off_under_the_durable_default
+W21S-21	cli/ultron-s	argv0 ultron-s dispatch; plain binary unaffected; usage errors	cli_ultron_s_dispatches_on_its_name
+W21S-22	cli/ultron-s	home session created once, reused across clients and a server restart, cwd HOME, --new replaces, --session/--home, --list, deleted home replaced	cli_ultron_s_home_session_is_created_once_reused_replaced_and_listed
+W21S-23	cli/ultron-s	a client killed mid-run leaves the run going on the durable server; the next client continues after it	cli_ultron_s_client_gone_mid_run_leaves_the_run_going_and_the_next_client_sees_it
+W21S-24	release/install	package install script installs ultron plus the ultron-s relative link	cli_package_install_script_installs_into_a_prefix_without_node
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

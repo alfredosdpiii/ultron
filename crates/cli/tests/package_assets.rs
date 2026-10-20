@@ -85,7 +85,7 @@ impl Outside {
         }
         for tool in [
             "sh", "bash", "env", "python3", "git", "cat", "ls", "uname", "cp", "chmod", "mv", "mkdir", "dirname",
-            "sed", "flock",
+            "sed", "flock", "ln",
         ] {
             let path = Path::new("/usr/bin").join(tool);
             if path.exists() {
@@ -591,7 +591,14 @@ fn cli_package_install_script_installs_into_a_prefix_without_node() {
         .unwrap()
         .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
         .collect();
-    assert_eq!(names, ["ultron"]);
+    let mut names = names;
+    names.sort();
+    // The binary, and `ultron-s` as a relative link to it (no temporary copy left behind).
+    assert_eq!(names, ["ultron", "ultron-s"]);
+    assert_eq!(
+        std::fs::read_link(prefix.join("bin/ultron-s")).unwrap(),
+        Path::new("ultron")
+    );
     // The installed binary runs from the prefix.
     let mut c = Command::new(&bin);
     outside.private(&mut c);

@@ -9,19 +9,26 @@
 //! - Workspace checks compare against the child's start: its metadata snapshot in this process, else the Git
 //!   baseline kept with the contract (`delegation::git_baseline`), so they work after a restart too; with neither
 //!   they fail closed. Changes are cumulative since the spawn.
-//! - A kept child records its verdict with `rlm.finish` as a one-shot child does; each question starts it afresh.
-//! - The contract, baseline, latest verdict and checked first answer are the session value
-//!   `ultron.kept-contracts` / `<child id>` (Rust-only), so they survive a restart with the child.
+//! - A kept child records its verdict with `rlm.finish` as a one-shot child does; each question starts it afresh,
+//!   with the same bound on rejected finishes (`MAX_VERDICT_REJECTIONS`, the same messages).
+//! - Its answers share one attempt limit, as a one-shot child's runs do (wave 43): each failed check run is an
+//!   attempt, a `{"retry": N}` hop allows N + 1 of them in all (any other hop one), and a retry runs only while
+//!   attempts are left. Once they are used up the last failure is final: every later answer reports it
+//!   (`contract_failed`) without re-running the checks, and `rlm.finish` says the limit is reached.
+//! - The contract, baseline, latest verdict, checked first answer, failed attempts and final failure are the session
+//!   value `ultron.kept-contracts` / `<child id>` (Rust-only), so they survive a restart with the child.
 
 use crate::compose::Stack;
 use crate::durable_store::lock as lock_session;
 use crate::subagents::DurableChildren;
 use delegation::git_baseline::GitBaseline;
-use delegation::spawn_contract::{CheckPlace, Enforcer, SPAWN_KEYS, SpawnContract, enforce};
+use delegation::spawn_contract::{CheckPlace, Enforcer, SPAWN_KEYS, SpawnContract, enforce_after};
+use delegation::verdict::MAX_VERDICT_REJECTIONS;
 use delegation::workspace::{DEFAULT_MAX_SNAPSHOT_ENTRIES, WorkspaceSnapshot, diff_snapshots, snapshot_workspace};
 use kernel::Signal;
 use serde_json::{Map, Value, json};
 use session_journal::Write;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 
@@ -39,6 +46,19 @@ pub struct KeptContracts {
     before: Mutex<HashMap<String, WorkspaceSnapshot>>,
     /// One answer is checked at a time (checks run commands in the shared working directory).
     checking: Mutex<()>,
+}
+
+/// `rlm.finish` once a kept child's attempts are used up: the limit, and that its verdict stands.
+fn final_error(contract: &SpawnContract) -> String {
+    let limit = contract.hop.attempts();
+    format!(
+        "rlm.finish: this contract's attempts are used up ({limit} of {limit}, hop {}); its verdict is final: contract_failed. Answer in your reply; the host no longer re-runs the checks.",
+        contract.hop.describe()
+    )
+}
+
+fn count(kept: &Value, key: &str) -> u32 {
+    kept[key].as_u64().map_or(0, |n| n.min(u64::from(u32::MAX)) as u32)
 }
 
 fn guard<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -125,6 +145,14 @@ impl KeptContracts {
             Ok(contract) => contract,
             Err(error) => return Some(Err(format!("rlm.finish: the kept contract is unreadable: {error}"))),
         };
+        if !kept["final"].is_null() {
+            return Some(Err(final_error(&contract)));
+        }
+        if kept["invalid"] == true {
+            return Some(Err(
+                "rlm.finish: no attempts left; end your turn, your reply is returned unverified".into(),
+            ));
+        }
         let cwd = self
             .stack
             .upgrade()
@@ -147,10 +175,28 @@ impl KeptContracts {
                 })
             }
             Err(problems) => {
+                // Bounded as a one-shot child's finishes are (`Delegation`'s finish request), per answer.
+                let rejections = count(&kept, "rejections") + 1;
+                kept["rejections"] = json!(rejections);
                 let list = problems.iter().map(|p| format!("- {p}")).collect::<Vec<_>>().join("\n");
-                Err(format!(
-                    "rlm.finish rejected:\n{list}\nFix these and call rlm.finish again."
-                ))
+                let left = MAX_VERDICT_REJECTIONS + 1 - rejections.min(MAX_VERDICT_REJECTIONS + 1);
+                let error = if left > 0 || !kept["verdict"].is_null() {
+                    let tail = if kept["verdict"].is_null() {
+                        format!(" ({left} attempt{} left)", if left == 1 { "" } else { "s" })
+                    } else {
+                        "; your earlier verdict stands until then".to_string()
+                    };
+                    format!("rlm.finish rejected:\n{list}\nFix these and call rlm.finish again{tail}.")
+                } else {
+                    kept["invalid"] = json!(true);
+                    format!(
+                        "rlm.finish rejected:\n{list}\nNo attempts left: end your turn; your reply is returned unverified, with these problems."
+                    )
+                };
+                match self.keep(&id, kept) {
+                    Ok(()) => Err(error),
+                    Err(keep) => Err(keep),
+                }
             }
         })
     }
@@ -158,9 +204,11 @@ impl KeptContracts {
     /// The child's verdict starts afresh: a question (or a retry) is answered on a verdict of its own.
     fn clear_verdict(&self, id: &str) {
         if let Some(mut kept) = self.kept(id)
-            && !kept["verdict"].is_null()
+            && (!kept["verdict"].is_null() || count(&kept, "rejections") > 0 || kept["invalid"] == true)
         {
             kept["verdict"] = Value::Null;
+            kept["rejections"] = json!(0);
+            kept["invalid"] = json!(false);
             let _ = self.keep(id, kept);
         }
     }
@@ -228,10 +276,24 @@ impl KeptContracts {
                 return result;
             }
         };
+        // The attempts are used up: the final failure stands, the checks no longer run.
+        if let Some(last) = kept.get("final").filter(|f| !f.is_null()) {
+            let mut result = result;
+            result["status"] = json!("failed");
+            result["error"] = last["error"].clone();
+            if !result["check"].is_object() {
+                result["check"] = json!({});
+            }
+            result["check"]["contract"] = last["contract"].clone();
+            result["verdict"] = self.kept(id).map_or(Value::Null, |kept| kept["verdict"].clone());
+            return result;
+        }
         let Some(stack) = self.stack.upgrade() else {
             return result;
         };
         let baseline = GitBaseline::from_value(&kept["baseline"]);
+        let used = count(kept, "failed_attempts");
+        let failures = Cell::new(0u32);
         let name = self
             .children
             .chat()
@@ -260,7 +322,13 @@ impl KeptContracts {
                 signal,
             };
             let report = contract.evaluate(verdict.as_ref(), &place, &runner);
-            (!signal.is_aborted()).then_some(report)
+            if signal.is_aborted() {
+                return None;
+            }
+            if report["verdict"] != "verified" {
+                failures.set(failures.get() + 1);
+            }
+            Some(report)
         };
         let mut retry = |note: &str| {
             self.clear_verdict(id);
@@ -291,7 +359,18 @@ impl KeptContracts {
             review: &mut review,
         };
         let fallback = result.clone();
-        let mut checked = enforce(&contract, result, id, &name, &mut enforcer).unwrap_or(fallback);
+        let mut checked = enforce_after(&contract, result, id, &name, &mut enforcer, used).unwrap_or(fallback);
+        // The failed attempts count for every later answer; with none left, this failure is final.
+        if failures.get() > 0
+            && let Some(mut kept) = self.kept(id)
+        {
+            let failed = used + failures.get();
+            kept["failed_attempts"] = json!(failed);
+            if failed >= contract.hop.attempts() && checked["check"]["contract"]["verdict"] == "contract_failed" {
+                kept["final"] = json!({ "error": checked["error"], "contract": checked["check"]["contract"] });
+            }
+            let _ = self.keep(id, kept);
+        }
         // The child's own claim for this answer, beside the host's verdict (as a one-shot child's result has it).
         checked["verdict"] = self.kept(id).map_or(Value::Null, |kept| kept["verdict"].clone());
         checked

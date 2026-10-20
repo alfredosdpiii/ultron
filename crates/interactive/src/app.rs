@@ -562,6 +562,8 @@ pub struct App {
     clock: Box<dyn Fn() -> Instant>,
     /// The theme setting, its live application and previews.
     theme_controller: Option<crate::theme_setup::ThemeController>,
+    /// The terminal appearance last told to the client ([`LaneClient::terminal_theme`]).
+    told_terminal_theme: Option<&'static str>,
     /// Takes the OSC 11 background replies out of the input.
     osc11: tui::terminal_colors::Osc11Reader,
     /// The terminal's color palette notifications are on (`CSI ? 2031 h` sent, not yet turned off).
@@ -892,6 +894,7 @@ impl App {
             clock: Box::new(Instant::now),
             editor_keys,
             theme_controller: None,
+            told_terminal_theme: None,
             osc11: tui::terminal_colors::Osc11Reader::new(),
             scheme_notifications: false,
             show_hardware_cursor: false,
@@ -1108,6 +1111,7 @@ impl App {
     pub fn set_theme_controller(&mut self, mut controller: crate::theme_setup::ThemeController) {
         let applied = controller.apply_from_settings();
         self.theme_controller = Some(controller);
+        self.tell_terminal_theme();
         self.adopt_theme(&applied.theme);
         self.sync_scheme_notifications(applied.query_scheme);
         self.query_background(applied.query_background);
@@ -1116,6 +1120,18 @@ impl App {
         }
         if let Some(error) = applied.error {
             self.show_status(&format!("Error: {error}"));
+        }
+    }
+
+    /// The terminal's appearance, told to the client when it is new (the controller's: OSC 11, a scheme report,
+    /// else `COLORFGBG`).
+    fn tell_terminal_theme(&mut self) {
+        let Some(theme) = self.theme_controller.as_ref().map(|c| c.terminal_theme()) else {
+            return;
+        };
+        if self.told_terminal_theme != Some(theme) {
+            self.told_terminal_theme = Some(theme);
+            self.client.terminal_theme(theme);
         }
     }
 
@@ -1130,7 +1146,9 @@ impl App {
     /// An OSC 11 reply: the reported background applies when the controller still wants it (a repaint), and a
     /// detected appearance is saved as the setting.
     fn background_reported(&mut self, rgb: Option<(u8, u8, u8)>) {
-        let Some(applied) = self.theme_controller.as_mut().and_then(|c| c.background_reported(rgb)) else {
+        let applied = self.theme_controller.as_mut().and_then(|c| c.background_reported(rgb));
+        self.tell_terminal_theme();
+        let Some(applied) = applied else {
             return;
         };
         self.adopt_theme(&applied.theme);
@@ -2444,6 +2462,7 @@ impl App {
             {
                 self.adopt_theme(&theme);
             }
+            self.tell_terminal_theme();
             self.sync_scheme_notifications(false);
             return;
         }

@@ -73,6 +73,21 @@ impl Modified {
     }
 }
 
+/// Defaults under the files' settings for this whole process (`set_process_defaults`): a key either file sets
+/// wins. Never written to a file.
+static PROCESS_DEFAULTS: std::sync::OnceLock<Settings> = std::sync::OnceLock::new();
+
+/// Give every settings manager of this process `defaults` under the global and project files (a session worker of
+/// the durable instance: `persona: "ultron"`). Set once; a later call is ignored.
+pub fn set_process_defaults(defaults: Settings) {
+    let _ = PROCESS_DEFAULTS.set(defaults);
+}
+
+/// The defaults [`set_process_defaults`] gave this process.
+pub fn process_defaults() -> Option<&'static Settings> {
+    PROCESS_DEFAULTS.get()
+}
+
 /// `deepMergeObjects`: overrides win; two objects at the same key merge recursively.
 pub fn deep_merge(base: &Settings, overrides: &Settings) -> Settings {
     let mut result = base.clone();
@@ -253,6 +268,9 @@ impl SettingsManager {
 
     fn remerge(&mut self) {
         self.settings = deep_merge(&self.global, &self.project);
+        if let Some(defaults) = PROCESS_DEFAULTS.get() {
+            self.settings = deep_merge(defaults, &self.settings);
+        }
     }
 
     pub fn path(&self, scope: Scope) -> &Path {

@@ -258,7 +258,18 @@ impl Hub {
         if let Some(previous) = previous {
             self.release(conn.id, previous, false);
         }
-        let attachment = self.manager.attach_client(&handle)?;
+        let (handle, attachment) = match self.manager.attach_client(&handle) {
+            Ok(attachment) => (handle, attachment),
+            // The session's worker went idle as its last client left and is retiring (a client that attaches right
+            // after another detached): once it is gone, a new worker is started for this client.
+            Err(error) if error.code.as_deref() == Some(crate::workers::WORKER_RETIRING_CODE) => {
+                self.wait_worker_gone(session_id, &handle);
+                let handle = self.acquire(session_id)?;
+                let attachment = self.manager.attach_client(&handle)?;
+                (handle, attachment)
+            }
+            Err(error) => return Err(error),
+        };
         let mut router = self.router();
         match router.hosted.get_mut(session_id) {
             Some(hosted) if !conn.closed.load(Ordering::SeqCst) => {
@@ -330,22 +341,7 @@ impl Hub {
             Ok(attachment) => attachment,
             // The worker is retiring: once it is gone, a new one is started for the call.
             Err(_) => {
-                let (gone, ended) = std::sync::mpsc::channel();
-                handle.terminated.on_resolve(Box::new(move |_| {
-                    let _ = gone.send(());
-                }));
-                let _ = ended.recv_timeout(Duration::from_secs(30));
-                // The hub drops the ended worker's entry on its own thread (`invalidate`).
-                let deadline = std::time::Instant::now() + Duration::from_secs(30);
-                while std::time::Instant::now() < deadline
-                    && self
-                        .router()
-                        .hosted
-                        .get(session_id)
-                        .is_some_and(|h| Arc::ptr_eq(&h.handle.terminated, &handle.terminated))
-                {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
+                self.wait_worker_gone(session_id, &handle);
                 handle = self.serialized(|| self.acquire(session_id))?;
                 self.manager.attach_client(&handle)?
             }
@@ -367,6 +363,27 @@ impl Hub {
             .unwrap_or_else(|_| Err(ServiceError::internal("Session worker did not answer")));
         self.manager.release_attachment(&handle, &attachment);
         result
+    }
+
+    /// Wait (bounded) until `handle`'s worker ended and the hub dropped its entry for `session_id`, so the next
+    /// [`Hub::acquire`] starts a new worker.
+    fn wait_worker_gone(&self, session_id: &str, handle: &Handle) {
+        let (gone, ended) = std::sync::mpsc::channel();
+        handle.terminated.on_resolve(Box::new(move |_| {
+            let _ = gone.send(());
+        }));
+        let _ = ended.recv_timeout(Duration::from_secs(30));
+        // The hub drops the ended worker's entry on its own thread (`invalidate`).
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while std::time::Instant::now() < deadline
+            && self
+                .router()
+                .hosted
+                .get(session_id)
+                .is_some_and(|h| Arc::ptr_eq(&h.handle.terminated, &handle.terminated))
+        {
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 
     /// The worker ended: drop the hosted session and its attachments (clients see `attachment: null`). When the

@@ -26,6 +26,8 @@ mkdir -p "$bin" "$doc"
 cp "$here/ultron" "$bin/.ultron.install.$$"
 chmod 0755 "$bin/.ultron.install.$$"
 mv -f "$bin/.ultron.install.$$" "$bin/ultron"
+# `ultron-s`: the durable instance's home session (the binary dispatches on its name); a relative link, replaced.
+ln -sfn ultron "$bin/ultron-s"
 for file in LICENSE NOTICE THIRD_PARTY_LICENSES.txt README.md; do
     if [ -f "$here/$file" ]; then cp "$here/$file" "$doc/$file"; fi
 done
@@ -35,6 +37,17 @@ if [ -d "$here/licenses" ]; then
 fi
 
 echo "Installed $("$bin/ultron" --version 2>/dev/null || echo ultron) to $bin/ultron"
+# A durable server installed as a systemd user service (`ultron service install`) runs the old binary: restart it.
+# Nothing is said or run when no such unit is installed.
+for unit in "${XDG_CONFIG_HOME:-$HOME/.config}"/systemd/user/ultron-durable-*.service; do
+    [ -f "$unit" ] || continue
+    if "$bin/ultron" service restart >/dev/null 2>&1; then
+        echo "Restarted the ultron service."
+    else
+        echo "warning: \`$bin/ultron service restart\` failed; restart it yourself" >&2
+    fi
+    break
+done
 python="${ULTRON_PYTHON:-python3}"
 if ! command -v "$python" >/dev/null 2>&1; then
     echo "warning: $python not found; ultron's REPL needs Python 3 (set ULTRON_PYTHON to its path)" >&2

@@ -85,6 +85,8 @@ enum Command {
     /// `/goal <args>`: the session goal's command; its reply text is shown as a notice.
     Goal(String),
     SaveSetting(String, Value),
+    /// The terminal's appearance the TUI detected (`LaneClient::terminal_theme`).
+    TerminalTheme(String),
     Agents,
     /// A read-only inspection request and the title its answer is rendered under.
     Inspect(String, String, Value),
@@ -306,6 +308,9 @@ impl LaneClient for DaemonLane {
     }
     fn save_setting(&self, key: &str, value: Value) {
         self.send(Command::SaveSetting(key.to_string(), value));
+    }
+    fn terminal_theme(&self, theme: &str) {
+        self.send(Command::TerminalTheme(theme.to_string()));
     }
     fn agents(&self) {
         self.send(Command::Agents);
@@ -817,6 +822,9 @@ fn link_thread(
     open(&link, &mut name);
     let mut last_recovery: Option<std::time::Instant> = None;
     let mut extension_ui = ExtensionUiPoll::default();
+    // The terminal's appearance the TUI reported (OSC 11, a scheme report, else its `COLORFGBG`); before any report,
+    // `COLORFGBG`, else dark.
+    let mut terminal_theme: Option<String> = None;
     loop {
         extension_ui.poll(&link, &send);
         let command = match commands.recv_timeout(std::time::Duration::from_millis(250)) {
@@ -1179,6 +1187,13 @@ fn link_thread(
                 }),
                 Err(error) => send(LaneEvent::AgentNotice(format!("Error: {error}"))),
             },
+            Command::TerminalTheme(theme) => {
+                // The session's `diagram` `auto` theme follows it; the link tells every session it attaches later.
+                if let Err(error) = link.set_terminal_theme(&theme) {
+                    send(LaneEvent::Status(format!("Error: {error}")));
+                }
+                terminal_theme = Some(theme);
+            }
             Command::SaveSetting(key, value) => {
                 let (cwd, agent_dir) = &settings_path;
                 let mut settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
@@ -1413,18 +1428,19 @@ fn link_thread(
                     custom.sort();
                     themes.extend(custom);
                 }
-                let terminal_theme =
+                let terminal_theme = terminal_theme.clone().unwrap_or_else(|| {
                     match tui::theme::detect_terminal_background_from_env(std::env::var("COLORFGBG").ok().as_deref())
                         .theme
                     {
-                        tui::theme::TerminalTheme::Light => "light",
-                        tui::theme::TerminalTheme::Dark => "dark",
-                    };
+                        tui::theme::TerminalTheme::Light => "light".to_string(),
+                        tui::theme::TerminalTheme::Dark => "dark".to_string(),
+                    }
+                });
                 send(LaneEvent::Settings {
                     settings: Value::Object(settings.settings().clone()),
                     env_overrides,
                     themes,
-                    terminal_theme: terminal_theme.to_string(),
+                    terminal_theme,
                 });
             }
             Command::ReadMode => {

@@ -72,6 +72,12 @@ fn main() {
         }
         Ok(None) => {}
     }
+    // `ultron-s` (a link to this binary): the durable instance's home session.
+    let invoked = std::env::args().next().unwrap_or_default();
+    if cli::durable_client::is_home_command(&invoked) {
+        let code = cli::durable_client::run_home(&argv, &env, &mut std::io::stdout(), &mut std::io::stderr());
+        std::process::exit(code);
+    }
     // Unlocked handles: threads of the interactive TUI (its terminal writer) and of RPC mode write too.
     let code = cli::run(&argv, &env, &mut std::io::stdout(), &mut std::io::stderr());
     std::process::exit(code);

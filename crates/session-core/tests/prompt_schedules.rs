@@ -260,3 +260,63 @@ print(repr(schedule))";
         assert!(results.contains(expected), "{expected} not in {results}");
     }
 }
+
+#[test]
+fn session_core_schedule_fire_that_cannot_start_counts_nothing_and_answers_the_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let clock = clock(dir.path());
+    // The key is a stored credential the test removes: then a prompt cannot start (a worker without credentials).
+    let mut setup = setup(&clock);
+    setup.vars.push(("ANTHROPIC_API_KEY", String::new()));
+    let script = in_order(vec![
+        tool("toolu_1", "await schedule.at(3600, 'say hi', name='hello')"),
+        text("Scheduled."),
+        text("Hi."),
+    ]);
+    let a = actor(script, setup);
+    let auth = a.root.join("agent/auth.json");
+    let store_key = || std::fs::write(&auth, r#"{"anthropic": {"type": "api_key", "key": "test-key"}}"#).unwrap();
+    store_key();
+    assert_eq!(a.prompt("greet me later")["error"], Value::Null);
+    let id = list(&a)[0]["id"].as_str().unwrap().to_string();
+    std::fs::remove_file(&auth).unwrap();
+    set_clock(&clock, T0 + HOUR + 5);
+    for _ in 0..2 {
+        let error = a
+            .call(Op::ScheduleFire {
+                id: id.clone(),
+                due: T0 + HOUR,
+            })
+            .unwrap_err();
+        assert!(error.contains("No API key found for anthropic"), "{error}");
+    }
+    // Still due on its slot (an `at` schedule is not done), no run counted, nothing started or shown.
+    let listed = list(&a);
+    assert_eq!(
+        (
+            listed[0]["runs"].clone(),
+            listed[0]["state"].clone(),
+            listed[0]["nextDue"].clone()
+        ),
+        (json!(0), json!("active"), json!(T0 + HOUR))
+    );
+    assert_eq!(a.events("run_start").len(), 1);
+    assert!(schedule_messages(&a).is_empty());
+    let sets = || {
+        a.writes()
+            .into_iter()
+            .filter(|w| w["namespace"] == NAMESPACE && w["op"] == "set")
+            .map(|w| (w["value"]["runs"].clone(), w["value"]["state"].clone()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(sets(), vec![(json!(0), json!("active"))]);
+    // The retry once the key is back runs it, and only then is it counted (and done).
+    store_key();
+    assert_eq!(
+        fire(&a, &id, T0 + HOUR),
+        json!({"fired": true, "run": 1, "schedules": []})
+    );
+    wait_runs(&a, 2);
+    assert_eq!(user_texts(&a.requests()[2]).last().unwrap(), &json!("say hi"));
+    assert_eq!(sets(), vec![(json!(0), json!("active")), (json!(1), json!("done"))]);
+}

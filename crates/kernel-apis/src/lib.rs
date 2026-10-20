@@ -22,6 +22,7 @@ pub mod cell_hints;
 pub mod code_skills;
 pub mod context_control;
 pub mod diagram;
+pub mod diagram_contrast;
 pub mod diagram_svg;
 pub mod durable_work;
 pub mod family;

@@ -137,13 +137,19 @@ fn cli_instances_durable_is_separate_and_survives_a_killed_project_server() {
     let home = Home::new(provider.port);
     let project = home.root.join("proj");
     std::fs::create_dir_all(&project).unwrap();
-    let started = home.instance_command(&home.cwd(), &["durable"]).output().unwrap();
+    let started = home
+        .instance_command(&home.cwd(), &["durable", "start"])
+        .output()
+        .unwrap();
     assert!(started.status.success(), "{}", String::from_utf8_lossy(&started.stderr));
     let line = String::from_utf8(started.stdout).unwrap();
     let (durable_id, durable_socket) = line.trim().split_once('\t').unwrap();
     assert!(client::runtime::Connection::connect(Path::new(durable_socket), durable_id).is_ok());
     // A second `ultron durable` finds the running one.
-    let again = home.instance_command(&home.cwd(), &["durable"]).output().unwrap();
+    let again = home
+        .instance_command(&home.cwd(), &["durable", "start"])
+        .output()
+        .unwrap();
     assert_eq!(String::from_utf8(again.stdout).unwrap(), line);
     // A project run in progress is a second instance; the durable one lists none of its sessions.
     let (stderr, stderr_path) = home.stderr_file("client");

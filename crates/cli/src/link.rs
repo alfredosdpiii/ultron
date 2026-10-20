@@ -89,6 +89,9 @@ impl RemoteRoute {
 #[derive(Clone)]
 enum Origin {
     Foreground(Box<ServerOptions>),
+    /// A client of the durable instance (`ultron durable ...`, crate::durable_client): its detached server,
+    /// activated when it is not running, never stopped by this client.
+    Durable(Box<ServerOptions>),
     Remote(RemoteRoute),
 }
 
@@ -200,6 +203,9 @@ struct Shared {
     closing: AtomicBool,
     /// Serializes attaching (the supervisor and the owner's `attach`).
     attaching: Mutex<()>,
+    /// The terminal appearance the TUI reported ([`Link::set_terminal_theme`]): told again to every session this
+    /// link attaches (a switch, a restarted worker, a new server generation), which starts without it.
+    terminal_theme: Mutex<Option<String>>,
 }
 
 /// A call of the attached session, sent again once the link rejoined when it was refused before reaching a worker.
@@ -329,6 +335,15 @@ impl Shared {
             .wait_attachment(|a| a.is_some_and(|a| a.session_id == id))
             .map_err(fail)?;
         self.subscribe(&connection, id)?;
+        // The session's worker starts without the terminal's appearance: tell it (best effort; the next report
+        // tells it again).
+        let theme = self.terminal_theme.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        if let Some(theme) = theme {
+            let op = Op::SetTerminalTheme { theme };
+            let _ = connection
+                .session_target()
+                .and_then(|session| connection.call(session, daemon::worker::OPS_SERVICE, "op", json!([op.to_json()])));
+        }
         let reconnector = self.radius.lock().unwrap_or_else(|e| e.into_inner()).clone();
         if let Some(reconnector) = reconnector {
             reconnector.attachment_changed(Some(id));
@@ -460,6 +475,13 @@ impl Shared {
             (state.connection.is_closed(), state.session_id.clone())
         };
         if closed {
+            if let Origin::Durable(options) = &self.origin {
+                // The durable server again (activated when it is gone).
+                let route = crate::durable_client::activate(options)?;
+                let connection = Connection::connect(&route.path, &route.server_id).map_err(fail)?;
+                self.replace_connection(connection, None);
+                return self.attach(&id);
+            }
             let Origin::Foreground(options) = &self.origin else {
                 return Err("The server connection closed".into());
             };
@@ -593,11 +615,25 @@ impl ReconnectClient for RadiusLink {
 }
 
 impl Link {
-    /// Start the server, select `target`'s session and attach to it; transcript events go to `events`.
+    /// Start the server (a client of the durable instance uses its detached server instead, crate::durable_client),
+    /// select `target`'s session and attach to it; transcript events go to `events`. Closing the link never stops a
+    /// server it did not start.
     pub fn open(parsed: &Args, env: &Env, target: &Target, mode: &str, events: WatchSink) -> Result<Link, String> {
         let options = server_options(parsed, env, mode)?;
-        let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
-        crate::print_mode::trace_startup(env, "cli.server-started");
+        let durable = crate::durable_client::is_client(env);
+        let (server, endpoint, server_id) = match durable {
+            true => {
+                let route = crate::durable_client::activate(&options)?;
+                crate::print_mode::trace_startup(env, "cli.server-attached");
+                (None, route.path, route.server_id)
+            }
+            false => {
+                let server = start_foreground_server(&options).map_err(|e| e.to_string())?;
+                crate::print_mode::trace_startup(env, "cli.server-started");
+                let (endpoint, id) = (server.endpoint_path.clone(), server.server_id.clone());
+                (Some(server), endpoint, id)
+            }
+        };
         // rpc-native.ts's milestones: the client runtime opens after the server started, its services are ready once
         // connected, then the session is selected and attached.
         let rpc_trace = |label: &str| {
@@ -606,14 +642,21 @@ impl Link {
             }
         };
         rpc_trace("rpc.open");
-        let connection = match Connection::connect(&server.endpoint_path, &server.server_id) {
+        let connection = match Connection::connect(&endpoint, &server_id) {
             Ok(connection) => connection,
             Err(error) => {
-                server.close();
+                if let Some(server) = server {
+                    server.close();
+                }
                 return Err(fail(error));
             }
         };
-        let mut link = Link::new(Some(server), connection, Origin::Foreground(Box::new(options)), events);
+        let origin = if durable {
+            Origin::Durable(Box::new(options))
+        } else {
+            Origin::Foreground(Box::new(options))
+        };
+        let mut link = Link::new(server, connection, origin, events);
         rpc_trace("rpc.services-ready");
         let name = parsed.name.as_deref();
         let selected = match target {
@@ -671,6 +714,7 @@ impl Link {
             events,
             closing: AtomicBool::new(false),
             attaching: Mutex::new(()),
+            terminal_theme: Mutex::new(None),
             radius: Mutex::new(None),
             radius_recovering: AtomicBool::new(false),
             radius_connecting: AtomicBool::new(false),
@@ -714,7 +758,7 @@ impl Link {
     pub fn remote_route(&self) -> Option<RemoteRoute> {
         match &self.shared.origin {
             Origin::Remote(route) => Some(route.clone()),
-            Origin::Foreground(_) => None,
+            Origin::Foreground(_) | Origin::Durable(_) => None,
         }
     }
 
@@ -841,6 +885,15 @@ impl Link {
     /// Run a session operation on the attached session's worker.
     pub fn op(&self, op: &Op) -> OpResult {
         self.session_call(daemon::worker::OPS_SERVICE, "op", json!([op.to_json()]))
+    }
+
+    /// The terminal's appearance (`"light"` / `"dark"`, as the TUI detected it): told to the attached session now and
+    /// to every session attached later ([`Op::SetTerminalTheme`]).
+    pub fn set_terminal_theme(&self, theme: &str) -> OpResult {
+        *self.shared.terminal_theme.lock().unwrap_or_else(|e| e.into_inner()) = Some(theme.to_string());
+        self.op(&Op::SetTerminalTheme {
+            theme: theme.to_string(),
+        })
     }
 
     /// A blocking call of the attached session (`bash`, `compact`, the agent controller's `prompt`).

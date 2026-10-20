@@ -217,7 +217,7 @@ fn cli_daemon_schedules_fire_restart_collapse_and_cancel_through_the_product() {
     let (code, out, err) = cli(&home, &clock, &["schedule", "list"]);
     assert_eq!(code, 0, "{err}");
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines[0], "ID\tNAME\tNEXT\tRUNS\tREPEAT\tSTATE\tSESSION\tCWD");
+    assert_eq!(lines[0], "ID\tNAME\tNEXT\tRUNS\tREPEAT\tSTATE\tSESSION\tCWD\tERROR");
     let row: Vec<&str> = lines[1].split('\t').collect();
     assert_eq!(
         row[1..7],
@@ -242,7 +242,7 @@ fn cli_daemon_schedules_fire_restart_collapse_and_cancel_through_the_product() {
     let (code, _, err) = cli(&home, &clock, &["schedule", "cancel"]);
     assert_eq!(
         (code, err.trim()),
-        (2, "Usage: ultron schedule list | ultron schedule cancel <id|name>")
+        (2, "Usage: ultron schedule list | wake | cancel <id|name> (see --help)")
     );
     drop(server);
     assert_no_processes(&home.root, HANG_GUARD);
@@ -264,13 +264,105 @@ fn cli_daemon_schedules_cancel_without_a_server_writes_the_journal() {
     let (code, _, err) = cli(&home, &clock, &["-p", "schedule a greeting"]);
     assert_eq!(code, 0, "{err}");
     assert_no_processes(&home.root, HANG_GUARD);
+    // (`list` would start the instance's server for the active schedule: cancel first.)
+    let (code, out, err) = cli(&home, &clock, &["schedule", "cancel", "hello"]);
+    assert_eq!(code, 0, "{err}");
+    assert!(out.starts_with("Cancelled hello (sch-"), "{out}");
     let (_, out, _) = cli(&home, &clock, &["schedule", "list"]);
     let row: Vec<String> = out.lines().nth(1).unwrap().split('\t').map(str::to_string).collect();
-    assert_eq!(row[1..6], ["hello", "2027-01-15T09:00:00.000Z", "0", "once", "active"]);
-    let (code, out, err) = cli(&home, &clock, &["schedule", "cancel", &row[0]]);
+    assert_eq!(row[1..6], ["hello", "-", "0", "once", "cancelled"]);
+    assert_eq!(row.last().unwrap(), "-");
+    assert_no_processes(&home.root, HANG_GUARD);
+}
+
+/// The instance's server: the generation records under the server dir.
+fn generations(home: &Home) -> usize {
+    std::fs::read_dir(home.server_dir())
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("generation-"))
+        .count()
+}
+
+/// `{error, at, due}` the server kept for the session's schedule `id`.
+fn kept_error(home: &Home, session: &str, id: &str) -> Option<Value> {
+    let text = std::fs::read_to_string(home.server_dir().join("schedule-errors.json")).ok()?;
+    let value: Value = serde_json::from_str(&text).ok()?;
+    Some(value[session][id].clone()).filter(|v| !v.is_null())
+}
+
+#[test]
+fn cli_daemon_schedules_list_wakes_the_instance_and_a_failed_delivery_stays_due() {
+    let provider = provider(
+        vec![
+            tool_reply("await schedule.at(3600, 'say hi', name='hello')"),
+            text_reply("Scheduled."),
+        ],
+        Duration::ZERO,
+    );
+    let home = Home::new(provider.port);
+    let clock = home.root.join("clock");
+    std::fs::write(&clock, T0.to_string()).unwrap();
+    let (code, _, err) = cli(&home, &clock, &["-p", "schedule a greeting"]);
     assert_eq!(code, 0, "{err}");
-    assert!(out.starts_with(&format!("Cancelled hello ({})", row[0])), "{out}");
-    let (_, out, _) = cli(&home, &clock, &["schedule", "list"]);
-    assert!(out.lines().nth(1).unwrap().contains("\tcancelled\t"), "{out}");
+    assert_no_processes(&home.root, HANG_GUARD);
+    // The slot passes with no server running. `list` brings the instance up: a server that retires at once when
+    // idle (no grace), started without a key, so the fire cannot start a run.
+    std::fs::write(&clock, (T0 + HOUR + 5).to_string()).unwrap();
+    let no_key = |args: &[&str]| {
+        let output = home
+            .command(args)
+            .env(CLOCK_ENV, &clock)
+            .env("__ULTRON_SERVER_IDLE_GRACE_MS", "0")
+            .env_remove("ANTHROPIC_API_KEY")
+            .output()
+            .unwrap();
+        (
+            output.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+            String::from_utf8_lossy(&output.stderr).into_owned(),
+        )
+    };
+    let (code, out, err) = no_key(&["schedule", "list"]);
+    assert_eq!(code, 0, "{err}");
+    let row: Vec<String> = out.lines().nth(1).unwrap().split('\t').map(str::to_string).collect();
+    let (id, session) = (row[0].clone(), row[6].clone());
+    assert_eq!(generations(&home), 1, "list started the instance's server");
+    wait_until("the failed delivery", &home.root, || {
+        kept_error(&home, &session, &id).is_some()
+    });
+    let kept = kept_error(&home, &session, &id).unwrap();
+    assert_eq!(
+        (kept["at"].clone(), kept["due"].clone()),
+        (json!(T0 + HOUR + 5), json!(T0 + HOUR))
+    );
+    let error = kept["error"].as_str().unwrap().to_string();
+    assert!(error.contains("No API key found for anthropic"), "{error}");
+    // Not counted: still due on its slot, the error shown.
+    let (_, out, _) = no_key(&["schedule", "list"]);
+    let row: Vec<String> = out.lines().nth(1).unwrap().split('\t').map(str::to_string).collect();
+    assert_eq!(row[1..6], ["hello", "2027-01-15T09:00:00.000Z", "0", "once", "active"]);
+    assert_eq!(row[8], error);
+    assert!(fired(&home.sessions()).is_empty());
+    // The worker the fire started retires; the server, idle but for the pending schedule, stays and retries.
+    wait_until("the worker retires", &home.root, || workers(&home.root) == 0);
+    std::fs::write(&clock, (T0 + HOUR + 5 + 60_000).to_string()).unwrap();
+    wait_until("the retry", &home.root, || {
+        kept_error(&home, &session, &id).is_some_and(|e| e["at"] == json!(T0 + HOUR + 5 + 60_000))
+    });
+    assert_eq!(generations(&home), 1);
+    // Cancelled: nothing is pending and the server retires.
+    let (code, out, err) = no_key(&["schedule", "cancel", "hello"]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(out.trim(), format!("Cancelled hello ({id}) of session {session}"));
+    assert_no_processes(&home.root, HANG_GUARD);
+    let (_, out, _) = no_key(&["schedule", "list"]);
+    let row: Vec<String> = out.lines().nth(1).unwrap().split('\t').map(str::to_string).collect();
+    assert_eq!(
+        (row[3].as_str(), row[5].as_str(), row[8].as_str()),
+        ("0", "cancelled", "-")
+    );
+    assert_eq!(provider.requests.lock().unwrap().len(), 2);
     assert_no_processes(&home.root, HANG_GUARD);
 }

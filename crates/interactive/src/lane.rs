@@ -616,6 +616,12 @@ pub trait LaneClient {
     fn save_setting(&self, key: &str, value: Value) {
         let _ = (key, value);
     }
+    /// The terminal's appearance as the TUI knows it (`"light"` / `"dark"`: OSC 11, a scheme report, else
+    /// `COLORFGBG`), told when it is first known and whenever it changes: the session's `diagram` `auto` theme and the
+    /// settings lane follow it.
+    fn terminal_theme(&self, theme: &str) {
+        let _ = theme;
+    }
     /// `/trust`: read the worker's trust state ([`LaneEvent::Trust`], or a [`LaneEvent::Status`] error).
     fn read_trust(&self) {}
     /// Save a `/trust` choice through the worker (`setProjectTrust`); a [`LaneEvent::Status`] answers.

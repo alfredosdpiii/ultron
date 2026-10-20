@@ -115,6 +115,9 @@ pub struct Config {
     pub provider_token: mcp::connection::ProviderToken,
     /// Files Loki's own setup commit changed (crate::loki_notice): not the changes of the cell it ran beside.
     pub outside_changes: host::file_hooks::OutsideChanges,
+    /// The terminal appearance the attached TUI reported ([`crate::core::Op::SetTerminalTheme`]): `diagram.mermaid`'s
+    /// `auto` theme follows it before the session's `COLORFGBG`.
+    pub terminal_theme: Arc<std::sync::Mutex<Option<String>>>,
 }
 
 /// After-cell checks picture the directory between cells (workspace-snapshot.ts).
@@ -225,6 +228,7 @@ impl Config {
             masker: Arc::default(),
             project_trusted: manager.is_project_trusted(),
             outside_changes: host::file_hooks::OutsideChanges::default(),
+            terminal_theme: Arc::default(),
             provider_token: {
                 let env = env.clone();
                 Arc::new(move |provider: &str| crate::lane::api_key(&crate::ModelFlags::default(), &env, provider))

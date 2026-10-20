@@ -1,6 +1,7 @@
 //! `diagram.mermaid` for a session ([`kernel_apis::diagram`]): node from the session environment's `PATH`, Pele
 //! unpacked under `<agent dir>/cache`, diagrams saved to `<agent dir>/rlm-output/<session id>/diagrams`, the theme
-//! from the `theme` setting (read at each call) and the session's `COLORFGBG`, and shown diagrams handed to the
+//! from the `theme` setting (read at each call), the terminal appearance the attached TUI reported (OSC 11) and
+//! the session's `COLORFGBG`, and shown diagrams handed to the
 //! lane's cell images ([`crate::view_images::ViewImages`]): attached for the model with `to_model`, else kept for
 //! the tool result's display only.
 
@@ -12,11 +13,12 @@ use std::sync::Arc;
 
 /// The diagram module of session `session_id`, showing diagrams through `images`.
 pub fn module(config: &Config, session_id: &str, images: Arc<ViewImages>) -> DiagramModule {
-    let (cwd, agent_dir, trusted, var) = (
+    let (cwd, agent_dir, trusted, var, terminal) = (
         config.cwd.clone(),
         config.agent_dir.clone(),
         config.project_trusted,
         config.var.clone(),
+        config.terminal_theme.clone(),
     );
     DiagramModule::new(DiagramConfig {
         path_var: (config.var)("PATH"),
@@ -33,6 +35,7 @@ pub fn module(config: &Config, session_id: &str, images: Arc<ViewImages>) -> Dia
                     .and_then(Value::as_str)
                     .map(str::to_string),
                 colorfgbg: var("COLORFGBG"),
+                terminal: terminal.lock().unwrap_or_else(|e| e.into_inner()).clone(),
                 custom_dir: agent_dir.join("themes"),
             }
         }),
