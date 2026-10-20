@@ -320,7 +320,8 @@ export function hostStats(text) {
  * The host's usage ledger (the last `ultron.usage` / `root` value of the journal): responses, tokens and cost per
  * budget root. A turn's root (`turn:<id>`) carries the root lane and the children spawned inside the turn; kept
  * children (`keep=True`) outlive the turn and are charged to the session root (`ultron-root`). The session report
- * (`ultron usage`) sees the root lane only, so this is the one place the whole tree's usage is recorded.
+ * (`ultron usage`) of the frozen 0.87.39 build sees the root lane only, so the harness reads the ledger itself;
+ * from 62989f4d4 on, `ultron usage` also adds durable children from this ledger (the sub-agents lane).
  */
 export function ledgerStats(text) {
 	let ledger = null;
