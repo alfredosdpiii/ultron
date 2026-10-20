@@ -491,6 +491,10 @@ pub struct AutoreviewPaths {
     pub dry_run: String,
     /// Cached clones and per-review worktrees.
     pub cache: String,
+    /// `<agentDir>/knowledge/graph.db`: the knowledge graph every repository's reviews index into and read. Not
+    /// serialized: the TypeScript reviewer has no knowledge graph, and these paths are compared with its own.
+    #[serde(skip)]
+    pub knowledge: String,
 }
 
 pub fn autoreview_paths(agent_dir: &str, env: &HashMap<String, String>, home: &str) -> AutoreviewPaths {
@@ -507,6 +511,7 @@ pub fn autoreview_paths(agent_dir: &str, env: &HashMap<String, String>, home: &s
         state: path_join(&[&dir, "state.json"]),
         logs: path_join(&[&dir, "logs"]),
         dry_run: path_join(&[&dir, "dry-run"]),
+        knowledge: path_join(&[agent_dir, "knowledge", "graph.db"]),
         dir,
         cache,
     }

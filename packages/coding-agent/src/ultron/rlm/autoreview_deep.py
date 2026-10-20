@@ -47,6 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_reference as reference_module
+from knowledge_api import construct_label
 import autoreview_tests as testing
 from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_SHAPE_NUDGE, DEEP_SHAPES_HEADER, DEEP_TRACE_NUDGE, deep_task
 
@@ -571,9 +572,10 @@ def extract(files: list[FileDiff], read_file: Callable[[str], list[str] | None])
 
 def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], list[str] | None],
                 limit: int = BRIEF_CHARS, *, title: str = "", description: str = "",
-                base: str | None = None) -> Brief:
+                base: str | None = None, knowledge: Any = None) -> Brief:
     """The investigation brief: what the change claims, where each claim must hold, and where the diff's names
-    live in the rest of the repository."""
+    live in the rest of the repository. With `knowledge` (a `knowledge_api.Knowledge` at the reviewed commit),
+    each changed file also names the files that do what it does: those sharing its rarest constructs."""
     found = extract(files, read_file)
     # The structural reference: the files themselves read (ast for Python, a scanner for TS/JS, readers for
     # workflows and Terraform), so "who calls this" is resolved through imports rather than grepped. A failure
@@ -648,13 +650,22 @@ def build_brief(repo: Repo, files: list[FileDiff], read_file: Callable[[str], li
         if hits:
             sections.append(f"Structure of {path}: " + "; ".join(f"{n}: {_clip(t.strip(), 120)}" for _, n, t in hits))
     tracked = repo.files()
+    changed_paths = {item.path for item in files}
     for path in code_files[:4]:
         directory, name = posixpath.split(path)
         beside = [other for other in tracked if posixpath.dirname(other) == directory and other != path][:8]
-        twins = [other for other in tracked if posixpath.basename(other) == name and other != path][:5]
+        # Files that do what this one does, by shared rare constructs; a name says nothing when every migration
+        # is `migration.sql`. Without the knowledge store, the files of the same name are the only hint.
+        alike = knowledge.similar(path, exclude=changed_paths) if knowledge is not None else []
+        twins = [] if alike else [other for other in tracked if posixpath.basename(other) == name and other != path][:5]
         if beside or twins:
             sections.append(f"Beside {path}: " + (", ".join(posixpath.basename(other) for other in beside) or "nothing")
                             + (f"; same name elsewhere: {', '.join(twins)}" if twins else ""))
+        if alike:
+            sections.append(f"Like {path} (files sharing its rarest constructs; compare what each guards and "
+                            "what this change leaves out): "
+                            + "; ".join(f"{item.path} ({', '.join(construct_label(kind) for kind in item.shared[:4])})"
+                                        for item in alike))
     # The claims: what the change says it does, from its title and description, its commit messages, and the
     # comments and documents it changes; under each, where it has to be true.
     claim_list: list[tuple[str, str]] = []

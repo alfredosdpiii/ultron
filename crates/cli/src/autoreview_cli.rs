@@ -1911,7 +1911,33 @@ fn execute(
             (Arc::new(engine), Some(start_ms))
         }
     };
-    let spec = offline_spec(parsed, &config, env, &repo_dir, lent.as_deref(), use_prepared);
+    let mut spec = offline_spec(parsed, &config, env, &repo_dir, lent.as_deref(), use_prepared);
+    // The knowledge graph at the reviewed commit, under the repository's name when one is given; a failure leaves
+    // the review without it, and a directory that is not a git checkout is not indexed.
+    let knowledge_repo = match &parsed.repo {
+        Some(repo) => format!("github.com/{repo}").to_lowercase(),
+        None => format!("local:{}", repo_dir.display()),
+    };
+    let head = parsed.head.clone().filter(|head| !head.is_empty()).unwrap_or_else(|| "HEAD".into());
+    let indexed = if repo_dir.join(".git").exists() {
+        Some(knowledge::index_tree(Path::new(&paths.knowledge), &knowledge_repo, &repo_dir, &head))
+    } else {
+        None
+    };
+    match indexed {
+        None => {}
+        Some(Ok(stats)) => {
+            if let Value::Object(map) = &mut spec {
+                map.insert(
+                    "knowledge".into(),
+                    json!({ "db": paths.knowledge, "repo": knowledge_repo, "rev": stats.rev }),
+                );
+            }
+        }
+        Some(Err(error)) => {
+            let _ = writeln!(err, "the knowledge graph was not updated: {error}");
+        }
+    }
     let result = engine.review(&spec, None).map_err(Failure::Error)?;
     let io = |error: std::io::Error| Failure::Error(error.to_string());
     if parsed.json {

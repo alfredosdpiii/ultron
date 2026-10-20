@@ -88,6 +88,23 @@ pub fn repo_key(r: &PullRef) -> String {
     format!("{}/{}/{}", r.host, r.owner, r.repo).to_lowercase()
 }
 
+/// Indexes the checkout at `rev` into the knowledge graph and returns the spec's `knowledge` (store, repository,
+/// commit) for the kernel to read. Never fails a review: an error is logged and the review runs without it. A
+/// directory that is not a git checkout (a test's) is not indexed.
+pub fn index_knowledge(deps: &ReviewerDeps, repo: &str, work_dir: &str, rev: &str) -> Option<Value> {
+    if !std::path::Path::new(work_dir).join(".git").exists() {
+        return None;
+    }
+    let db = std::path::Path::new(&deps.paths.knowledge);
+    match knowledge::index_tree(db, repo, std::path::Path::new(work_dir), rev) {
+        Ok(stats) => Some(json!({ "db": deps.paths.knowledge, "repo": repo, "rev": stats.rev })),
+        Err(error) => {
+            (deps.log)(&format!("{repo}: the knowledge graph was not updated: {error}"));
+            None
+        }
+    }
+}
+
 /// Record what became of posted findings: into the state's ledger and, when configured, into the lesson memory.
 /// Never fails a review: an error is logged.
 fn learn(deps: &ReviewerDeps, r: &PullRef, fates: &[Fate], name: &str) -> Result<(), Error> {
@@ -941,6 +958,9 @@ fn review_in(
     if let Some(checkout) = checkout {
         spec.insert("workDir".into(), json!(checkout.work_dir));
         spec.insert("baseSha".into(), json!(checkout.merge_base));
+        if let Some(knowledge) = index_knowledge(deps, &repo_key(r), &checkout.work_dir, "HEAD") {
+            spec.insert("knowledge".into(), knowledge);
+        }
     }
     spec.insert("runTests".into(), json!(run_tests));
     if let Some(test_env) = test_env.as_ref().filter(|_| run_tests) {

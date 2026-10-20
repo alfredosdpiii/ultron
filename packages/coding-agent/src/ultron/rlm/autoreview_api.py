@@ -83,6 +83,7 @@ from review_api import (
 )
 import autoreview_compiled as compiled
 import autoreview_deep as deep
+from knowledge_api import Knowledge
 from review_prompts import GUIDANCE_HEADER
 from review_prompts import (ALIASES, AUTOREVIEW_VERIFIER_BATCH_TASK, AUTOREVIEW_VERIFIER_TASK, RECHECK_TASK, REVIEWERS,
                             Reviewer, autoreview_finder_task)
@@ -1417,16 +1418,23 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     if deep_rev is not None and chunks and mode in ("deep", "both", "hybrid"):
         stage_began = clock()
         brief_at: Any = None
+        # The knowledge store at the reviewed commit, when the host indexed it; a review without it runs as before.
+        stored = spec.get("knowledge") if isinstance(spec.get("knowledge"), dict) else {}
+        knowledge = Knowledge.open(stored.get("db"), stored.get("repo"), stored.get("rev"))
         try:
             repo_at = deep.Repo(scope.root, deep_rev, runner)
             if not repo_at.files():
                 raise RuntimeError("the reviewed commit could not be read")
             brief_at = deep.build_brief(repo_at, scope.files, scope.read_file, title=_bounded(context.get("title"), TITLE_CHARS),
                                         description=_bounded(context.get("description"), DESCRIPTION_CHARS),
-                                        base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None)
+                                        base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
+                                        knowledge=knowledge)
         except Exception as error:  # the deep pass builds its own map, or fails on its own and says so
             not_checked.append(f"The repository map failed ({_text(f'{type(error).__name__}: {error}', 160)}); "
                                "the passes ran without the retrieved context.")
+        finally:
+            if knowledge is not None:
+                knowledge.close()
         stages["mapMs"] = int((clock() - stage_began) * 1000)
         if brief_at is not None:
             stage_began = clock()
