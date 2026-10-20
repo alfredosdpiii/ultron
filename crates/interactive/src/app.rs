@@ -748,11 +748,13 @@ fn slash_commands(models: &[ModelInfo], qol: &QolSettings) -> Vec<SlashCommand> 
         }));
     }
     // `/engineering` and `/autoreview`: their fixed arguments, by prefix (client-tui-pi-commands.ts).
-    for (name, values) in [
-        ("engineering", ["true", "false"]),
-        ("autoreview", ["on", "off"]),
-        ("persona", ["ultron", "off"]),
-    ] {
+    let fixed: [(&str, &'static [&'static str]); 4] = [
+        ("engineering", &["true", "false"]),
+        ("autoreview", &["on", "off"]),
+        ("persona", &["on", "off", "auto", "ultron", "none"]),
+        ("keepgoing", &["on", "off"]),
+    ];
+    for (name, values) in fixed {
         if let Some(command) = commands.iter_mut().find(|c| c.name == name) {
             command.argument_completions = Some(Box::new(move |prefix: &str| {
                 Some(
@@ -2917,13 +2919,20 @@ impl App {
             // The persona (resources::persona in the engine): written like `/engineering`, applied from the next
             // message.
             "persona" => match crate::modes::persona_arg(args) {
-                Some(None) => self.client.read_persona(),
-                Some(Some(on)) => {
+                Some(crate::modes::PersonaArg::Report) => self.client.read_persona(),
+                Some(crate::modes::PersonaArg::Global(on)) => {
                     self.client
                         .save_setting("persona", if on { Value::from("ultron") } else { Value::Null });
                     self.show_status(&crate::modes::persona_changed(on));
                 }
-                None => self.show_status("Usage: /persona ultron|off"),
+                // The session's own toggle (resources::keep_going in the engine), kept in the session.
+                Some(crate::modes::PersonaArg::Session(arg)) => self.client.session_persona("persona", arg),
+                None => self.show_status(crate::modes::PERSONA_USAGE),
+            },
+            // Keep-going mode of the session (resources::keep_going in the engine).
+            "keepgoing" => match args.trim().to_lowercase().as_str() {
+                arg @ ("" | "on" | "off") => self.client.session_persona("keepgoing", arg),
+                _ => self.show_status("Usage: /keepgoing on|off"),
             },
             // The session's scheduled prompts (kernel_apis::prompt_schedule in the engine), one line each.
             "schedules" => self

@@ -97,6 +97,8 @@ enum Command {
     ReadSettings,
     ReadMode,
     ReadPersona,
+    /// `/persona on|off|auto`, `/keepgoing [on|off]`: the session's persona toggle and keep-going mode.
+    SessionPersona(String, String),
     /// `/autoreview`.
     Autoreview(interactive::lane::AutoreviewRequest),
     RlmStatus,
@@ -326,6 +328,9 @@ impl LaneClient for DaemonLane {
     }
     fn read_persona(&self) {
         self.send(Command::ReadPersona);
+    }
+    fn session_persona(&self, command: &str, args: &str) {
+        self.send(Command::SessionPersona(command.to_string(), args.to_string()));
     }
     fn autoreview(&self, request: interactive::lane::AutoreviewRequest) {
         self.send(Command::Autoreview(request));
@@ -781,6 +786,7 @@ fn link_thread(
     signalled: Arc<std::sync::atomic::AtomicI32>,
     catalog_env: Env,
     reporter: crate::bug_report::Reporter,
+    herdr: Option<Arc<crate::herdr_report::TuiReport>>,
 ) {
     let send = |event: LaneEvent| {
         let _ = ui.send(UiEvent::Lane(event));
@@ -794,6 +800,9 @@ fn link_thread(
             .and_then(|d| d["name"].as_str().map(str::to_string));
         if current != *name {
             *name = current.clone();
+            if let Some(herdr) = &herdr {
+                herdr.name(current.clone());
+            }
             send(LaneEvent::Name(current));
         }
     };
@@ -812,6 +821,9 @@ fn link_thread(
                 && let Err(error) = apply_presentation_plugins(&data.unwrap_or(Value::Null))
             {
                 send(LaneEvent::Status(format!("Error: {error}")));
+            }
+            if let Some(herdr) = &herdr {
+                herdr.opened(&session, &model);
             }
             send(LaneEvent::Opened(session));
             send(LaneEvent::Entries(entries));
@@ -872,14 +884,23 @@ fn link_thread(
                 }
             }
             Command::Prompt(op) => match link.op(&op) {
-                // The worker names an unnamed session from its first prompt as the run starts.
-                Ok(_) => report_name(&link, &mut name),
+                // The worker names an unnamed session from its first prompt as the run starts; a keep-going phrase
+                // (resources::keep_going) is confirmed in one line.
+                Ok(reply) => {
+                    if let Some(notice) = reply.as_ref().and_then(|r| r["keepGoing"].as_str()) {
+                        send(LaneEvent::Status(notice.to_string()));
+                    }
+                    report_name(&link, &mut name)
+                }
                 Err(error) => send(LaneEvent::Error(error)),
             },
             Command::RefreshName => report_name(&link, &mut name),
             Command::Reopen => open(&link, &mut name),
             Command::NewSession => match link.create(json!({})).and_then(|id| link.attach(&id)) {
                 Ok(()) => {
+                    if let Some(herdr) = &herdr {
+                        herdr.new_session();
+                    }
                     open(&link, &mut name);
                     send(LaneEvent::Status("✓ New session started".into()));
                 }
@@ -918,7 +939,11 @@ fn link_thread(
                             config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
                         settings.set_global("defaultProvider", Some(json!(provider)));
                         settings.set_global("defaultModel", Some(json!(model_id)));
-                        send(LaneEvent::Model(model_info(&model.unwrap_or_default())));
+                        let model = model_info(&model.unwrap_or_default());
+                        if let Some(herdr) = &herdr {
+                            herdr.model(&model);
+                        }
+                        send(LaneEvent::Model(model));
                     }
                     Err(error) => send(LaneEvent::Error(error)),
                 }
@@ -1451,6 +1476,23 @@ fn link_thread(
                     engineering: mode.engineering,
                     always_skills: mode.always_skills,
                 });
+            }
+            Command::SessionPersona(command, args) => {
+                let op = if command == "keepgoing" {
+                    Op::KeepGoing { args }
+                } else {
+                    Op::Persona { args }
+                };
+                match link.op(&op) {
+                    Ok(reply) => send(LaneEvent::Status(
+                        reply
+                            .as_ref()
+                            .and_then(|r| r["text"].as_str())
+                            .unwrap_or("No persona reply")
+                            .to_string(),
+                    )),
+                    Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
+                }
             }
             Command::ReadPersona => {
                 let (cwd, agent_dir) = &settings_path;
@@ -2233,10 +2275,16 @@ fn run_tui(
 
     let (ui_tx, ui_rx) = mpsc::channel::<UiEvent>();
     let (command_tx, command_rx) = mpsc::channel::<Command>();
+    // herdr's agents panel (crate::herdr_report): fed from the watch and link threads, never the render thread.
+    let herdr = crate::herdr_report::TuiReport::start(parsed, env).map(Arc::new);
     let watch = {
         let (ui, commands) = (ui_tx.clone(), command_tx.clone());
         let lane_open = std::sync::Mutex::new(true);
+        let herdr = herdr.clone();
         move |event: Value| {
+            if let Some(herdr) = &herdr {
+                herdr.lane_event(&event);
+            }
             if event["type"] == "run_end" {
                 let _ = commands.send(Command::RefreshName);
             }
@@ -2263,6 +2311,7 @@ fn run_tui(
         let signalled = signalled.clone();
         let catalog_env = env.clone();
         let reporter = crate::bug_report::Reporter::new(bug_cancel.clone(), parsed.api_key.is_some());
+        let herdr = herdr.clone();
         std::thread::spawn(move || {
             link_thread(
                 link,
@@ -2273,6 +2322,7 @@ fn run_tui(
                 signalled,
                 catalog_env,
                 reporter,
+                herdr,
             )
         })
     };
@@ -2331,8 +2381,12 @@ fn run_tui(
     // A signal leaves the TUI as closing its input does (the terminal is restored, the link closes), then the
     // process exits with the signal's code.
     let (code, end) = (signalled.clone(), std::sync::Mutex::new(ui_tx.clone()));
+    let signal_herdr = herdr.clone();
     daemon::signals::set_handler(Arc::new(move |signal| {
         code.store(daemon::signals::exit_code(signal), std::sync::atomic::Ordering::SeqCst);
+        if let Some(herdr) = &signal_herdr {
+            herdr.release();
+        }
         let _ = end.lock().unwrap_or_else(|e| e.into_inner()).send(UiEvent::InputClosed);
         std::thread::sleep(crate::print_mode::PROMPT_ABORT_WAIT);
         std::process::exit(daemon::signals::exit_code(signal));
@@ -2409,6 +2463,9 @@ fn run_tui(
     let deadline = std::time::Instant::now() + SHUTDOWN_WAIT;
     while !link_worker.is_finished() && std::time::Instant::now() < deadline {
         std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    if let Some(herdr) = &herdr {
+        herdr.release();
     }
     result.map_err(|e| e.to_string())?;
     Ok(0)

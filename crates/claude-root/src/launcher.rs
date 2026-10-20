@@ -160,6 +160,12 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
     if options.no_skills {
         mcp_args.push("--no-skills".into());
     }
+    // Claude Code ends async hooks with a print run (`-p`): only an interactive root is woken.
+    let print = options.claude_args.iter().any(|a| a == "-p" || a == "--print");
+    let wake_hooks = options.hooks && !print;
+    if crate::guide::wakes(input.var, wake_hooks) {
+        mcp_args.push("--wake".into());
+    }
     let mcp_config = stringify(&json!({
         "mcpServers": {"ultron": {"type": "stdio", "command": self_cmd.command, "args": mcp_args}}
     }));
@@ -167,14 +173,29 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
     let mut settings = Map::new();
     settings.insert("permissions".into(), json!({"allow": [CLAUDE_RLM_TOOL]}));
     if options.hooks {
-        settings.insert(
-            "hooks".into(),
-            json!({
-                "SessionStart": [hook("session-start", 30)],
-                "UserPromptSubmit": [hook("user-prompt", 60)],
-                "Stop": [hook("stop", 30)],
-            }),
-        );
+        let mut hooks = json!({
+            "SessionStart": [hook("session-start", 30)],
+            "UserPromptSubmit": [hook("user-prompt", 60)],
+            "Stop": [hook("stop", 30)],
+        });
+        // After every rlm call, a background waiter wakes the model when work it started ends while Claude Code is
+        // idle (crate::hooks::WAIT_EVENTS); a newer waiter replaces the older one. Not under TypeScript's guide.
+        if crate::guide::wakes(input.var, wake_hooks) {
+            hooks["PostToolUse"] = json!([{"matcher": CLAUDE_RLM_TOOL, "hooks": [{
+                "type": "command",
+                "command": shell_command(self_cmd, &["hook", crate::hooks::WAIT_EVENTS, "--socket", input.socket]),
+                "async": true,
+                "asyncRewake": true,
+                "timeout": crate::hooks::WAIT_EVENTS_TIMEOUT.as_secs(),
+            }]}]);
+        }
+        // Inside herdr, the events only its agents panel needs (crate::herdr_hook).
+        if herdr::detect(input.var, None).is_some() {
+            for (command, event) in crate::herdr_hook::HERDR_HOOK_EVENTS {
+                hooks[event] = json!([hook(command, 10)]);
+            }
+        }
+        settings.insert("hooks".into(), hooks);
     }
     let settings = stringify(&Value::Object(settings));
     let prompt = claude_system_prompt(
@@ -186,6 +207,7 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
             allowance: None,
             resources: Some(input.resources),
             bundled_skills: input.bundled_skills,
+            wake: crate::guide::wakes(input.var, wake_hooks),
         },
         input.hints,
     );

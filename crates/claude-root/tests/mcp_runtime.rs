@@ -576,3 +576,88 @@ fn claude_root_mcp_persona_stop_hook_nudges_announced_steps_until_the_cap() {
     assert_eq!(hook("stop"), json!({}));
     server.close();
 }
+
+/// The session's persona toggle and keep-going mode through `ultron claude`'s hooks (`ultron hook user-prompt|stop
+/// --socket ...`): `/persona on` is answered without a turn, a keep-going phrase is confirmed (`systemMessage`) and
+/// tells the model (the persona's section too, since the launch prompt has none), the Stop hook continues each working
+/// run, and the next server for the same Claude Code session resumes the mode and its counters until a run reports.
+#[test]
+fn claude_root_mcp_keep_going_hooks_continue_working_runs_and_survive_a_restart() {
+    use resources::keep_going::{KEEP_GOING_TEXT, START_TEXT};
+    let root = Root::new();
+    std::fs::write(root.path("a/settings.json"), json!({}).to_string()).unwrap();
+    std::fs::write(
+        root.path("a/personality.md"),
+        "# Ultron\n\nYou were built to finish things.\n",
+    )
+    .unwrap();
+    let transcript = root.path("tmp/transcript.jsonl");
+    let mut lines = vec![
+        json!({"type": "user", "message": {"role": "user", "content": "port it, I'll be away"}}),
+        json!({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "mcp__ultron__rlm", "input": {}}]}}),
+        json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Part 1 done."}]}}),
+    ];
+    let write = |lines: &[Value]| {
+        std::fs::write(&transcript, lines.iter().map(|l| format!("{l}\n")).collect::<String>()).unwrap()
+    };
+    write(&lines);
+    let env = root.env(&[("CLAUDE_CODE_SESSION_ID", "c-keep")]);
+    let var = env.var.clone();
+    let hook = |server: &Server, event: &str, prompt: &str| {
+        let input = json!({"session_id": "c-keep", "transcript_path": transcript, "prompt": prompt}).to_string();
+        let output = claude_root::hooks::run_hook(event, Some(PathBuf::from(server.running.socket())), &input, &*var);
+        if output.is_empty() {
+            json!({})
+        } else {
+            serde_json::from_str::<Value>(&output).unwrap()
+        }
+    };
+    let mut server = Server::start(&[], env.clone());
+    assert_eq!(server.cell("print(1)"), "1");
+    assert_eq!(
+        hook(&server, "user-prompt", "/persona on"),
+        json!({"decision": "block", "reason": "Persona is on for this session; keep-going off"})
+    );
+    let started = hook(&server, "user-prompt", "port it, I'll be away");
+    assert_eq!(
+        started["systemMessage"],
+        "keep-going on: \"i'll be away\" (/keepgoing off ends it)"
+    );
+    let context = started["hookSpecificOutput"]["additionalContext"].as_str().unwrap();
+    assert!(context.contains(START_TEXT), "{context}");
+    assert!(
+        context.contains("<persona>\n# Ultron"),
+        "the launch prompt had no persona: {context}"
+    );
+    let block = json!({"decision": "block", "reason": KEEP_GOING_TEXT});
+    assert_eq!(hook(&server, "stop", ""), block);
+    server.close();
+
+    // The next server for the same Claude Code session keeps the mode and its count.
+    let mut next = Server::start(&[], env);
+    assert!(
+        next.cell("print(2)").starts_with("2\n[RLM kernel restarted"),
+        "the same session reopened"
+    );
+    assert_eq!(
+        next.control("keepgoing", json!({})).unwrap()["text"],
+        "Persona is on for this session; keep-going on (1/100 continues, \"i'll be away\")"
+    );
+    lines.push(json!({"type": "user", "message": {"role": "user", "content": KEEP_GOING_TEXT}}));
+    lines.push(json!({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t2", "name": "mcp__ultron__rlm", "input": {}}]}}));
+    lines.push(json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Part 2 done."}]}}));
+    write(&lines);
+    assert_eq!(hook(&next, "stop", ""), block);
+    // A run without a tool call is the report: nothing blocks and the mode is over.
+    lines.push(json!({"type": "user", "message": {"role": "user", "content": KEEP_GOING_TEXT}}));
+    lines.push(
+        json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Final report: ported."}]}}),
+    );
+    write(&lines);
+    assert_eq!(hook(&next, "stop", ""), json!({}));
+    assert_eq!(
+        next.control("keepgoing", json!({})).unwrap()["text"],
+        "Persona is on for this session; keep-going off"
+    );
+    next.close();
+}

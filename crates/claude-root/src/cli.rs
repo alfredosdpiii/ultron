@@ -99,6 +99,7 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
             allowance: None,
             resources: Some(&resources),
             bundled_skills: bundled.as_deref(),
+            wake: crate::guide::wakes(&*ctx.env.var, true),
         }
     };
     let text = crate::guide::runtime_guide(audience, &options, hints);

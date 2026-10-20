@@ -3182,6 +3182,50 @@ W21S-21	cli/ultron-s	argv0 ultron-s dispatch; plain binary unaffected; usage err
 W21S-22	cli/ultron-s	home session created once, reused across clients and a server restart, cwd HOME, --new replaces, --session/--home, --list, deleted home replaced	cli_ultron_s_home_session_is_created_once_reused_replaced_and_listed
 W21S-23	cli/ultron-s	a client killed mid-run leaves the run going on the durable server; the next client continues after it	cli_ultron_s_client_gone_mid_run_leaves_the_run_going_and_the_next_client_sees_it
 W21S-24	release/install	package install script installs ultron plus the ultron-s relative link	cli_package_install_script_installs_into_a_prefix_without_node
+W22K-01	resources/keep_going	keep-going phrase matcher: case-insensitive, addressed to the agent; fixture positives match, negatives ("why does it stop", "stop the server", "don't stop the process", "the loop keeps going forever") do not	resources_keep_going_trigger_matches_the_fixture_positives_and_no_negative
+W22K-02	resources/keep_going	session persona state round-trips as session value ultron.module/persona; unreadable value is the default (auto, no keep-going)	resources_keep_going_state_round_trips_and_unreadable_values_are_the_default
+W22K-03	resources/keep_going	session toggle on/off/auto overrides the global persona setting	resources_keep_going_session_toggle_overrides_the_setting
+W22K-04	resources/keep_going	a phrase turns persona on and starts keep-going with a one-line notice; other user input ends it	resources_keep_going_phrase_starts_the_mode_and_other_input_ends_it
+W22K-05	resources/keep_going	/persona and /keepgoing are whole-prompt toggles only	resources_keep_going_toggle_commands_are_whole_prompts
+W22K-06	resources/keep_going	after a working run keep-going continues regardless of the announce regex, no 5-nudge cap; a run with no rlm call ends it; a question gets the user-is-away nudge	resources_keep_going_after_run_continues_work_whatever_it_says_and_ends_on_a_report
+W22K-07	resources/keep_going	abort/failure end keep-going; pending input stops without continuing	resources_keep_going_after_run_ends_on_abort_failure_and_waits_for_input
+W22K-08	resources/keep_going	ceiling 100 continues or 8 h, then one final report nudge and the mode ends	resources_keep_going_ceiling_is_100_continues_or_8_hours_then_a_final_nudge
+W22K-09	resources/keep_going	keep-going nudge messages carry text, count, keepGoing/final details	resources_keep_going_nudge_messages_carry_their_text_and_count
+W22K-10	session-core	product path: a phrase prompt continues every working run until a report run	session_core_keep_going_phrase_continues_every_working_run_until_a_report
+W22K-11	session-core	product path: ceiling (injected via ULTRON_KEEPGOING_MAX_*) sends the final nudge and stops	session_core_keep_going_ceiling_sends_a_final_nudge_and_stops
+W22K-12	session-core	keep-going ends on /keepgoing off, abort and user input	session_core_keep_going_ends_on_keepgoing_off_abort_and_user_input
+W22K-13	session-core	session persona toggle beats the setting in the system prompt and survives a reopen	session_core_keep_going_session_toggle_beats_the_setting_and_survives_a_reopen
+W22K-14	session-core	keep-going resumes after a restart with its counters	session_core_keep_going_resumes_after_a_restart_with_its_counters
+W22K-15	session-core	8 hours measured from the kept start: after a restart the final nudge is sent	session_core_keep_going_eight_hours_from_the_kept_start_ends_with_the_final_nudge
+W22K-16	claude-root	ultron claude Stop hook: keep-going follows transcript tool-call growth and the session toggle	claude_root_keep_going_stop_answer_follows_the_transcript_and_the_session_toggle
+W22K-17	claude-root	ultron claude UserPromptSubmit: /persona and /keepgoing prompts are blocked with the status as reason	claude_root_keep_going_prompt_toggles_block_the_prompt_with_the_status
+W22K-18	claude-root	ultron mcp hooks end to end: phrase notice (systemMessage + additionalContext), Stop blocks working runs, state survives a server restart	claude_root_mcp_keep_going_hooks_continue_working_runs_and_survive_a_restart
+W22K-19	interactive	TUI /keepgoing [on|off] goes to the session; keep-going nudges render as one line; usage on bad args	interactive_commands_keepgoing_goes_to_the_session_and_its_nudges_are_one_line
+W22K-20	interactive	TUI /persona on|off|auto sets the session toggle, ultron|none writes the setting, no-arg reports	interactive_commands_persona_reports_and_writes_the_setting
+W22K-21	cli/rpc	RPC: /persona and /keepgoing prompts and persona/keep_going commands answer the session status without starting a turn	acceptance_w22_persona_and_keep_going_over_rpc_answer_the_session_status_without_a_turn
+W23H-01	herdr	exact request lines: report_agent_session, report_agent (carries session), report_metadata (bad token keys dropped), release_agent; source/agent ultron; id ultron:<ms>:<6>; seq present	herdr_reporter_sends_session_state_metadata_and_release_lines
+W23H-02	herdr	updates never wait on the socket; latest state wins while herdr is busy; metadata coalesced	herdr_updates_never_wait_for_the_socket_and_the_latest_state_wins
+W23H-03	herdr	release bounded (RELEASE_WAIT) when herdr never answers	herdr_release_is_bounded_when_herdr_never_answers
+W23H-04	herdr	0.5 s connect timeout: a stuck herdr (full backlog) never blocks connect forever	herdr_connect_gives_up_on_a_stuck_herdr_instead_of_waiting_forever
+W23H-05	herdr	missing socket is silent	herdr_missing_socket_is_silent
+W23H-06	herdr	detection from injected env only; herdr:false setting, ULTRON_HERDR=0/false/off/no, kernel marker disable	herdr_detect_reads_the_injected_env_and_the_setting
+W23H-07	herdr	blocked rules: final paragraph ends with a question; auth/model/usage-limit errors	herdr_question_and_needs_user_rules
+W23H-13	herdr	release_active (signal handlers) releases the live reporter	herdr_release_active_releases_the_live_reporter
+W23H-14	cli	TUI lifecycle: session (startup, resume_argv) -> idle -> working -> idle -> working -> blocked(question) -> release on /quit; metadata display_agent/title/model/ctx/cost coalesced	cli_herdr_tui_session_lifecycle_reports_session_states_metadata_and_release
+W23H-15	cli	stuck herdr socket does not hold the TUI (reporter off the main/render thread)	cli_herdr_socket_that_never_accepts_does_not_hold_the_tui
+W23H-16	cli	-p: working -> idle|blocked -> release, no session/metadata	cli_herdr_print_mode_reports_working_then_the_end_then_release
+W23H-17	cli	off by setting or env (zero connections); absent socket: same output, empty stderr	cli_herdr_is_off_by_setting_or_env_and_silent_without_a_socket
+W23H-18	claude-root	ultron claude hooks: SessionStart session+idle+display "Ultron (Claude)", UserPromptSubmit working, Stop blocked/idle, Notification permission blocked, SessionEnd release, /clear restarts, server end releases	cli_herdr_claude_hooks_report_session_states_and_release
+W23H-19	claude-root	launcher adds Notification/SessionEnd hooks only inside herdr	cli_herdr_claude_launch_adds_the_herdr_hooks_only_inside_herdr
+W23H-20	cli/ultron-s	herdr resume command for durable sessions: ultron-s for the home session, ultron-s --session <id> otherwise	cli_ultron_s_herdr_resumes_through_ultron_s
+W24-01	claude-root/guide	ultron claude: engineering mode puts alwaysSkills text in the launch prompt; outside it they are listed only	claude_root_engineering_mode_puts_the_always_on_skills_in_the_launch_prompt
+W24-02	claude-root/wake	ultron claude: rlm.collect does not hold the turn; the wait-events asyncRewake hook wakes the idle model with a child's end; a newer waiter replaces an older one; nothing running ends the wait	claude_root_a_child_ending_while_claude_is_idle_wakes_it_through_the_wait_events_hook
+W24-03	claude-root/launcher	interactive ultron claude adds the PostToolUse wait-events hook (async, asyncRewake), --wake and the wake guide; -p keeps the next-call guide without --wake	cli_claude_launch_wakes_the_idle_root_through_an_async_rewake_hook_except_in_print_mode
+W23H-08	herdr	idle/blocked held for SETTLE so an immediate continuation (auto-nudge/keep-going) stays working	herdr_idle_is_held_for_the_settle_time_and_working_is_not
+W23H-09	herdr	metadata at most once a second and only when changed	herdr_metadata_is_sent_at_most_once_a_second_and_only_when_changed
+W23H-10	herdr	metadata clears fields/tokens no longer known	herdr_metadata_clears_what_is_no_longer_known
+W23H-11	herdr	release flushes the pending state first, sent once	herdr_release_flushes_the_pending_state_and_is_sent_once
+W23H-12	herdr	seq strictly increasing	herdr_seq_is_strictly_increasing
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

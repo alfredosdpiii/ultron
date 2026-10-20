@@ -83,7 +83,15 @@ pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: Resour
     } else {
         let resources = session_core::session_resources::resolve_default(env);
         let bundled = bundled.map(|dir| dir.display().to_string());
-        session_core::session_resources::skills(&cwd, &agent_dir, &resources, false, bundled.as_deref())
+        let mut skills =
+            session_core::session_resources::skills(&cwd, &agent_dir, &resources, false, bundled.as_deref());
+        // `alwaysSkills` carry their text into the prompt as in native Ultron (session_core::lane); outside
+        // engineering mode the prompt lists them only (resources::system_prompt).
+        let always = session_core::lane::PromptMode::from_settings(&settings).always_skills;
+        for diagnostic in resources::skills::apply_always_skills(&mut skills, &always) {
+            eprintln!("Warning: {}", diagnostic.message);
+        }
+        skills
     };
     let context_files = if flags.no_context_files {
         Vec::new()
@@ -153,12 +161,30 @@ pub struct GuideOptions<'a> {
     pub allowance: Option<u64>,
     pub resources: Option<&'a PromptResources>,
     pub bundled_skills: Option<&'a Path>,
+    /// The root is woken when work it started ends while it is idle (Ultron's hooks are on): the guide says to end
+    /// the turn instead of awaiting everything first.
+    pub wake: bool,
 }
 
 /// The runtime guide for Claude Code: next-call event delivery, no `ctx` (Claude Code owns its context).
 pub fn claude_runtime_guide(hints: bool) -> String {
+    claude_runtime_guide_with(hints, false)
+}
+
+/// Whether the root is woken by its events: Ultron's hooks are on (`hooks`) and the guide is not TypeScript's
+/// (`ULTRON_GUIDE=ts` keeps its next-call wording).
+pub fn wakes(var: &dyn Fn(&str) -> Option<String>, hooks: bool) -> bool {
+    hooks && var("ULTRON_GUIDE").as_deref() != Some("ts")
+}
+
+/// [`claude_runtime_guide`]; `wake`: events wake the idle root (crate::hooks::WAIT_EVENTS), as in native Ultron.
+pub fn claude_runtime_guide_with(hints: bool, wake: bool) -> String {
     let options = RuntimeGuideOptions {
-        delivery: EventDelivery::NextCall,
+        delivery: if wake {
+            EventDelivery::Wake
+        } else {
+            EventDelivery::NextCall
+        },
         external_root: true,
         hints,
         ..RuntimeGuideOptions::default()
@@ -238,7 +264,7 @@ pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: b
         vec![
             root_identity(),
             WORKING_WITH_THE_USER.to_string(),
-            claude_runtime_guide(hints),
+            claude_runtime_guide_with(hints, options.wake),
         ]
     } else {
         let allowance = options.allowance.unwrap_or(0);

@@ -262,3 +262,11 @@ fn cli_ultron_s_client_gone_mid_run_leaves_the_run_going_and_the_next_client_see
     assert!(second.to_string().contains("long answer"), "{second}");
     stop(&home);
 }
+
+#[test]
+fn cli_ultron_s_herdr_resumes_through_ultron_s() {
+    use cli::durable_client::home_resume_argv;
+    assert_eq!(home_resume_argv(Some("h-1"), "h-1"), ["ultron-s"]);
+    assert_eq!(home_resume_argv(Some("h-1"), "s-2"), ["ultron-s", "--session", "s-2"]);
+    assert_eq!(home_resume_argv(None, "s-2"), ["ultron-s", "--session", "s-2"]);
+}

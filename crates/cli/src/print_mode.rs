@@ -252,6 +252,7 @@ pub fn run_prompt(
     daemon::signals::set_handler(Arc::new(move |signal| {
         signalled.store(daemon::signals::exit_code(signal), Ordering::SeqCst);
         flag.store(true, Ordering::SeqCst);
+        herdr::release_active();
         // Never hang the exit on the aborted turn.
         std::thread::sleep(PROMPT_ABORT_WAIT);
         std::process::exit(daemon::signals::exit_code(signal));

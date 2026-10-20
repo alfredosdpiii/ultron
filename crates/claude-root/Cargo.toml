@@ -13,6 +13,7 @@ daemon = { path = "../daemon" }
 delegation = { path = "../delegation" }
 interactive = { path = "../interactive" }
 getrandom = "=0.4.3"
+herdr = { path = "../herdr" }
 host = { path = "../host" }
 kernel = { path = "../kernel" }
 kernel-apis = { path = "../kernel-apis" }

@@ -164,8 +164,12 @@ fn run_process(case: &Value) -> Vec<String> {
     root.place(case.get("files"));
     let mut env = root.env(case.get("env"));
     // `ultron guide` prints TypeScript's guide under ULTRON_GUIDE=ts (the Rust guide words engineering mode's
-    // bundled-skills note as `ultron claude` launches with it).
-    if case["name"].as_str().is_some_and(|name| name.starts_with("guide-")) {
+    // bundled-skills note as `ultron claude` launches with it), and `ultron claude` launches as TypeScript did (no
+    // wait-events hook; Rust's wake is checked in tests/herdr.rs).
+    if case["name"]
+        .as_str()
+        .is_some_and(|name| name.starts_with("guide-") || name.starts_with("claude-"))
+    {
         env.push(("ULTRON_GUIDE".into(), "ts".into()));
     }
     let args: Vec<String> = strings(&case["args"]).iter().map(|a| root.sub(a)).collect();

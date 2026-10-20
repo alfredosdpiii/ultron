@@ -17,6 +17,7 @@ pub mod durable_client;
 pub mod experimental;
 pub mod export_html;
 pub mod file_args;
+pub mod herdr_report;
 pub mod instances;
 pub mod interactive;
 pub mod js;
@@ -417,7 +418,13 @@ fn native_run(
             }
         }) as client::runtime::EventListener
     });
-    let prompted = print_mode::run_prompt(parsed, env, prompt, target, on_event)?;
+    // herdr's agents panel: `working` for the run, then its end's state, released when this returns.
+    let herdr = herdr_report::PrintReport::start(env);
+    let prompted = print_mode::run_prompt(parsed, env, prompt, target, on_event);
+    if let Some(herdr) = &herdr {
+        herdr.finish(prompted.as_ref().map(|p| p.text.as_str()).map_err(String::as_str));
+    }
+    let prompted = prompted?;
     // A Claude turn that switched to API credits (or back) says so, beside the answer.
     for notice in &prompted.notices {
         writeln!(err, "{notice}").map_err(io)?;

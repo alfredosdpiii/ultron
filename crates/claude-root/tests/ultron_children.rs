@@ -304,3 +304,58 @@ fn claude_root_ultron_children_get_the_context_reminder() {
     let _ = server.cell(&format!("await rlm.collect(['{id}'], timeout_ms=60000)"));
     server.close();
 }
+
+/// `ultron hook wait-events` against `socket`: its exit code and stderr.
+fn wait_events(socket: &str) -> (i32, String) {
+    let args: Vec<String> = ["wait-events", "--socket", socket]
+        .iter()
+        .map(|a| a.to_string())
+        .collect();
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = claude_root::hooks::run(&args, &mut std::io::empty(), true, &|_| None, &mut out, &mut err);
+    (code, String::from_utf8(err).unwrap())
+}
+
+fn hook(socket: &str, event: &str) {
+    let _ = claude_root::hooks::run_hook(event, Some(PathBuf::from(socket)), "{}", &|_| None);
+}
+
+#[test]
+fn claude_root_a_child_ending_while_claude_is_idle_wakes_it_through_the_wait_events_hook() {
+    // The cell never waits (the turn is not held); the asyncRewake hook started after the rlm call wakes the idle
+    // model with the child's end instead.
+    let root = Root::new();
+    let release = root.path("w/release");
+    let gate = release.clone();
+    let (port, requests) = fake_provider(Arc::new(move |_: &Value| {
+        wait_until("the test releases the child", || gate.exists());
+        Reply::Text("child answer".into())
+    }));
+    let mut server = Server::start(&root, port, &[]);
+    let socket = server.running.socket();
+    hook(&socket, "user-prompt");
+    let id = server.cell("h = await rlm.spawn('CHILD-BRIEF: answer later', name='waiter')\nprint(h.rlm_child_id)");
+    wait_until("the child asks its model", || !requests.lock().unwrap().is_empty());
+    let refused = server.cell("try:\n    await rlm.collect([h])\nexcept RuntimeError as e:\n    print(e)");
+    assert!(refused.contains("1 subagent(s) still running"), "{refused}");
+    // One waiter per rlm call: the newer one takes over and the older returns without waking anyone.
+    let first = {
+        let socket = socket.clone();
+        std::thread::spawn(move || wait_events(&socket))
+    };
+    wait_until("the first waiter waits", || server.running.event_waiters() == 1);
+    let second = {
+        let socket = socket.clone();
+        std::thread::spawn(move || wait_events(&socket))
+    };
+    assert_eq!(first.join().unwrap(), (0, String::new()));
+    // The model ends its turn; then the child ends and the waiter wakes it with the child_done event.
+    hook(&socket, "stop");
+    std::fs::write(&release, "").unwrap();
+    let (code, woken) = second.join().unwrap();
+    assert_eq!(code, 2, "{woken}");
+    assert!(woken.contains("child_done") && woken.contains(&id), "{woken}");
+    // Nothing runs and nothing waits now: a new waiter returns without waking.
+    assert_eq!(wait_events(&socket), (0, String::new()));
+    server.close();
+}

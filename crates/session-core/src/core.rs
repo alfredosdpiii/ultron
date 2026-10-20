@@ -260,6 +260,15 @@ pub enum Op {
     ScheduleCancel {
         id: String,
     },
+    /// `/persona on|off|auto` (empty: report): the session's own persona toggle over the settings'
+    /// (resources::keep_going). Answers `{text, persona, effective, keepGoing}`.
+    Persona {
+        args: String,
+    },
+    /// `/keepgoing on|off` (empty: report): the session's keep-going mode. Answers as [`Op::Persona`].
+    KeepGoing {
+        args: String,
+    },
 }
 
 impl Op {
@@ -393,6 +402,12 @@ impl Op {
                 due: value["due"].as_i64().ok_or("due must be a time in ms")?,
             },
             "scheduleCancel" => Op::ScheduleCancel { id: need("id")? },
+            "persona" => Op::Persona {
+                args: text("args").unwrap_or_default(),
+            },
+            "keepGoing" => Op::KeepGoing {
+                args: text("args").unwrap_or_default(),
+            },
             other => return Err(format!("Unknown session operation: {other}")),
         })
     }
@@ -484,6 +499,8 @@ impl Op {
             }
             Op::ScheduleFire { id, due } => json!({"op": "scheduleFire", "id": id, "due": due}),
             Op::ScheduleCancel { id } => json!({"op": "scheduleCancel", "id": id}),
+            Op::Persona { args } => json!({"op": "persona", "args": args}),
+            Op::KeepGoing { args } => json!({"op": "keepGoing", "args": args}),
         }
     }
 }
@@ -691,6 +708,8 @@ pub struct Core {
     skill_nudger: crate::nudge::SkillExtractionNudger,
     /// The persona's auto-nudge chain (core::persona_nudge).
     persona: resources::persona::Chain,
+    /// The session's persona toggle and keep-going mode (the session value `ultron.module/persona`).
+    persona_session: resources::keep_going::SessionPersona,
 }
 
 mod auto_compact;
@@ -1035,7 +1054,10 @@ impl Core {
                 (env_var)("ULTRON_SKILL_NUDGE").as_deref(),
             )),
             persona: Default::default(),
+            persona_session: Default::default(),
         };
+        // The session's persona toggle and keep-going mode, before a resumed run can end.
+        core.persona_load();
         if let Some(operation) = resume {
             core.resumed = Some(core.reopen_run(&operation)?);
         } else {
@@ -1755,7 +1777,7 @@ impl Core {
     fn op(&mut self, op: Op, reply: Reply) {
         match op {
             Op::Prompt { message, images, queue } => {
-                self.persona_user_input();
+                let notice = self.persona_user_input(&message);
                 let result = if self.run.is_some() {
                     match queue {
                         Some(kind) => self.enqueue(kind, message, images, None).map(drop),
@@ -1764,10 +1786,11 @@ impl Core {
                 } else {
                     self.prompt(message, images, None).map_err(|(error, _)| error)
                 };
-                reply(result.map(|()| None));
+                // A keep-going phrase (or the input that ended keep-going) is reported in one line.
+                reply(result.map(|()| notice.map(|notice| json!({"keepGoing": notice}))));
             }
             Op::PromptAndWait { message, images } => {
-                self.persona_user_input();
+                self.persona_user_input(&message);
                 if self.run.is_some() {
                     return reply(Err("Agent is already processing".into()));
                 }
@@ -1828,7 +1851,7 @@ impl Core {
                 images,
                 entry_id,
             } => {
-                self.persona_user_input();
+                self.persona_user_input(&message);
                 self.enqueue(kind, message, images, entry_id).map(|id| Some(json!(id)))
             }
             Op::CancelQueued { entry_id } => {
@@ -2045,6 +2068,8 @@ impl Core {
             Op::Checkpoints => Ok(Some(self.list_checkpoints())),
             Op::ScheduleFire { id, due } => self.schedule_fire(&id, due),
             Op::ScheduleCancel { id } => self.schedule_cancel(&id),
+            Op::Persona { args } => self.persona_command("persona", &args).map(Some),
+            Op::KeepGoing { args } => self.persona_command("keepgoing", &args).map(Some),
             Op::RestoreFiles { entry_id, checkpoint } => self.restore_files(entry_id, checkpoint).map(Some),
             Op::Agents => self
                 .lane

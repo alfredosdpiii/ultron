@@ -26,7 +26,12 @@ use session_journal::SessionRepo;
 use session_journal::repo::Metadata;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// How often a `wait-events` waiter looks at the root ([`Server::wait_events`]).
+const WAIT_EVENTS_POLL: Duration = Duration::from_millis(250);
+/// How long nothing may run and nothing wait before a `wait-events` waiter gives up.
+const WAIT_EVENTS_GRACE: Duration = Duration::from_secs(2);
 
 pub fn default_frame_model() -> String {
     format!("claude-code/{DEFAULT_CLAUDE_MODEL}")
@@ -49,6 +54,8 @@ pub struct McpServerArgs {
     pub instructions: bool,
     pub no_context_files: bool,
     pub no_skills: bool,
+    /// `--wake`: the launcher's wait-events hook wakes the idle root when its work ends (crate::hooks::WAIT_EVENTS).
+    pub wake: bool,
 }
 
 /// Parse `ultron mcp` flags; unknown flags are an error.
@@ -68,6 +75,7 @@ pub fn parse_mcp_args(args: &[String]) -> Result<McpServerArgs, UsageError> {
         instructions: true,
         no_context_files: false,
         no_skills: false,
+        wake: false,
     };
     let count = |text: &str, flag: &str| -> Result<u64, UsageError> {
         let number = session_file::js::to_number(&Value::String(text.to_string()));
@@ -88,6 +96,7 @@ pub fn parse_mcp_args(args: &[String]) -> Result<McpServerArgs, UsageError> {
         match arg {
             "--child" => parsed.child = true,
             "--no-instructions" => parsed.instructions = false,
+            "--wake" => parsed.wake = true,
             "--parent-socket" => parsed.parent_socket = Some(value()?),
             "--parent-name" => parsed.parent_name = Some(value()?),
             "--parent-lane" => parsed.parent_lane = Some(value()?),
@@ -282,12 +291,16 @@ pub struct Opened {
     /// The session file (`usage.report` reads it).
     pub session_path: PathBuf,
     pub model: String,
-    _lock: Option<SessionLock>,
+    /// The Ultron session (its values keep the persona toggle and keep-going mode, crate::persona_hook).
+    pub session: session_core::durable_store::SharedSession,
+    /// Released when the runtime closes, so the next server for the same Claude Code session reopens it.
+    lock: Mutex<Option<SessionLock>>,
 }
 
 impl Opened {
     pub fn close(&self) {
         self.lane.shutdown();
+        self.lock.lock().unwrap_or_else(PoisonError::into_inner).take();
     }
 }
 
@@ -392,9 +405,11 @@ fn open_runtime(
     // completion events of root work (into the root's inbox).
     let host = Arc::new(crate::external_lane::LaneRootHost::new(lane.stack.clone()));
     let sink = Arc::new(crate::root_sink::RootSink::system());
-    crate::external_lane::wire(&lane, session, &host, sink.clone());
+    crate::external_lane::wire(&lane, session.clone(), &host, sink.clone());
     let root =
         ExternalRoot::over_lane(lane.clone(), loki_context, sink.clone(), host, &*env.var).with_loki_setup(loki_notice);
+    // The launcher's wait-events hook wakes the root (`--wake`).
+    let root = if args.wake { root.waking() } else { root };
     Ok(Opened {
         lane,
         root,
@@ -402,7 +417,8 @@ fn open_runtime(
         session_path: metadata.path.clone(),
         session_id: metadata.id,
         model: format!("{}/{}", model.provider, model.id),
-        _lock: lock,
+        session,
+        lock: Mutex::new(lock),
     })
 }
 
@@ -501,6 +517,14 @@ pub struct Server {
     child_tokens: ChildTokens,
     /// The persona's nudges since the user's last prompt (crate::persona_hook).
     persona_nudges: Mutex<u32>,
+    /// The latest `wait-events` waiter's number ([`Server::wait_events`]).
+    waiters: std::sync::atomic::AtomicU64,
+    /// The server is shutting down: waiters return.
+    closed: std::sync::atomic::AtomicBool,
+    /// The session's persona toggle differs from the launch prompt's and the model was told once (this server).
+    persona_told: Mutex<Option<bool>>,
+    /// herdr's agents panel (crate::herdr_hook).
+    herdr: crate::herdr_hook::HerdrHook,
 }
 
 impl Server {
@@ -621,12 +645,67 @@ impl Server {
                     .cell_handler(&lane, None)
                     .handle("rlm.finish", payload, &kernel::Signal::new())
             }
+            // `ultron hook wait-events` (an asyncRewake hook): wait in the background for the root's next event
+            // while Claude Code is idle; the hook wakes the model with it.
+            "wait-events" => {
+                let opened = self.runtime()?;
+                Ok(self.wait_events(&opened))
+            }
+            // The session's persona toggle and keep-going mode (`args`: on|off|auto, empty reports).
+            "persona" | "keepgoing" => {
+                let args = request.get("args").and_then(Value::as_str).unwrap_or("").to_string();
+                let opened = self.runtime()?;
+                let global = self.persona_on();
+                let text = self.persona_change(&opened, |state, now, limits| {
+                    state.command(op, &args, now, global, limits)
+                })?;
+                Ok(json!({"text": text}))
+            }
             other => Err(format!("unknown control op: {other}")),
+        }
+    }
+
+    /// Wait until the root's turn has ended with events waiting (`{"events": text}`), or until nothing it started
+    /// is running and no event waits, or a newer waiter takes over (`{}`). One waiter at a time: every rlm call starts
+    /// one (PostToolUse), and only the latest may wake the model.
+    fn wait_events(&self, opened: &Opened) -> Value {
+        let root = &opened.root;
+        let me = self.waiters.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+        let mut idle_since: Option<Instant> = None;
+        loop {
+            if self.waiters.load(std::sync::atomic::Ordering::SeqCst) != me
+                || self.closed.load(std::sync::atomic::Ordering::SeqCst)
+            {
+                return json!({});
+            }
+            let events = root.pending_events() > 0;
+            if events
+                && root.turn().is_none()
+                && let Some(text) = root.take_events()
+            {
+                return json!({"events": text});
+            }
+            // Root work still running: subagents, tasks, shell jobs, tool calls and ends in the coalescing window
+            // (`async.pending`). An end can reach the inbox just after its count drops: nothing running and nothing
+            // waiting for WAIT_EVENTS_GRACE ends the wait.
+            let pending = crate::external_lane::async_pending(&opened.lane.stack, &opened.sink)["pending"] == true;
+            if !events && !pending {
+                let since = *idle_since.get_or_insert_with(Instant::now);
+                if since.elapsed() >= WAIT_EVENTS_GRACE {
+                    return json!({});
+                }
+            } else {
+                idle_since = None;
+            }
+            std::thread::sleep(WAIT_EVENTS_POLL);
         }
     }
 
     /// Claude Code hook events: the hook command forwards its input here and prints what this returns.
     fn hook(&self, event: &str, input: &Map<String, Value>) -> Result<Value, String> {
+        if let Some(answer) = self.herdr.before(event, input) {
+            return Ok(answer);
+        }
         let opened = self.runtime()?;
         let root = &opened.root;
         let context = |name: &str, context: Option<String>| match context {
@@ -636,21 +715,103 @@ impl Server {
         match event {
             "session-start" => Ok(context("SessionStart", root.session_context())),
             "user-prompt" => {
+                let prompt = input.get("prompt").and_then(Value::as_str).unwrap_or("");
+                // `/persona on|off|auto`, `/keepgoing on|off`: the session's toggles, answered without a turn.
+                if !self.args.child {
+                    let global = self.persona_on();
+                    let answer = self.persona_change(&opened, |state, now, limits| {
+                        crate::persona_hook::prompt_toggle(state, prompt, now, global, limits)
+                    });
+                    if let Some(answer) = answer {
+                        return Ok(answer);
+                    }
+                }
                 *self.persona_nudges.lock().unwrap_or_else(PoisonError::into_inner) = 0;
-                Ok(context("UserPromptSubmit", root.begin_turn()))
+                let mut contexts: Vec<String> = root.begin_turn().into_iter().collect();
+                let mut notice = None;
+                if !self.args.child {
+                    let (message, start) = self.persona_change(&opened, |state, now, _| {
+                        crate::persona_hook::prompt_input(state, prompt, now)
+                    });
+                    notice = message;
+                    contexts.extend(self.persona_context(&opened));
+                    contexts.extend(start);
+                }
+                let mut answer = context(
+                    "UserPromptSubmit",
+                    (!contexts.is_empty()).then(|| contexts.join("\n\n")),
+                );
+                if let Some(notice) = notice {
+                    answer["systemMessage"] = Value::String(notice);
+                }
+                Ok(answer)
             }
             "stop" => {
                 root.end_turn();
+                if self.args.child {
+                    return Ok(json!({}));
+                }
                 let mut nudges = self.persona_nudges.lock().unwrap_or_else(PoisonError::into_inner);
-                let persona = self.persona_on();
-                let transcript = if persona {
-                    crate::persona_hook::transcript_of(input)
-                } else {
-                    String::new()
-                };
-                Ok(crate::persona_hook::stop_answer(persona, &transcript, &mut nudges))
+                let global = self.persona_on();
+                let transcript = crate::persona_hook::transcript_of(input);
+                let answer = self.persona_change(&opened, |state, now, limits| {
+                    crate::persona_hook::stop_answer_in(state, &mut nudges, global, &transcript, now, limits)
+                });
+                self.herdr.stopped(input, &answer);
+                Ok(answer)
             }
             other => Err(format!("unknown hook event: {other}")),
+        }
+    }
+
+    /// Change the session's persona state (the session value `ultron.module/persona`) with `change`, written back
+    /// when it changed.
+    fn persona_change<T>(
+        &self,
+        opened: &Opened,
+        change: impl FnOnce(&mut resources::keep_going::SessionPersona, i64, resources::keep_going::Limits) -> T,
+    ) -> T {
+        use resources::keep_going::{STATE_KEY, STATE_NAMESPACE, SessionPersona};
+        let mut session = session_core::durable_store::lock(&opened.session);
+        let mut state = SessionPersona::from_json(session.value(STATE_NAMESPACE, STATE_KEY));
+        let before = state.clone();
+        let limits = resources::keep_going::Limits::from_env(&*self.env.var);
+        let out = change(&mut state, session_core::lane::now_ms(), limits);
+        if state != before {
+            // A state that cannot be written is kept for this hook only; the next change writes it again.
+            let _ = session.commit(&[session_journal::Write::set(STATE_NAMESPACE, STATE_KEY, state.to_json())]);
+        }
+        out
+    }
+
+    /// When the session's toggle differs from the persona the launch prompt has (the settings'), the model is told
+    /// once per change: the persona's section when it is on, that the section is off when it is off.
+    fn persona_context(&self, opened: &Opened) -> Option<String> {
+        use resources::keep_going::{STATE_KEY, STATE_NAMESPACE, SessionPersona};
+        let state = SessionPersona::from_json(
+            session_core::durable_store::lock(&opened.session).value(STATE_NAMESPACE, STATE_KEY),
+        );
+        let launched = self.persona_on();
+        let wanted = state.effective(launched);
+        let mut told = self.persona_told.lock().unwrap_or_else(PoisonError::into_inner);
+        if wanted == launched {
+            *told = None;
+            return None;
+        }
+        if *told == Some(wanted) {
+            return None;
+        }
+        *told = Some(wanted);
+        if wanted {
+            let personality = resources::persona::read_personality(&self.env.agent_dir())
+                .ok()
+                .flatten()?;
+            Some(format!(
+                "<persona>\n{}\n</persona>",
+                resources::persona::section_text(&personality)
+            ))
+        } else {
+            Some("The persona is off for this session: ignore the <persona> section of your system prompt.".into())
         }
     }
 
@@ -828,6 +989,8 @@ impl Running {
         if self.done.swap(true, std::sync::atomic::Ordering::SeqCst) {
             return;
         }
+        self.server.herdr.release();
+        self.server.closed.store(true, std::sync::atomic::Ordering::SeqCst);
         if let Some(control) = self.control.lock().unwrap_or_else(PoisonError::into_inner).take() {
             control.close();
         }
@@ -835,6 +998,11 @@ impl Running {
         if let Ok(opened) = self.server.runtime() {
             opened.close();
         }
+    }
+
+    /// How many `wait-events` waiters have started ([`Server::wait_events`]).
+    pub fn event_waiters(&self) -> u64 {
+        self.server.waiters.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     /// The control socket's path.
@@ -943,6 +1111,10 @@ pub fn start(argv: &[String], ctx: &Ctx) -> Result<(Arc<Running>, Arc<Handlers>)
         cells: Mutex::default(),
         child_tokens: ChildTokens::default(),
         persona_nudges: Mutex::new(0),
+        waiters: Default::default(),
+        closed: Default::default(),
+        persona_told: Mutex::new(None),
+        herdr: crate::herdr_hook::HerdrHook::start(&env, args.child),
     });
     // `--children claude` (the default when `claude` is installed): each `rlm.spawn` child is a Claude Code process
     // attached to its own `ultron mcp --child` server.
@@ -1036,6 +1208,7 @@ fn claude_subagents(server: &Arc<Server>, claude: String) -> Result<SubagentHost
                         allowance: Some(u64::from(run.allowance)),
                         resources: Some(&resources),
                         bundled_skills: bundled.as_deref(),
+                        wake: false,
                     },
                     server.hints,
                 );

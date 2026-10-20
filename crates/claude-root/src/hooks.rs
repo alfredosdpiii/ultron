@@ -15,6 +15,12 @@ pub const HOOK_EVENTS: [(&str, &str); 3] = [
     ("stop", "Stop"),
 ];
 
+/// `ultron hook wait-events`: an async PostToolUse hook (`asyncRewake`) that waits in the background for the
+/// root's next runtime event while Claude Code is idle and wakes the model with it (exit 2, the events on stderr).
+pub const WAIT_EVENTS: &str = "wait-events";
+/// How long a waiter may wait; Claude Code's hook timeout is set to match.
+pub const WAIT_EVENTS_TIMEOUT: Duration = Duration::from_secs(24 * 60 * 60);
+
 /// A SessionStart hook can run while Claude Code is still starting the server; later hooks find it running.
 const SESSION_START_WAIT: Duration = Duration::from_secs(10);
 const CONNECT_WAIT: Duration = Duration::from_millis(1_500);
@@ -22,7 +28,11 @@ const CONNECT_WAIT: Duration = Duration::from_millis(1_500);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(50);
 
 pub fn is_hook_event(event: &str) -> bool {
-    HOOK_EVENTS.iter().any(|(name, _)| *name == event)
+    event == WAIT_EVENTS
+        || HOOK_EVENTS
+            .iter()
+            .chain(&crate::herdr_hook::HERDR_HOOK_EVENTS)
+            .any(|(name, _)| *name == event)
 }
 
 /// Run one hook; returns the text to print (may be empty). Never fails.
@@ -85,6 +95,13 @@ fn run_hook_inner(
     }
 }
 
+/// The events a `wait-events` waiter got from its server, or `None` (nothing to wake for, replaced, no server).
+fn wait_events(socket: Option<PathBuf>) -> Option<String> {
+    let mut client = ControlClient::connect(&socket?, CONNECT_WAIT).ok()?;
+    let result = client.request(WAIT_EVENTS, Map::new(), WAIT_EVENTS_TIMEOUT).ok()?;
+    result.get("events").and_then(Value::as_str).map(str::to_string)
+}
+
 /// `ultron hook <event> [--socket path]`; returns the exit code.
 pub fn run(
     args: &[String],
@@ -117,6 +134,18 @@ pub fn run(
         let mut bytes = Vec::new();
         let _ = stdin.read_to_end(&mut bytes);
         raw = String::from_utf8_lossy(&bytes).into_owned();
+    }
+    if event == WAIT_EVENTS {
+        return match wait_events(socket) {
+            Some(events) => {
+                let _ = writeln!(
+                    err,
+                    "Background work you started ended while you were idle:\n{events}\nCarry on with it (rlm.collect what you need)."
+                );
+                2
+            }
+            None => 0,
+        };
     }
     let output = run_hook(event, socket, &raw, var);
     if !output.is_empty() {

@@ -442,6 +442,8 @@ struct PromptState {
     render: Option<Box<RenderPrompt>>,
     mode: Box<dyn Fn() -> crate::lane::PromptMode + Send + Sync>,
     current: Mutex<(crate::lane::PromptMode, String, Vec<String>)>,
+    /// The session's own persona toggle over the settings' (resources::keep_going): `None` follows the settings.
+    persona: Mutex<Option<bool>>,
 }
 
 impl SystemPrompt {
@@ -451,6 +453,7 @@ impl SystemPrompt {
             render: None,
             mode: Box::new(crate::lane::PromptMode::default),
             current: Mutex::new((Default::default(), text.into(), Vec::new())),
+            persona: Mutex::new(None),
         }))
     }
 
@@ -491,6 +494,7 @@ impl SystemPrompt {
             render: Some(Box::new(render)),
             mode: Box::new(mode),
             current: Mutex::new((initial, text, warnings)),
+            persona: Mutex::new(None),
         })))
     }
 
@@ -500,7 +504,10 @@ impl SystemPrompt {
         let Some(render) = &state.render else {
             return lock(&state.current).1.clone();
         };
-        let mode = (state.mode)();
+        let mut mode = (state.mode)();
+        if let Some(persona) = *lock(&state.persona) {
+            mode.persona = persona;
+        }
         let mut current = lock(&state.current);
         if current.0 != mode
             && let Ok((text, warnings)) = render(&mode)
@@ -508,6 +515,11 @@ impl SystemPrompt {
             *current = (mode, text, warnings);
         }
         current.1.clone()
+    }
+
+    /// The session's persona toggle (`None`: follow the settings), applied from the next request.
+    pub fn set_persona(&self, persona: Option<bool>) {
+        *lock(&self.0.persona) = persona;
     }
 
     /// The `alwaysSkills` problems of the prompt as last rendered.

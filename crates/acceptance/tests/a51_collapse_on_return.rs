@@ -138,7 +138,8 @@ fn acceptance_a51_collapse_lines_one_per_task_with_random_keys_hidden() {
 
 const TASKS: usize = 20;
 const VALUE_BYTES: usize = 4000;
-const ROOT_PROMPT: &str = "A51: run twenty tasks and keep going";
+// Not a keep-going phrase (resources::keep_going): the run ends when the script says A51_DONE.
+const ROOT_PROMPT: &str = "A51: run twenty tasks one after another";
 
 /// A child's 4 KB answer, distinct per task so a leak of any one of them is visible.
 fn child_value(index: usize) -> String {

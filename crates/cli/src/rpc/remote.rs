@@ -94,6 +94,8 @@ pub struct Remote<'a> {
     bash: Arc<AtomicUsize>,
     /// Ends the extension UI relay.
     ui_stop: Arc<std::sync::atomic::AtomicBool>,
+    /// herdr's agents panel: each run's `working` and end (crate::herdr_report); released when dropped.
+    herdr: Option<crate::herdr_report::RpcReport>,
 }
 
 /// The session id of a `switch_session` selector: an id, or a session file whose header names one.
@@ -142,6 +144,7 @@ impl<'a> Remote<'a> {
             run_id: None,
             lost_run: None,
             bash: Arc::new(AtomicUsize::new(0)),
+            herdr: crate::herdr_report::RpcReport::start(env),
         })
     }
 
@@ -223,6 +226,9 @@ impl RpcSession for Remote<'_> {
         } else {
             event
         };
+        if let Some(herdr) = &self.herdr {
+            herdr.event(&event);
+        }
         match event["type"].as_str() {
             Some("run_start") => {
                 self.running = true;
@@ -511,6 +517,16 @@ impl RpcSession for Remote<'_> {
         crate::export_html::write_native_session_html(&data, &id, output_path, self.env)
     }
 
+    fn persona(&mut self, command: &str, args: &str) -> Result<Value, String> {
+        let args = args.to_string();
+        let op = if command == "keepgoing" {
+            Op::KeepGoing { args }
+        } else {
+            Op::Persona { args }
+        };
+        Ok(self.op(op)?.unwrap_or_default())
+    }
+
     fn goal(&mut self, args: &str) -> Result<String, String> {
         let reply = self.op(Op::Goal { args: args.to_string() })?;
         Ok(reply
@@ -540,6 +556,7 @@ pub fn run(
     daemon::signals::set_handler(Arc::new(move |signal| {
         let exit = daemon::signals::exit_code(signal);
         code.store(exit, Ordering::SeqCst);
+        herdr::release_active();
         // Leaving RPC on a signal releases the session without aborting the running turn (as in TS): a busy worker
         // keeps its work running detached.
         let _ = end

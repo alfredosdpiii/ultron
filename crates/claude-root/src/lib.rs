@@ -13,6 +13,7 @@ pub mod control;
 pub mod external_lane;
 pub mod external_root;
 pub mod guide;
+pub mod herdr_hook;
 pub mod hooks;
 pub mod launcher;
 pub mod mcp_protocol;

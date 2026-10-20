@@ -49,12 +49,29 @@ pub enum ModeRequest {
     Set(bool),
 }
 
-/// `/persona`'s argument: `None` for a usage error, `Some(None)` to report, `Some(Some(on))` to write it.
-pub fn persona_arg(args: &str) -> Option<Option<bool>> {
+/// What `/persona <arg>` asks for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PersonaArg {
+    /// No argument: report the settings' persona.
+    Report,
+    /// `ultron` / `none`: write the global setting.
+    Global(bool),
+    /// `on` / `off` / `auto`: the session's own toggle.
+    Session(&'static str),
+}
+
+/// `/persona`'s usage line.
+pub const PERSONA_USAGE: &str = "Usage: /persona on|off|auto (this session) or ultron|none (the global setting)";
+
+/// `/persona`'s argument: `None` for a usage error.
+pub fn persona_arg(args: &str) -> Option<PersonaArg> {
     match args.trim().to_lowercase().as_str() {
-        "" => Some(None),
-        "ultron" | "on" => Some(Some(true)),
-        "off" | "none" => Some(Some(false)),
+        "" => Some(PersonaArg::Report),
+        "ultron" => Some(PersonaArg::Global(true)),
+        "none" => Some(PersonaArg::Global(false)),
+        "on" => Some(PersonaArg::Session("on")),
+        "off" => Some(PersonaArg::Session("off")),
+        "auto" => Some(PersonaArg::Session("auto")),
         _ => None,
     }
 }
@@ -63,7 +80,7 @@ pub fn persona_arg(args: &str) -> Option<Option<bool>> {
 pub fn persona_status(persona: Option<&str>) -> String {
     match persona {
         Some("ultron") => "Persona is ultron: personality.md is in the system prompt".into(),
-        Some(other) => format!("Persona \"{other}\" is not known, so it is off: /persona ultron|off"),
+        Some(other) => format!("Persona \"{other}\" is not known, so it is off: /persona ultron|none"),
         None => "Persona is off (/persona ultron turns it on)".into(),
     }
 }

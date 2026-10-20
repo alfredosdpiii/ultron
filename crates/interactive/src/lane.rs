@@ -501,6 +501,11 @@ pub trait LaneClient {
     fn read_mode(&self) {}
     /// Read the settings' persona for `/persona` ([`LaneEvent::Persona`]).
     fn read_persona(&self) {}
+    /// `/persona on|off|auto` and `/keepgoing [on|off]` (`command`: `persona` or `keepgoing`): the session's own
+    /// persona toggle and keep-going mode; the session's answer arrives as a [`LaneEvent::Status`].
+    fn session_persona(&self, command: &str, args: &str) {
+        let _ = (command, args);
+    }
     /// `/autoreview`: answered by [`LaneEvent::AutoreviewAccounts`] for [`AutoreviewRequest::Accounts`], else by a
     /// [`LaneEvent::Status`].
     fn autoreview(&self, request: AutoreviewRequest) {

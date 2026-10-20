@@ -116,6 +116,12 @@ impl ToolRoundNudger {
         self
     }
 
+    /// [`ToolRoundNudger::with_next_call`] on or off: off for an external root whose host wakes it (`ultron claude`'s
+    /// asyncRewake waiter).
+    pub fn set_next_call(&mut self, on: bool) {
+        self.next_call = on;
+    }
+
     /// One model turn of `run` ended with `tool_calls` calls while `running` root-started subagents or tasks run.
     pub fn turn_ended(&mut self, run: &str, tool_calls: usize, running: u64) -> Option<String> {
         if self.threshold == 0 {

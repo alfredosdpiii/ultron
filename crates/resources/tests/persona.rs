@@ -191,7 +191,12 @@ fn resources_system_prompt_persona_section_sits_after_the_context_files_and_befo
     let prompt = build_system_prompt(&options, None).unwrap();
     let (context, persona, skills) = (
         prompt.find("<project_context>").unwrap(),
-        prompt.find("<persona>\nYou are Ultron.\n</persona>").unwrap(),
+        prompt
+            .find(&format!(
+                "<persona>\nYou are Ultron.\n\n{}\n</persona>",
+                resources::persona::GUARDRAILS
+            ))
+            .unwrap(),
         prompt.find("<skills>").unwrap(),
     );
     assert!(context < persona && persona < skills, "{prompt}");

@@ -487,3 +487,55 @@ as `setTerminalTheme`, replayed on every attach; `theme="auto"` prefers it over 
 
 **Server.** A client attaching while the idle worker retires waits for it to exit and starts a new worker (the
 `radius_client` flake). `--help` lists every dispatched subcommand.
+
+## Per-session persona and keep-going mode (wave 43, W22K-)
+
+**Toggle.** Each session has its own persona state, the session value `ultron.module/persona`: `on`, `off` or `auto`
+(follow the `persona` setting). It survives a restart and is read by `session-core` and by `ultron claude`'s hooks
+(same session file). TUI: `/persona on|off|auto` sets it, `/persona ultron|none` writes the global setting, bare
+`/persona` reports as before; `/keepgoing [on|off]`. `-p`/rpc take the same slash prompts and the rpc commands
+`persona` and `keep_going` (none starts a turn). In `ultron claude` the prompt hook answers them by blocking the
+prompt with the new status, and a toggle that differs from the launch prompt's is told to the model once.
+
+**Phrase trigger** (`crates/resources/src/keep_going.rs`, cases in `crates/resources/fixtures/keep-going-phrases.json`).
+"keep going", "don't stop until you finish", "I'm going to sleep", "work through the night" and similar, addressed
+to the agent, turn the persona on and start keep-going, with a one-line `keep-going on: ...` notice. "stop the
+server", "don't stop the process" and "the loop keeps going forever" do not match.
+
+**Keep-going.** After a turn that did work (an `rlm` call; in `ultron claude`, growth of the transcript's `tool_use`
+count) the agent is told to continue, with no 5-nudge cap; a turn ending in a question gets "the user is away:
+decide, record the choice and the alternative, keep going". It ends on a turn with no `rlm` call (the final
+report), user input without the phrase, an abort or failure, `/keepgoing off`, `/persona off`, or the ceiling of 100
+continues or 8 hours (one final nudge asks for the report; `ULTRON_KEEPGOING_MAX_CONTINUES` / `ULTRON_KEEPGOING_MAX_MS`
+override it). Mode and counters persist in the session, so a restart resumes them. Guardrails
+(`resources::persona::GUARDRAILS`) are appended to the persona section and repeated in every nudge: irreversible or
+outward actions are skipped and listed in the final report, and schedules start only when asked.
+
+## herdr agents panel (wave 43, W23H-)
+
+Ultron reports to herdr's socket when it runs in a herdr pane (`HERDR_ENV=1`, `HERDR_SOCKET_PATH`, `HERDR_PANE_ID`,
+read from the injected environment only); herdr-gpui shows the same entry. User doc: [docs/herdr.md](../herdr.md).
+The `crates/herdr` reporter is a background thread with a latest-state-wins queue, 0.5 s connect/write/read
+timeouts (connect through `SO_SNDTIMEO`), silent errors, idle/blocked held 300 ms so continuations stay `working`,
+and a release on drop, quit or signal. TUI: session, state (blocked when the answer ends with a question or the run
+failed on auth, model or usage limits), metadata "Ultron" with title, `model`, `ctx`, `cost`; resume command
+`ultron --session <id>` (`ultron-s` / `ultron-s --session <id>` for durable sessions). `-p`/json/rpc: state only.
+`ultron claude`: "Ultron (Claude)" from Ultron's hook server, resume `ultron claude --resume <id>`, Notification and
+SessionEnd hooks only inside herdr. Off with `"herdr": false` or `ULTRON_HERDR=0`; never from inside a kernel.
+`herdr agent start --kind` accepts only herdr's built-in kinds, so Ultron panes are started as plain commands.
+
+
+## `ultron claude`: always-on skills and waking the idle root (wave 43, W24-)
+
+**Always-on skills.** The launch prompt applies `alwaysSkills` as native Ultron does (`claude-root/src/guide.rs`
+`load_prompt_resources`): in engineering mode their text is in the prompt; otherwise they are listed only.
+
+**Waking.** Claude Code cannot be resumed by the MCP server after the model replied, so the interactive root is woken
+through a Claude Code `asyncRewake` hook: after every `rlm` call a `PostToolUse` hook (`ultron hook wait-events`,
+async, 24 h timeout) waits in the background on the hook server's `wait-events` control op. It returns when the
+root's turn has ended with runtime events waiting (the hook prints them to stderr and exits 2, which wakes the model
+with them), when nothing the root started is running (subagents, tasks, shell jobs, tool calls, events in the
+coalescing window) for 2 s, or when a newer waiter replaces it. `rlm.collect` never holds the turn. With the wake on
+(`--wake` to `ultron mcp`), the root's guide uses native wording ("end your turn; each end arrives as a `child_done`
+event") and the wait nudge drops "nothing wakes you". `-p`, `--no-hooks` and `ULTRON_GUIDE=ts` keep the next-call
+guide and add no hook (Claude Code ends async hooks with a print run).

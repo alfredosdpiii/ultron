@@ -131,6 +131,17 @@ impl ExternalRoot {
         self
     }
 
+    /// The host wakes the model when root work ends while it is idle (`ultron claude`'s wait-events hook): the wait
+    /// steer says so instead of "nothing wakes you".
+    pub fn waking(self) -> ExternalRoot {
+        self.nudgers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .0
+            .set_next_call(false);
+        self
+    }
+
     /// Loki's one-time setup note (`lokiNotice`): shown with the session context or the next user turn, once.
     pub fn with_loki_notice(self, notice: Option<String>) -> ExternalRoot {
         self.with_loki_setup(session_core::loki_notice::LokiNotice::known(

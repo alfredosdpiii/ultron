@@ -30,7 +30,7 @@ const fn c(name: &'static str, hint: &'static str, description: &'static str) ->
 /// Every command the TypeScript client TUI offers, in its order.
 /// The Rust-only commands, offered with the overlays ([`crate::qol::QolSettings::overlays`]); a parity build has
 /// exactly the client TUI's [`COMMANDS`].
-pub const QOL_COMMANDS: [CommandSpec; 4] = [
+pub const QOL_COMMANDS: [CommandSpec; 5] = [
     c(
         "mode",
         "[name]",
@@ -38,8 +38,13 @@ pub const QOL_COMMANDS: [CommandSpec; 4] = [
     ),
     c(
         "persona",
-        "[ultron|off]",
-        "The Ultron persona: personality.md in the system prompt, announced next steps continued",
+        "[on|off|auto|ultron|none]",
+        "The Ultron persona: on/off/auto for this session, ultron/none for the setting",
+    ),
+    c(
+        "keepgoing",
+        "[on|off]",
+        "Keep-going mode: continue every working turn until the work is done (while you are away)",
     ),
     c(
         "schedules",

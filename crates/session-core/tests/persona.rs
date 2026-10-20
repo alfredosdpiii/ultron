@@ -51,10 +51,14 @@ fn runtime(
     (runtime, settings_path)
 }
 
+/// The persona section's own text (the host's guardrails that close it are checked, then left out).
 fn section(prompt: &str) -> Option<String> {
     let start = prompt.find("<persona>\n")? + "<persona>\n".len();
     let end = prompt[start..].find("\n</persona>")?;
-    Some(prompt[start..start + end].to_string())
+    let text = &prompt[start..start + end];
+    let own = text.strip_suffix(&format!("\n\n{}", resources::persona::GUARDRAILS));
+    assert!(own.is_some(), "the persona section ends with the guardrails: {text}");
+    own.map(str::to_string)
 }
 
 #[test]

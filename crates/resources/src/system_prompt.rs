@@ -178,7 +178,7 @@ pub fn build_system_prompt_sections(options: &BuildOptions) -> Result<Sections, 
         set(&mut out, "project_context", parts.join("\n\n"));
     }
     if let Some(persona) = options.persona.as_deref().filter(|p| !p.is_empty()) {
-        set(&mut out, "persona", persona.to_string());
+        set(&mut out, "persona", crate::persona::section_text(persona));
     }
     let read_tool = ["read", "bash", "rlm"]
         .into_iter()

@@ -4,6 +4,7 @@
 pub mod context_files;
 pub mod frontmatter;
 pub mod ignore;
+pub mod keep_going;
 pub mod paths;
 pub mod persona;
 pub mod prompt_files;

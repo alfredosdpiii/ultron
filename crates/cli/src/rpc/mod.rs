@@ -114,6 +114,12 @@ pub trait RpcSession {
         let _ = args;
         Err("/goal is not available in this session".into())
     }
+    /// `/persona on|off|auto`, `/keepgoing on|off` (`command`: `persona` or `keepgoing`; empty `args` reports): the
+    /// session's persona toggle and keep-going mode (resources::keep_going); `{text, persona, effective, keepGoing}`.
+    fn persona(&mut self, command: &str, args: &str) -> Result<Value, String> {
+        let _ = (command, args);
+        Err("/persona is not available in this session".into())
+    }
     /// A read-only inspection request (`agents.status`, `rlm.frames`, ...) through the session's inspector.
     fn inspect(&mut self, request: &str, payload: Value) -> Result<Value, String>;
     /// Write the session's active branch as an HTML page; returns the path written.
@@ -216,6 +222,12 @@ fn run_command<S: RpcSession>(
             // `/goal ...` is the session goal's command, as in the TUI: answered with its text, never a turn.
             if let Some(args) = goal_arguments(&message) {
                 return done(Some(json!({"text": session.goal(args)?})));
+            }
+            // `/persona ...` and `/keepgoing ...` are the session's toggles, never a turn.
+            if let Some((command, args)) =
+                resources::keep_going::toggle_command(&message).filter(|_| message.trim_start().starts_with('/'))
+            {
+                return done(Some(session.persona(command, &args)?));
             }
             if session.is_running() {
                 let queue = match str_field("streamingBehavior") {
@@ -357,6 +369,11 @@ fn run_command<S: RpcSession>(
             let args = str_field("args").unwrap_or_default();
             done(Some(json!({"text": session.goal(args)?})))
         }
+        // Ultron extension: the session's persona toggle and keep-going mode (`args`: on|off|auto, empty reports).
+        "persona" => done(Some(session.persona("persona", str_field("args").unwrap_or_default())?)),
+        "keep_going" => done(Some(
+            session.persona("keepgoing", str_field("args").unwrap_or_default())?,
+        )),
         // Ultron extension: the read-only inspector behind /agents, /memory why, /skills why, /experiments.
         "inspect" => {
             let request = str_field("request").ok_or("inspect requires a request type")?;

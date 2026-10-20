@@ -129,6 +129,9 @@ impl LaneClient for Recorder {
     fn read_persona(&self) {
         self.push("read_persona".into());
     }
+    fn session_persona(&self, command: &str, args: &str) {
+        self.push(format!("session {command} {args}"));
+    }
     fn autoreview(&self, request: AutoreviewRequest) {
         self.push(match request {
             AutoreviewRequest::Status => "autoreview status".into(),
@@ -1751,7 +1754,8 @@ fn interactive_commands_autoreview_picks_the_account_to_review_as() {
     assert_eq!(calls(&c).len(), before);
 }
 
-/// `/persona [ultron|off]` (Rust-only, with the overlays): report the settings' persona, write it, usage.
+/// `/persona [on|off|auto|ultron|none]` (Rust-only, with the overlays): report the settings' persona, write the
+/// setting (`ultron`, `none`), or set the session's own toggle (`on`, `off`, `auto`); usage otherwise.
 #[test]
 fn interactive_commands_persona_reports_and_writes_the_setting() {
     let qol = interactive::qol::QolSettings {
@@ -1770,17 +1774,80 @@ fn interactive_commands_persona_reports_and_writes_the_setting() {
     completed(&mut app, "/persona ultron");
     assert_eq!(calls(&c).last().unwrap(), "setting persona=\"ultron\"");
     assert!(screen(&mut app).contains("Persona ultron on from the next message"));
-    submit(&mut app, "/persona OFF");
+    completed(&mut app, "/persona none");
     assert_eq!(calls(&c).last().unwrap(), "setting persona=null");
     assert!(screen(&mut app).contains("Persona off from the next message"));
+    // The session's own toggle goes to the session, which answers with a status line.
+    submit(&mut app, "/persona ON");
+    assert_eq!(calls(&c).last().unwrap(), "session persona on");
+    // An argument the completion list has exactly is accepted first, then submitted.
+    for (typed, call) in [
+        ("/persona off", "session persona off"),
+        ("/persona auto", "session persona auto"),
+    ] {
+        completed(&mut app, typed);
+        assert_eq!(calls(&c).last().unwrap(), call);
+    }
+    app.apply(LaneEvent::Status(
+        "Persona is off for this session; keep-going off".into(),
+    ));
+    assert!(screen(&mut app).contains("Persona is off for this session; keep-going off"));
     let before = calls(&c).len();
     submit(&mut app, "/persona jarvis");
-    assert!(screen(&mut app).contains("Usage: /persona ultron|off"));
+    assert!(
+        screen(&mut app).contains("Usage: /persona on|off|auto (this session) or ultron|none (the global setting)")
+    );
     assert_eq!(calls(&c).len(), before);
     // The parity build has exactly the client TUI's commands.
     let (mut parity, pc) = app_with(interactive::qol::QolSettings::parity(), vec![model("a", true)]);
     submit(&mut parity, "/persona ultron");
     assert!(screen(&mut parity).contains("Unknown slash command: /persona"));
+    assert!(calls(&pc).is_empty());
+}
+
+/// `/keepgoing [on|off]` (Rust-only, with the overlays) goes to the session; keep-going's nudges are one line each,
+/// `keep-going (n/max)`, the last one `keep-going: limit reached, final report`.
+#[test]
+fn interactive_commands_keepgoing_goes_to_the_session_and_its_nudges_are_one_line() {
+    let qol = interactive::qol::QolSettings {
+        overlays: true,
+        ..interactive::qol::QolSettings::parity()
+    };
+    let (mut tui, c) = app_with(qol, vec![model("a", true)]);
+    submit(&mut tui, "/keepgoing");
+    completed(&mut tui, "/keepgoing off");
+    submit(&mut tui, "/keepgoing ON");
+    assert_eq!(
+        calls(&c),
+        ["session keepgoing ", "session keepgoing off", "session keepgoing on"]
+    );
+    submit(&mut tui, "/keepgoing forever");
+    assert!(screen(&mut tui).contains("Usage: /keepgoing on|off"));
+    assert_eq!(calls(&c).len(), 3);
+    // The session's one-line notice when a prompt starts keep-going mode.
+    tui.apply(LaneEvent::Status(
+        "keep-going on: \"keep going\" (/keepgoing off ends it)".into(),
+    ));
+    assert!(screen(&mut tui).contains("keep-going on: \"keep going\""));
+    let nudge = |details: Value| {
+        json!({"role": "custom", "customType": "ultron.nudge", "display": true,
+               "content": "Keep going: the user is away and asked you to work until the task is done.",
+               "details": details, "timestamp": 1})
+    };
+    let (mut live, _) = app();
+    live.apply(LaneEvent::Message(nudge(
+        json!({"nudge": 7, "max": 100, "keepGoing": true, "final": false}),
+    )));
+    live.apply(LaneEvent::Message(nudge(
+        json!({"nudge": 101, "max": 100, "keepGoing": true, "final": true}),
+    )));
+    let s = screen(&mut live);
+    assert!(s.contains("keep-going (7/100)"), "{s}");
+    assert!(s.contains("keep-going: limit reached, final report"), "{s}");
+    assert!(!s.contains("the user is away") && !s.contains("auto-continue"), "{s}");
+    let (mut parity, pc) = app_with(interactive::qol::QolSettings::parity(), vec![model("a", true)]);
+    submit(&mut parity, "/keepgoing off");
+    assert!(screen(&mut parity).contains("Unknown slash command: /keepgoing"));
     assert!(calls(&pc).is_empty());
 }
 

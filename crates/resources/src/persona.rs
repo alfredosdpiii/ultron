@@ -21,6 +21,15 @@ pub const MAX_NUDGES: u32 = 5;
 /// What a nudge says.
 pub const NUDGE_TEXT: &str = "Continue: take that next step now. End the turn only when the work is done and verified, or when you need the user; then ask one direct question.";
 
+/// The host's rules that close the persona section, whatever personality.md says: outward or irreversible actions
+/// wait for the user (in keep-going mode they are skipped and listed), and schedules start only when asked.
+pub const GUARDRAILS: &str = "Ask the user before an irreversible or outward action (pushing, publishing, deploying, deleting data, sending messages, spending money); in keep-going mode, while the user is away, skip it and list it for the user in the final report instead of asking. Never start a schedule (schedule.every, schedule.at) unless the user asked for one.";
+
+/// The persona section's text: the persona's own text, then [`GUARDRAILS`].
+pub fn section_text(personality: &str) -> String {
+    format!("{personality}\n\n{GUARDRAILS}")
+}
+
 /// Whether the settings' `persona` is `ultron` (any other value, or none, is off).
 pub fn enabled(settings: &serde_json::Map<String, Value>) -> bool {
     settings.get(SETTING).and_then(Value::as_str) == Some(ULTRON)

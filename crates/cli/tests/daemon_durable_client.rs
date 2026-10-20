@@ -150,7 +150,8 @@ fn cli_durable_clients_attach_exit_and_leave_the_server_and_its_schedules_runnin
     assert_eq!(generations(&durable_dir(&home)), first);
     // The durable instance's sessions have the persona on by default (no setting says so).
     let requests = provider.requests.lock().unwrap().clone();
-    assert!(system_text(&requests[0]).contains(&format!("<persona>\n{PERSONALITY}\n</persona>")));
+    let section = resources::persona::section_text(PERSONALITY);
+    assert!(system_text(&requests[0]).contains(&format!("<persona>\n{section}\n</persona>")));
     assert!(
         !std::fs::read_to_string(home.agent().join("settings.json"))
             .unwrap()

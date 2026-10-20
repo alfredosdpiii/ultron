@@ -23,6 +23,17 @@ pub const NUDGE_CUSTOM_TYPE: &str = "ultron.nudge";
 /// What the chat shows for a nudge: `auto-continue (n/max)`.
 pub fn nudge_line(message: &Value) -> String {
     let details = &message["details"];
+    // Keep-going mode's nudges (resources::keep_going in the engine).
+    if details["keepGoing"] == true {
+        if details["final"] == true {
+            return "keep-going: limit reached, final report".into();
+        }
+        return format!(
+            "keep-going ({}/{})",
+            details["nudge"].as_u64().unwrap_or(1),
+            details["max"].as_u64().unwrap_or(100)
+        );
+    }
     format!(
         "auto-continue ({}/{})",
         details["nudge"].as_u64().unwrap_or(1),

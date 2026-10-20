@@ -106,6 +106,16 @@ pub fn run_home(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn W
     }
 }
 
+/// The command herdr runs to resume `session_id` opened through `ultron-s`: `ultron-s` for the home session, else
+/// `ultron-s --session <id>`.
+pub fn home_resume_argv(home: Option<&str>, session_id: &str) -> Vec<String> {
+    let mut argv = vec![HOME_COMMAND.to_string()];
+    if home != Some(session_id) {
+        argv.extend(["--session".to_string(), session_id.to_string()]);
+    }
+    argv
+}
+
 fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> Result<i32, String> {
     let (mut new, mut list, mut make_home, mut session) = (false, false, false, None::<String>);
     let mut rest = Vec::new();
@@ -165,6 +175,11 @@ fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Wri
             }
         },
     };
+    // herdr resumes the pane through `ultron-s` (the home session) or `ultron-s --session <id>`.
+    let current_home = home_session(&instance.dir);
+    crate::herdr_report::set_resume_override(move |session_id| {
+        Some(home_resume_argv(current_home.as_deref(), session_id))
+    });
     let mut client_args = vec!["--session-id".to_string(), id];
     client_args.extend(rest);
     let at_home = Env {
