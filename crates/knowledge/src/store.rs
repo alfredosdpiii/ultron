@@ -5,11 +5,11 @@ use std::time::Duration;
 
 use rusqlite::{Connection, OptionalExtension, params};
 
-use crate::extract::{Construct, Extracted, Symbol};
+use crate::extract::{Call, Construct, Extracted, Import, Symbol};
 
 /// The schema the kernel reader (`rlm/knowledge_api.py`) is written against. Bump it with every change to a table the
 /// reader uses, and teach the reader the new version in the same change.
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// Characters of a note's body kept.
 pub const NOTE_CHARS: usize = 2000;
@@ -28,9 +28,22 @@ CREATE TABLE IF NOT EXISTS constructs (
     PRIMARY KEY (blob, kind)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS constructs_kind ON constructs (kind, blob);
-CREATE TABLE IF NOT EXISTS symbols (blob TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, line INTEGER NOT NULL);
+-- Schema 4 added `end_line` and `parent` (the symbol whose definition contains it).
+CREATE TABLE IF NOT EXISTS symbols (
+    blob TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, line INTEGER NOT NULL, end_line INTEGER, parent TEXT
+);
 CREATE INDEX IF NOT EXISTS symbols_blob ON symbols (blob);
 CREATE INDEX IF NOT EXISTS symbols_name ON symbols (name);
+-- Schema 4. The graph a review queries (`knowledge_api.Knowledge.query`): call sites by the symbol they are made
+-- from, and the names each import brings in, unresolved.
+CREATE TABLE IF NOT EXISTS calls (
+    blob TEXT NOT NULL, caller TEXT, callee TEXT NOT NULL, receiver TEXT, line INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS calls_blob ON calls (blob);
+CREATE INDEX IF NOT EXISTS calls_callee ON calls (callee);
+CREATE TABLE IF NOT EXISTS imports (blob TEXT NOT NULL, module TEXT NOT NULL, name TEXT, line INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS imports_blob ON imports (blob);
+CREATE INDEX IF NOT EXISTS imports_module ON imports (module);
 -- A repository at one commit: its indexable paths and their blobs.
 CREATE TABLE IF NOT EXISTS trees (
     id INTEGER PRIMARY KEY, repo INTEGER NOT NULL, rev TEXT NOT NULL, indexed_at INTEGER NOT NULL,
@@ -76,6 +89,10 @@ pub struct Note {
     /// This reviewer reviewed the pull request and raised nothing at the comment's place: a miss to learn from.
     pub missed: bool,
 }
+
+/// The columns schema 4 added to `symbols`. A store of an earlier schema has its blobs read again anyway: they were
+/// read by an older extractor.
+const SYMBOL_COLUMNS_4: [(&str, &str); 2] = [("end_line", "INTEGER"), ("parent", "TEXT")];
 
 /// The columns schema 3 added to `notes`, for a store of schema 2.
 const NOTE_COLUMNS_3: [(&str, &str); 4] = [
@@ -146,22 +163,35 @@ impl Store {
                 )?;
             }
             Some(Ok(SCHEMA_VERSION)) => {}
-            // Schema 1 had no notes (the table was created above); schema 2's lack the rule columns.
-            Some(Ok(1 | 2)) => {
-                let mut statement = self.conn.prepare("SELECT name FROM pragma_table_info('notes')")?;
-                let have: Vec<String> = statement.query_map([], |row| row.get(0))?.collect::<Result<_, _>>()?;
-                for (column, definition) in NOTE_COLUMNS_3 {
-                    if !have.iter().any(|name| name == column) {
-                        self.conn
-                            .execute_batch(&format!("ALTER TABLE notes ADD COLUMN {column} {definition}"))?;
+            // Schema 1 had no notes (the table was created above); schema 2's lack the rule columns; schema 3's
+            // symbols lack their ranges and parents.
+            Some(Ok(old @ 1..=3)) => {
+                let columns = |table: &str| -> Result<Vec<String>, Error> {
+                    let mut statement = self
+                        .conn
+                        .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))?;
+                    let names = statement.query_map([], |row| row.get(0))?.collect::<Result<_, _>>()?;
+                    Ok(names)
+                };
+                let add = |table: &str, have: &[String], wanted: &[(&str, &str)]| -> Result<(), Error> {
+                    for (column, definition) in wanted {
+                        if !have.iter().any(|name| name == column) {
+                            self.conn
+                                .execute_batch(&format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"))?;
+                        }
                     }
+                    Ok(())
+                };
+                add("notes", &columns("notes")?, &NOTE_COLUMNS_3)?;
+                add("symbols", &columns("symbols")?, &SYMBOL_COLUMNS_4)?;
+                if old <= 2 {
+                    // Schema 2 counted an outdated thread as addressed: which of its addressed notes were resolved
+                    // is unknown, so none is a rule until the backfill, run again, reads the recent ones' threads.
+                    self.conn
+                        .execute("UPDATE notes SET state = 'outdated' WHERE state = 'addressed'", [])?;
+                    self.conn
+                        .execute("DELETE FROM meta WHERE key LIKE 'notes_backfilled:%'", [])?;
                 }
-                // Schema 2 counted an outdated thread as addressed: which of its addressed notes were resolved is
-                // unknown, so none is a rule until the backfill, run again, reads the recent ones' threads.
-                self.conn
-                    .execute("UPDATE notes SET state = 'outdated' WHERE state = 'addressed'", [])?;
-                self.conn
-                    .execute("DELETE FROM meta WHERE key LIKE 'notes_backfilled:%'", [])?;
                 self.conn.execute(
                     "UPDATE meta SET value = ?1 WHERE key = 'schema_version'",
                     params![SCHEMA_VERSION.to_string()],
@@ -223,19 +253,48 @@ impl Store {
             )?;
             let mut clear_constructs = tx.prepare_cached("DELETE FROM constructs WHERE blob = ?1")?;
             let mut clear_symbols = tx.prepare_cached("DELETE FROM symbols WHERE blob = ?1")?;
+            let mut clear_calls = tx.prepare_cached("DELETE FROM calls WHERE blob = ?1")?;
+            let mut clear_imports = tx.prepare_cached("DELETE FROM imports WHERE blob = ?1")?;
             let mut construct_row =
                 tx.prepare_cached("INSERT INTO constructs (blob, kind, line, count) VALUES (?1, ?2, ?3, ?4)")?;
-            let mut symbol_row =
-                tx.prepare_cached("INSERT INTO symbols (blob, name, kind, line) VALUES (?1, ?2, ?3, ?4)")?;
+            let mut symbol_row = tx.prepare_cached(
+                "INSERT INTO symbols (blob, name, kind, line, end_line, parent) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            )?;
+            let mut call_row = tx.prepare_cached(
+                "INSERT INTO calls (blob, caller, callee, receiver, line) VALUES (?1, ?2, ?3, ?4, ?5)",
+            )?;
+            let mut import_row =
+                tx.prepare_cached("INSERT INTO imports (blob, module, name, line) VALUES (?1, ?2, ?3, ?4)")?;
             for (oid, lang, extracted) in blobs {
                 blob_row.execute(params![oid, lang, version])?;
                 clear_constructs.execute(params![oid])?;
                 clear_symbols.execute(params![oid])?;
+                clear_calls.execute(params![oid])?;
+                clear_imports.execute(params![oid])?;
                 for Construct { kind, line, count } in &extracted.constructs {
                     construct_row.execute(params![oid, kind, line, count])?;
                 }
-                for Symbol { name, kind, line } in &extracted.symbols {
-                    symbol_row.execute(params![oid, name, kind, line])?;
+                for Symbol {
+                    name,
+                    kind,
+                    line,
+                    end_line,
+                    parent,
+                } in &extracted.symbols
+                {
+                    symbol_row.execute(params![oid, name, kind, line, end_line, parent])?;
+                }
+                for Call {
+                    caller,
+                    callee,
+                    receiver,
+                    line,
+                } in &extracted.calls
+                {
+                    call_row.execute(params![oid, caller, callee, receiver, line])?;
+                }
+                for Import { module, name, line } in &extracted.imports {
+                    import_row.execute(params![oid, module, name, line])?;
                 }
             }
         }
@@ -275,6 +334,8 @@ impl Store {
             tx.execute_batch(
                 "DELETE FROM constructs WHERE blob NOT IN (SELECT blob FROM entries);
                  DELETE FROM symbols WHERE blob NOT IN (SELECT blob FROM entries);
+                 DELETE FROM calls WHERE blob NOT IN (SELECT blob FROM entries);
+                 DELETE FROM imports WHERE blob NOT IN (SELECT blob FROM entries);
                  DELETE FROM blobs WHERE oid NOT IN (SELECT blob FROM entries);",
             )?;
         }

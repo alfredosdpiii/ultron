@@ -403,12 +403,21 @@ DEEP_NOTES_REQUESTS = """
   {{"rules_for": {{"path": "..."}}}}   rules R<n> from addressed comments on it and like files; put ids used in "rules" of a finding"""
 
 
-def deep_task(lens: str, tests: bool = False, notes: bool = False) -> str:
+#: The graph query, listed only when the host indexed the repository.
+DEEP_GRAPH_REQUESTS = """
+  {{"graph": {{"sql": "SELECT ..."}}}}   one read-only SQLite query over the whole repository's code graph at the
+    reviewed commit, 30 rows: {schema}. Use it for what no single lookup answers: every caller of a name in the
+    repository, the routes that lack a guard the others have, the files that import a changed module"""
+
+
+def deep_task(lens: str, tests: bool = False, notes: bool = False, graph: str = "") -> str:
     """The instructions of one investigator; with `tests`, the host also serves test executions; with `notes`,
-    the review-notes lookups."""
+    the review-notes lookups; with `graph` (the views, as `knowledge_api.GRAPH_SCHEMA` tells them), graph
+    queries."""
     rules = DEEP_RULES.format(
         executes=", and you run nothing yourself" if tests else " and nothing is executed",
-        notes_requests=DEEP_NOTES_REQUESTS.format() if notes else "",
+        notes_requests=(DEEP_NOTES_REQUESTS.format() if notes else "")
+        + (DEEP_GRAPH_REQUESTS.format(schema=graph) if graph else ""),
         finding_rules=FINDING_RULES,
         test_requests=DEEP_TEST_REQUESTS if tests else "",
         test_evidence=DEEP_TEST_EVIDENCE if tests else "")

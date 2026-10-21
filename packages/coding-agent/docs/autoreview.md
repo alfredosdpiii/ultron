@@ -774,7 +774,8 @@ per review and the investigators a third of what they return at `high`. Do not l
 Every repository the reviewer checks out is indexed into one SQLite store, `~/.ultron/agent/knowledge/graph.db`:
 for each file (by git blob, so a later commit reads only what changed), the constructs it is made of
 (`sql:trigger:before-update`, `sql:rls-enable`, `ts:decorator:Controller`, `ts:call:runWithBypass`,
-`py:import:sqlalchemy`) and the symbols it defines. The deep pass reads it:
+`py:import:sqlalchemy`), the symbols it defines with their line ranges and the symbol containing each, its calls
+with the symbol each is made from, and its imports with the names they bring in. The deep pass reads it:
 
 - The investigation brief lists, beside each changed file, the files most like it: the same language, sharing its
   rarest constructs (weighted by how rare each is in the repository). Names are not similarity: every Prisma
@@ -783,11 +784,19 @@ for each file (by git blob, so a later commit reads only what changed), the cons
 - Investigators may ask `review_notes` (what reviewers said about a file in earlier pull requests, and whether it
   was addressed) and `rules_for` (the rules for a file: below). They are lookups, never prompt text: the
   investigator asks when it wants them.
+- Investigators may query the graph of the whole repository at the reviewed commit in SQL (`graph`), as
+  CodexGraph's agent queries its code graph database (arXiv 2408.03910): every caller of a name, the routes
+  that lack a guard the others have, the files that import a changed module. The other lookups reach only what
+  the change touches. A query reads five views of that commit, `files`, `symbols`, `calls`, `imports` (with the
+  repository file each names) and `constructs`, and nothing else: no other revision, no review notes, no writes.
+  It returns at most 30 rows within 5 seconds, and an error comes back with the views so the investigator can fix
+  its query in the next round. Each investigator's record counts its queries (`graph`).
 
 The notes are the review threads of the repository's closed pull requests, by every reviewer (people and bots):
 recorded when a reviewed pull request closes, and, the first time a repository is indexed (and once after an
-upgrade of the store), from its 50 most recently closed pull requests. A thread is *addressed* when it was resolved. One that only a later commit changed
-(GitHub's "outdated") is not: the change may have ignored the comment as well as fixed it.
+upgrade of the store), from its 50 most recently closed pull requests. A thread is *addressed* when it was
+resolved. One that only a later commit changed (GitHub's "outdated") is not: the change may have ignored the
+comment as well as fixed it.
 `autoreview.learn: false` turns the notes off with the rest of the learning.
 
 ### Rules: how the reviewer learns from what people catch
@@ -836,7 +845,7 @@ writes the file and runs those commands for you, and `/autoreview off` stops the
 | `~/.ultron/agent/autoreview/logs/` | One log file per day (removed after 14 days). |
 | `~/.ultron/agent/autoreview/dry-run/` | Would-be reviews (`--dry-run`; removed after 14 days). |
 | `~/.ultron/agent/autoreview/reviews/` | One record per posted review (what the deep pass was shown, its frames and investigators, what was dropped, the posted plan); the newest 200 are kept. |
-| `~/.ultron/agent/knowledge/graph.db` | The knowledge graph: constructs and symbols per file of every reviewed repository (its newest 50 revisions), and the review notes of its closed pull requests. |
+| `~/.ultron/agent/knowledge/graph.db` | The knowledge graph: constructs, symbols, calls and imports per file of every reviewed repository (its newest 50 revisions), and the review notes of its closed pull requests. |
 | `~/.ultron/agent/autoreview/sessions/` | Frame traces of the engine (kept seven days). |
 | `~/.cache/ultron-autoreview/<host>/<owner>/<repo>.git` | Cached blob-less clones; a worktree per review under `worktrees/`, removed afterwards. |
 

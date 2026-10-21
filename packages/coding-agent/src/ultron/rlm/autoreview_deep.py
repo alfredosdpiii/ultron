@@ -47,7 +47,7 @@ from review_api import (
     skip_reason,
 )
 import autoreview_reference as reference_module
-from knowledge_api import Knowledge, construct_label
+from knowledge_api import GRAPH_SCHEMA, Knowledge, QueryError, construct_label
 import autoreview_tests as testing
 from review_prompts import DEEP_LENSES, DEEP_NUDGE, DEEP_SHAPE_NUDGE, DEEP_SHAPES_HEADER, DEEP_TRACE_NUDGE, deep_task
 
@@ -155,6 +155,11 @@ class Repo:
         self.knowledge: dict[str, Any] | None = None
         #: The ids of the rules `rules_for` served in this review: a finding may cite only those.
         self.served_rules: set[int] = set()
+        #: The knowledge store at this commit ({"db", "repo", "rev"}), when the host indexed it: the graph queries
+        #: read it, and are offered only then.
+        self.graph: dict[str, Any] | None = None
+        #: Graph queries served in this review, for the record.
+        self.graph_queries = 0
 
     def _git(self, *args: str) -> tuple[int, str, str]:
         if not args or args[0] not in ALLOWED_GIT:
@@ -273,7 +278,8 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
     the closed set: five read-only lookups and, when the review may run tests, two sandboxed test executions."""
     if not isinstance(request, dict) or len(request) != 1:
         raise Rejected("a request is an object with exactly one of read, grep, list, definition, references, "
-                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe, review_notes, rules_for")
+                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe, review_notes, rules_for, "
+                       "graph")
     kind, args = next(iter(request.items()))
     if not isinstance(args, dict):
         raise Rejected(f"{kind} takes an object")
@@ -405,6 +411,8 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
         return _serve_notes(repo, kind, args)
     if kind == "rules_for":
         return _serve_rules(repo, args)
+    if kind == "graph":
+        return _serve_graph(repo, args)
     if kind in ("run_tests", "mutation_check"):
         if tests is None:
             raise Rejected("tests are not run in this review")
@@ -417,7 +425,7 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
             raise Rejected(str(error)) from None
         return f"test run {record['n']}", testing.summarize(record)
     raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition, references, history, blame_range, "
-                   "pickaxe, review_notes or rules_for")
+                   "pickaxe, review_notes, rules_for or graph")
 
 
 #: Review notes shown per request, and the characters of each.
@@ -476,6 +484,29 @@ def _serve_rules(repo: Repo, args: dict[str, Any]) -> tuple[str, str]:
                      f"{' [' + '; '.join(record) + ']' if record else ''}: {_text(note.body, NOTE_CHARS)}")
     title = f"rules_for {path} -> {len(lines)} rule{'' if len(lines) == 1 else 's'}"
     return title, "\n".join(lines) or "no rule learned for this file or the files like it"
+
+
+def _serve_graph(repo: Repo, args: dict[str, Any]) -> tuple[str, str]:
+    """One read-only SQL query over the repository's code graph at the reviewed commit
+    (`knowledge_api.Knowledge.query`), as a table; an error is a rejection the investigator fixes its query from."""
+    spec = repo.graph or {}
+    knowledge = Knowledge.open(spec.get("db"), spec.get("repo"), spec.get("rev"))
+    if knowledge is None:
+        raise Rejected("no code graph is available for this repository")
+    sql = args.get("sql")
+    try:
+        columns, rows, more = knowledge.query(sql)
+    except QueryError as error:
+        raise Rejected(f"the query failed: {error}") from None
+    finally:
+        knowledge.close()
+    repo.graph_queries += 1
+    shown = " ".join(str(sql).split())
+    title = f"graph {_clip(shown, 120)} -> {len(rows)} row{'' if len(rows) == 1 else 's'}" + (
+        " (more not shown: narrow it or aggregate)" if more else "")
+    body = "\n".join([" | ".join(columns)] + [" | ".join("" if value is None else str(value) for value in row)
+                                                for row in rows])
+    return title, body if rows else f"{' | '.join(columns)}\n(no rows)"
 
 
 def _int(value: Any, default: int) -> int:
@@ -1034,7 +1065,8 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
     new results in full and a one-line ledger of the earlier ones (ids), which `{"recall": {"id": "r1.2"}}`
     re-reads in full. `leads_view`, when given, is the fast pass's leads as a view, awaited before the second round
     (the first round runs beside the fast pass)."""
-    task = deep_task(lens, tests is not None, notes=repo.knowledge is not None)
+    task = deep_task(lens, tests is not None, notes=repo.knowledge is not None,
+                     graph=GRAPH_SCHEMA if repo.graph is not None else "")
     began = clock()
     leads_views: list[str] = []
     #: The latest round's results and the nudges (sent in full), the ledger of earlier results, and their text.
@@ -1042,7 +1074,7 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
     ledger: list[str] = []
     store: dict[str, str] = {}
     reply: dict[str, Any] = {}
-    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "status": "done",
+    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "graph": 0, "status": "done",
                               "nudged": False, "untraced": [], "unchecked": []}
     required = list(required or [])
     shapes = list(shapes or [])
@@ -1099,6 +1131,8 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         requests = [request for request in requests if not (isinstance(request, dict) and "recall" in request)]
         for request in requests[:MAX_REQUESTS]:
             if isinstance(request, dict):
+                # Graph queries asked, served or not: whether investigators use the graph.
+                record["graph"] += int("graph" in request)
                 for args in request.values():
                     if isinstance(args, dict):
                         asked += [str(args[key]) for key in ("symbol", "pattern", "string") if isinstance(args.get(key), str)]

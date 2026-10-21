@@ -1486,6 +1486,9 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
             # The review-notes lookups are offered when there are notes to read.
             if knowledge is not None and knowledge.has_notes():
                 repo_at.knowledge = stored
+            # The graph query is offered whenever the host indexed the reviewed commit.
+            if knowledge is not None:
+                repo_at.graph = stored
             brief_at = deep.build_brief(repo_at, scope.files, scope.read_file, title=_bounded(context.get("title"), TITLE_CHARS),
                                         description=_bounded(context.get("description"), DESCRIPTION_CHARS),
                                         base=(str(spec.get("base")) if spec.get("repoDir") else spec.get("baseSha")) or None,
