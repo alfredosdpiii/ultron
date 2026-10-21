@@ -1129,12 +1129,12 @@ describe("reviewing a pull request", () => {
 			ci: "1 passed, 1 failed (test)",
 			comments: [{ author: "bob", path: "calc.py", line: 5, body: "price may be missing" }],
 		});
-		// No token cap or frame timeout unless configured; a 45-minute deadline.
+		// No token cap, deadline or frame timeout unless configured.
 		expect(spec).toMatchObject({
 			concurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 2700,
+			deadlineSeconds: 0,
 			frameTimeoutSeconds: 0,
 		});
 		expect(spec.budget).toBeUndefined();
@@ -2366,7 +2366,7 @@ describe("the command", () => {
 			frameConcurrency: 8,
 			thinking: "low",
 			verifyThinking: "low",
-			deadlineSeconds: 2700,
+			deadlineSeconds: 0,
 			frameTimeoutSeconds: 0,
 			dryRun: false,
 			ack: true,

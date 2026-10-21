@@ -37,7 +37,7 @@
     "mise": true,
     "checkoutRoots": [],
     "guides": [],
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0,
     "dryRun": false,
     "ack": true,
@@ -86,7 +86,7 @@
     "overlap": false,
     "testRuns": 6,
     "testTimeoutSeconds": 300,
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0
    },
    "eligible": [
@@ -143,7 +143,7 @@
     "mise": true,
     "checkoutRoots": [],
     "guides": [],
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0,
     "dryRun": false,
     "ack": true,
@@ -197,7 +197,7 @@
     "overlap": false,
     "testRuns": 6,
     "testTimeoutSeconds": 300,
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0
    },
    "eligible": [
@@ -567,7 +567,7 @@
      "g.md"
     ],
     "testImage": "img",
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0,
     "dryRun": true,
     "ack": false,
@@ -606,7 +606,7 @@
     "testRuns": 6,
     "testTimeoutSeconds": 300,
     "testImage": "img",
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0
    },
    "eligible": [
@@ -774,7 +774,7 @@
     "mise": true,
     "checkoutRoots": [],
     "guides": [],
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0,
     "dryRun": false,
     "ack": true,
@@ -828,7 +828,7 @@
     "overlap": false,
     "testRuns": 6,
     "testTimeoutSeconds": 300,
-    "deadlineSeconds": 2700,
+    "deadlineSeconds": 0,
     "frameTimeoutSeconds": 0
    },
    "eligible": [

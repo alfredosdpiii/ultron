@@ -96,12 +96,12 @@ fn review_github_a_requested_review_acknowledges_then_posts_one_atomic_review() 
         json!({ "title": "Tweak total", "description": "Sums prices.", "ci": "1 passed, 1 failed (test)",
             "comments": [{ "author": "bob", "body": "price may be missing", "path": "calc.py", "line": 5 }] })
     );
-    // No token cap or frame timeout unless configured; a 45-minute deadline.
+    // No token cap, deadline or frame timeout unless configured.
     for (key, value) in [
         ("concurrency", json!(8)),
         ("thinking", json!("low")),
         ("verifyThinking", json!("low")),
-        ("deadlineSeconds", json!(2700)),
+        ("deadlineSeconds", json!(0)),
         ("frameTimeoutSeconds", json!(0)),
     ] {
         assert_eq!(spec[key], value, "{key}");

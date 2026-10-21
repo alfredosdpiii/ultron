@@ -172,7 +172,7 @@ reviewed.
 | `autoreview.thinking` | `"low"` (`high` for the recommended model) | Thinking level of the finder frames (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). Every thinking default is per model: see "Recommended models". |
 | `autoreview.verifyThinking` | `"low"` (`high` for the recommended model) | Thinking level of the verifier frames. |
 | `autoreview.frameConcurrency` | `8` | Model requests of one review in flight at once, finder and verifier frames alike (maximum 16). Lower it if your provider rate-limits; `autoreview.modelConcurrency` sets a limit per model. |
-| `autoreview.deadlineSeconds` | `2700` | How long one review may take (minimum 30); `0` waits for every finder and verifier frame. See below. |
+| `autoreview.deadlineSeconds` | `0` (none) | Optional limit on how long one review may take (minimum 30). Unset or `0`, the review waits for every finder and verifier frame. See below. |
 | `autoreview.frameTimeoutSeconds` | `0` (none) | Optional limit on how long one frame may take before it is retried or given up (minimum 10). |
 | `autoreview.dryRun` | `false` | Write would-be reviews to `autoreview/dry-run/` instead of posting. |
 | `autoreview.ack` | `true` | Post the acknowledgement comment. |
@@ -732,12 +732,12 @@ per review and the investigators a third of what they return at `high`. Do not l
   `reset_seconds`), before the pass is listed as not checked. A model the provider throttles has its in-flight limit
   halved for the rest of the review (`autoreview.modelConcurrency` sets the limits), and the review says so under
   "Not checked" when frames were lost to it.
-- By default there is no token cap and no per-frame timeout, and a 45-minute deadline (without one, cherry-pick
-  pull requests with hundreds of findings took 4 to 8 hours). The limits:
+- By default there is no token cap, no per-frame timeout and no deadline: the review waits for every finder and
+  verifier frame and posts when all are done. Each limit is opt-in:
   - `autoreview.budget` (or `--budget`): the cap counts what was really spent plus a bounded grant for each request
     in flight; a pass is refused only when that leaves no room for it.
   - `autoreview.frameTimeoutSeconds`: a frame that takes longer is retried, then given up.
-  - `autoreview.deadlineSeconds` (or `--deadline`; `0` for none): at three quarters of it unfinished finder passes are given up;
+  - `autoreview.deadlineSeconds` (or `--deadline`): at three quarters of it unfinished finder passes are given up;
     what was found is verified in the time left; the review is posted as incomplete (so never an approval) with
     the unfinished passes listed under "Not checked".
 - With `--json`, `timing.frames` lists every frame: `{phase, reviewer, ms, status, retries, model, error}`, and

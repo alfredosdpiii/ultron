@@ -124,12 +124,8 @@ export type ReferenceView = "investigators" | "all" | "none";
  * what it finds; the reference's lookups and structural findings do not depend on this setting.
  */
 export const DEFAULT_REFERENCE_VIEW: ReferenceView = "investigators";
-/**
- * What was found by the deadline is verified and posted; 0 turns it off (the review waits for every frame). 45
- * minutes, as the team's other automated reviewer: without one, cherry-pick pull requests with hundreds of findings
- * took 4 to 8 hours (fisher-ki-saas#2945, #2951) while the median review took 8.5 minutes.
- */
-export const DEFAULT_DEADLINE_SECONDS = 2700;
+/** 0: no deadline, the review waits for every frame. With one, what was found by then is verified and posted. */
+export const DEFAULT_DEADLINE_SECONDS = 0;
 export const MIN_DEADLINE_SECONDS = 30;
 /** 0: no per-frame timeout from the pipeline. */
 export const DEFAULT_FRAME_TIMEOUT_SECONDS = 0;
