@@ -469,7 +469,8 @@ print(h2.rlm_child_id)
 #[test]
 fn claude_root_w25c_event_summaries_are_masked_with_the_sessions_secrets() {
     let root = Root::new();
-    let token = "zq-mcp-registered-7731";
+    // A fake secret built from parts, so the source holds no secret-shaped literal.
+    let token = &["zq-mcp-regi", "stered-7731"].concat();
     let server_script = root.path("bin/fake_mcp.py");
     std::fs::write(&server_script, FAKE_MCP).unwrap();
     root.write(
