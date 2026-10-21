@@ -406,7 +406,7 @@ fn lane_snapshot_path(config: &Arc<Config>, session_id: &str) -> delegation::lan
 }
 
 /// The runtime guide's view of the `mcp` gateway: the tool and its servers when `mcp.json` names any.
-fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideOptions {
+pub fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideOptions {
     let tool = config.mcp_gateway().tool();
     resources::runtime_guide::RuntimeGuideOptions {
         mcp_servers: tool
@@ -425,6 +425,18 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
         // The session runtime serves `rlm.ask`, `swarm`, `board`, `notes` (swarm_ops.rs) and typed memory: the model
         // is told, unless `ULTRON_GUIDE=ts` asks for the TypeScript guide (the TS-recorded request replays use it).
         durable_apis: (config.var)("ULTRON_GUIDE").as_deref() != Some("ts"),
+        // The root is woken by its work's ends only with completion events on (crate::wake); with them off it is
+        // told to wait (`ULTRON_ASYNC_EVENTS=off`).
+        delivery: if config.async_events {
+            resources::runtime_guide::EventDelivery::Wake
+        } else {
+            resources::runtime_guide::EventDelivery::Off
+        },
+        // The woken root's rlm.collect never waits (crate::wake); TypeScript's guide (`ULTRON_GUIDE=ts`, its
+        // recorded replays) keeps its wording.
+        host_waits: (config.var)("ULTRON_GUIDE").as_deref() != Some("ts"),
+        // Cell results end with `[hint:<tag>]` lines under `ULTRON_HINTS=on`: the guide says what to do with them.
+        hints: kernel_apis::cell_hints::hints_enabled((config.var)("ULTRON_HINTS").as_deref()),
         ..Default::default()
     }
 }
@@ -436,10 +448,15 @@ fn mcp_runtime_guide(config: &Config) -> resources::runtime_guide::RuntimeGuideO
 pub struct SystemPrompt(Arc<PromptState>);
 
 type RenderPrompt = dyn Fn(&crate::lane::PromptMode) -> Result<(String, Vec<String>), String> + Send + Sync;
+type RenderChildPrompt = dyn Fn(&crate::lane::PromptMode, bool) -> Result<String, String> + Send + Sync;
 
 struct PromptState {
     /// `None`: a fixed prompt.
     render: Option<Box<RenderPrompt>>,
+    /// A subagent's prompt (`true`: an in-memory child, without the durable runtime's APIs); `None`: as the root's.
+    render_child: Option<Box<RenderChildPrompt>>,
+    /// The subagent prompt last rendered, by mode and in-memory flag.
+    child: Mutex<Option<(crate::lane::PromptMode, bool, String)>>,
     mode: Box<dyn Fn() -> crate::lane::PromptMode + Send + Sync>,
     current: Mutex<(crate::lane::PromptMode, String, Vec<String>)>,
     /// The session's own persona toggle over the settings' (resources::keep_going): `None` follows the settings.
@@ -451,6 +468,8 @@ impl SystemPrompt {
     pub fn fixed(text: impl Into<String>) -> SystemPrompt {
         SystemPrompt(Arc::new(PromptState {
             render: None,
+            render_child: None,
+            child: Mutex::new(None),
             mode: Box::new(crate::lane::PromptMode::default),
             current: Mutex::new((Default::default(), text.into(), Vec::new())),
             persona: Mutex::new(None),
@@ -478,6 +497,8 @@ impl SystemPrompt {
             }
         };
         let (env, loki_root) = (env.clone(), config.loki_root.clone());
+        let (child_env, child_loki, child_extra) = (env.clone(), loki_root.clone(), extra.clone());
+        let child_guide = guide.clone();
         let render = move |mode: &crate::lane::PromptMode| {
             crate::lane::system_prompt_with_resources(
                 &env,
@@ -488,10 +509,29 @@ impl SystemPrompt {
                 &extra,
             )
         };
+        // A subagent's guide (crate::wake): it awaits what its answer needs, has no `schedule`, and an in-memory
+        // child has no persistent children, `swarm`, `board` or `notes`.
+        let render_child = move |mode: &crate::lane::PromptMode, memory: bool| {
+            let guide = resources::runtime_guide::RuntimeGuideOptions {
+                reader: resources::runtime_guide::GuideReader::Subagent { swarm: !memory },
+                ..child_guide.clone()
+            };
+            crate::lane::system_prompt_with_resources(
+                &child_env,
+                &child_env.cwd.display().to_string(),
+                child_loki.as_deref(),
+                &guide,
+                mode,
+                &child_extra,
+            )
+            .map(|(text, _)| text)
+        };
         let initial = mode();
         let (text, warnings) = render(&initial)?;
         Ok(SystemPrompt(Arc::new(PromptState {
             render: Some(Box::new(render)),
+            render_child: Some(Box::new(render_child)),
+            child: Mutex::new(None),
             mode: Box::new(mode),
             current: Mutex::new((initial, text, warnings)),
             persona: Mutex::new(None),
@@ -515,6 +555,36 @@ impl SystemPrompt {
             *current = (mode, text, warnings);
         }
         current.1.clone()
+    }
+
+    /// A subagent's prompt in the settings' current mode (`memory`: an in-memory child): the root's, with the
+    /// subagent's runtime guide. A fixed prompt is the same for every lane.
+    pub fn child_current(&self, memory: bool) -> String {
+        let state = &self.0;
+        let Some(render) = &state.render_child else {
+            return self.current();
+        };
+        let mut mode = (state.mode)();
+        if let Some(persona) = *lock(&state.persona) {
+            mode.persona = persona;
+        }
+        let mut child = lock(&state.child);
+        if let Some((cached, flag, text)) = &*child
+            && *cached == mode
+            && *flag == memory
+        {
+            return text.clone();
+        }
+        match render(&mode, memory) {
+            Ok(text) => {
+                *child = Some((mode, memory, text.clone()));
+                text
+            }
+            Err(_) => {
+                drop(child);
+                self.current()
+            }
+        }
     }
 
     /// The session's persona toggle (`None`: follow the settings), applied from the next request.
@@ -559,6 +629,10 @@ impl Runtime {
             env,
             config::settings::SettingsManager::create(&env.cwd, &config.agent_dir, trusted),
         );
+        // `--skill <path>`: after the discovered skills (resource-loader.ts `additionalSkillPaths`).
+        resolved
+            .skill_paths
+            .extend(services.session.skill_paths.iter().cloned());
         if let Some(appends) = &services.session.append_system_prompt {
             // `--append-system-prompt` replaces a discovered APPEND_SYSTEM.md (resource-loader.ts).
             resolved.append_system_prompt = appends.clone();
@@ -807,6 +881,11 @@ impl Runtime {
         };
         let mut built: Result<(), String> = Ok(());
         let (schedules_store, goal_store) = (modules("schedules"), modules("goal"));
+        // Which lanes the host wakes (crate::wake): none until the root's composer says so.
+        let wake = crate::wake::RootWake::default();
+        let hints_wake = wake.clone();
+        cell_hints.set_lane_woken(Arc::new(move |lane: &str| hints_wake.woken(lane)));
+        let memory_children_on = memory_children.is_some();
         let stack = Arc::new_cyclic(|me: &Weak<Stack>| {
             let runner_stack = me.clone();
             let (store, inner, agent_stores) = match subagents.take() {
@@ -867,9 +946,10 @@ impl Runtime {
             if let Some(store) = store {
                 options.store = store;
             }
-            // A cell never waits for subagents: rlm.collect returns what has ended, and the host waits between
-            // turns, delivering each end as a child_done event.
-            options.collect = CollectMode::Host;
+            // Per lane (crate::wake): a woken root's cell never waits for subagents (rlm.collect returns what has
+            // ended, and the host waits between turns, delivering each end as a child_done event); every other
+            // lane waits in its cell.
+            options.collect = CollectMode::InCell;
             options.spawn_depth = config.spawn_depth;
             options.session_id = session_id.clone();
             options.workspace = Some(config.cwd.clone());
@@ -879,6 +959,8 @@ impl Runtime {
                 (config.var)(delegation::worktrees::KEEP_WORKTREES_ENV).as_deref(),
             );
             let (delegation, child_ends) = Delegation::new(options);
+            let lane_wake = wake.clone();
+            delegation.set_lane_collect(Arc::new(move |lane: &str| lane_wake.collect_mode(lane)));
             // Read per spawn, as session-worker.ts passes them: `rlm.childModel` (/settings -> Models) and the
             // `worktrees` setting, so a changed setting applies to the next subagent.
             let settings = config.settings_reader();
@@ -996,10 +1078,13 @@ impl Runtime {
                 images,
                 swarm: std::sync::OnceLock::new(),
                 budget_note: Arc::new(std::sync::OnceLock::new()),
+                request_layer: Arc::new(std::sync::OnceLock::new()),
                 context_reminders,
                 lane_steer: Arc::new(std::sync::OnceLock::new()),
                 stats,
                 retired_guards: Mutex::new(Vec::new()),
+                wake,
+                memory_children: memory_children_on,
             }
         });
         built?;
@@ -1205,6 +1290,9 @@ pub struct Stack {
     pub swarm: std::sync::OnceLock<Arc<crate::swarm_ops::SwarmOps>>,
     /// The budget line every lane's cell results end with, once the session actor wired it (crate::budget_note).
     pub budget_note: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>,
+    /// A layer over every lane's host requests, set by a composition root whose root is not the session actor's
+    /// (crate::request_layer); none: requests pass through.
+    pub request_layer: Arc<std::sync::OnceLock<crate::request_layer::RequestLayer>>,
     /// The context-pressure reminder every lane's cell results may end with (crate::context_reminder): each lane's
     /// limit and, once the session actor wired it, the meter of its context use.
     pub context_reminders: Arc<crate::context_reminder::ContextReminders>,
@@ -1215,6 +1303,11 @@ pub struct Stack {
     /// The guard statistics of worktree subagent hosts whose runs ended (TypeScript has one set of file hooks for the
     /// whole session, so they stay in its totals).
     retired_guards: Mutex<Vec<Value>>,
+    /// Whether the host wakes the root lane when its work ends (crate::wake): set by the composer that drives the
+    /// root; every other lane waits in its cell.
+    pub wake: crate::wake::RootWake,
+    /// Subagents run as in-memory agent loops (crate::memory_children): no durable runtime behind their lanes.
+    memory_children: bool,
 }
 
 impl Stack {
@@ -1366,9 +1459,15 @@ impl Stack {
             Arc::new(apis)
         };
         // `view_image` is the cell's own (`executeCell`), outside what the hints observe.
-        Arc::new(crate::view_images::ViewImageLayer {
+        let viewed: Arc<dyn HostHandler> = Arc::new(crate::view_images::ViewImageLayer {
             inner: observed,
             images: self.images.clone(),
+            lane: lane.to_string(),
+        });
+        // The composition root's layer, if it set one (crate::request_layer), sees every request first.
+        Arc::new(crate::request_layer::Layered {
+            inner: viewed,
+            layer: self.request_layer.clone(),
             lane: lane.to_string(),
         })
     }
@@ -1459,7 +1558,8 @@ impl Stack {
         )
         .with_budget_note(self.budget_note.clone())
         .with_stats(self.stats.clone())
-        .with_context_reminders(self.context_reminders.clone()))
+        .with_context_reminders(self.context_reminders.clone())
+        .with_wake(self.wake.clone()))
     }
 
     /// `listCommands`: `/mcp`, `/review`, prompt templates and skills (crate::commands).
@@ -1482,6 +1582,11 @@ impl Stack {
     /// The root lane's system prompt, in the settings' current mode.
     pub fn system(&self) -> String {
         self.system.current()
+    }
+
+    /// A subagent lane's system prompt (crate::wake: its runtime guide says to await before replying).
+    pub fn child_system(&self) -> String {
+        self.system.child_current(self.memory_children)
     }
 
     /// As [`Stack::close`], for a worker whose session a successor worker takes over: running shell jobs keep
@@ -1730,7 +1835,8 @@ pub fn child_setup(stack: &Stack, run: &ChildRun) -> ChildSetup {
         .and_then(|(provider, id)| stack.config.model(provider, id))
         .unwrap_or_else(|| stack.model.clone());
     let root_cwd = stack.config.cwd.display().to_string();
-    let mut system = stack.system.current();
+    // The subagent's own guide (crate::wake): nothing wakes it, so it awaits what its answer needs.
+    let mut system = stack.child_system();
     if let Some(cwd) = run.cwd.as_deref() {
         // A worktree subagent works in its worktree: its shell, kernel and prompt name it, not the checkout.
         let host = Runtime {

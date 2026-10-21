@@ -904,9 +904,17 @@ pub struct Rlm {
     /// The context-pressure reminder a cell's result ends with when the lane nears its limit
     /// (crate::context_reminder).
     reminders: Option<Arc<crate::context_reminder::ContextReminders>>,
+    /// Whether the host wakes this lane when its work ends (crate::wake): how a detached cell's note words its end.
+    wake: crate::wake::RootWake,
 }
 
 impl Rlm {
+    /// This tool with the stack's wake rule (crate::wake) for its detached-cell note.
+    pub(crate) fn with_wake(mut self, wake: crate::wake::RootWake) -> Rlm {
+        self.wake = wake;
+        self
+    }
+
     /// This tool with the stack's budget line on its results.
     pub(crate) fn with_budget_note(mut self, budget: Arc<std::sync::OnceLock<crate::budget_note::BudgetNote>>) -> Rlm {
         self.budget = budget;
@@ -1112,8 +1120,9 @@ impl Rlm {
                         self.lanes.detach(&cell)?;
                     }
                     return Ok(AgentToolResult {
-                        content: vec![text_block(with_findings(format!(
-                            "Cell {cell} is still running in the background (it waits on the host); its end arrives as a <runtime_event kind=\"cell_done\" id=\"{cell}\">. Do other work or end your turn."
+                        content: vec![text_block(with_findings(detached_note(
+                            &cell,
+                            self.wake.woken(&self.lane),
                         )))],
                         details: json!({}),
                         usage: None,
@@ -1244,6 +1253,20 @@ impl Lane {
 /// The root lane's name.
 pub const MAIN: &str = "main";
 
+/// The result of a call whose cell keeps running detached: how its end reaches a lane the host wakes (`woken`: the
+/// end starts a new turn) or one nothing wakes (the end is reported with a later result; stop it or check on it).
+pub fn detached_note(cell: &str, woken: bool) -> String {
+    if woken {
+        format!(
+            "Cell {cell} is still running in the background (it waits on the host); its end arrives as a <runtime_event kind=\"cell_done\" id=\"{cell}\">. Do other work or end your turn."
+        )
+    } else {
+        format!(
+            "Cell {cell} is still running in the background (it waits on the host); its end is reported as a <runtime_event kind=\"cell_done\" id=\"{cell}\"> with a later rlm result, and nothing wakes you after you reply. Do other work meanwhile; `await rlm.cells()` lists it while it runs and `await rlm.cancel(\"{cell}\")` stops it."
+        )
+    }
+}
+
 /// The `rlm` tool for `lane` of `lanes`.
 pub(crate) fn rlm_over(
     config: &Config,
@@ -1278,5 +1301,6 @@ pub(crate) fn rlm_over(
         budget: Arc::new(std::sync::OnceLock::new()),
         stats: None,
         reminders: None,
+        wake: crate::wake::RootWake::default(),
     }
 }

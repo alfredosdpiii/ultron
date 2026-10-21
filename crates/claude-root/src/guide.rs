@@ -31,6 +31,50 @@ pub struct PromptResources {
     pub proactive_skills: bool,
     /// `"persona": "ultron"`: the text of `<agent dir>/personality.md` (resources::persona), for the root's prompt.
     pub persona: Option<String>,
+    /// The discovered SYSTEM.md (`.pi/SYSTEM.md` in a trusted project, else `<agentDir>/SYSTEM.md`): in place of the
+    /// working rules of the root's prompt, as native Ultron puts it in place of Pi's preamble and rules.
+    pub system_prompt: Option<String>,
+    /// The discovered APPEND_SYSTEM.md texts: the addendum of every prompt (root and subagents), as in native Ultron.
+    pub append_system_prompt: Vec<String>,
+    /// Loki's policy note (`readContext`), when Loki is on and its policy is readable: in every prompt, as native
+    /// Ultron puts it in its system prompt (subagents and a root without Ultron's hooks get no SessionStart context).
+    pub loki: Option<String>,
+}
+
+/// Loki's policy note for a session in `env`'s directory (none when Loki is off or its policy is unreadable).
+pub fn loki_note(env: &RunEnv) -> Option<String> {
+    loki_note_at(session_core::compose::Config::from_env(env).loki_root.as_deref())
+}
+
+/// Loki's policy note for the policy under `root`.
+pub fn loki_note_at(root: Option<&Path>) -> Option<String> {
+    let config = loki::config::load_config(root?).ok()?;
+    loki::injected_context(&config, Some("ultron"))
+        .ok()
+        .filter(|note| !note.is_empty())
+}
+
+/// The kernel APIs the runtime guide names for a session in `env`'s directory, as native Ultron's guide names them
+/// (session_core::compose::mcp_runtime_guide: the `mcp.json` servers through `mcp`, the Rust host's APIs), minus what
+/// an external root cannot serve (see [`external_root_apis`]).
+/// `ULTRON_GUIDE=ts` keeps the TypeScript guide's set (it names neither `mcp.json` servers nor the Rust APIs).
+pub fn runtime_apis(env: &RunEnv) -> RuntimeGuideOptions {
+    if (env.var)("ULTRON_GUIDE").as_deref() == Some("ts") {
+        return RuntimeGuideOptions::default();
+    }
+    external_root_apis(session_core::compose::mcp_runtime_guide(
+        &session_core::compose::Config::from_env(env),
+    ))
+}
+
+/// What `ultron claude` serves of native Ultron's APIs: everything but persistent children with `rlm.ask`, the
+/// swarm (`swarm`, `board`, `notes`) and `schedule`, which need the session actor's durable runtime and server
+/// (crate::unavailable refuses them). The guide leaves them out because it is an external root's.
+pub fn external_root_apis(native: RuntimeGuideOptions) -> RuntimeGuideOptions {
+    RuntimeGuideOptions {
+        external_root: true,
+        ..native
+    }
 }
 
 /// `--no-context-files` / `--no-skills`.
@@ -69,11 +113,23 @@ pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: Resour
     } else {
         None
     };
+    // SYSTEM.md and APPEND_SYSTEM.md shape the prompt whatever the context-file and skill flags say (native Ultron).
+    let files = resources::prompt_files::load_prompt_files(
+        &env.cwd.display().to_string(),
+        &agent_dir_path.display().to_string(),
+        trusted,
+        None,
+        None,
+    );
+    let shaped = PromptResources {
+        persona,
+        system_prompt: files.system_prompt.filter(|text| !text.trim().is_empty()),
+        append_system_prompt: files.append_system_prompt,
+        loki: loki_note(env),
+        ..PromptResources::default()
+    };
     if flags.no_context_files && flags.no_skills {
-        return PromptResources {
-            persona,
-            ..PromptResources::default()
-        };
+        return shaped;
     }
     let engineering = settings.settings().get("engineering") == Some(&serde_json::Value::Bool(true));
     let cwd = env.cwd.display().to_string();
@@ -103,7 +159,7 @@ pub fn load_prompt_resources(env: &RunEnv, bundled: Option<&Path>, flags: Resour
         skills,
         engineering,
         proactive_skills: engineering && (env.var)("ULTRON_GUIDE").as_deref() != Some("ts"),
-        persona,
+        ..shaped
     }
 }
 
@@ -164,6 +220,8 @@ pub struct GuideOptions<'a> {
     /// The root is woken when work it started ends while it is idle (Ultron's hooks are on): the guide says to end
     /// the turn instead of awaiting everything first.
     pub wake: bool,
+    /// The kernel APIs the guide names ([`runtime_apis`]); none: the TypeScript guide's set.
+    pub apis: Option<&'a RuntimeGuideOptions>,
 }
 
 /// The runtime guide for Claude Code: next-call event delivery, no `ctx` (Claude Code owns its context).
@@ -179,6 +237,12 @@ pub fn wakes(var: &dyn Fn(&str) -> Option<String>, hooks: bool) -> bool {
 
 /// [`claude_runtime_guide`]; `wake`: events wake the idle root (crate::hooks::WAIT_EVENTS), as in native Ultron.
 pub fn claude_runtime_guide_with(hints: bool, wake: bool) -> String {
+    claude_runtime_guide_for(None, hints, wake)
+}
+
+/// The runtime guide for Claude Code naming the kernel APIs `apis` lists ([`runtime_apis`]; none: the TypeScript
+/// guide's set), its events delivered with the next result unless `wake`.
+pub fn claude_runtime_guide_for(apis: Option<&RuntimeGuideOptions>, hints: bool, wake: bool) -> String {
     let options = RuntimeGuideOptions {
         delivery: if wake {
             EventDelivery::Wake
@@ -187,7 +251,9 @@ pub fn claude_runtime_guide_with(hints: bool, wake: bool) -> String {
         },
         external_root: true,
         hints,
-        ..RuntimeGuideOptions::default()
+        // A woken root's rlm.collect never waits (the server's `--wake`, session_core::wake).
+        host_waits: wake,
+        ..apis.cloned().unwrap_or_default()
     };
     rlm_runtime_prompt(&["rlm"], &options).unwrap_or_default()
 }
@@ -260,12 +326,24 @@ fn environment(options: &GuideOptions) -> Option<String> {
 
 /// Claude Code's whole system prompt for an Ultron root (`Claude`) or subagent (`ClaudeChild`).
 pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: bool) -> String {
+    let resources = options.resources;
+    // SYSTEM.md: the user's own base prompt, in place of the root's working rules (a subagent has none: it gets the
+    // text after its identity, as a native subagent gets the root's prompt). APPEND_SYSTEM.md follows the base.
+    let custom = resources.and_then(|r| r.system_prompt.clone());
+    let addendum = resources
+        .map(|r| r.append_system_prompt.join("\n\n"))
+        .filter(|text| !text.is_empty());
     let mut parts = if audience == Audience::Claude {
         vec![
             root_identity(),
-            WORKING_WITH_THE_USER.to_string(),
-            claude_runtime_guide_with(hints, options.wake),
+            custom.unwrap_or_else(|| WORKING_WITH_THE_USER.to_string()),
         ]
+    } else {
+        vec![child_identity()].into_iter().chain(custom).collect()
+    };
+    parts.extend(addendum);
+    if audience == Audience::Claude {
+        parts.push(claude_runtime_guide_for(options.apis, hints, options.wake));
     } else {
         let allowance = options.allowance.unwrap_or(0);
         let text = if allowance == UNLIMITED {
@@ -273,14 +351,15 @@ pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: b
         } else {
             delegation_allowance(allowance)
         };
-        vec![child_identity(), text, claude_runtime_guide(hints)]
-    };
-    if let Some(resources) = options.resources {
+        parts.extend([text, claude_runtime_guide_for(options.apis, hints, false)]);
+    }
+    if let Some(resources) = resources {
         parts.extend(render_prompt_resources(
             resources,
             options.bundled_skills,
             audience == Audience::Claude,
         ));
+        parts.extend(resources.loki.clone());
     }
     parts.extend(environment(options));
     parts.join("\n\n")

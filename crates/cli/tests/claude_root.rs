@@ -338,7 +338,10 @@ fn run_mcp(case: &Value) -> Vec<String> {
             }
         });
     });
-    let env = root.env(case.get("env"));
+    let mut env = root.env(case.get("env"));
+    // The server's guide (instructions, prompt, resource) as TypeScript's `ultron mcp` words it: the Rust guide also
+    // names the `mcp.json` servers and the Rust host's APIs the external root serves.
+    env.push(("ULTRON_GUIDE".into(), "ts".into()));
     let mut args = vec!["mcp".to_string()];
     args.extend(strings(&case["args"]).iter().map(|a| root.sub(a)));
     let mut child = root

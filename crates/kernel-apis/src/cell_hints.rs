@@ -298,7 +298,8 @@ pub struct CellHintsOptions {
     pub max_per_tag: u64,
     /// Completions are announced (ULTRON_ASYNC_EVENTS): the wait and polling hints point at events.
     pub async_events: bool,
-    /// `rootDelivery: "next-call"`: nothing wakes the root lane between turns.
+    /// `rootDelivery: "next-call"`: nothing wakes the root lane between turns. Without
+    /// [`CellHints::set_lane_woken`] only the root lane (`main`) counts as woken, and only without this.
     pub next_call_root: bool,
     pub blocked_seconds: f64,
     pub read_handle_bytes: u64,
@@ -349,12 +350,16 @@ struct LaneState {
     repeat: Option<(String, usize)>,
 }
 
+/// Whether the host wakes a lane when its work ends (its event wording says "end your turn").
+pub type LaneWoken = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+
 /// `CellHints`.
 pub struct CellHints {
     module: Arc<HintsModule>,
     options: CellHintsOptions,
     lanes: Mutex<HashMap<String, LaneState>>,
     loops: Mutex<LoopDetector>,
+    woken: Mutex<Option<LaneWoken>>,
 }
 
 impl CellHints {
@@ -365,6 +370,22 @@ impl CellHints {
             options,
             lanes: Mutex::new(HashMap::new()),
             loops: Mutex::new(loops),
+            woken: Mutex::new(None),
+        }
+    }
+
+    /// Which lanes the host wakes when their work ends: the others' hints say to await what the answer needs
+    /// (nothing wakes them after they reply) instead of "end your turn".
+    pub fn set_lane_woken(&self, woken: LaneWoken) {
+        *lock(&self.woken) = Some(woken);
+    }
+
+    /// Whether `lane` is woken by the ends of its work.
+    fn woken(&self, lane: &str) -> bool {
+        let woken = lock(&self.woken).clone();
+        match woken {
+            Some(woken) => woken(lane),
+            None => lane == "main" && !self.options.next_call_root,
         }
     }
 
@@ -457,11 +478,12 @@ impl CellHints {
         if !self.enabled() {
             return None;
         }
+        // A lane nothing wakes gets the hints that say to await what the answer needs.
+        let next_call = !self.woken(lane);
         let (mut candidates, code, failed) = {
             let mut lanes = lock(&self.lanes);
             let state = lanes.entry(lane.to_string()).or_default();
             let cell = state.cell.take()?;
-            let next_call = lane == "main" && self.options.next_call_root;
             let candidates = self.candidates(state, &cell, outcome, next_call);
             state.previous_status = cell.status_calls.iter().map(|(k, _)| k.clone()).collect();
             (candidates, cell.code, outcome.ename.is_some() || cell.bash_failed)

@@ -139,6 +139,22 @@ impl HostOps {
             .and_then(Value::as_str)
             .filter(|name| !name.trim().is_empty())
             .ok_or("rlm.spawn name must be a non-empty string")?;
+        // A persistent child runs in the session's directory as a child conversation of its own: no worktree, no
+        // nested delegation, no forked history. An option it would drop is refused rather than ignored.
+        for (key, unset) in [
+            ("worktree", &[Value::Null, Value::Bool(false)][..]),
+            ("worktree_setup", &[Value::Null][..]),
+            ("depth", &[Value::Null, json!(0)][..]),
+            ("fork", &[Value::Null, Value::Bool(false)][..]),
+        ] {
+            if let Some(value) = options.get(key)
+                && !unset.contains(value)
+            {
+                return Err(format!(
+                    "rlm.spawn(keep=True) does not support {key}=: a persistent child works in the session's directory without a worktree, nested subagents or a forked conversation; drop {key}= or spawn without keep=True"
+                ));
+            }
+        }
         let input = ChildInput {
             name: name.to_owned(),
             prompt: prompt.to_owned(),
@@ -379,9 +395,11 @@ impl HostOps {
                 "status": "timeout",
                 "error": format!(
                     "No answer from subagent {} within {} s; it is still working on the question. Carry on and \
-                     rlm.ask it again later (a new question queues behind this one), or rlm.cancel it.",
+                     rlm.ask it again later (a new question queues behind this one), or stop it with \
+                     `await rlm.delete_subagent(\"{}\")`.",
                     child_id(id),
-                    limit.as_secs_f64().round()
+                    limit.as_secs_f64().round(),
+                    child_id(id)
                 ),
             }));
         }

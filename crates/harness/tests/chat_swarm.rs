@@ -282,14 +282,23 @@ fn harness_chat_swarm_ask_returns_a_timeout_when_a_kept_child_never_answers() {
             .contains("it is still working on the question"),
         "{asked}"
     );
+    // It names the call that stops the child (`rlm.cancel(id)` from Python is a cell cancel, not a child's).
+    assert!(
+        asked["error"].as_str().unwrap().ends_with(&format!(
+            "or stop it with `await rlm.delete_subagent(\"{}\")`.",
+            child.0
+        )),
+        "{asked}"
+    );
     // Only the wait ended: the child is still running, with the question in its conversation.
     assert_ne!(
         chat.get_task(child).unwrap().unwrap().state.status(),
         TaskStatus::Terminal
     );
+    // The suggested call stops it (`rlm.delete_subagent(selector)` sends `{"selector": id}`).
     op(
         &ops,
-        "rlm.cancel",
+        "rlm.delete_subagent",
         json!({ "selector": child.0.to_string() }),
         &call_from(root.id),
     )
@@ -707,4 +716,69 @@ fn harness_chat_swarm_keeps_shared_notes_and_refuses_a_stale_writer() {
         );
         chat.close().unwrap();
     }
+}
+
+/// `rlm.spawn(keep=True, ...)` as `swarm_api.py` sends it (`keep` at the payload's top level): a persistent child is
+/// a child conversation in the session's directory, so `worktree=`, `worktree_setup=`, `depth=` and `fork=` are
+/// refused with what to do instead, never silently dropped (the handle used to say `"worktree": null`), and no child
+/// is started; their unset values (False, None, 0) are accepted.
+#[test]
+fn harness_chat_swarm_refuses_options_a_persistent_child_cannot_honour() {
+    each_backend(|backend| {
+        let setup = Setup::new();
+        route(&setup, child_answer);
+        let seen: Arc<Mutex<Vec<Result<Value, String>>>> = Arc::default();
+        let sink = seen.clone();
+        delegate(&setup, move |ops, call, signal| {
+            let payload = |value: Value| value.as_object().unwrap().clone();
+            for kwargs in [
+                json!({ "name": "w", "worktree": true }),
+                json!({ "name": "w", "worktree": "auto" }),
+                json!({ "name": "w", "worktree_setup": { "link": [] } }),
+                json!({ "name": "w", "depth": 1 }),
+                json!({ "name": "w", "fork": true }),
+                json!({ "name": "ok", "worktree": false, "depth": 0, "fork": false, "worktree_setup": null }),
+            ] {
+                let spawned = ops
+                    .handle(
+                        "rlm.spawn",
+                        &payload(json!({ "prompt": "You own the parser.", "kwargs": kwargs, "keep": true })),
+                        call,
+                        signal,
+                    )
+                    .unwrap();
+                sink.lock().unwrap().push(spawned);
+            }
+            let listed = ops.handle("rlm.list_subagents", &Map::new(), call, signal).unwrap();
+            sink.lock().unwrap().push(listed);
+            Ok(CellResult::text("ok"))
+        });
+        let (chat, root) = open_chat(Controlled::new(backend), &setup);
+        root.submit(SubmissionDraft::input("go")).unwrap().wait(&bg()).unwrap();
+        let seen = seen.lock().unwrap().clone();
+        assert_eq!(seen.len(), 7);
+        for (result, key) in seen
+            .iter()
+            .zip(["worktree", "worktree", "worktree_setup", "depth", "fork"])
+        {
+            assert_eq!(
+                result.as_ref().unwrap_err(),
+                &format!(
+                    "rlm.spawn(keep=True) does not support {key}=: a persistent child works in the session's directory without a worktree, nested subagents or a forked conversation; drop {key}= or spawn without keep=True"
+                )
+            );
+        }
+        let accepted = seen[5].as_ref().unwrap();
+        assert_eq!(accepted["name"], "ok", "{accepted}");
+        // Only the accepted spawn started a child.
+        let listed = seen[6].as_ref().unwrap();
+        let names: Vec<&Value> = listed["subagents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| &c["name"])
+            .collect();
+        assert_eq!(names, [&json!("ok")], "{listed}");
+        chat.close().unwrap();
+    });
 }

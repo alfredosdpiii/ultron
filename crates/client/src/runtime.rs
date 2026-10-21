@@ -1168,6 +1168,15 @@ fn operation(
             return Err(Failure::Other(error));
         }
     };
+    // The prompt was one of the session's commands (`/goal`, `/persona`, `/keepgoing`): its reply, no run.
+    if response["command"].is_string() {
+        connection.unlisten(&transcript);
+        return Ok(ClientResult::Prompted {
+            server_id,
+            session_id,
+            text: response["text"].as_str().unwrap_or_default().to_string(),
+        });
+    }
     if response["accepted"] == true {
         let operation = response["operationId"].as_str().unwrap_or_default().to_string();
         // Wait for the operation's boundary in the transcript.

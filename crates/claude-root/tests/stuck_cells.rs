@@ -322,7 +322,7 @@ fn claude_root_mcp_busy_lane_runs_the_next_call_in_a_side_lane_and_rlm_cancel_st
     assert_eq!(
         text,
         format!(
-            "Cell {cell} is still running in the background (it waits on the host); its end arrives as a <runtime_event kind=\"cell_done\" id=\"{cell}\">. Do other work or end your turn."
+            "Cell {cell} is still running in the background (it waits on the host); its end is reported as a <runtime_event kind=\"cell_done\" id=\"{cell}\"> with a later rlm result, and nothing wakes you after you reply. Do other work meanwhile; `await rlm.cells()` lists it while it runs and `await rlm.cancel(\"{cell}\")` stops it."
         )
     );
     // From the side lane, rlm.cancel stops it and its git child.

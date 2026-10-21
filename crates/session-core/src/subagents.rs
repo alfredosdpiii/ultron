@@ -249,7 +249,8 @@ impl DurableChildren {
         {
             return crate::lane_reuse::continue_lane(&chat, conversation, &run);
         }
-        lock_map(&self.systems).insert(run.lane.clone(), stack.system());
+        // A typed agent's lane is never woken: it gets the subagent guide (crate::wake).
+        lock_map(&self.systems).insert(run.lane.clone(), stack.child_system());
         let model = match run.model.as_deref().and_then(|spec| spec.split_once('/')) {
             Some((provider, id)) => ModelRef::new(provider, id),
             None => ModelRef::new(&stack.model().provider, &stack.model().id),

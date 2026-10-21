@@ -49,10 +49,14 @@ impl Server {
 }
 
 fn control(socket: &Path, op: &str) -> Value {
+    request(socket, json!({"id": 1, "op": op}))
+}
+
+fn request(socket: &Path, request: Value) -> Value {
     let stream = UnixStream::connect(socket).unwrap();
     stream.set_read_timeout(Some(HANG_GUARD)).unwrap();
     let mut writer = stream.try_clone().unwrap();
-    writeln!(writer, "{}", json!({"id": 1, "op": op})).unwrap();
+    writeln!(writer, "{request}").unwrap();
     let mut line = String::new();
     BufReader::new(stream).read_line(&mut line).unwrap();
     serde_json::from_str(&line).unwrap()
@@ -120,6 +124,26 @@ fn claude_root_mcp_spawns_claude_code_children_and_relays_their_verdict() {
     assert!(lines[0].starts_with("<runtime_event kind=\"child_done\""), "{next}");
     assert!(lines[0].contains("child did: please give a verdict"), "{next}");
     assert_eq!(*lines.last().unwrap(), "next");
+    // The child's reported usage (3 input and 2 output tokens) is the session's: `usage.report` (what `ultron usage`
+    // prints) counts it as a sub-agent's, on the model it ran.
+    let report = request(
+        &socket,
+        json!({"id": 2, "op": "inspect", "request": "usage.report", "payload": {}}),
+    );
+    let usage = &report["result"]["usage"];
+    let subagents = &usage["lanes"]["subagents"];
+    assert_eq!(
+        (&subagents["input"], &subagents["output"], &subagents["totalTokens"]),
+        (&json!(3), &json!(2), &json!(5)),
+        "{report}"
+    );
+    let model = usage["models"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["model"] == "claude-code/claude-opus-5-5")
+        .unwrap_or_else(|| panic!("{report}"));
+    assert_eq!(model["totalTokens"], 5, "{report}");
 
     let records: Vec<Value> = std::fs::read_to_string(&log)
         .unwrap()

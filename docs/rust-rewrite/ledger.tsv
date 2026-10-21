@@ -3226,6 +3226,46 @@ W23H-09	herdr	metadata at most once a second and only when changed	herdr_metadat
 W23H-10	herdr	metadata clears fields/tokens no longer known	herdr_metadata_clears_what_is_no_longer_known
 W23H-11	herdr	release flushes the pending state first, sent once	herdr_release_flushes_the_pending_state_and_is_sent_once
 W23H-12	herdr	seq strictly increasing	herdr_seq_is_strictly_increasing
+W25W-1	delegation	InCell collect blocks the cell unparked, per-lane mode, timeout_ms bound with clear error	delegation_in_cell_collect_holds_the_cell_unparked_and_honours_timeout_ms
+W25W-2	delegation	collect timeout_ms must be nonnegative; 0 means unbounded	delegation_in_cell_collect_refuses_a_bad_timeout
+W25W-3	cli	native child lane's rlm.collect waits in-cell for a grandchild; root/child guides per mode	cli_collect_waits_a_native_child_lane_waits_in_its_cell_for_a_grandchild
+W25W-4	cli	ULTRON_ASYNC_EVENTS=off root collect waits in-cell; Off guide and hints line	cli_collect_waits_a_root_with_events_off_waits_in_its_cell
+W25W-5	cli	-p stays until a typed task it started ends and re-invokes the root	cli_collect_waits_print_mode_waits_for_a_typed_task_it_started
+W25W-6	claude-root	ultron mcp root without --wake waits in-cell; timeout_ms error text	claude_root_without_wake_collect_waits_in_the_cell_and_honours_timeout_ms
+W25W-7	claude-root	--children ultron memory child waits for a grandchild; guide has no schedule/swarm	claude_root_ultron_child_collect_waits_for_a_grandchild_and_its_guide_has_no_root_apis
+W25W-8	claude-root	only --wake keeps host collect (refusal + wake hook)	claude_root_a_child_ending_while_claude_is_idle_wakes_it_through_the_wait_events_hook
+W25W-9	claude-root	detached-cell note for an unwoken root names cells/cancel, no wake promise	claude_root_mcp_busy_lane_runs_the_next_call_in_a_side_lane_and_rlm_cancel_stops_the_stuck_cell
+W25W-10	resources	guide wording per lane mode (woken root, awaiting root, subagent, memory subagent, off)	resources_runtime_guide_wording_per_lane_mode
+W25W-11	kernel-apis	job-detached hint wording follows woken lanes	kernel_apis_cell_hints_job_wording_follows_the_woken_lanes
+W25W-12	session-core	wait nudge wording matches collect mode	session_core_wait_nudge_wording_matches_the_collect_mode
+W25W-13	harness	rlm.ask timeout names rlm.delete_subagent, which stops the kept child	harness_chat_swarm_ask_returns_a_timeout_when_a_kept_child_never_answers
+W25E-01	cli/daemon	durable attaches under --offline/PI_OFFLINE and the httpProxy setting; the server runs with them; conflicts are named	cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_names_conflicting_options
+W25E-02	daemon/client	-p and --mode json run /persona, /goal, /keepgoing in the worker, no model turn	cli_entry_print_and_json_modes_run_session_commands_never_a_turn
+W25E-03	acp	ACP prompts /persona, /keepgoing, /goal are answered by the worker	cli_acp_session_commands_are_answered_by_the_worker_not_the_model
+W25E-04	cli/tui	durable /persona reports the worker's state (default on); /persona none sticks	cli_entry_tui_durable_persona_reports_the_workers_state_and_none_sticks
+W25E-05	session-core	--thinking applies to a resumed session without --model	cli_entry_thinking_flag_applies_to_a_resumed_session
+W25E-06	cli/tui	TUI shows the resumed session's thinking level and the --thinking override	cli_entry_tui_resumed_session_shows_its_own_thinking_level_and_thinking_flag_applies_on_resume
+W25E-07	cli/tui	--models scopes Ctrl+P	cli_entry_tui_models_flag_scopes_ctrl_p
+W25E-08	cli	ultron-s resolves @file in the caller's directory (caller_args covers --append-system-prompt/--skill) and refuses -c/-r/--fork	cli_entry_home_session_resolves_files_in_the_callers_directory_and_refuses_other_selectors
+W25E-09	cli/herdr	durable TUI resumes via ultron durable --session <id>	cli_herdr_durable_tui_resumes_through_ultron_durable
+W25E-10	acp	--name names only the first new session; session selectors are refused	cli_acp_name_is_the_first_sessions_and_selectors_are_refused
+W25E-11	cli/link	--no-session --name keeps the name (RPC get_state)	cli_entry_no_session_keeps_its_name_over_rpc
+W25E-12	cli/config	-na ignores the project's trust-requiring resources for the run	cli_entry_no_approve_ignores_the_projects_resources_for_the_run
+W25E-13	cli/session-core	--skill loads the skill from the caller's directory	cli_entry_skill_flag_loads_the_skill_from_the_callers_directory
+W25E-14	cli	parsed-but-unapplied flags warn	cli_entry_unapplied_flags_warn
+W25E-15	cli	help lists every command (ultron-s, service, schedule wake, durable start/attach), no Pi package commands or dropped flags, fullscreen default	cli_help_lists_every_dispatched_subcommand
+W25C-01	claude-root	Claude children ignore a non-claude rlm.childModel; named --child-model wins; claude-code/ setting applies	claude_root_w25c_claude_children_ignore_another_providers_child_model_and_keep_the_named_one
+W25C-02	claude-root	Claude child usage settles a model reservation on the spawning turn's root, counts its turns toward the token limit, records childModels, persists ledger/journal in the session	claude_root_w25c_claude_child_usage_is_charged_to_the_turn_that_spawned_it
+W25C-03	claude-root	a spent root refuses a later Claude child at admission; the refused child's model is still counted	claude_root_w25c_a_spent_root_admits_no_claude_child
+W25C-04	cli	usage.report counts a Claude child's reported tokens as a sub-agent's on its model	claude_root_mcp_spawns_claude_code_children_and_relays_their_verdict
+W25C-05	claude-root	job_done/tool_done event summaries masked with MCP-registered secrets	claude_root_w25c_event_summaries_are_masked_with_the_sessions_secrets
+W25C-06	claude-root	guide names mcp.json servers, typed memory, images, diagram, contracts; omits keep/rlm.ask/swarm/schedule/ctx; ts keeps TS set	claude_root_w25c_guide_names_the_mcp_servers_and_the_rust_apis_the_external_root_serves
+W25C-07	claude-root	Loki policy in launcher root prompt and Claude child prompts; --no-instructions server omits it from SessionStart	claude_root_w25c_lokis_policy_reaches_the_root_prompt_and_claude_subagents
+W25C-08	claude-root	named frame model beats rlm.frameModel and ULTRON_RLM_FRAME_MODEL	claude_root_w25c_named_frame_model_beats_rlm_frame_model
+W25C-09	claude-root	schedule.every/at, keep=True, rlm.ask, board, swarm refused with clear errors	claude_root_w25c_apis_the_external_root_cannot_serve_are_refused
+W25C-10	claude-root	SYSTEM.md replaces working rules and APPEND_SYSTEM.md follows, root and child	claude_root_w25c_system_md_and_append_system_md_shape_root_and_child_prompts
+W25C-11	claude-root	each turn records a working-tree checkpoint; checkpoints.enabled=false records none	claude_root_w25c_each_turn_records_a_working_tree_checkpoint
+W25C-12	harness	keep=True spawn refuses worktree/worktree_setup/depth/fork, accepts unset values, starts no child	harness_chat_swarm_refuses_options_a_persistent_child_cannot_honour
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

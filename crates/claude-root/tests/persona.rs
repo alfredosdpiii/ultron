@@ -70,6 +70,7 @@ fn launch_prompt(env: &RunEnv) -> String {
         bundled_skills: Some(&bundled),
         hints: false,
         skip_permissions: Vec::new(),
+        apis: None,
     });
     launch
         .files

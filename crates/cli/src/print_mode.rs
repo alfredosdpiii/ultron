@@ -144,8 +144,9 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
             extension_mode: Some(extension_mode.into()),
             no_naming: parsed.no_session,
             models: parsed.models.clone(),
-            session: session_flags(parsed),
+            session: session_flags(parsed, env),
             env: crate::startup::worker_env(env),
+            project_trust: parsed.project_trust_override,
         },
         keep_alive: true,
         root: instance.root().map(std::path::Path::to_path_buf),
@@ -155,20 +156,46 @@ pub fn server_options(parsed: &Args, env: &Env, extension_mode: &str) -> Result<
 
 /// The session's resource flags (native-command.ts `startForegroundServer` options). `-e`/`--extension` and
 /// `--no-extensions` are not among them: Pi extensions are not supported by ultron-rs (the CLI warns and ignores
-/// them).
-pub fn session_flags(parsed: &Args) -> session_core::session_flags::SessionFlags {
+/// them). `--skill` paths and `--append-system-prompt` files are resolved here, in the CLI's directory (`~` is the
+/// home directory for a skill).
+pub fn session_flags(parsed: &Args, env: &Env) -> session_core::session_flags::SessionFlags {
     session_core::session_flags::SessionFlags {
         system_prompt: parsed.system_prompt.clone(),
         // A file input is read here, in the CLI's directory; the worker gets the text.
+        // A file of the caller's directory is read; anything else is the text itself.
         append_system_prompt: parsed.append_system_prompt.as_ref().map(|inputs| {
             inputs
                 .iter()
-                .filter_map(|input| resources::prompt_files::resolve_prompt_input(Some(input)))
+                .filter(|input| !input.is_empty())
+                .filter_map(|input| {
+                    let path = env.cwd.join(input);
+                    match path.exists() {
+                        true => resources::prompt_files::resolve_prompt_input(Some(&path.display().to_string())),
+                        false => Some(input.clone()),
+                    }
+                })
                 .collect()
         }),
         no_skills: parsed.no_skills,
         no_context_files: parsed.no_context_files,
+        skill_paths: parsed
+            .skills
+            .iter()
+            .flatten()
+            .map(|path| caller_path(path, env).display().to_string())
+            .collect(),
     }
+}
+
+/// A path the user typed, against the caller's directory: `~` and `~/...` are under the home directory.
+pub fn caller_path(path: &str, env: &Env) -> std::path::PathBuf {
+    let path = path.trim();
+    let resolved = match path.strip_prefix('~') {
+        Some("") => env.home.clone(),
+        Some(rest) if rest.starts_with('/') => env.home.join(&rest[1..]),
+        _ => env.cwd.join(path),
+    };
+    config::paths::normalize(&resolved)
 }
 
 /// What one prompted run sends: the prompt text and its images.

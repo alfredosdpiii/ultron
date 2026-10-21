@@ -705,8 +705,8 @@ pub fn tui_events(event: &Value) -> Vec<LaneEvent> {
     }
 }
 
-/// The session the link is attached to, as the TUI shows it after it opened.
-fn opened(link: &Link) -> Result<(SessionOpened, ModelInfo, Vec<Value>), String> {
+/// The session the link is attached to, as the TUI shows it after it opened (with its thinking level).
+fn opened(link: &Link) -> Result<(SessionOpened, ModelInfo, Vec<Value>, Option<String>), String> {
     let described = link.op(&Op::Describe)?.unwrap_or_default();
     Ok((
         SessionOpened {
@@ -717,6 +717,7 @@ fn opened(link: &Link) -> Result<(SessionOpened, ModelInfo, Vec<Value>), String>
         },
         model_info(&described["model"]),
         described["entries"].as_array().cloned().unwrap_or_default(),
+        described["thinkingLevel"].as_str().map(str::to_string),
     ))
 }
 
@@ -807,7 +808,7 @@ fn link_thread(
         }
     };
     let open = |link: &Link, name: &mut Option<String>| match opened(link) {
-        Ok((session, model, entries)) => {
+        Ok((session, model, entries, thinking)) => {
             *name = session.name.clone();
             // `plugins.prepareSession` for the attached session (client-tui.ts): `/reload` rebuilds this selection.
             let connection = link.connection();
@@ -828,6 +829,10 @@ fn link_thread(
             send(LaneEvent::Opened(session));
             send(LaneEvent::Entries(entries));
             send(LaneEvent::Model(model));
+            // The session's own level (a resumed one keeps its level unless `--thinking` set one).
+            if let Some(level) = thinking {
+                send(LaneEvent::Thinking(level));
+            }
         }
         Err(error) => send(LaneEvent::Error(error)),
     };
@@ -1494,15 +1499,18 @@ fn link_thread(
                     Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
                 }
             }
-            Command::ReadPersona => {
-                let (cwd, agent_dir) = &settings_path;
-                let settings = config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
-                let persona = settings
-                    .settings()
-                    .get(resources::persona::SETTING)
-                    .and_then(Value::as_str);
-                send(LaneEvent::Persona(persona.map(str::to_string)));
-            }
+            // `/persona`: the worker's effective state (its settings defaults included: the durable instance's
+            // persona is on by default), never this client's settings.
+            Command::ReadPersona => match link.op(&Op::Persona { args: String::new() }) {
+                Ok(reply) => send(LaneEvent::Status(
+                    reply
+                        .as_ref()
+                        .and_then(|r| r["text"].as_str())
+                        .unwrap_or("No persona reply")
+                        .to_string(),
+                )),
+                Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
+            },
             Command::Autoreview(request) => send(crate::autoreview_toggle::autoreview(
                 request,
                 &catalog_env,
@@ -1685,6 +1693,9 @@ fn reload_plugins(link: &Link) -> Result<(), String> {
 
 /// Save one setting the way the worker's `setSetting` does: dotted keys into their object, per-model thinking
 /// levels into `modelThinkingLevels`, `null` removes.
+/// The `persona` setting's value for "off" (any value but `ultron` is off).
+const PERSONA_NONE: &str = "none";
+
 fn save_setting(settings: &mut config::settings::SettingsManager, key: &str, value: Value) {
     if key == "modelThinkingLevel" {
         let provider = value["provider"].as_str().unwrap_or_default();
@@ -1693,6 +1704,12 @@ fn save_setting(settings: &mut config::settings::SettingsManager, key: &str, val
             Some(level) => settings.set_model_thinking_level(provider, model, level),
             None => settings.remove_model_thinking_level(provider, model),
         }
+        return;
+    }
+    // The persona off (`/persona none`, `/settings`) is written as `"none"`, not a removed key: a settings default
+    // (the durable instance's `ultron`) would come back in its place.
+    if key == resources::persona::SETTING && value.is_null() {
+        settings.set_global(key, Some(Value::from(PERSONA_NONE)));
         return;
     }
     let stored = (!value.is_null()).then_some(value);
@@ -2242,6 +2259,19 @@ pub fn terminal_debug(
     )
 }
 
+/// The settings the TUI presents itself by, with this run's flags over them: `--verbose` shows the startup splash
+/// whatever `quietStartup` says, `--tui-mode regular|fullscreen` is this run's `tuiMode`.
+pub fn presentation_settings(parsed: &Args, settings: &serde_json::Map<String, Value>) -> Value {
+    let mut settings = settings.clone();
+    if parsed.verbose {
+        settings.insert("quietStartup".into(), Value::Bool(false));
+    }
+    if let Some(mode) = &parsed.tui_mode {
+        settings.insert("tuiMode".into(), Value::from(mode.as_str()));
+    }
+    Value::Object(settings)
+}
+
 fn run_tui(
     parsed: &Args,
     env: &Env,
@@ -2253,9 +2283,16 @@ fn run_tui(
         !(env.var)("ULTRON_SPLASH").is_some_and(|v| matches!(v.trim().to_lowercase().as_str(), "off" | "0" | "false"));
     // The worker's project trust: a trusted project's `.pi/settings.json` applies, a distrusted one's does not.
     let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
-    let qol = interactive::qol::from_settings(&Value::Object(settings.settings().clone()), &|k| (env.var)(k));
+    let presentation = presentation_settings(parsed, settings.settings());
+    let qol = interactive::qol::from_settings(&presentation, &|k| (env.var)(k));
     let caps = crate::terminal_settings::capabilities(env, &settings);
-    let theme_name = settings.theme().unwrap_or_else(|| "dark".into());
+    // `--use-theme <name[/name]>`: this run's theme setting (not saved).
+    let theme_setting = parsed.use_theme.clone().or_else(|| settings.theme());
+    let theme_name = theme_setting
+        .clone()
+        .filter(|t| !t.contains('/'))
+        .or_else(|| settings.theme())
+        .unwrap_or_else(|| "dark".into());
     let theme_json = builtin_theme_json(&theme_name)
         .or_else(|| builtin_theme_json("dark"))
         .ok_or("the dark theme is missing")?;
@@ -2346,12 +2383,15 @@ fn run_tui(
         |m| catalog_info(&m),
     );
     let hide_thinking = settings.settings().get("hideThinkingBlock") == Some(&Value::Bool(true));
-    let enabled_models: Vec<String> = settings
-        .settings()
-        .get("enabledModels")
-        .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
-        .unwrap_or_default();
+    // Ctrl+P cycles `--models` when given (as the worker's `CycleModel` does), else `enabledModels`.
+    let enabled_models: Vec<String> = parsed.models.clone().unwrap_or_else(|| {
+        settings
+            .settings()
+            .get("enabledModels")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
+            .unwrap_or_default()
+    });
     // `rlm` cells as the TS client highlights them (highlight.js's Python grammar, theme.ts `highlightCode`); the
     // syntect highlighter of the QoL settings replaces it when that is on.
     let highlight = interactive::rlm::highlight::rlm_highlighter(&theme);
@@ -2409,10 +2449,10 @@ fn run_tui(
     let _ = registry.set_registered_themes(crate::themes::load(env, registry.mode).themes);
     app.set_theme_controller(interactive::theme_setup::ThemeController::new(
         registry,
-        settings.theme(),
+        theme_setting,
         (env.var)("COLORFGBG").as_deref(),
     ));
-    app.apply_startup_settings(&Value::Object(settings.settings().clone()), &|k| (env.var)(k));
+    app.apply_startup_settings(&presentation, &|k| (env.var)(k));
     let tree_filter = settings
         .settings()
         .get("treeFilterMode")

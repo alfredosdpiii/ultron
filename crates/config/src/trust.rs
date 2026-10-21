@@ -250,10 +250,20 @@ pub fn resolve_project_trusted(
     })
 }
 
+/// Set (`1` or `0`) in a session worker's environment by a run with `--approve` / `--no-approve` (`-a` / `-na`):
+/// the run's project trust override, which [`worker_project_trusted`] answers with.
+pub const TRUST_OVERRIDE_ENV: &str = "__ULTRON_PROJECT_TRUST";
+
 /// `workerProjectTrusted` (worker-settings.ts): whether a session worker loads the project's settings and
 /// resources. A project without trust-requiring resources is trusted; else the saved `/trust` decision for `cwd`;
 /// else `defaultProjectTrust` (global only) is not "never" ("ask" cannot prompt in a worker, so it trusts).
 pub fn worker_project_trusted(cwd: &Path, agent_dir: &Path, home: &Path) -> bool {
+    // `--approve` / `--no-approve` of the run that started this worker decide it outright.
+    match std::env::var(TRUST_OVERRIDE_ENV).as_deref() {
+        Ok("1") => return true,
+        Ok("0") => return false,
+        _ => {}
+    }
     if !has_trust_requiring_project_resources(cwd, home) {
         return true;
     }

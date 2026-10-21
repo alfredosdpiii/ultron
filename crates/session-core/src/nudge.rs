@@ -51,7 +51,8 @@ pub fn nudge_message(rounds: u64, last: bool) -> String {
     }
 }
 
-/// `waitNudgeMessage`.
+/// `waitNudgeMessage`. Woken (`async_events` without `next_call`), the root's `rlm.collect` never waits
+/// (crate::wake): it is told to end its turn; otherwise to await the results.
 pub fn wait_nudge_message(running: u64, async_events: bool, next_call: bool) -> String {
     let what = if running == 1 {
         "1 subagent or task you started is".to_string()
@@ -65,7 +66,7 @@ pub fn wait_nudge_message(running: u64, async_events: bool, next_call: bool) -> 
     }
     if async_events {
         format!(
-            "[Ultron] {what} still running; each result comes to you as a `child_done` (or `task_done`) event. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, wait for free: `await rlm.collect(handles)`, or end your turn and the events wake you."
+            "[Ultron] {what} still running; each result comes to you as a `child_done` (or `task_done`) event. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, end your turn: the events wake you, and `await rlm.collect(handles)` then returns the results (it does not wait while they run)."
         )
     } else {
         format!(

@@ -2426,7 +2426,7 @@ INV-coding-agent-cli-command-auth_print-bearer-token	coding-agent	cli-command	au
 INV-coding-agent-cli-command-autoreview	coding-agent	cli-command	autoreview	packages/coding-agent/src/main.ts:614
 INV-coding-agent-cli-command-autoreview_help	coding-agent	cli-command	autoreview help	packages/coding-agent/src/ultron/autoreview/cli.ts:195
 INV-coding-agent-cli-command-autoreview_install	coding-agent	cli-command	autoreview install	packages/coding-agent/src/ultron/autoreview/cli.ts:532
-INV-coding-agent-cli-command-autoreview_once	coding-agent	cli-command	autoreview once	packages/coding-agent/src/ultron/autoreview/cli.ts:857
+INV-coding-agent-cli-command-autoreview_once	coding-agent	cli-command	autoreview once	packages/coding-agent/src/ultron/autoreview/cli.ts:858
 INV-coding-agent-cli-command-autoreview_prepare	coding-agent	cli-command	autoreview prepare	packages/coding-agent/src/ultron/autoreview/cli.ts:292
 INV-coding-agent-cli-command-autoreview_review	coding-agent	cli-command	autoreview review	packages/coding-agent/src/ultron/autoreview/cli.ts:292
 INV-coding-agent-cli-command-claude	coding-agent	cli-command	claude	packages/coding-agent/src/main.ts:630

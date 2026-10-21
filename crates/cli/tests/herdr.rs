@@ -233,6 +233,61 @@ fn cli_herdr_tui_session_lifecycle_reports_session_states_metadata_and_release()
     assert!((1..=8).contains(&metadata), "{metadata} metadata reports: {lines:#?}");
 }
 
+/// W25E: a TUI started by `ultron durable` is resumed through `ultron durable --session <id>` (a client of the
+/// durable server again), never a plain `ultron --session` that would run a foreground server on its directory.
+#[test]
+fn cli_herdr_durable_tui_resumes_through_ultron_durable() {
+    let dir = tempfile::tempdir().unwrap();
+    let socket = dir.path().join("herdr.sock");
+    let herdr = FakeHerdr::start(&socket);
+    let mock = Mock::start(Vec::new(), None);
+    let tmp = TempDir::new();
+    let root = tmp.0.display().to_string();
+    let bin = tmp.0.join("fakebin");
+    std::fs::create_dir_all(&bin).unwrap();
+    executable_support::install(&bin.join("herdr"), "#!/bin/sh\nexit 0\n");
+    let mut env = herdr_env(&socket);
+    env.push((
+        "PATH".into(),
+        format!("{}:{}:/usr/bin:/bin", bin.display(), tmp.0.join("no-browser").display()),
+    ));
+    let tui = Tui::start_at(&tmp.0, mock.port, 100, 30, &["durable"], &borrowed(&env));
+    let session = herdr.wait_method(0, "pane.report_agent_session");
+    let line = herdr.lines()[session].clone();
+    let id = line["params"]["agent_session_id"].as_str().unwrap().to_string();
+    assert_eq!(
+        line["params"]["resume_argv"],
+        json!([
+            "env",
+            format!("ULTRON_SERVER_DIR={root}/server"),
+            format!("ULTRON_CODING_AGENT_DIR={root}/agent"),
+            "ultron",
+            "durable",
+            "--session",
+            id
+        ])
+    );
+    tui.wait("ultron v");
+    tui.send_text("/quit");
+    tui.send_keys(&["Enter"]);
+    herdr.wait_method(session + 1, "pane.release_agent");
+    tui.wait("<exited>");
+    // The durable server outlives its client: stop it (it is this test's own).
+    let out = Command::new(BIN)
+        .args(["durable", "stop"])
+        .current_dir(tmp.0.join("cwd"))
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &tmp.0)
+        .env("ULTRON_CODING_AGENT_DIR", tmp.0.join("agent"))
+        .env("ULTRON_SERVER_DIR", tmp.0.join("server"))
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    drop(tui);
+}
+
 #[test]
 fn cli_herdr_socket_that_never_accepts_does_not_hold_the_tui() {
     let dir = tempfile::tempdir().unwrap();

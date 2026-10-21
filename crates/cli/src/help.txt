@@ -5,28 +5,26 @@ Usage:
 
 Commands:
   ultron setup                     Guided setup: provider and model, Hindsight memory
-  ultron install <source> [-l]     Install extension source and add to settings
-  ultron remove <source> [-l]      Remove extension source from settings
-  ultron uninstall <source> [-l]   Alias for remove
-  ultron update [source|self|pi]   Update pi, extensions, or model catalogs
-  ultron list                      List installed extensions from settings
+  ultron update [self|--models]    Update Ultron itself or the model catalogs
   ultron config [-l]               Open TUI to enable/disable package resources (Tab switches scope)
   ultron auth <command>            Print credentials or check provider readiness
   ultron usage [session|--last N]  What a session did: depth (frames, sub-agents), cells, tokens, cost
   ultron autoreview <command>      Review pull requests automatically as your gh accounts (run, once, review, status)
-  ultron schedule <list|cancel>    Scheduled prompts of this instance's sessions (list, cancel <id|name>)
+  ultron schedule <command>        Scheduled prompts of this instance's sessions (list, wake, cancel <id|name>)
   ultron memory import <options>   Import Claude Code or Codex memory notes as Ultron memory records
   ultron migrate <command>         Back up or restore the profile; import or export Pi sessions
   ultron mcp <command>             Configure MCP servers and sign in (add, remove, list, login, logout)
   ultron sandbox doctor            Check the shell sandbox a session in this directory gets
   ultron instances                 List the running server instances
-  ultron durable [status|stop]     Start, inspect or stop the global durable instance
+  ultron durable [command]         The global durable instance: attach (default, takes ultron options), start, status, stop
+  ultron service <command>         Run the durable instance as a user service (install, uninstall, status, restart, run)
   ultron trace check <file>        Report the prompt-cache resets of a request trace (ULTRON_REQUEST_TRACE)
   ultron acp [options]             Run as an Agent Client Protocol agent on stdio
   ultron claude [args...]          Run Claude Code as the root agent, with Ultron's REPL as its one tool
   ultron watch [--once]            Show the RLM view of a running `ultron claude` session
   ultron guide [--for <who>]       Print the runtime guide (Ultron's, or the one `ultron claude` gives Claude Code)
-  ultron <command> --help          Show help for install/remove/uninstall/update/list/config/auth/usage
+  ultron-s [options] [prompt]      The durable instance's home session (--new, --session <id> [--home], --list)
+  ultron <command> --help          Show help for update/config/auth/usage/schedule/service
 
 Options:
   --provider <name>              Provider name (default: google)
@@ -57,16 +55,12 @@ Options:
   --no-extensions, -ne           Disable extension discovery (explicit -e paths still work)
   --skill <path>                 Load a skill file or directory (can be used multiple times)
   --no-skills, -ns               Disable skills discovery and loading
-  --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)
-  --no-prompt-templates, -np     Disable prompt template discovery and loading
-  --theme <path>                 Load a theme file or directory (can be used multiple times)
   --use-theme <name[/name]>      Set the initial interactive theme for this run
-  --no-themes                    Disable theme discovery and loading
   --no-context-files, -nc        Disable AGENTS.md and CLAUDE.md discovery and loading
   --export <file>                Export session file to HTML and exit
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
-  --tui-mode <mode>              TUI mode: regular (default) or fullscreen
+  --tui-mode <mode>              TUI mode for this run: fullscreen (default) or regular
   --approve, -a                  Trust project-local files for this run
   --no-approve, -na              Ignore project-local files for this run
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)
@@ -130,7 +124,7 @@ Examples:
   # Start with a specific thinking level
   ultron --thinking high "Solve this complex problem"
 
-  # Read-only mode (no file modifications possible)
+  # Tool flags are no sandbox: the model's one tool is rlm, whose REPL can still write files and run commands
   ultron --tools read,grep,find,ls -p "Review the code in src/"
 
   # Disable one tool while keeping the rest available

@@ -298,6 +298,9 @@ fn resources_runtime_guide_matches_typescript() {
             native_extension_tools: strings(&o["nativeExtensionTools"]),
             // The TS guide never names the Rust-only APIs (its host does not serve them).
             durable_apis: false,
+            // TS's root guide: its collect waits.
+            reader: resources::runtime_guide::GuideReader::Root,
+            host_waits: false,
         };
         match case["text"].as_str() {
             Some(expected) => assert_text(

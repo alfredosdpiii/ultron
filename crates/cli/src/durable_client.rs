@@ -8,7 +8,7 @@
 //! (injected) environment; the server it activates is the one `ultron durable start` starts.
 
 use crate::Env;
-use daemon::server::{Route, ServerOptions, activate_server, attach_compatible};
+use daemon::server::{Route, ServerOptions, activate_server, attach_conflicts};
 use daemon::workers::WorkerModel;
 use std::io::Write;
 use std::sync::Arc;
@@ -21,20 +21,27 @@ pub fn is_client(env: &Env) -> bool {
     (env.var)(CLIENT_ENV).as_deref() == Some("1")
 }
 
-/// The durable server's route for a client with `options`: activated (held open) when it is not running. Its workers
-/// start on the default worker options, so a client that needs its own cannot use it.
+/// The durable server's route for a client with `options`: activated (held open) when it is not running. Its
+/// workers start on the default worker options, so a client that needs its own cannot use it (the error names
+/// them). The client's run environment (`--offline`, the `httpProxy` setting) is no such option: a server this
+/// client activates runs with it.
 pub fn activate(options: &ServerOptions) -> Result<Route, String> {
-    if !attach_compatible(options) {
-        return Err(
-            "`ultron durable` runs on the durable server's worker options: --model, --provider, --api-key, \
-                    --thinking, --models, --system-prompt, --append-system-prompt, --no-skills, --no-context-files \
-                    and --no-session are not supported (set them in settings, or run without `durable`)"
-                .into(),
-        );
+    let conflicts = attach_conflicts(options);
+    if !conflicts.is_empty() {
+        return Err(format!(
+            "`ultron durable` runs on the durable server's worker options, so {} {} not supported (set {} in \
+             settings, or run without `durable`)",
+            conflicts.join(", "),
+            if conflicts.len() == 1 { "is" } else { "are" },
+            if conflicts.len() == 1 { "it" } else { "them" }
+        ));
     }
     activate_server(
         &ServerOptions {
-            model: WorkerModel::default(),
+            model: WorkerModel {
+                env: options.model.env.clone(),
+                ..WorkerModel::default()
+            },
             keep_alive: true,
             relay: None,
             ..options.clone()
@@ -44,8 +51,28 @@ pub fn activate(options: &ServerOptions) -> Result<Route, String> {
     .map_err(|e| e.to_string())
 }
 
+/// The command herdr runs to resume `session_id` opened through `ultron durable`: `ultron durable --session <id>`
+/// (a client of the durable server again, never a foreground server on its directory), behind `env VAR=...` for
+/// the instance or agent directory the caller's environment chose.
+pub fn durable_resume_argv(env: &Env, session_id: &str) -> Vec<String> {
+    let mut argv = Vec::new();
+    let assigned: Vec<String> = ["ULTRON_SERVER_DIR", "ULTRON_CODING_AGENT_DIR"]
+        .iter()
+        .filter_map(|k| (env.var)(k).filter(|v| !v.is_empty()).map(|v| format!("{k}={v}")))
+        .collect();
+    if !assigned.is_empty() {
+        argv.push("env".to_string());
+        argv.extend(assigned);
+    }
+    argv.extend(["ultron", "durable", "--session", session_id].map(String::from));
+    argv
+}
+
 /// Run `args` (an ordinary `ultron` command line) as a client of the durable instance.
 pub fn run(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> Result<i32, String> {
+    // herdr resumes the pane as a durable client (`ultron-s` set its own override first, which stays).
+    let caller = env.clone();
+    crate::herdr_report::set_resume_override(move |session_id| Some(durable_resume_argv(&caller, session_id)));
     let dir = crate::instance(env, true).dir.display().to_string();
     let inner = env.var.clone();
     let client = Env {
@@ -129,6 +156,13 @@ fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Wri
                 i += 1;
                 session = Some(args.get(i).cloned().ok_or(HOME_USAGE)?);
             }
+            // The home session, `--new` or `--session <id>` name the session: another selector would be dropped.
+            selector @ ("-c" | "--continue" | "-r" | "--resume" | "--fork" | "--session-id") => {
+                return Err(format!(
+                    "ultron-s opens the durable instance's home session: {selector} is not supported (ultron-s \
+                     --list lists its sessions, ultron-s --session <id> opens one)"
+                ));
+            }
             _ => rest.push(args[i].clone()),
         }
         i += 1;
@@ -181,10 +215,86 @@ fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Wri
         Some(home_resume_argv(current_home.as_deref(), session_id))
     });
     let mut client_args = vec!["--session-id".to_string(), id];
-    client_args.extend(rest);
+    // The client runs in the home directory: what names a file of the caller's directory is resolved there first.
+    client_args.extend(caller_args(&rest, &env.cwd, &env.home));
     let at_home = Env {
         cwd: env.home.clone(),
         ..env.clone()
     };
     run(&client_args, &at_home, out, err)
+}
+
+/// Flags whose value is the next argument (so an `@...` value is not a file argument).
+const VALUE_FLAGS: [&str; 24] = [
+    "--provider",
+    "--model",
+    "--api-key",
+    "--system-prompt",
+    "--name",
+    "-n",
+    "--session",
+    "--session-id",
+    "--fork",
+    "--session-dir",
+    "--models",
+    "--tools",
+    "-t",
+    "--exclude-tools",
+    "-xt",
+    "--thinking",
+    "--export",
+    "--extension",
+    "-e",
+    "--prompt-template",
+    "--theme",
+    "--mode",
+    "--use-theme",
+    "--tui-mode",
+];
+
+/// `args` with what names a file of the caller's directory `cwd` made absolute, for a run in another directory:
+/// `@file` arguments, `--skill <path>`, and an `--append-system-prompt` value that is a file there (else its text,
+/// unchanged).
+pub fn caller_args(args: &[String], cwd: &std::path::Path, home: &std::path::Path) -> Vec<String> {
+    let file = |arg: &str| format!("@{}", crate::file_args::resolve_read_path(arg, cwd, home).display());
+    let mut out = Vec::with_capacity(args.len());
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        match (arg, args.get(i + 1)) {
+            ("--", _) => {
+                out.push(arg.to_string());
+                out.extend(args[i + 1..].iter().map(|a| match a.strip_prefix('@') {
+                    Some(path) => file(path),
+                    None => a.clone(),
+                }));
+                break;
+            }
+            ("--append-system-prompt", Some(value)) => {
+                let path = cwd.join(value);
+                out.push(arg.to_string());
+                out.push(if !value.is_empty() && path.exists() {
+                    path.display().to_string()
+                } else {
+                    value.clone()
+                });
+                i += 1;
+            }
+            ("--skill", Some(value)) => {
+                let path = crate::file_args::resolve_read_path(value, cwd, home);
+                out.extend([arg.to_string(), path.display().to_string()]);
+                i += 1;
+            }
+            (flag, Some(value)) if VALUE_FLAGS.contains(&flag) => {
+                out.extend([arg.to_string(), value.clone()]);
+                i += 1;
+            }
+            _ => out.push(match arg.strip_prefix('@') {
+                Some(path) => file(path),
+                None => arg.to_string(),
+            }),
+        }
+        i += 1;
+    }
+    out
 }

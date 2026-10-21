@@ -644,6 +644,25 @@ impl Agents {
         state.journal.list().map(|_| ())
     }
 
+    /// Tasks still running whose end is announced to `lane` ("main" for the root) as a `task_done`-style event: what
+    /// a turn scheduler (the print client's `async.pending`) waits for before it ends.
+    pub fn running_announced(&self, lane: &str) -> usize {
+        let state = self.state();
+        state
+            .tasks
+            .iter()
+            .filter(|t| t.outcome.is_none() && t.notify.is_some())
+            .filter(|t| {
+                let owner = t
+                    .parent_id
+                    .as_deref()
+                    .and_then(|p| state.task(p))
+                    .and_then(|p| p.lane.as_deref());
+                owner.unwrap_or("main") == lane
+            })
+            .count()
+    }
+
     /// The task that owns `lane` (`None`: the root lane or a lane this host did not start).
     pub fn caller_task(&self, lane: &str) -> Option<String> {
         self.state().lane_tasks.get(lane).cloned()

@@ -683,7 +683,8 @@ impl Link {
                 }
                 link.create(options)
             }
-            Target::Ephemeral => link.create(json!({})),
+            // `--no-session --name x`: the session is removed when the run ends, but named while it lasts.
+            Target::Ephemeral => link.create(name.map_or_else(|| json!({}), |name| json!({"name": name}))),
         };
         let attached = selected.and_then(|id| {
             rpc_trace("rpc.session-selected");

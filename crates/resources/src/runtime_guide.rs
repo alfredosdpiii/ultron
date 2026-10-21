@@ -16,6 +16,18 @@ pub enum EventDelivery {
     Off,
 }
 
+/// Who reads the guide.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GuideReader {
+    /// The root agent.
+    #[default]
+    Root,
+    /// A subagent: its reply ends its run and nothing wakes it after it, so it awaits what its answer needs; it
+    /// has no `schedule` (the root's only). `swarm`: persistent children, `swarm`, `board` and `notes` work for it
+    /// (a durable runtime is behind its lane; in-memory children have none).
+    Subagent { swarm: bool },
+}
+
 /// An extension tool as the guide lists it.
 #[derive(Clone, Debug)]
 pub struct ExtensionToolSummary {
@@ -36,6 +48,11 @@ pub struct RuntimeGuideOptions {
     /// children, `rlm.ask`, `swarm`, `board`, `notes`), typed memory records with file pointers, `rlm.images`, `schedule` and `diagram`. The
     /// TS host and the Claude root do not. Off keeps the guide equal to TS.
     pub durable_apis: bool,
+    pub reader: GuideReader,
+    /// With [`EventDelivery::Wake`]: the host waits for subagents between turns and `rlm.collect` never waits (it
+    /// raises while selected children run), as the Rust session's woken root does. Off keeps TS's wording, whose
+    /// collect waits.
+    pub host_waits: bool,
 }
 
 impl Default for RuntimeGuideOptions {
@@ -48,6 +65,8 @@ impl Default for RuntimeGuideOptions {
             mcp_servers: Vec::new(),
             native_extension_tools: Vec::new(),
             durable_apis: false,
+            reader: GuideReader::Root,
+            host_waits: false,
         }
     }
 }
@@ -64,6 +83,8 @@ A turn ends when you reply without calling rlm; that reply is your answer. Never
 const HINTS_LINE: &str = r#"Act on a trailing `[hint:<tag>]` line (`await hints.mute(tag)` once understood)."#;
 const ASYNC_EVENTS: &str = r#"Nothing needs polling: a job, tool call, subagent or task that ends while you are not waiting sends a `<runtime_event kind=... id=... status=... fetch=...>` message, which starts a new turn if yours ended. Start long work and do the rest meanwhile; never sleep, poll or loop waiting, and if only that result is left, await it (`await job.result()`). Run independent operations together with `asyncio.gather`."#;
 const ASYNC_EVENTS_NEXT_CALL: &str = r#"Nothing needs polling: a job, tool call, subagent or task that ends while you are not waiting on it is reported as a `<runtime_event kind=... id=... status=... fetch=...>` line at the top of your next rlm result (after you reply, with the user's next message). Nothing wakes you after you reply, so before ending your turn await what the answer still needs (`await rlm.collect(hs)`, `await job.result()`; waiting costs no model turns). Start long work and do the rest meanwhile; never sleep, poll or loop checking. Run independent operations together with `asyncio.gather`."#;
+const ASYNC_EVENTS_SUBAGENT: &str = r#"Nothing needs polling, and nothing wakes you: your reply ends your run. Before replying, await what your answer still needs (`await rlm.collect(hs)` waits for your subagents, `await job.result()` for a job; waiting costs no model turns). A job, tool call or subagent that ends while you work may reach you as a `<runtime_event kind=... id=... status=... fetch=...>` message. Start long work and do the rest meanwhile; never sleep, poll or loop checking. Run independent operations together with `asyncio.gather`."#;
+const BASH_SKILL_SUBAGENT: &str = r#"- `out = await bash('''cmd''')` (always triple-quoted, even for one line; the text reaches bash as written, backslashes included) returns stdout and stderr as a str, with `[exit code N]` appended on failure (`out.ok`, `out.exit_code`). Prefer `rg -n`, `sed -n 'A,Bp'`, `head` over whole files. A command still running after 30 s continues as a job (`out.job`; `await out.job.result()` waits for it); `yield_after=0` starts a suite or build you know takes minutes as a job at once. `help(bash)`."#;
 const ASYNC_EVENTS_OFF: &str = r#"Completions are not announced in this session (ULTRON_ASYNC_EVENTS=off): when you need a result, wait for it with `await job.result()`, `await rlm.collect(...)` or `await agents.result(id)`. Run independent operations together with `asyncio.gather`."#;
 const SEARCH_FIRST: &str = r#"## Search before delegating
 For many files or a large input, narrow with code first: 1. search the concept and its synonyms (`re`, `h.search`, `rg -il`) and count hits; 2. print one compact line per candidate (id and matching sentence); 3. read the deciding passages of unclear candidates and judge them yourself. Use `rlm.map` only for candidates a line or two cannot settle, or text over ~100 KB, one passage per frame. Do not spawn subagents to read or classify documents: each re-sends this prompt and its transcript every turn."#;
@@ -97,7 +118,8 @@ const TYPED_MEMORY: &str = r#" A fact tied to files can be typed: `memory.propos
 const IMAGES_PROMPT: &str = r#"- `await rlm.images.generate(prompt, size="16:9")` makes an image and saves it to a file: `{"paths": [...], "model": ...}` (`help(rlm.images)`)."#;
 const SCHEDULE_PROMPT: &str = r#"- `await schedule.every("1h", prompt)` or `schedule.at(when, prompt)` sends this session `prompt` later as a new turn (`help(schedule)`)."#;
 const DIAGRAM_PROMPT: &str = r#"- `await diagram.mermaid(text)` renders Mermaid to an SVG and PNG in your theme and shows the user the PNG; you get its path (`help(diagram)`)."#;
-const SWARM_PROMPT: &str = r#"Persistent agents: `h = await rlm.spawn(brief, name=..., keep=True)` stays alive after its answer (its context, files and kernel survive restarts); `await rlm.ask(h, question)` asks it a follow-up, so your context grows only by the question and the answer: ask the child that already read something instead of re-reading it. `await swarm.route(question)` ranks the agents holding matching context; `swarm.send(name, text)` and `swarm.inbox()` message agents; `board` (tasks with exclusive claims) and `notes` are the session's shared durable records. Contracts: `rlm.spawn(brief, name=..., contract={"checks": [{"run": "cargo test -q"}, {"changed_files_within": ["src/**"]}]}, hop={"retry": 1})` makes the host run the checks itself when the child ends, and its result's `check["contract"]["verdict"]` is "verified" or "contract_failed" (`help(rlm.spawn)`). `help(swarm)`."#;
+const PERSISTENT_PROMPT: &str = r#"Persistent agents: `h = await rlm.spawn(brief, name=..., keep=True)` stays alive after its answer (its context, files and kernel survive restarts); `await rlm.ask(h, question)` asks it a follow-up, so your context grows only by the question and the answer: ask the child that already read something instead of re-reading it. `await swarm.route(question)` ranks the agents holding matching context; `swarm.send(name, text)` and `swarm.inbox()` message agents; `board` (tasks with exclusive claims) and `notes` are the session's shared durable records."#;
+const CONTRACTS_PROMPT: &str = r#"Contracts: `rlm.spawn(brief, name=..., contract={"checks": [{"run": "cargo test -q"}, {"changed_files_within": ["src/**"]}]}, hop={"retry": 1})` makes the host run the checks itself when the child ends, and its result's `check["contract"]["verdict"]` is "verified" or "contract_failed" (`help(rlm.spawn)`)."#;
 
 /// Guideline bullets for the `rlm` tool, depending on whether native file tools are active too.
 pub fn rlm_tool_guidelines(active_tools: &[&str]) -> Vec<String> {
@@ -184,11 +206,15 @@ pub fn extension_tools_prompt(
     Some(parts.join("\n\n"))
 }
 
-fn delegation_prompt(delivery: EventDelivery) -> String {
-    let wait = if delivery == EventDelivery::Wake {
-        "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
-    } else {
-        "`await rlm.collect(hs)` (free)"
+fn delegation_prompt(delivery: EventDelivery, host_waits: bool) -> String {
+    let wait = match (delivery, host_waits) {
+        (EventDelivery::Wake, true) => {
+            "end your turn: each end arrives as a `child_done` event, and `await rlm.collect(hs)` then returns the results (it does not wait: while a selected child runs it raises)"
+        }
+        (EventDelivery::Wake, false) => {
+            "`await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event"
+        }
+        _ => "`await rlm.collect(hs)` (free)",
     };
     format!("{DELEGATION_HEAD}{wait}{DELEGATION_TAIL}")
 }
@@ -198,11 +224,18 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
     if !active_tools.contains(&"rlm") {
         return None;
     }
-    let delivery = options.delivery;
+    let subagent = matches!(options.reader, GuideReader::Subagent { .. });
+    // A subagent is never woken: everything it says about waiting is the awaiting kind.
+    let delivery = match options.delivery {
+        EventDelivery::Wake if subagent => EventDelivery::NextCall,
+        other => other,
+    };
     let skills = [
         "## Skills",
         if active_tools.contains(&"bash") {
             BASH_SKILL_WITH_TOOL
+        } else if subagent {
+            BASH_SKILL_SUBAGENT
         } else {
             BASH_SKILL
         },
@@ -222,6 +255,7 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
     );
     let events = match delivery {
         EventDelivery::Off => ASYNC_EVENTS_OFF,
+        _ if subagent => ASYNC_EVENTS_SUBAGENT,
         EventDelivery::NextCall => ASYNC_EVENTS_NEXT_CALL,
         EventDelivery::Wake => ASYNC_EVENTS,
     };
@@ -242,14 +276,29 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
         format!("## Bounded inference\n{INFERENCE_PROMPT}"),
     ];
     parts.extend(extension_tools);
-    if options.durable_apis {
-        parts.push(format!("{}\n{SWARM_PROMPT}", delegation_prompt(delivery)));
+    let delegation = delegation_prompt(delivery, options.host_waits);
+    let swarm = options.reader != GuideReader::Subagent { swarm: false };
+    // An external root (Claude Code over `ultron mcp`) has the Rust host's APIs except those the session actor's
+    // durable runtime and server serve: persistent children with `rlm.ask`, the swarm, and `schedule`.
+    let persistent = options.durable_apis && swarm && !options.external_root;
+    if persistent {
+        parts.push(format!(
+            "{delegation}\n{PERSISTENT_PROMPT} {CONTRACTS_PROMPT} `help(swarm)`."
+        ));
+    } else if options.durable_apis && swarm {
+        parts.push(format!("{delegation}\n{CONTRACTS_PROMPT}"));
     } else {
-        parts.push(delegation_prompt(delivery));
+        parts.push(delegation);
     }
     if options.durable_apis {
+        // `schedule.*` is the root agent's only, and needs the session actor's server.
+        let schedule = if persistent && !subagent {
+            format!("\n{SCHEDULE_PROMPT}")
+        } else {
+            String::new()
+        };
         parts.push(format!(
-            "{context}\n{MEMORY}{TYPED_MEMORY}\n{IMAGES_PROMPT}\n{SCHEDULE_PROMPT}\n{DIAGRAM_PROMPT}"
+            "{context}\n{MEMORY}{TYPED_MEMORY}\n{IMAGES_PROMPT}{schedule}\n{DIAGRAM_PROMPT}"
         ));
     } else {
         parts.push(format!("{context}\n{MEMORY}"));

@@ -132,6 +132,8 @@ pub struct LaunchInput<'a> {
     pub bundled_skills: Option<&'a Path>,
     pub hints: bool,
     pub skip_permissions: Vec<String>,
+    /// The kernel APIs the guide names (crate::guide::runtime_apis); none: the TypeScript guide's set.
+    pub apis: Option<&'a resources::runtime_guide::RuntimeGuideOptions>,
 }
 
 fn stringify(value: &Value) -> String {
@@ -208,6 +210,7 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
             resources: Some(input.resources),
             bundled_skills: input.bundled_skills,
             wake: crate::guide::wakes(input.var, wake_hooks),
+            apis: input.apis,
         },
         input.hints,
     );
@@ -356,6 +359,7 @@ pub fn run(
         },
     );
     let skip = claude_cli::skip_permissions_args(var, claude_cli::current_uid(), claude_settings.skip_permissions);
+    let apis = crate::guide::runtime_apis(&ctx.env);
     let dir = if parsed.print_config {
         None
     } else {
@@ -376,6 +380,7 @@ pub fn run(
         bundled_skills: bundled.as_deref(),
         hints: crate::guide::hints_enabled(var("ULTRON_HINTS").as_deref()),
         skip_permissions: skip,
+        apis: Some(&apis),
     });
     let Some(dir) = dir else {
         let env_prefix: String = launch

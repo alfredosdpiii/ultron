@@ -475,6 +475,21 @@ impl Lanes {
         )
     }
 
+    /// Detached cells of `lane` (its own or its side lanes') still running: each one's end arrives as a
+    /// [`CellEnd`] of `lane`.
+    pub fn detached_running(&self, lane: &str) -> usize {
+        let state = lock(&self.inner.state);
+        state
+            .cells
+            .values()
+            .filter(|cell| cell.detached && cell.outcome.is_none())
+            .filter(|cell| {
+                let owner = state.lanes.get(&cell.lane).and_then(|l| l.serves.as_deref());
+                owner.unwrap_or(&cell.lane) == lane
+            })
+            .count()
+    }
+
     /// The live kernel of an open lane (none while it is evicted).
     pub fn kernel(&self, lane: &str) -> Option<Arc<Kernel>> {
         if !lock(&self.inner.state).lanes.contains_key(lane) {

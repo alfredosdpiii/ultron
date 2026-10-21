@@ -85,6 +85,11 @@ struct Server {
 
 impl Server {
     fn start(root: &Root, port: u16, extra: &[(&str, &str)]) -> Server {
+        Server::start_with(root, port, extra, &[])
+    }
+
+    /// [`Server::start`] with more server arguments (`--wake`).
+    fn start_with(root: &Root, port: u16, extra: &[(&str, &str)], args: &[&str]) -> Server {
         std::fs::write(
             root.path("a/models.json"),
             json!({"providers": {"groq": {"baseUrl": format!("http://127.0.0.1:{port}/v1")}}}).to_string(),
@@ -97,6 +102,7 @@ impl Server {
             "groq/llama-3.3-70b-versatile",
         ]
         .iter()
+        .chain(args)
         .map(|a| a.to_string())
         .collect();
         let (running, handlers) = start(&argv, &claude_root::Ctx { env: root.env(extra) }).unwrap();
@@ -331,7 +337,8 @@ fn claude_root_a_child_ending_while_claude_is_idle_wakes_it_through_the_wait_eve
         wait_until("the test releases the child", || gate.exists());
         Reply::Text("child answer".into())
     }));
-    let mut server = Server::start(&root, port, &[]);
+    // The launcher passes `--wake` when its hooks wake the root.
+    let mut server = Server::start_with(&root, port, &[], &["--wake"]);
     let socket = server.running.socket();
     hook(&socket, "user-prompt");
     let id = server.cell("h = await rlm.spawn('CHILD-BRIEF: answer later', name='waiter')\nprint(h.rlm_child_id)");
@@ -357,5 +364,97 @@ fn claude_root_a_child_ending_while_claude_is_idle_wakes_it_through_the_wait_eve
     assert!(woken.contains("child_done") && woken.contains(&id), "{woken}");
     // Nothing runs and nothing waits now: a new waiter returns without waking.
     assert_eq!(wait_events(&socket), (0, String::new()));
+    server.close();
+}
+
+/// The first user message of a request (what tells the root's requests from a child's and a grandchild's).
+fn first_user(body: &Value) -> String {
+    body["messages"]
+        .as_array()
+        .and_then(|m| m.iter().find(|m| m["role"] == "user"))
+        .map(Value::to_string)
+        .unwrap_or_default()
+}
+
+/// A cell that starts `rlm.collect([h])`, writes `gate` once the request is out, and prints what it returned.
+fn collect_then_gate(spawn: &str, gate: &Path) -> String {
+    format!(
+        "import asyncio\n{spawn}\nc = asyncio.ensure_future(rlm.collect([h]))\nawait asyncio.sleep(0)\nopen({gate:?}, 'w').close()\ntry:\n    r = await c\n    print('got', r[0]['result']['value'])\nexcept RuntimeError as e:\n    print('raised', e)",
+        gate = gate.display().to_string()
+    )
+}
+
+#[test]
+fn claude_root_without_wake_collect_waits_in_the_cell_and_honours_timeout_ms() {
+    // A root nothing wakes (no `--wake`: `-p`, `--no-hooks`, a Claude child's server) waits for its subagents in the
+    // cell; `timeout_ms` bounds the wait.
+    let root = Root::new();
+    let release = root.path("w/release");
+    let gate = release.clone();
+    let (port, _requests) = fake_provider(Arc::new(move |_: &Value| {
+        wait_until("the test releases the child", || gate.exists());
+        Reply::Text("child answer".into())
+    }));
+    let mut server = Server::start(&root, port, &[]);
+    let id = server.cell("h = await rlm.spawn('CHILD-BRIEF: answer later', name='slow')\nprint(h.rlm_child_id)");
+    let timed_out =
+        server.cell("try:\n    await rlm.collect([h], timeout_ms=300)\nexcept RuntimeError as e:\n    print(e)");
+    assert_eq!(
+        timed_out,
+        format!(
+            "rlm.collect: timed out after 300 ms with 1 subagent(s) still running ({id}); they keep running. `await rlm.results()` returns the results of those that ended and the ids still running; collect again to wait more."
+        )
+    );
+    let collected = server.cell(&collect_then_gate("pass", &release));
+    assert_eq!(collected, "got child answer");
+    server.close();
+}
+
+#[test]
+fn claude_root_ultron_child_collect_waits_for_a_grandchild_and_its_guide_has_no_root_apis() {
+    let root = Root::new();
+    let gate = root.path("w/collecting");
+    let child_cell = collect_then_gate("h = await rlm.spawn('GRAND-BRIEF: answer', name='grand')", &gate);
+    let waits = gate.clone();
+    let (port, requests) = fake_provider(Arc::new(move |body: &Value| {
+        let first = first_user(body);
+        if first.contains("GRAND-BRIEF") {
+            wait_until("the child collects", || waits.exists());
+            return Reply::Text("grand answer".into());
+        }
+        if has_tool_result(body) {
+            Reply::Text("child done".into())
+        } else {
+            Reply::Cell(child_cell.clone())
+        }
+    }));
+    let mut server = Server::start(&root, port, &[]);
+    let collected = server.cell(
+        "h = await rlm.spawn('CHILD-BRIEF: delegate', name='kid', depth=1)\nr = await rlm.collect([h])\nprint(r[0]['result']['value'])",
+    );
+    assert_eq!(collected, "child done");
+    let requests = requests.lock().unwrap().clone();
+    let child: Vec<&Value> = requests
+        .iter()
+        .filter(|b| first_user(b).contains("CHILD-BRIEF"))
+        .collect();
+    let result = child.iter().find(|b| has_tool_result(b)).unwrap()["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["role"] == "tool")
+        .unwrap()["content"]
+        .to_string();
+    // The child's lane waited in its cell for the grandchild.
+    assert!(result.contains("got grand answer"), "{result}");
+    // An in-memory child is told to await before replying, without the APIs it cannot use here.
+    let system = child[0]["messages"][0].to_string();
+    assert!(
+        system.contains("Nothing needs polling, and nothing wakes you: your reply ends your run."),
+        "{system}"
+    );
+    assert!(!system.contains("schedule.every"), "{system}");
+    assert!(!system.contains("swarm.route"), "{system}");
+    assert!(!system.contains("keep=True"), "{system}");
     server.close();
 }

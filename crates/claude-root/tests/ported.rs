@@ -80,6 +80,7 @@ fn build(
         bundled_skills: None,
         hints: false,
         skip_permissions: skip,
+        apis: None,
     })
 }
 

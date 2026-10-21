@@ -401,11 +401,17 @@ fn services(
         })
         .method("nextRun", move |args| queue(&next_core, QueueKind::NextRun, &args))
         .method("prompt", move |args| {
-            let message = expand_review_command(
-                request(&args)["message"]
-                    .as_str()
-                    .ok_or_else(|| ServiceError::internal("Invalid prompt request"))?,
-            );
+            let typed = request(&args)["message"]
+                .as_str()
+                .ok_or_else(|| ServiceError::internal("Invalid prompt request"))?;
+            // `/goal`, `/persona`, `/keepgoing`: the session's command, answered here, never a turn.
+            if let Some((name, op)) = crate::session_commands::command(typed) {
+                return Ok(Some(crate::session_commands::answer(
+                    name,
+                    call_core(&prompt_core, op)?,
+                )));
+            }
+            let message = expand_review_command(typed);
             let images = request(&args)["images"].as_array().cloned().unwrap_or_default();
             let lifecycle = prompt_lifecycle.lock().unwrap_or_else(|e| e.into_inner()).clone();
             let marker = format!("prompt-{}", crate::paths::uuid_v4());
@@ -597,6 +603,15 @@ fn services(
     let ops = Service::new(OPS_SERVICE)
         .method("op", move |args| {
             let op = Op::from_json(request(&args)).map_err(ServiceError::internal)?;
+            // A prompt that is one of the session's commands runs that command (crate::session_commands).
+            if let Op::Prompt { message, .. } | Op::PromptAndWait { message, .. } = &op
+                && let Some((name, command)) = crate::session_commands::command(message)
+            {
+                return Ok(Some(crate::session_commands::answer(
+                    name,
+                    call_core(&op_core, command)?,
+                )));
+            }
             call_core(&op_core, session_core::review_command::expand_client_op(op))
         })
         // The run's progress (crate::watchdog), now.

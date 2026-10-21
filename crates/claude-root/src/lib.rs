@@ -6,7 +6,9 @@
 //! RLM-first: Claude Code sees one tool, `mcp__ultron__rlm`; every capability is a kernel API reached from a cell.
 
 pub mod bridge;
+pub mod checkpoints;
 pub mod child;
+pub mod child_usage;
 pub mod claude_cli;
 pub mod cli;
 pub mod control;
@@ -22,6 +24,7 @@ pub mod persona_hook;
 pub mod root_sink;
 pub mod self_cmd;
 pub mod settings;
+pub mod unavailable;
 pub mod watch;
 pub mod worker_root;
 

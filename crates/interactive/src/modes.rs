@@ -80,8 +80,8 @@ pub fn persona_arg(args: &str) -> Option<PersonaArg> {
 pub fn persona_status(persona: Option<&str>) -> String {
     match persona {
         Some("ultron") => "Persona is ultron: personality.md is in the system prompt".into(),
+        Some("none") | None => "Persona is off (/persona ultron turns it on)".into(),
         Some(other) => format!("Persona \"{other}\" is not known, so it is off: /persona ultron|none"),
-        None => "Persona is off (/persona ultron turns it on)".into(),
     }
 }
 

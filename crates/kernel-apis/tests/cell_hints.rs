@@ -532,3 +532,40 @@ fn kernel_apis_hints_mutes_are_per_lane_and_persist_each_tag_fires_at_most_n_tim
     assert_eq!(hint_max_per_tag(None), 3);
     assert_eq!(read_handle_bytes(None), 256 * 1024);
 }
+
+/// A lane the host does not wake (a subagent's, a root nothing wakes) gets the awaiting wording for a detached job,
+/// never "end your turn"; the woken root gets the waking one (session_core::wake).
+#[test]
+fn kernel_apis_cell_hints_job_wording_follows_the_woken_lanes() {
+    let detached = |root_woken: bool, lane: &str| {
+        let fx = Fixture::new();
+        let hints = fx.make();
+        hints.set_lane_woken(Arc::new(move |lane: &str| lane == "main" && root_woken));
+        fx.cell_on(
+            &hints,
+            lane,
+            "out = await bash('make')",
+            &[(
+                "bash",
+                json!({"command": "make", "yield_after": 30}),
+                json!({"running": true, "job": {"id": "job-1"}}),
+                10,
+            )],
+            OK,
+        )
+        .unwrap()
+    };
+    let root = detached(true, "main");
+    assert!(
+        root.contains("Do not wait for it: do other work or end your turn"),
+        "{root}"
+    );
+    for (woken, lane) in [(true, "ultron.rlm-child.7"), (false, "main")] {
+        let hint = detached(woken, lane);
+        assert!(
+            hint.contains("`await <result>.job.result()` waits for it when your answer needs it (nothing wakes you after you reply)"),
+            "{hint}"
+        );
+        assert!(!hint.contains("end your turn"), "{hint}");
+    }
+}

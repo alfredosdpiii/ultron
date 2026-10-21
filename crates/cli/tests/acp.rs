@@ -905,3 +905,82 @@ fn cli_acp_schema_checker_rejects_bad_messages() {
     assert!(check_def("SessionNotification", &update(json!({"sessionUpdate": "tool_call_update", "toolCallId": "t", "content": [{"type": "diff", "path": "/a"}]}))).is_err());
     assert!(check_def("InitializeResponse", &json!({"protocolVersion": -1})).is_err());
 }
+
+/// W25E: `/persona`, `/keepgoing` and `/goal` typed in the editor are the session's commands, answered by the worker
+/// (as one agent message, the turn ending at once), never a model turn that reads them as text.
+#[test]
+fn cli_acp_session_commands_are_answered_by_the_worker_not_the_model() {
+    let (port, seen) = mock_server(Vec::new(), Naming::Title("Acp commands".into()));
+    let sandbox = Sandbox::new(port);
+    let mut acp = Acp::start(&sandbox, &[]);
+    initialize(&mut acp);
+    let session = new_session(&mut acp, &sandbox.cwd);
+    for (typed, answer) in [
+        ("/persona on", "Persona is on for this session; keep-going off"),
+        ("/keepgoing off", "Persona is on for this session; keep-going off"),
+        (
+            "/persona auto",
+            "Persona for this session follows the settings (off); keep-going off",
+        ),
+        ("/goal clear", "No goal to clear."),
+    ] {
+        acp.mark();
+        let from = acp.seen.len();
+        let reply = acp.call(
+            "session/prompt",
+            json!({"sessionId": session, "prompt": [{"type": "text", "text": typed}]}),
+        );
+        assert_eq!(result(&reply), json!({"stopReason": "end_turn"}), "{typed}");
+        assert_eq!(text_of(&acp.updates(from), "agent_message_chunk"), answer, "{typed}");
+    }
+    assert!(seen.lock().unwrap().requests.is_empty(), "a command reached the model");
+    assert_eq!(acp.stop(), Some(0));
+}
+
+/// W25E: `--name` names the first new session only (a second directory's session is not named too), and session
+/// selectors are refused: the client opens its sessions itself.
+#[test]
+fn cli_acp_name_is_the_first_sessions_and_selectors_are_refused() {
+    let (port, _seen) = mock_server(Vec::new(), Naming::Title("unused".into()));
+    let sandbox = Sandbox::new(port);
+    let other = sandbox.root.join("other");
+    std::fs::create_dir_all(&other).unwrap();
+    let mut acp = Acp::start(&sandbox, &["--name", "Editor work"]);
+    initialize(&mut acp);
+    let first = new_session(&mut acp, &sandbox.cwd);
+    let second = new_session(&mut acp, &sandbox.cwd);
+    let third = new_session(&mut acp, &other);
+    assert_eq!(acp.stop(), Some(0));
+    // The sessions' names as their files record them (every session of this agent dir, whatever its cwd).
+    let names: HashMap<String, Option<String>> = [sandbox.cwd.clone(), other.clone()]
+        .iter()
+        .flat_map(|cwd| session_journal::names::list_sessions(&sandbox.sessions_dir(), &cwd.display().to_string()))
+        .map(|s| (s.metadata.id.clone(), s.name.clone()))
+        .collect();
+    assert_eq!(names.get(&first), Some(&Some("Editor work".to_string())), "{names:?}");
+    assert_eq!(names.get(&second), Some(&None), "{names:?}");
+    assert_eq!(names.get(&third), Some(&None), "{names:?}");
+
+    for (selector, extra) in [
+        ("--continue", None),
+        ("--resume", None),
+        ("--session", Some("abc")),
+        ("--session-id", Some("abc")),
+        ("--fork", Some("abc")),
+    ] {
+        let mut command = sandbox.ultron();
+        command.args(["acp", "--model", "anthropic/claude-sonnet-4-5", selector]);
+        if let Some(extra) = extra {
+            command.arg(extra);
+        }
+        let out = command.stdin(Stdio::null()).output().unwrap();
+        assert_eq!(out.status.code(), Some(1), "{selector}");
+        assert_eq!(
+            String::from_utf8_lossy(&out.stderr),
+            format!(
+                "Error: `ultron acp` opens the sessions its client asks for (session/new, session/load): {selector} is not supported\n"
+            )
+        );
+        assert!(out.stdout.is_empty());
+    }
+}

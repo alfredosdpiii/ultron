@@ -347,3 +347,84 @@ fn delegation_cell_cancels_another_lanes_cell_but_not_itself() {
     r.gates.open(0);
     r.lanes.close();
 }
+
+/// `CollectMode::InCell` (a lane nothing wakes, session_core::wake): the collect blocks its cell until the children
+/// end, never parked (the cell is not detached, so its result is the tool result), bounded by `timeout_ms`; the mode
+/// is picked per lane.
+#[test]
+fn delegation_in_cell_collect_holds_the_cell_unparked_and_honours_timeout_ms() {
+    let r = root(CollectMode::Wait, 2);
+    r.host.set_lane_collect(Arc::new(|lane: &str| {
+        if lane == "main" {
+            CollectMode::InCell
+        } else {
+            CollectMode::Host
+        }
+    }));
+    assert_eq!(r.host.collect_mode("main"), CollectMode::InCell);
+    assert_eq!(r.host.collect_mode("other"), CollectMode::Host);
+    ok(&r.lanes, "main", "x = 41\nh = await rlm.spawn('brief', name='a')");
+    let id = r.host.running("main").pop().unwrap();
+    // A bounded wait ends with the children still running named, and they keep running.
+    let timed_out = ok(
+        &r.lanes,
+        "main",
+        "try:\n    await rlm.collect([h], timeout_ms=50)\nexcept RuntimeError as e:\n    print(e)",
+    );
+    assert_eq!(
+        timed_out.stdout,
+        format!(
+            "rlm.collect: timed out after 50 ms with 1 subagent(s) still running ({id}); they keep running. `await rlm.results()` returns the results of those that ended and the ids still running; collect again to wait more.\n"
+        )
+    );
+    assert_eq!(r.host.running("main"), vec![id.clone()]);
+    let started = r
+        .lanes
+        .start_routed(
+            "main",
+            "res = await rlm.collect([h])\nprint(res[0]['result']['value'], x + 1)",
+        )
+        .unwrap();
+    // While it waits the cell is neither parked nor detached.
+    r.lanes.open("side").unwrap();
+    let cells = ok(&r.lanes, "side", "(await rlm.host_request('rlm.cells', {}))['cells']");
+    assert_eq!(
+        cells.result.unwrap(),
+        format!(
+            "[{{'cell': '{}', 'lane': 'main', 'parked': False, 'detached': False}}, {{'cell': 'cell-4', 'lane': 'side', 'parked': False, 'detached': False}}]",
+            started.cell
+        )
+    );
+    r.gates.open(0);
+    // Its result comes back as the cell's own (no CellEnd event).
+    let result = done(r.lanes.wait(&started.cell, BUDGET).unwrap());
+    assert_eq!(result.stdout, "reply-0 42\n");
+    assert!(r.ends.try_recv().is_err());
+    assert_eq!(r.lanes.detached_running("main"), 0);
+    r.lanes.close_lane("side").unwrap();
+    r.lanes.close();
+}
+
+/// `timeout_ms` must be a nonnegative number (0: no bound, as runtime.py sends by default).
+#[test]
+fn delegation_in_cell_collect_refuses_a_bad_timeout() {
+    let r = root(CollectMode::InCell, 1);
+    ok(&r.lanes, "main", "h = await rlm.spawn('brief', name='a')");
+    let refused = ok(
+        &r.lanes,
+        "main",
+        "try:\n    await rlm.host_request('rlm.collect', {'selectors': [h.rlm_child_id], 'timeout_ms': -1})\nexcept RuntimeError as e:\n    print(e)",
+    );
+    assert_eq!(
+        refused.stdout,
+        "rlm.collect timeout_ms must be a nonnegative number of milliseconds\n"
+    );
+    r.gates.open(0);
+    let collected = ok(
+        &r.lanes,
+        "main",
+        "(await rlm.collect([h], timeout_ms=0))[0]['result']['value']",
+    );
+    assert_eq!(collected.result.unwrap(), "'reply-0'");
+    r.lanes.close();
+}

@@ -72,6 +72,9 @@ pub struct WorkerModel {
     /// Environment the workers start with on top of this process's: what the CLI set for its run (`--offline`'s
     /// `PI_OFFLINE`, the `httpProxy` setting's `HTTP_PROXY`/`HTTPS_PROXY`), as TypeScript sets `process.env`.
     pub env: Vec<(String, String)>,
+    /// `--approve` (`Some(true)`) / `--no-approve` (`Some(false)`): the run's project trust override, which the
+    /// workers read from [`config::trust::TRUST_OVERRIDE_ENV`].
+    pub project_trust: Option<bool>,
 }
 
 type TerminationListener = Box<dyn FnOnce(Option<String>) + Send>;
@@ -575,6 +578,12 @@ impl Manager {
             env.push((crate::worker::API_KEY_ENV.to_string(), api_key.clone()));
         }
         env.extend(self.model.env.iter().cloned());
+        if let Some(trusted) = self.model.project_trust {
+            env.push((
+                config::trust::TRUST_OVERRIDE_ENV.to_string(),
+                if trusted { "1" } else { "0" }.to_string(),
+            ));
+        }
         session_core::startup_trace::trace_startup(
             std::env::var("ULTRON_STARTUP_TRACE").ok().as_deref(),
             "server.spawn-worker",

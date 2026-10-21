@@ -56,6 +56,8 @@ pub trait RootHost: Send + Sync {
     fn run_ended(&self, _lane: &str) {}
     /// `fileHooks.beginTurn`: the guards' per-turn times start from zero.
     fn begin_file_turn(&self) {}
+    /// A root turn starts, before any of its cells: its working-tree checkpoint (crate::checkpoints).
+    fn turn_started(&self, _turn: &str) {}
     /// Claude Code cancelled a cell's call (Esc): stop the shell jobs and REPL calls started under the usage root
     /// `root`, as Esc on a native root turn does (`onRootAborted`).
     fn root_aborted(&self, _root: &str) {}
@@ -280,6 +282,7 @@ impl ExternalRoot {
         }
         self.host.begin_root_turn(&turn);
         self.host.begin_file_turn();
+        self.host.turn_started(&turn);
         turn
     }
 

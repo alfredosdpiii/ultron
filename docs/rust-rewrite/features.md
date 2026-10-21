@@ -539,3 +539,30 @@ coalescing window) for 2 s, or when a newer waiter replaces it. `rlm.collect` ne
 (`--wake` to `ultron mcp`), the root's guide uses native wording ("end your turn; each end arrives as a `child_done`
 event") and the wait nudge drops "nothing wakes you". `-p`, `--no-hooks` and `ULTRON_GUIDE=ts` keep the next-call
 guide and add no hook (Claude Code ends async hooks with a print run).
+
+## Wave 44: wait rules, `ultron claude` parity, entry points (W25W-, W25C-, W25E-)
+
+**One wake rule** (`session_core::wake`). `rlm.collect` leaves waiting to the host only on lane `main` of a root that
+something wakes: native with completion events on, or `ultron mcp --wake` (the interactive `ultron claude` root).
+Everywhere else (child lanes, `ULTRON_ASYNC_EVENTS=off`, `-p`, `--no-hooks`, Claude children, in-memory children) it
+waits in the cell, unparked and cancelled with the cell; `timeout_ms` bounds the wait and raises with the ids still
+running. `-p` and json runs stay while a typed task or detached cell they started runs. Guides, cell hints, the wait
+nudge and the detached-cell note follow the same rule; subagents get no `schedule` line and in-memory children no
+persistent-agent section. The `rlm.ask` timeout names `rlm.delete_subagent`.
+
+**`ultron claude` parity.** Claude children are charged like TS `externalChild` (a model reservation on the spawning
+turn's root, settled from the child's usage; a spent root admits no child; `ultron usage` sees them). `rlm.childModel`
+applies to Claude children only when it is a `claude-code/` model; a named frame model beats `rlm.frameModel`.
+Event summaries use the session's mask. The guide comes from the native MCP guide (servers, typed memory, images,
+diagrams, contracts), and what the external root cannot serve (`schedule.every/at`, `keep=True`, `rlm.ask`, swarm,
+board, notes) is refused with a clear error. Loki's policy reaches the root and Claude children; SYSTEM.md and
+APPEND_SYSTEM.md shape root and child prompts; each turn records a working-tree checkpoint. A native `keep=True`
+spawn refuses options it cannot honour.
+
+**Entry points.** Durable clients attach under `--offline` and `httpProxy` (the server runs with the client's
+environment; real conflicts are named). `/goal`, `/persona` and `/keepgoing` are answered by the worker in `-p`, json
+and ACP. Durable `/persona` reports the worker's state and `/persona none` sticks. `--skill`, `-a`/`-na`,
+`--use-theme`, `--verbose`, `--tui-mode` and `--models` (Ctrl+P) apply; flags still unapplied warn and left the help.
+`--thinking` applies on resume without `--model` (TS keeps the stored lane with `--model`). `ultron-s` resolves
+`@file` in the caller's directory and refuses `-c`/`-r`/`--fork`; ACP refuses session selectors and names only its
+first session; `--no-session --name` keeps the name; herdr resumes a durable pane through `ultron durable --session`.

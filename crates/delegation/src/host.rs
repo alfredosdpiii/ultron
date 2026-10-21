@@ -7,6 +7,8 @@
 //! running children) and the turn scheduler waits between turns ([`Delegation::running`], [`Delegation::wait`], the
 //! [`DetachedEnd`] channel). With [`CollectMode::Wait`] (TS parity) the wait blocks only the request's host thread,
 //! ends when the cell is cancelled, and reports itself through [`CellContext::park`] so the lane detaches the cell.
+//! With [`CollectMode::InCell`] the wait blocks the cell itself (never parked, so the cell is never detached): for a
+//! lane nothing wakes when its work ends. [`Delegation::set_lane_collect`] picks the mode per lane.
 //! A detached child's end is pushed to the [`DetachedEnd`] channel as soon as its result is durable.
 
 mod restore;
@@ -73,6 +75,9 @@ pub struct ChildRun {
 pub type ChildRunner = Arc<dyn Fn(ChildRun) -> Result<String, String> + Send + Sync>;
 /// Sees a subagent's terminal record.
 pub type TaskEndObserver = Arc<dyn Fn(&Value) + Send + Sync>;
+/// Sees a subagent admitted by `rlm.spawn`, before it starts: its task id, its parent task (none for a child of the
+/// root) and the lane that spawned it.
+pub type SpawnObserver = Arc<dyn Fn(&str, Option<&str>, &str) + Send + Sync>;
 /// The limit text of child `task_id`'s root while its tree is spent (`turnBudgetExhausted(task.usageReservation.rootId)`).
 pub type LimitReason = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
@@ -108,7 +113,14 @@ pub enum CollectMode {
     /// The cell never waits: with every selected child ended it returns their results; otherwise it fails at once,
     /// naming the running children, and the host waits instead (their ends arrive as `child_done` events).
     Host,
+    /// The cell waits for every selected child (cancelled with the cell, bounded by the request's `timeout_ms`) and
+    /// is never parked: for a lane whose host does not wake it when its work ends, a parked cell's `cell_done` would
+    /// reach nobody. `rlm.merge` waits the same way.
+    InCell,
 }
+
+/// The [`CollectMode`] of each lane (see [`Delegation::set_lane_collect`]).
+pub type LaneCollect = Arc<dyn Fn(&str) -> CollectMode + Send + Sync>;
 
 pub struct DelegationOptions {
     pub store: Box<dyn TaskStore>,
@@ -191,6 +203,8 @@ struct Inner {
     changed: Condvar,
     runner: ChildRunner,
     collect: CollectMode,
+    /// Per-lane collect modes over `collect` (see [`Delegation::set_lane_collect`]).
+    lane_collect: Mutex<Option<LaneCollect>>,
     events: Mutex<Sender<DetachedEnd>>,
     spawn_depth: u32,
     child_model: Option<String>,
@@ -215,6 +229,8 @@ struct Inner {
     worktree_setup_source: Mutex<Option<WorktreeSetupSource>>,
     /// Sees every subagent's terminal record (`onTaskEnd`).
     on_task_end: Mutex<Option<TaskEndObserver>>,
+    /// Sees every admitted subagent before it starts (see [`Delegation::on_spawn`]).
+    on_spawn: Mutex<Option<SpawnObserver>>,
     /// See [`Delegation::set_root_spawn`], [`Delegation::set_root_finish`], [`Delegation::set_child_model`].
     root: Mutex<RootOptions>,
     /// Runs contract `run` checks (see [`Delegation::set_check_runner`]); none: [`plain_check_runner`].
@@ -281,6 +297,18 @@ fn worktree_changes(record: &WorktreeRecord, baseline: Option<&WorkspaceSnapshot
 #[derive(Clone)]
 pub struct Delegation {
     inner: Arc<Inner>,
+}
+
+/// `rlm.collect(timeout_ms=...)`: absent, null or 0 waits without a bound; a positive number bounds the wait.
+fn collect_timeout(value: Option<&Value>) -> Result<Option<Duration>, String> {
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Number(n)) => match n.as_f64() {
+            Some(ms) if ms.is_finite() && ms >= 0.0 => Ok((ms > 0.0).then(|| Duration::from_millis(ms.ceil() as u64))),
+            _ => Err("rlm.collect timeout_ms must be a nonnegative number of milliseconds".into()),
+        },
+        Some(_) => Err("rlm.collect timeout_ms must be a nonnegative number of milliseconds".into()),
+    }
 }
 
 fn fields(payload: &Map<String, Value>, allowed: &[&str]) -> Result<(), String> {
@@ -456,6 +484,7 @@ impl Delegation {
                 changed: Condvar::new(),
                 runner: options.runner,
                 collect: options.collect,
+                lane_collect: Mutex::new(None),
                 events: Mutex::new(sender),
                 spawn_depth: options.spawn_depth,
                 child_model: options.child_model,
@@ -472,6 +501,7 @@ impl Delegation {
                 child_model_source: Mutex::new(None),
                 worktree_setup_source: Mutex::new(None),
                 on_task_end: Mutex::new(None),
+                on_spawn: Mutex::new(None),
                 root: Mutex::new(RootOptions::default()),
                 check_runner: Mutex::new(None),
                 command_env: Mutex::new(Vec::new()),
@@ -498,6 +528,23 @@ impl Delegation {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .clone()
+    }
+
+    /// How `rlm.collect` (and `rlm.merge`'s wait) treats running children, per requesting lane: `Host` only where
+    /// the host wakes the lane when its work ends, `InCell` elsewhere. Without it every lane has the options' mode.
+    pub fn set_lane_collect(&self, policy: LaneCollect) {
+        *self.inner.lane_collect.lock().unwrap_or_else(PoisonError::into_inner) = Some(policy);
+    }
+
+    /// The collect mode of `lane`.
+    pub fn collect_mode(&self, lane: &str) -> CollectMode {
+        let policy = self
+            .inner
+            .lane_collect
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        policy.map_or(self.inner.collect, |policy| policy(lane))
     }
 
     /// Refuse spawns whose `model=` fails `check` (by default only the `provider/model` form is checked).
@@ -620,6 +667,12 @@ impl Delegation {
         *self.inner.on_task_end.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
     }
 
+    /// Tell `observer` of each subagent `rlm.spawn` admits, on the spawning request's thread before the child starts
+    /// (an external root charges the child's work to the turn that spawned it).
+    pub fn on_spawn(&self, observer: SpawnObserver) {
+        *self.inner.on_spawn.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
+    }
+
     /// Tell `observer` how each worktree child's merge ended (`onMerge`: the session's counters).
     pub fn on_merge(&self, observer: MergeObserver) {
         *self.inner.on_merge.lock().unwrap_or_else(PoisonError::into_inner) = Some(observer);
@@ -700,7 +753,8 @@ impl Delegation {
             }
             "rlm.collect" | "rlm.results" => {
                 let ids = self.selected(&payload, parent)?;
-                let waits = kind == "rlm.collect" && self.inner.collect == CollectMode::Wait;
+                let mode = self.collect_mode(lane);
+                let waits = kind == "rlm.collect" && mode != CollectMode::Host;
                 if !waits {
                     let running = self.unfinished(&ids);
                     if kind == "rlm.collect" && !running.is_empty() {
@@ -716,20 +770,34 @@ impl Delegation {
                     }
                     return Ok(out);
                 }
-                let park = cell.park.as_ref().filter(|_| !self.unfinished(&ids).is_empty());
+                // `timeout_ms` (0 or absent: no bound) ends the wait with the children still running named.
+                let timeout = collect_timeout(payload.get("timeout_ms"))?;
+                // An in-cell wait is never parked: the cell is not detached, so its result reaches the model.
+                let park = cell
+                    .park
+                    .as_ref()
+                    .filter(|_| mode == CollectMode::Wait && !self.unfinished(&ids).is_empty());
                 if let Some(park) = park {
                     park(true);
                 }
-                let outcomes = self.wait_until(&ids, None, cancel);
+                let outcomes = self.wait_until(&ids, timeout, cancel);
                 if let Some(park) = park {
                     park(false);
                 }
                 if outcomes.len() < ids.len() {
-                    return Err(cancel
-                        .and_then(Signal::reason)
-                        .map_or("rlm.collect was cancelled".into(), |r| {
-                            format!("rlm.collect was cancelled: {r}")
-                        }));
+                    if let Some(reason) = cancel.and_then(Signal::reason) {
+                        return Err(format!("rlm.collect was cancelled: {reason}"));
+                    }
+                    if let Some(timeout) = timeout.filter(|_| !cancel.is_some_and(Signal::is_aborted)) {
+                        let running = self.unfinished(&ids);
+                        return Err(format!(
+                            "rlm.collect: timed out after {} ms with {} subagent(s) still running ({}); they keep running. `await rlm.results()` returns the results of those that ended and the ids still running; collect again to wait more.",
+                            timeout.as_millis(),
+                            running.len(),
+                            running.join(", ")
+                        ));
+                    }
+                    return Err("rlm.collect was cancelled".into());
                 }
                 self.collected(outcomes)
             }
@@ -746,7 +814,7 @@ impl Delegation {
                 let result = self.cancel(&selector, "RLM child deleted")?;
                 Ok(json!({ "deleted": result["status"] == "cancelled" }))
             }
-            "rlm.merge" => self.merge_request(&payload, parent, cell),
+            "rlm.merge" => self.merge_request(&payload, parent, lane, cell),
             "rlm.worktrees.list" => {
                 fields(&payload, &["all"])?;
                 let shared = self.inner.workspace.as_deref();
@@ -827,6 +895,7 @@ impl Delegation {
         &self,
         payload: &Map<String, Value>,
         parent: Option<&str>,
+        lane: &str,
         cell: &CellContext,
     ) -> Result<Value, String> {
         fields(payload, &["selectors", "on_conflict", "include_failed"])?;
@@ -867,13 +936,17 @@ impl Delegation {
         if (1..children.len()).any(|i| children[..i].contains(&children[i])) {
             return Err("rlm.merge: a child is listed twice".into());
         }
-        // Every child ends first.
+        // Every child ends first: parked (the lane detaches the cell) unless the lane waits in its cell.
         let running = self.unfinished(&children);
-        if let Some(park) = cell.park.as_ref().filter(|_| !running.is_empty()) {
+        let park = cell
+            .park
+            .as_ref()
+            .filter(|_| !running.is_empty() && self.collect_mode(lane) != CollectMode::InCell);
+        if let Some(park) = park {
             park(true);
         }
         let ended = self.wait_until(&children, None, cell.cancel.as_ref());
-        if let Some(park) = cell.park.as_ref().filter(|_| !running.is_empty()) {
+        if let Some(park) = park {
             park(false);
         }
         if ended.len() < children.len() {
@@ -1335,6 +1408,15 @@ impl Delegation {
             if let Some(task) = state.task_mut(&task_id) {
                 task.lane_name = Some(lane_name);
             }
+        }
+        let observer = self
+            .inner
+            .on_spawn
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        if let Some(observer) = observer {
+            observer(&task_id, parent, lane);
         }
         let host = self.clone();
         std::thread::spawn(move || host.run_child(run));

@@ -163,6 +163,9 @@ pub(super) fn install(
     }));
     options.enabled = stack.events.enabled() && async_events_enabled((env.var)("ULTRON_ASYNC_EVENTS").as_deref());
     options.max_runs = max_event_runs_from_env((env.var)("ULTRON_ASYNC_EVENTS_MAX_RUNS").as_deref());
+    // With events on, the dispatcher re-invokes the idle root when its work ends: the root lane is woken
+    // (crate::wake), so its rlm.collect never waits; without them it waits in its cell like every other lane.
+    stack.wake.set(options.enabled);
     // A completion re-invokes the root only within the budget of the request that started the work.
     let usage = stack.usage.clone();
     options.refuse = Some(Arc::new(move |root: &str| usage.reinvoke_refusal(root).ok().flatten()));
@@ -347,7 +350,9 @@ impl Core {
             || self.compacting.is_some()
             || self.lane.stack.host.running_jobs() > 0
             || self.lane.stack.tool_calls().running(LANE, &|_| false) > 0
-            || !self.lane.stack.delegation.running(LANE).is_empty();
+            || !self.lane.stack.delegation.running(LANE).is_empty()
+            || self.lane.stack.agents.running_announced(LANE) > 0
+            || self.lane.stack.lanes.detached_running(LANE) > 0;
         let stack = self.lane.stack.clone();
         forward_ends(&stack.events, &self.durable.children, &stack.agents, &self.events);
         let active = running || self.events.pending_for(LANE) > 0;
@@ -366,7 +371,11 @@ impl Core {
         let aborted = |root: Option<&str>| events.root_aborted(root);
         let jobs = self.lane.stack.host.running(LANE, &aborted);
         let tools = self.lane.stack.tool_calls().running(LANE, &aborted);
-        let tasks = self.lane.stack.delegation.running(LANE).len();
+        // Subagents, typed tasks whose end is announced to the root (`task_done`), and detached root cells
+        // (`cell_done`): each end re-invokes the root, so a print run waits for them.
+        let tasks = self.lane.stack.delegation.running(LANE).len()
+            + self.lane.stack.agents.running_announced(LANE)
+            + self.lane.stack.lanes.detached_running(LANE);
         let pending = events.pending_for(LANE);
         let running = usize::from(self.run.is_some());
         json!({

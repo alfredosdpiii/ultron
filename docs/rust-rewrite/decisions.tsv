@@ -843,3 +843,33 @@ ts	phase	decision	why	evidence	result
 2026-10-21T12:00:00Z	wave43	feature: -p/json/rpc report working and end state only, released at exit; no metadata	brief: no metadata spam in prompted modes	cli_herdr_print_mode_reports_working_then_the_end_then_release	done
 2026-10-21T12:00:00Z	wave43	fix: ultron claude applies alwaysSkills like native Ultron	load_prompt_resources read engineering but never applied alwaysSkills; principle skills were only listed	W24-01; mutation caught	done
 2026-10-21T12:00:00Z	wave43	fix: ultron claude wakes the idle root through an asyncRewake PostToolUse hook (ultron hook wait-events) instead of holding rlm.collect	user: holding the turn for up to 2 h is not acceptable; Claude Code documents asyncRewake (exit 2 wakes the model with stderr); the waiter counts subagents, tasks, jobs, tool calls and events in the coalescing window	W24-02, W24-03; mutation caught	done
+2026-10-21	fix	One wake rule (session_core::wake): Host collect only on main while its composer says the root is woken; InCell everywhere else	Child lanes, events-off roots, unhooked/-p/child claude roots were told to wait but collect failed and nothing woke them	W25W-3/4/6/7	done
+2026-10-21	fix	InCell never parks (collect or merge)	A parked cell detaches; its cell_done is delivered only to woken lanes	W25W-1	done
+2026-10-21	fix	Honour collect timeout_ms with an error naming running ids (no partial return)	Keeps runtime.py unchanged; rlm.results() already returns ended + running	W25W-1/6	done
+2026-10-21	fix	async.pending/activity count announced typed tasks and detached root cells	-p exited before task_done/cell_done re-invoked the root	W25W-5	done
+2026-10-21	fix	Subagent guide reader (no schedule; in-memory: no swarm) and host_waits wording for the woken root; native Off delivery and HINTS_LINE	Texts promised wake-ups or APIs a lane cannot use	W25W-3/4/7/10	done
+2026-10-21	fix	Cell hints and the detached-cell note follow the wake predicate	Non-main lanes got end-your-turn hints; the note promised a wake in every mode	W25W-9/11	done
+2026-10-21	fix	Wait nudge (woken) says end your turn; rlm.ask timeout says rlm.delete_subagent	await rlm.collect raises on a woken root; Python rlm.cancel(id) is a cell cancel	W25W-12/13	done
+2026-10-21	fix	Python docstrings left unchanged	Additive wording shifted runtime.py lines and broke inventory pins, kernel replays, package embed, print_mode	full test run	reverted
+2026-10-21	fix	attach_conflicts replaces attach_compatible; the run environment is not a conflict; activate_server passes model.env to the server process	httpProxy/--offline made every durable client fail; schedule wake's environment was dropped	W25E-01	done
+2026-10-21	fix	/goal, /persona, /keepgoing intercepted in the worker (prompt + op), answered as {command,text,data}	-p and ACP sent them to the model as text	W25E-02/03	done
+2026-10-21	fix	TUI /persona report reads the worker (Op::Persona ""); persona off is saved as "none"	client settings missed the durable default; a removed key let the default come back	W25E-04	done
+2026-10-21	fix	--thinking applied on resume only without --model	TS records that -c --model --thinking keeps the stored lane (print-continue-keeps-lane-model)	W25E-05	done (open: --model on resume)
+2026-10-21	fix	TUI takes the thinking level from Describe; Ctrl+P scope seeded from --models	TUI showed the flag value or medium; the scope ignored --models	W25E-06/07	done
+2026-10-21	fix	--skill carried as SessionFlags.skill_paths; -a/-na as WorkerModel.project_trust; --use-theme/--verbose/--tui-mode applied in the TUI; other dropped flags warn and leave help	flags were parsed and silently dropped	W25E-12/13/14	done
+2026-10-21	fix	ultron-s caller_args resolves paths before moving to $HOME; refuses -c/-r/--fork/--session-id	@file was resolved against $HOME; selectors were silently dropped	W25E-08	done
+2026-10-21	fix	durable client sets a herdr resume override ultron durable --session <id>	resume ran a foreground server on the durable directory	W25E-09	done
+2026-10-21	fix	acp refuses session selectors; --name only for the first session/new	selectors were ignored; the name went to every session	W25E-10	done
+2026-10-21	fix	Target::Ephemeral is created with the name	--no-session --name lost the name	W25E-11	done
+2026-10-21	fix	help.txt corrected; cli.rs keeps a literal list of TS-help differences	help listed unsupported or missing commands and a wrong default	W25E-15	done
+2026-10-21	fix	Claude children: rlm.childModel only if claude-code/ and no named child model	another provider's model failed every spawn; the native reader drops claude-code/ models	W25C-01	done
+2026-10-21	fix	charge Claude children like TS externalChild (reserve/settle/recordTurn/childModel); session-backed journal, agent stores and ledger; agents loaded at startup	usage was dropped, budgets never stopped children, ultron usage saw nothing	W25C-02/03/04	done
+2026-10-21	fix	delegation on_spawn observer for the spawning turn's root	race-free root per task; the runner starts after workspace snapshots, when the turn may have ended	W25C-02	done
+2026-10-21	fix	event lanes use runtime_event_text_with(stack.mask())	the default mask lacked MCP-registered secrets	W25C-05	done
+2026-10-21	fix	guide built from native mcp_runtime_guide; the external root renders contracts, typed memory, images, diagram but not persistent agents/swarm/schedule	same source as native, minus what an external root cannot serve	W25C-06	done
+2026-10-21	fix	Loki policy in claude_system_prompt (root, and children per run); SessionStart drops it when the launch prompt had it	subagents and --no-hooks roots never saw it	W25C-07	done
+2026-10-21	fix	named frame model passed as ULTRON_RLM_FRAME_MODEL in the session env	rlm.frameModel / env overrode --frame-model	W25C-08	done
+2026-10-21	fix	session-core request layer; claude-root refuses schedule.every/at, keep=True, rlm.ask, swarm/board/notes	schedules never fired; keep and rlm.ask failed obscurely	W25C-09	done
+2026-10-21	fix	SYSTEM.md replaces root working rules / follows child identity; APPEND_SYSTEM.md after the base	native lane.rs honours both	W25C-10	done
+2026-10-21	fix	RootHost::turn_started records a working-tree checkpoint per turn (native settings and sandbox rule)	no checkpoints under ultron claude	W25C-11	done
+2026-10-21	fix	host_ops keep spawn refuses worktree/worktree_setup/depth/fork	dropped silently	W25C-12	done

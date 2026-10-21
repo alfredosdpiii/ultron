@@ -215,7 +215,10 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if parsed.diagnostics.iter().any(|d| d.kind == DiagnosticKind::Error) {
         return Ok(1);
     }
-    for warning in startup::extension_flag_warnings(&parsed) {
+    for warning in startup::extension_flag_warnings(&parsed)
+        .into_iter()
+        .chain(startup::ignored_flag_warnings(&parsed))
+    {
         writeln!(err, "Warning: {warning}").map_err(io)?;
     }
     if parsed.version {
@@ -284,6 +287,14 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             writeln!(
                 err,
                 "Error: `ultron acp` takes session options only (no messages, @files or --mode)"
+            )
+            .map_err(io)?;
+            return Ok(1);
+        }
+        if let Some(selector) = acp::session_selector(&parsed) {
+            writeln!(
+                err,
+                "Error: `ultron acp` opens the sessions its client asks for (session/new, session/load): {selector} is not supported"
             )
             .map_err(io)?;
             return Ok(1);

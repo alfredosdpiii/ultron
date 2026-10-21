@@ -12,7 +12,7 @@
 use kernel_apis::TaskHost;
 use kernel_apis::context_control::ContextBranches;
 use serde_json::{Map, Value, json};
-use session_core::async_events::{RuntimeEvent, runtime_event_text};
+use session_core::async_events::{RuntimeEvent, runtime_event_text_with};
 use session_core::compose::Stack;
 use session_core::durable_store::SharedSession;
 use session_core::lane::{Lane, MAIN};
@@ -29,6 +29,8 @@ pub struct LaneRootHost {
     stack: Arc<Stack>,
     /// The usage root of the turn now open (shell jobs and the budget line of root cells are charged to it).
     root: Arc<Mutex<Option<String>>>,
+    /// Each turn's working-tree checkpoint, when the session records them.
+    checkpoints: Option<crate::checkpoints::TurnCheckpoints>,
 }
 
 impl LaneRootHost {
@@ -36,7 +38,14 @@ impl LaneRootHost {
         LaneRootHost {
             stack,
             root: Arc::default(),
+            checkpoints: None,
         }
+    }
+
+    /// This host recording a working-tree checkpoint as each turn starts.
+    pub fn with_checkpoints(mut self, checkpoints: crate::checkpoints::TurnCheckpoints) -> LaneRootHost {
+        self.checkpoints = Some(checkpoints);
+        self
     }
 
     /// The usage root of the open turn.
@@ -81,6 +90,12 @@ impl crate::external_root::RootHost for LaneRootHost {
 
     fn begin_file_turn(&self) {
         self.stack.begin_turn();
+    }
+
+    fn turn_started(&self, turn: &str) {
+        if let Some(checkpoints) = &self.checkpoints {
+            checkpoints.turn_started(turn);
+        }
     }
 
     fn root_aborted(&self, root: &str) {
@@ -169,23 +184,28 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, sink: Arc<
     if !stack.events.enabled() {
         return;
     }
-    let jobs = sink.clone();
+    // Summaries are masked with the session's secrets (values MCP servers resolved included), as native event lanes
+    // mask them (`maskCellOutput`).
+    let (jobs, job_mask) = (sink.clone(), stack.mask());
     stack.host.on_job_end(Arc::new(move |end: host::JobEnd| {
         if end.record.lane != MAIN {
             return;
         }
         let Some(event) = end.event() else { return };
-        jobs.publish(runtime_event_text(&[RuntimeEvent {
-            kind: event["kind"].as_str().unwrap_or("job_done").into(),
-            id: end.record.id.clone(),
-            status: end.record.status.clone(),
-            summary: event["summary"].as_str().unwrap_or_default().into(),
-            fetch: event["fetch"].as_str().unwrap_or_default().into(),
-            lane: end.record.lane.clone(),
-            root_id: end.record.root_id.clone(),
-        }]));
+        jobs.publish(runtime_event_text_with(
+            &[RuntimeEvent {
+                kind: event["kind"].as_str().unwrap_or("job_done").into(),
+                id: end.record.id.clone(),
+                status: end.record.status.clone(),
+                summary: event["summary"].as_str().unwrap_or_default().into(),
+                fetch: event["fetch"].as_str().unwrap_or_default().into(),
+                lane: end.record.lane.clone(),
+                root_id: end.record.root_id.clone(),
+            }],
+            &job_mask,
+        ));
     }));
-    let tools = sink;
+    let (tools, tool_mask) = (sink, stack.mask());
     stack
         .tool_calls()
         .on_end(Arc::new(move |end: kernel_apis::ToolCallEnd| {
@@ -195,15 +215,18 @@ pub fn wire(lane: &Lane, session: SharedSession, host: &LaneRootHost, sink: Arc<
             let Some((id, status, summary, fetch)) = kernel_apis::tool_calls::tool_event(&end) else {
                 return;
             };
-            tools.publish(runtime_event_text(&[RuntimeEvent {
-                kind: "tool_done".into(),
-                id,
-                status,
-                summary,
-                fetch,
-                lane: MAIN.into(),
-                root_id: end.call["rootId"].as_str().map(str::to_string),
-            }]));
+            tools.publish(runtime_event_text_with(
+                &[RuntimeEvent {
+                    kind: "tool_done".into(),
+                    id,
+                    status,
+                    summary,
+                    fetch,
+                    lane: MAIN.into(),
+                    root_id: end.call["rootId"].as_str().map(str::to_string),
+                }],
+                &tool_mask,
+            ));
         }));
 }
 

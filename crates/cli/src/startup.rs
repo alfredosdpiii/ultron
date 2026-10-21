@@ -167,6 +167,32 @@ pub fn extension_flag_warnings(parsed: &Args) -> Vec<String> {
     warnings
 }
 
+/// One warning per flag the command line parses (as TypeScript parses it) but ultron-rs does not apply, in order:
+/// `--prompt-template <path>`, `--no-prompt-templates`, `--theme <path>`, `--no-themes` (prompt templates and themes
+/// come from the settings and their directories only), and `--skill` under `--no-skills` (no skills at all then).
+pub fn ignored_flag_warnings(parsed: &Args) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let ignored = |flag: String| format!("ultron-rs does not take {flag} from the command line; ignoring it");
+    for path in parsed.prompt_templates.iter().flatten() {
+        warnings.push(ignored(format!("--prompt-template {path}")));
+    }
+    if parsed.no_prompt_templates {
+        warnings.push(ignored("--no-prompt-templates".into()));
+    }
+    for path in parsed.themes.iter().flatten() {
+        warnings.push(ignored(format!("--theme {path}")));
+    }
+    if parsed.no_themes {
+        warnings.push(ignored("--no-themes".into()));
+    }
+    if parsed.no_skills {
+        for path in parsed.skills.iter().flatten() {
+            warnings.push(format!("--no-skills leaves every skill out; ignoring --skill {path}"));
+        }
+    }
+    warnings
+}
+
 /// The startup note for the settings `packages` ultron-rs ignores (the worker's settings: the project's only when
 /// it is trusted); none without packages.
 pub fn package_settings_note(env: &Env) -> Option<String> {

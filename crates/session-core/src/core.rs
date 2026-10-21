@@ -787,7 +787,19 @@ pub fn lane_config(flags: &ModelFlags, env: &RunEnv, session: Option<&mut Sessio
         (Err(e), None) => return Err(e.clone()),
     };
     let config = match session {
-        Some(session) => run::ensure_lane(session, &wanted)?,
+        Some(session) => {
+            let mut config = run::ensure_lane(session, &wanted)?;
+            // `--thinking` holds for a resumed session that keeps its own model (no `--model`). With `--model`, the
+            // stored lane (model and level) is kept, as the TypeScript native server keeps it (recorded:
+            // print-continue-keeps-lane-model).
+            if let Some(level) = flags.thinking.as_ref().filter(|_| flags.model.is_none())
+                && config["thinkingLevel"] != json!(level)
+            {
+                config["thinkingLevel"] = json!(level);
+                session.commit(&[Write::set(LANE_CONFIG, lane::MAIN, config.clone())])?;
+            }
+            config
+        }
         None => wanted,
     };
     let model = match (

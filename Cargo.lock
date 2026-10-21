@@ -347,6 +347,7 @@ dependencies = [
  "regex",
  "resources",
  "rustix",
+ "sandbox",
  "serde_json",
  "session-core",
  "session-file",

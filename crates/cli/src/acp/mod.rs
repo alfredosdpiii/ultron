@@ -119,8 +119,25 @@ impl Write for Capture {
     }
 }
 
+/// The session selector on an `ultron acp` command line, if any: the client picks its sessions itself.
+pub fn session_selector(parsed: &Args) -> Option<&'static str> {
+    [
+        (parsed.continue_, "--continue"),
+        (parsed.resume, "--resume"),
+        (parsed.session.is_some(), "--session"),
+        (parsed.session_id.is_some(), "--session-id"),
+        (parsed.fork.is_some(), "--fork"),
+    ]
+    .into_iter()
+    .find_map(|(set, flag)| set.then_some(flag))
+}
+
 pub struct Server {
     parsed: &'static Args,
+    /// `parsed` without `--name`: the name is the first new session's only.
+    unnamed: &'static Args,
+    /// `--name` is still to be given (to the first `session/new`).
+    name_pending: bool,
     env: Env,
     envs: HashMap<PathBuf, &'static Env>,
     out: Output,
@@ -140,7 +157,13 @@ fn params_str<'v>(params: &'v Value, key: &str) -> Result<&'v str, RpcError> {
 
 impl Server {
     pub fn new(parsed: Args, env: Env, out: Output, tx: Sender<Input>) -> Self {
+        let unnamed = Args {
+            name: None,
+            ..parsed.clone()
+        };
         Server {
+            name_pending: parsed.name.is_some(),
+            unnamed: Box::leak(Box::new(unnamed)),
             parsed: Box::leak(Box::new(parsed)),
             env,
             envs: HashMap::new(),
@@ -298,7 +321,11 @@ impl Server {
             }
             match &target {
                 Target::Open(metadata) => slot.remote.switch_session(&metadata.id).map_err(internal)?,
-                _ => slot.remote.new_session().map_err(internal)?,
+                _ => {
+                    let name = self.parsed.name.as_deref().filter(|_| self.name_pending);
+                    slot.remote.new_named_session(name).map_err(internal)?;
+                    self.name_pending &= name.is_none();
+                }
             }
             let id = slot.remote.state()["sessionId"]
                 .as_str()
@@ -320,7 +347,11 @@ impl Server {
                 }
             }
         });
-        let remote = Remote::open(self.parsed, env, target, remote_tx).map_err(internal)?;
+        // `--name` names the first new session only (never a loaded one).
+        let named = self.name_pending && !matches!(target, Target::Open(_));
+        let args = if named { self.parsed } else { self.unnamed };
+        let remote = Remote::open(args, env, target, remote_tx).map_err(internal)?;
+        self.name_pending &= !named;
         let id = remote.state()["sessionId"].as_str().unwrap_or_default().to_string();
         let capture = Arc::new(Mutex::new(Vec::new()));
         self.slots.push(Slot {
@@ -501,6 +532,15 @@ impl Server {
         slot.remote
             .prompt(message.text, message.images, &slot.out)
             .map_err(|e| RpcError::new(INTERNAL_ERROR, e))?;
+        // `/goal`, `/persona`, `/keepgoing`: the worker answered the session's command; its reply is the agent's
+        // message and the turn ends at once.
+        if let Some(reply) = slot.remote.take_command_reply() {
+            slot.tracker.end();
+            let text = reply["text"].as_str().unwrap_or_default().to_string();
+            self.notify(&session_id, translate::chunk("agent_message_chunk", &text));
+            self.respond(id, Ok(json!({"stopReason": "end_turn"})));
+            return Ok(());
+        }
         slot.turn = Some(Turn {
             request: id.clone(),
             session_id,

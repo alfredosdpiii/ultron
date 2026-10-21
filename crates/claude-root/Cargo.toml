@@ -21,6 +21,7 @@ loki = { path = "../loki" }
 regex = "=1.13.1"
 resources = { path = "../resources" }
 rustix = { version = "=1.1.5", features = ["process", "std"] }
+sandbox = { path = "../sandbox" }
 serde_json = { version = "=1.0.151", features = ["preserve_order"] }
 session-core = { path = "../session-core" }
 session-file = { path = "../session-file" }

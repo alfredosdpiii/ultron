@@ -56,7 +56,7 @@ fn session_core_nudge_with_subagents_running_busy_rounds_are_steered_to_wait() {
     assert!(steered[0].contains("6 subagents or tasks you started are still running"));
     assert!(steered[0].contains("`child_done`"));
     assert!(steered[0].contains("do not check on them through their files, logs or progress"));
-    assert!(steered[0].contains("`await rlm.collect(handles)`, or end your turn"));
+    assert!(steered[0].contains("end your turn: the events wake you, and `await rlm.collect(handles)` then returns"));
     // Once per running phase; at the brake threshold the wait wording replaces "answer now".
     for _ in 3..10 {
         steer(&mut nudger, &mut steered, 1, 2);
@@ -193,4 +193,22 @@ fn session_core_image_budget_reads_ultron_context_images() {
     assert_eq!(context_image_budget(Some(" 3 ")), 3);
     assert_eq!(context_image_budget(Some("-1")), 8);
     assert_eq!(context_image_budget(Some("2.5")), 8);
+}
+
+/// The wait steer matches what the root's `rlm.collect` does (session_core::wake): woken, collect never waits, so
+/// the root is told to end its turn; nothing waking it, it is told to await the results.
+#[test]
+fn session_core_wait_nudge_wording_matches_the_collect_mode() {
+    assert_eq!(
+        wait_nudge_message(2, true, false),
+        "[Ultron] 2 subagents or tasks you started are still running; each result comes to you as a `child_done` (or `task_done`) event. Do only separate work of your own and do not check on them through their files, logs or progress. If nothing of your own is left, end your turn: the events wake you, and `await rlm.collect(handles)` then returns the results (it does not wait while they run)."
+    );
+    assert!(
+        wait_nudge_message(1, true, true)
+            .ends_with("wait for free: `await rlm.collect(handles)` (nothing wakes you after you reply).")
+    );
+    assert!(
+        wait_nudge_message(1, false, false)
+            .ends_with("wait for free with `await rlm.collect(handles)` (or `await agents.result(id)`).")
+    );
 }

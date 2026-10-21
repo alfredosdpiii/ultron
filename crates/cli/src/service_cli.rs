@@ -150,7 +150,11 @@ pub fn durable_options(env: &Env) -> Result<ServerOptions, String> {
         directory: instance.dir.clone(),
         session_dir: crate::session::session_directory_of(None, env, &instance),
         server_id: (env.var)("ULTRON_SERVER_ID"),
-        model: WorkerModel::default(),
+        // `--offline` and the `httpProxy` setting (already in `env`) hold for its workers.
+        model: WorkerModel {
+            env: crate::startup::worker_env(env),
+            ..WorkerModel::default()
+        },
         keep_alive: true,
         root: None,
         relay: Some(crate::radius_relay::relay_config(env)),

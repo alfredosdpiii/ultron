@@ -82,6 +82,7 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
     let dir = cwd.unwrap_or_else(|| ctx.env.cwd.display().to_string());
     let bundled = ctx.bundled_skills();
     let resources;
+    let apis;
     let options = if audience == Audience::Ultron {
         GuideOptions::default()
     } else {
@@ -92,6 +93,7 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
         // What `ultron claude` launches with: engineering mode's bundled-skills note is the proactive one, except
         // under `ULTRON_GUIDE=ts`, which keeps TypeScript's wording (load_prompt_resources decides both).
         resources = crate::guide::load_prompt_resources(&env, bundled.as_deref(), flags);
+        apis = crate::guide::runtime_apis(&env);
         GuideOptions {
             cwd: Some(dir.clone()),
             platform: Some(crate::guide::platform().into()),
@@ -100,6 +102,7 @@ fn guide(args: &[String], ctx: &Ctx, out: &mut dyn Write) -> Result<i32, Failure
             resources: Some(&resources),
             bundled_skills: bundled.as_deref(),
             wake: crate::guide::wakes(&*ctx.env.var, true),
+            apis: Some(&apis),
         }
     };
     let text = crate::guide::runtime_guide(audience, &options, hints);

@@ -41,6 +41,7 @@ pub mod nudge;
 pub mod op_journal;
 pub mod pi_view;
 pub mod recovery;
+pub mod request_layer;
 pub mod request_settings;
 pub mod request_trace;
 pub mod review_command;
@@ -58,6 +59,7 @@ pub mod swarm_ops;
 pub mod turns;
 pub mod view;
 pub mod view_images;
+pub mod wake;
 
 use std::path::PathBuf;
 use std::sync::Arc;

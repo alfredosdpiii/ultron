@@ -69,24 +69,87 @@ fn cli_version_matches_typescript() {
 /// The help's command lines after TypeScript's `autoreview` line: the subcommands only the Rust build dispatches
 /// (or that TypeScript dispatched without listing them).
 const RUST_COMMANDS: &str =
-    "  ultron schedule <list|cancel>    Scheduled prompts of this instance's sessions (list, cancel <id|name>)
+    "  ultron schedule <command>        Scheduled prompts of this instance's sessions (list, wake, cancel <id|name>)
   ultron memory import <options>   Import Claude Code or Codex memory notes as Ultron memory records
   ultron migrate <command>         Back up or restore the profile; import or export Pi sessions
   ultron mcp <command>             Configure MCP servers and sign in (add, remove, list, login, logout)
   ultron sandbox doctor            Check the shell sandbox a session in this directory gets
   ultron instances                 List the running server instances
-  ultron durable [status|stop]     Start, inspect or stop the global durable instance
+  ultron durable [command]         The global durable instance: attach (default, takes ultron options), start, status, stop
+  ultron service <command>         Run the durable instance as a user service (install, uninstall, status, restart, run)
   ultron trace check <file>        Report the prompt-cache resets of a request trace (ULTRON_REQUEST_TRACE)
   ultron acp [options]             Run as an Agent Client Protocol agent on stdio
   ultron claude [args...]          Run Claude Code as the root agent, with Ultron's REPL as its one tool
   ultron watch [--once]            Show the RLM view of a running `ultron claude` session
   ultron guide [--for <who>]       Print the runtime guide (Ultron's, or the one `ultron claude` gives Claude Code)
+  ultron-s [options] [prompt]      The durable instance's home session (--new, --session <id> [--home], --list)
 ";
 
-/// A recorded TypeScript stdout with [`RUST_COMMANDS`] after its `ultron autoreview` help line (other output as is).
+/// Where the Rust help differs from TypeScript's (recorded line, Rust line; an empty Rust line removes it): the Pi
+/// package commands (they only exit with "Pi packages are not supported"), the flags parsed but not applied
+/// (`--prompt-template`, `--no-prompt-templates`, `--theme`, `--no-themes`: they warn), the TUI's default mode, and
+/// the tool flags, which are no read-only mode (the model's one tool, rlm, still writes files and runs commands).
+const RUST_HELP_EDITS: [(&str, &str); 12] = [
+    (
+        "  ultron install <source> [-l]     Install extension source and add to settings\n",
+        "",
+    ),
+    (
+        "  ultron remove <source> [-l]      Remove extension source from settings\n",
+        "",
+    ),
+    ("  ultron uninstall <source> [-l]   Alias for remove\n", ""),
+    (
+        "  ultron list                      List installed extensions from settings\n",
+        "",
+    ),
+    (
+        "  ultron update [source|self|pi]   Update pi, extensions, or model catalogs\n",
+        "  ultron update [self|--models]    Update Ultron itself or the model catalogs\n",
+    ),
+    (
+        "  ultron <command> --help          Show help for install/remove/uninstall/update/list/config/auth/usage\n",
+        "  ultron <command> --help          Show help for update/config/auth/usage/schedule/service\n",
+    ),
+    (
+        "  --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)\n",
+        "",
+    ),
+    (
+        "  --no-prompt-templates, -np     Disable prompt template discovery and loading\n",
+        "",
+    ),
+    (
+        "  --theme <path>                 Load a theme file or directory (can be used multiple times)\n",
+        "",
+    ),
+    (
+        "  --no-themes                    Disable theme discovery and loading\n",
+        "",
+    ),
+    (
+        "  --tui-mode <mode>              TUI mode: regular (default) or fullscreen\n",
+        "  --tui-mode <mode>              TUI mode for this run: fullscreen (default) or regular\n",
+    ),
+    (
+        "  # Read-only mode (no file modifications possible)\n",
+        "  # Tool flags are no sandbox: the model's one tool is rlm, whose REPL can still write files and run commands\n",
+    ),
+];
+
+/// A recorded TypeScript stdout with [`RUST_COMMANDS`] after its `ultron autoreview` help line and
+/// [`RUST_HELP_EDITS`] applied (other output as is).
 fn with_rust_commands(stdout: &str) -> String {
     let anchor = "  ultron autoreview <command>      Review pull requests automatically as your gh accounts (run, once, review, status)\n";
-    stdout.replacen(anchor, &format!("{anchor}{RUST_COMMANDS}"), 1)
+    if !stdout.contains(anchor) {
+        return stdout.to_string();
+    }
+    let mut help = stdout.replacen(anchor, &format!("{anchor}{RUST_COMMANDS}"), 1);
+    for (recorded, rust) in RUST_HELP_EDITS {
+        assert!(help.contains(recorded), "the recorded help has no {recorded:?}");
+        help = help.replacen(recorded, rust, 1);
+    }
+    help
 }
 
 /// `ultron --help` lists every subcommand the CLI dispatches before option parsing, in the help's column style
@@ -118,11 +181,7 @@ fn cli_help_lists_every_dispatched_subcommand() {
         .collect();
     for command in [
         "setup",
-        "install",
-        "remove",
-        "uninstall",
         "update",
-        "list",
         "config",
         "auth",
         "usage",
@@ -139,6 +198,7 @@ fn cli_help_lists_every_dispatched_subcommand() {
         "claude",
         "watch",
         "guide",
+        "service",
     ] {
         let line = commands
             .iter()
@@ -150,6 +210,44 @@ fn cli_help_lists_every_dispatched_subcommand() {
             "{line:?}"
         );
     }
+    // `ultron-s` (the durable home session) is listed in the same column.
+    let home = commands
+        .iter()
+        .find(|l| l.starts_with("  ultron-s "))
+        .expect("ultron-s is listed");
+    assert!(home[..35].ends_with("  ") && !home[35..].starts_with(' '), "{home:?}");
+    // The subcommands' own names of what they take: schedule's wake, durable's start/attach.
+    let line = |name: &str| {
+        commands
+            .iter()
+            .find(|l| l.starts_with(name))
+            .copied()
+            .unwrap_or_default()
+    };
+    assert!(line("  ultron schedule ").contains("wake"), "{help}");
+    assert!(line("  ultron durable ").contains("attach") && line("  ultron durable ").contains("start"));
+    // No Pi package commands: they only exit with "Pi packages are not supported".
+    for gone in ["install", "remove", "uninstall", "list"] {
+        assert!(
+            !commands.iter().any(|l| l.starts_with(&format!("  ultron {gone} "))),
+            "`ultron {gone}` is listed:\n{help}"
+        );
+    }
+    // No option the run parses and drops; the TUI mode's default is the settings' (fullscreen); the tool flags
+    // promise no read-only mode.
+    for dropped in [
+        "--prompt-template",
+        "--no-prompt-templates",
+        "--theme <path>",
+        "--no-themes",
+    ] {
+        assert!(!help.contains(dropped), "{dropped} is listed:\n{help}");
+    }
+    assert!(
+        help.contains("TUI mode for this run: fullscreen (default) or regular"),
+        "{help}"
+    );
+    assert!(!help.contains("Read-only mode"), "{help}");
 }
 
 /// Runs the `ultron` binary for every recorded argument vector in the same private layout the generator used and

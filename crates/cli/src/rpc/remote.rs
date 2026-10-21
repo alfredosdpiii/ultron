@@ -96,6 +96,9 @@ pub struct Remote<'a> {
     ui_stop: Arc<std::sync::atomic::AtomicBool>,
     /// herdr's agents panel: each run's `working` and end (crate::herdr_report); released when dropped.
     herdr: Option<crate::herdr_report::RpcReport>,
+    /// The reply of the last prompt when the worker answered it as one of the session's commands (`/goal`,
+    /// `/persona`, `/keepgoing`; daemon::session_commands) instead of starting a run.
+    command_reply: Option<Value>,
 }
 
 /// The session id of a `switch_session` selector: an id, or a session file whose header names one.
@@ -145,7 +148,20 @@ impl<'a> Remote<'a> {
             lost_run: None,
             bash: Arc::new(AtomicUsize::new(0)),
             herdr: crate::herdr_report::RpcReport::start(env),
+            command_reply: None,
         })
+    }
+
+    /// Create a session (named `name`) and switch to it, as `new_session` does.
+    pub fn new_named_session(&mut self, name: Option<&str>) -> Result<(), String> {
+        let options = name.map_or_else(|| json!({}), |name| json!({"name": name}));
+        let created = self.link.as_mut().ok_or("The session is closed")?.create(options)?;
+        self.switch_to(&created)
+    }
+
+    /// The reply of the last prompt the worker answered as a session command (`{command, text, data}`), once.
+    pub fn take_command_reply(&mut self) -> Option<Value> {
+        self.command_reply.take()
     }
 
     fn link(&self) -> Result<&Link, String> {
@@ -271,11 +287,16 @@ impl RpcSession for Remote<'_> {
     }
 
     fn prompt(&mut self, message: String, images: Vec<Value>, _out: &Output) -> Result<(), String> {
-        self.op(Op::Prompt {
+        let reply = self.op(Op::Prompt {
             message,
             images,
             queue: None,
         })?;
+        // The worker ran one of the session's commands: no run starts.
+        if let Some(reply) = reply.filter(|r| r["command"].is_string()) {
+            self.command_reply = Some(reply);
+            return Ok(());
+        }
         // The run starts now; its `run_start` follows on the transcript.
         self.running = true;
         Ok(())

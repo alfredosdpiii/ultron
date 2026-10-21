@@ -60,3 +60,71 @@ fn resources_runtime_guide_points_at_diagram_mermaid_only_with_the_rust_apis() {
     assert!(!plain.contains("diagram"));
     assert_eq!(rust.matches("diagram.mermaid").count(), 1);
 }
+
+/// How each lane is told to wait (session_core::wake): the woken root ends its turn (its `rlm.collect` never
+/// waits), a root nothing wakes awaits before replying, a subagent awaits before its reply ends its run and has no
+/// `schedule` (the root's only), and an in-memory subagent has no swarm APIs either.
+#[test]
+fn resources_runtime_guide_wording_per_lane_mode() {
+    use resources::runtime_guide::{EventDelivery, GuideReader};
+    let guide = |delivery, reader, host_waits| {
+        rlm_runtime_prompt(
+            &["rlm"],
+            &RuntimeGuideOptions {
+                delivery,
+                reader,
+                host_waits,
+                durable_apis: true,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let woken = guide(EventDelivery::Wake, GuideReader::Root, true);
+    assert!(woken.contains(
+        "With nothing of your own left, end your turn: each end arrives as a `child_done` event, and `await rlm.collect(hs)` then returns the results (it does not wait: while a selected child runs it raises). Trust only"
+    ));
+    assert!(woken.contains("which starts a new turn if yours ended"));
+    assert!(woken.contains("`await schedule.every(\"1h\", prompt)`"));
+    // TypeScript's wording, whose collect waits.
+    let ts = guide(EventDelivery::Wake, GuideReader::Root, false);
+    assert!(ts.contains("With nothing of your own left, `await rlm.collect(hs)` (free), or end your turn: each end arrives as a `child_done` event. Trust only"));
+    for delivery in [EventDelivery::NextCall, EventDelivery::Off] {
+        let awaiting = guide(delivery, GuideReader::Root, true);
+        assert!(awaiting.contains("With nothing of your own left, `await rlm.collect(hs)` (free). Trust only"));
+        assert!(!awaiting.contains("end your turn: each end"));
+    }
+    let child = guide(EventDelivery::Wake, GuideReader::Subagent { swarm: true }, true);
+    assert!(child.contains(
+        "Nothing needs polling, and nothing wakes you: your reply ends your run. Before replying, await what your answer still needs (`await rlm.collect(hs)` waits for your subagents, `await job.result()` for a job; waiting costs no model turns)."
+    ));
+    assert!(child.contains(
+        "A command still running after 30 s continues as a job (`out.job`; `await out.job.result()` waits for it)"
+    ));
+    assert!(child.contains("With nothing of your own left, `await rlm.collect(hs)` (free). Trust only"));
+    assert!(!child.contains("starts a new turn"));
+    assert!(!child.contains("end your turn"));
+    assert!(!child.contains("schedule."));
+    assert!(child.contains("`await swarm.route(question)`"));
+    assert!(child.contains("`await rlm.images.generate("));
+    let memory = guide(EventDelivery::Wake, GuideReader::Subagent { swarm: false }, true);
+    assert!(!memory.contains("swarm."));
+    assert!(!memory.contains("keep=True"));
+    assert!(!memory.contains("schedule."));
+    assert!(memory.contains("`await diagram.mermaid(text)`"));
+    // With events off a subagent is told so, like the root.
+    let off_child = guide(EventDelivery::Off, GuideReader::Subagent { swarm: true }, false);
+    assert!(off_child.contains("Completions are not announced in this session (ULTRON_ASYNC_EVENTS=off)"));
+    // The default guide (TypeScript's) is unchanged by the new options.
+    assert_eq!(
+        rlm_runtime_prompt(&["rlm"], &RuntimeGuideOptions::default()),
+        rlm_runtime_prompt(
+            &["rlm"],
+            &RuntimeGuideOptions {
+                reader: GuideReader::Root,
+                host_waits: false,
+                ..Default::default()
+            }
+        )
+    );
+}
