@@ -373,7 +373,11 @@ impl StateStore {
     }
 
     fn write_locked<T>(&self, change: impl FnOnce(&mut AutoreviewState) -> T) -> std::io::Result<T> {
-        let mut state = self.read();
+        let before = std::fs::read_to_string(&self.path).ok();
+        let mut state = before
+            .as_deref()
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+            .map_or_else(empty_state, |value| normalize(&value));
         let result = change(&mut state);
         if state.recent.len() > RECENT_LIMIT {
             state.recent.drain(..state.recent.len() - RECENT_LIMIT);
@@ -382,6 +386,12 @@ impl StateStore {
             let excess = pull.attempts.len().saturating_sub(MAX_ATTEMPT_SHAS);
             pull.attempts.drain(..excess);
         }
+        // Nothing changed (a poll re-marking a closed pull request, say): no write. Each poll updates the state of
+        // every pull request it sees, ~70 whole-file rewrites of 0.3 MB on 2026-10-21, about 15 GB a day.
+        let text = format!("{}\n", to_json_1(&state));
+        if before.as_deref() == Some(text.as_str()) {
+            return Ok(result);
+        }
         let temporary = format!("{}.{}.tmp", self.path, std::process::id());
         let mut file = OpenOptions::new()
             .write(true)
@@ -389,7 +399,7 @@ impl StateStore {
             .truncate(true)
             .mode(0o600)
             .open(&temporary)?;
-        file.write_all(format!("{}\n", to_json_1(&state)).as_bytes())?;
+        file.write_all(text.as_bytes())?;
         drop(file);
         std::fs::rename(&temporary, &self.path)?;
         Ok(result)
