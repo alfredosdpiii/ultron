@@ -1209,3 +1209,37 @@ fn review_daemon_large_slots_keep_one_for_the_rest() {
     // GitHub did not say: not large.
     assert!(!is_large(&pull(0, 0)));
 }
+
+#[test]
+fn review_daemon_a_cycle_that_finds_nothing_new_leaves_the_state_file_alone() {
+    use std::os::unix::fs::MetadataExt;
+    // 2026-10-21: each poll's decisions rewrote the whole state file once per pull request it saw.
+    let context = setup(json!({}), Some(FakeEngine::new(Vec::new())));
+    for number in 1..=5 {
+        add_numbered(&context, number, true);
+    }
+    let notify = || {
+        let mut state = context.hub.lock();
+        state.notifications = (1..=5)
+            .map(|number| Notification::new("review_requested", number))
+            .collect();
+    };
+    notify();
+    let (instance, outcomes) = daemon(&context);
+    instance.once();
+    assert_eq!(outcomes_of(&outcomes).len(), 5);
+    let path = context.deps.store.path.clone();
+    let inode = || std::fs::metadata(&path).expect("state").ino();
+    let before = inode();
+    // The same five again, already reviewed: decided, skipped, and nothing in the state changes.
+    notify();
+    instance.once();
+    assert_eq!(
+        outcomes_of(&outcomes)
+            .iter()
+            .filter(|(_, kind)| kind == "skipped")
+            .count(),
+        5
+    );
+    assert_eq!(inode(), before, "the state file was rewritten");
+}

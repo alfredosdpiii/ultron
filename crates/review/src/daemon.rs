@@ -682,8 +682,11 @@ impl Daemon {
         self.shared.pump(&mut inner);
     }
 
-    /// Write the queue to the state, for `ultron autoreview status`.
+    /// Write the queue to the state, for `ultron autoreview status`: the reviews running and waiting, and what waits
+    /// for a retry. Not what a poll is deciding: that changes with every decision, and each change rewrote the
+    /// whole state file (about 70 times a poll on 2026-10-21).
     fn record(&self) {
+        let now = self.shared.now() as f64;
         let queue: Vec<String> = {
             let inner = self.shared.lock();
             inner
@@ -691,8 +694,13 @@ impl Daemon {
                 .iter()
                 .map(|key| format!("{key} (reviewing)"))
                 .chain(inner.queue.keys().map(|key| format!("{key} (acknowledged, waiting)")))
-                .chain(inner.candidates.keys().cloned())
-                .chain(inner.preparing.iter().cloned())
+                .chain(
+                    inner
+                        .candidates
+                        .iter()
+                        .filter(|(_, waiting)| waiting.not_before > now)
+                        .map(|(key, _)| key.clone()),
+                )
                 .collect()
         };
         let _ = self.shared.deps.reviewer.store.update(|all| all.queue = Some(queue));
