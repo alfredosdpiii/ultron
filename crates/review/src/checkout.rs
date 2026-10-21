@@ -14,6 +14,7 @@ use regex::Regex;
 
 use crate::github::{Error, PullRef};
 use crate::js::{head16, path_join, trim};
+use crate::promotion::{CommitMessage, parse_commits};
 use crate::runner::{Env, RunOptions, RunResult, Runner};
 
 pub const CLONE_TIMEOUT_MS: u64 = 5 * 60_000;
@@ -152,6 +153,53 @@ impl Checkout {
                 )
                 .code
                 == 0
+    }
+
+    /// The commits after `from` up to `to`, oldest first: sha, subject and message.
+    pub fn commits(&self, from: &str, to: &str) -> Result<Vec<CommitMessage>, Error> {
+        let range = format!("{from}..{to}");
+        let out = self.git.must(
+            &[
+                "-C",
+                &self.dir,
+                "log",
+                "--reverse",
+                "--format=%H%x1f%s%x1f%B%x1e",
+                &range,
+                "--",
+            ],
+            &self.env,
+            GIT_TIMEOUT_MS,
+        )?;
+        Ok(parse_commits(&out))
+    }
+
+    /// Fetch the commits the clone does not have, by sha (GitHub serves any commit of the repository). A commit that
+    /// cannot be fetched is left out by the caller's diffs.
+    pub fn fetch_commits(&self, shas: &[String]) {
+        let sha = Regex::new(r"^[0-9a-f]{7,64}$").expect("static pattern");
+        let missing: Vec<&str> = shas
+            .iter()
+            .filter(|candidate| sha.is_match(candidate))
+            .filter(|candidate| {
+                self.git
+                    .run(
+                        &["-C", &self.dir, "cat-file", "-e", &format!("{candidate}^{{commit}}")],
+                        &self.env,
+                        GIT_TIMEOUT_MS,
+                    )
+                    .code
+                    != 0
+            })
+            .map(String::as_str)
+            .collect();
+        if missing.is_empty() {
+            return;
+        }
+        let _serial = self.lock.lock().unwrap_or_else(|e| e.into_inner());
+        let mut args = vec!["-C", &self.dir, "fetch", "--quiet", "--no-tags", "origin"];
+        args.extend(missing);
+        self.git.run(&args, &self.env, FETCH_TIMEOUT_MS);
     }
 
     /// Remove the worktree (never fails).

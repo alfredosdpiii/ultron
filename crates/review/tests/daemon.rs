@@ -1107,3 +1107,105 @@ fn review_daemon_paused_account_decides_nothing() {
     instance.once();
     assert_eq!(outcomes_of(&outcomes), vec![pair(1, "failed"), pair(1, "posted")]);
 }
+
+/// Reviews in the engine at once by label, and the most large ones seen together.
+#[derive(Default)]
+struct SizeGate {
+    active: Vec<String>,
+    started: usize,
+    max_active: usize,
+    max_large: usize,
+}
+
+/// A review stays open until two have run at once (the third runs alone). On the high-water mark, not the count
+/// now: the second may finish before the first wakes.
+struct SizeGatedEngine {
+    inner: Arc<FakeEngine>,
+    large: Vec<String>,
+    gate: Mutex<SizeGate>,
+    changed: Condvar,
+    daemon: std::sync::OnceLock<std::sync::Weak<Daemon>>,
+}
+
+impl review::engine::ReviewEngine for SizeGatedEngine {
+    fn review(&self, spec: &Value, signal: Option<&kernel::Signal>) -> Result<Value, String> {
+        let daemon = self.daemon.get().and_then(std::sync::Weak::upgrade).expect("daemon");
+        wait_until("every decision", || daemon.deciding() == 0);
+        let label = s(&spec["label"]).to_string();
+        let mut gate = self.gate.lock().expect("gate");
+        gate.active.push(label.clone());
+        gate.started += 1;
+        gate.max_active = gate.max_active.max(gate.active.len());
+        let large = gate.active.iter().filter(|label| self.large.contains(label)).count();
+        gate.max_large = gate.max_large.max(large);
+        self.changed.notify_all();
+        let (mut gate, timeout) = self
+            .changed
+            .wait_timeout_while(gate, GUARD, |gate| gate.max_active < 2 && gate.started < 3)
+            .expect("gate");
+        assert!(!timeout.timed_out(), "a review waited alone");
+        gate.active.retain(|active| *active != label);
+        drop(gate);
+        self.inner.review(spec, signal)
+    }
+}
+
+#[test]
+fn review_daemon_large_reviews_leave_a_slot_to_the_rest() {
+    // 2026-10-16: three large pull requests held every slot while a 40-second review waited 71 minutes.
+    let engine = FakeEngine::new(Vec::new());
+    let mut context = setup(json!({ "concurrency": 2 }), Some(engine.clone()));
+    for number in 1..=3 {
+        add_numbered(&context, number, true);
+        context.hub.with_pull_n(number, |pull| {
+            if number < 3 {
+                pull.additions = 43_060;
+                pull.deletions = 2_638;
+            } else {
+                pull.additions = 12;
+            }
+        });
+        context
+            .hub
+            .lock()
+            .notifications
+            .push(Notification::new("review_requested", number));
+    }
+    let gated = Arc::new(SizeGatedEngine {
+        inner: engine.clone(),
+        large: vec!["o/r#1".into(), "o/r#2".into()],
+        gate: Mutex::new(SizeGate::default()),
+        changed: Condvar::new(),
+        daemon: std::sync::OnceLock::new(),
+    });
+    context.deps.engine = gated.clone();
+    let (instance, outcomes) = daemon(&context);
+    let instance = Arc::new(instance);
+    let _ = gated.daemon.set(Arc::downgrade(&instance));
+    instance.once();
+    let gate = gated.gate.lock().expect("gate");
+    // Two at a time, never both large ones: the small one ran beside a large one.
+    assert_eq!((gate.max_active, gate.max_large), (2, 1));
+    assert_eq!(
+        outcomes_of(&outcomes)
+            .iter()
+            .filter(|(_, kind)| kind == "posted")
+            .count(),
+        3
+    );
+}
+
+#[test]
+fn review_daemon_large_slots_keep_one_for_the_rest() {
+    use review::daemon::{LARGE_PULL_LINES, is_large, large_slots};
+    assert_eq!([1, 2, 3, 8].map(large_slots), [1, 1, 2, 7]);
+    let pull = |additions, deletions| review::github::PullRequest {
+        additions,
+        deletions,
+        ..Default::default()
+    };
+    assert!(is_large(&pull(LARGE_PULL_LINES - 1, 1)));
+    assert!(!is_large(&pull(LARGE_PULL_LINES - 2, 1)));
+    // GitHub did not say: not large.
+    assert!(!is_large(&pull(0, 0)));
+}

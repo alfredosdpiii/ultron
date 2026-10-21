@@ -19,7 +19,7 @@
 //! - A task that panics still leaves the decision or review set, so the loop never waits on it forever.
 //! - Log lines are masked by the closure given to [`create_logger`] (the cli passes the host's secret masking).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{DirBuilder, OpenOptions};
 use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
@@ -47,6 +47,20 @@ pub const SEARCH_WINDOW_MS: i64 = 2 * 24 * 60 * 60 * 1000;
 pub const SINCE_OVERLAP_MS: i64 = 2 * 60 * 1000;
 pub const RETRY_DELAY_MS: i64 = 60_000;
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+/// A pull request this large (added plus removed lines, as GitHub counts them) is a large review. Large reviews
+/// leave one slot to the rest: on 2026-10-16 three large pull requests (fisher-ki-saas#2945, #2951, #2926) held all
+/// three slots for hours while a 40-second review waited 71 minutes.
+pub const LARGE_PULL_LINES: u64 = 10_000;
+
+/// Whether a pull request is a large review.
+pub fn is_large(pull: &crate::github::PullRequest) -> bool {
+    pull.additions + pull.deletions >= LARGE_PULL_LINES
+}
+
+/// How many large reviews may run at once: all but one slot, and the only slot when there is one.
+pub fn large_slots(concurrency: usize) -> usize {
+    concurrency.saturating_sub(1).max(1)
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Discovered {
@@ -263,6 +277,8 @@ struct Inner {
     /// Due and acknowledged, waiting for a review slot.
     queue: IndexMap<String, Prepared>,
     running: IndexSet<String>,
+    /// The running reviews that are large ([`is_large`]).
+    large: HashSet<String>,
     /// Resume time (epoch ms) by account key.
     paused: HashMap<String, f64>,
     cycles: u64,
@@ -372,12 +388,13 @@ impl Shared {
         self.report(&candidate, Reported::Failed(message));
     }
 
-    /// Start queued reviews, up to the concurrency limit.
+    /// Start queued reviews, up to the concurrency limit; large ones leave a slot to the rest ([`large_slots`]).
     fn pump(self: &Arc<Self>, inner: &mut Inner) {
         let now = self.now() as f64;
+        let concurrency = self.deps.reviewer.config.concurrency.0.max(1.0) as usize;
         let keys: Vec<String> = inner.queue.keys().cloned().collect();
         for key in keys {
-            if inner.running.len() as f64 >= self.deps.reviewer.config.concurrency.0 {
+            if inner.running.len() >= concurrency {
                 break;
             }
             if inner.running.contains(&key) {
@@ -389,10 +406,17 @@ impl Shared {
             if inner.paused(&prepared.candidate.account, now) {
                 continue;
             }
+            let large = is_large(&prepared.pull);
+            if large && inner.large.len() >= large_slots(concurrency) {
+                continue;
+            }
             let Some(prepared) = inner.queue.shift_remove(&key) else {
                 continue;
             };
             inner.running.insert(key.clone());
+            if large {
+                inner.large.insert(key.clone());
+            }
             let shared = self.clone();
             std::thread::spawn(move || {
                 let _done = Done {
@@ -453,6 +477,7 @@ impl Drop for Done {
         let mut inner = self.shared.lock();
         if self.review {
             inner.running.shift_remove(&self.key);
+            inner.large.remove(&self.key);
         } else {
             inner.preparing.shift_remove(&self.key);
             self.shared.pump(&mut inner);
@@ -494,6 +519,7 @@ impl Daemon {
                     preparing: IndexSet::new(),
                     queue: IndexMap::new(),
                     running: IndexSet::new(),
+                    large: HashSet::new(),
                     paused: HashMap::new(),
                     cycles: 0,
                     poll_seconds,

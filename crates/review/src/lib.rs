@@ -14,6 +14,7 @@ pub mod local;
 pub mod plan;
 pub mod prepare;
 pub mod prepare_env;
+pub mod promotion;
 pub mod reviewer;
 pub mod runner;
 pub mod service;

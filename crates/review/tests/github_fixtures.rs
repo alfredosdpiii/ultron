@@ -302,6 +302,7 @@ fn pull_request(value: &Value) -> review::github::PullRequest {
         created_at: s(&value["createdAt"]).into(),
         requested_reviewers: strings(&value["requestedReviewers"]),
         requested_teams: strings(&value["requestedTeams"]),
+        ..Default::default()
     }
 }
 

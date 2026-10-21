@@ -279,7 +279,7 @@ pub struct ApiResponse {
     pub body: Option<Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PullRequest {
     pub number: u64,
@@ -299,6 +299,21 @@ pub struct PullRequest {
     pub created_at: String,
     pub requested_reviewers: Vec<String>,
     pub requested_teams: Vec<String>,
+    /// The commit a merge made on the base branch (squash, merge or rebase); a cherry-pick's source.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub merge_commit_sha: Option<String>,
+    /// The repository's default branch; empty when GitHub did not say.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub default_branch: String,
+    /// Added and removed lines, as GitHub counts them: how large the review will be.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub additions: u64,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub deletions: u64,
+}
+
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -681,6 +696,13 @@ impl GitHub {
                 .iter()
                 .map(|team| text(team.get("slug")))
                 .collect(),
+            merge_commit_sha: Some(text(item.get("merge_commit_sha"))).filter(|sha| !sha.is_empty()),
+            default_branch: text(
+                base.and_then(|b| b.get("repo"))
+                    .and_then(|repo| repo.get("default_branch")),
+            ),
+            additions: item.get("additions").and_then(Value::as_u64).unwrap_or(0),
+            deletions: item.get("deletions").and_then(Value::as_u64).unwrap_or(0),
         })
     }
 

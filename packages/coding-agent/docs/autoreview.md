@@ -133,6 +133,25 @@ still present unread. An earlier finding that still blocks is named in the summa
 summary has a table of them, and the account's own review threads whose finding is fixed are resolved (by the
 thread id stored when the comment was posted).
 
+### Cherry-picks and promotions
+
+A pull request that carries merged pull requests to another branch (a cherry-pick to a release or staging branch)
+is reviewed for what differs from them; their own lines were reviewed where they merged. The sources are:
+
+- the commits that `git cherry-pick -x` trailers in its commits name, and
+- into a branch other than the repository's default one, the merged pull requests of another base branch that its
+  title or description names (`#N`).
+
+A changed line that a source changes the same way, in the same file, is left out of what the passes read. Conflict
+resolutions, adaptations and new code are read with three lines of context; inline comments can still go on any
+line of the pull request. A source that the pull request does not mostly carry (under half of its added lines) is
+ignored. The summary opens with the sources and the lines that matched them, and lists the files where lines a source
+adds are not in the head, for the author to confirm they were left out on purpose. Each review record has the same
+under `promotion`.
+
+Pull requests of 10,000 changed lines or more (added plus removed, as GitHub counts them) leave one review slot to
+the rest: with `autoreview.concurrency` 3, at most two of them run at once.
+
 ## Settings
 
 In the TUI, `/settings` has three of them: **Autoreview** (`autoreview.enabled`), **Autoreview acknowledgement**

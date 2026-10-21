@@ -34,7 +34,10 @@ use crate::ledger::{
     without_unposted_merges,
 };
 use crate::local::{expand_path, find_checkout, without_guide_mentions};
-use crate::plan::{EngineResult, PlanOptions, ReviewPlan, Verdict, plan_review, without_inline};
+use crate::plan::{EngineResult, PlanOptions, PromotionNote, ReviewPlan, Verdict, plan_review, without_inline};
+use crate::promotion::{
+    PromotionDelta, PromotionSource, cherry_sources, promotion_delta, referenced_pulls, source_label,
+};
 use crate::runner::Runner;
 use crate::settings::{AutoreviewConfig, AutoreviewPaths, MAX_ATTEMPTS, engine_settings, tests_eligible};
 use crate::state::{AutoreviewState, PostedFinding, PullState, ReviewRecord, StateStore, claim_hash, to_json_1};
@@ -947,6 +950,64 @@ pub fn run_review(deps: &ReviewerDeps, prepared: &Prepared) -> Result<Outcome, E
     outcome
 }
 
+/// The merged pull requests this one carries to its base branch, as diffs (`promotion.rs`): the commits its
+/// `git cherry-pick -x` trailers name, and, into a branch other than the default one, the merged pull requests of
+/// another base branch that its title or description names. Empty for any other pull request.
+fn promotion_sources(github: &GitHub, r: &PullRef, pull: &PullRequest, checkout: &Checkout) -> Vec<PromotionSource> {
+    let commits = checkout
+        .commits(&checkout.merge_base, &pull.head_sha)
+        .unwrap_or_default();
+    let mut wanted: Vec<(String, String)> = cherry_sources(&commits)
+        .into_iter()
+        .map(|sha| {
+            let subject = commits
+                .iter()
+                .find(|commit| commit.message.contains(&sha))
+                .map_or("", |commit| commit.subject.as_str());
+            (source_label(subject, &sha), sha)
+        })
+        .collect();
+    if !pull.default_branch.is_empty() && pull.base_ref != pull.default_branch {
+        for number in referenced_pulls(&format!("{}\n{}", pull.title, pull.body), r.number) {
+            let Ok(other) = github.pull(&PullRef::new(&r.host, &r.owner, &r.repo, number)) else {
+                continue;
+            };
+            if let Some(sha) = other
+                .merge_commit_sha
+                .filter(|_| other.merged && other.base_ref != pull.base_ref)
+                && !wanted.iter().any(|(_, known)| *known == sha)
+            {
+                wanted.push((format!("#{number}"), sha));
+            }
+        }
+    }
+    if wanted.is_empty() {
+        return Vec::new();
+    }
+    checkout.fetch_commits(&wanted.iter().map(|(_, sha)| sha.clone()).collect::<Vec<_>>());
+    wanted
+        .into_iter()
+        .filter_map(|(label, sha)| {
+            let diff = checkout.diff(&format!("{sha}^1"), &sha).ok()?;
+            (!diff.is_empty()).then_some(PromotionSource { label, diff })
+        })
+        .collect()
+}
+
+/// A file of the head as lines, for what a cherry-pick left out; `None` outside the worktree or when absent.
+fn head_lines(work_dir: &str, path: &str) -> Option<Vec<String>> {
+    let relative = std::path::Path::new(path);
+    if relative.is_absolute()
+        || relative
+            .components()
+            .any(|part| !matches!(part, std::path::Component::Normal(_)))
+    {
+        return None;
+    }
+    let text = std::fs::read_to_string(std::path::Path::new(work_dir).join(relative)).ok()?;
+    Some(text.split('\n').map(str::to_string).collect())
+}
+
 fn review_in(
     deps: &ReviewerDeps,
     prepared: &Prepared,
@@ -1032,6 +1093,34 @@ fn review_in(
         review_diff = full_diff.clone();
         if last_sha.as_deref() == Some(head.as_str()) {
             earlier_diff = Some(String::new());
+        }
+    }
+    // A cherry-pick or promotion: what matches the merged pull requests it carries was reviewed there.
+    let mut promotion: Option<PromotionDelta> = None;
+    if let Some(checkout) = checkout {
+        let sources = promotion_sources(&github, r, pull, checkout);
+        if !sources.is_empty() {
+            let delta = promotion_delta(&review_diff, &sources, &|path| head_lines(&checkout.work_dir, path));
+            if !delta.sources.is_empty() {
+                let changed = |diff: &str| {
+                    diff.lines()
+                        .filter(|line| {
+                            (line.starts_with('+') && !line.starts_with("+++"))
+                                || (line.starts_with('-') && !line.starts_with("---"))
+                        })
+                        .count()
+                };
+                (deps.log)(&format!(
+                    "{name}: carries {}: reading {} of {} changed lines ({} files carried over unchanged, {} with lines left out)",
+                    delta.sources.join(", "),
+                    changed(&delta.diff),
+                    changed(&review_diff),
+                    delta.carried_files,
+                    delta.missing.len()
+                ));
+                review_diff = delta.diff.clone();
+                promotion = Some(delta);
+            }
         }
     }
     let diff_path = path_join(&[scratch, "review.diff"]);
@@ -1194,6 +1283,12 @@ fn review_in(
             signature: deps.config.signature,
             block_at: Some(deps.config.block_at.clone()),
             max_comments: Some(deps.config.max_comments.0 as i64),
+            promotion: promotion.as_ref().map(|delta| PromotionNote {
+                sources: delta.sources.clone(),
+                carried_lines: delta.carried_lines,
+                carried_files: delta.carried_files,
+                missing: delta.missing.clone(),
+            }),
         },
     );
     // Nothing that names a private review guide is posted.
@@ -1394,6 +1489,13 @@ fn review_in(
         );
         record.insert("posted".into(), serde_json::to_value(&posted).unwrap_or(Value::Null));
         record.insert("result".into(), raw.clone());
+        if let Some(delta) = &promotion {
+            record.insert(
+                "promotion".into(),
+                json!({ "sources": delta.sources, "carriedLines": delta.carried_lines,
+                    "carriedFiles": delta.carried_files, "missing": delta.missing }),
+            );
+        }
         let name_of = format!("{}-{}-{}-{short_sha}-{}", r.owner, r.repo, r.number, account.login);
         if let Err(error) = write_review_record(&deps.paths.dir, &name_of, &Value::Object(record)) {
             (deps.log)(&format!("{name}: the review record was not written: {error}"));

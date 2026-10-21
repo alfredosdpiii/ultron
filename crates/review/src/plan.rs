@@ -23,6 +23,8 @@ const MAX_BLOCKING_LISTED: usize = 4;
 const MAX_OUTSIDE_LISTED: usize = 3;
 const MAX_NOT_CHECKED: usize = 3;
 const MAX_BODY_LINES: usize = 60;
+const MAX_SOURCES_LISTED: usize = 6;
+const MAX_MISSING_LISTED: usize = 6;
 const STRENGTHS: [&str; 3] = ["test", "outside", "diff"];
 
 /// A finding's level: its `level`, or its old-scale `severity` (blocker, major, minor) mapped to one; else `low`.
@@ -178,6 +180,77 @@ pub struct PlanOptions {
     pub signature: bool,
     pub block_at: Option<String>,
     pub max_comments: Option<i64>,
+    /// A cherry-pick or promotion: only what differs from the merged pull requests it carries was read.
+    #[serde(default)]
+    pub promotion: Option<PromotionNote>,
+}
+
+/// What a cherry-pick or promotion carries (`promotion.rs`): its sources and what matched them.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromotionNote {
+    pub sources: Vec<String>,
+    pub carried_lines: u64,
+    pub carried_files: u64,
+    pub missing: Vec<crate::promotion::Missing>,
+}
+
+fn counted_noun(n: u64, noun: &str) -> String {
+    format!("{n} {noun}{}", if n == 1 { "" } else { "s" })
+}
+
+/// `a`, `a and b`, `a, b and c`; past `max`, `a, b, ... and N more`.
+fn listed(items: &[String], max: usize) -> String {
+    let shown: Vec<&str> = items.iter().take(max).map(String::as_str).collect();
+    let rest = items.len().saturating_sub(max);
+    match (shown.as_slice(), rest) {
+        ([], _) => String::new(),
+        ([one], 0) => (*one).to_string(),
+        (_, 0) => format!("{} and {}", shown[..shown.len() - 1].join(", "), shown[shown.len() - 1]),
+        (_, rest) => format!("{} and {rest} more", shown.join(", ")),
+    }
+}
+
+/// The lead of the body for a cherry-pick: what it carries and that the rest was read.
+fn promotion_lead(note: &PromotionNote) -> String {
+    let names = listed(&note.sources, MAX_SOURCES_LISTED);
+    let matches = if note.carried_lines == 1 { "matches" } else { "match" };
+    let them = if note.sources.len() == 1 { "it" } else { "them" };
+    let files = if note.carried_files > 0 {
+        format!(" ({} entirely)", counted_noun(note.carried_files, "file"))
+    } else {
+        String::new()
+    };
+    format!(
+        "Cherry-pick of {names}: {} {matches} {them} line for line and {} reviewed there{files}; this review reads the rest.",
+        counted_noun(note.carried_lines, "changed line"),
+        if note.carried_lines == 1 { "was" } else { "were" }
+    )
+}
+
+/// The lines the sources add that the head does not have, for the author to confirm.
+fn promotion_missing(note: &PromotionNote) -> Option<String> {
+    if note.missing.is_empty() {
+        return None;
+    }
+    let named: Vec<String> = note
+        .missing
+        .iter()
+        .take(MAX_MISSING_LISTED)
+        .map(|missing| format!("`{}` ({})", missing.path, counted_noun(missing.lines, "line")))
+        .collect();
+    let more = note.missing.len().saturating_sub(MAX_MISSING_LISTED);
+    let more = if more > 0 {
+        format!(", and {} more", counted_noun(more as u64, "file"))
+    } else {
+        String::new()
+    };
+    let verb = if note.sources.len() == 1 { "adds" } else { "add" };
+    Some(format!(
+        "Not carried over: lines {} {verb} are not in this head, in {}{more}. Worth confirming they are left out on purpose.",
+        listed(&note.sources, MAX_SOURCES_LISTED),
+        named.join(", ")
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -651,6 +724,12 @@ pub fn plan_review(result: &EngineResult, options: &PlanOptions) -> ReviewPlan {
         )
     };
 
+    let promotion = options.promotion.as_ref().filter(|note| !note.sources.is_empty());
+    let first = match promotion {
+        Some(note) => format!("{} {first}", promotion_lead(note)),
+        None => first,
+    };
+
     // Paragraph 2: the verdict and what must be resolved before merge.
     let mut second = vec![format!("**{}.**", verdict.title())];
     if !blockers.is_empty() {
@@ -850,6 +929,9 @@ pub fn plan_review(result: &EngineResult, options: &PlanOptions) -> ReviewPlan {
     let mut paragraphs = vec![first, second.join(" ")];
     if !notes.is_empty() {
         paragraphs.push(notes.join(" "));
+    }
+    if let Some(missing) = promotion.and_then(promotion_missing) {
+        paragraphs.push(missing);
     }
     if !gaps.is_empty() {
         let listed: Vec<String> = gaps

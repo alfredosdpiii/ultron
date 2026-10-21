@@ -467,6 +467,7 @@ pub fn offline_json(raw: &Value, startup_ms: Option<u64>, block_at: Option<&str>
         signature: false,
         block_at: block_at.map(str::to_string),
         max_comments,
+        promotion: None,
     };
     let plan = plan_review(&typed, &options);
     let inline: HashSet<usize> = plan.comments.iter().map(|comment| comment.finding).collect();
@@ -1967,6 +1968,7 @@ fn execute(
                 signature: config.signature,
                 block_at: Some(config.block_at.clone()),
                 max_comments: Some(config.max_comments.0 as i64),
+                promotion: None,
             },
         );
         writeln!(out, "{}", plan.body).map_err(io)?;

@@ -1221,3 +1221,127 @@ fn review_github_a_force_push_reviews_the_whole_diff_again() {
     assert!(outcome.plan.body.contains("Read the diff of `ddddddd` (1 file, +1 -1)"));
     assert!(!outcome.plan.body.contains("the changes from"));
 }
+
+const SOURCE: &str = "diff --git a/purge.py b/purge.py\nnew file mode 100644\nindex 0000000..3333333\n--- /dev/null\n\
+    +++ b/purge.py\n@@ -0,0 +1,3 @@\n+def purge(rows):\n+    for row in rows:\n+        delete(row)\n";
+
+fn review_body(context: &Context) -> String {
+    let posts = context.hub.api("^POST ");
+    let review = posts
+        .iter()
+        .find(|call| call.path.ends_with("/reviews"))
+        .and_then(|call| call.body.clone())
+        .expect("review");
+    review["body"].as_str().expect("body").to_string()
+}
+
+#[test]
+fn review_github_a_cherry_pick_reads_only_what_differs_from_the_pull_requests_it_carries() {
+    // fisher-ki-saas#2945: each source merge picked with `git cherry-pick -x`, then adapted to the branch.
+    let context = setup(json!({}), Some(engine(vec![engine_result(json!({}))])));
+    let source_sha = "d".repeat(40);
+    let mut pull = FakePull::new("o", "r", 1).requested(&[BOT]);
+    pull.title = "Cherry-pick #2931 to soc2-staging".into();
+    pull.base_ref = "soc2-staging".into();
+    pull.diff = format!("{SOURCE}{DIFF}");
+    pull.log = format!(
+        "{}\x1fMerge pull request #2931 from o/fix\x1fMerge pull request #2931 from o/fix\n\n\
+         (cherry picked from commit {source_sha})\n\x1e\n{}\x1fAdapt calc for staging\x1fAdapt calc for staging\n\x1e\n",
+        "e".repeat(40),
+        "f".repeat(40)
+    );
+    pull.source_diffs.insert(source_sha.clone(), SOURCE.into());
+    context.hub.add_pull(pull);
+    posted(requested(&context));
+    // The engine reads the adaptation; the carried file stays in the diff the comments are placed on.
+    let spec = &context.engine.specs()[0];
+    assert_eq!(spec["diff"], json!(DIFF));
+    let body = review_body(&context);
+    assert!(
+        body.starts_with(
+            "Cherry-pick of #2931: 3 changed lines match it line for line and were reviewed there (1 file entirely); \
+             this review reads the rest. Read the diff of "
+        ),
+        "{body}"
+    );
+    // The source commit was looked for in the clone before its diff was read.
+    let git: Vec<String> = context
+        .hub
+        .calls()
+        .iter()
+        .filter(|call| call.argv.first().map(String::as_str) == Some("git"))
+        .map(|call| call.argv.join(" "))
+        .collect();
+    assert!(
+        git.iter()
+            .any(|argv| argv.contains(&format!("cat-file -e {source_sha}^{{commit}}"))),
+        "{git:?}"
+    );
+    assert!(
+        git.iter()
+            .any(|argv| argv.contains("diff --no-color") && argv.contains(&format!("{source_sha}^1 {source_sha}"))),
+        "{git:?}"
+    );
+}
+
+#[test]
+fn review_github_a_promotion_named_in_the_description_reads_what_differs_and_lists_what_it_left_out() {
+    // fisher-ki-saas#2951: one squashed commit, "the twin of #2926" (merged into dev), into soc2-staging.
+    let context = setup(json!({}), Some(engine(vec![engine_result(json!({}))])));
+    let merge_sha = "c".repeat(40);
+    let mut source = FakePull::new("o", "r", 2926);
+    source.head_sha = "9".repeat(40);
+    source.state = "closed".into();
+    source.merged = true;
+    source.base_ref = "dev".into();
+    source.merge_commit_sha = Some(merge_sha.clone());
+    let with_test = format!(
+        "{SOURCE}diff --git a/purge_test.py b/purge_test.py\nnew file mode 100644\n--- /dev/null\n+++ b/purge_test.py\n\
+         @@ -0,0 +1,1 @@\n+def test_purge(): assert purge([]) is None\n"
+    );
+    let mut pull = FakePull::new("o", "r", 1).requested(&[BOT]);
+    pull.title = "Bring EPIC-18 to soc2-staging".into();
+    pull.body = "The twin of #2926, applied to soc2-staging. Not #1, and not a dev promotion (see #404).".into();
+    pull.base_ref = "soc2-staging".into();
+    pull.default_branch = "dev".into();
+    pull.diff = format!("{SOURCE}{DIFF}");
+    pull.source_diffs.insert(merge_sha.clone(), with_test);
+    context.hub.add_pull(pull);
+    context.hub.add_pull(source);
+    posted(requested(&context));
+    assert_eq!(context.engine.specs()[0]["diff"], json!(DIFF));
+    let body = review_body(&context);
+    assert!(
+        body.starts_with("Cherry-pick of #2926: 3 changed lines match it"),
+        "{body}"
+    );
+    assert!(
+        body.contains(
+            "Not carried over: lines #2926 adds are not in this head, in `purge_test.py` (1 line). Worth confirming \
+             they are left out on purpose."
+        ),
+        "{body}"
+    );
+    // The referenced pull requests were looked up; the unknown one was passed over.
+    let lookups: Vec<String> = context
+        .hub
+        .api("^GET repos/o/r/pulls/(2926|404)$")
+        .iter()
+        .map(|c| c.path.clone())
+        .collect();
+    assert_eq!(lookups, ["repos/o/r/pulls/2926", "repos/o/r/pulls/404"]);
+}
+
+#[test]
+fn review_github_a_pull_request_into_the_default_branch_reads_no_referenced_pull_requests() {
+    let context = setup(json!({}), Some(engine(vec![engine_result(json!({}))])));
+    let mut pull = FakePull::new("o", "r", 1).requested(&[BOT]);
+    pull.body = "Follows #2926.".into();
+    pull.base_ref = "dev".into();
+    pull.default_branch = "dev".into();
+    context.hub.add_pull(pull);
+    posted(requested(&context));
+    assert!(context.hub.api("^GET repos/o/r/pulls/2926").is_empty());
+    assert_eq!(context.engine.specs()[0]["diff"], json!(DIFF));
+    assert!(!review_body(&context).contains("Cherry-pick"));
+}

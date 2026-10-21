@@ -131,6 +131,15 @@ pub struct FakePull {
     pub resolved: Vec<String>,
     /// Thumbs up and down on a comment, by comment id.
     pub reactions: HashMap<i64, (u32, u32)>,
+    /// `base.repo.default_branch` (left out when empty), `merge_commit_sha`, and the size GitHub reports.
+    pub default_branch: String,
+    pub merge_commit_sha: Option<String>,
+    pub additions: u64,
+    pub deletions: u64,
+    /// `git log` of the pull request's commits (`%H%x1f%s%x1f%B%x1e`), and the diffs of commits it names
+    /// (`git diff <sha>^1 <sha>`), by sha.
+    pub log: String,
+    pub source_diffs: HashMap<String, String>,
 }
 
 impl FakePull {
@@ -162,6 +171,12 @@ impl FakePull {
             threads: IndexMap::new(),
             resolved: Vec::new(),
             reactions: HashMap::new(),
+            default_branch: String::new(),
+            merge_commit_sha: None,
+            additions: 0,
+            deletions: 0,
+            log: String::new(),
+            source_diffs: HashMap::new(),
         }
     }
 
@@ -171,6 +186,21 @@ impl FakePull {
     }
 
     fn json(&self) -> Value {
+        let mut value = self.plain_json();
+        if !self.default_branch.is_empty() {
+            value["base"]["repo"] = json!({ "default_branch": self.default_branch });
+        }
+        if let Some(sha) = &self.merge_commit_sha {
+            value["merge_commit_sha"] = json!(sha);
+        }
+        if self.additions + self.deletions > 0 {
+            value["additions"] = json!(self.additions);
+            value["deletions"] = json!(self.deletions);
+        }
+        value
+    }
+
+    fn plain_json(&self) -> Value {
         json!({
             "number": self.number, "title": self.title, "body": self.body, "state": self.state, "merged": self.merged,
             "draft": self.draft,
@@ -814,6 +844,19 @@ impl FakeHub {
                     std::fs::create_dir_all(&args[args.len() - 2]).expect("worktree");
                 }
                 ok(String::new())
+            }
+            "log" => {
+                let to = args.iter().find_map(|arg| arg.split_once("..")).map(|(_, to)| to);
+                let pull = state.pulls.values().find(|p| Some(p.head_sha.as_str()) == to);
+                ok(pull.map_or(String::new(), |p| p.log.clone()))
+            }
+            "diff" if args.iter().any(|arg| arg.ends_with("^1")) => {
+                let sha = args.iter().find_map(|arg| arg.strip_suffix("^1")).expect("parent");
+                ok(state
+                    .pulls
+                    .values()
+                    .find_map(|p| p.source_diffs.get(sha).cloned())
+                    .unwrap_or_default())
             }
             "diff" => {
                 let sha = Regex::new("^[0-9a-f]{40}$").expect("pattern");
