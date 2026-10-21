@@ -114,10 +114,10 @@ fn cli_entry_tui_durable_persona_reports_the_workers_state_and_none_sticks() {
     tui.send_keys(&["Enter"]);
     tui.wait("Persona for this session follows the settings (on); keep-going off");
     tui.send_text("/persona none");
-    // The argument completion takes the first Enter (it completes `none`); the second submits.
-    tui.wait(" /persona none");
-    // The screen before the key: an Enter handled before a capture taken after it left nothing to wait for.
-    let before = tui.capture();
+    // The argument completion takes the first Enter (it completes `none`); the second submits. Its list is open
+    // once the text is typed but can be drawn late on a loaded machine: an Enter taken by the list before it was
+    // drawn leaves the screen as it was, so wait for the list, whose closing is the change to wait for.
+    let before = tui.wait("→ none");
     tui.send_keys(&["Enter"]);
     let screen = tui.wait_change(&before);
     if !screen.contains("Persona off from the next message") {
