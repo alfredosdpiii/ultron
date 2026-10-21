@@ -790,7 +790,8 @@ with the symbol each is made from, and its imports with the names they bring in.
   the change touches. A query reads five views of that commit, `files`, `symbols`, `calls`, `imports` (with the
   repository file each names) and `constructs`, and nothing else: no other revision, no review notes, no writes.
   It returns at most 30 rows within 5 seconds, and an error comes back with the views so the investigator can fix
-  its query in the next round. Each investigator's record counts its queries (`graph`).
+  its query in the next round. Each investigator's record counts its queries (`graph`) and keeps the first five
+  (`queries`).
 
 The notes are the review threads of the repository's closed pull requests, by every reviewer (people and bots):
 recorded when a reviewed pull request closes, and, the first time a repository is indexed (and once after an

@@ -399,3 +399,49 @@ print(json.dumps(k.query(\"SELECT caller, end_line FROM calls JOIN symbols ON sy
     let got = kernel_json(body, &[&db.display().to_string(), REPO, &base]);
     assert_eq!(got[1], serde_json::json!([["modify", 8]]));
 }
+
+/// An investigator that asks the graph gets the rows in its next round, and its record keeps what it asked.
+#[test]
+fn an_investigators_graph_queries_are_served_and_recorded() {
+    let (dir, db, base, _) = indexed();
+    let root = dir.path().join("repo");
+    let body = "\
+import asyncio
+import autoreview_deep as deep
+root, db, repo, base = sys.argv[1:5]
+r = deep.Repo(root, base)
+r.graph = {'db': db, 'repo': repo, 'rev': base}
+class Frames:
+    def __init__(self):
+        self.calls = []
+        self.timings = []
+    async def run(self, phase, items, **options):
+        self.calls.append(items[0][2])
+        if len(self.calls) == 1:
+            return [{'requests': [{'graph': {'sql': \"SELECT path, caller\\n  FROM calls WHERE callee = 'runWithBypass'\"}},
+                                  {'graph': {'sql': 'SELECT * FROM notes'}}], 'findings': [], 'done': False}]
+        return [{'requests': [], 'findings': [], 'checked': [], 'done': True}]
+frames = Frames()
+out = asyncio.run(deep.investigate(frames, 'siblings', ['the diff'], r, rounds=3, model=None, thinking=None,
+                                   cutoff=None, clock=lambda: 0.0, something_outside=False))
+record = out['record']
+second = '\\n'.join(frames.calls[1])
+print(json.dumps({'graph': record['graph'], 'queries': record['queries'], 'requests': record['requests'],
+                  'rejected': record['rejected'], 'served': 'backend/src/audit/audit.service.ts | record' in second,
+                  'refused': 'not authorized' in second}))";
+    let got = kernel_json(
+        body,
+        &[&root.display().to_string(), &db.display().to_string(), REPO, &base],
+    );
+    assert_eq!(
+        got,
+        serde_json::json!({
+            "graph": 2,
+            "queries": ["SELECT path, caller FROM calls WHERE callee = 'runWithBypass'", "SELECT * FROM notes"],
+            "requests": 1,
+            "rejected": 1,
+            "served": true,
+            "refused": true
+        })
+    );
+}

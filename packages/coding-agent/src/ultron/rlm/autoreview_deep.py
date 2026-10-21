@@ -428,6 +428,9 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
                    "pickaxe, review_notes, rules_for or graph")
 
 
+#: Graph queries kept in an investigator's record.
+MAX_RECORDED_QUERIES = 5
+
 #: Review notes shown per request, and the characters of each.
 MAX_NOTES = 8
 NOTE_CHARS = 400
@@ -1074,8 +1077,8 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
     ledger: list[str] = []
     store: dict[str, str] = {}
     reply: dict[str, Any] = {}
-    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "graph": 0, "status": "done",
-                              "nudged": False, "untraced": [], "unchecked": []}
+    record: dict[str, Any] = {"lens": lens, "rounds": 0, "requests": 0, "rejected": 0, "graph": 0, "queries": [],
+                              "status": "done", "nudged": False, "untraced": [], "unchecked": []}
     required = list(required or [])
     shapes = list(shapes or [])
     if shapes:
@@ -1131,8 +1134,12 @@ async def investigate(frames: Any, lens: str, base_views: list[str], repo: Repo,
         requests = [request for request in requests if not (isinstance(request, dict) and "recall" in request)]
         for request in requests[:MAX_REQUESTS]:
             if isinstance(request, dict):
-                # Graph queries asked, served or not: whether investigators use the graph.
-                record["graph"] += int("graph" in request)
+                # Graph queries asked, served or not, and the first few: whether and how investigators use it.
+                if "graph" in request:
+                    record["graph"] += 1
+                    sql = request["graph"].get("sql") if isinstance(request["graph"], dict) else None
+                    if isinstance(sql, str) and len(record["queries"]) < MAX_RECORDED_QUERIES:
+                        record["queries"].append(_clip(" ".join(sql.split()), 300))
                 for args in request.values():
                     if isinstance(args, dict):
                         asked += [str(args[key]) for key in ("symbol", "pattern", "string") if isinstance(args.get(key), str)]
