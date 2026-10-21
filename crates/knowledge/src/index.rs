@@ -45,7 +45,9 @@ fn tree_entries(repo_dir: &Path, rev: &str) -> Result<Vec<(String, String, u64)>
     for record in listing.split(|&byte| byte == 0).filter(|record| !record.is_empty()) {
         let record = String::from_utf8_lossy(record);
         // `<mode> SP <type> SP <object> SP+ <size> TAB <path>`
-        let Some((meta, path)) = record.split_once('\t') else { continue };
+        let Some((meta, path)) = record.split_once('\t') else {
+            continue;
+        };
         let fields: Vec<&str> = meta.split_whitespace().collect();
         let [_mode, kind, oid, size] = fields[..] else { continue };
         if kind != "blob" || language(path).is_none() {
@@ -74,11 +76,17 @@ fn read_blobs(repo_dir: &Path, oids: &[String]) -> Result<Vec<Vec<u8>>, Error> {
         .stderr(Stdio::null())
         .spawn()
         .map_err(|error| Error(format!("git cat-file: {error}")))?;
-    let mut stdin = child.stdin.take().ok_or_else(|| Error("git cat-file: no stdin".into()))?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| Error("git cat-file: no stdin".into()))?;
     let input = oids.join("\n") + "\n";
     // Written from a thread: git answers while it reads, and a full pipe either way would deadlock.
     let writer = std::thread::spawn(move || stdin.write_all(input.as_bytes()));
-    let stdout = child.stdout.take().ok_or_else(|| Error("git cat-file: no stdout".into()))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| Error("git cat-file: no stdout".into()))?;
     let mut reader = BufReader::new(stdout);
     let mut contents = Vec::with_capacity(oids.len());
     for oid in oids {
@@ -88,7 +96,9 @@ fn read_blobs(repo_dir: &Path, oids: &[String]) -> Result<Vec<Vec<u8>>, Error> {
             .map_err(|error| Error(format!("git cat-file: {error}")))?;
         let fields: Vec<&str> = header.split_whitespace().collect();
         let size = match fields[..] {
-            [_, "blob", size] => size.parse::<usize>().map_err(|_| Error(format!("git cat-file: {header:?}")))?,
+            [_, "blob", size] => size
+                .parse::<usize>()
+                .map_err(|_| Error(format!("git cat-file: {header:?}")))?,
             _ => return Err(Error(format!("git cat-file: {oid}: {}", header.trim()))),
         };
         let mut body = vec![0; size + 1];
@@ -110,7 +120,10 @@ pub fn index_tree(db: &Path, repo: &str, repo_dir: &Path, rev: &str) -> Result<I
     if rev.is_empty() || rev.starts_with('-') {
         return Err(Error(format!("not a revision: {rev:?}")));
     }
-    let commit = git(repo_dir, &["rev-parse", "--verify", "--quiet", &format!("{rev}^{{commit}}")])?;
+    let commit = git(
+        repo_dir,
+        &["rev-parse", "--verify", "--quiet", &format!("{rev}^{{commit}}")],
+    )?;
     let commit = String::from_utf8_lossy(&commit).trim().to_string();
     let entries = tree_entries(repo_dir, &commit)?;
     let mut store = Store::open(db)?;

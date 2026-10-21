@@ -217,7 +217,10 @@ fn line_at(text: &str, offset: usize) -> i64 {
 
 static SQL_PATTERNS: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
     [
-        ("sql:create-table", r"\bCREATE\s+(?:UNLOGGED\s+|TEMP(?:ORARY)?\s+)?TABLE\b"),
+        (
+            "sql:create-table",
+            r"\bCREATE\s+(?:UNLOGGED\s+|TEMP(?:ORARY)?\s+)?TABLE\b",
+        ),
         ("sql:alter-table", r"\bALTER\s+TABLE\b"),
         ("sql:add-column", r"\bADD\s+COLUMN\b"),
         ("sql:drop-column", r"\bDROP\s+COLUMN\b"),
@@ -240,11 +243,17 @@ static SQL_PATTERNS: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
         ("sql:index", r"\bCREATE\s+INDEX\b"),
         ("sql:concurrently", r"\bCONCURRENTLY\b"),
         ("sql:do-block", r"\bDO\s+\$"),
-        ("sql:catalog-guard", r"\bpg_(?:constraint|trigger|policies|indexes|class)\b"),
+        (
+            "sql:catalog-guard",
+            r"\bpg_(?:constraint|trigger|policies|indexes|class)\b",
+        ),
         ("sql:if-not-exists", r"\bIF\s+NOT\s+EXISTS\b"),
         ("sql:create-type", r"\bCREATE\s+TYPE\b"),
         ("sql:create-extension", r"\bCREATE\s+EXTENSION\b"),
-        ("sql:create-view", r"\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:MATERIALIZED\s+)?VIEW\b"),
+        (
+            "sql:create-view",
+            r"\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:MATERIALIZED\s+)?VIEW\b",
+        ),
         ("sql:jsonb", r"\bJSONB\b"),
         ("sql:delete-rows", r"\bDELETE\s+FROM\b"),
         ("sql:update-rows", r"\bUPDATE\s+\S+\s+SET\b"),
@@ -252,7 +261,12 @@ static SQL_PATTERNS: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
         ("sql:truncate", r"\bTRUNCATE\b"),
     ]
     .into_iter()
-    .map(|(kind, pattern)| (kind, Regex::new(&format!("(?i){pattern}")).expect("a valid SQL pattern")))
+    .map(|(kind, pattern)| {
+        (
+            kind,
+            Regex::new(&format!("(?i){pattern}")).expect("a valid SQL pattern"),
+        )
+    })
     .collect()
 });
 
@@ -283,7 +297,11 @@ fn sql(text: &str) -> Extracted {
         let statement = &statement[..statement.find(';').unwrap_or(statement.len())];
         kinds.add("sql:trigger".into(), line);
         if let Some(timing) = TIMING.captures(statement) {
-            let when = timing[1].split_whitespace().collect::<Vec<_>>().join("-").to_lowercase();
+            let when = timing[1]
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join("-")
+                .to_lowercase();
             let after_timing = &statement[timing.get(0).map_or(0, |m| m.end())..];
             let events = &after_timing[..ON.find(after_timing).map_or(after_timing.len(), |m| m.start())];
             for event in EVENT.captures_iter(events) {
@@ -342,11 +360,8 @@ fn line_of(node: &Node) -> i64 {
 
 /// A name worth keying a construct on: an identifier, not an expression.
 fn plain_name(name: &str) -> Option<&str> {
-    let ok = !name.is_empty()
-        && name.len() <= 80
-        && name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
+    let ok =
+        !name.is_empty() && name.len() <= 80 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$');
     ok.then_some(name)
 }
 
@@ -370,7 +385,8 @@ fn typescript_node(node: &Node, source: &[u8], kinds: &mut Kinds, symbols: &mut 
             } else {
                 Some(expression)
             };
-            if let Some(name) = callee.and_then(|callee| callee_name(&callee, source, "member_expression", "property")) {
+            if let Some(name) = callee.and_then(|callee| callee_name(&callee, source, "member_expression", "property"))
+            {
                 kinds.add(format!("ts:decorator:{name}"), line);
             }
         }
@@ -557,7 +573,11 @@ export const helper = () => new Error('x');
             .collect();
         assert_eq!(
             names,
-            vec![("TopicsController", "class"), ("find", "method"), ("helper", "function")]
+            vec![
+                ("TopicsController", "class"),
+                ("find", "method"),
+                ("helper", "function")
+            ]
         );
     }
 

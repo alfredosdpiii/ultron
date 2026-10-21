@@ -1004,7 +1004,12 @@ impl GitHub {
                     body: text(first.get("body")),
                     url,
                     at: text(first.get("createdAt")),
-                    state: if flag("isResolved") || flag("isOutdated") { "addressed" } else { "open" }.into(),
+                    state: if flag("isResolved") || flag("isOutdated") {
+                        "addressed"
+                    } else {
+                        "open"
+                    }
+                    .into(),
                 });
             }
             let page = threads.get("pageInfo");

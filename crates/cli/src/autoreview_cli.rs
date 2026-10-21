@@ -1920,9 +1920,18 @@ fn execute(
         Some(repo) => format!("github.com/{repo}").to_lowercase(),
         None => format!("local:{}", repo_dir.display()),
     };
-    let head = parsed.head.clone().filter(|head| !head.is_empty()).unwrap_or_else(|| "HEAD".into());
+    let head = parsed
+        .head
+        .clone()
+        .filter(|head| !head.is_empty())
+        .unwrap_or_else(|| "HEAD".into());
     let indexed = if repo_dir.join(".git").exists() {
-        Some(knowledge::index_tree(Path::new(&paths.knowledge), &knowledge_repo, &repo_dir, &head))
+        Some(knowledge::index_tree(
+            Path::new(&paths.knowledge),
+            &knowledge_repo,
+            &repo_dir,
+            &head,
+        ))
     } else {
         None
     };

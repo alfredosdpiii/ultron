@@ -1,8 +1,8 @@
 //! Replays crates/review/fixtures/ledger.json, recorded from autoreview/lessons.ts (fixtures/generate.mjs).
 
 use review::ledger::{
-    Fate, FateInput, FateKind, MERGED_OPEN, PostedFinding, ThreadState, fates_of, lessons_for, merge_fates, parse_iso_ms,
-    without_unposted_merges,
+    Fate, FateInput, FateKind, MERGED_OPEN, PostedFinding, ThreadState, fates_of, lessons_for, merge_fates,
+    parse_iso_ms, without_unposted_merges,
 };
 use serde_json::Value;
 
@@ -98,9 +98,15 @@ fn review_ledger_forgets_merge_rejections_of_findings_nobody_saw() {
         fate("a-2", FateKind::Rejected, MERGED_OPEN),
         fate("a-3", FateKind::Accepted, "fixed in a later commit"),
     ];
-    let unposted = [("github.com/o/r#1".to_string(), "a-1".to_string()), ("github.com/o/r#1".into(), "a-3".into())]
+    let unposted = [
+        ("github.com/o/r#1".to_string(), "a-1".to_string()),
+        ("github.com/o/r#1".into(), "a-3".into()),
+    ]
+    .into_iter()
+    .collect();
+    let kept: Vec<String> = without_unposted_merges(&ledger, &unposted)
         .into_iter()
+        .map(|f| f.id)
         .collect();
-    let kept: Vec<String> = without_unposted_merges(&ledger, &unposted).into_iter().map(|f| f.id).collect();
     assert_eq!(kept, ["a-2", "a-3"]);
 }

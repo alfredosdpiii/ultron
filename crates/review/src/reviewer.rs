@@ -126,7 +126,9 @@ pub fn record_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &st
         .and_then(|notes| {
             let mut store = knowledge::Store::open(std::path::Path::new(&deps.paths.knowledge))
                 .map_err(|error| error.to_string())?;
-            let added = store.record_notes(&repo_key(r), &notes).map_err(|error| error.to_string())?;
+            let added = store
+                .record_notes(&repo_key(r), &notes)
+                .map_err(|error| error.to_string())?;
             Ok((notes.len(), added))
         });
     match recorded {
@@ -144,7 +146,9 @@ pub const BACKFILL_PULLS: usize = 50;
 fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str) {
     let db = std::path::Path::new(&deps.paths.knowledge);
     let repo = repo_key(r);
-    let Ok(mut store) = knowledge::Store::open(db) else { return };
+    let Ok(mut store) = knowledge::Store::open(db) else {
+        return;
+    };
     // Once per repository: one whose pull requests have no review threads stays without notes.
     let marker = format!("notes_backfilled:{repo}");
     if store.meta(&marker).map_or(true, |done| done.is_some()) || store.note_count(&repo).map_or(true, |n| n > 0) {
@@ -160,15 +164,19 @@ fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str)
     let (mut read, mut added) = (0, 0);
     for number in pulls.into_iter().take(BACKFILL_PULLS) {
         let pull = PullRef::new(&r.host, &r.owner, &r.repo, number);
-        match github.review_notes(&pull).map_err(|error| error.to_string()).and_then(|notes| {
-            store.record_notes(&repo, &notes).map_err(|error| error.to_string())
-        }) {
+        match github
+            .review_notes(&pull)
+            .map_err(|error| error.to_string())
+            .and_then(|notes| store.record_notes(&repo, &notes).map_err(|error| error.to_string()))
+        {
             Ok(new) => {
                 read += 1;
                 added += new;
             }
             Err(error) => {
-                (deps.log)(&format!("{name}: the review notes of #{number} were not backfilled: {error}"));
+                (deps.log)(&format!(
+                    "{name}: the review notes of #{number} were not backfilled: {error}"
+                ));
                 if error.to_lowercase().contains("rate limit") {
                     break;
                 }
@@ -178,14 +186,18 @@ fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str)
     if read > 0 {
         let _ = store.set_meta(&marker, &iso_from_ms((deps.now)()));
     }
-    (deps.log)(&format!("{name}: backfilled {added} review notes from {read} closed pull requests"));
+    (deps.log)(&format!(
+        "{name}: backfilled {added} review notes from {read} closed pull requests"
+    ));
 }
 
 /// `(pull, id)` of the findings that no account posted as a review comment: listed only in a review body.
 fn unposted_findings(state: &AutoreviewState) -> HashSet<(String, String)> {
     let (mut posted, mut unposted) = (HashSet::new(), HashSet::new());
     for (key, pull) in &state.pulls {
-        let Some((_, pull_ref)) = key.split_once('@') else { continue };
+        let Some((_, pull_ref)) = key.split_once('@') else {
+            continue;
+        };
         for finding in &pull.findings {
             let id = (pull_ref.to_string(), finding.id.clone());
             if finding.comment_id.is_some() {
@@ -201,7 +213,11 @@ fn unposted_findings(state: &AutoreviewState) -> HashSet<(String, String)> {
 
 /// A repository's ledger as the lessons read it: without merge rejections of findings nobody saw.
 fn repo_ledger(state: &AutoreviewState, repo: &str) -> Vec<Fate> {
-    let ledger = state.lessons.as_ref().and_then(|all| all.get(repo)).map_or(&[][..], Vec::as_slice);
+    let ledger = state
+        .lessons
+        .as_ref()
+        .and_then(|all| all.get(repo))
+        .map_or(&[][..], Vec::as_slice);
     without_unposted_merges(ledger, &unposted_findings(state))
 }
 
@@ -216,7 +232,10 @@ fn learn(deps: &ReviewerDeps, r: &PullRef, fates: &[Fate], name: &str) -> Result
     let lessons = deps.store.update(|state| {
         let merged = merge_fates(&repo_ledger(state, &repo), fates);
         let lessons = lessons_for(&merged, &now);
-        state.lessons.get_or_insert_with(Default::default).insert(repo.clone(), merged);
+        state
+            .lessons
+            .get_or_insert_with(Default::default)
+            .insert(repo.clone(), merged);
         lessons
     })?;
     let accepted = fates.iter().filter(|fate| fate.fate == FateKind::Accepted).count();
@@ -838,7 +857,10 @@ pub const MAX_REVIEW_RECORDS: usize = 200;
 pub fn write_review_record(dir: &str, name: &str, record: &Value) -> std::io::Result<()> {
     let reviews = path_join(&[dir, "reviews"]);
     make_private_dir(&reviews)?;
-    write_private(&path_join(&[&reviews, &format!("{name}.json")]), &format!("{}\n", to_json_1(record)))?;
+    write_private(
+        &path_join(&[&reviews, &format!("{name}.json")]),
+        &format!("{}\n", to_json_1(record)),
+    )?;
     let mut records: Vec<(std::time::SystemTime, std::path::PathBuf)> = std::fs::read_dir(&reviews)?
         .filter_map(Result::ok)
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))

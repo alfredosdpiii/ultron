@@ -159,7 +159,15 @@ fn repository(root: &Path) -> (String, String) {
         "import { Injectable } from '@nestjs/common';\n@Injectable()\nexport class QuestionTopicsService {\n  save() { return this.prisma.questionTopicListVersion.create({}); }\n}\n",
     );
     git(root, &["add", "-A"]);
-    git(root, &["commit", "-q", "-m", "Store question topic lists as append-only versions"]);
+    git(
+        root,
+        &[
+            "commit",
+            "-q",
+            "-m",
+            "Store question topic lists as append-only versions",
+        ],
+    );
     let head = git(root, &["rev-parse", "HEAD"]);
     (base, head)
 }
@@ -221,7 +229,10 @@ fn the_new_migration_is_indexed_with_its_trigger_shape() {
     ] {
         assert!(kinds.contains(&kind.to_string()), "{kind} missing from {kinds:?}");
     }
-    assert!(!kinds.iter().any(|kind| kind == "sql:trigger:before-truncate"), "{kinds:?}");
+    assert!(
+        !kinds.iter().any(|kind| kind == "sql:trigger:before-truncate"),
+        "{kinds:?}"
+    );
     let audit: Vec<String> = store
         .constructs_at(REPO, &head, AUDIT)
         .unwrap()
@@ -241,7 +252,10 @@ fn a_later_revision_reads_only_its_new_blobs_and_keeps_both_trees() {
     let first = index_tree(&db, REPO, &root, &base).unwrap();
     assert_eq!(first.read, 9, "{first:?}");
     let second = index_tree(&db, REPO, &root, &head).unwrap();
-    assert_eq!(second.read, 2, "only the two files the pull request adds are read: {second:?}");
+    assert_eq!(
+        second.read, 2,
+        "only the two files the pull request adds are read: {second:?}"
+    );
     let again = index_tree(&db, REPO, &root, &head).unwrap();
     assert_eq!(again.read, 0, "{again:?}");
     let store = Store::open(&db).unwrap();
@@ -342,14 +356,23 @@ small = deep.build_brief(deep.Repo(root, head), files, reader, base=base, knowle
 print(json.dumps({'without': without, 'with': with_k, 'small': small}))";
     let out = kernel_python(
         body,
-        &[&root.display().to_string(), &base, &head, &db.display().to_string(), REPO],
+        &[
+            &root.display().to_string(),
+            &base,
+            &head,
+            &db.display().to_string(),
+            REPO,
+        ],
     );
     let briefs: serde_json::Value = serde_json::from_str(&out).unwrap();
     let without = briefs["without"].as_str().unwrap();
     let with = briefs["with"].as_str().unwrap();
     // Before: the files of the same name, the oldest first; the audit table is not among them.
     assert!(without.contains("same name elsewhere"), "{without}");
-    assert!(without.contains("20250404191022_add_knowledge_interaction_models"), "{without}");
+    assert!(
+        without.contains("20250404191022_add_knowledge_interaction_models"),
+        "{without}"
+    );
     assert!(!without.contains("add_ki_audit_event"), "{without}");
     // After: the migration that does what the new one does, with what they share.
     let like = with
@@ -397,7 +420,12 @@ fn a_store_of_schema_1_gains_the_notes_and_keeps_its_trees() {
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
     assert_eq!(store.tree_count(REPO).unwrap(), 1);
     assert!(!store.constructs_at(REPO, &head, NEW).unwrap().is_empty());
-    assert_eq!(store.record_notes(REPO, &[note(2801, AUDIT, "jgericardo", "TRUNCATE?", "open")]).unwrap(), 1);
+    assert_eq!(
+        store
+            .record_notes(REPO, &[note(2801, AUDIT, "jgericardo", "TRUNCATE?", "open")])
+            .unwrap(),
+        1
+    );
 }
 
 #[test]
@@ -405,10 +433,23 @@ fn a_note_is_recorded_once_and_its_state_follows_the_thread() {
     let dir = tempfile::tempdir().unwrap();
     let db = dir.path().join("graph.db");
     let mut store = Store::open(&db).unwrap();
-    let first = note(2801, AUDIT, "samsamlopez", "TRUNCATE skips the row-level DELETE trigger.", "open");
+    let first = note(
+        2801,
+        AUDIT,
+        "samsamlopez",
+        "TRUNCATE skips the row-level DELETE trigger.",
+        "open",
+    );
     assert_eq!(store.record_notes(REPO, std::slice::from_ref(&first)).unwrap(), 1);
-    let addressed = Note { state: "addressed".into(), ..first.clone() };
-    assert_eq!(store.record_notes(REPO, &[addressed]).unwrap(), 0, "the same comment is not a new note");
+    let addressed = Note {
+        state: "addressed".into(),
+        ..first.clone()
+    };
+    assert_eq!(
+        store.record_notes(REPO, &[addressed]).unwrap(),
+        0,
+        "the same comment is not a new note"
+    );
     assert_eq!(store.note_count(REPO).unwrap(), 1);
     let out = kernel_python(
         "import sqlite3\nprint(sqlite3.connect(sys.argv[1]).execute('SELECT state FROM notes').fetchone()[0])",
@@ -416,9 +457,17 @@ fn a_note_is_recorded_once_and_its_state_follows_the_thread() {
     );
     assert_eq!(out, "addressed");
     assert_eq!(store.meta("notes_backfilled:x").unwrap(), None);
-    store.set_meta("notes_backfilled:x", "2026-10-21T00:00:00.000Z").unwrap();
-    assert_eq!(store.meta("notes_backfilled:x").unwrap().as_deref(), Some("2026-10-21T00:00:00.000Z"));
-    assert!(store.set_meta("schema_version", "9").is_err(), "the version is not a host value");
+    store
+        .set_meta("notes_backfilled:x", "2026-10-21T00:00:00.000Z")
+        .unwrap();
+    assert_eq!(
+        store.meta("notes_backfilled:x").unwrap().as_deref(),
+        Some("2026-10-21T00:00:00.000Z")
+    );
+    assert!(
+        store.set_meta("schema_version", "9").is_err(),
+        "the version is not a host value"
+    );
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
 }
 
@@ -438,9 +487,27 @@ fn an_investigator_gets_the_review_notes_of_files_like_the_one_it_reads() {
         .record_notes(
             REPO,
             &[
-                note(2801, AUDIT, "samsamlopez", "TRUNCATE skips the row-level DELETE trigger; add a statement-level one.", "addressed"),
-                note(2801, AUDIT, "julesballaran", "Name the retention window in the comment.", "open"),
-                note(2790, "backend/prisma/migrations/20250501000000_add_feedback/migration.sql", "jplbnrs", "Index the organization column.", "addressed"),
+                note(
+                    2801,
+                    AUDIT,
+                    "samsamlopez",
+                    "TRUNCATE skips the row-level DELETE trigger; add a statement-level one.",
+                    "addressed",
+                ),
+                note(
+                    2801,
+                    AUDIT,
+                    "julesballaran",
+                    "Name the retention window in the comment.",
+                    "open",
+                ),
+                note(
+                    2790,
+                    "backend/prisma/migrations/20250501000000_add_feedback/migration.sql",
+                    "jplbnrs",
+                    "Index the organization column.",
+                    "addressed",
+                ),
             ],
         )
         .unwrap();
@@ -463,7 +530,14 @@ except deep.Rejected as error:
 print(json.dumps(out))";
     let out = kernel_python(
         body,
-        &[&root.display().to_string(), &head, &db.display().to_string(), REPO, NEW, AUDIT],
+        &[
+            &root.display().to_string(),
+            &head,
+            &db.display().to_string(),
+            REPO,
+            NEW,
+            AUDIT,
+        ],
     );
     let served: serde_json::Value = serde_json::from_str(&out).unwrap();
     let like = served[format!("like_notes:{NEW}")][1].as_str().unwrap();
@@ -479,6 +553,9 @@ print(json.dumps(out))";
     let (addressed, open) = (own.find("samsamlopez").unwrap(), own.find("julesballaran").unwrap());
     assert!(addressed < open, "{own}");
     assert!(own.contains("[open, 2026-08-"), "{own}");
-    assert_eq!(served[format!("review_notes:{NEW}")][1], "no earlier review comment on this file");
+    assert_eq!(
+        served[format!("review_notes:{NEW}")][1],
+        "no earlier review comment on this file"
+    );
     assert_eq!(served["bare"], "no review history is available for this repository");
 }

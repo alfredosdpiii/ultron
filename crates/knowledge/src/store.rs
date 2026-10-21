@@ -116,7 +116,9 @@ impl Store {
         self.conn.execute_batch(SCHEMA)?;
         let found: Option<String> = self
             .conn
-            .query_row("SELECT value FROM meta WHERE key = 'schema_version'", [], |row| row.get(0))
+            .query_row("SELECT value FROM meta WHERE key = 'schema_version'", [], |row| {
+                row.get(0)
+            })
             .optional()?;
         match found.as_deref().map(str::parse::<i64>) {
             None => {
@@ -139,7 +141,9 @@ impl Store {
                 )));
             }
             Some(other) => {
-                return Err(Error(format!("the knowledge store has an unknown schema version ({other:?})")));
+                return Err(Error(format!(
+                    "the knowledge store has an unknown schema version ({other:?})"
+                )));
             }
         }
         Ok(())
@@ -148,7 +152,9 @@ impl Store {
     pub fn schema_version(&self) -> Result<i64, Error> {
         let value: String = self
             .conn
-            .query_row("SELECT value FROM meta WHERE key = 'schema_version'", [], |row| row.get(0))?;
+            .query_row("SELECT value FROM meta WHERE key = 'schema_version'", [], |row| {
+                row.get(0)
+            })?;
         value.parse().map_err(|_| Error(format!("schema version {value:?}")))
     }
 
@@ -201,7 +207,10 @@ impl Store {
                 }
             }
         }
-        tx.execute("INSERT INTO repos (name) VALUES (?1) ON CONFLICT (name) DO NOTHING", params![repo])?;
+        tx.execute(
+            "INSERT INTO repos (name) VALUES (?1) ON CONFLICT (name) DO NOTHING",
+            params![repo],
+        )?;
         let repo_id: i64 = tx.query_row("SELECT id FROM repos WHERE name = ?1", params![repo], |row| row.get(0))?;
         tx.execute(
             "INSERT INTO trees (repo, rev, indexed_at) VALUES (?1, ?2, ?3)
@@ -245,7 +254,10 @@ impl Store {
     /// current state, line and body. Returns how many were new.
     pub fn record_notes(&mut self, repo: &str, notes: &[Note]) -> Result<usize, Error> {
         let tx = self.conn.transaction()?;
-        tx.execute("INSERT INTO repos (name) VALUES (?1) ON CONFLICT (name) DO NOTHING", params![repo])?;
+        tx.execute(
+            "INSERT INTO repos (name) VALUES (?1) ON CONFLICT (name) DO NOTHING",
+            params![repo],
+        )?;
         let repo_id: i64 = tx.query_row("SELECT id FROM repos WHERE name = ?1", params![repo], |row| row.get(0))?;
         let mut added = 0;
         {
@@ -262,7 +274,15 @@ impl Store {
                 }
                 let body: String = note.body.chars().take(NOTE_CHARS).collect();
                 row.execute(params![
-                    repo_id, note.pull, note.path, note.line, note.author, body, note.url, note.at, note.state
+                    repo_id,
+                    note.pull,
+                    note.path,
+                    note.line,
+                    note.author,
+                    body,
+                    note.url,
+                    note.at,
+                    note.state
                 ])?;
             }
         }
@@ -308,7 +328,9 @@ impl Store {
              WHERE r.name = ?1 AND t.rev = ?2 AND e.path = ?3
              ORDER BY c.line, c.kind",
         )?;
-        let rows = statement.query_map(params![repo, rev, path], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?;
+        let rows = statement.query_map(params![repo, rev, path], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })?;
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
