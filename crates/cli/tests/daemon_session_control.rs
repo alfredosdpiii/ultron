@@ -199,6 +199,24 @@ fn cli_daemon_session_control_settings_trust_debug_and_models_through_the_worker
         available
     );
     assert_eq!(state["configuration"]["model"]["modelId"], "claude-sonnet-4-5");
+    // `Models.select` (models-provider.ts): the session's model, saved as the default (`setDefaultModelAndProvider`).
+    let selected = connection
+        .call(
+            session.clone(),
+            "pi.models",
+            "select",
+            json!([{"provider": "anthropic", "modelId": "claude-haiku-4-5"}]),
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(selected["id"], "claude-haiku-4-5");
+    let settings: Value =
+        serde_json::from_str(&std::fs::read_to_string(home.agent().join("settings.json")).unwrap()).unwrap();
+    assert_eq!(
+        (&settings["defaultProvider"], &settings["defaultModel"]),
+        (&json!("anthropic"), &json!("claude-haiku-4-5"))
+    );
+    assert_eq!(settings["followUpMode"], "all");
     // Nothing interrupted, nothing queued: nothing to resume.
     assert_eq!(
         connection

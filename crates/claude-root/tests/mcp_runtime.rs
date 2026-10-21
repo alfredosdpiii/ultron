@@ -327,7 +327,9 @@ fn claude_root_mcp_ultron_children_run_on_the_ultron_child_model() {
     let (port, requests) = fake_provider("child answer");
     std::fs::write(
         root.path("a/models.json"),
-        json!({"providers": {"groq": {"baseUrl": format!("http://127.0.0.1:{port}/v1")}}}).to_string(),
+        // The child model's provider needs its own key: the root model's key is that provider's only.
+        json!({"providers": {"groq": {"baseUrl": format!("http://127.0.0.1:{port}/v1"), "apiKey": "fake-groq"}}})
+            .to_string(),
     )
     .unwrap();
     let mut server = Server::start(

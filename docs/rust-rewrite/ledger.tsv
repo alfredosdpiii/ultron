@@ -3266,6 +3266,58 @@ W25C-09	claude-root	schedule.every/at, keep=True, rlm.ask, board, swarm refused 
 W25C-10	claude-root	SYSTEM.md replaces working rules and APPEND_SYSTEM.md follows, root and child	claude_root_w25c_system_md_and_append_system_md_shape_root_and_child_prompts
 W25C-11	claude-root	each turn records a working-tree checkpoint; checkpoints.enabled=false records none	claude_root_w25c_each_turn_records_a_working_tree_checkpoint
 W25C-12	harness	keep=True spawn refuses worktree/worktree_setup/depth/fork, accepts unset values, starts no child	harness_chat_swarm_refuses_options_a_persistent_child_cannot_honour
+W45-01	tui	clipboard image: WSL PowerShell fallback (wslpath, quoted path, outputs, temp file removed)	tui_clipboard_image_wsl_powershell_fallback
+W45-02	tui	clipboard image: native reader order (only reader off Linux; last on Linux; never after NoImage)	tui_clipboard_image_native_fallback_order
+W45-03	tui	clipboard image: native RGBA encoded as PNG	tui_clipboard_image_rgba_to_png_round_trips
+W45-04	cli	setup: multi-field API key login (Cloudflare Workers AI)	cli_setup_tui_multi_field_api_key_login
+W45-05	cli	setup: API key login with a method choice (Bedrock AWS profile)	cli_setup_tui_api_key_login_with_a_choice
+W45-06	daemon	pi.models select saves defaultProvider/defaultModel	cli_daemon_session_control_settings_trust_debug_and_models_through_the_worker
+W45-07	daemon	RPC set_model saves the default via the worker	cli_custom_provider_rpc_lists_and_selects_custom_models
+W45-08	session-core	--claude -c moves a resumed lane to the root model; --model keeps it	claude_root_resume_moves_the_lane_to_the_root_model
+W45-09	session-core	resume with unresolvable model: opens, run fails model_unavailable (assistant.ready + failed result with details)	cli_print_continue_with_a_retired_model_fails_with_model_unavailable
+W45-10	session-core	unavailable model fixed by set_model	cli_resume_with_an_unavailable_model_opens_and_select_model_fixes_it
+W45-11	session-core	top-level Pi extensions resolved like TS; startup note lists them	cli_local_resources_extensions_match_typescript_top_level
+W45-12	daemon	durable clients' session options reach their worker; conflicting running worker refused	cli_durable_clients_run_their_sessions_on_their_own_options
+W45-13	cli	ultron-s -c / --session-id / --fork select other sessions	cli_ultron_s_continue_session_id_and_fork_select_other_sessions
+W45-14	cli	durable entry: --thinking/--no-session/--model and ultron-s prompt/skill flags accepted	cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_takes_session_options
+W45-15	cli	ultron-s resolves caller files for its flags; one selector at a time	cli_entry_home_session_resolves_files_in_the_callers_directory_for_its_flags
+W45-CC1	ai	claude-code with tools runs on claude-subscription via its router	ai_claude_code_lane_with_tools_runs_on_the_subscription
+W45-CC2	ai	rerouted claude-code never spends API credits; explicit claude-subscription keeps fallback	ai_claude_code_lane_out_of_usage_never_spends_api_credits
+W45-CC3	ai	backend overrides refuse the reroute naming ultron claude	ai_claude_code_lane_backend_override_is_refused_with_the_root_hint
+W45-CC4	ai	only tool requests the subscription serves reroute; TOOLS_UNSUPPORTED text	ai_claude_code_lane_routes_only_tool_requests_the_subscription_serves
+W45-CC5	ai	dispatch reroutes every caller with no API request	ai_claude_code_lane_dispatch_reroutes_every_caller
+W45-CC6	ai	reroute runs only the claude-code provider's CLI	ai_claude_code_lane_dispatch_runs_only_the_claude_code_providers_cli
+W45-CC7	ai	resolve_claude falls back to ULTRON_CLAUDE_CODE_BIN	ai_claude_subscription_resolve_claude_falls_back_to_claude_code_bin
+W45-CC8	inference	depth>1 frame on claude-code runs on the subscription	inference_depth_frame_on_claude_code_runs_on_the_subscription_without_api_credits
+W45-CC9	session-core	session lane claude-code on its router, no API credits	session_core_lane_claude_code_with_tools_runs_on_the_subscription_only
+W45-CC10	model-scope	bare Claude ids match only anthropic	ai_model_scope_bare_claude_ids_match_only_the_anthropic_model
+W45-CC11	model-scope	full references select subscription/claude-code	ai_model_scope_full_references_still_select_subscription_and_claude_code_models
+W45-CC12	cli	subscriptionProviders priced as notional (TS port)	cli_usage_a_provider_on_a_subscription_login_is_priced_as_one
+W45-CC13	cli	subscription provider list	cli_usage_subscription_providers_are_the_runtimes_subscription_logins
+W45-CC14	cli	ultron usage prices OAuth subscription as notional	cli_usage_command_prices_an_oauth_subscription_login_as_notional
+W45-CC15	cli	claude-subscription listed via ULTRON_CLAUDE_CODE_BIN	cli_models_claude_subscription_is_listed_by_claude_code_bin
+W45-CC16	claude-root	Ultron children of a Claude root stay on Claude	claude_root_ultron_children_of_a_claude_root_stay_on_claude
+W45-CC17	claude-root	explicit child model settings win	claude_root_ultron_child_model_settings_still_win
+W45-RQ1	session-core	--api-key only for the starting model's provider	session_core_request_keys_api_key_is_only_the_starting_providers
+W45-RQ2	session-core	mid-turn set_model keeps the pinned generation's model and key	session_core_request_keys_mid_turn_switch_keeps_the_generations_key
+W45-RQ3	session-core	durable requests send their options and session id	session_core_request_keys_durable_requests_send_their_options
+W45-RQ4	session-core	root requests carry the provider session id (x-opencode-session)	session_core_request_keys_root_requests_carry_the_provider_session_id
+W45-RQ5	session-core	side-lane streams resolve keys per request; ambient marker sends none	session_core_request_keys_keyed_streams_resolve_per_request
+W45-RQ6	session-core	harness retry policy over side-lane requests	session_core_request_keys_side_lanes_retry_transient_errors
+W45-RQ7	session-core	frames follow the root model and retry transient errors	session_core_request_keys_frames_follow_the_root_model_and_retry
+W45-RQ8	session-core	predict follows the root model and its provider key	session_core_request_keys_predict_follows_the_root_model
+W45-RQ9	session-core	OAuth login after model choice applies to the next request	session_core_request_keys_login_applies_to_the_current_model
+W45-RQ10	session-core	Bedrock profile and Vertex ADC logins pass the key check	session_core_request_keys_credential_env_logins_pass_the_key_check
+W45-RQ11	session-core	lane run end resets that lane's loop hints	session_core_lane_run_end_resets_the_lanes_loop_hints
+W45-RQ12	cli	overflow with auto-compaction off still recovers once	cli_rpc_auto_compaction_off_still_recovers_an_overflow_once
+W26U-01	claude-root	keep=True child answers rlm.ask follow-ups in its conversation; turns charged to the session ledger	claude_root_keep_children_answer_follow_ups_with_rlm_ask_and_are_charged_to_the_ledger
+W26U-02	claude-root	board/notes/swarm shared by root and kept children; swarm wake to root goes to Claude Code's inbox	claude_root_board_notes_and_swarm_are_shared_by_the_root_and_its_kept_children
+W26U-03	claude-root	kept children and board survive claude --resume (same Ultron session, durable runtime)	claude_root_kept_children_and_the_board_survive_a_restart_of_the_claude_session
+W26U-04	claude-root	refusals: keep on claude-code model, keep with no Ultron model, shared world from in-memory subagent	claude_root_durable_apis_refusals_name_what_works_instead
+W26U-05	claude-root	Claude subagent server refuses keep/ask/swarm/board/notes and schedule creation	claude_root_a_claude_subagents_server_refuses_the_roots_shared_world_and_schedules
+W26U-06	claude-root	due schedule.at fires into root inbox and wakes idle Claude via wait-events; waiter stays while pending	claude_root_a_due_schedule_wakes_the_idle_claude_root_with_its_prompt
+W26U-07	claude-root	schedule.every collapses missed slots, fires each slot once, cancel stops it	claude_root_an_every_schedule_fires_each_slot_once_and_cancel_stops_it
+W26U-08	claude-root	root guide names persistent agents/swarm/schedule (no ctx); Claude child guide does not	claude_root_guide_names_persistent_agents_and_schedules_for_the_root_only
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

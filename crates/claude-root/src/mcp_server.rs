@@ -158,6 +158,26 @@ pub struct Resolved {
     /// `rlm.childModel` never overrides it.
     pub child_model_explicit: bool,
     pub ultron_child_model: Option<String>,
+    /// The settings' default `provider/model`: the Ultron children's model only when the frames' model is not
+    /// Claude's ([`ultron_child_model`]).
+    pub default_model: Option<String>,
+}
+
+/// `--children ultron`'s model for spawns that name none: `--ultron-child-model` / `claudeCode.ultronChildModel`,
+/// else `rlm.childModel`, else (`None`) the frames' model, which children of a Claude root keep: `claude-code/<id>`
+/// runs their `rlm` lanes on the Claude subscription, never API credits. TypeScript falls back to the settings'
+/// default model before `rlm.childModel`; the Rust build uses that default only when the frames' model is not
+/// Claude's (wave 45: children of a Claude root stay on Claude unless a setting names another model).
+pub fn ultron_child_model(resolved: &Resolved, rlm_child_model: Option<String>, frames: &ai::Model) -> Option<String> {
+    let claude = matches!(
+        frames.provider.as_str(),
+        ai::claude_code::PROVIDER | ai::claude_subscription::PROVIDER
+    );
+    resolved
+        .ultron_child_model
+        .clone()
+        .or(rlm_child_model)
+        .or_else(|| resolved.default_model.clone().filter(|_| !claude))
 }
 
 /// `runMcpServer`'s model and mode resolution. An environment variable that is set wins even when blank (JS `??`).
@@ -195,11 +215,7 @@ pub fn resolve(args: &McpServerArgs, var: &dyn Fn(&str) -> Option<String>, cwd: 
         (Some(Value::String(p)), Some(Value::String(m))) if !p.is_empty() && !m.is_empty() => Some(format!("{p}/{m}")),
         _ => None,
     };
-    let ultron_child_model = args
-        .ultron_child_model
-        .clone()
-        .or(settings.ultron_child_model.clone())
-        .or(default);
+    let ultron_child_model = args.ultron_child_model.clone().or(settings.ultron_child_model.clone());
     Resolved {
         frame_model,
         frame_model_explicit,
@@ -207,6 +223,7 @@ pub fn resolve(args: &McpServerArgs, var: &dyn Fn(&str) -> Option<String>, cwd: 
         child_model,
         child_model_explicit,
         ultron_child_model,
+        default_model: default,
     }
 }
 
@@ -303,12 +320,33 @@ pub struct Opened {
     pub model: String,
     /// The Ultron session (its values keep the persona toggle and keep-going mode, crate::persona_hook).
     pub session: session_core::durable_store::SharedSession,
+    /// The durable runtime of a root server's persistent children, swarm, board and notes (crate::durable_apis).
+    pub durable: Option<Arc<crate::durable_apis::DurableApis>>,
+    /// A root server's timer of scheduled prompts (crate::schedules).
+    timer: Option<Arc<crate::schedules::ScheduleTimer>>,
     /// Released when the runtime closes, so the next server for the same Claude Code session reopens it.
     lock: Mutex<Option<SessionLock>>,
 }
 
 impl Opened {
+    /// The root has a schedule that will fire while this server runs (a waiter stays for it).
+    pub fn schedules_pending(&self) -> bool {
+        self.timer.is_some()
+            && self
+                .lane
+                .stack
+                .prompt_schedules()
+                .entries()
+                .is_ok_and(|active| !active.is_empty())
+    }
+
     pub fn close(&self) {
+        if let Some(timer) = &self.timer {
+            timer.stop();
+        }
+        if let Some(durable) = &self.durable {
+            durable.close();
+        }
         self.lane.shutdown();
         self.lock.lock().unwrap_or_else(PoisonError::into_inner).take();
     }
@@ -368,7 +406,13 @@ fn open_runtime(
     let model = frame_model(&resolved.frame_model, env)?;
     let api_key = session_core::lane::api_key(&session_core::ModelFlags::default(), env, &model.provider);
     let sessions_dir = session_root.join(session_core::lane::session_directory_name(&metadata.cwd));
-    let runtime = Runtime::new(env, "print", sessions_dir, Services::default())?;
+    // A root server fires its session's schedules itself (crate::schedules); the module tells it of each change.
+    let timer = (!args.child).then(crate::schedules::ScheduleTimer::new);
+    let services = Services {
+        on_schedules: timer.as_ref().map(crate::schedules::ScheduleTimer::listener),
+        ..Services::default()
+    };
+    let runtime = Runtime::new(env, "print", sessions_dir, services)?;
     for diagnostic in &runtime.diagnostics {
         eprintln!("Warning: {diagnostic}");
     }
@@ -435,7 +479,7 @@ fn open_runtime(
             .as_str()
             .filter(|m| !m.is_empty())
             .map(str::to_string);
-        let child_model = resolved.ultron_child_model.clone().or(settings_child);
+        let child_model = ultron_child_model(resolved, settings_child, &model);
         if child_model.is_some() {
             delegation.set_child_model(child_model);
         }
@@ -451,8 +495,33 @@ fn open_runtime(
     lane.stack
         .stats
         .attach(Arc::new(session_core::session_stats::SessionStore(session.clone())));
-    // The APIs this root cannot serve are refused with a clear error (crate::unavailable).
-    let _ = lane.stack.request_layer.set(crate::unavailable::layer());
+    let sink = Arc::new(crate::root_sink::RootSink::system());
+    // A root serves persistent children, `rlm.ask`, the swarm, the board and the notes from a durable runtime of its
+    // session (crate::durable_apis); what a caller cannot use is refused with a clear error (crate::unavailable).
+    let durable = if args.child {
+        let _ = lane.stack.request_layer.set(crate::unavailable::child_layer());
+        None
+    } else {
+        let settings_child = runtime.config.settings["rlm"]["childModel"].as_str();
+        let keep_model = crate::durable_apis::keep_model(resolved.ultron_child_model.as_deref(), settings_child);
+        let apis = crate::durable_apis::open(&session, &lane, &runtime, env, keep_model, sink.clone())?;
+        let _ = lane
+            .stack
+            .request_layer
+            .set(crate::unavailable::root_layer(apis.clone()));
+        Some(apis)
+    };
+    if let Some(timer) = &timer {
+        let deliver = sink.clone();
+        timer.start(
+            lane.stack.prompt_schedules().clone(),
+            kernel_apis::prompt_schedule::clock_for(&*env.var),
+            Arc::new(move |message: &Value| {
+                deliver.publish(crate::schedules::prompt_line(message));
+                Ok(())
+            }),
+        );
+    }
     // What the session actor wires for its own root lane: `ctx.*`, the budget line, shell jobs' roots, the completion
     // events of root work (into the root's inbox) and each turn's working-tree checkpoint.
     let checkpoints = crate::checkpoints::TurnCheckpoints {
@@ -476,7 +545,6 @@ fn open_runtime(
             .filter(|_| lane == MAIN);
         roots.spawned(task, parent, turn_root);
     }));
-    let sink = Arc::new(crate::root_sink::RootSink::system());
     crate::external_lane::wire(&lane, session.clone(), &host, sink.clone());
     let root =
         ExternalRoot::over_lane(lane.clone(), loki_context, sink.clone(), host, &*env.var).with_loki_setup(loki_notice);
@@ -490,6 +558,8 @@ fn open_runtime(
         session_id: metadata.id,
         model: format!("{}/{}", model.provider, model.id),
         session,
+        durable,
+        timer,
         lock: Mutex::new(lock),
     })
 }
@@ -782,7 +852,8 @@ impl Server {
             // Root work still running: subagents, tasks, shell jobs, tool calls and ends in the coalescing window
             // (`async.pending`). An end can reach the inbox just after its count drops: nothing running and nothing
             // waiting for WAIT_EVENTS_GRACE ends the wait.
-            let pending = crate::external_lane::async_pending(&opened.lane.stack, &opened.sink)["pending"] == true;
+            let pending = crate::external_lane::async_pending(&opened.lane.stack, &opened.sink)["pending"] == true
+                || opened.schedules_pending();
             if !events && !pending {
                 let since = *idle_since.get_or_insert_with(Instant::now);
                 if since.elapsed() >= WAIT_EVENTS_GRACE {

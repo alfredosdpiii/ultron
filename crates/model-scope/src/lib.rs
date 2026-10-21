@@ -19,6 +19,12 @@ pub trait ScopeModel {
     fn name(&self) -> &str;
     /// `isClaudeCodeModel`: Claude Code CLI models answer only to their full `claude-code/<id>` reference.
     fn is_claude_code(&self) -> bool;
+    /// Answers only to its full `provider/id` reference, never to a bare id, partial match or id glob: Claude Code
+    /// CLI models (`isClaudeCodeModel`), and the Claude subscription's, whose ids are Anthropic's own (TypeScript has
+    /// no `claude-subscription`, so a bare Claude id there matches the `anthropic` model alone).
+    fn full_reference_only(&self) -> bool {
+        self.is_claude_code() || self.provider() == "claude-subscription"
+    }
 }
 
 /// `isValidThinkingLevel` (cli/args.ts).
@@ -103,7 +109,7 @@ pub fn find_exact_model_reference_match<'a, M: ScopeModel>(reference_: &str, mod
     }
     let ids: Vec<&M> = models
         .iter()
-        .filter(|m| m.id().to_lowercase() == normalized && !m.is_claude_code())
+        .filter(|m| m.id().to_lowercase() == normalized && !m.full_reference_only())
         .collect();
     (ids.len() == 1).then(|| ids[0])
 }
@@ -139,7 +145,7 @@ fn try_match_model<'a, M: ScopeModel>(pattern: &str, models: &'a [M]) -> Option<
     let matches: Vec<&M> = models
         .iter()
         .filter(|m| {
-            !m.is_claude_code()
+            !m.full_reference_only()
                 && (m.id().to_lowercase().contains(&needle) || m.name().to_lowercase().contains(&needle))
         })
         .collect();
@@ -253,7 +259,7 @@ pub fn resolve_model_scope<'a, M: ScopeModel>(
             }
             let matching: Vec<&M> = models
                 .iter()
-                .filter(|m| minimatch(&reference(*m), glob) || (!m.is_claude_code() && minimatch(m.id(), glob)))
+                .filter(|m| minimatch(&reference(*m), glob) || (!m.full_reference_only() && minimatch(m.id(), glob)))
                 .collect();
             if matching.is_empty() {
                 diagnostics.push(no_match(pattern));

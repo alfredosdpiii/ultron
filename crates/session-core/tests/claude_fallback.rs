@@ -143,7 +143,13 @@ fn text_of(message: &AssistantMessage) -> String {
 }
 
 fn call(provider: &Provider) -> (AssistantMessage, usize) {
-    let model = ai::claude_subscription::catalog::model("claude-opus-5-5").unwrap();
+    call_on(
+        provider,
+        &ai::claude_subscription::catalog::model("claude-opus-5-5").unwrap(),
+    )
+}
+
+fn call_on(provider: &Provider, model: &ai::Model) -> (AssistantMessage, usize) {
     let events = Mutex::new(0usize);
     let mut sink = |event: &AssistantMessageEvent| {
         if matches!(event, AssistantMessageEvent::Start { .. }) {
@@ -154,7 +160,7 @@ fn call(provider: &Provider) -> (AssistantMessage, usize) {
         .enable_all()
         .build()
         .unwrap();
-    let message = runtime.block_on(provider.stream(&model, &context(), &SimpleStreamOptions::default(), &mut sink));
+    let message = runtime.block_on(provider.stream(model, &context(), &SimpleStreamOptions::default(), &mut sink));
     (message, events.into_inner().unwrap())
 }
 
@@ -267,4 +273,33 @@ fn session_core_lane_claude_subscription_fallback_setting_off() {
     );
     assert!(lane.api.requests.lock().unwrap().is_empty());
     assert_eq!(runs(&lane.log), 1);
+}
+
+/// `/model claude-code/<id>` in a session: the lane declares `rlm`, which `claude -p` cannot call, so the request
+/// runs as `claude-subscription/<id>` on the lane's own router instead of failing with "does not support tool
+/// calling here". Out of usage it fails with the plan's limit and never spends API credits (`claude-code` never
+/// used a key), though the router has one.
+#[test]
+fn session_core_lane_claude_code_with_tools_runs_on_the_subscription_only() {
+    seal();
+    let lane = lane();
+    let mut model = ai::claude_subscription::catalog::model("claude-haiku-5-5").unwrap();
+    model.api = "claude-code-cli".into();
+    model.provider = "claude-code".into();
+    let (message, starts) = call_on(&lane.provider, &model);
+    assert_eq!(message.stop_reason, StopReason::Error);
+    let error = message.error_message.clone().unwrap_or_default();
+    assert!(error.contains("You've hit your session limit"), "{error}");
+    assert!(!error.contains("does not support tool calling"), "{error}");
+    assert_eq!(message.provider, "claude-subscription");
+    assert_eq!(starts, 1);
+    assert_eq!(runs(&lane.log), 1, "the lane router's fake claude ran");
+    assert!(lane.api.requests.lock().unwrap().is_empty(), "no API credits");
+    // The same id as claude-subscription on the same lane falls back as before.
+    let (explicit, _) = call_on(
+        &lane.provider,
+        &ai::claude_subscription::catalog::model("claude-haiku-5-5").unwrap(),
+    );
+    assert_eq!(text_of(&explicit), "from api");
+    assert_eq!(lane.api.requests.lock().unwrap().len(), 1);
 }

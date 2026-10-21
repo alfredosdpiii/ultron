@@ -45,8 +45,8 @@ pub struct RuntimeGuideOptions {
     pub mcp_servers: Vec<String>,
     pub native_extension_tools: Vec<String>,
     /// The host serves the Rust session runtime's APIs that TS lacks: the durable many-agent APIs (`keep=True`
-    /// children, `rlm.ask`, `swarm`, `board`, `notes`), typed memory records with file pointers, `rlm.images`, `schedule` and `diagram`. The
-    /// TS host and the Claude root do not. Off keeps the guide equal to TS.
+    /// children, `rlm.ask`, `swarm`, `board`, `notes`), typed memory records with file pointers, `rlm.images`, `schedule` and `diagram`
+    /// (the Claude root's server serves them too). The TS host does not. Off keeps the guide equal to TS.
     pub durable_apis: bool,
     pub reader: GuideReader,
     /// With [`EventDelivery::Wake`]: the host waits for subagents between turns and `rlm.collect` never waits (it
@@ -278,9 +278,9 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
     parts.extend(extension_tools);
     let delegation = delegation_prompt(delivery, options.host_waits);
     let swarm = options.reader != GuideReader::Subagent { swarm: false };
-    // An external root (Claude Code over `ultron mcp`) has the Rust host's APIs except those the session actor's
-    // durable runtime and server serve: persistent children with `rlm.ask`, the swarm, and `schedule`.
-    let persistent = options.durable_apis && swarm && !options.external_root;
+    // An external root (Claude Code over `ultron mcp`) serves them too, from a durable runtime of its own session;
+    // its Claude Code subagents (an external root's subagent reader) do not: each has a server of its own.
+    let persistent = options.durable_apis && swarm && !(options.external_root && subagent);
     if persistent {
         parts.push(format!(
             "{delegation}\n{PERSISTENT_PROMPT} {CONTRACTS_PROMPT} `help(swarm)`."
@@ -291,7 +291,7 @@ pub fn rlm_runtime_prompt(active_tools: &[&str], options: &RuntimeGuideOptions) 
         parts.push(delegation);
     }
     if options.durable_apis {
-        // `schedule.*` is the root agent's only, and needs the session actor's server.
+        // `schedule.*` is the root agent's only.
         let schedule = if persistent && !subagent {
             format!("\n{SCHEDULE_PROMPT}")
         } else {

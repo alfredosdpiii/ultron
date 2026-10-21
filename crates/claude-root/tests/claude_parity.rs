@@ -526,45 +526,6 @@ fn claude_root_w25c_named_frame_model_beats_rlm_frame_model() {
 }
 
 #[test]
-fn claude_root_w25c_apis_the_external_root_cannot_serve_are_refused() {
-    let root = Root::new();
-    let mut server = Server::start(&[], root.env(&[]));
-    let refused = |server: &mut Server, code: &str| {
-        server.cell(&format!(
-            "try:\n    {code}\n    print('accepted')\nexcept Exception as e:\n    print(e)"
-        ))
-    };
-    assert_eq!(
-        refused(&mut server, "await schedule.every('1h', 'check the build')"),
-        "schedule.every is not available in ultron claude: scheduled prompts are fired by the Ultron server running the session, and a Claude Code session has none"
-    );
-    assert_eq!(
-        refused(&mut server, "await schedule.at(60, 'check the build')"),
-        "schedule.at is not available in ultron claude: scheduled prompts are fired by the Ultron server running the session, and a Claude Code session has none"
-    );
-    assert_eq!(refused(&mut server, "print(await schedule.list())"), "[]\naccepted");
-    assert_eq!(
-        refused(&mut server, "await rlm.spawn('brief', name='kept', keep=True)"),
-        "rlm.spawn(keep=True) is not available in ultron claude: a subagent here ends with its answer and cannot be asked follow-ups (no rlm.ask); spawn without keep=True and give each subagent a self-contained brief"
-    );
-    assert_eq!(
-        refused(&mut server, "await rlm.ask('ultron-task-1', 'more?')"),
-        "rlm.ask is not available in ultron claude: it needs the durable session runtime of `ultron` (persistent agents, the swarm, the task board and notes)"
-    );
-    assert_eq!(
-        refused(&mut server, "await board.add('fix lexer')"),
-        "board is not available in ultron claude: it needs the durable session runtime of `ultron` (persistent agents, the swarm, the task board and notes)"
-    );
-    assert_eq!(
-        refused(&mut server, "await swarm.route('who owns the parser')"),
-        "swarm is not available in ultron claude: it needs the durable session runtime of `ultron` (persistent agents, the swarm, the task board and notes)"
-    );
-    // Nothing was scheduled.
-    assert_eq!(server.value("ultron.module", "schedule"), Value::Null);
-    server.close();
-}
-
-#[test]
 fn claude_root_w25c_each_turn_records_a_working_tree_checkpoint() {
     let root = Root::new();
     root.git_repo();
@@ -637,12 +598,16 @@ fn claude_root_w25c_guide_names_the_mcp_servers_and_the_rust_apis_the_external_r
         "await rlm.images.generate(",
         "await diagram.mermaid(text)",
         "Contracts: `rlm.spawn(brief, name=..., contract=",
+        // Served from the server's durable runtime and timer (tests/durable_apis.rs).
+        "keep=True",
+        "rlm.ask",
+        "swarm.route",
+        "schedule.every",
     ] {
         assert!(prompt.contains(wanted), "{wanted}: {prompt}");
     }
-    for unwanted in ["keep=True", "rlm.ask", "swarm.route", "schedule.every", "`ctx` edits"] {
-        assert!(!prompt.contains(unwanted), "{unwanted}: {prompt}");
-    }
+    // Claude Code owns its context: no `ctx`.
+    assert!(!prompt.contains("`ctx` edits"), "{prompt}");
     // The TypeScript guide (ULTRON_GUIDE=ts) names none of them, as TypeScript's `ultron claude` did.
     let ts = print_config(&root, &[("ULTRON_GUIDE", "ts")]);
     for absent in [

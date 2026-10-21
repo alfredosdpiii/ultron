@@ -314,7 +314,7 @@ pub fn install_services(app: &mut App, path_var: Option<String>) {
     let qol = app.qol().clone();
     // Pi's Ctrl+V and copies use the clipboard in every mode (its tools come from `path_var`).
     app.set_clipboard(tui::clipboard::ClipboardService::spawn(
-        tui::clipboard::SystemClipboard::with_env(path_var.clone(), std::env::vars().collect()),
+        tui::clipboard::SystemClipboard::with_env(path_var.clone(), std::env::vars().collect()).with_native_images(),
     ));
     // Clicked hyperlinks open with the launcher on `path_var` only (`openBrowser`).
     app.set_url_opener(crate::url_opener::url_opener_with(

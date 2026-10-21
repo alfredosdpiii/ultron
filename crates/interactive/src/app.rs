@@ -3453,11 +3453,8 @@ impl App {
                     .find(|m| format!("{}/{}", m.provider, m.id) == selector)
                     .cloned()
                 {
+                    // The session worker saves the selection as the default (`Models.select`).
                     self.client.select_model(&model.provider, &model.id);
-                    self.client
-                        .save_setting("defaultProvider", Value::String(model.provider.clone()));
-                    self.client
-                        .save_setting("defaultModel", Value::String(model.id.clone()));
                     self.model = model;
                     self.show_status(&format!("Session model: {selector} (saved as default)"));
                 }

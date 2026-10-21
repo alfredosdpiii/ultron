@@ -241,7 +241,9 @@ impl Hub {
 
     // ── Session routing ──────────────────────────────────────────────────────
 
-    fn attach(&self, conn: &Arc<Conn>, session_id: &str) -> Result<(), ServiceError> {
+    /// Attach `conn` to `session_id`; `options` are the client's own session options (see
+    /// [`crate::workers::WorkerModel::session_options`]).
+    fn attach(&self, conn: &Arc<Conn>, session_id: &str, options: Option<&Value>) -> Result<(), ServiceError> {
         if self.closing.load(Ordering::SeqCst) || conn.closed.load(Ordering::SeqCst) {
             return Err(coded("server_draining", "Server is draining"));
         }
@@ -253,7 +255,7 @@ impl Hub {
         {
             return Ok(());
         }
-        let handle = self.acquire(session_id)?;
+        let handle = self.acquire(session_id, options)?;
         let previous = self.router().by_conn.remove(&conn.id);
         if let Some(previous) = previous {
             self.release(conn.id, previous, false);
@@ -264,7 +266,7 @@ impl Hub {
             // after another detached): once it is gone, a new worker is started for this client.
             Err(error) if error.code.as_deref() == Some(crate::workers::WORKER_RETIRING_CODE) => {
                 self.wait_worker_gone(session_id, &handle);
-                let handle = self.acquire(session_id)?;
+                let handle = self.acquire(session_id, options)?;
                 let attachment = self.manager.attach_client(&handle)?;
                 (handle, attachment)
             }
@@ -300,12 +302,14 @@ impl Hub {
         Ok(())
     }
 
-    fn acquire(&self, session_id: &str) -> Result<Handle, ServiceError> {
-        if let Some(hosted) = self.router().hosted.get(session_id) {
-            return Ok(hosted.handle.clone());
+    fn acquire(&self, session_id: &str, options: Option<&Value>) -> Result<Handle, ServiceError> {
+        let hosted = self.router().hosted.get(session_id).map(|h| h.handle.clone());
+        if let Some(handle) = hosted {
+            self.manager.check_session_options(&handle.path, session_id, options)?;
+            return Ok(handle);
         }
         let meta = self.resolve(session_id)?;
-        let handle = self.manager.open_session(&meta)?;
+        let handle = self.manager.open_session_with(&meta, options)?;
         let mut router = self.router();
         if let Some(hosted) = router.hosted.get(session_id) {
             return Ok(hosted.handle.clone());
@@ -336,13 +340,13 @@ impl Hub {
         if self.closing.load(Ordering::SeqCst) {
             return Err(coded("server_draining", "Server is draining"));
         }
-        let mut handle = self.serialized(|| self.acquire(session_id))?;
+        let mut handle = self.serialized(|| self.acquire(session_id, None))?;
         let attachment = match self.manager.attach_client(&handle) {
             Ok(attachment) => attachment,
             // The worker is retiring: once it is gone, a new one is started for the call.
             Err(_) => {
                 self.wait_worker_gone(session_id, &handle);
-                handle = self.serialized(|| self.acquire(session_id))?;
+                handle = self.serialized(|| self.acquire(session_id, None))?;
                 self.manager.attach_client(&handle)?
             }
         };
@@ -431,7 +435,7 @@ impl Hub {
                 continue;
             };
             if back {
-                let _ = self.serialized(|| self.attach(&conn, session_id));
+                let _ = self.serialized(|| self.attach(&conn, session_id, None));
             }
             self.router().reconnecting.remove(&id);
         }
@@ -603,7 +607,9 @@ impl Hub {
             .method("attach", move |args| {
                 let (hub, conn) = (h1()?, c1()?);
                 let id = args.first().and_then(Value::as_str).unwrap_or_default().to_string();
-                hub.serialized(|| hub.attach(&conn, &id)).map(|()| None)
+                // A Rust-only second argument: the client's own session options (`ultron durable --model ...`).
+                let options = args.get(1).filter(|o| o.is_object());
+                hub.serialized(|| hub.attach(&conn, &id, options)).map(|()| None)
             })
             .method("create", move |args| {
                 let hub = h2()?;

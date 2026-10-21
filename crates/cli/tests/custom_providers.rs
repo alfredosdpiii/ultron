@@ -258,7 +258,7 @@ fn cli_custom_provider_unresolved_key_fails_before_any_request() {
 }
 
 /// RPC `get_available_models` lists the custom models (never their resolved secrets), `set_model` selects one, and
-/// the next prompt goes to the stub with that model's id and headers.
+/// the next prompt goes to the stub with that model's id and headers; the selection is saved as the default.
 #[test]
 fn cli_custom_provider_rpc_lists_and_selects_custom_models() {
     let (port, seen) = stub(completions_text("Answer from sol"));
@@ -305,6 +305,14 @@ fn cli_custom_provider_rpc_lists_and_selects_custom_models() {
         .unwrap();
     assert_eq!(RpcClient::data(&selected).unwrap()["id"], "gpt-6.1-sol");
     assert!(!selected.to_string().contains("proxy-secret"));
+    // `setModel` (agent-session.ts, `Models.select` in models-provider.ts): the selection is the saved default, written
+    // by the session worker for every client.
+    let settings: Value =
+        serde_json::from_str(&std::fs::read_to_string(root.root.join("agent/settings.json")).unwrap()).unwrap();
+    assert_eq!(
+        (&settings["defaultProvider"], &settings["defaultModel"]),
+        (&json!("stubproxy"), &json!("gpt-6.1-sol"))
+    );
     client.prompt_and_wait("say hi", HANG_GUARD).unwrap();
     assert_eq!(
         client.get_last_assistant_text().unwrap().as_deref(),

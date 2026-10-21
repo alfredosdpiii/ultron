@@ -419,6 +419,9 @@ pub(crate) struct Engine {
     env: Option<ai::env::ProviderEnv>,
     /// Other models a frame may name; none: only the session's own.
     models: Option<ModelResolver>,
+    /// The stream requests go through instead of `transport` (the session's request stack: its settings, keys and
+    /// retries, stored request auth included); none: crates/ai's dispatch over `transport`.
+    stream: Option<Arc<dyn agent::StreamFn>>,
 }
 
 impl Engine {
@@ -473,12 +476,19 @@ impl Engine {
         signal: &Signal,
     ) -> Result<Option<AssistantMessage>, String> {
         let transport = &*self.transport;
-        // A stored OAuth credential may name the request's base URL and headers; models.json headers (and
-        // `authHeader`'s bearer) go out under the frame's own, as the session's provider sends them.
-        let (routed, prepared) = ai::model_registry::prepare_request(&self.model, options)?;
-        let model = routed.as_ref().unwrap_or(&self.model);
-        let options = prepared.as_ref().unwrap_or(options);
-        let stream = ai::dispatch::stream_simple(model, context, options, transport, sink);
+        let stream: ai::http::BoxFuture<'_, Result<AssistantMessage, String>> = match &self.stream {
+            Some(stream) => Box::pin(async move { Ok(stream.stream(&self.model, context, options, sink).await) }),
+            None => {
+                // A stored OAuth credential may name the request's base URL and headers; models.json headers (and
+                // `authHeader`'s bearer) go out under the frame's own, as the session's provider sends them.
+                let (routed, prepared) = ai::model_registry::prepare_request(&self.model, options)?;
+                Box::pin(async move {
+                    let model = routed.as_ref().unwrap_or(&self.model);
+                    let options = prepared.as_ref().unwrap_or(options);
+                    ai::dispatch::stream_simple(model, context, options, transport, sink).await
+                })
+            }
+        };
         // The request ends at the deadline or as soon as the frame is cancelled (the root turn's abort cancels
         // every in-flight frame); either way nothing is charged.
         let mut stream = std::pin::pin!(stream);
@@ -549,6 +559,7 @@ impl Inference {
                 transport,
                 env: None,
                 models: None,
+                stream: None,
             },
             context_dir: context_dir.into(),
             session: FrameSession::new(Arc::new(MemoryTraceStore::default())),
@@ -566,6 +577,12 @@ impl Inference {
     /// Frames may name other models (`model=`, `rlm.frameModel`): `models` resolves each to its model and key.
     pub fn with_models(mut self, models: ModelResolver) -> Self {
         self.engine.models = Some(models);
+        self
+    }
+
+    /// Frame requests go through `stream` (the session's request stack) instead of this handler's transport.
+    pub fn with_stream(mut self, stream: Arc<dyn agent::StreamFn>) -> Self {
+        self.engine.stream = Some(stream);
         self
     }
 

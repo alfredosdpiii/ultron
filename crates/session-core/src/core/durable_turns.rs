@@ -59,7 +59,7 @@ pub(super) fn open_durable(
     lane: &Lane,
     provider: Arc<Provider>,
     env: &RunEnv,
-    flags: &ModelFlags,
+    keys: &crate::request_keys::Keys,
     queues: Arc<Mutex<Queues>>,
     children: Arc<crate::subagents::DurableChildren>,
     child_context: Arc<super::context_children::ChildContext>,
@@ -111,7 +111,6 @@ pub(super) fn open_durable(
         }
     });
     let catalog_env = env.clone();
-    let (key_env, key_flags) = (env.clone(), flags.clone());
     let root_session = Arc::new(std::sync::OnceLock::new());
     // A subagent's model cost (`task.cost`: what its lane's responses reported), for the line its end leaves on the
     // cell that returns it (`onTaskEnd` -> `contextControl.taskEnded`, root-level subagents only).
@@ -129,7 +128,7 @@ pub(super) fn open_durable(
         bridge: bridge.clone(),
         provider: provider as Arc<dyn agent::StreamFn>,
         resolve: Arc::new(move |provider, id| lane::catalog_model(provider, id, &catalog_env).ok()),
-        api_key: Arc::new(move |provider| lane::api_key(&key_flags, &key_env, provider)),
+        api_key: keys.request_keys(),
         root_session: root_session.clone(),
         charge: Some(charge_turns(children.clone(), lane.stack.clone(), child_costs.clone())),
         transform_child: Some({
@@ -737,10 +736,7 @@ impl Core {
         );
         let start = self
             .request_messages(source_tip.as_deref())
-            .map(|messages| GenerationStart {
-                messages,
-                api_key: self.api_key(),
-            })
+            .map(|messages| GenerationStart { messages })
             .map_err(StartError::Request);
         answer.give(start);
     }

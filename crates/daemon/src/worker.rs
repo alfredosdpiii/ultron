@@ -298,6 +298,17 @@ fn call_core(core: &Sender<Input>, op: Op) -> ServiceResult {
     session_core::core::call(core, op).map_err(|message| ServiceError::coded("session_operation_failed", message))
 }
 
+/// `Models.select` (models-provider.ts: `setDefaultModelAndProvider`, then `flush`): a model a client selected
+/// becomes the saved default. Here in the worker, so every client (TUI, RPC, ACP, the models service) gets it once.
+fn save_default_model(env: &RunEnv, model: &Value) {
+    let (Some(provider), Some(id)) = (model["provider"].as_str(), model["id"].as_str()) else {
+        return;
+    };
+    let mut settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
+    settings.set_global("defaultProvider", Some(json!(provider)));
+    settings.set_global("defaultModel", Some(json!(id)));
+}
+
 /// The agent controller's `steer`, `followUp` and `nextRun` (agent-controller-provider.ts `queue`): queue the
 /// request's message and images as `kind`, answered as an `AgentQueueResponse` (`{accepted, entryId, error}`); a
 /// refused message is an answer, not a failure of the call.
@@ -478,6 +489,7 @@ fn services(
         core.clone(),
     );
     let commands_core = core.clone();
+    let op_env = extensions.env.clone();
     let control = Service::new("ultron.session-control")
         .method("abortBash", move |_| call_core(&abort_bash_core, Op::AbortBash))
         .method("bash", move |args| {
@@ -547,7 +559,7 @@ fn services(
         (core.clone(), core.clone(), core.clone(), core.clone(), core);
     let (select_state, thinking_state, refresh_state) =
         (models_state.clone(), models_state.clone(), models_state.clone());
-    let (refresh_core, refresh_env) = (models_core, extensions.env.clone());
+    let (refresh_core, refresh_env, select_env) = (models_core, extensions.env.clone(), extensions.env.clone());
     let models = Service::new("pi.models")
         .method("cycleThinking", move |_| call_core(&cycle_core, Op::CycleThinking))
         .method("getThinkingLevels", move |_| {
@@ -585,6 +597,7 @@ fn services(
             let model_id = target["modelId"].as_str().unwrap_or_default().to_string();
             let model = call_core(&select_core, Op::SetModel { provider, model_id })?;
             if let Some(model) = &model {
+                save_default_model(&select_env, model);
                 select_state.change(|state| {
                     state["configuration"]["model"] = json!({"provider": model["provider"], "modelId": model["id"]});
                 });
@@ -612,7 +625,12 @@ fn services(
                     call_core(&op_core, command)?,
                 )));
             }
-            call_core(&op_core, session_core::review_command::expand_client_op(op))
+            let selects_model = matches!(op, Op::SetModel { .. });
+            let answer = call_core(&op_core, session_core::review_command::expand_client_op(op))?;
+            if selects_model && let Some(model) = &answer {
+                save_default_model(&op_env, model);
+            }
+            Ok(answer)
         })
         // The run's progress (crate::watchdog), now.
         .method("checkHealth", move |_| {

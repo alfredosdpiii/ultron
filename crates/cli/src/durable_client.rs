@@ -8,7 +8,7 @@
 //! (injected) environment; the server it activates is the one `ultron durable start` starts.
 
 use crate::Env;
-use daemon::server::{Route, ServerOptions, activate_server, attach_conflicts};
+use daemon::server::{Route, ServerOptions, activate_server};
 use daemon::workers::WorkerModel;
 use std::io::Write;
 use std::sync::Arc;
@@ -22,20 +22,13 @@ pub fn is_client(env: &Env) -> bool {
 }
 
 /// The durable server's route for a client with `options`: activated (held open) when it is not running. Its
-/// workers start on the default worker options, so a client that needs its own cannot use it (the error names
-/// them). The client's run environment (`--offline`, the `httpProxy` setting) is no such option: a server this
-/// client activates runs with it.
+/// workers start on the default worker options; the client's own session options (`--model`, `--provider`,
+/// `--api-key`, `--thinking`, `--models`, `--no-session`, `--approve`/`--no-approve`, `--system-prompt`,
+/// `--append-system-prompt`, `--skill`, `--no-skills`, `--no-context-files`) go with its attach (crate::link), so
+/// the worker its session starts runs on them as a foreground server's would. The client's run environment
+/// (`--offline`, the `httpProxy` setting) belongs to the server process: a server this client activates runs with
+/// it.
 pub fn activate(options: &ServerOptions) -> Result<Route, String> {
-    let conflicts = attach_conflicts(options);
-    if !conflicts.is_empty() {
-        return Err(format!(
-            "`ultron durable` runs on the durable server's worker options, so {} {} not supported (set {} in \
-             settings, or run without `durable`)",
-            conflicts.join(", "),
-            if conflicts.len() == 1 { "is" } else { "are" },
-            if conflicts.len() == 1 { "it" } else { "them" }
-        ));
-    }
     activate_server(
         &ServerOptions {
             model: WorkerModel {
@@ -92,7 +85,7 @@ pub const HOME_COMMAND: &str = "ultron-s";
 /// The durable instance's home session id, in its directory.
 pub const HOME_FILE: &str = "home-session";
 
-const HOME_USAGE: &str = "Usage: ultron-s [--new | --session <id> [--home] | --list] [ultron options] [prompt]";
+const HOME_USAGE: &str = "Usage: ultron-s [--new | --session <id> [--home] | --session-id <id> | -c | -r | --fork <id> | --list] [ultron options] [prompt]";
 
 /// Whether the binary was invoked as `ultron-s` (its file name; a path or a `.exe` suffix does not matter).
 pub fn is_home_command(argv0: &str) -> bool {
@@ -118,11 +111,13 @@ fn set_home(instance_dir: &std::path::Path, id: &str) -> Result<(), String> {
     std::fs::rename(&temp, instance_dir.join(HOME_FILE)).map_err(|e| e.to_string())
 }
 
-/// `ultron-s [--new | --session <id> [--home] | --list] [options] [prompt]`: the durable instance's home session (one
-/// long-lived session) as a client of its server: the TUI, `-p` or `--mode json|rpc`, run in the home directory. The
-/// home session is created (and recorded) when there is none or the recorded one was deleted; `--new` makes a fresh
-/// one home; `--session <id>` uses another session of the instance (`--home` records it as home); `--list` lists
-/// them. Exiting leaves the server and any run in progress going.
+/// `ultron-s [--new | --session <id> [--home] | --session-id <id> | -c | -r | --fork <id> | --list] [options]
+/// [prompt]`: the durable instance's home session (one long-lived session) as a client of its server: the TUI, `-p`
+/// or `--mode json|rpc`, run in the home directory. The home session is created (and recorded) when there is none or
+/// the recorded one was deleted; `--new` makes a fresh one home; `--session <id>` uses another session of the
+/// instance (`--home` records it as home); `--session-id <id>` opens that session, created when missing; `-c` the
+/// instance's most recently active session; `-r` its session picker; `--fork <id>` a new session forked from one of
+/// them; `--list` lists them. Exiting leaves the server and any run in progress going.
 pub fn run_home(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> i32 {
     match home_inner(args, env, out, err) {
         Ok(code) => code,
@@ -145,6 +140,8 @@ pub fn home_resume_argv(home: Option<&str>, session_id: &str) -> Vec<String> {
 
 fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> Result<i32, String> {
     let (mut new, mut list, mut make_home, mut session) = (false, false, false, None::<String>);
+    // `-c`, `-r`, `--fork <id>` or `--session-id <id>`: the session another way than the home one.
+    let mut selector: Option<Vec<String>> = None;
     let mut rest = Vec::new();
     let mut i = 0;
     while i < args.len() {
@@ -156,18 +153,29 @@ fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Wri
                 i += 1;
                 session = Some(args.get(i).cloned().ok_or(HOME_USAGE)?);
             }
-            // The home session, `--new` or `--session <id>` name the session: another selector would be dropped.
-            selector @ ("-c" | "--continue" | "-r" | "--resume" | "--fork" | "--session-id") => {
-                return Err(format!(
-                    "ultron-s opens the durable instance's home session: {selector} is not supported (ultron-s \
-                     --list lists its sessions, ultron-s --session <id> opens one)"
-                ));
+            flag @ ("-c" | "--continue" | "-r" | "--resume") => {
+                if selector.is_some() {
+                    return Err(HOME_USAGE.into());
+                }
+                selector = Some(vec![flag.to_string()]);
+            }
+            flag @ ("--fork" | "--session-id") => {
+                i += 1;
+                let value = args.get(i).cloned().ok_or(HOME_USAGE)?;
+                if selector.is_some() {
+                    return Err(HOME_USAGE.into());
+                }
+                selector = Some(vec![flag.to_string(), value]);
             }
             _ => rest.push(args[i].clone()),
         }
         i += 1;
     }
-    if (new && session.is_some()) || (make_home && session.is_none()) || (list && (new || session.is_some())) {
+    if (new && session.is_some())
+        || (make_home && session.is_none())
+        || (list && (new || session.is_some()))
+        || (selector.is_some() && (new || list || session.is_some()))
+    {
         return Err(HOME_USAGE.into());
     }
     let instance = crate::instance(env, true);
@@ -189,6 +197,27 @@ fn home_inner(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Wri
             writeln!(out, "{}\t{name}\t{at}\t{mark}", meta.id).map_err(|e| e.to_string())?;
         }
         return Ok(0);
+    }
+    // Another selector: the client selects the session among the instance's (the TUI's `-r` picker lists them).
+    if let Some(mut selector) = selector {
+        if selector[0] == "-c" || selector[0] == "--continue" {
+            // The most recently active session (none: a new one), as the client's own `-c` picks it.
+            sessions.sort_by(|a, b| b.modified_at.total_cmp(&a.modified_at));
+            selector = match sessions.first() {
+                Some(latest) => vec!["--session-id".to_string(), latest.id.clone()],
+                None => Vec::new(),
+            };
+        }
+        let current_home = home_session(&instance.dir);
+        crate::herdr_report::set_resume_override(move |session_id| {
+            Some(home_resume_argv(current_home.as_deref(), session_id))
+        });
+        selector.extend(caller_args(&rest, &env.cwd, &env.home));
+        let at_home = Env {
+            cwd: env.home.clone(),
+            ..env.clone()
+        };
+        return run(&selector, &at_home, out, err);
     }
     let id = match session {
         Some(id) => {

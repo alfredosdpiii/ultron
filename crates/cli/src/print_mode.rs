@@ -287,6 +287,8 @@ pub fn run_prompt(
     let (restarted, server_options) = (servers.clone(), options.clone());
     let durable = crate::durable_client::is_client(env);
     let run_options = RunOptions {
+        // A client of the durable instance carries its own session options (crate::durable_client).
+        session_options: durable.then(|| options.model.session_options()).flatten(),
         on_event,
         interrupt: Some(interrupt.clone()),
         reconnect: Some(Arc::new(move || {

@@ -319,11 +319,21 @@ fn cli_openai_organization_and_project_headers_match_typescript() {
         let first = seen
             .first()
             .unwrap_or_else(|| panic!("{name}: no request; {}", String::from_utf8_lossy(&output.stderr)));
-        let headers: serde_json::Map<String, Value> = ["x-opencode-session", "openai-organization", "openai-project"]
+        // The recording is a direct `completeSimple` call without a session id; a session's request carries its
+        // provider session id (generation.ts `sessionId`), so OpenCode's routing header goes out with it.
+        let headers: serde_json::Map<String, Value> = ["openai-organization", "openai-project"]
             .into_iter()
             .filter_map(|n| Some((n.to_string(), json!(first.header(n)?))))
             .collect();
-        assert_eq!(Value::Object(headers), spec["request"]["headers"], "{name}");
+        let mut expected = spec["request"]["headers"].as_object().cloned().unwrap_or_default();
+        expected.remove("x-opencode-session");
+        assert_eq!(headers, expected, "{name}");
+        if provider.starts_with("opencode") {
+            assert!(
+                first.header("x-opencode-session").is_some_and(|s| !s.is_empty()),
+                "{name}"
+            );
+        }
         let path = spec["request"]["url"].as_str().unwrap().split_once("/v1").unwrap().1;
         assert!(first.url.ends_with(path), "{name}: {} vs {path}", first.url);
     }

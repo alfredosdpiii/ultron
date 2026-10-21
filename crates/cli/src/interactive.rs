@@ -938,12 +938,7 @@ fn link_thread(
                     model_id: model_id.clone(),
                 }) {
                     Ok(model) => {
-                        // `Models.select` (models-provider.ts): the selection becomes the saved default.
-                        let (cwd, agent_dir) = &settings_path;
-                        let mut settings =
-                            config::settings::SettingsManager::for_worker(cwd, agent_dir, &catalog_env.home);
-                        settings.set_global("defaultProvider", Some(json!(provider)));
-                        settings.set_global("defaultModel", Some(json!(model_id)));
+                        // `Models.select` (models-provider.ts): the session worker saved the selection as the default.
                         let model = model_info(&model.unwrap_or_default());
                         if let Some(herdr) = &herdr {
                             herdr.model(&model);
@@ -1079,7 +1074,7 @@ fn link_thread(
                     }
                 });
             }
-            Command::Usage => match usage_report(&link) {
+            Command::Usage => match usage_report(&link, &catalog_env) {
                 Ok(text) => send(LaneEvent::Notice(text)),
                 Err(error) => send(LaneEvent::Status(format!("Error: {error}"))),
             },
@@ -2076,13 +2071,14 @@ fn export_session(link: &Link, output: Option<&str>, theme: Option<&str>, env: &
 }
 
 /// `/usage`: the session report of the session's file (`renderSessionReport`), as `ultron usage` prints it.
-fn usage_report(link: &Link) -> Result<String, String> {
+fn usage_report(link: &Link, env: &Env) -> Result<String, String> {
     let described = link.op(&Op::Describe)?.unwrap_or_default();
     let file = described["sessionFile"]
         .as_str()
         .ok_or("The Session worker returned no session report")?;
     let log = crate::usage::log::read_session_log(std::path::Path::new(file)).map_err(|e| e.message().to_string())?;
-    let report = crate::usage::report::build_session_report(&log);
+    let providers = session_core::lane::subscription_providers(env);
+    let report = crate::usage::report::build_session_report_with(&log, &providers);
     let zone = crate::localtime::Zone::from_env(std::env::var("TZ").ok().as_deref());
     let home = std::env::var("HOME").unwrap_or_default();
     let options = crate::usage::text::TextOptions {

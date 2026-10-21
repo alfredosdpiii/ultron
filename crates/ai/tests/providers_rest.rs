@@ -704,12 +704,24 @@ fn claude_differences(fixture: &Value, scenario: &Value) -> Vec<String> {
     diffs
 }
 
+/// TypeScript's tools error (claude-code-cli.ts `TOOLS_UNSUPPORTED`). It recommended frames, which the Rust build
+/// routes to the Claude subscription when they declare tools (`claude_subscription::claude_code_lane`), so this one
+/// deliberate difference is replaced with the Rust text before comparing.
+const TS_TOOLS_UNSUPPORTED: &str = "does not support tool calling here: `claude -p` returns completions, not raw tool calls, and only Ultron's session worker relays tools to it. Use it for tool-free lanes (rlm.infer/rlm.map frames, /review frames, judges), or run Claude Code as the root agent with `ultron --claude` or `ultron claude`.";
+
 #[test]
 fn ai_claude_code_cli_replays_recorded_typescript_scenarios() {
     ai::claude_code_cli::reset_claude_code_cli_state();
     let mut failures = Vec::new();
-    for scenario in CLAUDE_CODE["scenarios"].as_array().unwrap() {
-        failures.extend(claude_differences(&CLAUDE_CODE, scenario));
+    let recorded = CLAUDE_CODE.to_string();
+    assert!(
+        recorded.contains(TS_TOOLS_UNSUPPORTED),
+        "the fixture records TypeScript's tools error"
+    );
+    let fixture: Value =
+        serde_json::from_str(&recorded.replace(TS_TOOLS_UNSUPPORTED, ai::claude_code_cli::TOOLS_UNSUPPORTED)).unwrap();
+    for scenario in fixture["scenarios"].as_array().unwrap() {
+        failures.extend(claude_differences(&fixture, scenario));
     }
     assert!(
         failures.is_empty(),

@@ -206,7 +206,7 @@ impl Core {
         Summarizer {
             provider: self.provider.clone(),
             model: self.model.clone(),
-            api_key: self.api_key(),
+            api_key: self.keys.request_key(&self.model.provider),
             thinking: self.thinking.clone(),
             session_id: lock_session(&self.session).id().to_string(),
         }

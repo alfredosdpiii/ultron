@@ -26,32 +26,6 @@ pub const KEEP_ALIVE_ENV: &str = "__ULTRON_SERVER_KEEP_ALIVE";
 /// A test knob: the idle grace of an automatically activated server in ms (default 1000). Never set in the product.
 pub const IDLE_GRACE_ENV: &str = "__ULTRON_SERVER_IDLE_GRACE_MS";
 
-/// The command-line options of a client with `options` that a server started on the default worker options cannot
-/// honour: its workers would start differently. Empty: the client can use that server. The client's mode is not a
-/// worker difference that matters, and neither is its run environment (`--offline`, the `httpProxy` setting): that
-/// belongs to the server process, which a client that activates it starts with its own.
-pub fn attach_conflicts(options: &ServerOptions) -> Vec<&'static str> {
-    let (model, flags) = (&options.model, &options.model.session);
-    [
-        (model.provider.is_some(), "--provider"),
-        (model.model.is_some(), "--model"),
-        (model.api_key.is_some(), "--api-key"),
-        (model.thinking.is_some(), "--thinking"),
-        (model.models.is_some(), "--models"),
-        (model.no_naming, "--no-session"),
-        (model.project_trust == Some(true), "--approve"),
-        (model.project_trust == Some(false), "--no-approve"),
-        (flags.system_prompt.is_some(), "--system-prompt"),
-        (flags.append_system_prompt.is_some(), "--append-system-prompt"),
-        (flags.no_skills, "--no-skills"),
-        (!flags.skill_paths.is_empty(), "--skill"),
-        (flags.no_context_files, "--no-context-files"),
-    ]
-    .into_iter()
-    .filter_map(|(set, flag)| set.then_some(flag))
-    .collect()
-}
-
 /// Whether `directory` is the durable instance's (`~/.ultron/server` of this process's HOME).
 pub fn is_durable_directory(directory: &Path) -> bool {
     std::env::var_os("HOME").is_some_and(|home| {

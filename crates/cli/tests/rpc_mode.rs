@@ -856,10 +856,11 @@ fn cli_rpc_auto_compaction_compacts_again_after_an_earlier_compaction() {
     assert!(requests[4]["body"].to_string().contains("First summary."));
 }
 
-/// With automatic compaction off (`set_auto_compaction false`) an overflow is not recovered either (AgentSession's
-/// `_checkCompaction`; the TypeScript harness recovers regardless): the run fails with the overflow error.
+/// With automatic compaction off (`set_auto_compaction false`) an overflow is still recovered once, as the
+/// TypeScript harness does whatever the setting (drive/response.ts `publishResponse`: `overflowRecoveryUsed` is the
+/// only guard): the overflowed answer commits, the context is compacted (overflow) and the request is retried.
 #[test]
-fn cli_rpc_auto_compaction_off_leaves_an_overflow_to_fail_the_run() {
+fn cli_rpc_auto_compaction_off_still_recovers_an_overflow_once() {
     let overflow = Reply {
         status: 400,
         content_type: "application/json".into(),
@@ -867,21 +868,31 @@ fn cli_rpc_auto_compaction_off_leaves_an_overflow_to_fail_the_run() {
             "message": "prompt is too long: 1213462 tokens > 1000000 maximum"}})
         .to_string(),
     };
-    let (mut client, requests, _tmp) = start_client(vec![overflow, reply_using(10, Some("unused"), None)]);
+    let (mut client, requests, _tmp) = start_client(vec![
+        reply_using(10, Some("Hello."), None),
+        overflow,
+        reply_using(10, Some("## Goal\nOverflow summary."), None),
+        reply_using(10, Some("Recovered."), None),
+    ]);
     let hang = Duration::from_secs(120);
     let off = client
         .send(json!({"type": "set_auto_compaction", "enabled": false}))
         .unwrap();
     assert_eq!(off["success"], true);
-    let events = client.prompt_and_wait("first", hang).unwrap();
-    assert!(compaction_events(&events).is_empty(), "{events:#?}");
-    let end = events.iter().rfind(|e| e["type"] == "agent_end").unwrap();
-    let last = end["messages"].as_array().unwrap().last().unwrap().clone();
-    assert_eq!(last["stopReason"], "error");
-    assert!(last["errorMessage"].as_str().unwrap().contains("prompt is too long"));
+    let first = client.prompt_and_wait("first", hang).unwrap();
+    assert!(compaction_events(&first).is_empty(), "{first:#?}");
+    let events = client.prompt_and_wait("second", hang).unwrap();
+    assert_eq!(
+        compaction_events(&events),
+        ["compaction_start overflow", "compaction_end overflow"]
+    );
+    assert_eq!(client.get_last_assistant_text().unwrap().as_deref(), Some("Recovered."));
     let (_, code) = client.finish(hang);
     assert_eq!(code, Some(0));
-    assert_eq!(requests.lock().unwrap().len(), 1, "no summary, no retry");
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 4, "{requests:#?}");
+    assert!(is_summary(&requests[2]));
+    assert!(requests[3]["body"].to_string().contains("Overflow summary."));
 }
 
 /// A note made in an earlier run survives a compaction in the middle of a later run: the request after it carries

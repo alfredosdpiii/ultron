@@ -206,6 +206,23 @@ impl RunJournal {
         }
     }
 
+    /// The run fails before its first generation with a configuration error (see [`Run::fail_configuration`]).
+    pub fn fail_configuration(
+        self,
+        session: &mut Session,
+        code: &str,
+        message: &str,
+        details: Value,
+    ) -> Result<(), String> {
+        if let Some(error) = self.error {
+            return Err(error);
+        }
+        match self.run {
+            Some(run) => run.fail_configuration(session, code, message, details),
+            None => Ok(()),
+        }
+    }
+
     /// The run's next answer is an overflow that starts a compaction (see [`Run::compact_with_answer`]).
     pub fn compact_with_answer(&mut self, session: &Session, prepared: Value) {
         if let Some(run) = self.run.as_mut() {

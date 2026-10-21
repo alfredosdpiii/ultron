@@ -330,7 +330,16 @@ impl Shared {
                 json!([{"sessionId": id, "packagePaths": null}]),
             )
             .map_err(fail)?;
-        self.management("attach", json!([id]))?;
+        // A client of the durable instance carries its own session options: its session's worker starts on them.
+        let options = match &self.origin {
+            Origin::Durable(server) => server.model.session_options(),
+            _ => None,
+        };
+        let args = match options {
+            Some(options) => json!([id, options]),
+            None => json!([id]),
+        };
+        self.management("attach", args)?;
         connection
             .wait_attachment(|a| a.is_some_and(|a| a.session_id == id))
             .map_err(fail)?;

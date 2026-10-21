@@ -8,7 +8,14 @@ use crate::args::Args;
 use std::sync::Arc;
 
 /// The variables a run may set for itself; workers get the ones whose value differs from this process's.
-const RUN_VARIABLES: [&str; 4] = ["PI_OFFLINE", "PI_SKIP_VERSION_CHECK", "HTTP_PROXY", "HTTPS_PROXY"];
+const RUN_VARIABLES: [&str; 5] = [
+    "PI_OFFLINE",
+    "PI_SKIP_VERSION_CHECK",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    // `--claude` / `claudeCode.root` (`prepareClaudeRoot`'s env): the worker moves a resumed lane to the root model.
+    "ULTRON_ROOT",
+];
 
 /// `isTruthyEnvFlag`: `1`, `true` or `yes` (any case).
 pub fn truthy(value: Option<&str>) -> bool {
@@ -16,7 +23,7 @@ pub fn truthy(value: Option<&str>) -> bool {
 }
 
 /// `env` with `overrides` taking precedence.
-fn overlay(env: &Env, overrides: Vec<(String, String)>) -> Env {
+pub fn overlay(env: &Env, overrides: Vec<(String, String)>) -> Env {
     if overrides.is_empty() {
         return env.clone();
     }
@@ -198,6 +205,15 @@ pub fn ignored_flag_warnings(parsed: &Args) -> Vec<String> {
 pub fn package_settings_note(env: &Env) -> Option<String> {
     let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
     session_core::local_resources::ignored_packages_note(&settings)
+}
+
+/// The startup note naming the Pi extensions TypeScript would load from `<agentDir>/extensions/`,
+/// `<cwd>/.pi/extensions/` (a trusted project) and the settings `extensions`: ultron-rs ignores them (the `-e` flags
+/// get [`extension_flag_warnings`]). The settings are the worker's (its project trust).
+pub fn extension_settings_note(env: &Env) -> Option<String> {
+    let settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
+    let resources = session_core::local_resources::LocalResources::new(env, settings);
+    session_core::local_resources::extensions::ignored_extensions_note(&resources)
 }
 
 /// The warnings for the environment and settings that would give the model native tools in TypeScript

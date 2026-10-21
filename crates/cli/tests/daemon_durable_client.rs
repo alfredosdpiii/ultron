@@ -222,22 +222,3 @@ fn cli_durable_server_idle_without_schedules_starts_no_run_of_its_own() {
     assert_none_mentioning(&needles(&home), HANG_GUARD);
     assert_eq!(provider.requests.lock().unwrap().len(), 1);
 }
-
-#[test]
-fn cli_durable_refuses_client_worker_options() {
-    let home = Home::new(1);
-    let clock = home.root.join("clock");
-    std::fs::write(&clock, T0.to_string()).unwrap();
-    let (code, _, err) = run(
-        &home,
-        &clock,
-        &["durable", "-p", "--model", "anthropic/claude-sonnet-4-5", "x"],
-    );
-    assert_eq!(code, 1);
-    assert!(
-        err.contains("`ultron durable` runs on the durable server's worker options"),
-        "{err}"
-    );
-    assert!(generations(&durable_dir(&home)).is_empty());
-    assert_none_mentioning(&needles(&home), HANG_GUARD);
-}

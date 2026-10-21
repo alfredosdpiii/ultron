@@ -14,6 +14,7 @@ use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 
 pub const SESSION_REPORT_SCHEMA: &str = "ultron.session-report/1";
+/// Billed through a subscription login whatever the caller passes (session-report.ts `SUBSCRIPTION_PROVIDERS`).
 const SUBSCRIPTION_PROVIDERS: [&str; 1] = ["claude-code"];
 const COUNTER_SLACK_MS: f64 = 1000.0;
 
@@ -108,7 +109,9 @@ impl Bucket {
     }
 }
 
-struct Buckets {
+struct Buckets<'s> {
+    /// Providers whose costs are notional (a subscription login).
+    subscription: &'s HashSet<&'s str>,
     lanes: [Bucket; 4],
     models: IndexMap<String, Bucket>,
     by_lane: HashMap<String, Bucket>,
@@ -119,13 +122,13 @@ fn provider_of(model: &str) -> &str {
     model.split_once('/').map_or(model, |(p, _)| p)
 }
 
-impl Buckets {
+impl Buckets<'_> {
     fn index(kind: Lane) -> usize {
         kind as usize
     }
 
     fn add(&mut self, kind: Lane, model: &str, usage: &LogUsage, lane: Option<&str>) {
-        let subscription = SUBSCRIPTION_PROVIDERS.contains(&provider_of(model));
+        let subscription = self.subscription.contains(provider_of(model));
         self.lanes[Self::index(kind)].add(usage, subscription);
         self.models
             .entry(model.to_string())
@@ -302,6 +305,16 @@ fn cells_value(cells: &Cells) -> Value {
 
 /// Build the report from a session file's digest.
 pub fn build_session_report(log: &SessionLog) -> Value {
+    build_session_report_with(log, &[])
+}
+
+/// [`build_session_report`] with the providers whose costs are notional besides Claude Code (`subscriptionProviders`:
+/// every provider the session's runtime reaches through a subscription login).
+pub fn build_session_report_with(log: &SessionLog, subscription_providers: &[String]) -> Value {
+    let subscription: HashSet<&str> = SUBSCRIPTION_PROVIDERS
+        .into_iter()
+        .chain(subscription_providers.iter().map(String::as_str))
+        .collect();
     let mut unrecorded = Map::new();
     let tasks = tasks_of(log);
     let mut task_by_id: HashMap<&str, &Task> = HashMap::new();
@@ -464,6 +477,7 @@ pub fn build_session_report(log: &SessionLog) -> Value {
 
     // Usage per lane kind and model.
     let mut buckets = Buckets {
+        subscription: &subscription,
         lanes: Default::default(),
         models: IndexMap::new(),
         by_lane: HashMap::new(),
@@ -588,8 +602,8 @@ pub fn build_session_report(log: &SessionLog) -> Value {
             };
             buckets.add(kind, &response.model, &response.usage, response.lane.as_deref());
             if kind == Lane::Other {
-                let subscription = SUBSCRIPTION_PROVIDERS.contains(&provider_of(&response.model));
-                durable_other.add(&response.usage, subscription);
+                let notional = subscription.contains(provider_of(&response.model));
+                durable_other.add(&response.usage, notional);
             }
         }
     }
@@ -623,17 +637,17 @@ pub fn build_session_report(log: &SessionLog) -> Value {
             .map(|b| b.reported_usd.unwrap_or(0.0) + b.subscription_usd.unwrap_or(0.0))
             .sum();
         if ledger_tokens > seen_tokens && ledger_responses > seen_responses {
-            let subscription = root_models
+            let notional = root_models
                 .keys()
                 .next()
-                .is_some_and(|model| SUBSCRIPTION_PROVIDERS.contains(&provider_of(model)));
+                .is_some_and(|model| subscription.contains(provider_of(model)));
             buckets.add_totals(
                 Lane::Subagents,
                 DURABLE_CHILDREN_MODEL,
                 ledger_responses - seen_responses,
                 ledger_tokens - seen_tokens,
                 (ledger_cost - seen_cost).max(0.0),
-                subscription,
+                notional,
             );
         }
     }

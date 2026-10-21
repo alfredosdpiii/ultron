@@ -470,6 +470,62 @@ impl TuiSetupUi {
             Some(Ev::Login(_)) | None => Ok(String::new()),
         }
     }
+
+    /// `runProviderLogin` for a provider whose key prompt has a choice or several fields (`apiKey.login`): the
+    /// flow's notices and prompts in the login dialog, its credential saved to `auth.json`.
+    fn multi_field_login(
+        &mut self,
+        env: &Env,
+        mut dialog: LoginDialog,
+        mut flow: interactive::api_key_login::ApiKeyLogin,
+        mut steps: Vec<interactive::api_key_login::Step>,
+    ) -> Result<LoginOutcome, SetupQuit> {
+        use interactive::api_key_login::Step;
+        let t = Rc::clone(&self.screen.theme);
+        loop {
+            for step in std::mem::take(&mut steps) {
+                match step {
+                    Step::Event(event) => dialog.show_event(&t, &event),
+                    Step::Prompt(prompt) => dialog.show_prompt(&t, &prompt),
+                    Step::Done(credential) => {
+                        self.paint(Slot::Empty);
+                        let auth = config::paths::AgentPaths::new(env.agent_dir()).auth();
+                        return Ok(
+                            match config::auth::AuthStorage::create(auth).modify(flow.provider(), |_| Some(credential))
+                            {
+                                Ok(_) => LoginOutcome::Ok,
+                                Err(error) => LoginOutcome::Error(error),
+                            },
+                        );
+                    }
+                    Step::Failed(error) => {
+                        self.paint(Slot::Empty);
+                        return Ok(LoginOutcome::Error(error));
+                    }
+                }
+            }
+            self.paint(Slot::Dialog(&mut dialog));
+            // Ctrl+C stops the login as Esc does (`quit` cancels the dialog).
+            let data = match self.screen.next(Duration::from_millis(100)) {
+                Some(Ev::Input(data)) => data,
+                Some(Ev::Closed) => return Err(SetupQuit),
+                _ => continue,
+            };
+            let action = if data == CTRL_C {
+                DialogAction::Cancel
+            } else {
+                dialog.handle_input(&data)
+            };
+            match action {
+                DialogAction::Cancel => {
+                    self.paint(Slot::Empty);
+                    return Ok(LoginOutcome::Cancelled);
+                }
+                DialogAction::Answer(answer) => steps = flow.answer(answer),
+                DialogAction::None => {}
+            }
+        }
+    }
 }
 
 impl SetupUi for TuiSetupUi {
@@ -569,6 +625,11 @@ impl SetupUi for TuiSetupUi {
         let reach = crate::tui_login::browser_reach(env);
         let mut dialog = LoginDialog::new(self.screen.keys.clone(), &option.name, &reach);
         let t = Rc::clone(&self.screen.theme);
+        if option.auth_type != "oauth"
+            && let Some((flow, steps)) = interactive::api_key_login::ApiKeyLogin::start(&option.id)
+        {
+            return self.multi_field_login(env, dialog, flow, steps);
+        }
         if option.auth_type != "oauth" {
             let method = match &option.api_key_method {
                 Some((method, true)) if option.generic_login => method.clone(),

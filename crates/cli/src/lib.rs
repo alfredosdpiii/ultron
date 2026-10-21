@@ -261,11 +261,15 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     if let Some(note) = startup::package_settings_note(env) {
         writeln!(err, "Note: {note}").map_err(io)?;
     }
+    if let Some(note) = startup::extension_settings_note(env) {
+        writeln!(err, "Note: {note}").map_err(io)?;
+    }
     // The native worker command starts here (main.ts `shouldRunUltronWorker`).
     print_mode::trace_startup(env, "cli.native");
     // `--claude`: the root lane runs on Claude, through the claude-subscription provider (worker-root.ts
     // `prepareClaudeRoot`'s selection; crates/claude-root `subscription_root`).
     let claude_setting = claude_root::settings::ClaudeCodeSettings::load(&env.cwd, &env.agent_dir()).root;
+    let mut rooted = None;
     if parsed.claude || claude_root::worker_root::claude_root_requested(&*env.var) || claude_setting {
         match claude_root::worker_root::subscription_root(
             parsed.provider.as_deref(),
@@ -275,6 +279,15 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             Ok(selection) => {
                 parsed.model = Some(selection.model);
                 parsed.provider = selection.provider;
+                // `ULTRON_ROOT=claude` for the session workers (TypeScript sets it in `process.env`): a resumed
+                // session's lane moves to the root model there (session-worker.ts).
+                rooted = Some(startup::overlay(
+                    env,
+                    vec![(
+                        claude_root::worker_root::ULTRON_ROOT_ENV.to_string(),
+                        "claude".to_string(),
+                    )],
+                ));
             }
             Err(message) => {
                 writeln!(err, "Error: {message}").map_err(io)?;
@@ -282,6 +295,7 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
             }
         }
     }
+    let env = rooted.as_ref().unwrap_or(env);
     if acp {
         if !parsed.file_args.is_empty() || !parsed.messages.is_empty() || parsed.mode.is_some() {
             writeln!(

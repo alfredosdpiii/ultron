@@ -666,7 +666,8 @@ impl Runtime {
         })
     }
 
-    /// The host stack of one session, whose lanes call `model` with `api_key`.
+    /// The host stack of one session, whose lanes call `model`; `api_key` (`--api-key`) is the key of `model`'s
+    /// provider, every other provider's requests resolve their own credentials per request.
     pub fn stack(&self, model: &Model, api_key: Option<String>, session_id: &str) -> Result<Arc<Stack>, String> {
         self.stack_with(model, api_key, session_id, None)
     }
@@ -875,9 +876,19 @@ impl Runtime {
         let sessions_dir = self.sessions_dir.clone();
         let services = self.services.clone();
         let model = model.clone();
+        // `--api-key` is a runtime key of the starting model's provider only (`setRuntimeApiKey`); every request
+        // resolves its provider's key when it is sent (crate::request_keys).
+        let keys = crate::request_keys::Keys::new(
+            api_key.map(|key| (model.provider.clone(), key)),
+            config.provider_token.clone(),
+        );
+        let root_model = Arc::new(Mutex::new(model.clone()));
+        // One request stack for every lane's frames (built once: an HTTP client is not free, and a handler is made
+        // per cell); it reads the settings per request.
+        let frame_stream = crate::request_keys::lane_stream(config.settings_reader(), keys.clone());
         let child = ChildDefaults {
             model: model.clone(),
-            api_key: api_key.clone(),
+            keys: keys.clone(),
         };
         let mut built: Result<(), String> = Ok(());
         let (schedules_store, goal_store) = (modules("schedules"), modules("goal"));
@@ -911,8 +922,8 @@ impl Runtime {
                 &config,
                 agent_stores,
                 me.clone(),
-                &model,
-                api_key.clone(),
+                root_model.clone(),
+                keys.clone(),
                 goal_slot.clone(),
                 Some(refinements),
                 crate::frames::frame_runner(frames.clone()),
@@ -932,11 +943,13 @@ impl Runtime {
             ));
             let _ = goal_slot.set(goal.clone());
             let closer = me.clone();
-            // A subagent's lane closes when its run ends.
+            // A subagent's lane closes when its run ends; its stuck-loop hints start over with its next run
+            // (`cellHints.runEnded(lane)` on every lane's `run_end`).
             let runner: ChildRunner = Arc::new(move |run: ChildRun| {
                 let lane = run.lane_name.clone();
                 let result = inner(run);
                 if let Some(stack) = closer.upgrade() {
+                    stack.cell_hints.run_ended(&lane);
                     let _ = stack.lanes.close_lane(&lane);
                     stack.retire_workspace(&lane);
                 }
@@ -1057,7 +1070,9 @@ impl Runtime {
                 delegation,
                 apis,
                 model,
-                api_key,
+                root_model,
+                keys,
+                frame_stream,
                 session_id,
                 sessions_dir,
                 system,
@@ -1259,7 +1274,12 @@ pub struct Stack {
     pub events: Arc<RuntimeEvents>,
     apis: ApiModules,
     model: Model,
-    api_key: Option<String>,
+    /// The root lane's model now (a model switch changes it): frames and the predict adapter call it.
+    root_model: Arc<Mutex<Model>>,
+    /// The key of each request's provider (crate::request_keys).
+    keys: crate::request_keys::Keys,
+    /// What frames request through (crate::request_keys::lane_stream).
+    frame_stream: Arc<dyn StreamFn>,
     session_id: String,
     sessions_dir: PathBuf,
     system: SystemPrompt,
@@ -1386,16 +1406,21 @@ impl Stack {
             swarm: self.swarm.get().cloned(),
             cell: cell_signal.clone().map(CellShell::new),
         };
+        // Frames are lanes of the session as TypeScript's are: on the root lane's model now, with the live request
+        // settings, each request's key resolved when it is sent, and the harness retry policy. They run on their
+        // handler threads' own runtimes, so they get their own HTTP client.
+        let models = crate::frame_models::resolver(self.config.clone());
         let inference = Inference::new(
             Arc::new(router),
-            self.model.clone(),
-            self.api_key.clone(),
-            // Frames run on their handler threads' own runtimes, so they get their own HTTP client.
+            self.root_model(),
+            None,
             Arc::new(crate::lane::process_transport()),
             self.sessions_dir.join("rlm-context").join(&self.session_id),
         )
-        // A frame naming another model calls it as a lane of that model would (crate::frame_models).
-        .with_models(crate::frame_models::resolver(self.config.clone()))
+        .with_stream(self.frame_stream.clone())
+        // A frame naming another model calls it as a lane of that model would (crate::frame_models); its key is
+        // resolved per request like the session model's.
+        .with_models(Arc::new(move |spec: &str| models(spec).map(|(model, _)| (model, None))))
         .with_session(self.frames.clone(), lane);
         // `rlm.map` and the frame-model defaults wrap the frames.
         // Read per frame (session-worker.ts `modelSettings`): `/settings -> Models` applies to the next frame.
@@ -1579,6 +1604,23 @@ impl Stack {
         &self.model
     }
 
+    /// The root lane's model now.
+    pub fn root_model(&self) -> Model {
+        lock(&self.root_model).clone()
+    }
+
+    /// The root lane switched to `model` (`set_model`, `cycle_model`): frames, the predict adapter and the root's
+    /// `view_image` follow it.
+    pub fn set_root_model(&self, model: &Model) {
+        *lock(&self.root_model) = model.clone();
+        self.images.set_model(None, model.clone());
+    }
+
+    /// The key of each request's provider, resolved when it is sent.
+    pub fn keys(&self) -> &crate::request_keys::Keys {
+        &self.keys
+    }
+
     /// The root lane's system prompt, in the settings' current mode.
     pub fn system(&self) -> String {
         self.system.current()
@@ -1666,8 +1708,8 @@ fn typed_agents(
     config: &Config,
     stores: Option<AgentStores>,
     stack: Weak<Stack>,
-    model: &Model,
-    api_key: Option<String>,
+    root_model: Arc<Mutex<Model>>,
+    keys: crate::request_keys::Keys,
     goal: Arc<std::sync::OnceLock<Arc<GoalDriver>>>,
     refinements: Option<delegation::agents::RefinementsHook>,
     frames: delegation::agents::FrameRunner,
@@ -1679,7 +1721,14 @@ fn typed_agents(
             stores.tasks,
             stores.definitions,
             stores.usage,
-            Some((stores.lanes)(stack.clone())),
+            Some(hinted_lanes((stores.lanes)(stack.clone()), {
+                let stack = stack.clone();
+                Arc::new(move |lane: &str| {
+                    if let Some(stack) = stack.upgrade() {
+                        stack.cell_hints.run_ended(lane);
+                    }
+                })
+            })),
         ),
         None => (
             Box::new(MemoryStore::default()) as Box<dyn delegation::task_store::TaskStore>,
@@ -1725,9 +1774,17 @@ fn typed_agents(
             context.task_ended(task, cost);
         }
     }));
-    let (predict_model, predict_key) = (model.clone(), api_key);
+    // `createPredictAdapter({model: () => lane.getModel()})`: the root lane's model as of each call, its key
+    // resolved then, over the process's HTTP stack at the idle timeout the settings name now.
+    let settings = config.settings_reader();
     options.predict = Some(predict_adapter(Arc::new(move |call: PredictCall<'_>| {
-        complete_once(&predict_model, predict_key.clone(), &call)
+        let model = lock(&root_model).clone();
+        let idle = ai::http::http_idle_timeout(settings().settings().get("httpIdleTimeoutMs"));
+        let provider = crate::request_keys::Keyed {
+            inner: Provider::with_idle_timeout(idle),
+            keys: keys.clone(),
+        };
+        complete_once(&model, &provider, &call)
     })));
     // Retained instances pin their lanes' kernels in the session's pool.
     let (pin_stack, unpin_stack) = (stack.clone(), stack.clone());
@@ -1757,8 +1814,23 @@ fn typed_agents(
     (agents, usage, ends)
 }
 
+/// A typed agent's `rlm` lane runner whose every run's end is reported to `ended` with its lane: the session's cell
+/// hints start that lane's stuck-loop detection over (`cellHints.runEnded(lane)` on every lane's `run_end`), so a
+/// retained instance's next run does not inherit the last one's failure streak.
+pub fn hinted_lanes(
+    runner: delegation::agents::LaneRunner,
+    ended: Arc<dyn Fn(&str) + Send + Sync>,
+) -> delegation::agents::LaneRunner {
+    Arc::new(move |run: delegation::agents::LaneRun| {
+        let lane = run.lane.clone();
+        let result = runner(run);
+        ended(&lane);
+        result
+    })
+}
+
 /// One model completion without tools (`completeSimple`), for the predict adapter.
-fn complete_once(model: &Model, api_key: Option<String>, call: &PredictCall<'_>) -> Result<Completion, String> {
+fn complete_once(model: &Model, provider: &dyn StreamFn, call: &PredictCall<'_>) -> Result<Completion, String> {
     let context = ai::TranscriptContext {
         messages: vec![
             Message::System(ai::SystemMessage {
@@ -1776,7 +1848,6 @@ fn complete_once(model: &Model, api_key: Option<String>, call: &PredictCall<'_>)
     };
     let abort = ai::AbortSignal::new();
     let mut options = ai::SimpleStreamOptions::default();
-    options.base.api_key = api_key;
     options.base.signal = Some(abort.clone());
     let (signal, done) = (call.signal.clone(), Signal::new());
     let watched = done.clone();
@@ -1788,7 +1859,6 @@ fn complete_once(model: &Model, api_key: Option<String>, call: &PredictCall<'_>)
             }
         }
     });
-    let provider = Provider::with_key(None);
     let mut sink = |_: &ai::AssistantMessageEvent| {};
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -1898,7 +1968,11 @@ fn child_agent(stack: &Weak<Stack>, defaults: &ChildDefaults, run: &ChildRun) ->
         // The session is closing: a loop without tools whose provider reports no work.
         let mut options = AgentOptions::new(defaults.model.clone());
         options.system_prompt = Some("The session ended before this subagent started.".into());
-        return (options, Box::new(Provider::with_key(defaults.api_key.clone())));
+        let provider = crate::request_keys::Keyed {
+            inner: Provider::new(),
+            keys: defaults.keys.clone(),
+        };
+        return (options, Box::new(provider));
     };
     let setup = child_setup(&stack, run);
     let system = setup.system;
@@ -1911,14 +1985,18 @@ fn child_agent(stack: &Weak<Stack>, defaults: &ChildDefaults, run: &ChildRun) ->
         Err(error) => options.system_prompt = Some(format!("{system}\n\nThe REPL failed to start: {error}")),
     }
     // Its requests carry the session's stream options as the root's do (one harness in TypeScript).
-    let provider = Provider::with_key(stack.api_key.clone()).with_live_settings(stack.config.settings_reader(), true);
+    // Each request carries its provider's key, resolved when it is sent.
+    let provider = crate::request_keys::Keyed {
+        inner: Provider::new().with_live_settings(stack.config.settings_reader(), true),
+        keys: stack.keys.clone(),
+    };
     (options, Box::new(provider))
 }
 
-/// The model and key a subagent falls back to.
+/// The model and keys a subagent falls back to.
 struct ChildDefaults {
     model: Model,
-    api_key: Option<String>,
+    keys: crate::request_keys::Keys,
 }
 
 /// Routes a cell's requests: subagents to the delegation host (as that lane), everything else to the host

@@ -1096,24 +1096,51 @@ impl Run {
 
     /// The terminal transaction of a run that ended because it was cancelled: status `aborted`.
     pub fn finish_aborted(self, session: &mut Session) -> Result<(), String> {
-        self.finish_as(session, "aborted", None)
+        self.finish_as(session, "aborted", None, None)
+    }
+
+    /// `prepareGeneration`'s `configuration_failure` (generation.ts): the generation's `assistant.ready` commits
+    /// (its context names the configuration), then the run fails with `code`, `message` and `details` before any
+    /// request.
+    pub fn fail_configuration(
+        mut self,
+        session: &mut Session,
+        code: &str,
+        message: &str,
+        details: Value,
+    ) -> Result<(), String> {
+        self.attempt = 1;
+        self.generation_trigger = None;
+        self.step_id = mint(session);
+        self.commit_ready(session, Vec::new())?;
+        self.finish_as(session, "failed", Some((code, message)), Some(details))
     }
 
     /// The terminal transaction: the operation is removed, its result recorded and the lane idle again.
     /// `error` is `(code, message)` for a failed run.
     pub fn finish(self, session: &mut Session, error: Option<(&str, &str)>) -> Result<(), String> {
         let status = if error.is_some() { "failed" } else { "completed" };
-        self.finish_as(session, status, error)
+        self.finish_as(session, status, error, None)
     }
 
-    fn finish_as(mut self, session: &mut Session, status: &str, error: Option<(&str, &str)>) -> Result<(), String> {
+    fn finish_as(
+        mut self,
+        session: &mut Session,
+        status: &str,
+        error: Option<(&str, &str)>,
+        details: Option<Value>,
+    ) -> Result<(), String> {
         let ended_at = now(session);
         let mut result = Map::new();
         result.insert("operationId".into(), self.operation_id.clone().into());
         result.insert("kind".into(), "run".into());
         result.insert("status".into(), status.into());
         if let Some((code, message)) = error {
-            result.insert("error".into(), json!({"code": code, "message": message}));
+            let mut error = json!({"code": code, "message": message});
+            if let Some(details) = details {
+                error["details"] = details;
+            }
+            result.insert("error".into(), error);
         }
         result.insert(
             "fromTipId".into(),

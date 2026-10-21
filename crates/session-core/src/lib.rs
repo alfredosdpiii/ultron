@@ -41,6 +41,7 @@ pub mod nudge;
 pub mod op_journal;
 pub mod pi_view;
 pub mod recovery;
+pub mod request_keys;
 pub mod request_layer;
 pub mod request_settings;
 pub mod request_trace;

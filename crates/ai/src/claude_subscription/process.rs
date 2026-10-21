@@ -100,15 +100,16 @@ fn which(name: &str, path: &str) -> Option<PathBuf> {
         .find(|candidate| executable(candidate))
 }
 
-/// The argv prefix that runs Claude Code (`_resolve`): `command`, else `ULTRON_CLAUDE_COMMAND`, else `claude` on
-/// the env's PATH, then in the usual install directories. Only the bare default name is probed outside PATH.
+/// The argv prefix that runs Claude Code (`_resolve`): `command`, else `ULTRON_CLAUDE_COMMAND`, else
+/// `ULTRON_CLAUDE_CODE_BIN` (the binary the `claude-code` provider runs and is listed by), else `claude` on the
+/// env's PATH, then in the usual install directories. Only the bare default name is probed outside PATH.
 pub fn resolve_claude(command: Option<&[String]>, env: &Env) -> Option<Vec<String>> {
+    let named = |name: &str| env.get(name).filter(|v| !v.trim().is_empty()).cloned();
     let command: Vec<String> = match command {
         Some(command) if !command.is_empty() => command.to_vec(),
         _ => vec![
-            env.get(COMMAND_ENV)
-                .filter(|v| !v.trim().is_empty())
-                .cloned()
+            named(COMMAND_ENV)
+                .or_else(|| named(crate::claude_code_cli::CLAUDE_CODE_BIN_ENV).map(|v| v.trim().to_string()))
                 .unwrap_or_else(|| "claude".into()),
         ],
     };

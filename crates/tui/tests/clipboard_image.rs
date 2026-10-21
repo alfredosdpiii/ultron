@@ -10,7 +10,9 @@ use std::os::unix::fs::PermissionsExt;
 
 use serde_json::Value;
 use tui::clipboard::{Clipboard, ClipboardImage, SystemClipboard, tool_run};
-use tui::clipboard_image::{ImageRead, extension_for_image_mime_type, is_wayland_session, read_clipboard_image};
+use tui::clipboard_image::{
+    ImageRead, ImageSources, extension_for_image_mime_type, is_wayland_session, read_clipboard_image,
+};
 
 /// generate-clipboard-image.mjs `FAKE`, with the scenario directory written in (the test cannot set its own
 /// environment for the child).
@@ -98,7 +100,15 @@ fn tui_clipboard_image_reads_like_ts() {
         // The fake tools, then the system's (`tr`, `cat` for the scripts themselves run from /usr/bin).
         let path = format!("{}:/usr/bin:/bin", bin.display());
         let mut run = |program: &str, args: &[&str]| tool_run(Some(&path), program, args);
-        let got = read_clipboard_image(&|k| env.get(k).cloned(), None, &mut run);
+        // Every recorded case ends before the native clipboard and (with a Linux image under WSL) before PowerShell.
+        let got = read_clipboard_image(ImageSources {
+            platform: "linux",
+            var: &|k| env.get(k).cloned(),
+            proc_version: None,
+            run: &mut run,
+            native: &mut || panic!("native clipboard read"),
+            temp_file: &|| panic!("PowerShell fallback"),
+        });
         let want = match &case["image"] {
             Value::Null => None,
             image => Some((
@@ -197,4 +207,281 @@ fn tui_system_clipboard_reads_typed_images_from_the_injected_path() {
     // No PATH: no tool runs, so there is no image.
     let mut clipboard = SystemClipboard::with_env(None, vec![("DISPLAY".into(), ":0".into())]);
     assert!(clipboard.get_image().is_err());
+}
+
+/// How the fake Windows side of [`wsl`] answers.
+#[derive(Clone, Copy)]
+enum Windows {
+    /// `wslpath` fails.
+    NoWslpath,
+    /// `wslpath` prints only blanks.
+    BlankWslpath,
+    /// PowerShell fails.
+    NoPowershell,
+    /// PowerShell prints this and writes these bytes to the Windows path's file (None: writes nothing).
+    Prints(&'static str, Option<&'static [u8]>),
+}
+
+/// One WSL read (`WSL_DISTRO_NAME` set) with `linux` answering the Linux tools (program and arguments joined by
+/// spaces) and `windows` the `wslpath`/`powershell.exe` calls: the image, every call in order, and whether the temp
+/// file is still there afterwards. `wslpath -w <file>` maps the file to `C:\Users\it's\<name>`, so the script must
+/// quote the path's apostrophe.
+fn wsl(linux: &[(&str, &[u8])], windows: Windows) -> (ImageRead, Vec<String>, bool) {
+    let tmp = TempDir::new(3000 + linux.len() * 10 + windows_index(windows));
+    let temp_file = tmp.0.join("pi-wsl-clip-1.png");
+    let calls = std::cell::RefCell::new(Vec::new());
+    let mut run = |program: &str, args: &[&str]| -> Option<Vec<u8>> {
+        calls.borrow_mut().push(format!("{program} {}", args.join(" ")));
+        match program {
+            "wslpath" => {
+                assert_eq!(args, ["-w", temp_file.to_str().unwrap()]);
+                match windows {
+                    Windows::NoWslpath => None,
+                    Windows::BlankWslpath => Some(b"  \r\n".to_vec()),
+                    _ => Some(b"C:\\Users\\it's\\pi-wsl-clip-1.png\r\n".to_vec()),
+                }
+            }
+            "powershell.exe" => match windows {
+                Windows::Prints(output, bytes) => {
+                    if let Some(bytes) = bytes {
+                        std::fs::write(&temp_file, bytes).unwrap();
+                    }
+                    Some(output.as_bytes().to_vec())
+                }
+                _ => None,
+            },
+            _ => {
+                let key = format!("{program} {}", args.join(" "));
+                linux.iter().find(|(k, _)| *k == key).map(|(_, out)| out.to_vec())
+            }
+        }
+    };
+    let got = read_clipboard_image(ImageSources {
+        platform: "linux",
+        var: &|k| (k == "WSL_DISTRO_NAME").then(|| "Ubuntu".to_string()),
+        proc_version: None,
+        run: &mut run,
+        native: &mut || panic!("native clipboard read"),
+        temp_file: &|| temp_file.clone(),
+    });
+    let left = temp_file.exists();
+    (got, calls.into_inner(), left)
+}
+
+fn windows_index(windows: Windows) -> usize {
+    match windows {
+        Windows::NoWslpath => 0,
+        Windows::BlankWslpath => 1,
+        Windows::NoPowershell => 2,
+        Windows::Prints(output, bytes) => 3 + output.len() + bytes.map_or(0, <[u8]>::len),
+    }
+}
+
+/// `readClipboardImageViaPowerShell` (utils/clipboard-image.ts): under WSL with no Linux image, the Windows
+/// clipboard through `wslpath -w` and `powershell.exe -NoProfile -Command <script>`, whose `$path` is the Windows path
+/// with `'` doubled; `ok` and a non-empty file are a PNG, anything else no image (an empty Linux clipboard stays
+/// no image); the temp file is always removed. A Linux image never asks Windows.
+#[test]
+fn tui_clipboard_image_wsl_powershell_fallback() {
+    const PNG: &[u8] = b"\x89PNG\r\n\x1a\nwindows-png";
+    let script = "Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; \
+                  $path = 'C:\\Users\\it''s\\pi-wsl-clip-1.png'; $img = [System.Windows.Forms.Clipboard]::GetImage(); \
+                  if ($img) { $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png); Write-Output 'ok' } else \
+                  { Write-Output 'empty' }";
+    assert_eq!(
+        tui::clipboard_image::powershell_script("C:\\Users\\it's\\pi-wsl-clip-1.png"),
+        script
+    );
+    let text_only: &[(&str, &[u8])] = &[("wl-paste --list-types", b"text/plain\n")];
+    let calls = |extra: &[&str]| -> Vec<String> {
+        let mut c = vec!["wl-paste --list-types".to_string()];
+        c.extend(extra.iter().map(|s| s.to_string()));
+        c
+    };
+    let wslpath = "wslpath -w <file>";
+    let powershell = format!("powershell.exe -NoProfile -Command {script}");
+    let normalize = |(got, calls, left): (ImageRead, Vec<String>, bool)| {
+        let calls: Vec<String> = calls
+            .into_iter()
+            .map(|c| {
+                if c.starts_with("wslpath -w ") {
+                    wslpath.to_string()
+                } else {
+                    c
+                }
+            })
+            .collect();
+        (got, calls, left)
+    };
+    let png = ImageRead::Image {
+        bytes: PNG.to_vec(),
+        mime_type: "image/png".into(),
+    };
+    // The Windows clipboard's image, as a PNG; the temp file is gone.
+    assert_eq!(
+        normalize(wsl(text_only, Windows::Prints("ok\r\n", Some(PNG)))),
+        (png.clone(), calls(&[wslpath, &powershell]), false)
+    );
+    // Whatever PowerShell saved is taken as a PNG, unconverted (TS sets the type, never checks the bytes).
+    assert_eq!(
+        normalize(wsl(text_only, Windows::Prints("ok", Some(b"BM-not-converted")))).0,
+        ImageRead::Image {
+            bytes: b"BM-not-converted".to_vec(),
+            mime_type: "image/png".into()
+        }
+    );
+    // No image on Windows either: an empty answer, an empty file, other output, a failure.
+    for windows in [
+        Windows::Prints("empty", None),
+        Windows::Prints("ok", Some(b"")),
+        Windows::Prints("ok then more", Some(PNG)),
+        Windows::NoPowershell,
+    ] {
+        assert_eq!(
+            normalize(wsl(text_only, windows)),
+            (ImageRead::NoImage, calls(&[wslpath, &powershell]), false)
+        );
+    }
+    // No Windows path: PowerShell never runs.
+    for windows in [Windows::NoWslpath, Windows::BlankWslpath] {
+        assert_eq!(
+            normalize(wsl(text_only, windows)),
+            (ImageRead::NoImage, calls(&[wslpath]), false)
+        );
+    }
+    // A Linux image (Wayland, or X11 after wl-paste failed) never asks Windows.
+    let wayland: &[(&str, &[u8])] = &[
+        ("wl-paste --list-types", b"image/png\n"),
+        ("wl-paste --type image/png --no-newline", b"\x89PNG\r\n\x1a\nlinux"),
+    ];
+    assert_eq!(
+        normalize(wsl(wayland, Windows::Prints("ok", Some(PNG)))),
+        (
+            ImageRead::Image {
+                bytes: b"\x89PNG\r\n\x1a\nlinux".to_vec(),
+                mime_type: "image/png".into()
+            },
+            calls(&["wl-paste --type image/png --no-newline"]),
+            false
+        )
+    );
+    let x11: &[(&str, &[u8])] = &[
+        ("xclip -selection clipboard -t TARGETS -o", b"image/jpeg\n"),
+        ("xclip -selection clipboard -t image/jpeg -o", b"\xff\xd8\xff\xe0x11"),
+    ];
+    let (got, got_calls, _) = normalize(wsl(x11, Windows::Prints("ok", Some(PNG))));
+    assert_eq!(
+        got,
+        ImageRead::Image {
+            bytes: b"\xff\xd8\xff\xe0x11".to_vec(),
+            mime_type: "image/jpeg".into()
+        }
+    );
+    assert_eq!(
+        got_calls,
+        calls(&[
+            "xclip -selection clipboard -t TARGETS -o",
+            "xclip -selection clipboard -t image/jpeg -o"
+        ])
+    );
+    // X11 ran and had no image: Windows is asked next, and its image wins.
+    let x11_text: &[(&str, &[u8])] = &[("xclip -selection clipboard -t TARGETS -o", b"UTF8_STRING\n")];
+    assert_eq!(
+        normalize(wsl(x11_text, Windows::Prints("ok", Some(PNG)))),
+        (
+            png,
+            calls(&["xclip -selection clipboard -t TARGETS -o", wslpath, &powershell]),
+            false
+        )
+    );
+}
+
+/// A fake clipboard tool runner.
+type Tools = dyn Fn(&str, &[&str]) -> Option<Vec<u8>>;
+
+/// The native clipboard (`readClipboardImageViaNativeClipboard`): the only reader off Linux, and on Linux only after
+/// every tool failed (an empty clipboard, or a Windows "no image" under WSL, never reaches it). Its image is
+/// converted unless supported; an unavailable native clipboard is no image.
+#[test]
+fn tui_clipboard_image_native_fallback_order() {
+    let image = || ImageRead::Image {
+        bytes: b"\x89PNG\r\n\x1a\nnative".to_vec(),
+        mime_type: "image/png".to_string(),
+    };
+    let read = |platform: &str, vars: &[(&str, &str)], tools: &Tools, native: ImageRead| {
+        let calls = std::cell::RefCell::new(Vec::<String>::new());
+        let natives = std::cell::Cell::new(0);
+        let var = |k: &str| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| v.to_string());
+        let mut run = |program: &str, args: &[&str]| {
+            calls.borrow_mut().push(format!("{program} {}", args.join(" ")));
+            tools(program, args)
+        };
+        let mut native_read = || {
+            natives.set(natives.get() + 1);
+            native.clone()
+        };
+        let got = read_clipboard_image(ImageSources {
+            platform,
+            var: &var,
+            proc_version: None,
+            run: &mut run,
+            native: &mut native_read,
+            temp_file: &|| std::path::PathBuf::from("/nonexistent/pi-wsl-clip-x.png"),
+        });
+        (got, calls.into_inner(), natives.get())
+    };
+    let none = |_: &str, _: &[&str]| None;
+    // macOS and Windows: the native clipboard only, no tool runs.
+    for platform in ["darwin", "win32"] {
+        assert_eq!(
+            read(platform, &[("DISPLAY", ":0")], &none, image()),
+            (image(), vec![], 1)
+        );
+        assert_eq!(
+            read(platform, &[], &none, ImageRead::NoImage),
+            (ImageRead::NoImage, vec![], 1)
+        );
+        assert_eq!(
+            read(platform, &[], &none, ImageRead::Failed),
+            (ImageRead::Failed, vec![], 1)
+        );
+    }
+    // Termux: nothing at all.
+    assert_eq!(
+        read("darwin", &[("TERMUX_VERSION", "1")], &none, image()),
+        (ImageRead::NoImage, vec![], 0)
+    );
+    // Linux with every tool missing: the native clipboard last.
+    let (got, calls, natives) = read("linux", &[("DISPLAY", ":0")], &none, image());
+    assert_eq!((got, natives), (image(), 1));
+    assert_eq!(calls[0], "xclip -selection clipboard -t TARGETS -o");
+    // Linux, xclip ran and found no image: the native clipboard is not asked.
+    let targets =
+        |program: &str, args: &[&str]| (program == "xclip" && args[3] == "TARGETS").then(|| b"UTF8_STRING\n".to_vec());
+    let (got, calls, natives) = read("linux", &[("DISPLAY", ":0")], &targets, image());
+    assert_eq!((got, calls.len(), natives), (ImageRead::NoImage, 1, 0));
+    // WSL with every tool failing (wslpath too): the native clipboard after PowerShell.
+    let (got, calls, natives) = read("linux", &[("WSL_DISTRO_NAME", "Ubuntu")], &none, image());
+    assert_eq!((got, natives), (image(), 1));
+    assert_eq!(calls.first().map(String::as_str), Some("wl-paste --list-types"));
+    assert_eq!(
+        calls.last().map(String::as_str),
+        Some("wslpath -w /nonexistent/pi-wsl-clip-x.png")
+    );
+    // A native image of another type is converted to PNG; an undecodable one is no image.
+    let bmp = ImageRead::Image {
+        bytes: b"not an image".to_vec(),
+        mime_type: "image/bmp".to_string(),
+    };
+    assert_eq!(read("win32", &[], &none, bmp).0, ImageRead::NoImage);
+}
+
+/// The native reader's RGBA image becomes a PNG of the same pixels.
+#[test]
+fn tui_clipboard_image_rgba_to_png_round_trips() {
+    let pixels = vec![255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0, 9, 9, 9, 9];
+    let png = tui::clipboard_image::rgba_to_png(2, 2, pixels.clone()).unwrap();
+    assert_eq!(rgba(&png), (2, 2, "Rgba8".to_string(), pixels));
+    // A buffer that does not match the size is no PNG.
+    assert_eq!(tui::clipboard_image::rgba_to_png(3, 2, vec![0; 16]), None);
 }

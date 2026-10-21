@@ -23,6 +23,7 @@
 
 pub mod admission;
 pub mod catalog;
+pub mod claude_code_lane;
 pub mod fallback;
 pub mod history;
 pub mod inert_mcp;

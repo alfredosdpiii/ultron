@@ -5,7 +5,8 @@
 //! organization bills those credits (and stops with a billing error once they are gone, never charging the plan).
 //!
 //! Every `claude-subscription` call goes through [`Router::stream`] (`dispatch`, the session lane and inference
-//! frames all call it), so no path can skip it. The model's tool list is untouched: this is host-side routing
+//! frames all call it), so no path can skip it. `claude-code/<id>` requests with tools also run on the subscription
+//! ([`Router::stream_claude_code`]) but never fall back: that provider never billed an API key. The model's tool list is untouched: this is host-side routing
 //! of one Messages call, the transcript and its `[rlm]` tool list go to the API exactly as they went to the CLI.
 //!
 //! Trace: turn 1 runs `claude -p`; it fails with the plan's usage limit ([`super::limit`]) before any content
@@ -343,6 +344,41 @@ impl Router {
             Some(config) => super::stream_with(model, context, options, config.clone(), sink).await,
             None => super::stream_simple(model, context, options, sink).await,
         }
+    }
+
+    /// A `claude-code/<id>` request with tools, on the subscription only (never API credits: `claude-code` never
+    /// used a key), or refused while a backend override is set ([`super::claude_code_lane`]); `None` for a request
+    /// that stays on `claude -p`.
+    pub async fn stream_claude_code(
+        &self,
+        model: &Model,
+        context: &TranscriptContext,
+        options: &SimpleStreamOptions,
+        sink: &mut EventSink<'_>,
+    ) -> Option<AssistantMessage> {
+        use super::claude_code_lane::{Route, refuse, route};
+        let env = || {
+            let config = self.options.subscription.clone().unwrap_or_default();
+            super::process::base_env(&config, options.base.env.as_ref())
+        };
+        let subscription = match route(model, context, env)? {
+            Route::Refused(error) => return Some(refuse(model, error, sink)),
+            Route::Subscription(subscription) => subscription,
+        };
+        if self.options.subscription.is_some() {
+            return Some(self.subscription(&subscription, context, options, sink).await);
+        }
+        // The `claude` the claude-code provider runs (ULTRON_CLAUDE_CODE_BIN, else PATH), never one found elsewhere.
+        let config = super::config_for(&subscription, options).and_then(|(mut config, _)| {
+            let cli_env = crate::claude_code_cli::child_env(&options.base);
+            let bin = crate::claude_code_cli::resolve_claude_cli(&cli_env).map_err(super::ClaudeError::Missing)?;
+            config.command = Some(vec![bin]);
+            Ok(config)
+        });
+        Some(match config {
+            Ok(config) => super::stream_with(&subscription, context, options, config, sink).await,
+            Err(error) => refuse(model, error.to_string(), sink),
+        })
     }
 
     /// One `claude-subscription` call: the subscription, or the API while the plan is out of usage.

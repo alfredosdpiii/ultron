@@ -67,9 +67,9 @@ pub fn runtime_apis(env: &RunEnv) -> RuntimeGuideOptions {
     ))
 }
 
-/// What `ultron claude` serves of native Ultron's APIs: everything but persistent children with `rlm.ask`, the
-/// swarm (`swarm`, `board`, `notes`) and `schedule`, which need the session actor's durable runtime and server
-/// (crate::unavailable refuses them). The guide leaves them out because it is an external root's.
+/// What `ultron claude` serves of native Ultron's APIs: all of them, persistent children with `rlm.ask`, the swarm
+/// (`swarm`, `board`, `notes`) and `schedule` included (crate::durable_apis, crate::schedules). It is an external
+/// root's guide: Claude Code owns its context, so there is no `ctx`.
 pub fn external_root_apis(native: RuntimeGuideOptions) -> RuntimeGuideOptions {
     RuntimeGuideOptions {
         external_root: true,
@@ -351,7 +351,19 @@ pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: b
         } else {
             delegation_allowance(allowance)
         };
-        parts.extend([text, claude_runtime_guide_for(options.apis, hints, false)]);
+        // A Claude Code subagent's server serves neither the session's shared world (persistent children, swarm,
+        // board, notes) nor `schedule` (crate::unavailable::child_refusal): an external root's subagent reader
+        // leaves them out (its contracts stay). The TypeScript guide's set (`ULTRON_GUIDE=ts`) names none of them
+        // and keeps TypeScript's wording.
+        let apis = options.apis.map(|apis| RuntimeGuideOptions {
+            reader: if apis.durable_apis {
+                resources::runtime_guide::GuideReader::Subagent { swarm: true }
+            } else {
+                apis.reader
+            },
+            ..apis.clone()
+        });
+        parts.extend([text, claude_runtime_guide_for(apis.as_ref(), hints, false)]);
     }
     if let Some(resources) = resources {
         parts.extend(render_prompt_resources(

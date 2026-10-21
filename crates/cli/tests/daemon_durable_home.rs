@@ -270,3 +270,58 @@ fn cli_ultron_s_herdr_resumes_through_ultron_s() {
     assert_eq!(home_resume_argv(Some("h-1"), "s-2"), ["ultron-s", "--session", "s-2"]);
     assert_eq!(home_resume_argv(None, "s-2"), ["ultron-s", "--session", "s-2"]);
 }
+
+/// `ultron-s -c`, `--session-id <id>` and `--fork <id>` select another session of the durable instance than the home
+/// one (the instance's most recently active one, the one named or created with that id, a fork of one), leaving
+/// the home record alone; one selector at a time, never with `--new`, `--session` or `--list`.
+#[test]
+fn cli_ultron_s_continue_session_id_and_fork_select_other_sessions() {
+    let replies = (0..6).map(|i| text_reply(&format!("answer {i}"))).collect();
+    let provider = common::provider(replies, Duration::ZERO);
+    let home = Home::new(provider.port);
+    let first = json_run(&home, &["--mode", "json", "one"])["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let second = json_run(&home, &["--new", "--mode", "json", "two"])["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // `--session <id>` touches the first one last: `-c` continues it, the home stays the second.
+    json_run(&home, &["--session", &first, "--mode", "json", "three"]);
+    assert_eq!(
+        json_run(&home, &["-c", "--mode", "json", "four"])["sessionId"],
+        first.as_str()
+    );
+    assert_eq!(home_id(&home), second);
+    // `--session-id`: that session, created when it is missing.
+    let named = "0193a000-0000-7000-8000-00000000c0de";
+    assert_eq!(
+        json_run(&home, &["--session-id", named, "--mode", "json", "five"])["sessionId"],
+        named
+    );
+    // `--fork <id>`: a new session copied from that one.
+    let forked = json_run(&home, &["--fork", &first, "--mode", "json", "six"]);
+    let forked_id = forked["sessionId"].as_str().unwrap();
+    assert!(
+        ![first.as_str(), second.as_str(), named].contains(&forked_id),
+        "{forked}"
+    );
+    let sixth = provider.requests.lock().unwrap()[5].clone();
+    assert!(
+        sixth.to_string().contains("answer 3"),
+        "the fork carries the first session's turns: {sixth}"
+    );
+    assert_eq!(home_id(&home), second);
+    for args in [
+        &["-c", "--new"][..],
+        &["-c", "--list"],
+        &["-r", "--session", &first],
+        &["-c", "-r"],
+    ] {
+        let (code, _, err) = run(&home, args);
+        assert_eq!(code, 1, "{args:?}");
+        assert!(err.contains("Usage: ultron-s"), "{args:?}: {err}");
+    }
+    stop(&home);
+}

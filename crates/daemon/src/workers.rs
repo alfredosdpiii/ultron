@@ -77,6 +77,73 @@ pub struct WorkerModel {
     pub project_trust: Option<bool>,
 }
 
+impl WorkerModel {
+    /// A client's own session options (`ultron durable --model ...`), as its `attach` request carries them to a
+    /// server whose workers start on other options; `None` when it sets none.
+    pub fn session_options(&self) -> Option<Value> {
+        let mut options = json!({});
+        if let Some(model) = &self.model {
+            options["model"] = json!(model);
+            if let Some(provider) = &self.provider {
+                options["provider"] = json!(provider);
+            }
+        }
+        if let Some(key) = &self.api_key {
+            options["apiKey"] = json!(key);
+        }
+        if let Some(thinking) = &self.thinking {
+            options["thinking"] = json!(thinking);
+        }
+        if let Some(models) = &self.models {
+            options["models"] = json!(models);
+        }
+        if self.no_naming {
+            options["noNaming"] = json!(true);
+        }
+        if let Some(trusted) = self.project_trust {
+            options["projectTrust"] = json!(trusted);
+        }
+        self.session.write_worker_options(&mut options);
+        options.as_object().is_some_and(|o| !o.is_empty()).then_some(options)
+    }
+
+    /// These options with a client's session options (see [`WorkerModel::session_options`]) over them.
+    pub fn with_session_options(&self, options: &Value) -> WorkerModel {
+        let text = |key: &str| options[key].as_str().map(str::to_string);
+        let mut model = self.clone();
+        if options.get("model").is_some() {
+            model.provider = text("provider");
+            model.model = text("model");
+        }
+        if let Some(key) = text("apiKey") {
+            model.api_key = Some(key);
+        }
+        if let Some(thinking) = text("thinking") {
+            model.thinking = Some(thinking);
+        }
+        if let Some(models) = options["models"].as_array() {
+            model.models = Some(models.iter().filter_map(Value::as_str).map(str::to_string).collect());
+        }
+        model.no_naming |= options["noNaming"] == true;
+        if let Some(trusted) = options["projectTrust"].as_bool() {
+            model.project_trust = Some(trusted);
+        }
+        let flags = session_core::session_flags::SessionFlags::from_worker_options(options);
+        if flags.system_prompt.is_some() {
+            model.session.system_prompt = flags.system_prompt;
+        }
+        if flags.append_system_prompt.is_some() {
+            model.session.append_system_prompt = flags.append_system_prompt;
+        }
+        model.session.no_skills |= flags.no_skills;
+        model.session.no_context_files |= flags.no_context_files;
+        if !flags.skill_paths.is_empty() {
+            model.session.skill_paths = flags.skill_paths;
+        }
+        model
+    }
+}
+
 type TerminationListener = Box<dyn FnOnce(Option<String>) + Send>;
 
 /// Resolves once with `None` for an expected stop or the unexpected termination's message.
@@ -199,6 +266,9 @@ pub struct Manager {
     coordinator: OnceLock<Arc<CoordinatorConnection>>,
     session_dir: PathBuf,
     model: WorkerModel,
+    /// The options a session's worker starts on when a client gave its own (`ultron durable --model ...`), by
+    /// session path; kept for its restarts, replaced when a later client starts it again.
+    session_models: Mutex<HashMap<PathBuf, WorkerModel>>,
     inner: Mutex<Inner>,
     changed: Condvar,
     on_count: Box<dyn Fn(usize) + Send + Sync>,
@@ -224,6 +294,7 @@ impl Manager {
             coordinator: OnceLock::new(),
             session_dir,
             model,
+            session_models: Mutex::new(HashMap::new()),
             inner: Mutex::new(Inner::default()),
             changed: Condvar::new(),
             on_count,
@@ -481,6 +552,44 @@ impl Manager {
     }
 
     pub fn open_session(&self, meta: &Meta) -> Result<Handle, ServiceError> {
+        self.open_session_with(meta, None)
+    }
+
+    /// The options `meta`'s worker starts (or started) on.
+    fn model_for(&self, path: &PathBuf) -> WorkerModel {
+        self.session_models
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(path)
+            .cloned()
+            .unwrap_or_else(|| self.model.clone())
+    }
+
+    /// A client's session options for `meta`'s worker that is already running: refused unless they are the ones it
+    /// started on (they cannot change a running worker).
+    pub fn check_session_options(
+        &self,
+        meta_path: &PathBuf,
+        session_id: &str,
+        options: Option<&Value>,
+    ) -> Result<(), ServiceError> {
+        match options {
+            Some(options) if self.model.with_session_options(options) != self.model_for(meta_path) => {
+                Err(ServiceError::coded(
+                    "service_invalid_value",
+                    format!(
+                        "Session {session_id} is already open on this server with other session options (model, \
+                         thinking, prompt or skill flags): they apply when its worker starts. Detach its other \
+                         clients and let it go idle first, or leave the flags out"
+                    ),
+                ))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// [`Manager::open_session`] with a client's session options: a worker started for it runs on them.
+    pub fn open_session_with(&self, meta: &Meta, options: Option<&Value>) -> Result<Handle, ServiceError> {
         {
             let inner = self.lock();
             if inner.detached || inner.shutting_down {
@@ -488,11 +597,13 @@ impl Manager {
             }
         }
         if let Some(handle) = self.existing(meta) {
+            self.check_session_options(&meta.path, &meta.id, options)?;
             return handle;
         }
         // Another server may own this session's worker, or have released it as an orphan.
         self.discover();
         if let Some(handle) = self.existing(meta) {
+            self.check_session_options(&meta.path, &meta.id, options)?;
             return handle;
         }
         let foreign = self.lock().foreign.get(&meta.path).cloned();
@@ -503,6 +614,13 @@ impl Manager {
                 "service_invalid_value",
                 crate::worker::session_in_use(&meta.id, Some(pid)),
             ));
+        }
+        {
+            let mut models = self.session_models.lock().unwrap_or_else(|e| e.into_inner());
+            match options {
+                Some(options) => models.insert(meta.path.clone(), self.model.with_session_options(options)),
+                None => models.remove(&meta.path),
+            };
         }
         self.launch(meta)
     }
@@ -528,7 +646,7 @@ impl Manager {
 
     fn worker_options(&self, meta: &Meta) -> Value {
         let mut options = json!({"sessionDir": self.session_dir.display().to_string(), "metadata": meta.to_json(), "pluginManifestPaths": []});
-        let model = &self.model;
+        let model = &self.model_for(&meta.path);
         if model.provider.is_some() || model.model.is_some() {
             if let Some(provider) = &model.provider {
                 options["provider"] = json!(provider);
@@ -574,11 +692,12 @@ impl Manager {
                 coordinator.server_connection_id.clone(),
             ),
         ];
-        if let Some(api_key) = &self.model.api_key {
+        let model = self.model_for(&meta.path);
+        if let Some(api_key) = &model.api_key {
             env.push((crate::worker::API_KEY_ENV.to_string(), api_key.clone()));
         }
-        env.extend(self.model.env.iter().cloned());
-        if let Some(trusted) = self.model.project_trust {
+        env.extend(model.env.iter().cloned());
+        if let Some(trusted) = model.project_trust {
             env.push((
                 config::trust::TRUST_OVERRIDE_ENV.to_string(),
                 if trusted { "1" } else { "0" }.to_string(),

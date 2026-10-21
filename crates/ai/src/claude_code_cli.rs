@@ -40,7 +40,10 @@ const KILL_GRACE: Duration = Duration::from_secs(2);
 const STDERR_TAIL_CHARS: usize = 4_000;
 const MAX_SYSTEM_PROMPT_ARG_CHARS: usize = 100_000;
 const NEUTRAL_SYSTEM_PROMPT: &str = "You are a helpful assistant. Follow the user's instructions exactly.";
-const TOOLS_UNSUPPORTED: &str = "does not support tool calling here: `claude -p` returns completions, not raw tool calls, and only Ultron's session worker relays tools to it. Use it for tool-free lanes (rlm.infer/rlm.map frames, /review frames, judges), or run Claude Code as the root agent with `ultron --claude` or `ultron claude`.";
+/// Why a request with tools fails on `claude -p`. Through `dispatch` (session lanes, frames with depth) such a request
+/// runs on the Claude subscription instead (`claude_subscription::claude_code_lane`), so this is the text of an id
+/// the subscription does not serve, or of a direct call. TypeScript's text recommended frames; this one does not.
+pub const TOOLS_UNSUPPORTED: &str = "does not support tool calling here: `claude -p` returns completions, not raw tool calls, and lanes with tools run Claude Code models on the Claude subscription (claude-subscription), which does not serve this model id. Use a Claude model id the subscription serves (claude-subscription/<id>), or run Claude Code as the root agent with `ultron --claude` or `ultron claude`.";
 
 /// Flags every request relies on; each must appear in `claude --help`.
 pub const REQUIRED_FLAGS: &[&str] = &[

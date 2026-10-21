@@ -82,9 +82,14 @@ fn user_text(request: &Value) -> String {
 }
 
 #[test]
-fn cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_names_conflicting_options() {
+fn cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_takes_session_options() {
     let provider = provider(
-        vec![text_reply("offline answer"), text_reply("env answer")],
+        vec![
+            text_reply("offline answer"),
+            text_reply("env answer"),
+            text_reply("third answer"),
+            text_reply("fourth answer"),
+        ],
         Duration::ZERO,
     );
     let home = Home::new(provider.port);
@@ -115,21 +120,16 @@ fn cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_names_conf
     let (code, out, err) = output(&mut second);
     assert_eq!((code, out.as_str()), (0, "env answer\n"), "{err}");
     assert_eq!(daemon::instance::generations(&durable_dir(&home)).len(), 1);
-    // What the durable server cannot honour is named.
-    let (code, _, err) = output(&mut home.instance_command(
+    // The client's own session options reach its session's worker (no refusal): `--thinking`, `--no-session`
+    // and `--model` run.
+    let (code, out, err) = output(&mut home.instance_command(
         &home.cwd(),
         &["durable", "-p", "--thinking", "high", "--no-session", "x"],
     ));
-    assert_eq!(code, 1);
-    assert_eq!(
-        err,
-        "Error: `ultron durable` runs on the durable server's worker options, so --thinking, --no-session are not \
-         supported (set them in settings, or run without `durable`)\n"
-    );
-    let (code, _, err) = output(&mut home.instance_command(&home.cwd(), &["durable", "-p", "--model", MODEL, "x"]));
-    assert_eq!(code, 1);
-    assert!(err.contains("so --model is not supported"), "{err}");
-    assert_eq!(provider.requests.lock().unwrap().len(), 2);
+    assert_eq!((code, out.as_str()), (0, "third answer\n"), "{err}");
+    let (code, out, err) = output(&mut home.instance_command(&home.cwd(), &["durable", "-p", "--model", MODEL, "y"]));
+    assert_eq!((code, out.as_str()), (0, "fourth answer\n"), "{err}");
+    assert_eq!(provider.requests.lock().unwrap().len(), 4);
     stop_durable(&home);
 }
 
@@ -203,8 +203,8 @@ fn home_session(home: &Home, cwd: &Path, args: &[&str]) -> Command {
 }
 
 #[test]
-fn cli_entry_home_session_resolves_files_in_the_callers_directory_and_refuses_other_selectors() {
-    let provider = provider(vec![text_reply("summarized")], Duration::ZERO);
+fn cli_entry_home_session_resolves_files_in_the_callers_directory_for_its_flags() {
+    let provider = provider(vec![text_reply("summarized"), text_reply("with flags")], Duration::ZERO);
     let home = Home::new(provider.port);
     let work = home.cwd().join("project");
     std::fs::create_dir_all(work.join("skills/deploy")).unwrap();
@@ -224,8 +224,8 @@ fn cli_entry_home_session_resolves_files_in_the_callers_directory_and_refuses_ot
         "{user}"
     );
     assert!(user.contains("NOTE-TEXT-1"), "{user}");
-    // The durable server's workers take no per-client prompt or skill flags: refused by name, not dropped.
-    let (code, _, err) = output(&mut home_session(
+    // Per-client prompt and skill flags reach the session's worker: the caller's files, named in its directory.
+    let (code, out, err) = output(&mut home_session(
         &home,
         &work,
         &[
@@ -237,10 +237,11 @@ fn cli_entry_home_session_resolves_files_in_the_callers_directory_and_refuses_ot
             "x",
         ],
     ));
-    assert_eq!(code, 1);
+    assert_eq!((code, out.as_str()), (0, "with flags\n"), "{err}");
+    let system = system_text(&provider.requests.lock().unwrap()[1]);
     assert!(
-        err.contains("so --append-system-prompt, --skill are not supported"),
-        "{err}"
+        system.contains("APPEND-TEXT-2") && system.contains("deploy-here"),
+        "{system}"
     );
     // What ultron-s hands the client names the caller's files (it runs in the home directory).
     let rewritten = cli::durable_client::caller_args(
@@ -278,23 +279,11 @@ fn cli_entry_home_session_resolves_files_in_the_callers_directory_and_refuses_ot
             format!("@{}", at("b.md")),
         ]
     );
-    for selector in ["-c", "--continue", "-r", "--resume", "--fork"] {
-        let mut args = vec![selector];
-        if selector == "--fork" {
-            args.push("abc");
-        }
-        args.extend(["-p", "x"]);
-        let (code, _, err) = output(&mut home_session(&home, &work, &args));
-        assert_eq!(code, 1);
-        assert_eq!(
-            err,
-            format!(
-                "Error: ultron-s opens the durable instance's home session: {selector} is not supported (ultron-s \
-                 --list lists its sessions, ultron-s --session <id> opens one)\n"
-            )
-        );
-    }
-    assert_eq!(provider.requests.lock().unwrap().len(), 1);
+    // Another selector than the home session is no longer refused (see daemon_durable_home); one at a time.
+    let (code, _, err) = output(&mut home_session(&home, &work, &["-c", "-r", "-p", "x"]));
+    assert_eq!(code, 1);
+    assert!(err.contains("Usage: ultron-s"), "{err}");
+    assert_eq!(provider.requests.lock().unwrap().len(), 2);
     stop_durable(&home);
 }
 

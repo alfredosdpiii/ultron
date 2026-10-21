@@ -378,8 +378,33 @@ pub fn catalog_model(provider: &str, id: &str, env: &Env) -> Result<Model, Strin
 /// `model` ready for requests: models.json headers resolved per request, and the base URL of the provider's stored
 /// OAuth credential (GitHub Copilot's token endpoint) read per request, over the catalog's or models.json's.
 pub fn for_requests(registry: &ModelRegistry, model: Model, env: &Env) -> Model {
-    let oauth = stored_oauth(env, &model.provider);
-    prepare(registry, model, env, oauth)
+    prepare(registry, model, env)
+}
+
+/// The providers whose requests run on a subscription, so their costs are notional (`/usage`'s
+/// `subscriptionProviders`, session-worker.ts: every provider of the runtime's models that
+/// `modelRuntime.isUsingSubscription`): Claude Code when it is configured, a provider signed in with an OAuth login
+/// that is a subscription (Anthropic Pro/Max, OpenAI Codex, GitHub Copilot, ...), and always `claude-subscription`
+/// (the Claude Code login; TypeScript has no such provider).
+pub fn subscription_providers(env: &Env) -> Vec<String> {
+    let registry = registry(env);
+    let options = crate::stored_auth::OAuthOptions::for_env(env);
+    let mut providers: Vec<String> = registry
+        .provider_ids()
+        .into_iter()
+        .filter(|p| {
+            if p == ai::claude_code::PROVIDER {
+                return registry.auth_configured(p, &*env.var, false);
+            }
+            stored_oauth(env, p)
+                && crate::stored_auth::oauth_handler_with(env, p, &options).is_some_and(|oauth| oauth.is_subscription())
+        })
+        .collect();
+    let dynamic = ai::claude_subscription::PROVIDER.to_string();
+    if !providers.contains(&dynamic) {
+        providers.push(dynamic);
+    }
+    providers
 }
 
 /// Whether the provider's stored credential is an OAuth one.
@@ -389,13 +414,24 @@ fn stored_oauth(env: &Env, provider: &str) -> bool {
         .is_some_and(|c| c.get("type").and_then(Value::as_str) == Some("oauth"))
 }
 
-fn prepare(registry: &ModelRegistry, model: Model, env: &Env, oauth: bool) -> Model {
+/// The stored credential's request auth (an OAuth credential's base URL and headers, an api-key credential's env) is
+/// resolved for each request, whatever was stored when the model was chosen: a `/login` while the session runs
+/// (Kimi For Coding's OAuth over `KIMI_API_KEY`, Copilot's endpoint) applies to the current model's next request,
+/// as TypeScript's `getAuth` per request does.
+fn prepare(registry: &ModelRegistry, model: Model, env: &Env) -> Model {
     let mut model = registry.for_requests(model, env.var.clone());
-    if oauth || crate::stored_auth::has_request_auth(env, &model.provider) {
-        let (env, provider) = (env.clone(), model.provider.clone());
-        model.request.get_or_insert_default().stored_auth =
-            Some(Arc::new(move || crate::stored_auth::request_auth(&env, &provider)));
+    // Claude Code's own login authenticates its CLI providers; nothing stored in auth.json reaches them.
+    if [ai::claude_code::PROVIDER, ai::claude_subscription::PROVIDER].contains(&model.provider.as_str()) {
+        return model;
     }
+    let (env, provider) = (env.clone(), model.provider.clone());
+    // Whether the provider needs it is read per request too (auth.json now), so a provider with nothing stored runs
+    // its models.json `!command` key once per request, as before.
+    model.request.get_or_insert_default().stored_auth = Some(Arc::new(move || {
+        crate::stored_auth::has_request_auth(&env, &provider)
+            .then(|| crate::stored_auth::request_auth(&env, &provider))
+            .flatten()
+    }));
     model
 }
 
@@ -564,11 +600,10 @@ pub fn available_models(env: &Env) -> Vec<Model> {
     let mut models: Vec<Model> = configured_providers(env, &registry)
         .into_iter()
         .flat_map(|p| {
-            let oauth = stored_oauth(env, &p);
             let registry = &registry;
             provider_models(env, registry, &p)
                 .into_iter()
-                .map(move |m| prepare(registry, m, env, oauth))
+                .map(move |m| prepare(registry, m, env))
         })
         .collect();
     models.extend(subscription_models(env, &registry, &models));
@@ -596,10 +631,15 @@ fn provider_models(env: &Env, registry: &ModelRegistry, provider: &str) -> Vec<M
 /// listed (a models.json entry for the provider) are not repeated.
 fn subscription_models(env: &Env, registry: &ModelRegistry, listed: &[Model]) -> Vec<Model> {
     use ai::claude_subscription::{PROVIDER, catalog, process};
-    let mut lookup: ai::claude_subscription::Env = [process::COMMAND_ENV, "PATH", "HOME"]
-        .into_iter()
-        .filter_map(|k| (env.var)(k).map(|v| (k.to_string(), v)))
-        .collect();
+    let mut lookup: ai::claude_subscription::Env = [
+        process::COMMAND_ENV,
+        ai::claude_code_cli::CLAUDE_CODE_BIN_ENV,
+        "PATH",
+        "HOME",
+    ]
+    .into_iter()
+    .filter_map(|k| (env.var)(k).map(|v| (k.to_string(), v)))
+    .collect();
     lookup
         .entry("HOME".into())
         .or_insert_with(|| env.home.to_string_lossy().into_owned());
@@ -610,11 +650,12 @@ fn subscription_models(env: &Env, registry: &ModelRegistry, listed: &[Model]) ->
         .into_iter()
         .filter(|(_, id, _)| !listed.iter().any(|m| m.provider == PROVIDER && m.id == *id))
         .filter_map(|(_, id, _)| registry.find(PROVIDER, id))
-        .map(|m| prepare(registry, m, env, false))
+        .map(|m| prepare(registry, m, env))
         .collect()
 }
 
-/// The key a request of `provider` carries (`ModelRuntime.getAuth`): `--api-key` (a runtime key), else the auth.json
+/// The key a request of `provider` carries (`ModelRuntime.getAuth`): `--api-key` (a runtime key: pass it only for
+/// the provider it was given for, the starting model's; a session's lanes use [`crate::request_keys::Keys`]), else the auth.json
 /// credential (an api key, or an OAuth access token; a stored credential owns the provider), else the models.json
 /// key, else the environment; `None` when there is none or the configured one does not resolve.
 pub fn api_key(flags: &ModelFlags, env: &Env, provider: &str) -> Option<String> {
@@ -654,14 +695,33 @@ pub fn env_api_key(env: &Env, provider: &str) -> Option<String> {
     env_api_key_with(env, &registry(env), provider)
 }
 
+/// [`env_api_key`] with `stored` (a stored credential's `env`) read before the environment.
+pub(crate) fn env_api_key_over(
+    env: &Env,
+    provider: &str,
+    stored: &std::collections::HashMap<String, String>,
+) -> Option<String> {
+    let lookup = |name: &str| stored.get(name).cloned().or_else(|| (env.var)(name));
+    env_api_key_in(env, &registry(env), provider, &lookup)
+}
+
 fn env_api_key_with(env: &Env, registry: &ModelRegistry, provider: &str) -> Option<String> {
+    env_api_key_in(env, registry, provider, &*env.var)
+}
+
+fn env_api_key_in(
+    env: &Env,
+    registry: &ModelRegistry,
+    provider: &str,
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Option<String> {
     let provider = if registry.radius_gateway(provider).is_some() {
         "radius"
     } else {
         provider
     };
     let source = ai::env::EnvSource {
-        lookup: &*env.var,
+        lookup,
         exists: &|p: &Path| p.exists(),
         home: Some(env.home.clone()),
     };
@@ -836,6 +896,11 @@ impl StreamFn for Provider {
             };
             let model = routed.as_ref().unwrap_or(model);
             let options = prepared.as_ref().unwrap_or(options);
+            // `claude-code/<id>` with tools: this provider's router, on the subscription only (`dispatch` would use
+            // the process's).
+            if let Some(message) = self.router.stream_claude_code(model, context, options, sink).await {
+                return message;
+            }
             let transport = &*transport;
             let result = match model.api.as_str() {
                 // The process's (or the embedder's) router: subscription first, API credits when out of usage.

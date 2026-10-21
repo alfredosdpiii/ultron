@@ -649,8 +649,13 @@ enum RetryNote {
 
 /// The session actor.
 pub struct Core {
+    /// The lane's stored model no longer resolves: each run fails with `model_unavailable` until a model is
+    /// selected (see [`unavailable_model`]).
+    model_unavailable: bool,
     env: RunEnv,
-    flags: ModelFlags,
+    /// The key of each request's provider: `--api-key` for the starting model's, the profile's credentials for
+    /// every provider, resolved per request.
+    keys: crate::request_keys::Keys,
     repo: SessionRepo,
     runtime: Runtime,
     provider: Arc<Provider>,
@@ -755,9 +760,54 @@ fn event(fields: Vec<(&str, Value)>) -> Value {
     )
 }
 
+/// generation.ts `configurationError`'s message for `model_unavailable`.
+const MODEL_UNAVAILABLE: &str = "The configured model is unavailable in this process";
+
+/// `ultron --claude`, `ULTRON_ROOT=claude` or the `claudeCode.root` setting (worker-root.ts `claudeRootRequested`:
+/// the CLI sets `ULTRON_ROOT=claude` for the session workers it starts).
+fn claude_root_requested(env: &RunEnv) -> bool {
+    (env.var)("ULTRON_ROOT").is_some_and(|v| v.trim().eq_ignore_ascii_case("claude"))
+}
+
+/// A model the stored lane names that no longer resolves (removed from the catalog or models.json): the session
+/// still opens on it, and its next generation fails with `model_unavailable` (generation.ts `prepareGeneration`), so
+/// `/model` can pick another.
+fn unavailable_model(provider: &str, id: &str) -> Model {
+    Model {
+        id: id.to_string(),
+        name: id.to_string(),
+        api: String::new(),
+        provider: provider.to_string(),
+        base_url: String::new(),
+        reasoning: false,
+        thinking_level_map: None,
+        input: vec!["text".to_string()],
+        input_limits: None,
+        cost: Default::default(),
+        prompt_cache: None,
+        context_window: 0,
+        max_tokens: 0,
+        sampling_params: None,
+        headers: None,
+        compat: None,
+        request: None,
+        extra: Default::default(),
+    }
+}
+
 /// The lane configuration a session runs with: the session's own for a resumed session without model flags, else
 /// the flags' (written for a new session). Returns the stored configuration and the model it names.
 pub fn lane_config(flags: &ModelFlags, env: &RunEnv, session: Option<&mut Session>) -> Result<(Value, Model), String> {
+    lane_config_resolving(flags, env, session).map(|(config, model, _)| (config, model))
+}
+
+/// [`lane_config`], and whether the model the stored lane names is unavailable (then the model is a stand-in of
+/// that identity, see [`unavailable_model`]).
+fn lane_config_resolving(
+    flags: &ModelFlags,
+    env: &RunEnv,
+    session: Option<&mut Session>,
+) -> Result<(Value, Model, bool), String> {
     let stored = session
         .as_ref()
         .and_then(|s| s.value(session_journal::session::LANE_CONFIG, "main").cloned());
@@ -798,6 +848,16 @@ pub fn lane_config(flags: &ModelFlags, env: &RunEnv, session: Option<&mut Sessio
                 config["thinkingLevel"] = json!(level);
                 session.commit(&[Write::set(LANE_CONFIG, lane::MAIN, config.clone())])?;
             }
+            // `ultron --claude` (session-worker.ts): a resumed lane that is not on the Claude root's provider moves
+            // to the root model, as `lane.setModel` does (its thinking level stays). A plain `--model` keeps the
+            // stored lane (above).
+            if claude_root_requested(env)
+                && let Ok(m) = &flag_model
+                && config["model"]["provider"] != json!(m.provider)
+            {
+                config["model"] = json!({"provider": m.provider, "modelId": m.id});
+                session.commit(&[Write::set(LANE_CONFIG, lane::MAIN, config.clone())])?;
+            }
             config
         }
         None => wanted,
@@ -808,10 +868,13 @@ pub fn lane_config(flags: &ModelFlags, env: &RunEnv, session: Option<&mut Sessio
         flag_model,
     ) {
         (Some(provider), Some(id), Ok(m)) if (provider, id) == (m.provider.as_str(), m.id.as_str()) => m,
-        (Some(provider), Some(id), _) => lane::catalog_model(provider, id, env)?,
+        (Some(provider), Some(id), _) => match lane::catalog_model(provider, id, env) {
+            Ok(model) => model,
+            Err(_) => return Ok((config.clone(), unavailable_model(provider, id), true)),
+        },
         (_, _, m) => m?,
     };
-    Ok((config, model))
+    Ok((config, model, false))
 }
 
 /// Apply a naming response: its usage as a row of its own, and its title while the name is still automatic.
@@ -883,8 +946,9 @@ impl Core {
         trace("worker.resources-loaded");
         // Loki's setup (the minimal install where allowed, its commit in the background) before any cell runs.
         let loki_notice = crate::loki_notice::LokiNotice::start(&runtime.config);
-        let (config, model) = lane_config(&flags, &env, Some(&mut session))?;
-        let api_key = lane::api_key(&flags, &env, &model.provider);
+        let (config, model, model_unavailable) = lane_config_resolving(&flags, &env, Some(&mut session))?;
+        // `setRuntimeApiKey(resolved.model.provider, apiKey)`: `--api-key` is the starting model's provider's key.
+        let keys = crate::request_keys::Keys::session(flags.api_key.clone(), &model.provider, &env);
         let announced = session.state().entries().len();
         let announced_usage = session.state().usage_rows().len();
         let session_id = session.id().to_string();
@@ -898,7 +962,7 @@ impl Core {
         let lane = Lane::open_with(
             &runtime,
             &model,
-            api_key,
+            flags.api_key.clone(),
             &session_id,
             Some(children.host(session.clone())),
         )?;
@@ -945,7 +1009,7 @@ impl Core {
             &lane,
             provider.clone(),
             &env,
-            &flags,
+            &keys,
             queues.clone(),
             children.clone(),
             child_context,
@@ -1022,12 +1086,13 @@ impl Core {
         let auto_compaction = runtime.config.settings["compaction"]["enabled"] != false;
         let (env_var, async_events) = (env.var.clone(), runtime.config.async_events);
         let mut core = Core {
+            model_unavailable,
             loki_notice,
             thinking: config["thinkingLevel"].as_str().unwrap_or("medium").to_string(),
             models: lane::available_models(&env),
             provider,
             env,
-            flags,
+            keys,
             repo,
             runtime,
             model,
@@ -1200,7 +1265,7 @@ impl Core {
     }
 
     fn api_key(&self) -> Option<String> {
-        lane::api_key(&self.flags, &self.env, &self.model.provider)
+        self.keys.key(&self.model.provider)
     }
 
     fn run_id(&self) -> Value {
@@ -1904,7 +1969,8 @@ impl Core {
                     }
                 };
                 self.model = model;
-                self.lane.stack.images.set_model(None, self.model.clone());
+                self.model_unavailable = false;
+                self.lane.stack.set_root_model(&self.model);
                 self.store_lane_config()?;
                 serde_json::to_value(&self.model).map(Some).map_err(|e| e.to_string())
             }
@@ -1917,7 +1983,8 @@ impl Core {
                     .iter()
                     .position(|m| m.provider == self.model.provider && m.id == self.model.id);
                 self.model = self.models[index.map_or(0, |i| (i + 1) % self.models.len())].clone();
-                self.lane.stack.images.set_model(None, self.model.clone());
+                self.model_unavailable = false;
+                self.lane.stack.set_root_model(&self.model);
                 self.store_lane_config()?;
                 Ok(Some(json!({
                     "model": serde_json::to_value(&self.model).map_err(|e| e.to_string())?,
@@ -2351,11 +2418,7 @@ impl Core {
                         }
                         lane::catalog_model(&chosen.provider, &chosen.id, &self.env).unwrap_or(chosen)
                     });
-                    let key = if naming_model.provider == self.model.provider {
-                        api_key.clone()
-                    } else {
-                        lane::api_key(&ModelFlags::default(), &self.env, &naming_model.provider)
-                    };
+                    let key = self.keys.request_key(&naming_model.provider);
                     naming_request = Some((naming_model, key, text));
                 }
             }
@@ -2438,6 +2501,19 @@ impl Core {
             self.durable
                 .children
                 .set_root(self.lane.stack.agents.usage_root_for_lane(LANE, run.operation_id()));
+        }
+        // `prepareGeneration`: a model that does not resolve fails the run at its first generation, before any
+        // request (generation.ts `configurationError("model_unavailable", identity)`).
+        if self.model_unavailable {
+            let identity = json!({"provider": self.model.provider, "modelId": self.model.id});
+            let result = journal.fail_configuration(
+                &mut lock_session(&self.session),
+                "model_unavailable",
+                MODEL_UNAVAILABLE,
+                identity,
+            );
+            self.announce();
+            return fail(result.err().unwrap_or_else(|| MODEL_UNAVAILABLE.to_string()), waiter);
         }
         // The turn runs in the durable runtime; its prompt is the entry the run just admitted.
         let prompt_entry = self.tip().unwrap_or_default();

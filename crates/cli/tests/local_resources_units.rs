@@ -150,3 +150,98 @@ fn cli_local_resources_resolve_matches_typescript_top_level_resources() {
     assert!(compared > 0, "the recorded trees have top-level resources");
     assert!(diffs.is_empty(), "{}", diffs.join("\n"));
 }
+
+/// The Pi extensions TypeScript resolves at top level (`<agentDir>/extensions/` conventions and manifests, the
+/// trusted project's `.pi/extensions/`, the settings `extensions` paths and filters) are the ones ultron-rs names
+/// as ignored: replays the recorded `resolve()` trees, comparing each top-level extension and its `enabled`.
+#[test]
+fn cli_local_resources_extensions_match_typescript_top_level() {
+    let f = fixture();
+    let mut diffs = Vec::new();
+    let mut compared = 0;
+    for (i, case) in f["units"]["resolve"].as_array().unwrap().iter().enumerate() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+        let tmp_text = root.display().to_string();
+        for d in ["agent", "work", "home"] {
+            std::fs::create_dir_all(root.join(d)).unwrap();
+        }
+        for (rel, text) in case["files"].as_object().unwrap() {
+            let path = root.join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text.as_str().unwrap()).unwrap();
+        }
+        let global = if case["global"].is_null() {
+            json!({})
+        } else {
+            case["global"].clone()
+        };
+        std::fs::write(root.join("agent/settings.json"), global.to_string()).unwrap();
+        if !case["project"].is_null() {
+            std::fs::create_dir_all(root.join("work/.pi")).unwrap();
+            std::fs::write(root.join("work/.pi/settings.json"), case["project"].to_string()).unwrap();
+        }
+        let vars: HashMap<String, String> = HashMap::from([(
+            "ULTRON_CODING_AGENT_DIR".to_string(),
+            root.join("agent").display().to_string(),
+        )]);
+        let env = cli::Env {
+            cwd: root.join("work"),
+            home: root.join("home"),
+            var: Arc::new(move |k| vars.get(k).cloned()),
+            docs: root.join("docs"),
+        };
+        let mut settings = config::settings::SettingsManager::create(&root.join("work"), &root.join("agent"), false);
+        settings.set_project_trusted(case["trust"] == true);
+        let resources = LocalResources::new(&env, settings);
+        let sub = |s: &str| s.replace(&tmp_text, "<TMP>");
+        let got: Vec<Value> = resources
+            .extensions()
+            .iter()
+            .map(|r| {
+                json!({
+                    "path": sub(&r.path),
+                    "enabled": r.enabled,
+                    "source": r.metadata.source,
+                    "scope": r.metadata.scope.name(),
+                    "origin": "top-level",
+                    "baseDir": r.metadata.base_dir.as_deref().map(sub),
+                })
+            })
+            .collect();
+        let want: Vec<Value> = case["resolved"]["extensions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["origin"] == "top-level")
+            .cloned()
+            .collect();
+        compared += want.len();
+        if got != want {
+            diffs.push(format!(
+                "{i} {}:\nrust {}\nts   {}",
+                case["name"],
+                serde_json::to_string_pretty(&got).unwrap(),
+                serde_json::to_string_pretty(&want).unwrap()
+            ));
+        }
+        // The note names the enabled ones.
+        let note = session_core::local_resources::extensions::ignored_extensions_note(&resources).map(|n| sub(&n));
+        let enabled: Vec<&str> = want
+            .iter()
+            .filter(|r| r["enabled"] == true)
+            .map(|r| r["path"].as_str().unwrap())
+            .collect();
+        let expected = (!enabled.is_empty()).then(|| {
+            format!(
+                "Pi extensions are not supported by ultron-rs; ignoring {} extension{}: {}",
+                enabled.len(),
+                if enabled.len() == 1 { "" } else { "s" },
+                enabled.join(", ")
+            )
+        });
+        assert_eq!(note, expected, "{}", case["name"]);
+    }
+    assert_eq!(compared, 6, "the recorded trees' top-level extensions");
+    assert!(diffs.is_empty(), "{}", diffs.join("\n"));
+}

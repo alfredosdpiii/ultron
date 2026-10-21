@@ -363,6 +363,8 @@ impl Core {
     /// A root response overflowed the context window (crate::turns): unless this generation already recovered from
     /// one, the overflowed answer commits as an error with the compaction it starts, and the request is retried once
     /// the compaction completes. Otherwise the error is the answer the runtime commits (the run fails with it).
+    /// Automatic compaction being off does not stop it: the TypeScript harness recovers an overflow once regardless
+    /// (drive/response.ts `publishResponse`: `overflowRecoveryUsed` is the only guard).
     pub(super) fn overflow(&mut self, message: AssistantMessage, answer: Answer<Settled>) {
         let error = auto_compaction::as_error(&message);
         let settings = self.compaction_settings();
@@ -371,7 +373,7 @@ impl Core {
                 && !run.signal.aborted()
                 && !run.compaction_failed
                 && run.journal.run().is_some_and(|r| !r.overflow_recovery_used())
-        }) && settings.enabled;
+        });
         let prepared = if recoverable {
             self.prepare_compaction(settings).ok()
         } else {

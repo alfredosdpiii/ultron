@@ -756,6 +756,9 @@ pub struct RunOptions {
     pub reconnect: Option<Arc<dyn Fn() -> Result<Route, String> + Send + Sync>>,
     /// Every transcript event of the prompted session as it arrives (`onEvent`).
     pub on_event: Option<EventListener>,
+    /// A Rust addition: the client's own session options (`ultron durable --model ...`), sent with each attach so
+    /// the session's worker starts on them on a server whose workers start on other options.
+    pub session_options: Option<Json>,
 }
 
 /// The session operations service of the Rust worker (crates/daemon `worker::OPS_SERVICE`).
@@ -789,7 +792,15 @@ pub fn rejoin(connection: &Connection, session_id: &str, options: &RunOptions) -
     let server = connection.server_target();
     let session = loop {
         let attached = connection
-            .call(server.clone(), "pi.session-management", "attach", json!([session_id]))
+            .call(
+                server.clone(),
+                "pi.session-management",
+                "attach",
+                match &options.session_options {
+                    Some(session_options) => json!([session_id, session_options]),
+                    None => json!([session_id]),
+                },
+            )
             .and_then(|_| {
                 connection.wait_attachment(|a| a.is_some_and(|a| a.session_id == session_id))?;
                 connection.session_target()
@@ -1087,7 +1098,11 @@ fn operation(
             json!([{"sessionId": session_id, "packagePaths": null}]),
         )
         .map_err(fail)?;
-    management("attach", json!([session_id])).map_err(fail)?;
+    let attach = match &options.session_options {
+        Some(session_options) => json!([session_id, session_options]),
+        None => json!([session_id]),
+    };
+    management("attach", attach).map_err(fail)?;
     connection
         .wait_attachment(|a| a.is_some_and(|a| a.session_id == session_id))
         .map_err(fail)?;

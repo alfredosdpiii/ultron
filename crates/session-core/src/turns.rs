@@ -29,10 +29,10 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// What the actor answers a generation's start with: the request messages and the key to send them with.
+/// What the actor answers a generation's start with: the request messages. Their key is that of the generation's
+/// own model (pinned at preparation), resolved when the request is sent.
 pub struct GenerationStart {
     pub messages: Vec<Message>,
-    pub api_key: Option<String>,
 }
 
 /// A one-shot answer the asking runtime thread waits for, together with its own invocation signal.
@@ -402,7 +402,8 @@ pub struct TurnModels {
     pub provider: Arc<dyn agent::StreamFn>,
     /// Resolves a pinned model (`provider`, `id`).
     pub resolve: ResolveModel,
-    /// The key a child conversation's request uses for its model's provider.
+    /// The key a request uses for its model's provider (crate::request_keys), resolved per request: a root
+    /// generation's model is the one its checkpoint pinned, which a model switch during the turn does not change.
     pub api_key: ProviderKey,
     /// The root conversation's provider session ID: requests that carry it are the root's turns; every other
     /// conversation is a subagent's.
@@ -434,10 +435,11 @@ impl TurnModels {
         on_event: &mut (dyn FnMut(&AssistantMessageEvent) + Send),
     ) -> harness::scheduler::Result<AssistantMessage> {
         let bridged = Bridged::new(signal);
-        let mut options = ai::SimpleStreamOptions::default();
+        // The request's own options (its pinned stream options, a compaction's `maxTokens`/`cacheRetention`) and
+        // provider session id, as generation.ts sends them.
+        let mut options = request.simple_options();
         options.base.api_key = (self.api_key)(&model.provider);
         options.base.signal = Some(bridged.abort.clone());
-        options.reasoning = request.reasoning.clone();
         let mut sink = |event: &AssistantMessageEvent| on_event(event);
         let transformed;
         let context = match (&self.transform_child, request.conversation_id, &request.final_note) {
@@ -542,10 +544,9 @@ impl TurnModels {
             None => return Err(signal.reason().unwrap_or_else(|| HarnessError::msg("cancelled"))),
         };
         let bridged = Bridged::new(signal);
-        let mut options = ai::SimpleStreamOptions::default();
-        options.base.api_key = start.api_key;
+        let mut options = request.simple_options();
+        options.base.api_key = (self.api_key)(&model.provider);
         options.base.signal = Some(bridged.abort.clone());
-        options.reasoning = request.reasoning.clone();
         let mut messages = start.messages;
         // The run's final request: tools off, and the note saying why after its context (not stored).
         if let Some(note) = &request.final_note {

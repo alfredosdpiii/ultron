@@ -324,3 +324,81 @@ pub fn ancestor_agents_skill_dirs(start: &str) -> Vec<String> {
     }
     out
 }
+
+// -------------------------------------------------------------------------------------------------- extensions
+
+/// `readPiManifest(...).extensions`: the `pi.extensions` list of a package.json when every entry is a string.
+fn pi_manifest_extensions(package_json: &str) -> Option<Vec<String>> {
+    let text = std::fs::read_to_string(package_json).ok()?;
+    let manifest: serde_json::Value = serde_json::from_str(text.trim_start_matches('\u{feff}')).ok()?;
+    let list = manifest.get("pi")?.as_object()?.get("extensions")?.as_array()?;
+    list.iter().map(|e| e.as_str().map(str::to_string)).collect()
+}
+
+/// `resolveExtensionEntries`: a directory's declared extensions (package.json `pi.extensions`, those that exist),
+/// else its `index.ts`, else its `index.js`.
+fn extension_entries(dir: &str) -> Option<Vec<String>> {
+    let manifest = join(dir, "package.json");
+    if exists(&manifest)
+        && let Some(list) = pi_manifest_extensions(&manifest)
+    {
+        let found: Vec<String> = list.iter().map(|p| resolve(dir, p)).filter(|p| exists(p)).collect();
+        if !found.is_empty() {
+            return Some(found);
+        }
+    }
+    ["index.ts", "index.js"]
+        .iter()
+        .map(|index| join(dir, index))
+        .find(|p| exists(p))
+        .map(|p| vec![p])
+}
+
+/// `collectAutoExtensionEntries`: the directory's own entries when it declares them, else its top-level `.ts`/`.js`
+/// files and the entries of its subdirectories (dot names, `node_modules` and ignored paths skipped).
+pub fn auto_extensions(dir: &str) -> Vec<String> {
+    if !exists(dir) {
+        return Vec::new();
+    }
+    if let Some(root) = extension_entries(dir) {
+        return root;
+    }
+    let mut ig = Ignore::new();
+    add_ignore_rules(&mut ig, dir, dir);
+    let mut out = Vec::new();
+    for e in entries(dir) {
+        if e.name.starts_with('.') || e.name == "node_modules" {
+            continue;
+        }
+        let ignore_path = if e.is_dir {
+            format!("{}/", e.name)
+        } else {
+            e.name.clone()
+        };
+        if ig.ignores(&ignore_path) {
+            continue;
+        }
+        let full = join(dir, &e.name);
+        if e.is_file && (e.name.ends_with(".ts") || e.name.ends_with(".js")) {
+            out.push(full);
+        } else if e.is_dir
+            && let Some(found) = extension_entries(&full)
+        {
+            out.extend(found);
+        }
+    }
+    out
+}
+
+/// `collectFilesFromPaths` for extensions: a file as is, a directory's [`auto_extensions`].
+pub fn extension_files_from_paths(paths: &[String]) -> Vec<String> {
+    let mut out = Vec::new();
+    for p in paths {
+        match std::fs::metadata(p) {
+            Ok(meta) if meta.is_file() => out.push(p.clone()),
+            Ok(meta) if meta.is_dir() => out.extend(auto_extensions(p)),
+            _ => {}
+        }
+    }
+    out
+}

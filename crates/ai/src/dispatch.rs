@@ -66,6 +66,11 @@ pub async fn stream_simple(
         "bedrock-converse-stream" => Ok(bedrock::stream_simple(model, context, options, transport, sink).await),
         "pi-messages" => Ok(pi_messages::stream_simple(model, context, options, transport, sink).await),
         "claude-code-cli" => {
+            // With tools: the Claude subscription, for every caller (session lanes, inference frames with depth).
+            let router = crate::claude_subscription::fallback::global();
+            if let Some(message) = router.stream_claude_code(model, context, options, sink).await {
+                return Ok(message);
+            }
             let options = ClaudeCodeOptions {
                 base: options.clone(),
                 json_schema: None,

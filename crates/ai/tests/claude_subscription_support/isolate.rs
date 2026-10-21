@@ -13,7 +13,7 @@
 //! - HOME, CLAUDE_CONFIG_DIR, the XDG dirs, TMPDIR, ULTRON_CODING_AGENT_DIR and ULTRON_SERVER_DIR are private
 //!   directories under one temp root (removed afterwards).
 //! - Nothing else survives except a few harmless runtime variables ([`KEEP`]): no CLAUDE_CODE_OAUTH_TOKEN, no
-//!   ANTHROPIC_*, no proxies, no ULTRON_CLAUDE_COMMAND.
+//!   ANTHROPIC_*, no proxies, no ULTRON_CLAUDE_COMMAND or ULTRON_CLAUDE_CODE_BIN (either names the `claude` run).
 
 #![allow(dead_code)]
 
@@ -128,7 +128,10 @@ fn assert_sealed() {
     for (name, _) in std::env::vars_os() {
         let name = name.to_string_lossy();
         assert!(
-            !name.starts_with("ANTHROPIC_") && !name.starts_with("CLAUDE_CODE_") && name != "ULTRON_CLAUDE_COMMAND",
+            !name.starts_with("ANTHROPIC_")
+                && !name.starts_with("CLAUDE_CODE_")
+                && name != "ULTRON_CLAUDE_COMMAND"
+                && name != "ULTRON_CLAUDE_CODE_BIN",
             "{name} leaked into the sealed environment"
         );
     }

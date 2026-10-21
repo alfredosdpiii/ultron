@@ -6,8 +6,9 @@
 //! `.agents/skills`.
 //!
 //! Pi packages (the settings `packages`) and Pi extensions are not supported by ultron-rs: nothing is installed and
-//! no package resources are resolved.
+//! no package resources are resolved; the extensions TypeScript would load are only named (see [`extensions`]).
 
+pub mod extensions;
 pub mod files;
 pub mod glob;
 

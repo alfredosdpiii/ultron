@@ -1,4 +1,5 @@
-//! System clipboard off the paint path: an [`arboard`] backend (text) with `wl-paste`/`xclip` for image reads,
+//! System clipboard off the paint path: an [`arboard`] backend (text, and images off Linux or when the Linux tools
+//! fail) with `wl-paste`/`xclip` (and PowerShell under WSL) for image reads,
 //! driven by a [`ClipboardService`] thread. Copies are fire-and-forget; reads answer on a channel.
 
 use std::process::{Command, Stdio};
@@ -35,9 +36,12 @@ pub trait Clipboard: Send {
     }
 }
 
-/// The desktop clipboard through arboard; images through `wl-paste` or `xclip`.
+/// The desktop clipboard through arboard; images through `wl-paste` or `xclip` (PowerShell under WSL), else arboard.
 pub struct SystemClipboard {
     inner: Option<arboard::Clipboard>,
+    /// Whether an image read may fall back to the desktop clipboard (arboard); off for [`SystemClipboard::with_env`]
+    /// until [`SystemClipboard::with_native_images`].
+    native_images: bool,
     /// The PATH clipboard tools are looked up on (the injected environment's; `None`: no tool runs).
     path: Option<String>,
     /// The environment the copy decisions read (`DISPLAY`, `SSH_CONNECTION`, ...).
@@ -45,9 +49,15 @@ pub struct SystemClipboard {
 }
 
 impl SystemClipboard {
-    /// The process environment's clipboard (tools on its PATH).
+    /// The process environment's clipboard (tools on its PATH, native image reads on).
     pub fn new() -> Self {
-        Self::with_env(std::env::var("PATH").ok(), std::env::vars().collect())
+        Self::with_env(std::env::var("PATH").ok(), std::env::vars().collect()).with_native_images()
+    }
+
+    /// Let image reads use the desktop clipboard: the only reader on macOS and Windows, the last on Linux.
+    pub fn with_native_images(mut self) -> Self {
+        self.native_images = true;
+        self
     }
 
     /// A clipboard whose tools come from `path` and whose decisions read `vars`. The desktop clipboard connection
@@ -55,6 +65,7 @@ impl SystemClipboard {
     pub fn with_env(path: Option<String>, vars: Vec<(String, String)>) -> Self {
         Self {
             inner: None,
+            native_images: false,
             path,
             vars,
         }
@@ -72,6 +83,17 @@ impl Default for SystemClipboard {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// A fresh `pi-wsl-clip-<id>.png` path in the temp dir (`readClipboardImageViaPowerShell`).
+fn wsl_temp_file() -> std::path::PathBuf {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    std::env::temp_dir().join(format!("pi-wsl-clip-{}-{nanos}-{n}.png", std::process::id()))
 }
 
 /// Run a clipboard tool found on `path`: its stdout when it exited 0, even empty (`runClipboardCommand`).
@@ -117,14 +139,49 @@ impl Clipboard for SystemClipboard {
         }
     }
 
-    /// `readClipboardImage` (crate::clipboard_image): `wl-paste` in a Wayland session or WSL, then `xclip`.
+    /// `readClipboardImage` (crate::clipboard_image): on Linux `wl-paste` in a Wayland session or WSL, then
+    /// `xclip`, then PowerShell under WSL, then arboard; elsewhere arboard.
     fn get_image(&mut self) -> Result<ClipboardImage, String> {
+        use crate::clipboard_image::{ImageRead, ImageSources};
         let path = self.path.clone();
-        let vars = &self.vars;
+        let vars = self.vars.clone();
         let var = |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
         let proc_version = std::fs::read_to_string("/proc/version").ok();
         let mut run = |program: &str, args: &[&str]| tool_run(path.as_deref(), program, args);
-        match crate::clipboard_image::read_clipboard_image(&var, proc_version.as_deref(), &mut run) {
+        let native_images = self.native_images;
+        let mut native = || {
+            if !native_images {
+                return ImageRead::Failed;
+            }
+            let Ok(board) = self.board() else {
+                return ImageRead::Failed;
+            };
+            match board.get_image() {
+                Ok(image) => match crate::clipboard_image::rgba_to_png(
+                    image.width as u32,
+                    image.height as u32,
+                    image.bytes.into_owned(),
+                ) {
+                    Some(bytes) if !bytes.is_empty() => ImageRead::Image {
+                        bytes,
+                        mime_type: "image/png".to_string(),
+                    },
+                    _ => ImageRead::NoImage,
+                },
+                Err(arboard::Error::ContentNotAvailable) => ImageRead::NoImage,
+                Err(_) => ImageRead::Failed,
+            }
+        };
+        let temp_file = wsl_temp_file;
+        let sources = ImageSources {
+            platform: crate::clipboard_copy::platform(),
+            var: &var,
+            proc_version: proc_version.as_deref(),
+            run: &mut run,
+            native: &mut native,
+            temp_file: &temp_file,
+        };
+        match crate::clipboard_image::read_clipboard_image(sources) {
             crate::clipboard_image::ImageRead::Image { bytes, mime_type } => Ok(ClipboardImage { bytes, mime_type }),
             _ => Err("no image on the clipboard".to_string()),
         }

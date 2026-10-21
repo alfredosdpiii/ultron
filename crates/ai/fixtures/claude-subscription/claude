@@ -1,0 +1,4 @@
+#!/bin/sh
+# The fake `claude` (claude.py beside this file) as one executable path, for ULTRON_CLAUDE_CODE_BIN and
+# ULTRON_CLAUDE_COMMAND, which name a binary rather than an argv. Never the real CLI.
+exec "${ULTRON_PYTHON:-/usr/bin/python3}" -I "$(dirname "$0")/claude.py" "$@"

@@ -231,9 +231,13 @@ fn resolve_target(target: &str, root: &Path, cwd: &Path, agent_dir: &Path) -> Re
     ))
 }
 
-fn report_of(path: &Path) -> Result<(Value, bool), LogError> {
+/// A session's report, with the costs of `subscription` providers (a subscription login) as notional.
+fn report_of(path: &Path, subscription: &[String]) -> Result<(Value, bool), LogError> {
     let log = read_session_log(path)?;
-    Ok((report::build_session_report(&log), report::session_is_empty(&log)))
+    Ok((
+        report::build_session_report_with(&log, subscription),
+        report::session_is_empty(&log),
+    ))
 }
 
 /// Handle `usage ...`; returns None when `args` is not a usage command, else the exit code.
@@ -284,6 +288,8 @@ fn command(rest: &[String], env: &Env, lines: &mut Vec<String>) -> Result<(), Fa
     };
     let cwd = env.cwd.display().to_string();
     let error = |e: LogError| Failure::Error(e.message().to_string());
+    // Costs of providers this runtime reaches through a subscription login are notional, as in `/usage`.
+    let subscription = session_core::lane::subscription_providers(env);
     if let Some(last) = options.last {
         let mut reports = Vec::new();
         let mut skipped = 0;
@@ -295,7 +301,7 @@ fn command(rest: &[String], env: &Env, lines: &mut Vec<String>) -> Result<(), Fa
                 if options.here && read_session_header(&file.path)?.cwd != cwd {
                     return Ok(None);
                 }
-                report_of(&file.path).map(Some)
+                report_of(&file.path, &subscription).map(Some)
             })();
             match outcome {
                 Ok(None) | Err(LogError::Session(_)) => {}
@@ -364,7 +370,7 @@ fn command(rest: &[String], env: &Env, lines: &mut Vec<String>) -> Result<(), Fa
             })?
         }
     };
-    let (report, _) = report_of(&path).map_err(error)?;
+    let (report, _) = report_of(&path, &subscription).map_err(error)?;
     if options.json {
         lines.push(config::json::stringify_pretty(&report));
     } else {
