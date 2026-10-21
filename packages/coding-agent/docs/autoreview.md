@@ -142,12 +142,19 @@ is reviewed for what differs from them; their own lines were reviewed where they
 - into a branch other than the repository's default one, the merged pull requests of another base branch that its
   title or description names (`#N`).
 
-A changed line that a source changes the same way, in the same file, is left out of what the passes read. Conflict
-resolutions, adaptations and new code are read with three lines of context; inline comments can still go on any
-line of the pull request. A source that the pull request does not mostly carry (under half of its added lines) is
+A changed line that a source changes the same way, in the same file, is left out of what the passes read, when the
+file was the same where the source started as it is at this pull request's base: the source was reviewed against
+the code it now lands in. A file that differs there (the target branch has its own version) is read in full.
+Conflict resolutions, adaptations and new code are read with three lines of context; inline comments can still go
+on any line of the pull request. A source that the pull request does not mostly carry (under half of its added lines) is
 ignored. The summary opens with the sources and the lines that matched them, and lists the files where lines a source
 adds are not in the head, for the author to confirm they were left out on purpose. Each review record has the same
 under `promotion`.
+
+When every changed line is carried, nothing is left to read. The review is then approved if every source's pull
+request was approved (at least one reviewer's latest verdict approves it and none asks for changes); a source
+named by a commit is found through the pull request that merged that commit. Otherwise the review says which
+sources were not approved and does not approve.
 
 Pull requests of 10,000 changed lines or more (added plus removed, as GitHub counts them) leave one review slot to
 the rest: with `autoreview.concurrency` 3, at most two of them run at once.
@@ -774,13 +781,28 @@ for each file (by git blob, so a later commit reads only what changed), the cons
   migration is `migration.sql`, and the one that matters next to a new append-only table is the other migration
   with a refusing `BEFORE UPDATE` trigger.
 - Investigators may ask `review_notes` (what reviewers said about a file in earlier pull requests, and whether it
-  was addressed) and `like_notes` (addressed review comments on the files most like it). They are lookups, never
-  prompt text: the investigator asks when it wants them.
+  was addressed) and `rules_for` (the rules for a file: below). They are lookups, never prompt text: the
+  investigator asks when it wants them.
 
 The notes are the review threads of the repository's closed pull requests, by every reviewer (people and bots):
-recorded when a reviewed pull request closes, and, the first time a repository is indexed, from its 50 most
-recently closed pull requests. A thread is *addressed* when it was resolved or a later commit changed its lines.
+recorded when a reviewed pull request closes, and, the first time a repository is indexed (and once after an
+upgrade of the store), from its 50 most recently closed pull requests. A thread is *addressed* when it was resolved. One that only a later commit changed
+(GitHub's "outdated") is not: the change may have ignored the comment as well as fixed it.
 `autoreview.learn: false` turns the notes off with the rest of the learning.
+
+### Rules: how the reviewer learns from what people catch
+
+A person's addressed comment is a *rule*: someone asked for a change and it was made. Comments by bots and by the
+reviewing accounts never are; the reviewer learns from people, never from its own text. A rule is a *miss* when
+this reviewer had reviewed that pull request and raised nothing within 10 lines of it.
+
+`rules_for(path)` serves the rules on a file and on the files most like it, each with an id (`R<n>`). An
+investigator lists the ids that led to a finding in its `rules`; ids it was not served are dropped. When the
+finding's fate is known (fixed, or rejected: see "Learning from the fate of findings"), each rule it cited is
+credited once. Rules are ranked by credit, the share of their findings that were accepted (Laplace-smoothed, so a
+new rule starts at one half), plus one half for a miss. A rule rejected three times or more and accepted less than
+a quarter of the time is no longer served. None of this calls a model or runs an evaluation: the credit comes from
+what happens to the findings on GitHub.
 
 ## Run it as a service
 

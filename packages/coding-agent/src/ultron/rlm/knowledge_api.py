@@ -19,8 +19,15 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Any
 
-#: The store schema this reader understands (`knowledge::SCHEMA_VERSION`): 2 added the review notes.
-SCHEMA_VERSION = 2
+#: The store schema this reader understands (`knowledge::SCHEMA_VERSION`): 2 added the review notes, 3 the rules
+#: (who wrote a note, whether this reviewer missed it, the fates of the findings that cited it).
+SCHEMA_VERSION = 3
+
+#: A rule rejected at least this often, and accepted less than this share of the time, is no longer served.
+DISCREDIT_REJECTED = 3
+DISCREDIT_SHARE = 0.25
+#: What a miss adds to a rule's rank: a person found there what this reviewer did not.
+MISS_BONUS = 0.5
 
 #: A construct shared by more than this share of a language's files says nothing about similarity.
 COMMON_SHARE = 0.5
@@ -36,8 +43,31 @@ class Note:
     body: str
     url: str
     at: str
-    #: `addressed` (its thread was resolved, or a later commit changed the lines) or `open`.
+    #: `addressed` (its thread was resolved), `outdated` (a later commit changed the lines, unresolved) or `open`.
     state: str
+
+
+@dataclass
+class Rule:
+    """A person's addressed review comment, as a rule the investigators can cite (`R<id>`), with its credit."""
+    id: int
+    note: Note
+    #: The fates of the findings that cited it.
+    accepted: int
+    rejected: int
+    #: This reviewer reviewed that pull request and raised nothing there.
+    missed: bool
+    #: The file it was left on, when it is not the file asked about: how much that file is like it.
+    alike: "Similar | None" = None
+
+    @property
+    def credit(self) -> float:
+        """Its rank: the share of citing findings accepted (Laplace), more for a miss."""
+        return (self.accepted + 1) / (self.accepted + self.rejected + 2) + (MISS_BONUS if self.missed else 0.0)
+
+    @property
+    def discredited(self) -> bool:
+        return self.rejected >= DISCREDIT_REJECTED and self.accepted < DISCREDIT_SHARE * (self.accepted + self.rejected)
 
 
 @dataclass
@@ -170,6 +200,40 @@ class Knowledge:
         out.sort(key=lambda pair: pair[0].at, reverse=True)
         out.sort(key=lambda pair: -pair[1].score)
         return out[:limit]
+
+    def has_rules(self) -> bool:
+        """Whether the store holds a rule of this repository: a person's addressed comment."""
+        try:
+            return self._conn.execute("SELECT 1 FROM notes WHERE repo = ? AND human = 1 AND state = 'addressed' LIMIT 1",
+                                      (self._repo,)).fetchone() is not None
+        except sqlite3.Error:
+            return False
+
+    def rules_for(self, path: str, *, limit: int = 8, exclude: set[str] | None = None) -> list[Rule]:
+        """The rules for `path`: people's addressed comments on it and on the files most like it (`similar`), the
+        discredited left out; the best credited first, then this file's, the closest file's, the newest."""
+        rules = self._rules(path, None)
+        for alike in self.similar(path, limit=6, exclude=exclude):
+            rules += self._rules(alike.path, alike)
+        rules = [rule for rule in rules if not rule.discredited]
+        rules.sort(key=lambda rule: rule.note.at, reverse=True)
+        rules.sort(key=lambda rule: -(rule.alike.score if rule.alike else math.inf))
+        rules.sort(key=lambda rule: -rule.credit)
+        return rules[:limit]
+
+    def _rules(self, path: str, alike: "Similar | None") -> list[Rule]:
+        try:
+            rows = self._conn.execute(
+                "SELECT n.id, n.pull, n.path, n.line, n.author, n.body, n.url, n.at, n.state, n.accepted, n.rejected,"
+                " n.missed FROM notes n WHERE n.repo = ? AND n.path = ? AND n.human = 1 AND n.state = 'addressed'"
+                " ORDER BY n.at DESC LIMIT 20",
+                (self._repo, path),
+            ).fetchall()
+        except sqlite3.Error:
+            return []
+        return [Rule(int(rid), Note(int(pull), str(at_path), None if line is None else int(line), str(author), str(body),
+                                    str(url), str(at), str(state)), int(accepted), int(rejected), bool(missed), alike)
+                for rid, pull, at_path, line, author, body, url, at, state, accepted, rejected, missed in rows]
 
     def _notes(self, where: str, args: tuple[Any, ...], limit: int) -> list[Note]:
         try:

@@ -427,7 +427,7 @@ pub struct GitHub {
 const THREADS_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{id isResolved comments(first:1){totalCount nodes{databaseId reactionGroups{content reactors{totalCount}}}}}}}}}";
 /// The review threads as notes for the knowledge graph: who said what where, and whether it was addressed. Its own
 /// query: [`THREADS_QUERY`] is the TypeScript reviewer's, replayed from fixtures.
-const NOTES_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path line originalLine comments(first:1){nodes{author{login} body url createdAt}}}}}}}";
+const NOTES_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path line originalLine comments(first:1){nodes{author{__typename login} body url createdAt}}}}}}}";
 const RESOLVE_MUTATION: &str =
     "mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}";
 
@@ -979,8 +979,8 @@ impl GitHub {
         Ok(out)
     }
 
-    /// The review threads of a pull request as knowledge-graph notes: the first comment of each, with `addressed`
-    /// when the thread was resolved or a later commit changed its lines (GitHub's "outdated").
+    /// The review threads of a pull request as knowledge-graph notes: the first comment of each, `addressed` when
+    /// the thread was resolved, `outdated` when only a later commit changed its lines, else `open`.
     pub fn review_notes(&self, r: &PullRef) -> Result<Vec<knowledge::Note>, Error> {
         let mut out = Vec::new();
         let mut after = Value::Null;
@@ -1026,12 +1026,22 @@ impl GitHub {
                     body: text(first.get("body")),
                     url,
                     at: text(first.get("createdAt")),
-                    state: if flag("isResolved") || flag("isOutdated") {
+                    // Resolved: someone said it was dealt with. Outdated alone: the lines changed, which may
+                    // ignore the comment as well as fix it, so it is no rule and no miss.
+                    state: if flag("isResolved") {
                         "addressed"
+                    } else if flag("isOutdated") {
+                        "outdated"
                     } else {
                         "open"
                     }
                     .into(),
+                    // A person's account (`User`), not a GitHub App (`Bot`); the reviewer marks its own accounts.
+                    human: first
+                        .get("author")
+                        .and_then(|author| author.get("__typename"))
+                        .is_some_and(|kind| kind == "User"),
+                    missed: false,
                 });
             }
             let page = threads.get("pageInfo");
@@ -1054,6 +1064,16 @@ impl GitHub {
         )?;
         Ok(pulls
             .iter()
+            .filter_map(|pull| pull.get("number").and_then(Value::as_u64))
+            .collect())
+    }
+
+    /// The merged pull requests that brought commit `sha` into a branch.
+    pub fn commit_pulls(&self, owner: &str, repo: &str, sha: &str) -> Result<Vec<u64>, Error> {
+        let pulls = self.list(&format!("repos/{owner}/{repo}/commits/{sha}/pulls"), 1)?;
+        Ok(pulls
+            .iter()
+            .filter(|pull| pull.get("merged_at").is_some_and(|at| !at.is_null()))
             .filter_map(|pull| pull.get("number").and_then(Value::as_u64))
             .collect())
     }

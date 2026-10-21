@@ -9,7 +9,7 @@ use crate::extract::{Construct, Extracted, Symbol};
 
 /// The schema the kernel reader (`rlm/knowledge_api.py`) is written against. Bump it with every change to a table the
 /// reader uses, and teach the reader the new version in the same change.
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 3;
 
 /// Characters of a note's body kept.
 pub const NOTE_CHARS: usize = 2000;
@@ -42,10 +42,16 @@ CREATE TABLE IF NOT EXISTS entries (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS entries_blob ON entries (blob);
 -- Schema 2. Review comments left on the repository's pull requests, by anyone: what reviewers asked of a file,
--- and whether it was addressed (`addressed`: the thread was resolved, or a later commit changed its lines; `open`).
+-- and whether it was addressed (`addressed`: the thread was resolved; `outdated`: only a later commit changed its
+-- lines; `open`).
+-- Schema 3. A human's addressed comment is a rule the investigators can ask for (`rules_for`): `human` (not a bot,
+-- not one of the reviewing accounts), `missed` (this reviewer reviewed the pull request and raised nothing there),
+-- and the fates of the findings that cited it (`accepted`, `rejected`), its credit.
 CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY, repo INTEGER NOT NULL, pull INTEGER NOT NULL, path TEXT NOT NULL, line INTEGER,
     author TEXT NOT NULL, body TEXT NOT NULL, url TEXT NOT NULL, at TEXT NOT NULL, state TEXT NOT NULL,
+    human INTEGER NOT NULL DEFAULT 1, missed INTEGER NOT NULL DEFAULT 0,
+    accepted INTEGER NOT NULL DEFAULT 0, rejected INTEGER NOT NULL DEFAULT 0,
     UNIQUE (repo, url)
 );
 CREATE INDEX IF NOT EXISTS notes_path ON notes (repo, path);
@@ -63,9 +69,21 @@ pub struct Note {
     pub url: String,
     /// ISO time the comment was made.
     pub at: String,
-    /// `addressed` or `open`.
+    /// `addressed` (resolved), `outdated` (a later commit changed its lines, unresolved) or `open`.
     pub state: String,
+    /// Written by a person: not a bot, not a reviewing account. Only a person's addressed comment is a rule.
+    pub human: bool,
+    /// This reviewer reviewed the pull request and raised nothing at the comment's place: a miss to learn from.
+    pub missed: bool,
 }
+
+/// The columns schema 3 added to `notes`, for a store of schema 2.
+const NOTE_COLUMNS_3: [(&str, &str); 4] = [
+    ("human", "INTEGER NOT NULL DEFAULT 1"),
+    ("missed", "INTEGER NOT NULL DEFAULT 0"),
+    ("accepted", "INTEGER NOT NULL DEFAULT 0"),
+    ("rejected", "INTEGER NOT NULL DEFAULT 0"),
+];
 
 #[derive(Debug)]
 pub struct Error(pub String);
@@ -128,8 +146,22 @@ impl Store {
                 )?;
             }
             Some(Ok(SCHEMA_VERSION)) => {}
-            // Schema 1 had no notes; the table was created above.
-            Some(Ok(1)) => {
+            // Schema 1 had no notes (the table was created above); schema 2's lack the rule columns.
+            Some(Ok(1 | 2)) => {
+                let mut statement = self.conn.prepare("SELECT name FROM pragma_table_info('notes')")?;
+                let have: Vec<String> = statement.query_map([], |row| row.get(0))?.collect::<Result<_, _>>()?;
+                for (column, definition) in NOTE_COLUMNS_3 {
+                    if !have.iter().any(|name| name == column) {
+                        self.conn
+                            .execute_batch(&format!("ALTER TABLE notes ADD COLUMN {column} {definition}"))?;
+                    }
+                }
+                // Schema 2 counted an outdated thread as addressed: which of its addressed notes were resolved is
+                // unknown, so none is a rule until the backfill, run again, reads the recent ones' threads.
+                self.conn
+                    .execute("UPDATE notes SET state = 'outdated' WHERE state = 'addressed'", [])?;
+                self.conn
+                    .execute("DELETE FROM meta WHERE key LIKE 'notes_backfilled:%'", [])?;
                 self.conn.execute(
                     "UPDATE meta SET value = ?1 WHERE key = 'schema_version'",
                     params![SCHEMA_VERSION.to_string()],
@@ -262,11 +294,13 @@ impl Store {
         let mut added = 0;
         {
             let mut known = tx.prepare_cached("SELECT 1 FROM notes WHERE repo = ?1 AND url = ?2")?;
+            // A miss stays one: the pull request's findings do not change once it closed.
             let mut row = tx.prepare_cached(
-                "INSERT INTO notes (repo, pull, path, line, author, body, url, at, state)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                "INSERT INTO notes (repo, pull, path, line, author, body, url, at, state, human, missed)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
                  ON CONFLICT (repo, url) DO UPDATE SET
-                     path = excluded.path, line = excluded.line, body = excluded.body, state = excluded.state",
+                     path = excluded.path, line = excluded.line, body = excluded.body, state = excluded.state,
+                     human = excluded.human, missed = MAX(missed, excluded.missed)",
             )?;
             for note in notes {
                 if !known.exists(params![repo_id, note.url])? {
@@ -282,12 +316,75 @@ impl Store {
                     body,
                     note.url,
                     note.at,
-                    note.state
+                    note.state,
+                    note.human,
+                    note.missed
                 ])?;
             }
         }
         tx.commit()?;
         Ok(added)
+    }
+
+    /// Credit to rules (notes, by id) from the fates of the findings that cited them: `true` accepted. Ids of
+    /// another repository are passed over. Returns how many rules were credited.
+    pub fn credit_rules(&mut self, repo: &str, credits: &[(i64, bool)]) -> Result<usize, Error> {
+        let tx = self.conn.transaction()?;
+        let mut credited = 0;
+        {
+            let mut row = tx.prepare_cached(
+                "UPDATE notes SET accepted = accepted + ?3, rejected = rejected + ?4
+                 WHERE id = ?1 AND repo = (SELECT id FROM repos WHERE name = ?2)",
+            )?;
+            for (id, accepted) in credits {
+                let (yes, no) = if *accepted { (1, 0) } else { (0, 1) };
+                credited += row.execute(params![id, repo, yes, no])?;
+            }
+        }
+        tx.commit()?;
+        Ok(credited)
+    }
+
+    /// Marks the comments of `logins` (the reviewing accounts) and of GitHub Apps (`...[bot]`) as not a person's:
+    /// the reviewer learns from people, never from its own text. Returns how many notes changed.
+    pub fn mark_not_human(&self, repo: &str, logins: &[String]) -> Result<usize, Error> {
+        let mut changed = self.conn.execute(
+            "UPDATE notes SET human = 0
+             WHERE human = 1 AND author LIKE '%[bot]' AND repo = (SELECT id FROM repos WHERE name = ?1)",
+            params![repo],
+        )?;
+        for login in logins {
+            changed += self.conn.execute(
+                "UPDATE notes SET human = 0
+                 WHERE human = 1 AND lower(author) = lower(?2) AND repo = (SELECT id FROM repos WHERE name = ?1)",
+                params![repo, login],
+            )?;
+        }
+        Ok(changed)
+    }
+
+    /// A rule's credit, for tests and the CLI: (accepted, rejected, missed, human).
+    pub fn rule_credit(&self, id: i64) -> Result<Option<(i64, i64, bool, bool)>, Error> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT accepted, rejected, missed, human FROM notes WHERE id = ?1",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .optional()?)
+    }
+
+    /// The id of the note at `url` in `repo`.
+    pub fn note_id(&self, repo: &str, url: &str) -> Result<Option<i64>, Error> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT n.id FROM notes n JOIN repos r ON r.id = n.repo WHERE r.name = ?1 AND n.url = ?2",
+                params![repo, url],
+                |row| row.get(0),
+            )
+            .optional()?)
     }
 
     /// A value the host keeps beside the graph (`meta`), such as when a repository's notes were backfilled.

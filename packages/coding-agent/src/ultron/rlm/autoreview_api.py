@@ -1182,6 +1182,7 @@ def group_root_causes(confirmed: list[dict[str, Any]],
         for name in finding.get("reviewers") or []:
             if name not in twin["reviewers"]:
                 twin["reviewers"].append(name)
+        deep.merge_rules(twin, finding)
     return kept, merged
 
 
@@ -1265,6 +1266,8 @@ def _public(finding: dict[str, Any], verification: str) -> dict[str, Any]:
         out["shape"] = finding["shape"]
     if finding.get("lesson"):
         out["lesson"] = finding["lesson"]
+    if finding.get("rules"):
+        out["rules"] = list(finding["rules"])
     return out
 
 
@@ -1346,8 +1349,15 @@ async def run(rlm: Any, spec: dict[str, Any], *, runner: Runner | None = None,
     chunks, members = pack_chunks(file_chunks, [item.path for item in scope.files], single=changed_lines < SINGLE_SLICE_LINES)
     reviewers = merged_reviewers(reviewers, changed_lines)
     not_checked += [f"{path}: {reason}" for path, reason in skipped]
-    if not chunks:
+    unapproved = [str(item) for item in spec.get("unapprovedSources") or []]
+    if not chunks and unapproved:
+        # Every changed line was carried from pull requests that were not approved: as unapproved as they are.
+        incomplete.append(f"every changed line was carried from {', '.join(unapproved)}, which "
+                          f"{'was' if len(unapproved) == 1 else 'were'} not approved")
+    elif not chunks and not spec.get("carried"):
         # Nothing was read (an empty diff, or only binary, generated and deleted files): that is not an approval.
+        # A cherry-pick whose every changed line was reviewed in the approved pull requests it carries
+        # (`carried`) is.
         incomplete.append("the diff has no reviewable changes" if scope.files else "the diff is empty")
     scope_ms = int((clock() - started) * 1000)
     #: Where the time goes, by stage (milliseconds), for the service's status.

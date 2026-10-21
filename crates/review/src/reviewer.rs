@@ -111,8 +111,52 @@ pub fn index_knowledge(deps: &ReviewerDeps, repo: &str, work_dir: &str, rev: &st
     }
 }
 
+/// A person's addressed comment within this many lines of no finding of ours is a miss.
+pub const MISS_WINDOW: i64 = 10;
+
+/// The reviewing accounts' logins this state knows (pull keys are `<login>@<pull>`).
+fn our_logins(state: &AutoreviewState) -> Vec<String> {
+    let mut logins: Vec<String> = state
+        .pulls
+        .keys()
+        .filter_map(|key| key.split_once('@').map(|(login, _)| login.to_lowercase()))
+        .chain(
+            state
+                .accounts
+                .keys()
+                .filter_map(|key| key.rsplit('/').next().map(str::to_lowercase)),
+        )
+        .collect();
+    logins.sort();
+    logins.dedup();
+    logins
+}
+
+/// Sets what makes a note a rule (`knowledge::Note`): written by a person (not a bot, not one of our accounts) and,
+/// where this reviewer reviewed the pull request, whether it raised nothing at that place (a miss).
+pub fn classify_notes(notes: &mut [knowledge::Note], state: &AutoreviewState, r: &PullRef) {
+    let logins = our_logins(state);
+    let pull = pull_key(r);
+    let ours: Vec<&PullState> = state
+        .pulls
+        .iter()
+        .filter(|(key, _)| key.split_once('@').is_some_and(|(_, of)| of == pull))
+        .map(|(_, saved)| saved)
+        .collect();
+    let reviewed = ours.iter().any(|saved| saved.last_verdict.is_some());
+    for note in notes.iter_mut() {
+        note.human = note.human && !logins.contains(&note.author.to_lowercase());
+        note.missed = reviewed
+            && note.human
+            && note.state == "addressed"
+            && !ours.iter().flat_map(|saved| &saved.findings).any(|finding| {
+                finding.file == note.path && note.line.is_none_or(|line| (finding.line - line).abs() <= MISS_WINDOW)
+            });
+    }
+}
+
 /// Records the review threads of a closed pull request, by every reviewer, as notes in the knowledge graph: the
-/// investigators' `review_notes` and `like_notes` lookups read them. Never fails a review: an error is logged.
+/// investigators' `review_notes` and `rules_for` lookups read them. Never fails a review: an error is logged.
 pub fn record_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str) {
     // Only for a repository the graph indexes: the lookups need its tree.
     let db = std::path::Path::new(&deps.paths.knowledge);
@@ -123,20 +167,25 @@ pub fn record_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &st
     if !indexed {
         return;
     }
+    let state = deps.store.read();
     let recorded = github
         .review_notes(r)
         .map_err(|error| error.to_string())
-        .and_then(|notes| {
+        .and_then(|mut notes| {
+            classify_notes(&mut notes, &state, r);
             let mut store = knowledge::Store::open(std::path::Path::new(&deps.paths.knowledge))
                 .map_err(|error| error.to_string())?;
             let added = store
                 .record_notes(&repo_key(r), &notes)
                 .map_err(|error| error.to_string())?;
-            Ok((notes.len(), added))
+            let _ = store.mark_not_human(&repo_key(r), &our_logins(&state));
+            Ok((notes.len(), added, notes.iter().filter(|note| note.missed).count()))
         });
     match recorded {
-        Ok((0, _)) => {}
-        Ok((notes, added)) => (deps.log)(&format!("{name}: recorded {notes} review notes ({added} new)")),
+        Ok((0, _, _)) => {}
+        Ok((notes, added, missed)) => (deps.log)(&format!(
+            "{name}: recorded {notes} review notes ({added} new, {missed} where this review raised nothing)"
+        )),
         Err(error) => (deps.log)(&format!("{name}: the review notes were not recorded: {error}")),
     }
 }
@@ -145,16 +194,17 @@ pub fn record_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &st
 pub const BACKFILL_PULLS: usize = 50;
 
 /// A repository indexed for the first time has no notes: those of its most recently closed pull requests are read
-/// once, so the lookups have history from the first review on. Never fails a review: an error is logged.
+/// once (again after a schema migration), so the lookups have history from the first review on. Never fails a review: an error is logged.
 fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str) {
     let db = std::path::Path::new(&deps.paths.knowledge);
     let repo = repo_key(r);
     let Ok(mut store) = knowledge::Store::open(db) else {
         return;
     };
-    // Once per repository: one whose pull requests have no review threads stays without notes.
+    // Once per repository and schema (a migration clears the marker): one whose pull requests have no review threads
+    // stays without notes. Notes recorded since are updated in place.
     let marker = format!("notes_backfilled:{repo}");
-    if store.meta(&marker).map_or(true, |done| done.is_some()) || store.note_count(&repo).map_or(true, |n| n > 0) {
+    if store.meta(&marker).map_or(true, |done| done.is_some()) {
         return;
     }
     let pulls = match github.closed_pulls(&r.owner, &r.repo, 1) {
@@ -165,13 +215,16 @@ fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str)
         }
     };
     let (mut read, mut added) = (0, 0);
+    let state = deps.store.read();
     for number in pulls.into_iter().take(BACKFILL_PULLS) {
         let pull = PullRef::new(&r.host, &r.owner, &r.repo, number);
         match github
             .review_notes(&pull)
             .map_err(|error| error.to_string())
-            .and_then(|notes| store.record_notes(&repo, &notes).map_err(|error| error.to_string()))
-        {
+            .and_then(|mut notes| {
+                classify_notes(&mut notes, &state, &pull);
+                store.record_notes(&repo, &notes).map_err(|error| error.to_string())
+            }) {
             Ok(new) => {
                 read += 1;
                 added += new;
@@ -188,6 +241,7 @@ fn backfill_notes(deps: &ReviewerDeps, r: &PullRef, github: &GitHub, name: &str)
     }
     if read > 0 {
         let _ = store.set_meta(&marker, &iso_from_ms((deps.now)()));
+        let _ = store.mark_not_human(&repo, &our_logins(&state));
     }
     (deps.log)(&format!(
         "{name}: backfilled {added} review notes from {read} closed pull requests"
@@ -224,23 +278,76 @@ fn repo_ledger(state: &AutoreviewState, repo: &str) -> Vec<Fate> {
     without_unposted_merges(ledger, &unposted_findings(state))
 }
 
-/// Record what became of posted findings: into the state's ledger and, when configured, into the lesson memory.
-/// Never fails a review: an error is logged.
-fn learn(deps: &ReviewerDeps, r: &PullRef, fates: &[Fate], name: &str) -> Result<(), Error> {
+/// The rules (knowledge notes, by id) a posted finding cited (`rules`, from the engine).
+pub fn finding_rules(finding: &PostedFinding) -> Vec<i64> {
+    match finding.extra.get("rules") {
+        Some(Value::Array(ids)) => ids.iter().filter_map(Value::as_i64).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Credit to the rules the findings of `fates` cited: each fate once (those already in the ledger were credited
+/// when they came in). Returns how many rules were credited.
+fn credit_rules(deps: &ReviewerDeps, repo: &str, fates: &[&Fate], findings: &[PostedFinding]) -> usize {
+    let credits: Vec<(i64, bool)> = fates
+        .iter()
+        .filter_map(|fate| {
+            findings
+                .iter()
+                .find(|finding| finding.id == fate.id)
+                .map(|finding| (fate, finding))
+        })
+        .flat_map(|(fate, finding)| {
+            finding_rules(finding)
+                .into_iter()
+                .map(move |id| (id, fate.fate == FateKind::Accepted))
+        })
+        .collect();
+    let db = std::path::Path::new(&deps.paths.knowledge);
+    if credits.is_empty() || !db.exists() {
+        return 0;
+    }
+    knowledge::Store::open(db)
+        .and_then(|mut store| store.credit_rules(repo, &credits))
+        .unwrap_or(0)
+}
+
+/// Record what became of posted findings: into the state's ledger and, when configured, into the lesson memory,
+/// and as credit to the rules they cited. Never fails a review: an error is logged.
+fn learn(
+    deps: &ReviewerDeps,
+    r: &PullRef,
+    fates: &[Fate],
+    findings: &[PostedFinding],
+    name: &str,
+) -> Result<(), Error> {
     if fates.is_empty() || !deps.config.learn {
         return Ok(());
     }
     let repo = repo_key(r);
     let now = iso_from_ms((deps.now)());
-    let lessons = deps.store.update(|state| {
-        let merged = merge_fates(&repo_ledger(state, &repo), fates);
+    let (lessons, new) = deps.store.update(|state| {
+        let before = repo_ledger(state, &repo);
+        let known: HashSet<String> = before.iter().map(|fate| format!("{}:{}", fate.pull, fate.id)).collect();
+        let new: Vec<Fate> = fates
+            .iter()
+            .filter(|fate| !known.contains(&format!("{}:{}", fate.pull, fate.id)))
+            .cloned()
+            .collect();
+        let merged = merge_fates(&before, fates);
         let lessons = lessons_for(&merged, &now);
         state
             .lessons
             .get_or_insert_with(Default::default)
             .insert(repo.clone(), merged);
-        lessons
+        (lessons, new)
     })?;
+    let credited = credit_rules(deps, &repo, &new.iter().collect::<Vec<_>>(), findings);
+    if credited > 0 {
+        (deps.log)(&format!(
+            "{name}: credited {credited} rules with the fates of the findings that cited them"
+        ));
+    }
     let accepted = fates.iter().filter(|fate| fate.fate == FateKind::Accepted).count();
     let lowered: Vec<String> = lessons
         .iter()
@@ -712,7 +819,13 @@ pub fn prepare_pull(deps: &ReviewerDeps, candidate: &Candidate, options: ReviewO
                         merged: pull.merged,
                         ..FateInput::default()
                     });
-                    learn(deps, r, &fates, &format!("{} as {}", pull_key(r), account.login))
+                    learn(
+                        deps,
+                        r,
+                        &fates,
+                        &saved.findings,
+                        &format!("{} as {}", pull_key(r), account.login),
+                    )
                 })();
                 if let Err(error) = learned {
                     (deps.log)(&format!("{}: the fates at close were not read: {error}", pull_key(r)));
@@ -950,6 +1063,48 @@ pub fn run_review(deps: &ReviewerDeps, prepared: &Prepared) -> Result<Outcome, E
     outcome
 }
 
+/// The carried sources (`labels`) whose pull request was not approved: none of its reviewers approved it, or one's
+/// latest verdict asks for changes, or it is not found. An entirely carried cherry-pick is approved only when this
+/// is empty: it was read where those were, and is as approved as they are.
+fn unapproved_sources(github: &GitHub, r: &PullRef, sources: &[PromotionSource], labels: &[String]) -> Vec<String> {
+    let approved = |source: &PromotionSource| {
+        let number = source.pull.or_else(|| {
+            github
+                .commit_pulls(&r.owner, &r.repo, &source.sha)
+                .ok()
+                .and_then(|pulls| pulls.into_iter().find(|number| *number != r.number))
+        });
+        let Some(reviews) = number.and_then(|n| github.reviews(&PullRef::new(&r.host, &r.owner, &r.repo, n)).ok())
+        else {
+            return false;
+        };
+        // Each reviewer's latest verdict; comments are no verdict.
+        let mut latest: HashMap<String, &str> = HashMap::new();
+        for review in &reviews {
+            if matches!(review.state.as_str(), "APPROVED" | "CHANGES_REQUESTED" | "DISMISSED") {
+                latest.insert(review.user.to_lowercase(), review.state.as_str());
+            }
+        }
+        latest.values().any(|state| *state == "APPROVED") && !latest.values().any(|state| *state == "CHANGES_REQUESTED")
+    };
+    let mut out: Vec<String> = sources
+        .iter()
+        .filter(|source| labels.contains(&source.label) && !approved(source))
+        .map(|source| source.label.clone())
+        .collect();
+    out.dedup();
+    out
+}
+
+/// Added and removed lines of a diff.
+fn changed_lines(diff: &str) -> usize {
+    diff.lines()
+        .filter(|line| {
+            (line.starts_with('+') && !line.starts_with("+++")) || (line.starts_with('-') && !line.starts_with("---"))
+        })
+        .count()
+}
+
 /// The merged pull requests this one carries to its base branch, as diffs (`promotion.rs`): the commits its
 /// `git cherry-pick -x` trailers name, and, into a branch other than the default one, the merged pull requests of
 /// another base branch that its title or description names. Empty for any other pull request.
@@ -957,14 +1112,14 @@ fn promotion_sources(github: &GitHub, r: &PullRef, pull: &PullRequest, checkout:
     let commits = checkout
         .commits(&checkout.merge_base, &pull.head_sha)
         .unwrap_or_default();
-    let mut wanted: Vec<(String, String)> = cherry_sources(&commits)
+    let mut wanted: Vec<(String, String, Option<u64>)> = cherry_sources(&commits)
         .into_iter()
         .map(|sha| {
             let subject = commits
                 .iter()
                 .find(|commit| commit.message.contains(&sha))
                 .map_or("", |commit| commit.subject.as_str());
-            (source_label(subject, &sha), sha)
+            (source_label(subject, &sha), sha, None)
         })
         .collect();
     if !pull.default_branch.is_empty() && pull.base_ref != pull.default_branch {
@@ -975,22 +1130,42 @@ fn promotion_sources(github: &GitHub, r: &PullRef, pull: &PullRequest, checkout:
             if let Some(sha) = other
                 .merge_commit_sha
                 .filter(|_| other.merged && other.base_ref != pull.base_ref)
-                && !wanted.iter().any(|(_, known)| *known == sha)
+                && !wanted.iter().any(|(_, known, _)| *known == sha)
             {
-                wanted.push((format!("#{number}"), sha));
+                wanted.push((format!("#{number}"), sha, Some(number)));
             }
         }
     }
     if wanted.is_empty() {
         return Vec::new();
     }
-    checkout.fetch_commits(&wanted.iter().map(|(_, sha)| sha.clone()).collect::<Vec<_>>());
+    checkout.fetch_commits(&wanted.iter().map(|(_, sha, _)| sha.clone()).collect::<Vec<_>>());
     wanted
         .into_iter()
-        .filter_map(|(label, sha)| {
-            let diff = checkout.diff(&format!("{sha}^1"), &sha).ok()?;
-            (!diff.is_empty()).then_some(PromotionSource { label, diff })
+        .filter_map(|(label, sha, number)| {
+            let parent = format!("{sha}^1");
+            let diff = checkout.diff(&parent, &sha).ok()?;
+            // Unknown context reads as different: the pull request's changes are read in full.
+            let context_differs = match checkout.changed_paths(&checkout.merge_base, &parent) {
+                Ok(paths) => paths.into_iter().collect(),
+                Err(_) => changes_paths(&diff),
+            };
+            (!diff.is_empty()).then_some(PromotionSource {
+                label,
+                sha,
+                pull: number,
+                diff,
+                context_differs,
+            })
         })
+        .collect()
+}
+
+/// The paths a diff touches (its `+++ b/` and `--- a/` lines).
+fn changes_paths(diff: &str) -> std::collections::HashSet<String> {
+    diff.lines()
+        .filter_map(|line| line.strip_prefix("+++ b/").or_else(|| line.strip_prefix("--- a/")))
+        .map(str::to_string)
         .collect()
 }
 
@@ -1097,25 +1272,22 @@ fn review_in(
     }
     // A cherry-pick or promotion: what matches the merged pull requests it carries was reviewed there.
     let mut promotion: Option<PromotionDelta> = None;
+    let mut promotion_inputs: Vec<PromotionSource> = Vec::new();
     if let Some(checkout) = checkout {
-        let sources = promotion_sources(&github, r, pull, checkout);
-        if !sources.is_empty() {
-            let delta = promotion_delta(&review_diff, &sources, &|path| head_lines(&checkout.work_dir, path));
+        promotion_inputs = promotion_sources(&github, r, pull, checkout);
+        if !promotion_inputs.is_empty() {
+            let delta = promotion_delta(&review_diff, &promotion_inputs, &|path| {
+                head_lines(&checkout.work_dir, path)
+            });
             if !delta.sources.is_empty() {
-                let changed = |diff: &str| {
-                    diff.lines()
-                        .filter(|line| {
-                            (line.starts_with('+') && !line.starts_with("+++"))
-                                || (line.starts_with('-') && !line.starts_with("---"))
-                        })
-                        .count()
-                };
                 (deps.log)(&format!(
-                    "{name}: carries {}: reading {} of {} changed lines ({} files carried over unchanged, {} with lines left out)",
+                    "{name}: carries {}: reading {} of {} changed lines ({} files carried over unchanged, {} read in full \
+                     for other code around them, {} with lines left out)",
                     delta.sources.join(", "),
-                    changed(&delta.diff),
-                    changed(&review_diff),
+                    changed_lines(&delta.diff),
+                    changed_lines(&review_diff),
                     delta.carried_files,
+                    delta.context_files,
                     delta.missing.len()
                 ));
                 review_diff = delta.diff.clone();
@@ -1193,6 +1365,20 @@ fn review_in(
             if deps.config.learn {
                 backfill_notes(deps, r, &github, &name);
             }
+        }
+    }
+    // Every changed line was reviewed in the pull requests it carries: an empty diff is a complete review, not one
+    // that read nothing, when those were approved.
+    if let Some(delta) = promotion.as_ref().filter(|delta| changed_lines(&delta.diff) == 0) {
+        let unapproved = unapproved_sources(&github, r, &promotion_inputs, &delta.sources);
+        if unapproved.is_empty() {
+            spec.insert("carried".into(), json!(true));
+        } else {
+            (deps.log)(&format!(
+                "{name}: carries only reviewed lines, but {} not approved: no approval",
+                unapproved.join(", ")
+            ));
+            spec.insert("unapprovedSources".into(), json!(unapproved));
         }
     }
     spec.insert("runTests".into(), json!(run_tests));
@@ -1287,7 +1473,9 @@ fn review_in(
                 sources: delta.sources.clone(),
                 carried_lines: delta.carried_lines,
                 carried_files: delta.carried_files,
+                context_files: delta.context_files,
                 missing: delta.missing.clone(),
+                entire: changed_lines(&delta.diff) == 0,
             }),
         },
     );
@@ -1317,6 +1505,14 @@ fn review_in(
             .get(index)
             .and_then(|f| f.get("kind"))
             .and_then(Value::as_str);
+        // The rules the finding cited: credited with its fate.
+        let mut extra = indexmap::IndexMap::new();
+        if let Some(Value::Array(ids)) = raw_findings.get(index).and_then(|f| f.get("rules"))
+            && ids.iter().all(Value::is_i64)
+            && !ids.is_empty()
+        {
+            extra.insert("rules".to_string(), Value::Array(ids.clone()));
+        }
         posted.push(PostedFinding {
             id: format!("{short_sha}-{}", index + 1),
             file: finding.file.clone(),
@@ -1330,7 +1526,7 @@ fn review_in(
             comment_id: None,
             thread_id: None,
             status: "open".into(),
-            extra: Default::default(),
+            extra,
         });
         posted.len() - 1
     };
@@ -1456,7 +1652,7 @@ fn review_in(
                         .collect::<HashSet<String>>(),
                     merged: false,
                 });
-                learn(deps, r, &fates, &name)
+                learn(deps, r, &fates, &earlier, &name)
             })();
             if let Err(error) = learned {
                 (deps.log)(&format!("{name}: the fates of earlier findings were not read: {error}"));
@@ -1493,7 +1689,8 @@ fn review_in(
             record.insert(
                 "promotion".into(),
                 json!({ "sources": delta.sources, "carriedLines": delta.carried_lines,
-                    "carriedFiles": delta.carried_files, "missing": delta.missing }),
+                    "carriedFiles": delta.carried_files, "contextFiles": delta.context_files,
+                    "missing": delta.missing }),
             );
         }
         let name_of = format!("{}-{}-{}-{short_sha}-{}", r.owner, r.repo, r.number, account.login);

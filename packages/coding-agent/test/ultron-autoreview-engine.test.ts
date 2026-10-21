@@ -1812,7 +1812,7 @@ emit({
 			"emit({name: p.deep_task(name, notes=True) for name in p.DEEP_LENSES})",
 		);
 		for (const [name, task] of Object.entries(withNotes)) {
-			expect(task).toContain('{"like_notes": {"path": "..."}}');
+			expect(task).toContain('{"rules_for": {"path": "..."}}');
 			expect(task.length - out[name]!.length).toBeLessThan(240);
 		}
 		expect(out.claims).toContain("For each claim, find where it has to be true");

@@ -16,10 +16,17 @@ use regex::Regex;
 use serde::Serialize;
 
 /// One source: a label for the review body (`#2931`, or a short commit) and its diff (first parent to commit).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PromotionSource {
     pub label: String,
+    /// The source's commit, and its pull request when the description named it.
+    pub sha: String,
+    pub pull: Option<u64>,
     pub diff: String,
+    /// Files that differ between the source's first parent and the pull request's merge base: there the source
+    /// was reviewed against other code than the lines land in (fisher-ki-saas#2951: staging is not dev), so the
+    /// pull request's changes to them are read in full.
+    pub context_differs: HashSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize)]
@@ -40,6 +47,8 @@ pub struct PromotionDelta {
     pub carried_lines: u64,
     /// Files of the pull request whose every change matches a source; left out of `diff`.
     pub carried_files: u64,
+    /// Files read in full although they match a source: the code around them differs on this branch.
+    pub context_files: u64,
     /// Lines a source adds that no source removes and the head does not have, in files the pull request leaves
     /// out of `diff` (a file it reads shows its adaptations there): the most first.
     pub missing: Vec<Missing>,
@@ -282,6 +291,7 @@ pub fn promotion_delta(
     let (pull_added, _) = changes(&files);
     // A source the pull request does not carry (named for context only) is left out: its lines are not missing.
     let mut carried: Vec<(String, Counts, Counts)> = Vec::new();
+    let mut recontext: HashSet<String> = HashSet::new();
     for source in sources {
         let (added, removed) = changes(&parse_diff(&source.diff));
         let all = total(&added);
@@ -298,6 +308,13 @@ pub fn promotion_delta(
             })
             .sum();
         if found as f64 >= all as f64 * MIN_CARRIED_SHARE {
+            recontext.extend(
+                added
+                    .keys()
+                    .chain(removed.keys())
+                    .filter(|path| source.context_differs.contains(*path))
+                    .cloned(),
+            );
             carried.push((source.label.clone(), added, removed));
         }
     }
@@ -307,6 +324,7 @@ pub fn promotion_delta(
             sources: Vec::new(),
             carried_lines: 0,
             carried_files: 0,
+            context_files: 0,
             missing: Vec::new(),
         };
     }
@@ -332,8 +350,18 @@ pub fn promotion_delta(
     let removed_by_sources = removed.clone();
     let mut read: HashSet<&str> = HashSet::new();
     let mut out: Vec<String> = Vec::new();
-    let (mut carried_lines, mut carried_files) = (0u64, 0u64);
+    let (mut carried_lines, mut carried_files, mut context_files) = (0u64, 0u64, 0u64);
     for file in &files {
+        if recontext.contains(&file.new_path) || recontext.contains(&file.old_path) {
+            // Reviewed against other surrounding code: read as the pull request has it.
+            context_files += 1;
+            read.insert(&file.new_path);
+            out.extend(file.header.iter().cloned());
+            for hunk in &file.hunks {
+                out.extend(sub_hunk(hunk, 0, hunk.lines.len()));
+            }
+            continue;
+        }
         if file.hunks.is_empty() {
             // A rename, mode change or binary file: carried when a source touches the same path.
             if touched.contains(&file.new_path) || touched.contains(&file.old_path) {
@@ -420,6 +448,7 @@ pub fn promotion_delta(
         sources: labels,
         carried_lines,
         carried_files,
+        context_files,
         missing,
     }
 }

@@ -1256,6 +1256,7 @@ fn review_github_a_cherry_pick_reads_only_what_differs_from_the_pull_requests_it
     // The engine reads the adaptation; the carried file stays in the diff the comments are placed on.
     let spec = &context.engine.specs()[0];
     assert_eq!(spec["diff"], json!(DIFF));
+    assert!(spec.get("carried").is_none());
     let body = review_body(&context);
     assert!(
         body.starts_with(
@@ -1281,6 +1282,85 @@ fn review_github_a_cherry_pick_reads_only_what_differs_from_the_pull_requests_it
         git.iter()
             .any(|argv| argv.contains("diff --no-color") && argv.contains(&format!("{source_sha}^1 {source_sha}"))),
         "{git:?}"
+    );
+}
+
+/// A cherry-pick every changed line of which was reviewed in the pull request it carries (fisher-ki-saas#2983) has
+/// nothing left to read: it is approved when that pull request was, and otherwise says why it is not.
+fn all_carried(source_review: Option<&str>) -> Context {
+    let context = setup(
+        json!({}),
+        Some(engine(vec![engine_result(
+            json!({ "files": 0, "added": 0, "removed": 0, "diffLines": {} }),
+        )])),
+    );
+    let source_sha = "d".repeat(40);
+    let mut pull = FakePull::new("o", "r", 1).requested(&[BOT]);
+    pull.base_ref = "soc2-staging".into();
+    pull.diff = SOURCE.into();
+    pull.log = format!(
+        "{}\x1fMerge pull request #2931 from o/fix\x1fMerge pull request #2931 from o/fix\n\n\
+         (cherry picked from commit {source_sha})\n\x1e\n",
+        "e".repeat(40)
+    );
+    pull.source_diffs.insert(source_sha.clone(), SOURCE.into());
+    context.hub.add_pull(pull);
+    let mut source = FakePull::new("o", "r", 2931);
+    source.state = "closed".into();
+    source.merged = true;
+    source.merge_commit_sha = Some(source_sha);
+    // A reviewer who asked for changes and then approved: their latest verdict counts. A comment is none.
+    for (id, user, state) in [
+        (1, "carol", "CHANGES_REQUESTED"),
+        (2, "carol", source_review.unwrap_or("COMMENTED")),
+        (3, "dave", "COMMENTED"),
+    ] {
+        source.reviews.push(FakeReview {
+            id,
+            user: user.into(),
+            state: state.into(),
+            commit_id: "c".repeat(40),
+            submitted_at: "2026-10-01T00:00:00Z".into(),
+            body: String::new(),
+        });
+    }
+    context.hub.add_pull(source);
+    context
+}
+
+#[test]
+fn review_github_a_cherry_pick_that_is_all_carried_is_approved_when_what_it_carries_was() {
+    let context = all_carried(Some("APPROVED"));
+    let outcome = posted(requested(&context));
+    let spec = &context.engine.specs()[0];
+    assert_eq!(spec["diff"], json!(""));
+    assert_eq!(spec["carried"], json!(true));
+    assert!(spec.get("unapprovedSources").is_none());
+    assert_eq!(outcome.plan.event, "APPROVE");
+    let body = review_body(&context);
+    assert!(
+        body.starts_with(
+            "Cherry-pick of #2931: all 3 changed lines match it line for line and were reviewed there; nothing else \
+             changed."
+        ),
+        "{body}"
+    );
+}
+
+#[test]
+fn review_github_a_cherry_pick_that_is_all_carried_is_not_approved_when_what_it_carries_was_not() {
+    // carol's change request stands.
+    let context = all_carried(None);
+    requested(&context);
+    let spec = &context.engine.specs()[0];
+    assert!(spec.get("carried").is_none());
+    assert_eq!(spec["unapprovedSources"], json!(["#2931"]));
+    assert!(
+        context
+            .logs()
+            .contains("carries only reviewed lines, but #2931 not approved: no approval"),
+        "{}",
+        context.logs()
     );
 }
 
@@ -1344,4 +1424,33 @@ fn review_github_a_pull_request_into_the_default_branch_reads_no_referenced_pull
     assert!(context.hub.api("^GET repos/o/r/pulls/2926").is_empty());
     assert_eq!(context.engine.specs()[0]["diff"], json!(DIFF));
     assert!(!review_body(&context).contains("Cherry-pick"));
+}
+
+#[test]
+fn review_github_a_cherry_pick_reads_in_full_a_file_whose_code_differs_on_its_branch() {
+    let context = setup(json!({}), Some(engine(vec![engine_result(json!({}))])));
+    let source_sha = "d".repeat(40);
+    let mut pull = FakePull::new("o", "r", 1).requested(&[BOT]);
+    pull.base_ref = "soc2-staging".into();
+    // The source changes calc.py too, the same way; staging's calc.py differs from the source's base.
+    pull.diff = format!("{SOURCE}{DIFF}");
+    pull.log = format!(
+        "{}\x1fMerge pull request #2931 from o/fix\x1fMerge pull request #2931 from o/fix\n\n\
+         (cherry picked from commit {source_sha})\n\x1e\n",
+        "e".repeat(40)
+    );
+    pull.source_diffs.insert(source_sha, format!("{SOURCE}{DIFF}"));
+    pull.context_changes = vec!["calc.py".into()];
+    context.hub.add_pull(pull);
+    posted(requested(&context));
+    assert_eq!(context.engine.specs()[0]["diff"], json!(DIFF));
+    let body = review_body(&context);
+    assert!(
+        body.starts_with(
+            "Cherry-pick of #2931: 3 changed lines match it line for line and were reviewed there (1 file entirely); \
+             this review reads the rest, and in full 1 file where this branch's code differs from what it was \
+             reviewed against."
+        ),
+        "{body}"
+    );
 }

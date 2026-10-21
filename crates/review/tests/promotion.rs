@@ -48,6 +48,7 @@ fn a_file_carried_over_unchanged_is_left_out_and_an_adaptation_is_read() {
         &[PromotionSource {
             label: "#2931".into(),
             diff: source,
+            ..Default::default()
         }],
         &none,
     );
@@ -68,6 +69,7 @@ fn a_conflict_resolution_is_read_with_its_context_and_a_recounted_header() {
         &[PromotionSource {
             label: "#2931".into(),
             diff: source,
+            ..Default::default()
         }],
         &none,
     );
@@ -92,6 +94,7 @@ fn a_change_deep_in_a_long_hunk_is_read_as_its_own_hunk() {
         &[PromotionSource {
             label: "`abc1234`".into(),
             diff: source,
+            ..Default::default()
         }],
         &none,
     );
@@ -132,6 +135,7 @@ fn removed_lines_match_too_and_windows_that_touch_are_one_hunk() {
         &[PromotionSource {
             label: "#1".into(),
             diff: source,
+            ..Default::default()
         }],
         &none,
     );
@@ -155,6 +159,7 @@ fn a_source_the_pull_request_does_not_carry_changes_nothing() {
         &[PromotionSource {
             label: "#100".into(),
             diff: other,
+            ..Default::default()
         }],
         &none,
     );
@@ -177,6 +182,7 @@ fn a_file_left_out_of_the_pick_is_missing_unless_the_head_has_its_lines() {
         &[PromotionSource {
             label: "#2931".into(),
             diff: source.clone(),
+            ..Default::default()
         }],
         &none,
     );
@@ -190,6 +196,7 @@ fn a_file_left_out_of_the_pick_is_missing_unless_the_head_has_its_lines() {
         &[PromotionSource {
             label: "#2931".into(),
             diff: source,
+            ..Default::default()
         }],
         &|path| (path == "purge_test.py").then(|| vec!["def test_purge():".into(), "    assert purge([]) == 0".into()]),
     );
@@ -260,10 +267,12 @@ fn a_line_a_later_source_replaces_is_not_missing() {
             PromotionSource {
                 label: "#2761".into(),
                 diff: first,
+                ..Default::default()
             },
             PromotionSource {
                 label: "#2791".into(),
                 diff: follow_up,
+                ..Default::default()
             },
         ],
         &|_| Some(vec!["BATCH = 50".into(), "def rechunk(): pass".into()]),
@@ -271,4 +280,77 @@ fn a_line_a_later_source_replaces_is_not_missing() {
     assert_eq!(delta.diff, "");
     assert_eq!(delta.sources, ["#2761", "#2791"]);
     assert!(delta.missing.is_empty(), "{:?}", delta.missing);
+}
+
+#[test]
+fn a_carried_file_whose_surrounding_code_differs_on_this_branch_is_read_in_full() {
+    // fisher-ki-saas#2951: staging has its own document-scope gate in the router the source also changes.
+    let router = file(
+        "router.py",
+        "@@ -1,3 +1,4 @@",
+        &[
+            " def route(q):",
+            "     gate(q)",
+            "+    guard(q)",
+            "     return answer(q)",
+        ],
+    );
+    let delta = promotion_delta(
+        &format!("{}{router}", new_file("purge.py", &PURGE)),
+        &[PromotionSource {
+            label: "#2926".into(),
+            diff: format!("{}{router}", new_file("purge.py", &PURGE)),
+            context_differs: ["router.py".to_string(), "unrelated.py".to_string()].into(),
+            ..Default::default()
+        }],
+        &none,
+    );
+    assert_eq!(delta.diff, router);
+    assert_eq!(
+        (delta.carried_files, delta.context_files, delta.carried_lines),
+        (1, 1, 6)
+    );
+}
+
+/// A cherry-pick every changed line of which was reviewed in the pull requests it carries leaves an empty diff: the
+/// engine counts that as a complete review (an approval) when those were approved (`carried`), not as one that read
+/// nothing (never one), and otherwise says which were not.
+#[test]
+fn promotion_an_entirely_carried_cherry_pick_is_a_complete_review() {
+    let dir = tempfile::tempdir().expect("dir");
+    let empty = dir.path().join("empty.diff");
+    std::fs::write(&empty, "").expect("diff");
+    let rlm = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/coding-agent/src/ultron/rlm");
+    let script = format!(
+        "import sys, json, asyncio\nsys.path.insert(0, {rlm:?})\nimport autoreview_api as a\n\
+         class Rlm:\n    async def map(self, *args, **options):\n        raise AssertionError('no frame for an empty diff')\n\
+         out = [asyncio.run(a.run(Rlm(), {{'workDir': {work:?}, 'diffPath': {diff:?}, **extra}}))\n\
+         \x20      for extra in ({{}}, {{'carried': True}}, {{'unapprovedSources': ['#2931']}})]\n\
+         print(json.dumps([[r['complete'], r['findings'], r.get('incomplete', [])] for r in out]))\n",
+        rlm = rlm.display().to_string(),
+        work = dir.path().display().to_string(),
+        diff = empty.display().to_string(),
+    );
+    let python = std::env::var("ULTRON_PYTHON").unwrap_or_else(|_| "/usr/bin/python3".into());
+    let output = std::process::Command::new(python)
+        .arg("-I")
+        .arg("-c")
+        .arg(script)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("python runs");
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let got: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    assert_eq!(
+        got,
+        serde_json::json!([
+            [false, [], ["the diff is empty"]],
+            [true, [], []],
+            [
+                false,
+                [],
+                ["every changed line was carried from #2931, which was not approved"]
+            ]
+        ])
+    );
 }

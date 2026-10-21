@@ -399,6 +399,8 @@ fn note(pull: i64, path: &str, author: &str, body: &str, state: &str) -> Note {
         url: format!("https://github.com/example/saas/pull/{pull}#discussion-{author}"),
         at: format!("2026-08-{:02}T10:00:00Z", pull % 28 + 1),
         state: state.into(),
+        human: true,
+        missed: false,
     }
 }
 
@@ -558,4 +560,149 @@ print(json.dumps(out))";
         "no earlier review comment on this file"
     );
     assert_eq!(served["bare"], "no review history is available for this repository");
+}
+
+#[test]
+fn a_store_of_schema_2_gains_the_rule_columns_and_keeps_its_notes() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = dir.path().join("graph.db");
+    let mut store = Store::open(&db).unwrap();
+    store
+        .record_notes(REPO, &[note(2801, AUDIT, "samsamlopez", "TRUNCATE?", "addressed")])
+        .unwrap();
+    store
+        .set_meta("notes_backfilled:x", "2026-10-21T00:00:00.000Z")
+        .unwrap();
+    drop(store);
+    // As a build of schema 2 left it: notes without who wrote them, misses or credit.
+    let out = kernel_python(
+        "import sqlite3\nconn = sqlite3.connect(sys.argv[1])\n\
+         conn.executescript('''ALTER TABLE notes RENAME TO old;\n\
+         CREATE TABLE notes (id INTEGER PRIMARY KEY, repo INTEGER NOT NULL, pull INTEGER NOT NULL, path TEXT NOT NULL,\n\
+         line INTEGER, author TEXT NOT NULL, body TEXT NOT NULL, url TEXT NOT NULL, at TEXT NOT NULL, state TEXT NOT NULL,\n\
+         UNIQUE (repo, url));\n\
+         INSERT INTO notes SELECT id, repo, pull, path, line, author, body, url, at, state FROM old; DROP TABLE old;\n\
+         UPDATE meta SET value = '2' WHERE key = 'schema_version';''')\nconn.commit()\nprint('ok')",
+        &[&db.display().to_string()],
+    );
+    assert_eq!(out, "ok");
+    let mut store = Store::open(&db).unwrap();
+    assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
+    // Schema 2's addressed included outdated threads: none is a rule until the backfill reads them again.
+    assert_eq!(store.meta("notes_backfilled:x").unwrap(), None);
+    let state = kernel_python(
+        "import sqlite3\nprint(sqlite3.connect(sys.argv[1]).execute('SELECT state FROM notes').fetchone()[0])",
+        &[&db.display().to_string()],
+    );
+    assert_eq!(state, "outdated");
+    let id = store
+        .note_id(REPO, &note(2801, AUDIT, "samsamlopez", "", "").url)
+        .unwrap()
+        .unwrap();
+    assert_eq!(store.rule_credit(id).unwrap(), Some((0, 0, false, true)));
+    assert_eq!(
+        store
+            .credit_rules(REPO, &[(id, true), (id, false), (id, true)])
+            .unwrap(),
+        3
+    );
+    assert_eq!(store.credit_rules("github.com/other/repo", &[(id, true)]).unwrap(), 0);
+    assert_eq!(store.rule_credit(id).unwrap(), Some((2, 1, false, true)));
+    // A miss stays one, and the reviewing accounts' own comments are not a person's.
+    let missed = Note {
+        missed: true,
+        ..note(2801, AUDIT, "samsamlopez", "TRUNCATE?", "addressed")
+    };
+    store.record_notes(REPO, &[missed]).unwrap();
+    store
+        .record_notes(REPO, &[note(2801, AUDIT, "samsamlopez", "TRUNCATE?", "addressed")])
+        .unwrap();
+    assert_eq!(store.rule_credit(id).unwrap(), Some((2, 1, true, true)));
+    assert_eq!(store.mark_not_human(REPO, &["SamSamLopez".into()]).unwrap(), 1);
+    assert_eq!(store.rule_credit(id).unwrap(), Some((2, 1, true, false)));
+}
+
+/// fisher-ki-saas#2920 as a rule: a person's addressed comment on the audit migration, which this reviewer missed,
+/// is served for the new append-only migration (they share its rarest constructs), with an id a finding cites.
+#[test]
+fn rules_for_a_file_rank_by_credit_and_a_finding_cites_only_the_served() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("repo");
+    std::fs::create_dir_all(&root).unwrap();
+    let (_, head) = repository(&root);
+    let db = dir.path().join("graph.db");
+    index_tree(&db, REPO, &root, "HEAD").unwrap();
+    let mut store = Store::open(&db).unwrap();
+    let truncate = Note {
+        missed: true,
+        ..note(
+            2801,
+            AUDIT,
+            "samsamlopez",
+            "TRUNCATE skips the row-level DELETE trigger.",
+            "addressed",
+        )
+    };
+    let window = note(2802, AUDIT, "julesballaran", "Name the retention window.", "addressed");
+    let bot = Note {
+        human: false,
+        ..note(2803, AUDIT, "coderabbitai", "Consider an index.", "addressed")
+    };
+    let open = note(2804, AUDIT, "jgericardo", "Why not a view?", "open");
+    let wrong = note(2805, AUDIT, "jplbnrs", "Use a sequence.", "addressed");
+    store
+        .record_notes(REPO, &[truncate.clone(), window.clone(), bot, open, wrong.clone()])
+        .unwrap();
+    let id = |n: &Note| store.note_id(REPO, &n.url).unwrap().unwrap();
+    let (truncate_id, window_id, wrong_id) = (id(&truncate), id(&window), id(&wrong));
+    // The window rule led to two accepted findings; the sequence rule to three rejected ones.
+    store
+        .credit_rules(
+            REPO,
+            &[
+                (window_id, true),
+                (window_id, true),
+                (wrong_id, false),
+                (wrong_id, false),
+                (wrong_id, false),
+            ],
+        )
+        .unwrap();
+    drop(store);
+    let body = "\
+import autoreview_deep as deep
+root, head, db, repo, new = sys.argv[1:6]
+r = deep.Repo(root, head)
+r.knowledge = {'db': db, 'repo': repo, 'rev': head}
+title, served = deep.serve_request(r, {'rules_for': {'path': new}})
+quote = r.lines(new)[1]
+raw = {'file': new, 'line': 2, 'severity': 'high', 'category': 'correctness', 'claim': 'TRUNCATE is not refused',
+       'why': 'w', 'scenario': 'TRUNCATE question_topic_list_versions', 'rules': ['R%d' % min(r.served_rules), 'R99999', 'x'],
+       'evidence': [{'path': new, 'line': 2, 'quote': quote}]}
+finding, why = deep.normalize_deep(r, raw, 'claims', {new: set(range(1, 200))}, lambda level, c, s: level)
+print(json.dumps({'title': title, 'served': served, 'ids': sorted(r.served_rules), 'rules': (finding or {}).get('rules'), 'why': why}))";
+    let out = kernel_python(
+        body,
+        &[&root.display().to_string(), &head, &db.display().to_string(), REPO, NEW],
+    );
+    let got: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let served = got["served"].as_str().unwrap();
+    let lines: Vec<&str> = served.lines().collect();
+    // The miss first (a person found what this reviewer did not), then the credited one; no bot, no open thread, no
+    // discredited rule.
+    assert_eq!(lines.len(), 2, "{served}");
+    assert!(
+        lines[0].starts_with(&format!(
+            "R{truncate_id} #2801 samsamlopez on {AUDIT}:65 (like this file: "
+        )),
+        "{served}"
+    );
+    assert!(lines[0].contains("[this reviewer missed it on #2801]"), "{served}");
+    assert!(lines[1].starts_with(&format!("R{window_id} #2802")), "{served}");
+    assert!(
+        lines[1].contains("[cited by 2 accepted and 0 rejected findings]"),
+        "{served}"
+    );
+    assert_eq!(got["ids"], serde_json::json!([truncate_id, window_id]));
+    assert_eq!(got["rules"], serde_json::json!([truncate_id]), "{got}");
 }

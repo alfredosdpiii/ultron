@@ -192,7 +192,12 @@ pub struct PromotionNote {
     pub sources: Vec<String>,
     pub carried_lines: u64,
     pub carried_files: u64,
+    #[serde(default)]
+    pub context_files: u64,
     pub missing: Vec<crate::promotion::Missing>,
+    /// Every changed line was carried: nothing was left to read.
+    #[serde(default)]
+    pub entire: bool,
 }
 
 fn counted_noun(n: u64, noun: &str) -> String {
@@ -211,18 +216,39 @@ fn listed(items: &[String], max: usize) -> String {
     }
 }
 
-/// The lead of the body for a cherry-pick: what it carries and that the rest was read.
+/// The lead of the body for a cherry-pick: what it carries and that the rest was read, or that there was no rest.
 fn promotion_lead(note: &PromotionNote) -> String {
     let names = listed(&note.sources, MAX_SOURCES_LISTED);
     let matches = if note.carried_lines == 1 { "matches" } else { "match" };
     let them = if note.sources.len() == 1 { "it" } else { "them" };
+    if note.entire {
+        let what = if note.carried_lines == 1 {
+            "its one changed line matches".to_string()
+        } else {
+            format!("all {} changed lines match", note.carried_lines)
+        };
+        let was = if note.carried_lines == 1 { "was" } else { "were" };
+        return format!(
+            "Cherry-pick of {names}: {what} {them} line for line and {was} reviewed there; nothing else changed."
+        );
+    }
     let files = if note.carried_files > 0 {
         format!(" ({} entirely)", counted_noun(note.carried_files, "file"))
     } else {
         String::new()
     };
+    let context = if note.context_files > 0 {
+        format!(
+            ", and in full {} where this branch's code differs from what {} reviewed against",
+            counted_noun(note.context_files, "file"),
+            if note.sources.len() == 1 { "it was" } else { "they were" }
+        )
+    } else {
+        String::new()
+    };
     format!(
-        "Cherry-pick of {names}: {} {matches} {them} line for line and {} reviewed there{files}; this review reads the rest.",
+        "Cherry-pick of {names}: {} {matches} {them} line for line and {} reviewed there{files}; this review reads the \
+         rest{context}.",
         counted_noun(note.carried_lines, "changed line"),
         if note.carried_lines == 1 { "was" } else { "were" }
     )

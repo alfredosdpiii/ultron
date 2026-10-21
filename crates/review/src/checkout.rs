@@ -174,6 +174,31 @@ impl Checkout {
         Ok(parse_commits(&out))
     }
 
+    /// The paths whose content differs between two commits (`git diff --name-only`, renames as delete and add):
+    /// trees only, no file is read.
+    pub fn changed_paths(&self, from: &str, to: &str) -> Result<Vec<String>, Error> {
+        let out = self.git.must(
+            &[
+                "-C",
+                &self.dir,
+                "diff",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                from,
+                to,
+                "--",
+            ],
+            &self.env,
+            GIT_TIMEOUT_MS,
+        )?;
+        Ok(out
+            .split('\0')
+            .filter(|path| !path.is_empty())
+            .map(str::to_string)
+            .collect())
+    }
+
     /// Fetch the commits the clone does not have, by sha (GitHub serves any commit of the repository). A commit that
     /// cannot be fetched is left out by the caller's diffs.
     pub fn fetch_commits(&self, shas: &[String]) {

@@ -400,7 +400,7 @@ DEEP_TEST_EVIDENCE = """ A test run can be evidence instead: add "test_run": <it
 #: The review-notes lookups, listed only when the repository has a knowledge store.
 DEEP_NOTES_REQUESTS = """
   {{"review_notes": {{"path": "..."}}}}   earlier reviewers' comments on a file, and whether each was addressed
-  {{"like_notes": {{"path": "..."}}}}   addressed review comments on the files most like it (its rarest constructs)"""
+  {{"rules_for": {{"path": "..."}}}}   rules R<n> from addressed comments on it and like files; put ids used in "rules" of a finding"""
 
 
 def deep_task(lens: str, tests: bool = False, notes: bool = False) -> str:

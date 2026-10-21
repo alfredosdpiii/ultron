@@ -116,6 +116,7 @@ DEEP_CONTRACT: dict[str, Any] = {
                     "evidence": {"type": "array", "items": _CITATION},
                     "unpinned": {"type": ["object", "null"]},
                     "consequence": {"type": "string"},
+                    "rules": {"type": "array", "items": {"type": "string"}},
                 },
                 "required": ["file", "line", "severity", "category", "claim", "why", "scenario", "evidence"],
             },
@@ -152,6 +153,8 @@ class Repo:
         #: The knowledge store at this commit ({"db", "repo", "rev"}), when it holds review notes of the
         #: repository: the review-notes lookups read it, and are offered only then.
         self.knowledge: dict[str, Any] | None = None
+        #: The ids of the rules `rules_for` served in this review: a finding may cite only those.
+        self.served_rules: set[int] = set()
 
     def _git(self, *args: str) -> tuple[int, str, str]:
         if not args or args[0] not in ALLOWED_GIT:
@@ -270,7 +273,7 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
     the closed set: five read-only lookups and, when the review may run tests, two sandboxed test executions."""
     if not isinstance(request, dict) or len(request) != 1:
         raise Rejected("a request is an object with exactly one of read, grep, list, definition, references, "
-                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe, review_notes, like_notes")
+                       "symbol, callers, callees, tests_of, history, blame_range, pickaxe, review_notes, rules_for")
     kind, args = next(iter(request.items()))
     if not isinstance(args, dict):
         raise Rejected(f"{kind} takes an object")
@@ -400,6 +403,8 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
         return f"pickaxe {text!r} -> {len(lines)} commits", "\n".join(lines) or "no commit added or removed it"
     if kind in ("review_notes", "like_notes"):
         return _serve_notes(repo, kind, args)
+    if kind == "rules_for":
+        return _serve_rules(repo, args)
     if kind in ("run_tests", "mutation_check"):
         if tests is None:
             raise Rejected("tests are not run in this review")
@@ -412,7 +417,7 @@ def serve_request(repo: Repo, request: Any, tests: "testing.TestSession | None" 
             raise Rejected(str(error)) from None
         return f"test run {record['n']}", testing.summarize(record)
     raise Rejected(f"unknown request {kind!r}: use read, grep, list, definition, references, history, blame_range, "
-                   "pickaxe, review_notes or like_notes")
+                   "pickaxe, review_notes or rules_for")
 
 
 #: Review notes shown per request, and the characters of each.
@@ -444,6 +449,33 @@ def _serve_notes(repo: Repo, kind: str, args: dict[str, Any]) -> tuple[str, str]
     title = f"{kind} {path} -> {len(lines)} note{'' if len(lines) == 1 else 's'}"
     return title, "\n".join(lines) or ("no earlier review comment on this file" if kind == "review_notes"
                                         else "no addressed review comment on files like this one")
+
+
+def _serve_rules(repo: Repo, args: dict[str, Any]) -> tuple[str, str]:
+    """The rules for a file (`knowledge_api.Knowledge.rules_for`): people's addressed comments on it and on files like
+    it, the best credited first, each with the id (`R<n>`) a finding cites when the rule led to it."""
+    spec = repo.knowledge or {}
+    path = repo.path(args.get("path"))
+    knowledge = Knowledge.open(spec.get("db"), spec.get("repo"), spec.get("rev"))
+    if knowledge is None:
+        raise Rejected("no review history is available for this repository")
+    try:
+        rules = knowledge.rules_for(path, limit=MAX_NOTES)
+    finally:
+        knowledge.close()
+    lines = []
+    for rule in rules:
+        note = rule.note
+        repo.served_rules.add(rule.id)
+        where = f"{note.path}:{note.line}" if note.line else note.path
+        like = f" (like this file: {', '.join(construct_label(kind) for kind in rule.alike.shared[:3])})" if rule.alike else ""
+        record = ([f"this reviewer missed it on #{note.pull}"] if rule.missed else []) + (
+            [f"cited by {rule.accepted} accepted and {rule.rejected} rejected findings"]
+            if rule.accepted or rule.rejected else [])
+        lines.append(f"R{rule.id} #{note.pull} {note.author} on {where}{like}"
+                     f"{' [' + '; '.join(record) + ']' if record else ''}: {_text(note.body, NOTE_CHARS)}")
+    title = f"rules_for {path} -> {len(lines)} rule{'' if len(lines) == 1 else 's'}"
+    return title, "\n".join(lines) or "no rule learned for this file or the files like it"
 
 
 def _int(value: Any, default: int) -> int:
@@ -793,6 +825,12 @@ def _flat(text: str) -> str:
     return " ".join(text.split())
 
 
+def merge_rules(into: dict[str, Any], other: dict[str, Any]) -> None:
+    """The rules `other` cited, also cited by `into` that takes its place: each is credited with the fate."""
+    if other.get("rules"):
+        into["rules"] = sorted(set(into.get("rules") or []) | set(other["rules"]))
+
+
 def check_citations(repo: Repo, raw: Any, diff_lines: dict[str, set[int]]) -> tuple[list[dict[str, Any]], str | None, bool]:
     """A finding's citations checked against the head commit: (citations, why it fails or None, whether any
     citation is outside the diff). A quote must be on its cited line, give or take two lines."""
@@ -866,6 +904,11 @@ def normalize_deep(repo: Repo, raw: Any, lens: str, diff_lines: dict[str, set[in
         "reviewers": [f"deep:{lens}"], "source": f"deep:{lens}", "citations": citations, "beyond_diff": beyond,
         **({"test_run": run["n"], "test_evidence": testing.summarize(run).split("\n  output")[0]} if run else {}),
     }
+    # The rules it cites, among those served: credited with the finding's fate.
+    cited = sorted({int(item[1:]) for item in raw.get("rules") or [] if isinstance(item, str)
+                    and item[:1] == "R" and item[1:].isdigit() and int(item[1:]) in repo.served_rules})
+    if cited:
+        finding["rules"] = cited
     if enrich is not None:
         enrich(raw, finding)
     return finding, None
@@ -924,10 +967,12 @@ def merge(fast: list[dict[str, Any]], deep: list[dict[str, Any]],
         duplicates += 1
         _record(records, finding, twin, "deep")
         twin["reviewers"] += [name for name in finding["reviewers"] if name not in twin["reviewers"]]
+        merge_rules(twin, finding)
     for finding in [item for item in kept if not item.get("beyond_diff")]:
         other = next((item for item in fast if same(finding, item)), None)
         if other is not None:
             kept.remove(finding)
+            merge_rules(other, finding)
             duplicates += 1
             _record(records, finding, other, "deep-into-fast")
     remaining = []

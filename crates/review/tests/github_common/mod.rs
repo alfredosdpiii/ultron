@@ -140,6 +140,10 @@ pub struct FakePull {
     /// (`git diff <sha>^1 <sha>`), by sha.
     pub log: String,
     pub source_diffs: HashMap<String, String>,
+    /// `git diff --name-only <merge base> <sha>^1`: the files where a source's base differs from this one's.
+    pub context_changes: Vec<String>,
+    /// The review threads as the notes query reads them (`review_notes`): GitHub's thread nodes.
+    pub notes: Vec<Value>,
 }
 
 impl FakePull {
@@ -177,6 +181,8 @@ impl FakePull {
             deletions: 0,
             log: String::new(),
             source_diffs: HashMap::new(),
+            context_changes: Vec::new(),
+            notes: Vec::new(),
         }
     }
 
@@ -609,7 +615,15 @@ impl FakeHub {
                 variables["repo"].as_str().unwrap_or(""),
                 variables["number"]
             );
+            let notes = body
+                .get("query")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .contains("isOutdated");
             let nodes: Vec<Value> = state.pulls.get(&key).map_or_else(Vec::new, |pull| {
+                if notes {
+                    return pull.notes.clone();
+                }
                 pull.threads
                     .iter()
                     .map(|(comment, id)| {
@@ -658,6 +672,16 @@ impl FakeHub {
         };
         let (owner, repo, kind, id) = (&found[1], &found[2], &found[3], &found[4]);
         let rest = found.get(5).map_or("", |m| m.as_str());
+        if kind == "commits" && rest == "pulls" {
+            // The merged pull requests that brought the commit in: those it is the merge commit of.
+            let pulls: Vec<Value> = state
+                .pulls
+                .values()
+                .filter(|p| p.owner == owner && p.repo == repo && p.merged && p.merge_commit_sha.as_deref() == Some(id))
+                .map(|p| json!({ "number": p.number, "merged_at": "2026-10-01T00:00:00Z" }))
+                .collect();
+            return list(pulls);
+        }
         if kind == "commits" {
             let runs = state
                 .pulls
@@ -849,6 +873,12 @@ impl FakeHub {
                 let to = args.iter().find_map(|arg| arg.split_once("..")).map(|(_, to)| to);
                 let pull = state.pulls.values().find(|p| Some(p.head_sha.as_str()) == to);
                 ok(pull.map_or(String::new(), |p| p.log.clone()))
+            }
+            "diff" if args.iter().any(|arg| arg == "--name-only") => {
+                let pull = state.pulls.values().find(|p| !p.source_diffs.is_empty());
+                ok(pull.map_or(String::new(), |p| {
+                    p.context_changes.iter().map(|path| format!("{path}\0")).collect()
+                }))
             }
             "diff" if args.iter().any(|arg| arg.ends_with("^1")) => {
                 let sha = args.iter().find_map(|arg| arg.strip_suffix("^1")).expect("parent");
