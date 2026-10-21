@@ -49,6 +49,11 @@ flags=(
 )
 CARGO_ENCODED_RUSTFLAGS="$(IFS=$'\x1f'; echo "${flags[*]}")"
 export CARGO_ENCODED_RUSTFLAGS
+# The same for C built by the `cc` crate (tree-sitter and SQLite asserts embed __FILE__); a fresh target dir
+# otherwise ships cargo's registry path. Later maps win in GCC and Clang too.
+c_maps="-ffile-prefix-map=$HOME=/home -ffile-prefix-map=$cargo_home=/cargo -ffile-prefix-map=$root=/ultron"
+export CFLAGS="${CFLAGS:+$CFLAGS }$c_maps"
+export CXXFLAGS="${CXXFLAGS:+$CXXFLAGS }$c_maps"
 export CARGO_PROFILE_RELEASE_STRIP=symbols
 export CARGO_PROFILE_RELEASE_DEBUG=0
 
