@@ -50,6 +50,9 @@ pub struct McpServerArgs {
     pub children: Option<String>,
     pub child_model: Option<String>,
     pub ultron_child_model: Option<String>,
+    /// `--root-model`: the Claude Code model the root runs on, as the launcher passed it to `claude --model` (only
+    /// when it is not the default, [`crate::claude_cli::DEFAULT_CLAUDE_MODEL`]).
+    pub root_model: Option<String>,
     pub socket: Option<String>,
     pub instructions: bool,
     pub no_context_files: bool,
@@ -71,6 +74,7 @@ pub fn parse_mcp_args(args: &[String]) -> Result<McpServerArgs, UsageError> {
         children: None,
         child_model: None,
         ultron_child_model: None,
+        root_model: None,
         socket: None,
         instructions: true,
         no_context_files: false,
@@ -112,6 +116,7 @@ pub fn parse_mcp_args(args: &[String]) -> Result<McpServerArgs, UsageError> {
             }
             "--child-model" => parsed.child_model = Some(value()?),
             "--ultron-child-model" => parsed.ultron_child_model = Some(value()?),
+            "--root-model" => parsed.root_model = Some(value()?),
             "--socket" => parsed.socket = Some(value()?),
             "--no-context-files" => parsed.no_context_files = true,
             "--no-skills" => parsed.no_skills = true,
@@ -158,32 +163,53 @@ pub struct Resolved {
     /// `rlm.childModel` never overrides it.
     pub child_model_explicit: bool,
     pub ultron_child_model: Option<String>,
-    /// The settings' default `provider/model`: the Ultron children's model only when the frames' model is not
-    /// Claude's ([`ultron_child_model`]).
-    pub default_model: Option<String>,
+    /// The Claude Code model the root runs on, as named: `--root-model` (from the launcher), else a Claude Code
+    /// subagent's server's `--child-model` (its root is that subagent). [`subscription_model`] makes it a model.
+    pub root_model: Option<String>,
 }
 
-/// `--children ultron`'s model for spawns that name none: `--ultron-child-model` / `claudeCode.ultronChildModel`,
-/// else `rlm.childModel`, else (`None`) the frames' model, which children of a Claude root keep: `claude-code/<id>`
-/// runs their `rlm` lanes on the Claude subscription, never API credits. TypeScript falls back to the settings'
-/// default model before `rlm.childModel`; the Rust build uses that default only when the frames' model is not
-/// Claude's (wave 45: children of a Claude root stay on Claude unless a setting names another model).
-pub fn ultron_child_model(resolved: &Resolved, rlm_child_model: Option<String>, frames: &ai::Model) -> Option<String> {
-    let claude = matches!(
-        frames.provider.as_str(),
-        ai::claude_code::PROVIDER | ai::claude_subscription::PROVIDER
-    );
+const CLAUDE_CODE_PREFIX: &str = "claude-code/";
+
+/// The Claude root's own subscription model as `claude-code/<id>`: the root's model when `known` (the model
+/// registry has `claude-code/<id>`), else the default frame model ([`default_frame_model`]). Every Ultron child of a
+/// Claude root that names no model runs on it ([`ultron_child_model`]): a `claude-code` request with tools runs on
+/// the Claude subscription only (ai::claude_subscription::claude_code_lane), never on API credits.
+pub fn subscription_model(root_model: Option<&str>, known: &dyn Fn(&str) -> bool) -> String {
+    root_model
+        .map(str::trim)
+        .map(|model| model.strip_prefix(CLAUDE_CODE_PREFIX).unwrap_or(model))
+        .filter(|id| !id.is_empty() && known(id))
+        .map_or_else(default_frame_model, |id| format!("{CLAUDE_CODE_PREFIX}{id}"))
+}
+
+/// `rlm.childModel` as written when it names a Claude Code model; under `ultron claude` another provider's model in
+/// that setting (a native session's choice) is not used.
+pub fn claude_code_setting(model: Option<&str>) -> Option<String> {
+    model
+        .map(str::trim)
+        .filter(|model| model.starts_with(CLAUDE_CODE_PREFIX) && model.len() > CLAUDE_CODE_PREFIX.len())
+        .map(str::to_string)
+}
+
+/// The model an Ultron child of a Claude root runs on when nothing it was started with names one (an in-memory
+/// `--children ultron` subagent, a persistent child, a typed agent's `rlm` lane): `--ultron-child-model` /
+/// `claudeCode.ultronChildModel`, else `rlm.childModel` when it names a Claude Code model ([`claude_code_setting`]),
+/// else the root's subscription model ([`subscription_model`]). Never the settings' default model: TypeScript falls
+/// back to it, but under a Claude root that put children on API credits the user never chose for them.
+pub fn ultron_child_model(resolved: &Resolved, rlm_child_model: Option<&str>, subscription: &str) -> String {
     resolved
         .ultron_child_model
-        .clone()
-        .or(rlm_child_model)
-        .or_else(|| resolved.default_model.clone().filter(|_| !claude))
+        .as_deref()
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+        .map(str::to_string)
+        .or_else(|| claude_code_setting(rlm_child_model))
+        .unwrap_or_else(|| subscription.to_string())
 }
 
 /// `runMcpServer`'s model and mode resolution. An environment variable that is set wins even when blank (JS `??`).
 pub fn resolve(args: &McpServerArgs, var: &dyn Fn(&str) -> Option<String>, cwd: &Path, agent_dir: &Path) -> Resolved {
     let settings = crate::settings::ClaudeCodeSettings::load(cwd, agent_dir);
-    let manager = config::settings::SettingsManager::create(cwd, agent_dir, false);
     let trimmed = |key: &str| var(key).map(|v| v.trim().to_string());
     let named_frame_model = args
         .frame_model
@@ -211,10 +237,6 @@ pub fn resolve(args: &McpServerArgs, var: &dyn Fn(&str) -> Option<String>, cwd: 
         .or(settings.child_model.clone());
     let child_model_explicit = named_child_model.is_some();
     let child_model = named_child_model.unwrap_or_else(|| DEFAULT_CLAUDE_MODEL.into());
-    let default = match (manager.default_provider(), manager.default_model()) {
-        (Some(Value::String(p)), Some(Value::String(m))) if !p.is_empty() && !m.is_empty() => Some(format!("{p}/{m}")),
-        _ => None,
-    };
     let ultron_child_model = args.ultron_child_model.clone().or(settings.ultron_child_model.clone());
     Resolved {
         frame_model,
@@ -223,7 +245,10 @@ pub fn resolve(args: &McpServerArgs, var: &dyn Fn(&str) -> Option<String>, cwd: 
         child_model,
         child_model_explicit,
         ultron_child_model,
-        default_model: default,
+        root_model: args
+            .root_model
+            .clone()
+            .or_else(|| args.child_model.clone().filter(|_| args.child)),
     }
 }
 
@@ -438,14 +463,16 @@ fn open_runtime(
     let loki_notice = session_core::loki_notice::LokiNotice::start(&runtime.config);
     let settings_child = runtime.config.settings["rlm"]["childModel"]
         .as_str()
-        .filter(|m| !m.is_empty())
         .map(str::to_string);
+    // The root's own Claude subscription model: where every Ultron child that names no model runs.
+    let subscription = subscription_model(resolved.root_model.as_deref(), &|id| {
+        session_core::lane::catalog_model(ai::claude_code::PROVIDER, id, env).is_ok()
+    });
     let _ = typed_model.set(if resolved.children == "claude" {
         let id = resolved.child_model.trim();
         format!("claude-code/{}", id.strip_prefix("claude-code/").unwrap_or(id))
     } else {
-        ultron_child_model(resolved, settings_child.clone(), &model)
-            .unwrap_or_else(|| format!("{}/{}", model.provider, model.id))
+        ultron_child_model(resolved, settings_child.as_deref(), &subscription)
     });
     let roots = Arc::new(crate::child_usage::ChildRoots::default());
     let subagents = match claude {
@@ -488,23 +515,19 @@ fn open_runtime(
             if explicit {
                 return None;
             }
-            // The global `rlm.childModel` as written (the native reading drops Claude Code models).
-            let settings = settings();
-            settings
-                .global_settings()
-                .get("rlm")
-                .and_then(|rlm| rlm.get("childModel"))
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|model| model.starts_with("claude-code/") && model.len() > "claude-code/".len())
-                .map(str::to_string)
+            written_child_model(&*settings)
         }));
     } else {
-        // `--children ultron`'s child model, else `rlm.childModel` (/settings -> Models), for spawns that name none.
-        let child_model = ultron_child_model(resolved, settings_child, &model);
-        if child_model.is_some() {
-            delegation.set_child_model(child_model);
+        // `--children ultron`: `--ultron-child-model` / `claudeCode.ultronChildModel` for spawns that name none,
+        // else `rlm.childModel` (/settings -> Models, read per spawn) when it names a Claude Code model, else the
+        // root's subscription model ([`ultron_child_model`]).
+        if resolved.ultron_child_model.is_some() {
+            delegation.set_child_model(Some(ultron_child_model(resolved, None, &subscription)));
         }
+        let (settings, subscription) = (runtime.config.settings_reader(), subscription.clone());
+        delegation.set_child_model_source(Arc::new(move || {
+            Some(written_child_model(&*settings).unwrap_or_else(|| subscription.clone()))
+        }));
     }
     let loki_context = if loki_in_prompt {
         None
@@ -522,8 +545,7 @@ fn open_runtime(
     // session (crate::durable_apis); what a caller cannot use is refused with a clear error (crate::unavailable).
     let durable = match (children, &schedules) {
         (Some(children), Some(schedules)) => {
-            let settings_child = runtime.config.settings["rlm"]["childModel"].as_str();
-            let keep_model = crate::durable_apis::keep_model(resolved.ultron_child_model.as_deref(), settings_child);
+            let keep_model = crate::durable_apis::keep_model(resolved, settings_child.as_deref(), &subscription);
             let apis = crate::durable_apis::open(children, &session, &lane, &runtime, env, keep_model, sink.clone())?;
             server.world.attach(apis.clone());
             let _ = lane.stack.request_layer.set(crate::unavailable::root_layer(
@@ -596,6 +618,19 @@ fn open_runtime(
     })
 }
 
+/// The global `rlm.childModel` as written when it names a Claude Code model ([`claude_code_setting`]; the native
+/// reading drops Claude Code models).
+fn written_child_model(settings: &dyn Fn() -> config::settings::SettingsManager) -> Option<String> {
+    let settings = settings();
+    claude_code_setting(
+        settings
+            .global_settings()
+            .get("rlm")
+            .and_then(|rlm| rlm.get("childModel"))
+            .and_then(Value::as_str),
+    )
+}
+
 /// The environment the session runs with: a named frame model (`--frame-model`, ULTRON_CLAUDE_FRAME_MODEL,
 /// `claudeCode.frameModel`) is what frames that name no model run on, ahead of `rlm.frameModel` (it takes
 /// ULTRON_RLM_FRAME_MODEL's place, which `rlm.models` then reports as the source).
@@ -616,22 +651,21 @@ fn frames_env(env: &RunEnv, resolved: &Resolved) -> RunEnv {
     }
 }
 
-/// The frames' model: `provider/id` from the catalog (the Claude Code CLI's models included), else the configured
-/// default model.
+/// The frames' model (also the root lane's): `provider/id` from the catalog (the Claude Code CLI's models included),
+/// else the default frame model ([`default_frame_model`], always in the catalog). TypeScript falls back to the
+/// settings' default model; under a Claude root that silently moved frames (and the lane's children) onto API
+/// credits, so a frame model that does not resolve is reported and the Claude default is used.
 fn frame_model(frame: &str, env: &RunEnv) -> Result<ai::Model, String> {
-    if let Some((provider, id)) = split_model(frame) {
+    let resolve = |frame: &str| {
+        let (provider, id) = split_model(frame).ok_or_else(|| format!("Model \"{frame}\" not found"))?;
         // The catalog includes the Claude Code CLI's models (`ai::claude_code::MODELS`).
-        if let Ok(model) = session_core::lane::catalog_model(&provider, &id, env) {
-            return Ok(model);
-        }
-    }
-    let manager = config::settings::SettingsManager::create(&env.cwd, &env.agent_dir(), false);
-    match (manager.default_provider(), manager.default_model()) {
-        (Some(Value::String(provider)), Some(Value::String(id))) => {
-            session_core::lane::catalog_model(&provider, &id, env)
-        }
-        _ => Err(format!("Model \"{frame}\" not found")),
-    }
+        session_core::lane::catalog_model(&provider, &id, env)
+    };
+    resolve(frame).or_else(|error| {
+        let fallback = default_frame_model();
+        eprintln!("Warning: frame model {frame}: {error}; frames run on {fallback}");
+        resolve(&fallback)
+    })
 }
 
 /// A root cell as the viewer shows it.
@@ -1598,10 +1632,20 @@ mod tests {
             ),
             ("Claude Sonnet (Claude Code CLI)", "claude-code-cli", 200_000, 32_000)
         );
-        // An id the provider does not list is no Claude Code model; without a default model nothing resolves.
-        assert_eq!(
-            frame_model("claude-code/claude-sonnet-9", &env).unwrap_err(),
-            "Model \"claude-code/claude-sonnet-9\" not found"
-        );
+        // An id the provider does not list is no Claude Code model: frames run on the default frame model, never on
+        // the settings' default model (a paid API model here).
+        std::fs::create_dir_all(tmp.path().join("agent")).unwrap();
+        std::fs::write(
+            tmp.path().join("agent/settings.json"),
+            r#"{"defaultProvider": "groq", "defaultModel": "llama-3.3-70b-versatile"}"#,
+        )
+        .unwrap();
+        for unknown in ["claude-code/claude-sonnet-9", "groq/no-such-model", "nonsense"] {
+            assert_eq!(
+                frame_model(unknown, &env).unwrap(),
+                ai::claude_code::MODELS["claude-opus-5-5"],
+                "{unknown}"
+            );
+        }
     }
 }

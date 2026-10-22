@@ -3330,6 +3330,22 @@ W46-U4	claude-root	Claude Code subagent server forwards board/notes/swarm to the
 W46-U5	claude-root	schedules persist in the session under ultron.claude.schedule, invisible to the Ultron server scanner; missed slots collapse on resume	claude_root_schedules_survive_claude_resume_and_the_missed_slots_fire_once
 W46-U6	claude-root	subagents refused keep/ask and non-root schedule.*	claude_root_durable_apis_refusals_name_what_works_instead
 W46-U7	claude-root	child server refuses keep/ask/schedule creation, passes board/notes/swarm on	claude_root_a_claude_subagents_server_refuses_persistent_children_and_schedules
+W47-UK01	claude-root	keep child with no model runs on the root's Claude subscription; rlm.ask follow-up replays its transcript	claude_root_subscription_children_keep_children_run_on_the_roots_subscription_and_take_follow_ups
+W47-UK02	claude-root	retained typed agent continues on claude-code via the subscription	claude_root_subscription_children_a_retained_typed_agent_continues_on_the_subscription
+W47-UK03	claude-root	in-memory and kept children follow --root-model	claude_root_subscription_children_follow_the_roots_model_for_in_memory_and_kept_children
+W47-UK04	claude-root	subscription model = root's registry claude-code model, else claude-code/claude-opus-5-5	claude_root_subscription_model_is_the_roots_registry_model_else_the_default_frame_model
+W47-UK05	claude-root	child chain: ultronChildModel > claude-code rlm.childModel > subscription; never the default model	claude_root_ultron_children_fall_back_to_the_roots_subscription_model
+W47-UK06	claude-root	keep_model always yields a model; claude-code accepted	claude_root_keep_children_default_to_the_subscription_model
+W47-UK07	claude-root	server root model from --root-model or a subagent server's --child-model	claude_root_server_learns_the_roots_model_from_root_model_or_a_subagents_child_model
+W47-UK08	claude-root	launcher passes --root-model only for a non-default root model	claude_root_launcher_tells_the_server_the_roots_model_unless_it_is_the_default
+W47-UK09	claude-root	explicit non-claude keep model= still honored	claude_root_durable_apis_refusals_name_what_works_instead
+W47-UK10	claude-root	unresolved frame model falls back to the Claude default, not the user's default	claude_root_frame_model_names_the_claude_code_providers_own_models
+W47-DU-01	durable	new durable session (ultron durable, ultron-s, -p, json) with no model flags starts on durable.model claude-code/claude-opus-5-5 on the subscription ahead of global defaults; --model/--models win; resumed keep their model	cli_durable_new_sessions_start_on_the_subscription_and_explicit_flags_win
+W47-DU-02	durable	set_model/cycle_model in a durable session save durable.model, global defaultProvider/defaultModel untouched; next durable session starts on it; plain ultron saves globally	cli_durable_model_changes_save_durable_model_and_plain_ultron_saves_the_global_default
+W47-DU-03	config	durable.model global only, default claude-code/claude-opus-5-5, invalid ref falls back, save merges into durable object	config_durable_model_is_global_only_with_the_subscription_default
+W47-DU-04	daemon	worker settings report durable.model only in a durable worker; /settings saves or clears it (restart), rejects non provider/model	daemon_worker_settings_durable_model_is_a_durable_workers_setting
+W47-DU-05	interactive	settings Models list: durable row and durable.model as the Session row's saved default only when marked durable	settings_durable_sessions_list_durable_model_as_their_saved_default
+W47-DU-06	cli	TUI /settings Models shows Durable default model under ultron durable, not under plain ultron	cli_entry_tui_durable_settings_list_the_durable_default_model
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

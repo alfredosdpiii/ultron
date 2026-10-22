@@ -591,9 +591,10 @@ pub fn build_session_report_with(log: &SessionLog, subscription_providers: &[Str
 
     // Durable children (ultron-rs `rlm.spawn`, kept or not, typed agents) answer in their own conversations, which are
     // not session entries: their responses are `pi.assistant` entries of the durable records, with model, split and
-    // cost. A conversation a task owns is a sub-agent's; another root conversation's goes to "other".
+    // cost. A conversation a task owns is a sub-agent's; another root conversation's goes to "other". Under `ultron
+    // claude` too: its server runs persistent children and typed agents' `rlm` lanes on a durable runtime of the session.
     let mut durable_other = Bucket::default();
-    if !external {
+    {
         for response in &log.durable_responses {
             let kind = match lane_kind(response.lane.as_deref()) {
                 Lane::Frames => Lane::Frames,

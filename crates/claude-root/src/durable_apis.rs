@@ -9,9 +9,12 @@
 //! runtime's journal is in the session (session_core::durable_store), so persistent children, the board, the notes
 //! and the swarm's messages survive a restart and `claude --resume` reopens them.
 //!
-//! - A persistent child runs on an Ultron model, never a Claude Code process: `claude -p` cannot be asked a
-//!   follow-up in the same context, and the `claude-code` provider runs without tools (no `rlm`). Its model is
-//!   `model=` of the spawn, else the server's Ultron child model ([`keep_model`]); a `claude-code/` model is refused.
+//! - A persistent child is a conversation of this runtime, never a Claude Code process. Its model is `model=` of the
+//!   spawn, else [`keep_model`]: `--ultron-child-model` / `claudeCode.ultronChildModel`, else `rlm.childModel` when
+//!   it names a Claude Code model, else the root's own subscription model (`claude-code/<id>`). A `claude-code`
+//!   request that declares tools runs on the Claude subscription only, inside this conversation's transcript
+//!   (ai::claude_subscription::claude_code_lane): the child has `rlm` and takes follow-ups (`rlm.ask`), and nothing
+//!   falls onto API credits unless the spawn or a setting names such a model.
 //! - Its model turns are charged to the session's usage ledger as a native session charges a persistent child (the
 //!   ledger's default root), and the session's budget gate stops a spent tree's requests.
 //! - `swarm.send(to, text, wake=True)` to the root (Claude Code: the name it registered, else `root`) cannot start
@@ -62,16 +65,20 @@ pub fn is_keep_spawn(kind: &str, payload: &Map<String, Value>) -> bool {
     kind == "rlm.spawn" && (keep(payload.get("keep")) || keep(payload.get("kwargs").and_then(|k| k.get("keep"))))
 }
 
-/// The model persistent children run on when the spawn names none: the server's Ultron child model
-/// (`--ultron-child-model`, `claudeCode.ultronChildModel`, the default model), else `rlm.childModel`; never a
-/// Claude Code model (a persistent child needs the `rlm` tool).
-pub fn keep_model(ultron_child_model: Option<&str>, settings_child_model: Option<&str>) -> Option<ModelRef> {
-    [ultron_child_model, settings_child_model]
-        .into_iter()
-        .flatten()
-        .map(str::trim)
-        .filter(|model| !model.starts_with("claude-code/"))
-        .find_map(|model| crate::mcp_server::split_model(model).map(|(provider, id)| ModelRef::new(&provider, &id)))
+/// The model persistent children run on when the spawn names none (crate::mcp_server::ultron_child_model, over
+/// `rlm.childModel` and the root's `subscription` model); a named model that is not `provider/model` falls through
+/// to the subscription model.
+pub fn keep_model(
+    resolved: &crate::mcp_server::Resolved,
+    settings_child_model: Option<&str>,
+    subscription: &str,
+) -> ModelRef {
+    let chosen = crate::mcp_server::ultron_child_model(resolved, settings_child_model, subscription);
+    let reference =
+        |model: &str| crate::mcp_server::split_model(model.trim()).map(|(provider, id)| ModelRef::new(&provider, &id));
+    reference(&chosen)
+        .or_else(|| reference(subscription))
+        .unwrap_or_else(|| ModelRef::new(ai::claude_code::PROVIDER, crate::claude_cli::DEFAULT_CLAUDE_MODEL))
 }
 
 /// The durable runtime of an `ultron mcp` root and the APIs served over it.
@@ -80,7 +87,7 @@ pub struct DurableApis {
     pub children: Arc<DurableChildren>,
     pub swarm: Arc<SwarmOps>,
     /// Where persistent children run when the spawn names no model.
-    pub model: Option<ModelRef>,
+    pub model: ModelRef,
     sink: Arc<RootSink>,
 }
 
@@ -93,7 +100,7 @@ pub fn open(
     lane: &Lane,
     runtime: &Runtime,
     env: &session_core::RunEnv,
-    model: Option<ModelRef>,
+    model: ModelRef,
     sink: Arc<RootSink>,
 ) -> Result<Arc<DurableApis>, String> {
     let stack = lane.stack.clone();
@@ -212,10 +219,8 @@ pub fn open(
     let chat = ChatHarness::open(storage, options).map_err(|e| e.to_string())?;
     let root = chat.root(None).map_err(|e| e.to_string())?;
     // A persistent child spawned without `model=` runs on its parent conversation's model.
-    if let Some(model) = &model {
-        root.configure(&AgentChange::model(model.clone()))
-            .map_err(|e| e.to_string())?;
-    }
+    root.configure(&AgentChange::model(model.clone()))
+        .map_err(|e| e.to_string())?;
     children.attach(chat.clone());
     let swarm = Arc::new(SwarmOps::new(children.clone()).with_contracts(Arc::downgrade(&stack)));
     let _ = stack.swarm.set(swarm.clone());
@@ -261,32 +266,13 @@ impl DurableApis {
         self.children.conversation_of_lane(lane)
     }
 
-    /// Why `kind` with `payload` from `lane` cannot be served here, if it cannot; `None` passes it on. (The swarm,
-    /// board and notes of a lane with no conversation here are served by [`DurableApis::serve_as`].)
+    /// Why `kind` with `payload` from `lane` cannot be served here, if it cannot; `None` passes it on: persistent
+    /// children and `rlm.ask` belong to conversations ([`subagent_refusal`]), on any model (a Claude Code one runs on
+    /// the subscription with `rlm`). (The swarm, board and notes of a lane with no conversation here are served by
+    /// [`DurableApis::serve_as`].)
     pub fn refusal(&self, lane: &str, kind: &str, payload: &Map<String, Value>) -> Option<String> {
-        if kind != "rlm.ask" && !is_keep_spawn(kind, payload) {
-            return None;
-        }
-        if self.conversation(lane).is_none() {
-            return Some(subagent_refusal(kind));
-        }
-        if !is_keep_spawn(kind, payload) {
-            return None;
-        }
-        let named = payload
-            .get("kwargs")
-            .and_then(|kwargs| kwargs.get("model"))
-            .and_then(Value::as_str);
-        match named {
-            Some(model) if model.trim().starts_with("claude-code/") => Some(format!(
-                "rlm.spawn(keep=True) cannot run on {model}: a persistent child in ultron claude runs on an Ultron model (a Claude Code model has no rlm tool and cannot take follow-ups); name one with model=\"provider/model\""
-            )),
-            None if self.model.is_none() && lane == MAIN => Some(
-                "rlm.spawn(keep=True) needs an Ultron model in ultron claude (a Claude Code subagent cannot take follow-ups): name one with model=\"provider/model\", or set one with --ultron-child-model, claudeCode.ultronChildModel or rlm.childModel"
-                    .into(),
-            ),
-            _ => None,
-        }
+        let durable = kind == "rlm.ask" || is_keep_spawn(kind, payload);
+        (durable && self.conversation(lane).is_none()).then(|| subagent_refusal(kind))
     }
 
     /// `swarm.send(..., wake=True)` from `lane` whose recipient is the root: the message is sent, and the root

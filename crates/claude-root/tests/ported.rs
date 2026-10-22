@@ -145,7 +145,9 @@ fn claude_root_launcher_runs_claude_with_the_repl_as_the_only_tool() {
     let mcp: Value = serde_json::from_str(&built.files[0].1).unwrap();
     assert_eq!(
         mcp,
-        json!({"mcpServers": {"ultron": {"type": "stdio", "command": "node", "args": ["cli.js", "mcp", "--no-instructions", "--socket", "/run/s.sock"]}}})
+        // Rust adds `--root-model` (the root runs `sonnet`, not the default): Ultron children that name no model
+        // run on it (claude_root_launcher_tells_the_server_the_roots_model_unless_it_is_the_default).
+        json!({"mcpServers": {"ultron": {"type": "stdio", "command": "node", "args": ["cli.js", "mcp", "--no-instructions", "--socket", "/run/s.sock", "--root-model", "sonnet"]}}})
     );
     let settings: Value = serde_json::from_str(&built.files[1].1).unwrap();
     assert_eq!(settings["permissions"], json!({"allow": [CLAUDE_RLM_TOOL]}));

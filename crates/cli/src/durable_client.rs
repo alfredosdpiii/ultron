@@ -66,11 +66,17 @@ pub fn run(args: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write)
     // herdr resumes the pane as a durable client (`ultron-s` set its own override first, which stays).
     let caller = env.clone();
     crate::herdr_report::set_resume_override(move |session_id| Some(durable_resume_argv(&caller, session_id)));
-    let dir = crate::instance(env, true).dir.display().to_string();
+    let instance = crate::instance(env, true).dir;
+    // The durable instance's own directory (not an `ULTRON_SERVER_DIR` elsewhere): its sessions start on
+    // `durable.model`, as its workers do (session-core `lane::is_durable`).
+    let own = daemon::instance::ultron_home(&env.home).join("server");
+    let sessions = (config::paths::normalize(&instance) == config::paths::normalize(&own)).then(|| "1".to_string());
+    let dir = instance.display().to_string();
     let inner = env.var.clone();
     let client = Env {
         var: Arc::new(move |key| match key {
             CLIENT_ENV => Some("1".into()),
+            config::settings::DURABLE_CLIENT_ENV => sessions.clone(),
             daemon::instance::ENV_SERVER_DIR => Some(dir.clone()),
             "PI_SERVER_DIR" => None,
             _ => inner(key),

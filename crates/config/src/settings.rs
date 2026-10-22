@@ -88,6 +88,29 @@ pub fn process_defaults() -> Option<&'static Settings> {
     PROCESS_DEFAULTS.get()
 }
 
+/// The durable instance's own default model (`durable.model`) when the user's settings name none: Claude Opus on
+/// the Claude subscription (a `claude-code` lane with tools runs as `claude-subscription`, never on API credits).
+pub const DURABLE_MODEL_DEFAULT: &str = "claude-code/claude-opus-5-5";
+/// Set (to `1`) in the (injected) environment of a client of the durable instance's own directory (`ultron durable
+/// ...`, `ultron-s`; not one whose `ULTRON_SERVER_DIR` names another): it resolves a new session's model as the
+/// instance's workers do.
+pub const DURABLE_CLIENT_ENV: &str = "__ULTRON_DURABLE_SESSIONS";
+
+/// Whether this process is a session worker of the durable instance (`set_durable_process`). A process flag, not an
+/// environment variable: a command the session runs (an `ultron` in its shell) is not the durable instance's.
+static DURABLE_PROCESS: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
+/// Mark this process as a session worker of the durable instance: its new sessions start on `durable.model` and a
+/// saved default model goes there. Set once.
+pub fn set_durable_process() {
+    let _ = DURABLE_PROCESS.set(());
+}
+
+/// Whether [`set_durable_process`] marked this process.
+pub fn is_durable_process() -> bool {
+    DURABLE_PROCESS.get().is_some()
+}
+
 /// `deepMergeObjects`: overrides win; two objects at the same key merge recursively.
 pub fn deep_merge(base: &Settings, overrides: &Settings) -> Settings {
     let mut result = base.clone();
@@ -582,6 +605,19 @@ impl SettingsManager {
             self.global.get("claude").and_then(|c| c.get("apiFallback")),
             Some(Value::Bool(false))
         )
+    }
+
+    /// Global only `durable.model`: the model a new session of the durable instance starts on when no `--model` or
+    /// `--provider` names one, ahead of `defaultProvider`/`defaultModel` (else [`DURABLE_MODEL_DEFAULT`]). Global
+    /// only, as `claude.apiFallback`: a repository cannot move the user's durable sessions off their subscription.
+    pub fn durable_model(&self) -> String {
+        model_ref(self.global.get("durable").and_then(|d| d.get("model")))
+            .unwrap_or_else(|| DURABLE_MODEL_DEFAULT.to_string())
+    }
+
+    /// Save `provider/id` as `durable.model` (a model chosen in a durable session), leaving the other `durable` keys.
+    pub fn set_durable_model(&mut self, provider: &str, id: &str) {
+        self.set_global_nested("durable", "model", Some(Value::String(format!("{provider}/{id}"))));
     }
 
     /// Global only `loki` settings, dropping invalid values.

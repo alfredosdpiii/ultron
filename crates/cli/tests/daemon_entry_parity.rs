@@ -95,7 +95,7 @@ fn cli_entry_durable_attaches_under_offline_and_the_proxy_setting_and_takes_sess
     let home = Home::new(provider.port);
     std::fs::write(
         home.agent().join("settings.json"),
-        r#"{"sessionNaming":{"enabled":false},"httpProxy":"http://127.0.0.1:9"}"#,
+        r#"{"sessionNaming":{"enabled":false},"durable":{"model":"anthropic/claude-opus-4-8"},"httpProxy":"http://127.0.0.1:9"}"#,
     )
     .unwrap();
     // The provider is on 127.0.0.1, which the proxy does not cover.

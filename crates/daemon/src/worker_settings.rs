@@ -353,6 +353,10 @@ pub fn values(settings: &SettingsManager, live: &Live, env: Env) -> Result<Map<S
             json!(text(claude.and_then(|c| c.get(key)))),
         );
     }
+    // Only the durable instance's sessions have one (and start on it).
+    if config::settings::is_durable_process() {
+        put("durable.model", json!(settings.durable_model()));
+    }
     Ok(v)
 }
 
@@ -716,6 +720,12 @@ pub fn apply(
             &key["claudeCode.".len()..],
             opt(claude_alias_value(key, value)?),
         ),
+        "durable.model" => {
+            let model = model_value(key, value)?;
+            nested(settings, "durable", "model", opt(model));
+            // A new durable session starts on it; the running one keeps its model.
+            applied = Applied::Restart;
+        }
         "enabledModels" => {
             let patterns = match value {
                 Value::Null => None,

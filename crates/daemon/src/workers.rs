@@ -277,6 +277,9 @@ pub struct Manager {
     /// Settings defaults its workers apply under the user's files (`settingsDefaults`; the durable instance's
     /// `persona: "ultron"`).
     settings_defaults: OnceLock<Value>,
+    /// Whether this is the durable instance's manager: its workers start new sessions on `durable.model` and save
+    /// a chosen model there (`durable` worker option, config::settings `set_durable_process`).
+    durable: OnceLock<()>,
 }
 
 fn scoped(scope: &Value, subscription: &str) -> String {
@@ -301,6 +304,7 @@ impl Manager {
             logger: OnceLock::new(),
             schedules: OnceLock::new(),
             settings_defaults: OnceLock::new(),
+            durable: OnceLock::new(),
         })
     }
 
@@ -308,6 +312,11 @@ impl Manager {
     /// `set_process_defaults`).
     pub fn set_settings_defaults(&self, defaults: Value) {
         let _ = self.settings_defaults.set(defaults);
+    }
+
+    /// Workers started from now on are the durable instance's (see `durable`).
+    pub fn set_durable(&self) {
+        let _ = self.durable.set(());
     }
 
     pub fn set_coordinator(&self, coordinator: Arc<CoordinatorConnection>) {
@@ -670,6 +679,9 @@ impl Manager {
         model.session.write_worker_options(&mut options);
         if let Some(defaults) = self.settings_defaults.get() {
             options["settingsDefaults"] = defaults.clone();
+        }
+        if self.durable.get().is_some() {
+            options["durable"] = json!(true);
         }
         options
     }

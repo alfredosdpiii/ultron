@@ -1461,8 +1461,15 @@ fn link_thread(
                         tui::theme::TerminalTheme::Dark => "dark".to_string(),
                     }
                 });
+                let mut values = settings.settings().clone();
+                // A client of the durable instance: its sessions start on `durable.model` and save a chosen model
+                // there (the Models list's durable row, which shows the built-in default when none is set).
+                if session_core::lane::is_durable(&catalog_env) && !values.get("durable").is_some_and(Value::is_object)
+                {
+                    values.insert("durable".into(), json!({}));
+                }
                 send(LaneEvent::Settings {
-                    settings: Value::Object(settings.settings().clone()),
+                    settings: Value::Object(values),
                     env_overrides,
                     themes,
                     terminal_theme,

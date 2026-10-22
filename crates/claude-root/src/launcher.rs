@@ -140,16 +140,44 @@ fn stringify(value: &Value) -> String {
     serde_json::to_string(value).expect("JSON values serialize")
 }
 
-/// `buildClaudeLaunch`.
+/// The Claude Code model the root runs on: a `--model` among the claude args (`None`: it is there, and goes to
+/// `claude` as given), else ULTRON_CLAUDE_MODEL, `claudeCode.model`, the default.
+fn root_model(options: &LauncherOptions, var: &dyn Fn(&str) -> Option<String>) -> (String, bool) {
+    let args = &options.claude_args;
+    let named = args
+        .iter()
+        .enumerate()
+        .find_map(|(index, arg)| match arg.strip_prefix("--model=") {
+            Some(value) => Some(value.to_string()),
+            None => (arg == "--model").then(|| args.get(index + 1).cloned().unwrap_or_default()),
+        });
+    match named {
+        Some(model) => (model, true),
+        None => (
+            var("ULTRON_CLAUDE_MODEL")
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+                .or_else(|| options.root_model.clone())
+                .unwrap_or_else(|| DEFAULT_CLAUDE_MODEL.into()),
+            false,
+        ),
+    }
+}
+
+/// `buildClaudeLaunch`. Unlike TypeScript, the server is told the root's model (`--root-model`, when it is not the
+/// default): Ultron children that name no model run on it (crate::mcp_server::subscription_model).
 pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
     let options = input.options;
     let self_cmd = input.self_cmd;
+    let (model, model_in_args) = root_model(options, input.var);
+    let root = (model.trim() != DEFAULT_CLAUDE_MODEL).then(|| model.trim().to_string());
     let mut mcp_args: Vec<String> = self_cmd.args.clone();
     mcp_args.extend(["mcp", "--no-instructions", "--socket", input.socket].map(String::from));
     for (flag, value) in [
         ("--frame-model", &options.frame_model),
         ("--children", &options.children),
         ("--child-model", &options.child_model),
+        ("--root-model", &root),
     ] {
         if let Some(value) = value {
             mcp_args.extend([flag.to_string(), value.clone()]);
@@ -244,16 +272,7 @@ pub fn build_claude_launch(input: &LaunchInput) -> ClaudeLaunch {
     if input.flags.contains("dangerously-skip-permissions") {
         args.extend(input.skip_permissions.iter().cloned());
     }
-    if !options
-        .claude_args
-        .iter()
-        .any(|a| a == "--model" || a.starts_with("--model="))
-    {
-        let model = (input.var)("ULTRON_CLAUDE_MODEL")
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty())
-            .or_else(|| options.root_model.clone())
-            .unwrap_or_else(|| DEFAULT_CLAUDE_MODEL.into());
+    if !model_in_args {
         args.extend(["--model".into(), model]);
     }
     args.extend(options.claude_args.iter().cloned());

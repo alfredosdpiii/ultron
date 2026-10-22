@@ -452,21 +452,25 @@ fn claude_root_durable_apis_refusals_name_what_works_instead() {
             Reply::Cell("for attempt in [rlm.spawn('b', name='k', keep=True), rlm.ask('1', 'q', timeout=5), schedule.list()]:\n    try:\n        await attempt\n    except Exception as e:\n        print('refused:', e)".into())
         }
     }));
-    // No Ultron model to run a persistent child on (no --ultron-child-model, no default model, no rlm.childModel).
+    // No --ultron-child-model: a persistent child that names no model would run on the root's subscription model
+    // (claude-code/claude-opus-5-5; the cli crate's claude_root_subscription_children runs that against a fake
+    // `claude`). One naming another provider's model runs on it, on that provider.
     let mut server = Server::start(&root, port, &[], &[]);
-    assert_eq!(
-        server.attempt("await rlm.spawn('brief', name='kept', keep=True)"),
-        "rlm.spawn(keep=True) needs an Ultron model in ultron claude (a Claude Code subagent cannot take follow-ups): name one with model=\"provider/model\", or set one with --ultron-child-model, claudeCode.ultronChildModel or rlm.childModel"
-    );
-    assert_eq!(
-        server.attempt("await rlm.spawn('brief', name='kept', keep=True, model='claude-code/sonnet')"),
-        "rlm.spawn(keep=True) cannot run on claude-code/sonnet: a persistent child in ultron claude runs on an Ultron model (a Claude Code model has no rlm tool and cannot take follow-ups); name one with model=\"provider/model\""
-    );
-    // Without a default, a spawn naming its model runs.
     let named = server.cell(&format!(
-        "h = await rlm.spawn('KEEP-BRIEF', name='named', keep=True, model='{CHILD_MODEL}')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['status'])"
+        "h = await rlm.spawn('KEEP-BRIEF', name='named', keep=True, model='{CHILD_MODEL}')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(h.model, r[0]['result']['status'])"
     ));
-    assert_eq!(named, "succeeded");
+    assert_eq!(named, format!("{CHILD_MODEL} succeeded"));
+    let kept: Vec<Value> = requests
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|b| b["messages"].to_string().contains("KEEP-BRIEF"))
+        .cloned()
+        .collect();
+    assert!(
+        !kept.is_empty() && kept.iter().all(|b| b["model"] == "llama-3.3-70b-versatile"),
+        "{kept:?}"
+    );
     // An in-memory subagent has no conversation in the durable runtime: persistent children and schedules are
     // refused to it (its swarm, board and notes: claude_root_in_memory_subagents_share_the_board_notes_and_swarm).
     let child = server.cell("h = await rlm.spawn('CHILD-BRIEF: add a task', name='plain', model='groq/llama-3.3-70b-versatile')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['value'])");
@@ -717,12 +721,12 @@ fn retained_follow_up(server: &mut Server, definition: &str, model: &str) -> Str
 }
 
 #[test]
-fn claude_root_a_retained_typed_agent_cannot_continue_on_a_claude_code_model() {
+fn claude_root_a_retained_typed_agent_continues_its_conversation_on_a_named_model() {
     let root = Root::new();
     let (port, requests) = fake_provider(typed_script());
-    // The definition names a Claude Code model: its first run on a named Ultron model works, its follow-up cannot.
     let mut server = Server::with_child_model(&root, port, &[], &[]);
-    // On an Ultron model the instance continues its lane's conversation.
+    // The instance continues its lane's conversation. (On a Claude Code model it does too, on the subscription: the
+    // cli crate's claude_root_subscription_children.)
     let kept = retained_follow_up(&mut server, &summ_definition("kept", None), CHILD_MODEL);
     assert!(kept.ends_with("succeeded\nsucceeded None"), "{kept}");
     let follow_up = requests.lock().unwrap().last().cloned().unwrap();
@@ -730,31 +734,7 @@ fn claude_root_a_retained_typed_agent_cannot_continue_on_a_claude_code_model() {
         follow_up["messages"].to_string().contains("on llama-3.3-70b-versatile"),
         "{follow_up}"
     );
-    let outcome = retained_follow_up(
-        &mut server,
-        &summ_definition("claudy", Some("claude-code/sonnet")),
-        CHILD_MODEL,
-    );
-    assert_ends(
-        &outcome,
-        "succeeded\nfailed claudy@1 cannot continue on claude-code/sonnet in ultron claude: a retained instance takes follow-ups in its lane's conversation, which a Claude Code model cannot (it has no rlm tool and cannot take follow-ups); name an Ultron model in the definition (\"model\": \"provider/model\")",
-    );
-    server.close();
-    // Under `--children claude` the root's child model is its Claude Code children's: a definition naming none
-    // continues on it, which is refused the same way (the first run, on a named model, ran on the runtime).
-    let root = Root::new();
-    let claude = root.path("h/claude");
-    std::fs::write(&claude, "#!/bin/sh\nexit 1\n").unwrap();
-    let bin = [("ULTRON_CLAUDE_BIN", claude.to_str().unwrap())];
-    let mut server = Server::start(&root, port, &bin, &["--children", "claude", "--child-model", "sonnet"]);
-    let outcome = retained_follow_up(&mut server, &summ_definition("plain", None), CHILD_MODEL);
-    assert_ends(
-        &outcome,
-        "succeeded\nfailed plain@1 cannot continue on claude-code/sonnet in ultron claude: a retained instance takes follow-ups in its lane's conversation, which a Claude Code model cannot (it has no rlm tool and cannot take follow-ups); name an Ultron model in the definition (\"model\": \"provider/model\")",
-    );
-    // Both first runs reached the fake provider on the named model; neither refused follow-up did.
-    let bodies = requests.lock().unwrap().clone();
-    assert_eq!(bodies.len(), 4, "{bodies:?}");
+    assert_eq!(requests.lock().unwrap().len(), 2);
     server.close();
 }
 

@@ -1052,13 +1052,22 @@ impl SettingsSelector {
         };
         let alias = |v: &Option<String>| v.as_ref().map(|v| format!("{CLAUDE_CODE}/{v}"));
         let setting = |v: &Option<String>, fallback: String| v.as_ref().map_or(fallback, |v| format!("{v} (setting)"));
-        vec![
+        // A session of the durable instance (its worker reports `durable.model`): a chosen model is saved there.
+        let durable = c.get("durable").is_object().then(|| c.text("durable.model"));
+        let durable_default = format!("{CLAUDE_CODE}/{DEFAULT_CLAUDE_MODEL}");
+        let session_saved = match &durable {
+            Some(model) => format!(
+                "{} (durable.model)",
+                model.clone().unwrap_or_else(|| durable_default.clone())
+            ),
+            None => saved_default.clone().unwrap_or_else(|| "none".into()),
+        };
+        let mut rows = vec![
             row(
                 "session",
                 "Session model",
                 &format!(
-                    "The Session's own model (tool-capable models only). Choosing one switches the running Session now and saves it as the default, as /model does. Saved default: {}.",
-                    saved_default.clone().unwrap_or_else(|| "none".into())
+                    "The Session's own model (tool-capable models only). Choosing one switches the running Session now and saves it as the default, as /model does. Saved default: {session_saved}."
                 ),
                 format!("{session} (session)"),
                 tools.clone(),
@@ -1151,7 +1160,21 @@ impl SettingsSelector {
                 with(plain("", "Default model"), &tools),
                 cc_ultron.clone(),
             ),
-        ]
+        ];
+        if let Some(model) = durable {
+            rows.insert(
+                1,
+                row(
+                    "durable.model",
+                    "Durable default model",
+                    "The model new sessions of the durable instance (ultron durable, ultron-s) start on when no --model names one, ahead of the default model; /model and Ctrl+P save here. claude-code models run tool lanes on the Claude subscription.",
+                    setting(&model, format!("{durable_default} (default)")),
+                    with(plain("", &format!("Default ({durable_default})")), &all),
+                    model.clone(),
+                ),
+            );
+        }
+        rows
     }
 
     fn models_summary(&self) -> String {
@@ -1974,6 +1997,98 @@ mod tests {
         assert_eq!(automatic_themes("light/dark", &themes), ("light".into(), "dark".into()));
         assert_eq!(automatic_themes("light", &themes), ("light".into(), "light".into()));
         assert_eq!(automatic_themes("nope", &themes), ("dark".into(), "dark".into()));
+    }
+
+    fn selector(settings: Value) -> SettingsSelector {
+        let theme = Rc::new(
+            tui::theme::create_theme(
+                &tui::theme::builtin_theme_json("dark").unwrap(),
+                tui::theme::ColorMode::Truecolor,
+                None,
+            )
+            .unwrap(),
+        );
+        let keys = KeybindingsManager::new(
+            tui::qol_keys::native_app_keybindings(tui::keybindings::Platform::new("linux", false)),
+            Vec::new(),
+            Default::default(),
+        );
+        let model = |provider: &str, id: &str| ModelInfo {
+            provider: provider.into(),
+            id: id.into(),
+            ..Default::default()
+        };
+        let input = SettingsInput {
+            settings,
+            env_overrides: BTreeMap::new(),
+            models: vec![
+                model("anthropic", "claude-haiku-4-5"),
+                model(CLAUDE_CODE, "claude-opus-5-5"),
+            ],
+            session: Some(model(CLAUDE_CODE, "claude-opus-5-5")),
+            themes: vec!["dark".into(), "light".into()],
+            terminal_theme: "dark".into(),
+            supports_images: false,
+            follow_up_key: String::new(),
+            cycle_thinking_key: String::new(),
+            rust_rows: true,
+        };
+        SettingsSelector::new(theme, keys, input)
+    }
+
+    /// A durable session (its client marks `durable`): the Models list has the durable default model's row, and the
+    /// Session model row names `durable.model` as the saved default. Plain `ultron` has neither.
+    #[test]
+    fn settings_durable_sessions_list_durable_model_as_their_saved_default() {
+        let global = json!({"defaultProvider": "anthropic", "defaultModel": "claude-haiku-4-5"});
+        let rows = selector(global.clone()).model_rows();
+        assert!(rows.iter().all(|r| r.id != "durable.model"));
+        assert!(
+            rows[0]
+                .description
+                .ends_with("Saved default: anthropic/claude-haiku-4-5."),
+            "{}",
+            rows[0].description
+        );
+        let mut durable = global.clone();
+        durable["durable"] = json!({});
+        let rows = selector(durable).model_rows();
+        let row = &rows[1];
+        assert_eq!(
+            (
+                row.id.as_str(),
+                row.label.as_str(),
+                row.display.as_str(),
+                row.current.as_str()
+            ),
+            (
+                "durable.model",
+                "Durable default model",
+                "claude-code/claude-opus-5-5 (default)",
+                ""
+            )
+        );
+        assert_eq!(row.choices[0].1, "Default (claude-code/claude-opus-5-5)");
+        assert!(row.choices.iter().any(|c| c.0 == "claude-code/claude-opus-5-5"));
+        assert!(
+            rows[0]
+                .description
+                .ends_with("Saved default: claude-code/claude-opus-5-5 (durable.model)."),
+            "{}",
+            rows[0].description
+        );
+        let mut chosen = global;
+        chosen["durable"] = json!({"model": "anthropic/claude-haiku-4-5"});
+        let rows = selector(chosen).model_rows();
+        assert_eq!(
+            (rows[1].display.as_str(), rows[1].current.as_str()),
+            ("anthropic/claude-haiku-4-5 (setting)", "anthropic/claude-haiku-4-5")
+        );
+        assert!(
+            rows[0]
+                .description
+                .ends_with("Saved default: anthropic/claude-haiku-4-5 (durable.model).")
+        );
     }
 
     #[test]

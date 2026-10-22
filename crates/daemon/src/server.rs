@@ -362,8 +362,10 @@ fn start_generation(
     );
     // Every session of the durable instance has the Ultron persona on by default (a settings default under the
     // user's files, which an explicit `persona` value overrides).
+    // They also start on `durable.model` (the Claude subscription by default) and save a chosen model there.
     if is_durable_directory(&options.directory) {
         manager.set_settings_defaults(json!({resources::persona::SETTING: resources::persona::ULTRON}));
+        manager.set_durable();
     }
     let log_path = error_log_path(&options.directory, server_id);
     manager.set_logger(Box::new(move |label, message| record_error(&log_path, label, message)));

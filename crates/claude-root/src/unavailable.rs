@@ -8,7 +8,6 @@
 //! (crate::shared_world). Refused there:
 //!
 //! - `rlm.spawn(keep=True)` and `rlm.ask` from such a subagent (crate::durable_apis::subagent_refusal);
-//! - `rlm.spawn(keep=True)` on a Claude Code model, or with no Ultron model to run on;
 //! - `schedule.*` from any lane but the root's (as in a native session).
 //!
 //! A Claude Code subagent's server (`--child`) forwards the swarm, board and notes to its parent server

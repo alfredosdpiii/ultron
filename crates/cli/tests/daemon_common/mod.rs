@@ -87,6 +87,9 @@ pub fn provider(replies: Vec<String>, delay: Duration) -> Provider {
     Provider { port, requests }
 }
 
+/// The settings every [`Home`] starts with (see [`Home::new`]).
+pub const SETTINGS: &str = r#"{"sessionNaming":{"enabled":false},"durable":{"model":"anthropic/claude-opus-4-8"}}"#;
+
 /// A private home: `agent/` (with models.json pointing at the provider), `server/` and `cwd/`.
 pub struct Home {
     pub tmp: tempfile::TempDir,
@@ -105,12 +108,10 @@ impl Home {
         )
         .unwrap();
         // These tests script the provider's replies in order; the session-naming request (a Rust addition, run
-        // beside the first turn) would take one of them.
-        std::fs::write(
-            root.join("agent/settings.json"),
-            r#"{"sessionNaming":{"enabled":false}}"#,
-        )
-        .unwrap();
+        // beside the first turn) would take one of them. The durable instance's sessions start on `durable.model`
+        // (the Claude subscription by default): here the scripted provider's model, the one a session starts on
+        // without it.
+        std::fs::write(root.join("agent/settings.json"), SETTINGS).unwrap();
         Home { tmp, root }
     }
 

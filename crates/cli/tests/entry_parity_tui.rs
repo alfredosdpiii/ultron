@@ -4,7 +4,9 @@
 //! - a resumed session shows its own thinking level (the worker's), and `--thinking` on resume changes it;
 //! - `--models` scopes Ctrl+P as the worker's model cycling does;
 //! - `/persona` in `ultron durable` reports the worker's effective persona (the durable default is on), and
-//!   `/persona none` turns it off for good (a removed key would bring the default back).
+//!   `/persona none` turns it off for good (a removed key would bring the default back);
+//! - `/settings` -> Models in `ultron durable` lists the durable default model (`durable.model`, the Claude
+//!   subscription by default) where its sessions save a chosen model; plain `ultron` does not.
 
 mod tui_harness;
 
@@ -197,6 +199,50 @@ fn cli_entry_tui_ultron_s_resume_opens_the_picked_durable_session() {
     tui.send_text("/quit");
     tui.send_keys(&["Enter"]);
     tui.wait("<exited>");
+    let out = run(&tmp.0, &["durable", "stop"], &env);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    drop(tui);
+}
+
+/// Back from the Models list to the editor (one Escape per level, each taken before the next), then `/quit`.
+fn close_and_quit(tui: &Tui, models: String) {
+    tui.send_keys(&["Escape"]);
+    let settings = tui.wait_change(&models);
+    tui.send_keys(&["Escape"]);
+    tui.wait_change(&settings);
+    tui.send_text("/quit");
+    tui.send_keys(&["Enter"]);
+    tui.wait("<exited>");
+}
+
+/// Open `/settings` -> Models and return the Models list.
+fn models_list(tui: &Tui) -> String {
+    tui.wait("ultron v");
+    tui.send_text("/settings");
+    tui.send_keys(&["Enter"]);
+    // The settings list opens on Models (its first row): wait for it before Enter opens it.
+    tui.wait("Models of the session, inference frames");
+    tui.send_keys(&["Enter"]);
+    tui.wait("Session model")
+}
+
+#[test]
+fn cli_entry_tui_durable_settings_list_the_durable_default_model() {
+    let mock = Mock::start(Vec::new(), None);
+    let tmp = TempDir::new();
+    // Plain `ultron`: no durable row; the session model's saved default is the global one.
+    let plain = Tui::start_at(&tmp.0, mock.port, 160, 40, &["--model", MODEL], &[]);
+    let screen = models_list(&plain);
+    assert!(!screen.contains("Durable default model"), "{screen}");
+    close_and_quit(&plain, screen);
+    drop(plain);
+    let durable = tmp.0.join(".ultron/server").display().to_string();
+    let env = [("ULTRON_SERVER_DIR", durable.as_str())];
+    let tui = Tui::start_at(&tmp.0, mock.port, 160, 40, &["durable", "--model", MODEL], &env);
+    let screen = models_list(&tui);
+    assert!(screen.contains("Durable default model"), "{screen}");
+    assert!(screen.contains("claude-code/claude-opus-5-5 (default)"), "{screen}");
+    close_and_quit(&tui, screen);
     let out = run(&tmp.0, &["durable", "stop"], &env);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     drop(tui);

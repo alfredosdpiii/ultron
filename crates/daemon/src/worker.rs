@@ -300,11 +300,16 @@ fn call_core(core: &Sender<Input>, op: Op) -> ServiceResult {
 
 /// `Models.select` (models-provider.ts: `setDefaultModelAndProvider`, then `flush`): a model a client selected
 /// becomes the saved default. Here in the worker, so every client (TUI, RPC, ACP, the models service) gets it once.
+/// A worker of the durable instance saves it as `durable.model`, leaving the global default to plain `ultron`.
 fn save_default_model(env: &RunEnv, model: &Value) {
     let (Some(provider), Some(id)) = (model["provider"].as_str(), model["id"].as_str()) else {
         return;
     };
     let mut settings = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home);
+    if config::settings::is_durable_process() {
+        settings.set_durable_model(provider, id);
+        return;
+    }
     settings.set_global("defaultProvider", Some(json!(provider)));
     settings.set_global("defaultModel", Some(json!(id)));
 }
@@ -690,6 +695,12 @@ pub fn run(args: &[String], docs: PathBuf) -> Result<(), String> {
         && let Some(Value::Object(defaults)) = raw.get("settingsDefaults")
     {
         config::settings::set_process_defaults(defaults.clone());
+    }
+    // `durable`: a worker of the durable instance (`durable.model`, see `save_default_model`).
+    if let Ok(Value::Object(raw)) = serde_json::from_str::<Value>(argument)
+        && raw.get("durable") == Some(&Value::Bool(true))
+    {
+        config::settings::set_durable_process();
     }
     let address = std::env::var(CONTROL_ADDRESS_ENV).ok();
     let token = std::env::var(CONTROL_TOKEN_ENV).ok();

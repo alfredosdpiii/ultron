@@ -475,6 +475,9 @@ pub fn resolve_cli_model(
 /// so scoped models (`--models`, `enabledModels`) do not pick its model.
 pub fn resolve_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Result<ModelChoice, String> {
     let Some(spec) = flags.model.as_deref() else {
+        if let Some(choice) = durable_choice(flags, env) {
+            return Ok(choice);
+        }
         return initial_choice(flags, env, continuing)
             .ok_or_else(|| "No model selected: pass --model <provider>/<id>".to_string());
     };
@@ -487,6 +490,33 @@ pub fn resolve_choice(flags: &ModelFlags, env: &Env, continuing: bool) -> Result
         (None, error) => return Err(error.unwrap_or_else(|| format!("Model \"{spec}\" not found"))),
     };
     Ok(ModelChoice {
+        model: for_requests(&registry, model, env),
+        thinking: resolved.thinking_level,
+        warning: resolved.warning,
+    })
+}
+
+/// Whether this run belongs to the durable instance: one of its session workers (config::settings
+/// `is_durable_process`) or a client of it (`ultron durable ...`, `ultron-s`: [`config::settings::DURABLE_CLIENT_ENV`]).
+pub fn is_durable(env: &Env) -> bool {
+    config::settings::is_durable_process() || (env.var)(config::settings::DURABLE_CLIENT_ENV).as_deref() == Some("1")
+}
+
+/// A new session of the durable instance with no `--model`, `--provider` or `--models` starts on `durable.model`
+/// (default `claude-code/claude-opus-5-5`, the Claude subscription), ahead of `defaultProvider`/`defaultModel`; a
+/// resumed one keeps its stored lane (crate::core `lane_config` resolves no model for it without flags). Resolved as an explicit choice would be, so a missing `claude` login fails on the subscription with its own
+/// error instead of moving the session to the global default's provider. A `durable.model` that does not resolve
+/// leaves the session to the global defaults.
+fn durable_choice(flags: &ModelFlags, env: &Env) -> Option<ModelChoice> {
+    if flags.provider.is_some() || flags.models.is_some() || !is_durable(env) {
+        return None;
+    }
+    let spec = config::settings::SettingsManager::for_worker(&env.cwd, &env.agent_dir(), &env.home).durable_model();
+    let registry = registry(env);
+    let configured = configured_providers(env, &registry);
+    let resolved = registry.resolve_cli(None, &spec, None, &|p: &str| configured.iter().any(|c| c == p));
+    let model = resolved.model.filter(|_| resolved.error.is_none())?;
+    Some(ModelChoice {
         model: for_requests(&registry, model, env),
         thinking: resolved.thinking_level,
         warning: resolved.warning,

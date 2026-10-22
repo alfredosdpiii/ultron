@@ -108,9 +108,14 @@ impl Root {
         static LAUNCH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"L-[0-9a-z]+-[0-9a-f]{8}").unwrap());
         static RND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"ultron-claude-[A-Za-z0-9]{6}").unwrap());
         static DATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"- Date: \d{4}-\d{2}-\d{2}").unwrap());
+        // Rust-only: the launcher tells its server the root's model when it is not the default (`--root-model`,
+        // claude_root_launcher_tells_the_server_the_roots_model_unless_it_is_the_default); TypeScript has no such flag.
+        static ROOT_MODEL: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#",\\*"--root-model\\*",\\*"[^"\\]*\\*""#).unwrap());
         let text = text
             .replace(&self.path().display().to_string(), "<T>")
             .replace(&repo().display().to_string(), "<REPO>");
+        let text = ROOT_MODEL.replace_all(&text, "");
         let text = LAUNCH.replace_all(&text, "L-<ID>");
         let text = RND.replace_all(&text, "ultron-claude-<RND>");
         DATE.replace_all(&text, "- Date: <DATE>").into_owned()
