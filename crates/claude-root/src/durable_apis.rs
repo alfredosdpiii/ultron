@@ -18,6 +18,10 @@
 //!   a turn of the runtime's root conversation: the message is sent, and also goes to the root's inbox as a
 //!   `<swarm_message>` line, which the next cell result or the wait-events hook brings to Claude Code
 //!   (crate::hooks::WAIT_EVENTS).
+//! - A subagent with no conversation here (an in-memory `--children ultron` subagent, a Claude Code subagent's
+//!   server) uses the swarm, board and notes by its spawn name ([`DurableApis::serve_as`], crate::shared_world);
+//!   persistent children and `rlm.ask` stay with conversations ([`subagent_refusal`]).
+//! - Typed agents' `rlm` lanes run here too, as agent child conversations (crate::typed_agents).
 
 use crate::root_sink::RootSink;
 use ai::AssistantMessage;
@@ -80,8 +84,11 @@ pub struct DurableApis {
     sink: Arc<RootSink>,
 }
 
-/// Open the durable runtime over `session` for `lane`'s stack and serve the APIs from it (sets `lane.stack.swarm`).
+/// Open the durable runtime of `children` over `session` for `lane`'s stack and serve the APIs from it (sets
+/// `lane.stack.swarm`). `children` is created before the lane: typed agents' `rlm` lanes run on it too
+/// (crate::typed_agents).
 pub fn open(
+    children: Arc<DurableChildren>,
     session: &SharedSession,
     lane: &Lane,
     runtime: &Runtime,
@@ -90,7 +97,6 @@ pub fn open(
     sink: Arc<RootSink>,
 ) -> Result<Arc<DurableApis>, String> {
     let stack = lane.stack.clone();
-    let children = DurableChildren::new();
     // The children's session (their contracts are values of it, session_core::kept_contracts). Its subagent host
     // is not used: this server's subagents are Claude Code processes or in-memory loops.
     drop(children.host(session.clone()));
@@ -255,25 +261,14 @@ impl DurableApis {
         self.children.conversation_of_lane(lane)
     }
 
-    /// Why `kind` with `payload` from `lane` cannot be served here, if it cannot; `None` passes it on.
+    /// Why `kind` with `payload` from `lane` cannot be served here, if it cannot; `None` passes it on. (The swarm,
+    /// board and notes of a lane with no conversation here are served by [`DurableApis::serve_as`].)
     pub fn refusal(&self, lane: &str, kind: &str, payload: &Map<String, Value>) -> Option<String> {
-        let shared = SHARED_RECORDS.contains(&kind) || kind == "rlm.ask" || is_keep_spawn(kind, payload);
-        if !shared {
+        if kind != "rlm.ask" && !is_keep_spawn(kind, payload) {
             return None;
         }
         if self.conversation(lane).is_none() {
-            let api = if kind.starts_with("rlm.") {
-                if kind == "rlm.ask" {
-                    "rlm.ask"
-                } else {
-                    "rlm.spawn(keep=True)"
-                }
-            } else {
-                kind.split('.').next().unwrap_or(kind)
-            };
-            return Some(format!(
-                "{api} is not available to this subagent in ultron claude: only the root and its persistent children (rlm.spawn(keep=True)) share the session's persistent agents, swarm, board and notes; put what the root needs in your answer"
-            ));
+            return Some(subagent_refusal(kind));
         }
         if !is_keep_spawn(kind, payload) {
             return None;
@@ -327,18 +322,132 @@ impl DurableApis {
             .conversation(lane)
             .map_or_else(|| lane.to_string(), |conversation| agent_name(&agents, conversation));
         let text = payload.get("text").and_then(Value::as_str).unwrap_or_default();
+        self.publish(&from, to, text);
+        Some(Ok(json!({"id": sent["id"], "woke": true})))
+    }
+
+    /// `kind` (one of [`SHARED_RECORDS`]) for a subagent with no conversation here, by its `name`: an in-memory
+    /// subagent of this server, or a Claude Code subagent whose server forwarded it (crate::shared_world). It is
+    /// served as `harness::chat::host_ops` serves a conversation's request, the subagent being the agent called
+    /// `name` (what it adds, appends, claims and sends is by `name`; its inbox is `name`'s): a wake to the root goes
+    /// to the root's inbox ([`DurableApis::wake_root`]), one to a persistent child starts its next turn.
+    pub fn serve_as(&self, name: &str, kind: &str, payload: &Map<String, Value>) -> Result<Value, String> {
+        use harness::chat::swarm;
+        let chat = &self.chat;
+        let failed = |error: harness::scheduler::HarnessError| error.message();
+        let text = |key: &str| payload.get(key).and_then(Value::as_str);
+        let now = chat.now();
+        let result = match kind {
+            "swarm.register" => {
+                let named = text("name").unwrap_or(name).to_string();
+                chat.commit(|tx| swarm::register(tx, &named, None, None, payload, now))
+            }
+            "swarm.agents" => chat.commit(swarm::agents),
+            "swarm.route" => {
+                let query = text("query").ok_or("swarm.route needs a query")?.to_owned();
+                chat.commit(|tx| swarm::route(tx, &query))
+            }
+            "swarm.send" => {
+                let to = text("to").ok_or("swarm.send needs a recipient")?.to_owned();
+                let body = text("text").ok_or("swarm.send needs text")?.to_owned();
+                let id = chat
+                    .commit(|tx| swarm::send(tx, name, &to, &body, now))
+                    .map_err(failed)?;
+                let mut woke = false;
+                if payload.get("wake").and_then(Value::as_bool).unwrap_or(false) {
+                    let agents = chat.commit(swarm::agents).map_err(failed)?;
+                    let target = agents.get(&to).map(|entry| entry["conversation"].as_u64());
+                    // The root: the name it registered, else `root` (as [`DurableApis::wake_root`]).
+                    let root = target.map_or(to == "root", |conversation| {
+                        conversation == Some(ROOT_CONVERSATION_ID.0)
+                    });
+                    if root {
+                        self.publish(name, &to, &body);
+                        woke = true;
+                    } else if let Some(Some(target)) = target
+                        && let Some(handle) = chat.conversation(ConversationId(target)).map_err(failed)?
+                    {
+                        let draft = harness::chat::SubmissionDraft::input(format!("Message from {name}: {body}"))
+                            .when_busy(harness::chat::WhenBusy::FollowUp);
+                        handle.submit(draft).map_err(failed)?;
+                        woke = true;
+                    }
+                }
+                return Ok(json!({"id": id, "woke": woke}));
+            }
+            "swarm.inbox" => {
+                let all = payload.get("all").and_then(Value::as_bool).unwrap_or(false);
+                let mark = payload.get("mark").and_then(Value::as_bool).unwrap_or(true);
+                let named = text("name").unwrap_or(name).to_string();
+                chat.commit(|tx| swarm::inbox(tx, &named, all, mark))
+            }
+            "board.add" => {
+                let title = text("title").ok_or("board.add needs a title")?.to_owned();
+                let detail = text("detail").map(str::to_owned);
+                chat.commit(|tx| swarm::board_add(tx, name, &title, detail.as_deref(), now))
+            }
+            "board.claim" | "board.update" => {
+                let id = payload
+                    .get("id")
+                    .and_then(Value::as_u64)
+                    .ok_or("A board task id is a number")?;
+                if kind == "board.claim" {
+                    chat.commit(|tx| swarm::board_claim(tx, name, id, now))
+                } else {
+                    let (status, note) = (text("status").map(str::to_owned), text("note").map(str::to_owned));
+                    chat.commit(|tx| swarm::board_update(tx, name, id, status.as_deref(), note.as_deref(), now))
+                }
+            }
+            "board.list" => {
+                let status = text("status").map(str::to_owned);
+                chat.commit(|tx| swarm::board_list(tx, status.as_deref()))
+            }
+            "notes.read" => chat.commit(swarm::notes_read),
+            "notes.append" => {
+                let line = text("text").ok_or("notes.append needs text")?.to_owned();
+                chat.commit(|tx| swarm::notes_append(tx, name, &line))
+            }
+            "notes.write" => {
+                let body = text("text").ok_or("notes.write needs text")?.to_owned();
+                let expect = payload.get("expect_version").and_then(Value::as_u64);
+                chat.commit(|tx| swarm::notes_write(tx, &body, expect))
+            }
+            other => return Err(format!("{other} is not one of the session's shared records")),
+        };
+        result.map_err(failed)
+    }
+
+    /// A `<swarm_message>` from `from` to the root (`to`, its name) in the root's inbox.
+    fn publish(&self, from: &str, to: &str, text: &str) {
         self.sink.publish(format!(
             "<swarm_message from=\"{}\" to=\"{}\">\n{text}\n</swarm_message>",
-            attribute(&from),
+            attribute(from),
             attribute(to)
         ));
-        Some(Ok(json!({"id": sent["id"], "woke": true})))
     }
 
     /// Stop the runtime (persistent children stay in the journal, for the next server of this session).
     pub fn close(&self) {
         let _ = self.chat.close();
     }
+}
+
+/// Why a subagent with no conversation of its own (an in-memory subagent, a Claude Code subagent) cannot use `kind`
+/// (`rlm.ask` or `rlm.spawn(keep=True)`).
+///
+/// Not forwarded to the root: a persistent child belongs to the conversation that spawned it (its answers, `rlm.ask`
+/// and `rlm.collect` go there), and a subagent has none: spawned for it, the child would be the root's, outliving
+/// the subagent that alone knows why it exists. `rlm.ask` holds the asker's cell until the child answers (up to
+/// 20 minutes), longer than a forwarded request should hold the parent's control socket.
+pub fn subagent_refusal(kind: &str) -> String {
+    let api = if kind == "rlm.ask" {
+        "rlm.ask"
+    } else {
+        "rlm.spawn(keep=True)"
+    };
+    format!(
+        "{api} is not available to a subagent in ultron claude: persistent children belong to the root and its persistent children; use swarm.send, board and notes to reach them, and put what the root needs in your answer"
+    )
 }
 
 /// Text as an XML attribute value.

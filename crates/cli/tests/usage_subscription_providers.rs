@@ -142,3 +142,31 @@ fn cli_models_claude_subscription_is_listed_by_claude_code_bin() {
     let env = env(dir.path(), &[("ULTRON_CLAUDE_CODE_BIN", wrapper.display().to_string())]);
     assert_eq!(listed(&env), ai::claude_subscription::catalog::pinned_routes().len());
 }
+
+/// `ultron mcp`'s `usage.report` prices as `/usage` does: the Anthropic Pro/Max login of the server's environment
+/// is notional (before, the hook built the plain report and reported the cost), an API key is reported.
+#[test]
+fn cli_usage_mcp_report_prices_the_servers_subscription_logins_as_notional() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = session(dir.path());
+    let text = std::fs::read_to_string(&path)
+        .unwrap()
+        .replace("\"priced\"", "\"anthropic\"");
+    std::fs::write(&path, text).unwrap();
+    let report = cli::mcp_session_report(&path, &env(dir.path(), &[])).unwrap();
+    let cost = &report["usage"]["total"]["cost"];
+    assert_eq!(cost["reportedUsd"], Value::Null, "{cost}");
+    assert!((cost["subscriptionUsd"].as_f64().unwrap() - 0.1).abs() < 1e-9, "{cost}");
+    let keyed = dir.path().join("keyed");
+    let env = env(&keyed, &[]);
+    std::fs::write(
+        keyed.join("agent/auth.json"),
+        json!({"anthropic": {"type": "api_key", "key": "fake-anthropic-key"}}).to_string(),
+    )
+    .unwrap();
+    let report = cli::mcp_session_report(&path, &env).unwrap();
+    let cost = &report["usage"]["total"]["cost"];
+    assert!((cost["reportedUsd"].as_f64().unwrap() - 0.1).abs() < 1e-9, "{cost}");
+    assert_eq!(cost["subscriptionUsd"], Value::Null, "{cost}");
+    assert!(cli::mcp_session_report(&dir.path().join("missing.jsonl"), &env).is_err());
+}

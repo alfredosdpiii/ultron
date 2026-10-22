@@ -3318,6 +3318,18 @@ W26U-05	claude-root	Claude subagent server refuses keep/ask/swarm/board/notes an
 W26U-06	claude-root	due schedule.at fires into root inbox and wakes idle Claude via wait-events; waiter stays while pending	claude_root_a_due_schedule_wakes_the_idle_claude_root_with_its_prompt
 W26U-07	claude-root	schedule.every collapses missed slots, fires each slot once, cancel stops it	claude_root_an_every_schedule_fires_each_slot_once_and_cancel_stops_it
 W26U-08	claude-root	root guide names persistent agents/swarm/schedule (no ctx); Claude child guide does not	claude_root_guide_names_persistent_agents_and_schedules_for_the_root_only
+W46-S1	session-core	predict adapter calls the current root model with that provider's key per call (wave 45; verified)	session_core_request_keys_predict_follows_the_root_model
+W46-S2	daemon	cycle_model through session-ops saves defaultProvider/defaultModel in the worker	cli_custom_provider_rpc_lists_and_selects_custom_models
+W46-S3	cli	ultron durable --session/-c select among all durable-instance sessions, same in print/json/rpc	cli_durable_session_and_continue_select_the_instances_sessions_in_every_mode
+W46-S4	cli	ultron-s -r forwards to the session picker over the instance's sessions and opens the picked one (tmux)	cli_entry_tui_ultron_s_resume_opens_the_picked_durable_session
+W46-S5	cli	MCP usage.report prices the server env's subscription logins as notional	cli_usage_mcp_report_prices_the_servers_subscription_logins_as_notional
+W46-U1	claude-root	typed rlm agents run on the root's durable runtime; model = request > definition > Claude root's child model	claude_root_typed_rlm_agents_run_on_the_durable_runtime_on_the_request_then_definition_then_child_model
+W46-U2	claude-root	retained typed instance continues on an Ultron model; follow-up on claude-code (definition or --children claude fallback) refused	claude_root_a_retained_typed_agent_cannot_continue_on_a_claude_code_model
+W46-U3	claude-root	in-memory subagents use board/notes/swarm by spawn name; wake reaches root inbox and kept child	claude_root_in_memory_subagents_share_the_board_notes_and_swarm_with_the_root_and_kept_children
+W46-U4	claude-root	Claude Code subagent server forwards board/notes/swarm to the root over the control socket with its token; nested subagent keeps its name	claude_root_a_claude_subagents_server_forwards_the_shared_world_to_the_root
+W46-U5	claude-root	schedules persist in the session under ultron.claude.schedule, invisible to the Ultron server scanner; missed slots collapse on resume	claude_root_schedules_survive_claude_resume_and_the_missed_slots_fire_once
+W46-U6	claude-root	subagents refused keep/ask and non-root schedule.*	claude_root_durable_apis_refusals_name_what_works_instead
+W46-U7	claude-root	child server refuses keep/ask/schedule creation, passes board/notes/swarm on	claude_root_a_claude_subagents_server_refuses_persistent_children_and_schedules
 INVENTORY-CHECKER	inventory	The inventory checker rejects stale or malformed rows	inventory_row_check_rejects_stale_rows
 INVENTORY-agent	inventory	Feature inventory of agent in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources
 INVENTORY-ai	inventory	Feature inventory of ai in crates/inventory/inventory.tsv matches the pinned sources	inventory_matches_the_pinned_sources

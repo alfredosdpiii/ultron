@@ -8,18 +8,64 @@
 //! (crate::hooks::WAIT_EVENTS) wakes the model with it, which starts a turn; during a turn it arrives with the next
 //! cell result, or wakes the model when the turn ends.
 //!
-//! The schedules live in this server, the process Claude Code starts for its session: they fire only while Claude
-//! Code runs, and end with it (they are not stored in the session, so nothing fires them later, and the Ultron
-//! server never fires a Claude Code session's schedule as a native turn).
+//! The schedules fire only while Claude Code runs (this server is the process it starts for its session). They are
+//! kept as session values of their own namespace, [`NAMESPACE`], not `ultron.schedule`: the Ultron server's timer
+//! reads only that one from the session journals (daemon::prompt_schedules::scan_journal), so it never fires a Claude
+//! Code session's schedule as a native turn on Claude's session. `claude --resume` reopens the same Ultron session,
+//! and its server's timer finds the schedules again: the slots missed while Claude Code was down collapse into one
+//! run (`fire_with`), as for a timer that slept through them.
 
 use kernel_apis::TickClock;
+use kernel_apis::artifacts::KeyedDocuments;
 use kernel_apis::prompt_schedule::{Listener, ScheduleModule};
 use serde_json::Value;
+use session_core::durable_store::{SharedSession, lock};
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 
 /// A delivery that failed is tried again after this (daemon::prompt_schedules::RETRY_MS).
 pub const RETRY_MS: i64 = daemon::prompt_schedules::RETRY_MS;
+
+/// Where a Claude Code session's schedules are kept (session values; never `ultron.schedule`).
+pub const NAMESPACE: &str = "ultron.claude.schedule";
+
+/// The schedules of `session` as keyed values of [`NAMESPACE`].
+pub struct SessionSchedules(pub SharedSession);
+
+impl KeyedDocuments for SessionSchedules {
+    fn get(&self, key: &str) -> Result<Option<Value>, String> {
+        Ok(lock(&self.0).value(NAMESPACE, key).cloned())
+    }
+    fn set(&self, key: &str, value: &Value) -> Result<(), String> {
+        lock(&self.0)
+            .commit(&[session_journal::Write::set(NAMESPACE, key, value.clone())])
+            .map(drop)
+    }
+    fn list(&self, prefix: &str) -> Result<Vec<(String, Value)>, String> {
+        Ok(lock(&self.0)
+            .state()
+            .scan_values(NAMESPACE, prefix)
+            .into_iter()
+            .map(|stored| (stored.key.clone(), stored.value.clone()))
+            .collect())
+    }
+}
+
+/// `schedule.*` of the root of `session` (whose id is `session_id`), kept in the session; `listener` hears every
+/// change.
+pub fn module(
+    session: &SharedSession,
+    session_id: &str,
+    clock: Arc<dyn TickClock>,
+    listener: Listener,
+) -> Arc<ScheduleModule> {
+    Arc::new(ScheduleModule::new(
+        Box::new(SessionSchedules(session.clone())),
+        session_id,
+        clock,
+        Some(listener),
+    ))
+}
 
 /// Puts a fired schedule's prompt message (kernel_apis::prompt_schedule::fire_message) where the root reads it.
 pub type Deliver = Arc<dyn Fn(&Value) -> Result<(), String> + Send + Sync>;

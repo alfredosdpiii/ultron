@@ -106,6 +106,14 @@ pub fn package_files(env: &Env) -> Result<(), String> {
     assets::package_dir(&*env.var, &env.home).map(|_| ())
 }
 
+/// `ultron mcp`'s `usage.report`: the session report of `path` as `/usage` builds it, the providers on a
+/// subscription login in `env` priced as notional (`subscriptionProviders`).
+pub fn mcp_session_report(path: &Path, env: &Env) -> Result<serde_json::Value, String> {
+    let log = usage::log::read_session_log(path).map_err(|e| e.message().to_string())?;
+    let providers = session_core::lane::subscription_providers(env);
+    Ok(usage::report::build_session_report_with(&log, &providers))
+}
+
 /// Run the CLI; returns the exit code.
 pub fn run(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> i32 {
     match run_inner(argv, env, out, err) {
@@ -170,12 +178,9 @@ fn run_inner(argv: &[String], env: &Env, out: &mut dyn Write, err: &mut dyn Writ
     {
         package_files(env)?;
     }
-    // `ultron mcp` answers `usage.report` inspections with the report `/usage` shows.
-    claude_root::mcp_server::set_session_report(|path| {
-        usage::log::read_session_log(path)
-            .map(|log| usage::report::build_session_report(&log))
-            .map_err(|e| e.message().to_string())
-    });
+    // `ultron mcp` answers `usage.report` inspections with the report `/usage` shows: a subscription login's costs
+    // are notional.
+    claude_root::mcp_server::set_session_report(mcp_session_report);
     if let Some(code) = claude_root::cli::run(argv, env, out, err) {
         return Ok(code);
     }
@@ -530,10 +535,13 @@ fn native_command(parsed: &Args, env: &Env, prompted: bool, terminal: bool) -> R
     print_mode::trace_startup(env, "cli.list-sessions");
     let repo = SessionRepo::new(&session_dir, SystemClock::shared());
     let needs_sessions = parsed.continue_ || parsed.resume || parsed.session.is_some() || parsed.fork.is_some();
-    let sessions = if needs_sessions {
-        session::list_native_sessions(&session_dir, &env.cwd)?
-    } else {
-        Vec::new()
+    // A client of the durable instance selects among all of the instance's sessions, wherever they were started
+    // (`ultron-s` runs its sessions in the home directory; herdr resumes them as `ultron durable --session <id>`).
+    let durable = durable_client::is_client(env);
+    let sessions = match (needs_sessions, durable) {
+        (false, _) => Vec::new(),
+        (true, false) => session::list_native_sessions(&session_dir, &env.cwd)?,
+        (true, true) => session::list_all_native_sessions(&session_dir)?,
     };
     if parsed.fork.is_some() && parsed.no_session {
         return Err("--fork cannot be combined with --no-session".into());
@@ -575,7 +583,8 @@ fn native_command(parsed: &Args, env: &Env, prompted: bool, terminal: bool) -> R
         }));
     }
     if parsed.continue_ {
-        // The newest format-4 session of this directory, else the newest session the server lists (any cwd).
+        // The newest format-4 session of this directory (a durable client's: of the instance, as `ultron-s -c`),
+        // else the newest session the server lists (any cwd).
         if let Some(newest) = sessions.first() {
             return open_or_new(newest.id.clone());
         }

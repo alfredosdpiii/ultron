@@ -625,9 +625,16 @@ fn services(
                     call_core(&op_core, command)?,
                 )));
             }
-            let selects_model = matches!(op, Op::SetModel { .. });
+            // `Models.select` and Ctrl+P (client-tui.ts `#cycleModel` selects through `Models.select`): the session's
+            // new model becomes the saved default, whichever client switched it.
+            let (selects, cycles) = (matches!(op, Op::SetModel { .. }), matches!(op, Op::CycleModel));
             let answer = call_core(&op_core, session_core::review_command::expand_client_op(op))?;
-            if selects_model && let Some(model) = &answer {
+            let chosen = match &answer {
+                Some(model) if selects => Some(model),
+                Some(cycled) if cycles => cycled.get("model"),
+                _ => None,
+            };
+            if let Some(model) = chosen {
                 save_default_model(&op_env, model);
             }
             Ok(answer)

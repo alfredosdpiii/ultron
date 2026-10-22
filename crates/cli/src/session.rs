@@ -73,6 +73,16 @@ fn header(path: &Path) -> Option<NativeSession> {
 
 /// `listNativeSessions`: `<dir>/<any>/<file>.jsonl` headers of sessions started in `cwd`, newest first.
 pub fn list_native_sessions(session_dir: &Path, cwd: &Path) -> Result<Vec<NativeSession>, String> {
+    list_sessions_of(session_dir, Some(cwd))
+}
+
+/// [`list_native_sessions`] of every directory: the sessions of an instance whose sessions are not per directory
+/// (the durable instance's, crate::durable_client).
+pub fn list_all_native_sessions(session_dir: &Path) -> Result<Vec<NativeSession>, String> {
+    list_sessions_of(session_dir, None)
+}
+
+fn list_sessions_of(session_dir: &Path, cwd: Option<&Path>) -> Result<Vec<NativeSession>, String> {
     let entries = match fs::read_dir(session_dir) {
         Ok(entries) => entries,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
@@ -87,8 +97,10 @@ pub fn list_native_sessions(session_dir: &Path, cwd: &Path) -> Result<Vec<Native
             }
         }
     }
-    let cwd = cwd.display().to_string();
-    sessions.retain(|s| s.cwd == cwd);
+    if let Some(cwd) = cwd {
+        let cwd = cwd.display().to_string();
+        sessions.retain(|s| s.cwd == cwd);
+    }
     sessions.sort_by(|l, r| {
         r.modified_at
             .total_cmp(&l.modified_at)

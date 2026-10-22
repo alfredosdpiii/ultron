@@ -351,9 +351,10 @@ pub fn claude_system_prompt(audience: Audience, options: &GuideOptions, hints: b
         } else {
             delegation_allowance(allowance)
         };
-        // A Claude Code subagent's server serves neither the session's shared world (persistent children, swarm,
-        // board, notes) nor `schedule` (crate::unavailable::child_refusal): an external root's subagent reader
-        // leaves them out (its contracts stay). The TypeScript guide's set (`ULTRON_GUIDE=ts`) names none of them
+        // A Claude Code subagent's server serves neither persistent children nor `schedule`
+        // (crate::unavailable::child_refusal); its swarm, board and notes reach the root's (crate::shared_world), but
+        // the guide names them in one paragraph with persistent children: an external root's subagent reader leaves
+        // that paragraph out (its contracts stay). The TypeScript guide's set (`ULTRON_GUIDE=ts`) names none of them
         // and keeps TypeScript's wording.
         let apis = options.apis.map(|apis| RuntimeGuideOptions {
             reader: if apis.durable_apis {

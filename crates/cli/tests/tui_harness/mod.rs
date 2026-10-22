@@ -313,6 +313,27 @@ impl Tui {
         args: &[&str],
         env: &[(&str, &str)],
     ) -> Tui {
+        Self::start_program(
+            root,
+            Path::new(env!("CARGO_BIN_EXE_ultron")),
+            models,
+            cols,
+            rows,
+            args,
+            env,
+        )
+    }
+
+    /// [`Tui::start_with_models`] running `program` (e.g. a link to the binary named `ultron-s`).
+    pub fn start_program(
+        root: &Path,
+        program: &Path,
+        models: &str,
+        cols: u64,
+        rows: u64,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Tui {
         assert!(
             Command::new("tmux")
                 .arg("-V")
@@ -370,7 +391,7 @@ impl Tui {
                     .map(|(k, v)| quote(&format!("{k}={v}")))
                     .collect::<Vec<_>>()
                     .join(" "),
-                quote(env!("CARGO_BIN_EXE_ultron")),
+                quote(&program.display().to_string()),
                 args.iter().map(|a| quote(a)).collect::<Vec<_>>().join(" "),
             ),
         )

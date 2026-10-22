@@ -240,7 +240,7 @@ impl DurableChildren {
     }
 
     /// A typed agent's `rlm` run, as a child conversation on the lane the task host named.
-    fn run_lane(&self, stack: &Weak<Stack>, run: LaneRun) -> Result<LaneReply, String> {
+    pub fn run_lane(&self, stack: &Weak<Stack>, run: LaneRun) -> Result<LaneReply, String> {
         let chat = self.chat.get().cloned().ok_or("The durable runtime is not open")?;
         let stack = stack.upgrade().ok_or("The session is closed")?;
         // A reused lane (a retained instance) continues its conversation.

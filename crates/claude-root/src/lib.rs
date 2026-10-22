@@ -26,6 +26,8 @@ pub mod root_sink;
 pub mod schedules;
 pub mod self_cmd;
 pub mod settings;
+pub mod shared_world;
+pub mod typed_agents;
 pub mod unavailable;
 pub mod watch;
 pub mod worker_root;

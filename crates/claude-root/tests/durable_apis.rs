@@ -93,12 +93,14 @@ impl Server {
             json!({"providers": {"groq": {"baseUrl": format!("http://127.0.0.1:{port}/v1")}}}).to_string(),
         )
         .unwrap();
-        let argv: Vec<String> = ["--children", "ultron"]
-            .iter()
-            .chain(args)
-            .map(|a| a.to_string())
-            .collect();
-        let (running, handlers) = start(&argv, &claude_root::Ctx { env: root.env(extra) }).unwrap();
+        let argv: Vec<&str> = ["--children", "ultron"].iter().chain(args).copied().collect();
+        Server::launch(root.env(extra), &argv)
+    }
+
+    /// A server on `env` with exactly `argv`.
+    fn launch(env: RunEnv, argv: &[&str]) -> Server {
+        let argv: Vec<String> = argv.iter().map(|a| a.to_string()).collect();
+        let (running, handlers) = start(&argv, &claude_root::Ctx { env }).unwrap();
         let (input, stdin) = std::io::pipe().unwrap();
         let (stdout, output) = std::io::pipe().unwrap();
         let serving = std::thread::spawn(move || {
@@ -447,7 +449,7 @@ fn claude_root_durable_apis_refusals_name_what_works_instead() {
         if has_tool_result(body) {
             Reply::Text("child done".into())
         } else {
-            Reply::Cell("try:\n    await board.add('x')\nexcept Exception as e:\n    print('refused:', e)".into())
+            Reply::Cell("for attempt in [rlm.spawn('b', name='k', keep=True), rlm.ask('1', 'q', timeout=5), schedule.list()]:\n    try:\n        await attempt\n    except Exception as e:\n        print('refused:', e)".into())
         }
     }));
     // No Ultron model to run a persistent child on (no --ultron-child-model, no default model, no rlm.childModel).
@@ -465,7 +467,8 @@ fn claude_root_durable_apis_refusals_name_what_works_instead() {
         "h = await rlm.spawn('KEEP-BRIEF', name='named', keep=True, model='{CHILD_MODEL}')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['status'])"
     ));
     assert_eq!(named, "succeeded");
-    // An in-memory subagent has no conversation in the durable runtime: the shared world is refused to it.
+    // An in-memory subagent has no conversation in the durable runtime: persistent children and schedules are
+    // refused to it (its swarm, board and notes: claude_root_in_memory_subagents_share_the_board_notes_and_swarm).
     let child = server.cell("h = await rlm.spawn('CHILD-BRIEF: add a task', name='plain', model='groq/llama-3.3-70b-versatile')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['value'])");
     assert_eq!(child, "child done");
     let result = requests
@@ -476,15 +479,18 @@ fn claude_root_durable_apis_refusals_name_what_works_instead() {
         .map(|b| b["messages"].to_string())
         .next()
         .unwrap();
-    assert!(
-        result.contains("refused: board is not available to this subagent in ultron claude: only the root and its persistent children (rlm.spawn(keep=True)) share the session's persistent agents, swarm, board and notes; put what the root needs in your answer"),
-        "{result}"
-    );
+    for refused in [
+        "refused: rlm.spawn(keep=True) is not available to a subagent in ultron claude: persistent children belong to the root and its persistent children; use swarm.send, board and notes to reach them, and put what the root needs in your answer",
+        "refused: rlm.ask is not available to a subagent in ultron claude: persistent children belong to the root and its persistent children; use swarm.send, board and notes to reach them, and put what the root needs in your answer",
+        "refused: schedule.list is available to the root agent only",
+    ] {
+        assert!(result.contains(refused), "{refused}: {result}");
+    }
     server.close();
 }
 
 #[test]
-fn claude_root_a_claude_subagents_server_refuses_the_roots_shared_world_and_schedules() {
+fn claude_root_a_claude_subagents_server_refuses_persistent_children_and_schedules() {
     use claude_root::unavailable::child_refusal;
     let payload = |value: Value| value.as_object().cloned().unwrap();
     for (kind, body, api) in [
@@ -499,14 +505,11 @@ fn claude_root_a_claude_subagents_server_refuses_the_roots_shared_world_and_sche
             "rlm.spawn(keep=True)",
         ),
         ("rlm.ask", json!({"child": "1", "question": "q"}), "rlm.ask"),
-        ("board.add", json!({"title": "t"}), "board"),
-        ("notes.append", json!({"text": "t"}), "notes"),
-        ("swarm.route", json!({"query": "q"}), "swarm"),
     ] {
         assert_eq!(
             child_refusal(kind, &payload(body)),
             Some(format!(
-                "{api} is not available to a Claude Code subagent in ultron claude: the session's persistent agents, swarm, board and notes are the root's; put what the root needs in your answer"
+                "{api} is not available to a subagent in ultron claude: persistent children belong to the root and its persistent children; use swarm.send, board and notes to reach them, and put what the root needs in your answer"
             )),
             "{kind}"
         );
@@ -521,6 +524,10 @@ fn claude_root_a_claude_subagents_server_refuses_the_roots_shared_world_and_sche
         ("rlm.spawn", json!({"prompt": "p", "kwargs": {"name": "n"}})),
         ("schedule.list", json!({})),
         ("rlm.collect", json!({"selectors": ["1"]})),
+        // Forwarded to the root (crate::shared_world).
+        ("board.add", json!({"title": "t"})),
+        ("notes.append", json!({"text": "t"})),
+        ("swarm.route", json!({"query": "q"})),
     ] {
         assert_eq!(child_refusal(kind, &payload(body)), None, "{kind}");
     }
@@ -626,4 +633,359 @@ fn claude_root_guide_names_persistent_agents_and_schedules_for_the_root_only() {
         assert!(!child.contains(unwanted), "{unwanted}: {child}");
     }
     assert!(child.contains("Contracts: `rlm.spawn(brief"), "{child}");
+}
+
+/// A typed `rlm` definition (`summ@1`); `model`, when given, is the definition's.
+fn summ_definition(id: &str, model: Option<&str>) -> String {
+    let mut definition = json!({
+        "id": id, "version": "1", "strategy": "rlm", "instructions": "TYPED-SUMMARY: summarize the text.",
+        "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"],
+                        "additionalProperties": false},
+        "outputSchema": {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"],
+                         "additionalProperties": false},
+        "maxRepairs": 0, "inputDescription": "{text:string}", "outputDescription": "{answer:string}",
+    });
+    if let Some(model) = model {
+        definition["model"] = json!(model);
+    }
+    definition.to_string()
+}
+
+/// The typed agent answers with the model id its request went to.
+fn typed_script() -> Script {
+    Arc::new(|body: &Value| {
+        Reply::Text(json!({"answer": format!("on {}", body["model"].as_str().unwrap_or_default())}).to_string())
+    })
+}
+
+#[test]
+fn claude_root_typed_rlm_agents_run_on_the_durable_runtime_on_the_request_then_definition_then_child_model() {
+    let root = Root::new();
+    let (port, requests) = fake_provider(typed_script());
+    let mut server = Server::with_child_model(&root, port, &[], &[]);
+    let registered = server.cell(&format!(
+        "import json\nawait agents.register(json.loads({:?}))\nawait agents.register(json.loads({:?}))\nprint('ok')",
+        summ_definition("summ", None),
+        summ_definition("named", Some("groq/openai/gpt-oss-20b"))
+    ));
+    assert_eq!(registered, "ok");
+    let invoke = |server: &mut Server, definition: &str, model: Option<&str>| {
+        let model = model.map_or("None".to_string(), |m| format!("'{m}'"));
+        server.cell(&format!(
+            "r = await agents.invoke('{definition}', {{'text': 'x'}}, model={model})\nprint(r)"
+        ))
+    };
+    // Neither names a model: the root's Ultron child model.
+    let plain = invoke(&mut server, "summ@1", None);
+    let succeeded = |model: &str| {
+        format!("{{'status': 'succeeded', 'value': {{'answer': 'on {model}'}}, 'verification': 'unverified'}}")
+    };
+    // (Results end with the cell's output; an earlier run's end may come first.)
+    assert!(plain.ends_with(&succeeded("llama-3.3-70b-versatile")), "{plain}");
+    // The request's model wins over the definition's, the definition's over the child model.
+    let requested = invoke(&mut server, "named@1", Some("groq/llama-3.1-8b-instant"));
+    assert!(requested.ends_with(&succeeded("llama-3.1-8b-instant")), "{requested}");
+    let defined = invoke(&mut server, "named@1", None);
+    assert!(defined.ends_with(&succeeded("openai/gpt-oss-20b")), "{defined}");
+    let bodies = requests.lock().unwrap().clone();
+    let models: Vec<&str> = bodies.iter().map(|b| b["model"].as_str().unwrap()).collect();
+    assert_eq!(
+        models,
+        ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b"]
+    );
+    // The lane is a subagent: its system prompt is a subagent's, its prompt the definition's.
+    assert!(bodies[0]["messages"][0].to_string().contains("If you are a subagent"));
+    assert!(last_message(&bodies[0]).contains("TYPED-SUMMARY"));
+    server.close();
+}
+
+/// `text` (a cell result) ends with `wanted`: an earlier run's end may come before the cell's output.
+fn assert_ends(text: &str, wanted: &str) {
+    assert!(text.ends_with(wanted), "{wanted:?} not at the end of {text:?}");
+}
+
+/// Register `definition`, run it once on `model=` (an Ultron model), retain the task and invoke the instance again:
+/// the follow-up's outcome.
+fn retained_follow_up(server: &mut Server, definition: &str, model: &str) -> String {
+    let id = serde_json::from_str::<Value>(definition).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    server.cell(&format!(
+        "import json\nawait agents.register(json.loads({definition:?}))\nt = await agents.spawn('{id}@1', {{'text': 'x'}}, model='{model}')\nprint((await t.result())['status'])\ni = await instances.retain(t.id)\nn = await instances.invoke(i['id'], {{'text': 'again'}})\nr = await agents.result(n['task_id'])\nprint(r['status'], r.get('error'))"
+    ))
+}
+
+#[test]
+fn claude_root_a_retained_typed_agent_cannot_continue_on_a_claude_code_model() {
+    let root = Root::new();
+    let (port, requests) = fake_provider(typed_script());
+    // The definition names a Claude Code model: its first run on a named Ultron model works, its follow-up cannot.
+    let mut server = Server::with_child_model(&root, port, &[], &[]);
+    // On an Ultron model the instance continues its lane's conversation.
+    let kept = retained_follow_up(&mut server, &summ_definition("kept", None), CHILD_MODEL);
+    assert!(kept.ends_with("succeeded\nsucceeded None"), "{kept}");
+    let follow_up = requests.lock().unwrap().last().cloned().unwrap();
+    assert!(
+        follow_up["messages"].to_string().contains("on llama-3.3-70b-versatile"),
+        "{follow_up}"
+    );
+    let outcome = retained_follow_up(
+        &mut server,
+        &summ_definition("claudy", Some("claude-code/sonnet")),
+        CHILD_MODEL,
+    );
+    assert_ends(
+        &outcome,
+        "succeeded\nfailed claudy@1 cannot continue on claude-code/sonnet in ultron claude: a retained instance takes follow-ups in its lane's conversation, which a Claude Code model cannot (it has no rlm tool and cannot take follow-ups); name an Ultron model in the definition (\"model\": \"provider/model\")",
+    );
+    server.close();
+    // Under `--children claude` the root's child model is its Claude Code children's: a definition naming none
+    // continues on it, which is refused the same way (the first run, on a named model, ran on the runtime).
+    let root = Root::new();
+    let claude = root.path("h/claude");
+    std::fs::write(&claude, "#!/bin/sh\nexit 1\n").unwrap();
+    let bin = [("ULTRON_CLAUDE_BIN", claude.to_str().unwrap())];
+    let mut server = Server::start(&root, port, &bin, &["--children", "claude", "--child-model", "sonnet"]);
+    let outcome = retained_follow_up(&mut server, &summ_definition("plain", None), CHILD_MODEL);
+    assert_ends(
+        &outcome,
+        "succeeded\nfailed plain@1 cannot continue on claude-code/sonnet in ultron claude: a retained instance takes follow-ups in its lane's conversation, which a Claude Code model cannot (it has no rlm tool and cannot take follow-ups); name an Ultron model in the definition (\"model\": \"provider/model\")",
+    );
+    // Both first runs reached the fake provider on the named model; neither refused follow-up did.
+    let bodies = requests.lock().unwrap().clone();
+    assert_eq!(bodies.len(), 4, "{bodies:?}");
+    server.close();
+}
+
+#[test]
+fn claude_root_in_memory_subagents_share_the_board_notes_and_swarm_with_the_root_and_kept_children() {
+    let root = Root::new();
+    let scout_cell = "print((await board.add('fix lexer', detail='from scout'))['by'])\nprint(await notes.append('scout note'))\nprint(await swarm.send('root', 'scout says hi', wake=True))\nprint(await swarm.send('lexer', 'look at the lexer', wake=True))\nprint(await swarm.register(topics=['lexing']))\nprint([(m['from'], m['text']) for m in await swarm.inbox()])";
+    let (port, requests) = fake_provider(Arc::new(move |body: &Value| {
+        let last = last_message(body);
+        if last.contains("Message from scout: look at the lexer") {
+            Reply::Text("lexer heard scout".into())
+        } else if body["messages"].to_string().contains("SCOUT-BRIEF") {
+            if has_tool_result(body) {
+                Reply::Text("scout done".into())
+            } else {
+                Reply::Cell(scout_cell.into())
+            }
+        } else {
+            Reply::Text("lexer ready".into())
+        }
+    }));
+    let mut server = Server::with_child_model(&root, port, &[], &[]);
+    let kept = server.cell("k = await rlm.spawn('KEEP-BRIEF: own the lexer', name='lexer', keep=True)\nr = await rlm.collect([k], timeout_ms=120000)\nprint(r[0]['result']['value'])\nawait swarm.send('scout', 'welcome scout')");
+    assert!(kept.contains("lexer ready"), "{kept}");
+    let scouted = server.cell("h = await rlm.spawn('SCOUT-BRIEF: look around', name='scout')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['value'])");
+    assert!(scouted.contains("scout done"), "{scouted}");
+    // What the scout's cell printed: everything is by the scout, its own inbox is the scout's.
+    let result = requests
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|b| has_tool_result(b) && b["messages"].to_string().contains("SCOUT-BRIEF"))
+        .map(|b| b["messages"].to_string())
+        .next()
+        .unwrap();
+    for printed in [
+        "scout\\n",
+        "\\n{'version': 1}\\n",
+        "{'id': 2, 'woke': True}",
+        "{'id': 3, 'woke': True}",
+        "'name': 'scout'",
+        "[('root', 'welcome scout')]",
+    ] {
+        assert!(result.contains(printed), "{printed}: {result}");
+    }
+    // The root reads the scout's task and note, and its wake reached Claude Code's inbox.
+    let board = server.cell("print([(t['title'], t['by']) for t in await board.list()])");
+    assert!(board.ends_with("[('fix lexer', 'scout')]"), "{board}");
+    let notes = server.cell("print(repr((await notes.read())['text']))");
+    assert!(notes.ends_with("'[scout] scout note\\n'"), "{notes}");
+    // The wake arrives with a cell result after it (before the result's output), or waits in the inbox.
+    let woke = root_inbox(&server, [scouted.as_str(), board.as_str(), notes.as_str()]);
+    assert!(
+        woke.contains("<swarm_message from=\"scout\" to=\"root\">\nscout says hi\n</swarm_message>"),
+        "{woke}"
+    );
+    // The kept child was woken by the scout's message: its next turn answers it.
+    wait_until("the kept child answers the scout", || {
+        requests
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|b| last_message(b).contains("Message from scout: look at the lexer"))
+    });
+    let agents = server.cell("a = await swarm.agents()\nprint(sorted(a), a['scout']['topics'])");
+    assert!(agents.ends_with("['lexer', 'scout'] ['lexing']"), "{agents}");
+    server.close();
+}
+
+/// What reached the root's inbox: the cell results `seen` since it was sent, else (once it arrives) the inbox.
+fn root_inbox<const N: usize>(server: &Server, seen: [&str; N]) -> String {
+    let seen = seen.concat();
+    if seen.contains("<swarm_message") {
+        return seen;
+    }
+    let opened = server.running.opened().unwrap();
+    wait_until("the wake reaches the root's inbox", || opened.root.pending_events() > 0);
+    opened.root.take_events().unwrap()
+}
+
+/// A FAKE `claude -p` (never the real CLI): it records the subagent server its MCP config names (token, parent
+/// socket and lane) and its brief in `<dir>/child.json`, then waits until `<dir>/go` (a FIFO) is opened and closed
+/// before it prints its stream-json result. The test runs the subagent's `ultron mcp --child` server itself, in
+/// process, from that record.
+fn fake_claude(dir: &Path) -> PathBuf {
+    let script = dir.join("claude");
+    let text = format!(
+        r#"#!{python}
+import json, os, sys
+args = sys.argv[1:]
+server = json.loads(args[args.index('--mcp-config') + 1])['mcpServers']['ultron']
+def flag(name):
+    return server['args'][server['args'].index(name) + 1]
+info = {{'token': server['env']['ULTRON_PARENT_TOKEN'], 'socket': flag('--parent-socket'), 'lane': flag('--parent-lane'), 'prompt': sys.stdin.read()}}
+os.mkfifo('{dir}/go')
+with open('{dir}/child.json.tmp', 'w') as f:
+    json.dump(info, f)
+os.rename('{dir}/child.json.tmp', '{dir}/child.json')
+with open('{dir}/go') as f:
+    f.read()
+print(json.dumps({{'type': 'result', 'result': 'claude child done', 'num_turns': 1, 'usage': {{'input_tokens': 1, 'output_tokens': 1}}}}))
+"#,
+        python = python(),
+        dir = dir.display()
+    );
+    std::fs::write(&script, text).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    script
+}
+
+#[test]
+fn claude_root_a_claude_subagents_server_forwards_the_shared_world_to_the_root() {
+    let root = Root::new();
+    let fake = root.path("tmp");
+    let claude = fake_claude(&fake);
+    let (port, _requests) = fake_provider(Arc::new(|body: &Value| {
+        if has_tool_result(body) {
+            Reply::Text("deep done".into())
+        } else {
+            Reply::Cell("print((await board.add('deep task'))['by'])".into())
+        }
+    }));
+    let bin = [("ULTRON_CLAUDE_BIN", claude.to_str().unwrap())];
+    let mut server = Server::with_child_model(&root, port, &bin, &["--children", "claude"]);
+    let spawned = server.cell("h = await rlm.spawn('CLAUDE-BRIEF: help out', name='scout')\nprint(h.rlm_child_id)");
+    let record = fake.join("child.json");
+    wait_until("the fake claude records its server", || record.exists());
+    let child: Value = serde_json::from_str(&std::fs::read_to_string(&record).unwrap()).unwrap();
+    assert!(child["prompt"].as_str().unwrap().contains("CLAUDE-BRIEF"), "{child}");
+    assert_eq!(child["lane"], format!("ultron.rlm-child.{spawned}"));
+    // The subagent's own `ultron mcp --child` server, as Claude Code would start it from its MCP config.
+    let token = child["token"].as_str().unwrap().to_string();
+    let socket = child["socket"].as_str().unwrap().to_string();
+    let lane = child["lane"].as_str().unwrap().to_string();
+    let mut sub = Server::launch(
+        root.env(&[("ULTRON_PARENT_TOKEN", &token)]),
+        &[
+            "--child",
+            "--parent-socket",
+            &socket,
+            "--parent-lane",
+            &lane,
+            "--children",
+            "ultron",
+            "--ultron-child-model",
+            CHILD_MODEL,
+        ],
+    );
+    assert_eq!(sub.cell("print((await board.add('claude task'))['by'])"), "scout");
+    assert_eq!(sub.cell("print(await notes.append('claude note'))"), "{'version': 1}");
+    assert_eq!(
+        sub.cell("print(await swarm.send('root', 'claude says hi', wake=True))"),
+        "{'id': 1, 'woke': True}"
+    );
+    // Its own in-memory subagent goes by its own name, through its server and the parent's.
+    let deep = sub.cell("h = await rlm.spawn('DEEP-BRIEF', name='deep')\nr = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['value'])");
+    assert_eq!(deep, "deep done");
+    // Persistent children stay the root's.
+    assert_ends(
+        &sub.attempt("await rlm.ask('1', 'q', timeout=5)"),
+        "rlm.ask is not available to a subagent in ultron claude: persistent children belong to the root and its persistent children; use swarm.send, board and notes to reach them, and put what the root needs in your answer",
+    );
+    // The root sees the subagent's work, by its spawn names, and its wake in Claude Code's inbox.
+    let board = server.cell("print([(t['title'], t['by']) for t in await board.list()])");
+    assert!(
+        board.ends_with("[('claude task', 'scout'), ('deep task', 'deep')]"),
+        "{board}"
+    );
+    let notes = server.cell("print(repr((await notes.read())['text']))");
+    assert!(notes.ends_with("'[scout] claude note\\n'"), "{notes}");
+    let woke = root_inbox(&server, [board.as_str(), notes.as_str()]);
+    assert!(
+        woke.contains("<swarm_message from=\"scout\" to=\"root\">\nclaude says hi\n</swarm_message>"),
+        "{woke}"
+    );
+    // Only a running subagent's token is accepted.
+    assert_eq!(
+        server.control("shared", json!({"token": "not-a-token", "kind": "board.list"})),
+        Err("the session's shared world: unknown subagent".to_string())
+    );
+    sub.close();
+    // The fake claude prints its result: the subagent's answer.
+    drop(std::fs::OpenOptions::new().write(true).open(fake.join("go")).unwrap());
+    let answer = server.cell("r = await rlm.collect([h], timeout_ms=120000)\nprint(r[0]['result']['value'])");
+    assert!(answer.ends_with("claude child done"), "{answer}");
+    server.close();
+}
+
+#[test]
+fn claude_root_schedules_survive_claude_resume_and_the_missed_slots_fire_once() {
+    let root = Root::new();
+    let clock = root.path("clock");
+    std::fs::write(&clock, "0").unwrap();
+    let env = [
+        (kernel_apis::prompt_schedule::CLOCK_FILE_ENV, clock.to_str().unwrap()),
+        ("CLAUDE_CODE_SESSION_ID", "claude-session-schedules"),
+    ];
+    let (port, _requests) = fake_provider(Arc::new(|_: &Value| Reply::Text("unused".into())));
+    let mut server = Server::start(&root, port, &env, &[]);
+    let id = server.cell("print(await schedule.every('1m', 'poll ci', name='ci'))");
+    assert!(id.starts_with("sch-"), "{id}");
+    let session_path = server.running.opened().unwrap().session_path.clone();
+    server.close();
+    // The schedule is kept in the session, where the Ultron server's timer does not look: it never fires a Claude
+    // Code session's schedule as a native turn.
+    assert!(
+        std::fs::read_to_string(&session_path)
+            .unwrap()
+            .contains("ultron.claude.schedule")
+    );
+    assert!(daemon::prompt_schedules::scan_journal(&session_path).is_empty());
+    // Claude Code is down for five slots; `claude --resume` reopens the session, and its schedule.
+    std::fs::write(&clock, "300000").unwrap();
+    let mut server = Server::start(&root, port, &env, &[]);
+    let opened = server.running.opened().unwrap();
+    assert_eq!(opened.session_path, session_path);
+    wait_until("the missed slots fire", || opened.root.pending_events() > 0);
+    assert_eq!(
+        opened.root.take_events().unwrap(),
+        format!(
+            "<scheduled_prompt schedule=\"ci\" id=\"{id}\" run=\"1\">\nThis session's schedule fired: do this now as a new task.\npoll ci\n</scheduled_prompt>"
+        )
+    );
+    // One run for the five missed slots; the next slot is after now.
+    let listed = server.cell("s = (await schedule.list())[0]\nprint(s['id'], s['runs'], s['state'])");
+    // (The kernel restarted from its checkpoint: the note after the output says what it kept.)
+    assert!(listed.starts_with(&format!("{id} 1 active\n")), "{listed}");
+    assert!(opened.schedules_pending());
+    std::fs::write(&clock, "360000").unwrap();
+    wait_until("the next slot fires", || opened.root.pending_events() > 0);
+    assert!(opened.root.take_events().unwrap().contains("run=\"2\""));
+    server.close();
 }

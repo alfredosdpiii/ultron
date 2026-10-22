@@ -80,7 +80,13 @@ pub struct Services {
     /// Told the session's active schedules (`schedule.*`, kernel_apis::prompt_schedule) after every change: the
     /// session worker reports them to its server, which fires them.
     pub on_schedules: Option<kernel_apis::prompt_schedule::Listener>,
+    /// Runs typed agents' `rlm` lanes for a stack without a [`SubagentHost`] (its typed agents' records stay in
+    /// memory); none: such a stack has no `rlm` strategy. A host's own [`AgentStores::lanes`] wins.
+    pub agent_lanes: Option<AgentLanes>,
 }
+
+/// Builds a typed-agent lane runner from the stack being built (it may hold the stack weakly).
+pub type AgentLanes = Arc<dyn Fn(Weak<Stack>) -> delegation::agents::LaneRunner + Send + Sync>;
 
 /// What every lane of this process shares: settings, locations, guards and the snapshot key. Owned
 /// values only, so subagent lanes can be built on their own threads.
@@ -897,6 +903,7 @@ impl Runtime {
         let hints_wake = wake.clone();
         cell_hints.set_lane_woken(Arc::new(move |lane: &str| hints_wake.woken(lane)));
         let memory_children_on = memory_children.is_some();
+        let agent_lanes = self.services.agent_lanes.clone();
         let stack = Arc::new_cyclic(|me: &Weak<Stack>| {
             let runner_stack = me.clone();
             let (store, inner, agent_stores) = match subagents.take() {
@@ -908,7 +915,19 @@ impl Runtime {
                         Some(children) => children.runner(factory),
                         None => agent_runner(factory),
                     };
-                    (None, runner, None)
+                    // Typed agents keep in-memory records, their `rlm` lanes run where `agent_lanes` says.
+                    let agent_stores = agent_lanes.as_ref().map(|lanes| {
+                        use delegation::task_store::MemoryStore;
+                        let lanes = lanes.clone();
+                        AgentStores {
+                            tasks: Box::new(MemoryStore::default()),
+                            definitions: Box::new(MemoryStore::default()),
+                            usage: Box::new(MemoryStore::default()),
+                            lanes: Box::new(move |stack| lanes(stack)),
+                            frames: Arc::new(inference::MemoryTraceStore::default()),
+                        }
+                    });
+                    (None, runner, agent_stores)
                 }
             };
             let goal_slot: Arc<std::sync::OnceLock<Arc<GoalDriver>>> = Arc::new(std::sync::OnceLock::new());

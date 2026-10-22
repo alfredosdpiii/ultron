@@ -322,8 +322,9 @@ pub struct Opened {
     pub session: session_core::durable_store::SharedSession,
     /// The durable runtime of a root server's persistent children, swarm, board and notes (crate::durable_apis).
     pub durable: Option<Arc<crate::durable_apis::DurableApis>>,
-    /// A root server's timer of scheduled prompts (crate::schedules).
+    /// A root server's timer of scheduled prompts and the root's schedules, kept in the session (crate::schedules).
     timer: Option<Arc<crate::schedules::ScheduleTimer>>,
+    pub schedules: Option<Arc<kernel_apis::prompt_schedule::ScheduleModule>>,
     /// Released when the runtime closes, so the next server for the same Claude Code session reopens it.
     lock: Mutex<Option<SessionLock>>,
 }
@@ -333,11 +334,9 @@ impl Opened {
     pub fn schedules_pending(&self) -> bool {
         self.timer.is_some()
             && self
-                .lane
-                .stack
-                .prompt_schedules()
-                .entries()
-                .is_ok_and(|active| !active.is_empty())
+                .schedules
+                .as_ref()
+                .is_some_and(|schedules| schedules.entries().is_ok_and(|active| !active.is_empty()))
     }
 
     pub fn close(&self) {
@@ -408,8 +407,23 @@ fn open_runtime(
     let sessions_dir = session_root.join(session_core::lane::session_directory_name(&metadata.cwd));
     // A root server fires its session's schedules itself (crate::schedules); the module tells it of each change.
     let timer = (!args.child).then(crate::schedules::ScheduleTimer::new);
+    let schedules = timer.as_ref().map(|timer| {
+        crate::schedules::module(
+            &session,
+            &metadata.id,
+            kernel_apis::prompt_schedule::clock_for(&*env.var),
+            timer.listener(),
+        )
+    });
+    // A root server's persistent children, and its typed agents' `rlm` lanes, run on its durable runtime
+    // (crate::durable_apis, crate::typed_agents), on the model the root's children run on unless one is named.
+    let children = (!args.child).then(session_core::subagents::DurableChildren::new);
+    let typed_model: crate::typed_agents::ChildModel = Arc::default();
+    let typed_lanes = children
+        .as_ref()
+        .map(|children| crate::typed_agents::lanes(children.clone(), typed_model.clone()));
     let services = Services {
-        on_schedules: timer.as_ref().map(crate::schedules::ScheduleTimer::listener),
+        agent_lanes: typed_lanes.clone(),
         ..Services::default()
     };
     let runtime = Runtime::new(env, "print", sessions_dir, services)?;
@@ -422,6 +436,17 @@ fn open_runtime(
         !args.instructions && crate::guide::loki_note_at(runtime.config.loki_root.as_deref()).is_some();
     // Loki's setup (the minimal install where allowed, its commit in the background) before any cell runs.
     let loki_notice = session_core::loki_notice::LokiNotice::start(&runtime.config);
+    let settings_child = runtime.config.settings["rlm"]["childModel"]
+        .as_str()
+        .filter(|m| !m.is_empty())
+        .map(str::to_string);
+    let _ = typed_model.set(if resolved.children == "claude" {
+        let id = resolved.child_model.trim();
+        format!("claude-code/{}", id.strip_prefix("claude-code/").unwrap_or(id))
+    } else {
+        ultron_child_model(resolved, settings_child.clone(), &model)
+            .unwrap_or_else(|| format!("{}/{}", model.provider, model.id))
+    });
     let roots = Arc::new(crate::child_usage::ChildRoots::default());
     let subagents = match claude {
         Some(claude) => Some(claude_subagents(
@@ -430,6 +455,7 @@ fn open_runtime(
             &runtime,
             session.clone(),
             roots.clone(),
+            typed_lanes,
         )?),
         None => None,
     };
@@ -475,10 +501,6 @@ fn open_runtime(
         }));
     } else {
         // `--children ultron`'s child model, else `rlm.childModel` (/settings -> Models), for spawns that name none.
-        let settings_child = runtime.config.settings["rlm"]["childModel"]
-            .as_str()
-            .filter(|m| !m.is_empty())
-            .map(str::to_string);
         let child_model = ultron_child_model(resolved, settings_child, &model);
         if child_model.is_some() {
             delegation.set_child_model(child_model);
@@ -498,23 +520,32 @@ fn open_runtime(
     let sink = Arc::new(crate::root_sink::RootSink::system());
     // A root serves persistent children, `rlm.ask`, the swarm, the board and the notes from a durable runtime of its
     // session (crate::durable_apis); what a caller cannot use is refused with a clear error (crate::unavailable).
-    let durable = if args.child {
-        let _ = lane.stack.request_layer.set(crate::unavailable::child_layer());
-        None
-    } else {
-        let settings_child = runtime.config.settings["rlm"]["childModel"].as_str();
-        let keep_model = crate::durable_apis::keep_model(resolved.ultron_child_model.as_deref(), settings_child);
-        let apis = crate::durable_apis::open(&session, &lane, &runtime, env, keep_model, sink.clone())?;
-        let _ = lane
-            .stack
-            .request_layer
-            .set(crate::unavailable::root_layer(apis.clone()));
-        Some(apis)
+    let durable = match (children, &schedules) {
+        (Some(children), Some(schedules)) => {
+            let settings_child = runtime.config.settings["rlm"]["childModel"].as_str();
+            let keep_model = crate::durable_apis::keep_model(resolved.ultron_child_model.as_deref(), settings_child);
+            let apis = crate::durable_apis::open(children, &session, &lane, &runtime, env, keep_model, sink.clone())?;
+            server.world.attach(apis.clone());
+            let _ = lane.stack.request_layer.set(crate::unavailable::root_layer(
+                apis.clone(),
+                server.world.clone(),
+                schedules.clone(),
+                Arc::downgrade(&lane.stack),
+            ));
+            Some(apis)
+        }
+        _ => {
+            let _ = lane
+                .stack
+                .request_layer
+                .set(crate::unavailable::child_layer(server.world.clone()));
+            None
+        }
     };
-    if let Some(timer) = &timer {
+    if let (Some(timer), Some(schedules)) = (&timer, &schedules) {
         let deliver = sink.clone();
         timer.start(
-            lane.stack.prompt_schedules().clone(),
+            schedules.clone(),
             kernel_apis::prompt_schedule::clock_for(&*env.var),
             Arc::new(move |message: &Value| {
                 deliver.publish(crate::schedules::prompt_line(message));
@@ -560,6 +591,7 @@ fn open_runtime(
         session,
         durable,
         timer,
+        schedules,
         lock: Mutex::new(lock),
     })
 }
@@ -689,6 +721,8 @@ pub struct Server {
     herdr: crate::herdr_hook::HerdrHook,
     /// The kernel APIs the guide names (crate::guide::runtime_apis).
     apis: resources::runtime_guide::RuntimeGuideOptions,
+    /// Where this server's subagents reach the session's swarm, board and notes (crate::shared_world).
+    world: Arc<crate::shared_world::SharedWorld>,
 }
 
 impl Server {
@@ -768,7 +802,7 @@ impl Server {
                         let report = SESSION_REPORT.get().ok_or("the session report is not available")?;
                         // The counters still in memory go to the session file first.
                         stack.stats.flush();
-                        report(&opened.session_path)
+                        report(&opened.session_path, &self.env)
                     }
                     _ => stack
                         .cell_handler(MAIN, None)
@@ -808,6 +842,32 @@ impl Server {
                     .stack
                     .cell_handler(&lane, None)
                     .handle("rlm.finish", payload, &kernel::Signal::new())
+            }
+            // A subagent server's shared-world request (crate::shared_world), checked against its token.
+            "shared" => {
+                let lane = request
+                    .get("token")
+                    .and_then(Value::as_str)
+                    .and_then(|token| {
+                        self.child_tokens
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .get(token)
+                            .cloned()
+                    })
+                    .ok_or("the session's shared world: unknown subagent")?;
+                let kind = request.get("kind").and_then(Value::as_str).unwrap_or_default();
+                let payload = match request.get("payload") {
+                    Some(Value::Object(payload)) => payload.clone(),
+                    _ => Map::new(),
+                };
+                self.runtime()?;
+                // A subagent of that subagent names itself; the subagent itself goes by its spawn's name.
+                let name = match request.get("name").and_then(Value::as_str) {
+                    Some(name) => name.to_string(),
+                    None => self.world.name_of_lane(&lane),
+                };
+                self.world.serve(Some(&name), kind, &payload)
             }
             // `ultron hook wait-events` (an asyncRewake hook): wait in the background for the root's next event
             // while Claude Code is idle; the hook wakes the model with it.
@@ -1132,8 +1192,9 @@ impl McpHandlers for Handlers {
     }
 }
 
-/// Builds the session report (`usage.report`) from a session file; the CLI, which owns the report, sets it.
-pub type SessionReport = fn(&Path) -> Result<Value, String>;
+/// Builds the session report (`usage.report`) from a session file, in the server's environment (which logins are
+/// subscriptions); the CLI, which owns the report, sets it.
+pub type SessionReport = fn(&Path, &RunEnv) -> Result<Value, String>;
 
 static SESSION_REPORT: std::sync::OnceLock<SessionReport> = std::sync::OnceLock::new();
 
@@ -1271,6 +1332,11 @@ pub fn start(argv: &[String], ctx: &Ctx) -> Result<(Arc<Running>, Arc<Handlers>)
     } else {
         None
     }));
+    let world = if args.child {
+        crate::shared_world::SharedWorld::forwarding(upstream(parent.clone(), parent_token.clone()))
+    } else {
+        crate::shared_world::SharedWorld::root()
+    };
     let root_finish = args.child.then(|| root_finish(parent.clone(), parent_token));
     let server = Arc::new(Server {
         hints: hints_enabled(var("ULTRON_HINTS").as_deref()),
@@ -1290,6 +1356,7 @@ pub fn start(argv: &[String], ctx: &Ctx) -> Result<(Arc<Running>, Arc<Handlers>)
         persona_told: Mutex::new(None),
         herdr: crate::herdr_hook::HerdrHook::start(&env, args.child),
         apis: crate::guide::runtime_apis(&env),
+        world,
     });
     // `--children claude` (the default when `claude` is installed): each `rlm.spawn` child is a Claude Code process
     // attached to its own `ultron mcp --child` server.
@@ -1337,6 +1404,26 @@ fn root_finish(parent: Arc<Mutex<Option<ControlClient>>>, token: Option<String>)
     })
 }
 
+/// A subagent server's shared-world requests go to its parent server with its token (crate::shared_world).
+fn upstream(parent: Arc<Mutex<Option<ControlClient>>>, token: Option<String>) -> crate::shared_world::Upstream {
+    Arc::new(move |name: Option<&str>, kind: &str, payload: &Map<String, Value>| {
+        let mut parent = parent.lock().unwrap_or_else(PoisonError::into_inner);
+        let client = parent
+            .as_mut()
+            .ok_or_else(|| format!("{kind}: the parent server is not reachable"))?;
+        let mut fields = Map::new();
+        if let Some(token) = &token {
+            fields.insert("token".into(), token.clone().into());
+        }
+        if let Some(name) = name {
+            fields.insert("name".into(), name.into());
+        }
+        fields.insert("kind".into(), kind.into());
+        fields.insert("payload".into(), Value::Object(payload.clone()));
+        client.request(crate::shared_world::OP, fields, Duration::from_secs(60))
+    })
+}
+
 /// Child tokens of running Claude Code subagents, by token: their lane.
 type ChildTokens = Arc<Mutex<std::collections::HashMap<String, String>>>;
 
@@ -1350,6 +1437,7 @@ fn claude_subagents(
     runtime: &Runtime,
     session: session_core::durable_store::SharedSession,
     roots: Arc<crate::child_usage::ChildRoots>,
+    typed_lanes: Option<session_core::compose::AgentLanes>,
 ) -> Result<SubagentHost, String> {
     use session_core::subagents::{SessionUsageStore, SessionValueStore, TASKS_KEY, TASKS_NAMESPACE};
     let var = server.env.var.clone();
@@ -1458,11 +1546,16 @@ fn claude_subagents(
             tasks: value(TASKS_NAMESPACE, "agents"),
             definitions: value("ultron.definitions", "root"),
             usage: Box::new(SessionUsageStore(session.clone())),
-            // Typed `rlm` definitions need the session actor's lane runner, which an `ultron mcp` root has not.
-            lanes: Box::new(|_| {
-                Arc::new(|_| Err("Ultron rlm definitions need a lane runner, and this host has none".to_string()))
-                    as delegation::agents::LaneRunner
-            }),
+            // Typed `rlm` definitions run on a root server's durable runtime (crate::typed_agents); a Claude Code
+            // subagent's server has none.
+            lanes: match typed_lanes {
+                Some(lanes) => Box::new(move |stack| lanes(stack)),
+                None => Box::new(|_| {
+                    Arc::new(|_| {
+                        Err("Ultron rlm definitions run on the root's durable runtime in ultron claude, which a Claude Code subagent's server has not; ask the root to run it".to_string())
+                    }) as delegation::agents::LaneRunner
+                }),
+            },
             frames: Arc::new(session_core::frames::SessionTraceStore(session.clone())),
         }),
     })

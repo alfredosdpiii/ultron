@@ -313,6 +313,18 @@ fn cli_custom_provider_rpc_lists_and_selects_custom_models() {
         (&settings["defaultProvider"], &settings["defaultModel"]),
         (&json!("stubproxy"), &json!("gpt-6.1-sol"))
     );
+    // `cycle_model` (Ctrl+P: client-tui.ts `#cycleModel` selects through `Models.select`): the model it moves to is
+    // the saved default too, written by the worker.
+    let saved = || -> (Value, Value) {
+        let settings: Value =
+            serde_json::from_str(&std::fs::read_to_string(root.root.join("agent/settings.json")).unwrap()).unwrap();
+        (settings["defaultProvider"].clone(), settings["defaultModel"].clone())
+    };
+    for expected in ["plain", "gpt-6.1-sol"] {
+        let cycled = client.send(json!({"type": "cycle_model"})).unwrap();
+        assert_eq!(RpcClient::data(&cycled).unwrap()["model"]["id"], expected, "{cycled}");
+        assert_eq!(saved(), (json!("stubproxy"), json!(expected)));
+    }
     client.prompt_and_wait("say hi", HANG_GUARD).unwrap();
     assert_eq!(
         client.get_last_assistant_text().unwrap().as_deref(),

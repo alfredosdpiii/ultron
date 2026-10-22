@@ -138,3 +138,66 @@ fn cli_entry_tui_durable_persona_reports_the_workers_state_and_none_sticks() {
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     drop(tui);
 }
+
+/// `ultron-s -r` on a terminal is the session picker over the durable instance's sessions (the selector is
+/// forwarded to the client, which runs in the home directory): both sessions `ultron-s --new` made are listed,
+/// newest first, and the one picked opens in the TUI with its own conversation.
+#[test]
+fn cli_entry_tui_ultron_s_resume_opens_the_picked_durable_session() {
+    let mock = Mock::start(vec![text_reply("Answer one."), text_reply("Answer two.")], None);
+    let tmp = TempDir::new();
+    layout(&tmp.0, mock.port);
+    let durable = tmp.0.join(".ultron/server");
+    let durable_env = durable.display().to_string();
+    let env = [("ULTRON_SERVER_DIR", durable_env.as_str()), ("ULTRON_AUTO_NAME", "off")];
+    let link = tmp.0.join("bin/ultron-s");
+    std::fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_ultron"), &link).unwrap();
+    let mut ids = Vec::new();
+    for prompt in ["one", "two"] {
+        let out = Command::new(&link)
+            .args(["--new", "--model", MODEL, "-p", prompt])
+            .current_dir(tmp.0.join("cwd"))
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", &tmp.0)
+            .env("ULTRON_CODING_AGENT_DIR", tmp.0.join("agent"))
+            .env("ANTHROPIC_API_KEY", "test-key")
+            .env("PI_SKIP_VERSION_CHECK", "1")
+            .envs(env.iter().copied())
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        ids.push(
+            std::fs::read_to_string(durable.join("home-session"))
+                .unwrap()
+                .trim()
+                .to_string(),
+        );
+    }
+    assert_ne!(ids[0], ids[1]);
+    let models = format!(
+        r#"{{"providers":{{"anthropic":{{"baseUrl":"http://127.0.0.1:{}"}}}}}}"#,
+        mock.port
+    );
+    let tui = Tui::start_program(&tmp.0, &link, &models, 140, 30, &["-r"], &env);
+    tui.wait("Select a session number:");
+    // Newest first: the second session, then the first (the raw screen: the normalized one hides ids).
+    let picker = tui.tmux(&["capture-pane", "-p", "-t", "t"]);
+    let (newest, oldest) = (
+        picker.find(&format!("1. {}", ids[1])),
+        picker.find(&format!("2. {}", ids[0])),
+    );
+    assert!(newest.is_some() && oldest.is_some(), "{picker}");
+    tui.send_text("2");
+    tui.send_keys(&["Enter"]);
+    let screen = tui.wait("Answer one.");
+    assert!(!screen.contains("Answer two."), "{screen}");
+    tui.send_text("/quit");
+    tui.send_keys(&["Enter"]);
+    tui.wait("<exited>");
+    let out = run(&tmp.0, &["durable", "stop"], &env);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    drop(tui);
+}
