@@ -1,5 +1,10 @@
 # Ultron
 
+> **Ultron has moved to [alfredosdpiii/ultron-rs](https://github.com/alfredosdpiii/ultron-rs).**
+> Ultron is now one self-contained Rust binary that needs no Node.js, and all new work happens there. This
+> TypeScript version is no longer developed: its last release is 0.87.39, and this repository is archived and kept
+> for its history. Install and report issues at the new repository.
+
 **A terminal coding agent that programs its way through your work instead of picking tools from a menu.**
 
 Most coding agents give the model a list of tools (read a file, run a command, edit, search) and let it call
